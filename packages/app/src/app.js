@@ -38,7 +38,7 @@ export default class App {
      *
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{ showDebuggerButton: boolean}>} options
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         // eslint-disable-next-line consistent-this
@@ -47,7 +47,7 @@ export default class App {
         this.rootSpec = rootSpec;
         this.options = options;
 
-        options.showDebuggerButton ??= true;
+        options.showInspectorButton ??= true;
 
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";

@@ -8,7 +8,7 @@ import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
  *
  * @param {import("@genome-spy/core/data/dataFlow.js").default<any>} dataFlow
  */
-export function showDataflowDebuggerDialog(dataFlow) {
+export function showDataflowInspectorDialog(dataFlow) {
     const dataSources = dataFlow.dataSources;
 
     const propsRef = createRef();
@@ -23,7 +23,7 @@ export function showDataflowDebuggerDialog(dataFlow) {
 
     const h = html`
         <p>
-            The dataflow debugger shows the data sources and subsequent
+            The dataflow inspector shows the data sources and subsequent
             transformations in the dataflow. You can inspect the data flow nodes
             by clicking on them. The number after the node type indicates the
             number of data objects propagated by the node during the last batch.
@@ -51,7 +51,7 @@ export function showDataflowDebuggerDialog(dataFlow) {
     `;
 
     messageBox(h, {
-        title: "Dataflow debugger",
+        title: "Dataflow Inspector",
         okLabel: "Close",
     });
 

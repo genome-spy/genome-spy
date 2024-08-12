@@ -16,7 +16,7 @@ import packageJson from "../../package.json";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { showDataflowDebuggerDialog } from "../dataflowDebugger.js";
+import { showDataflowInspectorDialog } from "../dataflowInspector.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -106,12 +106,12 @@ export default class Toolbar extends LitElement {
                 >v${packageJson.version}</a
             >
 
-            ${this.app.options.showDebuggerButton
+            ${this.app.options.showInspectorButton
                 ? html` <button
                       class="tool-btn"
-                      title="Dataflow Debugger"
+                      title="Dataflow Inspector"
                       @click=${() =>
-                          showDataflowDebuggerDialog(
+                          showDataflowInspectorDialog(
                               this.app.genomeSpy.viewRoot.context.dataFlow
                           )}
                   >
