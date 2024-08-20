@@ -77,7 +77,7 @@ export function selectionTest(selection, datum, empty = true) {
     } else if (isMultiPointSelection(selection)) {
         return selection.data.size == 0
             ? empty
-            : selection.data.has(datum[UNIQUE_ID_KEY]);
+            : selection.data.has(datum[UNIQUE_ID_KEY]); // TODO: Binary search
     } else {
         throw new Error("Not a selection: " + JSON.stringify(selection));
     }
@@ -142,5 +142,8 @@ export function isPointSelectionConfig(config) {
  * @returns {boolean}
  */
 export function isTogglingEnabledInPointSelectionConfig(config) {
-    return isPointSelectionConfig(config) && config.toggle;
+    if (!isPointSelectionConfig(config)) {
+        return false;
+    }
+    return config.toggle ?? config.on === "click";
 }
