@@ -117,7 +117,8 @@ However, currently only single-point selections are supported.
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
 with slight modifications (GenomeSpy provides no `"bar"` mark). The
-specification below is fully compatible with Vega-Lite.
+specification below is fully compatible with Vega-Lite. You can select multiple
+bars by holding down the `Shift` key.
 
 <div><genome-spy-doc-embed height="250">
 

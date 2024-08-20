@@ -401,9 +401,9 @@ export default class WebGLHelper {
             );
         }
 
-        const uniqueIds = Array.from(selection.data.keys()).sort(
-            (a, b) => a - b
-        );
+        const keys = Array.from(selection.data.keys());
+        // Zero is a special value for no selection. The minimum texture size is 1.
+        const uniqueIds = keys.length > 0 ? keys.sort((a, b) => a - b) : [0];
 
         const existingTexture = this.selectionTextures.get(selection);
 
