@@ -16,7 +16,7 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
-import { isExprRef, validateParameterName } from "../view/paramMediator.js";
+import { isExprRef } from "../view/paramMediator.js";
 import scaleNull from "../utils/scaleNull.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
@@ -27,6 +27,7 @@ export const SCALE_FUNCTION_PREFIX = "scale_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 export const PARAM_PREFIX = "uParam_";
+export const SELECTION_CHECKER_PREFIX = "checkSelection_";
 
 // https://stackoverflow.com/a/47543127
 const FLT_MAX = 3.402823466e38;
@@ -523,16 +524,8 @@ export function generateConditionalEncoderGlsl(channel, accessors) {
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
         const { param, empty } = accessor.predicate;
 
-        const paramUniform = PARAM_PREFIX + validateParameterName(param);
-        const idAttribute = ATTRIBUTE_PREFIX + "uniqueId";
-
-        // Hardcoded condition for single point selection ... for now.
         conditions.push(
-            param
-                ? `${idAttribute} == ${paramUniform}${
-                      empty ? ` || ${paramUniform} == uint(0)` : ""
-                  }`
-                : null
+            param ? `${SELECTION_CHECKER_PREFIX}${param}(${!!empty})` : null
         );
 
         statements.push(

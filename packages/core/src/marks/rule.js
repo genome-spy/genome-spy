@@ -125,21 +125,18 @@ export default class RuleMark extends Mark {
     async initializeGraphics() {
         await super.initializeGraphics();
 
-        if (this.properties.strokeDash) {
-            const gl = this.gl;
-            const textureData = createDashTextureArray(
-                this.properties.strokeDash
-            );
-            this.dashTexture = createTexture(gl, {
-                mag: gl.NEAREST,
-                min: gl.NEAREST,
-                internalFormat: gl.R8,
-                format: gl.RED,
-                src: textureData,
-                height: 1,
-            });
-            this.dashTextureSize = textureData.length; // Not needed with WebGL2
-        }
+        const gl = this.gl;
+        const textureData = createDashTextureArray(this.properties.strokeDash);
+        this.dashTexture = createTexture(gl, {
+            level: 0,
+            mag: gl.NEAREST,
+            min: gl.NEAREST,
+            internalFormat: gl.R8,
+            format: gl.RED,
+            src: textureData,
+            height: 1,
+        });
+        this.dashTextureSize = textureData.length; // Not needed with WebGL2
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
             COMMON_SHADER,
@@ -196,13 +193,13 @@ export default class RuleMark extends Mark {
 
         ops.push(() => this.bindOrSetMarkUniformBlock());
 
-        if (this.dashTexture) {
-            ops.push(() =>
-                setUniforms(this.programInfo, {
-                    uDashTexture: this.dashTexture,
-                })
-            );
-        }
+        ops.push(() =>
+            // Dash texture must be set always. Otherwise the texture unit may have
+            // an incompatible texture from an earlier program.
+            setUniforms(this.programInfo, {
+                uDashTexture: this.dashTexture,
+            })
+        );
 
         ops.push(() =>
             setBuffersAndAttributes(
@@ -240,6 +237,10 @@ export default class RuleMark extends Mark {
  * @param {number[]} pattern
  */
 function createDashTextureArray(pattern) {
+    if (!pattern) {
+        return new Uint8Array(0);
+    }
+
     if (
         pattern.length == 0 ||
         pattern.length % 2 ||

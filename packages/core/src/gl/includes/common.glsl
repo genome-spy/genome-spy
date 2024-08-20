@@ -38,6 +38,37 @@ float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
 
+bool isEmptyBinarySearchTexture(highp usampler2D s) {
+    // The minimum texture size is 1x1. Zero is a special value that indicates
+    // an empty selection. Unique ids never start at zero.
+    return textureSize(s, 0).x == 1 && texelFetch(s, ivec2(0, 0), 0).r == 0u;
+}
+
+bool binarySearchTexture(highp usampler2D s, uint value) {
+    int texSize = textureSize(s, 0).x;
+
+    int left = 0;
+    int right = texSize - 1;
+
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+
+        uint midValue = texelFetch(s, ivec2(mid, 0), 0).r;
+
+        if (midValue == value) {
+            return true;
+        }
+
+        if (midValue < value) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    return false;
+}
+
 /**
  * Calculates a gamma for antialiasing opacity based on the color.
  */

@@ -196,6 +196,8 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 }
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
+    type: "point";
+
     /**
      * Controls whether data values should be toggled (inserted or removed from a point selection)
      * when clicking with the shift key pressed.
@@ -205,8 +207,7 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
      *
      * __Default value:__ `true`
      */
-    // TODO TODO TODO TODO TODO TODO TODO TODO
-    //toggle?: boolean;
+    toggle?: boolean;
     /**
      * A set of fields that uniquely identify a tuple. Used for bookmarking point selections
      * in the GenomeSpy App. Still work in progress.

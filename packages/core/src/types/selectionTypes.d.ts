@@ -33,8 +33,8 @@ export interface SinglePointSelection extends SelectionBase {
 export interface MultiPointSelection extends SelectionBase {
     type: "multi";
 
-    data: Datum[];
-    uniqueIds: Set<number>;
+    /** Maps unique id to datum */
+    data: Map<number, Datum>;
 }
 
 export type Selection =

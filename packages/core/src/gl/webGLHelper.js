@@ -27,6 +27,7 @@ import {
     isDiscreteChannel,
 } from "../encoder/encoder.js";
 import { color } from "d3-color";
+import { isMultiPointSelection } from "../selection/selection.js";
 
 export default class WebGLHelper {
     /**
@@ -57,6 +58,11 @@ export default class WebGLHelper {
 
         /** @type {WeakMap<import("../view/scaleResolution.js").default, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
+
+        /**
+         * @type {WeakMap<import("../types/selectionTypes.js").MultiPointSelection, WebGLTexture>}
+         */
+        this.selectionTextures = new WeakMap();
 
         // --------------------------------------------------------
 
@@ -383,6 +389,40 @@ export default class WebGLHelper {
                 );
             }
         }
+    }
+
+    /**
+     * @param {import("../types/selectionTypes.js").MultiPointSelection} selection
+     */
+    createSelectionTexture(selection, update = true) {
+        if (!isMultiPointSelection(selection)) {
+            throw new Error(
+                "Not a multi-point selection, cannot create texture"
+            );
+        }
+
+        const keys = Array.from(selection.data.keys());
+        // Zero is a special value for no selection. The minimum texture size is 1.
+        const uniqueIds = keys.length > 0 ? keys.sort((a, b) => a - b) : [0];
+
+        const existingTexture = this.selectionTextures.get(selection);
+
+        const gl = this.gl;
+        const texture = createOrUpdateTexture(
+            this.gl,
+            {
+                level: 0,
+                minMag: gl.NEAREST,
+                format: gl.RED_INTEGER,
+                internalFormat: gl.R32UI,
+                height: 1,
+                width: uniqueIds.length,
+            },
+            new Uint32Array(uniqueIds),
+            update ? existingTexture : false
+        );
+
+        this.selectionTextures.set(selection, texture);
     }
 }
 
