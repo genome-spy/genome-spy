@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.56.0](https://github.com/genome-spy/genome-spy/compare/v0.55.0...v0.56.0) (2024-08-20)
+
+### Features
+
+* multi-point selection ([#264](https://github.com/genome-spy/genome-spy/issues/264)) ([0e9c1bd](https://github.com/genome-spy/genome-spy/commit/0e9c1bd4a7f95ac24e2c62a5a22d41cf16f77cfd)) by @tuner
+
 # [0.55.0](https://github.com/genome-spy/genome-spy/compare/v0.54.0...v0.55.0) (2024-08-12)
 
 ### Features
