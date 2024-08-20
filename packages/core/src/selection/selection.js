@@ -14,6 +14,53 @@ export function createSinglePointSelection(datum) {
 }
 
 /**
+ * @param {import("../data/flowNode.js").Datum[]} [data]
+ * @returns {import("../types/selectionTypes.js").MultiPointSelection}
+ */
+export function createMultiPointSelection(data) {
+    data ??= [];
+    return {
+        type: "multi",
+        data: new Map(data.map((d) => [d[UNIQUE_ID_KEY], d])),
+    };
+}
+
+/**
+ * Updates the backing data and returns a new instance of the selection object.
+ * A new instance is required to trigger reactivity in parameters.
+ *
+ * @param {import("../types/selectionTypes.js").MultiPointSelection} selection
+ * @param {Partial<Record<"add" | "remove" | "toggle", Iterable<import("../data/flowNode.js").Datum>>>} update
+ * @returns {import("../types/selectionTypes.js").MultiPointSelection}
+ */
+export function updateMultiPointSelection(selection, { add, remove, toggle }) {
+    const data = selection.data;
+
+    for (const d of add ?? []) {
+        data.set(d[UNIQUE_ID_KEY], d);
+    }
+
+    for (const d of remove ?? []) {
+        data.delete(d[UNIQUE_ID_KEY]);
+    }
+
+    for (const d of toggle ?? []) {
+        const id = d[UNIQUE_ID_KEY];
+        if (data.has(id)) {
+            data.delete(id);
+        } else {
+            data.set(id, d);
+        }
+    }
+
+    return {
+        type: "multi",
+        // Note, the data map is reused for performance reasons.
+        data,
+    };
+}
+
+/**
  * @param {import("../types/selectionTypes.js").Selection} selection
  * @param {import("../data/flowNode.js").Datum} datum
  * @param {boolean} [empty] evaluate to true if the selection is empty
@@ -28,9 +75,9 @@ export function selectionTest(selection, datum, empty = true) {
             ? empty
             : selection.uniqueId === datum[UNIQUE_ID_KEY];
     } else if (isMultiPointSelection(selection)) {
-        return selection.uniqueIds.size == 0
+        return selection.data.size == 0
             ? empty
-            : selection.uniqueIds.has(datum[UNIQUE_ID_KEY]);
+            : selection.data.has(datum[UNIQUE_ID_KEY]);
     } else {
         throw new Error("Not a selection: " + JSON.stringify(selection));
     }
@@ -75,4 +122,25 @@ export function isMultiPointSelection(selection) {
  */
 export function isProjectedSelection(selection) {
     return selection.type === "projected";
+}
+
+/**
+ * @param {any} config
+ * @returns {config is import("../spec/parameter.js").PointSelectionConfig}
+ */
+export function isPointSelectionConfig(config) {
+    return (
+        config != null &&
+        typeof config !== "string" &&
+        "type" in config &&
+        config.type === "point"
+    );
+}
+
+/**
+ * @param {string | import("../spec/parameter.js").PointSelectionConfig} config
+ * @returns {boolean}
+ */
+export function isTogglingEnabledInPointSelectionConfig(config) {
+    return isPointSelectionConfig(config) && config.toggle;
 }

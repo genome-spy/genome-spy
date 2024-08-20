@@ -34,6 +34,7 @@ import {
     generateConditionalEncoderGlsl,
     PARAM_PREFIX,
     ATTRIBUTE_PREFIX,
+    SELECTION_CHECKER_PREFIX,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -48,10 +49,15 @@ import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
 import { isExprRef, validateParameterName } from "../view/paramMediator.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { isSinglePointSelection } from "../selection/selection.js";
+import {
+    isMultiPointSelection,
+    isSinglePointSelection,
+} from "../selection/selection.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
+
+export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
  *
@@ -145,6 +151,14 @@ export default class Mark {
          * @protected
          */
         this.markUniformsAltered = true;
+
+        /**
+         * Functions that set textures for multi-selection parameters.
+         *
+         * @type {(() => void)[]}
+         * @private
+         */
+        this.selectionTextureOps = [];
 
         /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
         this.rangeMap = new RangeMap();
@@ -456,7 +470,8 @@ export default class Mark {
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
-            const selection = this.unitView.paramMediator.getValue(param);
+            const paramMediator = this.unitView.paramMediator;
+            const selection = paramMediator.getValue(param);
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
@@ -465,6 +480,8 @@ export default class Mark {
                     `Cannot infer selection type as the parameter "${param}" has no value. Please ensure that the parameter is properly defined!`
                 );
             }
+
+            const uniqueIdAttr = ATTRIBUTE_PREFIX + "uniqueId";
 
             if (isSinglePointSelection(selection)) {
                 // Register a mark uniform for each param. The uniform will have
@@ -487,13 +504,63 @@ export default class Mark {
                             ) => selection.uniqueId ?? 0
                         );
                     });
+                    scaleCode.push(
+                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                            `    return ${PARAM_PREFIX}${param} == ${uniqueIdAttr} || (empty && ${PARAM_PREFIX}${param} == 0u);\n` +
+                            `}`
+                    );
                 }
-            } else {
-                throw new Error(
-                    `Unsupported selection (${param}) in condition: ${JSON.stringify(
-                        selection
-                    )}`
-                );
+            } else if (isMultiPointSelection(selection)) {
+                // We need a texture for each multi-selection parameter.
+                // The texture contains the uniqueIds of the selected data objects sorted
+                // in ascending order, which allows for binary search.
+                if (!selectionParameterUniforms.has(param)) {
+                    selectionParameterUniforms.set(param, "multi");
+
+                    const uniformName =
+                        SELECTION_TEXTURE_PREFIX + validateParameterName(param);
+                    scaleCode.push(
+                        `// Selection texture\nuniform highp usampler2D ${uniformName};`
+                    );
+
+                    const glHelper = this.getContext().glHelper;
+                    const selectionTextures = glHelper.selectionTextures;
+
+                    this.selectionTextureOps.push(() => {
+                        // Texture is set in the prepareRender method
+                        const selection = paramMediator.getValue(param);
+                        const texture = selectionTextures.get(selection);
+                        if (!texture) {
+                            throw new Error(
+                                `Bug: no selection texture found for "${param}"!`
+                            );
+                        }
+
+                        setUniforms(this.programInfo, {
+                            [uniformName]: texture,
+                        });
+                    });
+
+                    const texName = SELECTION_TEXTURE_PREFIX + param;
+                    scaleCode.push(
+                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                            `   return binarySearchTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyBinarySearchTexture(${texName}));\n` +
+                            `}`
+                    );
+
+                    // Create the initial texture
+                    glHelper.createSelectionTexture(selection);
+
+                    const fn = paramMediator.createExpression(param);
+                    fn.addListener(() => {
+                        const selection =
+                            /** @type {import("../types/selectionTypes.js").MultiPointSelection} */ (
+                                fn(null)
+                            );
+                        glHelper.createSelectionTexture(selection);
+                        this.getContext().animator.requestRender();
+                    });
+                }
             }
         }
 
@@ -686,18 +753,16 @@ export default class Mark {
         }
 
         // Generate a function that checks if the datum is subject to any point selection
-        const conditions = [...selectionParameterUniforms.entries()]
-            .filter(([, v]) => v == "single")
-            .map(
-                ([param]) =>
-                    `${PARAM_PREFIX}${param} == ${ATTRIBUTE_PREFIX}uniqueId`
-            );
+        const conditions = [...selectionParameterUniforms.keys()].map(
+            (param) => `${SELECTION_CHECKER_PREFIX}${param}(false)`
+        );
+
         scaleCode.push(
-            "bool isPointSelected() {",
-            this.encoders.uniqueId && conditions.length > 0
-                ? `    return ${conditions.join(" || ")};`
-                : "    return false;",
-            "}"
+            "bool isPointSelected() {\n" +
+                (this.encoders.uniqueId && conditions.length > 0
+                    ? `    return ${conditions.join(" || ")};`
+                    : "    return false;") +
+                "\n}"
         );
 
         const vertexPrecision = "precision highp float;\nprecision highp int;";
@@ -1045,6 +1110,8 @@ export default class Mark {
                 }
             }
         }
+
+        ops.push(...this.selectionTextureOps);
 
         if (this.getSampleFacetMode() == SAMPLE_FACET_TEXTURE) {
             ops.push(() => {

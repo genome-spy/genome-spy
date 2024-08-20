@@ -16,7 +16,13 @@ import {
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
 import View from "./view.js";
-import { createSinglePointSelection } from "../selection/selection.js";
+import {
+    createMultiPointSelection,
+    createSinglePointSelection,
+    isPointSelectionConfig,
+    isTogglingEnabledInPointSelectionConfig,
+    updateMultiPointSelection,
+} from "../selection/selection.js";
 import { isString } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
@@ -102,8 +108,7 @@ export default class UnitView extends View {
             }
 
             const select = param.select;
-            const type = isString(select) ? select : select.type;
-            if (type === "point") {
+            if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
 
                 const none = -1;
@@ -123,15 +128,46 @@ export default class UnitView extends View {
                     ["mouseover", "pointerover"].includes(on)
                         ? "mousemove"
                         : "click",
-                    (rect, event) => {
+                    (
+                        rect,
+                        /** @type {import("../utils/interactionEvent.js").default} */ event
+                    ) => {
+                        const mouseEvent = /** @type {MouseEvent} */ (
+                            event.uiEvent
+                        );
                         const datum = getHoveredDatum();
                         const id = datum ? datum[UNIQUE_ID_KEY] : none;
-                        if (id != lastId) {
-                            lastId = id;
-                            const selection = createSinglePointSelection(
-                                getHoveredDatum()
-                            );
-                            setter(selection);
+
+                        if (isTogglingEnabledInPointSelectionConfig(select)) {
+                            const toggle = mouseEvent.shiftKey;
+
+                            if (toggle) {
+                                if (datum) {
+                                    const previousSelection =
+                                        this.paramMediator.getValue(name);
+                                    setter(
+                                        updateMultiPointSelection(
+                                            previousSelection,
+                                            {
+                                                toggle: [datum],
+                                            }
+                                        )
+                                    );
+                                }
+                            } else {
+                                setter(
+                                    createMultiPointSelection(
+                                        datum ? [datum] : null
+                                    )
+                                );
+                            }
+                        } else {
+                            if (id != lastId) {
+                                lastId = id;
+                                const selection =
+                                    createSinglePointSelection(datum);
+                                setter(selection);
+                            }
                         }
                     }
                 );

@@ -1,6 +1,11 @@
 import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
-import { createSinglePointSelection } from "../selection/selection.js";
+import {
+    createMultiPointSelection,
+    createSinglePointSelection,
+    isPointSelectionConfig,
+    isTogglingEnabledInPointSelectionConfig,
+} from "../selection/selection.js";
 
 /**
  * A class that manages parameters and expressions.
@@ -100,13 +105,14 @@ export default class ParamMediator {
         }
 
         if ("select" in param) {
-            const type = isString(param.select)
-                ? param.select
-                : param.select.type;
-
-            // Set initial value so that production rules in shaders can be generated, etc.
-            if (type == "point") {
-                setter(createSinglePointSelection(null));
+            const select = param.select;
+            if (isPointSelectionConfig(select)) {
+                // Set initial value so that production rules in shaders can be generated, etc.
+                setter(
+                    isTogglingEnabledInPointSelectionConfig(select)
+                        ? createMultiPointSelection()
+                        : createSinglePointSelection(null)
+                );
             }
         }
 
