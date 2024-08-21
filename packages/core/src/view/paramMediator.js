@@ -1,10 +1,10 @@
 import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
 import {
+    asSelectionConfig,
     createMultiPointSelection,
     createSinglePointSelection,
     isPointSelectionConfig,
-    isTogglingEnabledInPointSelectionConfig,
 } from "../selection/selection.js";
 
 /**
@@ -105,11 +105,11 @@ export default class ParamMediator {
         }
 
         if ("select" in param) {
-            const select = param.select;
+            const select = asSelectionConfig(param.select);
             if (isPointSelectionConfig(select)) {
                 // Set initial value so that production rules in shaders can be generated, etc.
                 setter(
-                    isTogglingEnabledInPointSelectionConfig(select)
+                    select.toggle
                         ? createMultiPointSelection()
                         : createSinglePointSelection(null)
                 );

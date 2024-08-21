@@ -125,25 +125,30 @@ export function isProjectedSelection(selection) {
 }
 
 /**
- * @param {any} config
- * @returns {config is import("../spec/parameter.js").PointSelectionConfig}
+ * @param {import("../spec/parameter.js").SelectionTypeOrConfig} typeOrConfig
+ * @returns {import("../spec/parameter.js").SelectionConfig}
  */
-export function isPointSelectionConfig(config) {
-    return (
-        config != null &&
-        typeof config !== "string" &&
-        "type" in config &&
-        config.type === "point"
-    );
+export function asSelectionConfig(typeOrConfig) {
+    const config =
+        typeof typeOrConfig === "string"
+            ? { type: typeOrConfig }
+            : typeOrConfig;
+
+    // Set some default
+    if (isPointSelectionConfig(config)) {
+        config.on ??= "click";
+        if (config.on === "click") {
+            config.toggle = true;
+        }
+    }
+
+    return config;
 }
 
 /**
- * @param {string | import("../spec/parameter.js").PointSelectionConfig} config
- * @returns {boolean}
+ * @param {import("../spec/parameter.js").SelectionConfig} config
+ * @returns {config is import("../spec/parameter.js").PointSelectionConfig}
  */
-export function isTogglingEnabledInPointSelectionConfig(config) {
-    if (!isPointSelectionConfig(config)) {
-        return false;
-    }
-    return config.toggle ?? config.on === "click";
+export function isPointSelectionConfig(config) {
+    return config && config.type == "point";
 }

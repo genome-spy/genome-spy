@@ -253,4 +253,7 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
         */
 }
 
+export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
+export type SelectionTypeOrConfig = SelectionType | SelectionConfig;
+
 export type Parameter = VariableParameter | SelectionParameter;

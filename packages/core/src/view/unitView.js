@@ -17,13 +17,12 @@ import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
 import View from "./view.js";
 import {
+    asSelectionConfig,
     createMultiPointSelection,
     createSinglePointSelection,
     isPointSelectionConfig,
-    isTogglingEnabledInPointSelectionConfig,
     updateMultiPointSelection,
 } from "../selection/selection.js";
-import { isString } from "vega-util";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 
 /**
@@ -107,11 +106,12 @@ export default class UnitView extends View {
                 continue;
             }
 
-            const select = param.select;
+            const select = asSelectionConfig(param.select);
+
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
 
-                const none = -1;
+                const none = 0;
                 let lastId = none;
 
                 const setter = this.paramMediator.getSetter(name);
@@ -121,55 +121,55 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
-                const on =
-                    !isString(select) && "on" in select ? select.on : "click";
+                const listener = (
+                    /** @type {any} */ _,
+                    /** @type {import("../utils/interactionEvent.js").default} */ event
+                ) => {
+                    const mouseEvent = /** @type {MouseEvent} */ (
+                        event.uiEvent
+                    );
+                    const datum = getHoveredDatum();
+                    const id = datum ? datum[UNIQUE_ID_KEY] : none;
 
-                this.addInteractionEventListener(
-                    ["mouseover", "pointerover"].includes(on)
-                        ? "mousemove"
-                        : "click",
-                    (
-                        rect,
-                        /** @type {import("../utils/interactionEvent.js").default} */ event
-                    ) => {
-                        const mouseEvent = /** @type {MouseEvent} */ (
-                            event.uiEvent
-                        );
-                        const datum = getHoveredDatum();
-                        const id = datum ? datum[UNIQUE_ID_KEY] : none;
+                    /** @type {any} */
+                    let selection;
 
-                        if (isTogglingEnabledInPointSelectionConfig(select)) {
-                            const toggle = mouseEvent.shiftKey;
+                    if (select.toggle) {
+                        const toggle = mouseEvent.shiftKey;
 
-                            if (toggle) {
-                                if (datum) {
-                                    const previousSelection =
-                                        this.paramMediator.getValue(name);
-                                    setter(
-                                        updateMultiPointSelection(
-                                            previousSelection,
-                                            {
-                                                toggle: [datum],
-                                            }
-                                        )
-                                    );
-                                }
-                            } else {
-                                setter(
-                                    createMultiPointSelection(
-                                        datum ? [datum] : null
-                                    )
+                        if (toggle) {
+                            if (datum) {
+                                const previousSelection =
+                                    this.paramMediator.getValue(name);
+                                selection = updateMultiPointSelection(
+                                    previousSelection,
+                                    {
+                                        toggle: [datum],
+                                    }
                                 );
                             }
                         } else {
-                            if (id != lastId) {
-                                lastId = id;
-                                const selection =
-                                    createSinglePointSelection(datum);
-                                setter(selection);
-                            }
+                            selection = createMultiPointSelection(
+                                datum ? [datum] : null
+                            );
+                        }
+                    } else {
+                        if (id != lastId) {
+                            lastId = id;
+                            selection = createSinglePointSelection(datum);
                         }
                     }
+
+                    if (selection !== undefined) {
+                        setter(selection);
+                    }
+                };
+
+                this.addInteractionEventListener(
+                    ["mouseover", "pointerover"].includes(select.on)
+                        ? "mousemove"
+                        : "click",
+                    listener
                 );
             }
         }
