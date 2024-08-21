@@ -112,7 +112,7 @@ parameters change.
 Parameters allow for defining interactive selections, which can be used in
 conditional encodings. GenomeSpy compiles the conditional encoding rules into
 efficient GPU shader code, enabling fast interactions in very large data sets.
-However, currently only single-point selections are supported.
+However, only point selections are currently supported.
 
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
