@@ -1,3 +1,4 @@
+@use "sass:color";
 @import url("https://fonts.googleapis.com/css?family=Medula+One&display=swap");
 
 $basic-spacing: 10px;
@@ -183,7 +184,7 @@ body {
         height: 100%;
 
         &:hover {
-            background-color: lighten($bgcolor, 5%);
+            background-color: color.adjust($bgcolor, $lightness: 5%);
         }
 
         &:focus {
@@ -351,7 +352,7 @@ $ui-bg-color: #548fcc;
     font-size: 13px;
 
     &:hover {
-        background-color: lighten($ui-bg-color, 3%);
+        background-color: color.adjust($ui-bg-color, $lightness: 3%);
     }
 
     $active-shadow: 0 0 4px #00aaff;
@@ -364,6 +365,8 @@ $ui-bg-color: #548fcc;
     &:active {
         padding-top: $padding + 1px;
         padding-bottom: $padding - 1px;
-        box-shadow: $active-shadow, inset 0 3px 3px rgba(0, 0, 0, 0.2);
+        box-shadow:
+            $active-shadow,
+            inset 0 3px 3px rgba(0, 0, 0, 0.2);
     }
 }
