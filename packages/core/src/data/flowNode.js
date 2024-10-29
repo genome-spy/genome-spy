@@ -113,7 +113,7 @@ export default class FlowNode {
                 ${range(this.children.length)
                     .map((i) => `child${i}.handle(datum);`)
                     .join("\n")}
-                };`
+                };`,
         )(this.children, this.stats);
     }
 
@@ -252,9 +252,9 @@ export default class FlowNode {
             .map((child) => child.subtreeToString(depth + 1))
             .join("");
         return `${" ".repeat(depth * 2)}* ${this.label}${
-            ("identifier" in this && this.identifier
+            "identifier" in this && this.identifier
                 ? ": " + this.identifier
-                : "") ?? ""
+                : ""
         } \n${childTree}`;
     }
 
@@ -311,7 +311,7 @@ export default class FlowNode {
             this.parent.repropagate();
         } else {
             throw new Error(
-                "Cannot repropagate data, no FlowNode with stored data found!"
+                "Cannot repropagate data, no FlowNode with stored data found!",
             );
         }
     }

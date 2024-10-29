@@ -82,7 +82,7 @@ export default class GridView extends ContainerView {
         dataParent,
         name,
         columns,
-        options
+        options,
     ) {
         super(spec, context, layoutParent, dataParent, name, options);
         this.spec = spec;
@@ -106,14 +106,14 @@ export default class GridView extends ContainerView {
 
     get #visibleChildren() {
         return this.#children.filter((gridChild) =>
-            gridChild.view.isConfiguredVisible()
+            gridChild.view.isConfiguredVisible(),
         );
     }
 
     get #grid() {
         return new Grid(
             this.#visibleChildren.length,
-            this.#columns ?? Infinity
+            this.#columns ?? Infinity,
         );
     }
 
@@ -133,13 +133,13 @@ export default class GridView extends ContainerView {
      */
     replaceChild(child, replacement) {
         const i = this.#children.findIndex(
-            (gridChild) => gridChild.view == child
+            (gridChild) => gridChild.view == child,
         );
         if (i >= 0) {
             this.#children[i] = new GridChild(
                 replacement,
                 this,
-                this.#childSerial
+                this.#childSerial,
             );
         } else {
             throw new Error("Not my child view!");
@@ -182,7 +182,7 @@ export default class GridView extends ContainerView {
                         r.scaleResolution.type,
                         this.context,
                         this,
-                        this
+                        this,
                     );
                     promises.push(v.initializeChildren());
                     this.#sharedAxes[channel] = v;
@@ -230,8 +230,8 @@ export default class GridView extends ContainerView {
                             ? overhang.right
                             : overhang.left
                         : side
-                        ? overhang.bottom
-                        : overhang.top;
+                          ? overhang.bottom
+                          : overhang.top;
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
@@ -245,11 +245,11 @@ export default class GridView extends ContainerView {
                             (rowIndex) =>
                                 this.#visibleChildren[
                                     rowIndex
-                                ].view.getViewportSize()[dim]
-                        )
+                                ].view.getViewportSize()[dim],
+                        ),
                     ),
-                })
-            )
+                }),
+            ),
         );
     }
 
@@ -388,7 +388,7 @@ export default class GridView extends ContainerView {
             rows.at(0).axisBefore,
             cols.at(-1).axisAfter,
             rows.at(-1).axisAfter,
-            cols.at(0).axisBefore
+            cols.at(0).axisBefore,
         );
     }
 
@@ -404,9 +404,9 @@ export default class GridView extends ContainerView {
             }
 
             return Math.max(
-                axisView.getPerpendicularSize() + axisView.axisProps.offset ??
-                    0,
-                0
+                axisView.getPerpendicularSize() +
+                    (axisView.axisProps.offset ?? 0),
+                0,
             );
         };
 
@@ -414,7 +414,7 @@ export default class GridView extends ContainerView {
             getSharedAxisSize("top"),
             getSharedAxisSize("right"),
             getSharedAxisSize("bottom"),
-            getSharedAxisSize("left")
+            getSharedAxisSize("left"),
         );
     }
 
@@ -425,8 +425,8 @@ export default class GridView extends ContainerView {
         return this._cache("size", () =>
             new FlexDimensions(
                 this.#getFlexSize("column"),
-                this.#getFlexSize("row")
-            ).addPadding(this.#getSharedAxisOverhang())
+                this.#getFlexSize("row"),
+            ).addPadding(this.#getSharedAxisOverhang()),
         );
     }
 
@@ -457,18 +457,18 @@ export default class GridView extends ContainerView {
         const columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),
             coords.width,
-            flexOpts
+            flexOpts,
         );
 
         const rowFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("row"),
             coords.height,
-            flexOpts
+            flexOpts,
         );
 
         const grid = new Grid(
             this.#visibleChildren.length,
-            this.#columns ?? Infinity
+            this.#columns ?? Infinity,
         );
 
         /** @param {number} x */
@@ -530,7 +530,7 @@ export default class GridView extends ContainerView {
                 () => coords.x + x,
                 () => coords.y + y,
                 () => viewportWidth,
-                () => viewportHeight
+                () => viewportHeight,
             );
 
             const scrollable = view.isScrollable();
@@ -540,7 +540,7 @@ export default class GridView extends ContainerView {
                       () => coords.x + x - getHScrollOffset(),
                       () => coords.y + y - getVScrollOffset(),
                       () => viewWidth,
-                      () => viewHeight
+                      () => viewHeight,
                   )
                 : viewportCoords;
 
@@ -595,14 +595,14 @@ export default class GridView extends ContainerView {
                               : {
                                     x: () => viewCoords.x,
                                     width: viewWidth,
-                                }
+                                },
                       )
                     : viewportCoords;
 
                 const translatedCoords = translateAxisCoords(
                     coords,
                     orient,
-                    axisView
+                    axisView,
                 );
 
                 let clipRect = options.clipRect;
@@ -621,9 +621,9 @@ export default class GridView extends ContainerView {
                                       : {
                                             y: -100000,
                                             height: 200000,
-                                        }
+                                        },
                               )
-                            : undefined
+                            : undefined,
                     );
                 }
 
@@ -650,9 +650,9 @@ export default class GridView extends ContainerView {
                         translateAxisCoords(
                             viewportCoords.shrink(gridChild.view.getOverhang()),
                             orient,
-                            axisView
+                            axisView,
                         ),
-                        options
+                        options,
                     );
                 }
             }
@@ -683,7 +683,7 @@ export default class GridView extends ContainerView {
         }
 
         const pointedChild = this.#visibleChildren.find((gridChild) =>
-            gridChild.coords.containsPoint(event.point.x, event.point.y)
+            gridChild.coords.containsPoint(event.point.x, event.point.y),
         );
 
         for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
@@ -710,10 +710,10 @@ export default class GridView extends ContainerView {
                         this.#handleZoom(
                             pointedChild.coords,
                             pointedChild.view,
-                            zoomEvent
+                            zoomEvent,
                         ),
                     this.context.getCurrentHover(),
-                    this.context.animator
+                    this.context.animator,
                 );
             }
         }
@@ -733,7 +733,7 @@ export default class GridView extends ContainerView {
      */
     #handleZoom(coords, view, zoomEvent) {
         for (const [channel, resolutionSet] of Object.entries(
-            getZoomableResolutions(view)
+            getZoomableResolutions(view),
         )) {
             if (resolutionSet.size <= 0) {
                 continue;
@@ -742,7 +742,7 @@ export default class GridView extends ContainerView {
             const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
             const tp = coords.normalizePoint(
                 zoomEvent.x + zoomEvent.xDelta,
-                zoomEvent.y + zoomEvent.yDelta
+                zoomEvent.y + zoomEvent.yDelta,
             );
 
             const delta = {
@@ -754,7 +754,7 @@ export default class GridView extends ContainerView {
                 resolution.zoom(
                     2 ** zoomEvent.zDelta,
                     channel == "y" ? 1 - p[channel] : p[channel],
-                    channel == "x" ? delta.x : -delta.y
+                    channel == "x" ? delta.x : -delta.y,
                 );
             }
         }
@@ -960,7 +960,7 @@ export class GridChild {
                     "background" + serial,
                     {
                         blockEncodingInheritance: true,
-                    }
+                    },
                 );
             }
 
@@ -974,7 +974,7 @@ export class GridChild {
                     "backgroundStroke" + serial,
                     {
                         blockEncodingInheritance: true,
-                    }
+                    },
                 );
             }
 
@@ -988,7 +988,7 @@ export class GridChild {
                     "title" + serial,
                     {
                         blockEncodingInheritance: true,
-                    }
+                    },
                 );
                 this.title = unitView;
             }
@@ -1051,7 +1051,7 @@ export class GridChild {
                 }
                 if (!props.orient) {
                     throw new Error(
-                        "No slots available for an axis! Perhaps a LayerView has more than two children?"
+                        "No slots available for an axis! Perhaps a LayerView has more than two children?",
                     );
                 }
             }
@@ -1060,7 +1060,7 @@ export class GridChild {
 
             if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
                 throw new Error(
-                    `Invalid axis orientation "${props.orient}" on channel "${channel}"!`
+                    `Invalid axis orientation "${props.orient}" on channel "${channel}"!`,
                 );
             }
 
@@ -1078,7 +1078,7 @@ export class GridChild {
             if (props) {
                 if (axes[props.orient]) {
                     throw new Error(
-                        `An axis with the orient "${props.orient}" already exists!`
+                        `An axis with the orient "${props.orient}" already exists!`,
                     );
                 }
 
@@ -1087,7 +1087,7 @@ export class GridChild {
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
-                    axisParent
+                    axisParent,
                 );
                 axes[props.orient] = axisView;
                 await axisView.initializeChildren();
@@ -1108,7 +1108,7 @@ export class GridChild {
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
-                    axisParent
+                    axisParent,
                 );
                 gridLines[props.orient] = axisGridView;
                 await axisGridView.initializeChildren();
@@ -1157,7 +1157,7 @@ export class GridChild {
             // First create axes that have an orient preference
             for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
-                    layerChild.resolutions.axis
+                    layerChild.resolutions.axis,
                 )) {
                     const props = r.getAxisProps();
                     if (props && props.orient) {
@@ -1169,7 +1169,7 @@ export class GridChild {
             // Then create axes in a priority order
             for (const layerChild of view) {
                 for (const [channel, r] of Object.entries(
-                    layerChild.resolutions.axis
+                    layerChild.resolutions.axis,
                 )) {
                     const props = r.getAxisProps();
                     if (props && !props.orient) {
@@ -1187,20 +1187,20 @@ export class GridChild {
                 if (view instanceof UnitView) {
                     view.resolve("scale");
                 }
-            })
+            }),
         );
     }
 
     getOverhang() {
         const calculate = (
-            /** @type {import("../spec/axis.js").AxisOrient} */ orient
+            /** @type {import("../spec/axis.js").AxisOrient} */ orient,
         ) => {
             const axisView = this.axes[orient];
             return axisView
                 ? Math.max(
                       axisView.getPerpendicularSize() +
-                          axisView.axisProps.offset ?? 0,
-                      0
+                          (axisView.axisProps.offset ?? 0),
+                      0,
                   )
                 : 0;
         };
@@ -1210,7 +1210,7 @@ export class GridChild {
             calculate("top"),
             calculate("right"),
             calculate("bottom"),
-            calculate("left")
+            calculate("left"),
         ).add(this.view.getOverhang());
     }
 
@@ -1267,7 +1267,7 @@ class Scrollbar extends UnitView {
             "scrollbar-" + scrollDirection, // TODO: Serial
             {
                 blockEncodingInheritance: true,
-            }
+            },
         );
 
         this.config = config;
@@ -1281,7 +1281,7 @@ class Scrollbar extends UnitView {
             },
             50,
             0.4,
-            { x: this.viewportOffset }
+            { x: this.viewportOffset },
         );
 
         this.addInteractionEventListener("mousedown", (coords, event) => {
@@ -1303,14 +1303,14 @@ class Scrollbar extends UnitView {
             const initialOffset = getMouseOffset(mouseEvent);
 
             const onMousemove = /** @param {MouseEvent} moveEvent */ (
-                moveEvent
+                moveEvent,
             ) => {
                 const scrollOffset = clamp(
                     getMouseOffset(moveEvent) -
                         initialOffset +
                         initialScrollOffset,
                     0,
-                    this.#maxScrollOffset
+                    this.#maxScrollOffset,
                 );
 
                 this.interpolateViewportOffset({
@@ -1360,7 +1360,7 @@ class Scrollbar extends UnitView {
 
         const visibleFraction = Math.min(
             1,
-            viewportCoords[dimension] / coords[dimension]
+            viewportCoords[dimension] / coords[dimension],
         );
         const maxScrollLength = viewportCoords[dimension] - 2 * sPad;
         const scrollLength = visibleFraction * maxScrollLength;
@@ -1370,7 +1370,7 @@ class Scrollbar extends UnitView {
         this.viewportOffset = clamp(
             this.viewportOffset,
             0,
-            this.#maxViewportOffset
+            this.#maxViewportOffset,
         );
 
         this.#scrollbarCoords =
@@ -1383,7 +1383,7 @@ class Scrollbar extends UnitView {
                           sPad,
                       () => viewportCoords.y + sPad + this.scrollOffset,
                       () => sSize,
-                      () => scrollLength
+                      () => scrollLength,
                   )
                 : new Rectangle(
                       () => viewportCoords.x + sPad + this.scrollOffset,
@@ -1393,7 +1393,7 @@ class Scrollbar extends UnitView {
                           sSize -
                           sPad,
                       () => scrollLength,
-                      () => sSize
+                      () => sSize,
                   );
     }
 }
