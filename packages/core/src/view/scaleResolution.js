@@ -169,7 +169,11 @@ export default class ScaleResolution {
      */
     addMember(newMember) {
         const { channel, channelDef } = newMember;
-        const type = channelDef.type;
+
+        // A hack for sample channel, which really doesn't have a scale but the
+        // domain is needed when samples are not specified explicitly.
+        // @ts-expect-error "sample" is not really a channel with scale
+        const type = channel == "sample" ? "nominal" : channelDef.type;
         const name = channelDef?.scale?.name;
 
         if (name) {
@@ -927,6 +931,7 @@ function getDefaultScaleType(channel, dataType) {
         dx: [undefined, undefined, "null"],
         dy: [undefined, undefined, "null"],
         angle: [undefined, undefined, "linear"],
+        sample: ["null", undefined, undefined],
     };
 
     /** @type {Channel[]} */

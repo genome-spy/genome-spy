@@ -354,6 +354,7 @@ export function isChannelWithScale(channel) {
         "angle",
         "dx",
         "dy",
+        "sample", // There's no scale but we need the data domain
     ].includes(channel);
 }
 
