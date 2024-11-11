@@ -17,12 +17,43 @@ import { field as vegaField, accessor } from "vega-util";
  */
 export function field(fieldExpr, name = fieldExpr) {
     if (/^[A-Za-z0-9_]+$/.test(fieldExpr)) {
+        const validate = function (
+            /** @type {import("../data/flowNode.js").Datum} */ datum
+        ) {
+            if (!(fieldExpr in datum)) {
+                logMissingProperty(datum, fieldExpr);
+            }
+        };
+
         // eslint-disable-next-line no-new-func
         const fn = /** @type {import("vega-util").AccessorFn} */ (
-            new Function("datum", `return datum[${JSON.stringify(fieldExpr)}]`)
+            new Function(
+                "validator",
+                `
+                let validated = !validator;
+                return function accessField(datum) {
+                    if (!validated) {
+                        validator(datum);
+                        validated = true;
+                    }
+                    return datum[${JSON.stringify(fieldExpr)}];
+                }`
+            )(validate)
         );
         return accessor(fn, [fieldExpr], name);
     } else {
+        // TODO: Should implement validation here as well
         return vegaField(fieldExpr);
     }
+}
+
+/**
+ *
+ * @param {any} obj
+ * @param {string} prop
+ */
+function logMissingProperty(obj, prop) {
+    throw new Error(
+        `Invalid field "${prop}". Available fields or properties: ${Object.keys(obj).join(", ")}`
+    );
 }

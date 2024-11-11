@@ -589,8 +589,13 @@ export default class GenomeSpy {
         for (const view of unitViews) {
             flow.addObserver((collector) => {
                 view.mark.initializeData();
-                // Update WebGL buffers
-                view.mark.updateGraphicsData();
+                try {
+                    // Update WebGL buffers
+                    view.mark.updateGraphicsData();
+                } catch (e) {
+                    e.view = view;
+                    throw e;
+                }
                 context.animator.requestRender();
             }, view);
         }

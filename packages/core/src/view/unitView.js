@@ -198,6 +198,20 @@ export default class UnitView extends View {
             : this.spec.mark;
     }
 
+    getEncoding() {
+        // The view may inherit encoding for a channel that is not supported by the mark.
+        // Remove them to prevent any odd side effects.
+        const encoding = super.getEncoding();
+        const supportedChannels = this.mark.getSupportedChannels();
+        for (const channel of Object.keys(encoding)) {
+            if (!supportedChannels.includes(channel)) {
+                delete encoding[channel];
+            }
+        }
+
+        return encoding;
+    }
+
     /**
      * Pulls scales and axes up in the view hierarcy according to the resolution rules, using dataParents.
      * TODO: legends
