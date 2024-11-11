@@ -614,8 +614,8 @@ export function getScaledDataTypeForChannel(channel) {
     return isColorChannel(channel)
         ? "vec3"
         : channel == "uniqueId"
-        ? "uint"
-        : "float";
+          ? "uint"
+          : "float";
 }
 
 /**
@@ -679,12 +679,12 @@ export function getAttributeAndArrayTypes(scale, channel) {
     const props = largeHp
         ? { attributeType: "uvec2", arrayConstructor: Uint32Array }
         : hp
-        ? { attributeType: "uint", arrayConstructor: Uint32Array }
-        : discrete
-        ? { attributeType: "uint", arrayConstructor: Uint16Array }
-        : channel == "uniqueId"
-        ? { attributeType: "uint", arrayConstructor: Uint32Array }
-        : { attributeType: "float", arrayConstructor: Float32Array };
+          ? { attributeType: "uint", arrayConstructor: Uint32Array }
+          : discrete
+            ? { attributeType: "uint", arrayConstructor: Uint16Array }
+            : channel == "uniqueId"
+              ? { attributeType: "uint", arrayConstructor: Uint32Array }
+              : { attributeType: "float", arrayConstructor: Float32Array };
 
     return Object.assign(props, {
         numComponents: +(props.attributeType.match(/^vec([234])$/)?.[1] ?? 1),
@@ -789,9 +789,9 @@ export function dedupeEncodingFields(encoders) {
             const key = [
                 field,
                 encoder.scale
-                    ? (isContinuous(encoder.scale.type) ||
+                    ? ((isContinuous(encoder.scale.type) ||
                           isDiscretizing(encoder.scale.type)) ??
-                      false
+                      false)
                     : false,
             ];
 
@@ -827,8 +827,8 @@ export const getRangeForGlsl = (scale, channel) =>
     (isContinuous(scale.type) && isColorChannel(channel))
         ? [0, 1]
         : scale.range
-        ? scale.range()
-        : undefined;
+          ? scale.range()
+          : undefined;
 
 /**
  * @param {string[]} conditions
@@ -855,8 +855,8 @@ export function ifElseGlsl(conditions, statements) {
             i == 0
                 ? `if (${condition})`
                 : condition == null && i == n - 1
-                ? `else`
-                : `else if (${condition})`;
+                  ? `else`
+                  : `else if (${condition})`;
         parts.push(
             `    ${ifelse} {
         ${statements[i]}

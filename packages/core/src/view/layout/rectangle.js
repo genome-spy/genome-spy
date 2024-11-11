@@ -146,8 +146,8 @@ export default class Rectangle {
             return typeof v == "number"
                 ? constant(v)
                 : typeof v == "function"
-                ? v
-                : this._passThrough(prop);
+                  ? v
+                  : this._passThrough(prop);
         };
 
         return new Rectangle(map("x"), map("y"), map("width"), map("height"));

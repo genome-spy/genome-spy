@@ -93,8 +93,8 @@ export function tickValues(scale, count) {
     return scale.bins
         ? validTicks(scale, binValues(scale.bins, count))
         : scale.ticks
-        ? scale.ticks(count)
-        : scale.domain();
+          ? scale.ticks(count)
+          : scale.domain();
 }
 
 /**
@@ -132,8 +132,8 @@ export function tickFormat(scale, count, specifier) {
     var format = scale.tickFormat
         ? scale.tickFormat(count, specifier)
         : specifier
-        ? numberFormat(specifier)
-        : String;
+          ? numberFormat(specifier)
+          : String;
 
     if (isLogarithmic(scale.type)) {
         var logfmt = variablePrecision(specifier);

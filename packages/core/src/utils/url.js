@@ -40,6 +40,6 @@ export function getDirectory(url) {
     return directory === ""
         ? undefined
         : directory.endsWith("://")
-        ? url + "/"
-        : directory;
+          ? url + "/"
+          : directory;
 }

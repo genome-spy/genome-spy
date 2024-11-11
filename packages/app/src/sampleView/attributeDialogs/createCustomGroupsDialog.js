@@ -33,12 +33,13 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         );
 
     const categoryToMarker = scale
-        ? (/** @type {Scalar} */ value) => html`<span
-              class="color"
-              style=${styleMap({
-                  backgroundColor: scale(value)?.toString() ?? "inherit",
-              })}
-          ></span>`
+        ? (/** @type {Scalar} */ value) =>
+              html`<span
+                  class="color"
+                  style=${styleMap({
+                      backgroundColor: scale(value)?.toString() ?? "inherit",
+                  })}
+              ></span>`
         : () => nothing;
 
     const values = new Set(
@@ -96,21 +97,25 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         modal.close();
     };
 
-    const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn" @click=${() => pasteCategoriesModal()}>
-            ${icon(faPaste).node[0]} Paste ${types}
-        </button>
+    const templateButtons = () =>
+        html` <div class="modal-buttons">
+            <button class="btn" @click=${() => pasteCategoriesModal()}>
+                ${icon(faPaste).node[0]} Paste ${types}
+            </button>
 
-        <div style="flex-grow: 1"></div>
+            <div style="flex-grow: 1"></div>
 
-        <button class="btn btn-cancel" @click=${() => modal.close()}>
-            Cancel
-        </button>
+            <button class="btn btn-cancel" @click=${() => modal.close()}>
+                Cancel
+            </button>
 
-        <button class="btn btn-primary" @click=${() => dispatchAndClose(false)}>
-            ${icon(faObjectGroup).node[0]} Group
-        </button>
-    </div>`;
+            <button
+                class="btn btn-primary"
+                @click=${() => dispatchAndClose(false)}
+            >
+                ${icon(faObjectGroup).node[0]} Group
+            </button>
+        </div>`;
 
     /**
      * @param {Scalar} category

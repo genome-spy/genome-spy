@@ -113,7 +113,7 @@ export default class FlowNode {
                 ${range(this.children.length)
                     .map((i) => `child${i}.handle(datum);`)
                     .join("\n")}
-                };`,
+                };`
         )(this.children, this.stats);
     }
 
@@ -311,7 +311,7 @@ export default class FlowNode {
             this.parent.repropagate();
         } else {
             throw new Error(
-                "Cannot repropagate data, no FlowNode with stored data found!",
+                "Cannot repropagate data, no FlowNode with stored data found!"
             );
         }
     }

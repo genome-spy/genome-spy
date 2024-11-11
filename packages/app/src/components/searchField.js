@@ -297,14 +297,16 @@ export default class SearchField extends LitElement {
                 .slice(0, 3);
 
             if (categoricalInfos.length) {
-                parts.push(html` <p>
-                        Filter samples by categorical attributes. Examples:
-                    </p>
-                    <ul>
-                        ${categoricalInfos.map(
-                            (value) => html`<li>${value}</li>`
-                        )}
-                    </ul>`);
+                parts.push(
+                    html` <p>
+                            Filter samples by categorical attributes. Examples:
+                        </p>
+                        <ul>
+                            ${categoricalInfos.map(
+                                (value) => html`<li>${value}</li>`
+                            )}
+                        </ul>`
+                );
             }
         }
 

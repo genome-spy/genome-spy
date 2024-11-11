@@ -235,8 +235,8 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
         | (T extends "point"
               ? PointSelectionConfig
               : T extends "interval"
-              ? IntervalSelectionConfig
-              : never);
+                ? IntervalSelectionConfig
+                : never);
 
     /*
      * Initialize the selection with a mapping between [projected channels or field names](https://vega.github.io/vega-lite/docs/selection.html#project) and initial values.

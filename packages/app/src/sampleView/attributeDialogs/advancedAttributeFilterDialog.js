@@ -56,12 +56,13 @@ export function discreteScaleAttributeFilterDialog(attributeInfo, sampleView) {
             attributeInfo.scale
         );
 
-    const categoryToMarker = (/** @type {Scalar} */ value) => html`<span
-        class="color"
-        style=${styleMap({
-            backgroundColor: scale(value).toString(),
-        })}
-    ></span>`;
+    const categoryToMarker = (/** @type {Scalar} */ value) =>
+        html`<span
+            class="color"
+            style=${styleMap({
+                backgroundColor: scale(value).toString(),
+            })}
+        ></span>`;
 
     discreteAttributeFilterDialog(
         scale.domain(),
@@ -224,26 +225,27 @@ export function discreteAttributeFilterDialog(
         }
     };
 
-    const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn btn-cancel" @click=${() => modal.close()}>
-            Cancel
-        </button>
+    const templateButtons = () =>
+        html` <div class="modal-buttons">
+            <button class="btn btn-cancel" @click=${() => modal.close()}>
+                Cancel
+            </button>
 
-        <button
-            class="btn"
-            ?disabled=${!selection.size}
-            @click=${() => dispatchAndClose(false)}
-        >
-            ${icon(faFilter).node[0]} Retain
-        </button>
-        <button
-            class="btn"
-            ?disabled=${!selection.size}
-            @click=${() => dispatchAndClose(true)}
-        >
-            ${icon(faTrashAlt).node[0]} Remove
-        </button>
-    </div>`;
+            <button
+                class="btn"
+                ?disabled=${!selection.size}
+                @click=${() => dispatchAndClose(false)}
+            >
+                ${icon(faFilter).node[0]} Retain
+            </button>
+            <button
+                class="btn"
+                ?disabled=${!selection.size}
+                @click=${() => dispatchAndClose(true)}
+            >
+                ${icon(faTrashAlt).node[0]} Remove
+            </button>
+        </div>`;
 
     function updateHtml() {
         const filteredCats = getFilteredCategories();
@@ -286,14 +288,14 @@ export function discreteAttributeFilterDialog(
                           <div>Nothing found</div>
                       </div>`
                     : // check length of (all) categories to ensure there's room for the label
-                    filteredCats.length == 1 && categoryObjects.length > 1
-                    ? html`<div class="search-note">
-                          <div>
-                              ${icon(faArrowUp).node[0]} Hit enter to select the
-                              exact match
-                          </div>
-                      </div>`
-                    : nothing}
+                      filteredCats.length == 1 && categoryObjects.length > 1
+                      ? html`<div class="search-note">
+                            <div>
+                                ${icon(faArrowUp).node[0]} Hit enter to select
+                                the exact match
+                            </div>
+                        </div>`
+                      : nothing}
             </div>
             <small>
                 The number of selected categories:
@@ -348,19 +350,20 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
         modal.close();
     };
 
-    const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn btn-cancel" @click=${() => modal.close()}>
-            Cancel
-        </button>
+    const templateButtons = () =>
+        html` <div class="modal-buttons">
+            <button class="btn btn-cancel" @click=${() => modal.close()}>
+                Cancel
+            </button>
 
-        <button
-            class="btn btn-primary"
-            ?disabled=${typeof operand === "undefined"}
-            @click=${() => dispatchAndClose(false)}
-        >
-            ${icon(faFilter).node[0]} Retain
-        </button>
-    </div>`;
+            <button
+                class="btn btn-primary"
+                ?disabled=${typeof operand === "undefined"}
+                @click=${() => dispatchAndClose(false)}
+            >
+                ${icon(faFilter).node[0]} Retain
+            </button>
+        </div>`;
 
     const operatorChanged = (/** @type {UIEvent} */ event) => {
         const value = /** @type {HTMLInputElement} */ (event.target).value;

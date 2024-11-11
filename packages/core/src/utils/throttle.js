@@ -23,12 +23,15 @@ export default function throttle(func, limit) {
             lastRan = Date.now();
         } else {
             clearTimeout(lastFunc);
-            lastFunc = window.setTimeout(function () {
-                if (Date.now() - lastRan >= limit) {
-                    func.apply(context, args);
-                    lastRan = Date.now();
-                }
-            }, limit - (Date.now() - lastRan));
+            lastFunc = window.setTimeout(
+                function () {
+                    if (Date.now() - lastRan >= limit) {
+                        func.apply(context, args);
+                        lastRan = Date.now();
+                    }
+                },
+                limit - (Date.now() - lastRan)
+            );
         }
     };
 }

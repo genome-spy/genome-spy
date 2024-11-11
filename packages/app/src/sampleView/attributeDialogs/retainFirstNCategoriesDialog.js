@@ -33,15 +33,19 @@ export default function retainFirstNCategoriesDialog(
         modal.close();
     };
 
-    const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn btn-cancel" @click=${() => modal.close()}>
-            Cancel
-        </button>
+    const templateButtons = () =>
+        html` <div class="modal-buttons">
+            <button class="btn btn-cancel" @click=${() => modal.close()}>
+                Cancel
+            </button>
 
-        <button class="btn btn-primary" @click=${() => dispatchAndClose(false)}>
-            ${icon(faFilter).node[0]} Retain
-        </button>
-    </div>`;
+            <button
+                class="btn btn-primary"
+                @click=${() => dispatchAndClose(false)}
+            >
+                ${icon(faFilter).node[0]} Retain
+            </button>
+        </div>`;
 
     const template = html`
         <div class="gs-form-group">

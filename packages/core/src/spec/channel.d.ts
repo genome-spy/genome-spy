@@ -258,7 +258,7 @@ export interface ConditionValueDefMixins<V extends Value = Value> {
  */
 export type FieldOrDatumDefWithCondition<
     F extends FieldDef<any> | DatumDef<any> = FieldDef<any> | DatumDef<any>,
-    V extends Value = Value
+    V extends Value = Value,
 > = F & ConditionValueDefMixins<V | ExprRef>;
 
 /**

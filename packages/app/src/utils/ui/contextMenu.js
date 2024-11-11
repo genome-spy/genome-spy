@@ -80,78 +80,72 @@ function clearSubmenus(fromLevel) {
 
 const createDivider = () => html`<li class="menu-divider"></li>`;
 
-const createHeader = (/** @type {MenuItem} */ item) =>
-    html` <li class="menu-header">${item.label || "-"}</li> `;
+const createHeader = (/** @type {MenuItem} */ item) => html`
+    <li class="menu-header">${item.label || "-"}</li>
+`;
 
 /**
  * @param {MenuItem} item
  * @param {number} level
  */
-const createSubmenu = (item, level) =>
-    html`
-        <li>
-            <div
-                class="submenu-item"
-                @mouseenter=${(/** @type {MouseEvent} */ event) =>
-                    debouncer(() => {
-                        const li = /** @type {HTMLElement} */ (
-                            event.target
-                        ).closest("li");
-                        const submenu =
-                            typeof item.submenu == "function"
-                                ? item.submenu()
-                                : item.submenu;
-                        renderAndPositionSubmenu(submenu, li, level + 1);
-                        event.stopPropagation();
-                    })}
-                @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
-            >
-                ${item.customContent
-                    ? item.customContent
-                    : html`<span>${item.label}</span>`}
-            </div>
-        </li>
-    `;
+const createSubmenu = (item, level) => html`
+    <li>
+        <div
+            class="submenu-item"
+            @mouseenter=${(/** @type {MouseEvent} */ event) =>
+                debouncer(() => {
+                    const li = /** @type {HTMLElement} */ (
+                        event.target
+                    ).closest("li");
+                    const submenu =
+                        typeof item.submenu == "function"
+                            ? item.submenu()
+                            : item.submenu;
+                    renderAndPositionSubmenu(submenu, li, level + 1);
+                    event.stopPropagation();
+                })}
+            @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
+        >
+            ${item.customContent
+                ? item.customContent
+                : html`<span>${item.label}</span>`}
+        </div>
+    </li>
+`;
 
-const createChoice = (/** @type {MenuItem} */ item) =>
-    html`
-        <li>
-            <a
-                class="choice-item"
-                @mouseup=${() => {
-                    clearMenu();
-                    item.callback();
-                }}
+const createChoice = (/** @type {MenuItem} */ item) => html`
+    <li>
+        <a
+            class="choice-item"
+            @mouseup=${() => {
+                clearMenu();
+                item.callback();
+            }}
+        >
+            <span
+                >${item.icon ? icon(item.icon).node[0] : ""} ${item.label}</span
             >
-                <span
-                    >${item.icon ? icon(item.icon).node[0] : ""}
-                    ${item.label}</span
-                >
-                ${item.shortcut
-                    ? html`<span class="kbd-shortcut">${item.shortcut}</span>`
-                    : nothing}
-            </a>
-
-            ${item.ellipsisCallback
-                ? html` <a
-                      class="menu-ellipsis"
-                      @click=${item.ellipsisCallback}
-                  >
-                      ${icon(faEllipsisV).node[0]}
-                  </a>`
+            ${item.shortcut
+                ? html`<span class="kbd-shortcut">${item.shortcut}</span>`
                 : nothing}
-        </li>
-    `;
+        </a>
 
-const createDisabledItem = (/** @type {MenuItem} */ item) =>
-    html`
-        <li>
-            <span class="disabled-item">
-                ${item.icon ? icon(item.icon).node[0] : ""}
-                ${item.label || "-"}</span
-            >
-        </li>
-    `;
+        ${item.ellipsisCallback
+            ? html` <a class="menu-ellipsis" @click=${item.ellipsisCallback}>
+                  ${icon(faEllipsisV).node[0]}
+              </a>`
+            : nothing}
+    </li>
+`;
+
+const createDisabledItem = (/** @type {MenuItem} */ item) => html`
+    <li>
+        <span class="disabled-item">
+            ${item.icon ? icon(item.icon).node[0] : ""}
+            ${item.label || "-"}</span
+        >
+    </li>
+`;
 
 /**
  * @param {MenuItem} item

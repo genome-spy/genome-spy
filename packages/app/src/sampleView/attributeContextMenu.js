@@ -50,7 +50,7 @@ export default function generateAttributeContextMenu(
             icon: info.icon,
             callback: disabled
                 ? undefined
-                : callback ?? (() => dispatch(action)),
+                : (callback ?? (() => dispatch(action))),
         };
     };
 

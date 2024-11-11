@@ -71,16 +71,17 @@ export default function createBindingInputs(mediator) {
                 html`<span class="label">${label}</span>
                     <div class="radio-group">
                         ${bind.options.map(
-                            (option, i) => html`<label>
-                                <input
-                                    type="radio"
-                                    name=${name}
-                                    value=${option}
-                                    .checked=${value == option}
-                                    @input=${(/** @type {any} */ e) =>
-                                        debouncedSetter(e.target.value)}
-                                />${bind.labels?.[i] ?? option}</label
-                            >`
+                            (option, i) =>
+                                html`<label>
+                                    <input
+                                        type="radio"
+                                        name=${name}
+                                        value=${option}
+                                        .checked=${value == option}
+                                        @input=${(/** @type {any} */ e) =>
+                                            debouncedSetter(e.target.value)}
+                                    />${bind.labels?.[i] ?? option}</label
+                                >`
                         )}
                     </div>`
             );
@@ -93,12 +94,13 @@ export default function createBindingInputs(mediator) {
                             debouncedSetter(e.target.value)}
                     >
                         ${bind.options.map(
-                            (option, i) => html`<option
-                                value=${option}
-                                ?selected=${value == option}
-                            >
-                                ${bind.labels?.[i] ?? option}
-                            </option>`
+                            (option, i) =>
+                                html`<option
+                                    value=${option}
+                                    ?selected=${value == option}
+                                >
+                                    ${bind.labels?.[i] ?? option}
+                                </option>`
                         )}
                     </select> `
             );

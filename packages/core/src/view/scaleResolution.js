@@ -371,8 +371,8 @@ export default class ScaleResolution {
             (this.type == LOCUS
                 ? this.getGenome().getExtent()
                 : extractDataDomain
-                ? this.getDataDomain()
-                : [])
+                  ? this.getDataDomain()
+                  : [])
         );
     }
 
@@ -803,8 +803,8 @@ export default class ScaleResolution {
                 dataType == NOMINAL
                     ? "tableau10"
                     : dataType == ORDINAL
-                    ? "blues"
-                    : "viridis";
+                      ? "blues"
+                      : "viridis";
         } else if (isDiscreteChannel(channel)) {
             // Shapes of point mark, for example
             props.range =
@@ -935,10 +935,12 @@ function getDefaultScaleType(channel, dataType) {
     const type = typelessChannels.includes(channel)
         ? "null"
         : defaults[channel]
-        ? defaults[channel][[NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)]
-        : dataType == QUANTITATIVE
-        ? "linear"
-        : "ordinal";
+          ? defaults[channel][
+                [NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)
+            ]
+          : dataType == QUANTITATIVE
+            ? "linear"
+            : "ordinal";
 
     if (type === undefined) {
         throw new Error(

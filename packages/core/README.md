@@ -14,4 +14,3 @@ something breaks.
 
 Check [Getting Started](https://genomespy.app/docs/getting-started/) and
 [API](https://genomespy.app/docs/api/) for details.
-

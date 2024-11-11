@@ -240,11 +240,11 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
     const params = isArray(importSpec.params)
         ? importSpec.params
         : isObject(importSpec.params)
-        ? Object.entries(importSpec.params).map(([name, value]) => ({
-              name,
-              value,
-          }))
-        : [];
+          ? Object.entries(importSpec.params).map(([name, value]) => ({
+                name,
+                value,
+            }))
+          : [];
 
     if (!params.length) {
         return;

@@ -23,8 +23,8 @@ export default class ConcatView extends GridView {
             isConcatSpec(spec)
                 ? spec.columns
                 : isVConcatSpec(spec)
-                ? 1
-                : Infinity
+                  ? 1
+                  : Infinity
         );
 
         this.spec = spec;
@@ -38,8 +38,8 @@ export default class ConcatView extends GridView {
         const childSpecs = isConcatSpec(spec)
             ? spec.concat
             : isVConcatSpec(spec)
-            ? spec.vconcat
-            : spec.hconcat;
+              ? spec.vconcat
+              : spec.hconcat;
 
         this.setChildren(
             await Promise.all(

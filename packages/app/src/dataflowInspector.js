@@ -129,10 +129,10 @@ ${JSON.stringify(params, null, 2)}</pre
                                   propagated.
                               </p>`
                             : flowNode.stats.count > 0
-                            ? html`<pre>
+                              ? html`<pre>
 ${JSON.stringify(flowNode.stats.first, null, 2)}</pre
-                              >`
-                            : html`<p>Nothing data was propagated</p>`}
+                                >`
+                              : html`<p>Nothing data was propagated</p>`}
                     </div>
                     <div>
                         <ul>

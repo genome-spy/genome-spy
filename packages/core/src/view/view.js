@@ -692,8 +692,8 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                ? this.paramMediator.evaluateAndGet(title.text.expr)
-                : title.text;
+                  ? this.paramMediator.evaluateAndGet(title.text.expr)
+                  : title.text;
         }
     }
 
@@ -777,7 +777,7 @@ function createViewOpacityFunction(view) {
 
             const scale = opacityDef.channel
                 ? getScale(opacityDef.channel)
-                : getScale("x") ?? getScale("y");
+                : (getScale("x") ?? getScale("y"));
 
             if (!scale) {
                 throw new ViewError(

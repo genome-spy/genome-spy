@@ -51,7 +51,7 @@ export default class Provenance {
         this._reducer = undefined;
 
         storeHelper.addReducer("provenance", (state, action) =>
-            this._reducer ? this._reducer(state, action) : state ?? {}
+            this._reducer ? this._reducer(state, action) : (state ?? {})
         );
     }
 
@@ -75,7 +75,7 @@ export default class Provenance {
          * @type {import("redux").Reducer}
          */
         const actionRecorder = (state, action) =>
-            filterAction(action) ? action : state ?? null;
+            filterAction(action) ? action : (state ?? null);
 
         this._reducer = undoable(
             combineReducers({

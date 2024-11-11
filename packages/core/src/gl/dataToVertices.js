@@ -99,9 +99,9 @@ export class GeometryBuilder {
             const f = indexer
                 ? (d) => indexer(accessor(d))
                 : largeHp
-                ? (d) =>
-                      splitLargeHighPrecision(numberAccessor(d), largeHpArray)
-                : numberAccessor;
+                  ? (d) =>
+                        splitLargeHighPrecision(numberAccessor(d), largeHpArray)
+                  : numberAccessor;
 
             const attributeName = sharedChannels
                 ? makeAttributeName(sharedChannels)
@@ -547,8 +547,8 @@ export class TextVertexBuilder extends GeometryBuilder {
             const str = isString(value)
                 ? value
                 : value === null
-                ? ""
-                : "" + value;
+                  ? ""
+                  : "" + value;
             if (str.length == 0) continue;
 
             this.variableBuilder.updateFromDatum(d);
@@ -563,8 +563,8 @@ export class TextVertexBuilder extends GeometryBuilder {
                 align == "right"
                     ? -textWidth
                     : align == "center"
-                    ? -textWidth / 2
-                    : 0;
+                      ? -textWidth / 2
+                      : 0;
 
             if (!logoLetters) {
                 const firstChar = this.metrics.getCharByCode(str.charCodeAt(0));

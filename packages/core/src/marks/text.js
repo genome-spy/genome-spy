@@ -237,8 +237,8 @@ export default class TextMark extends Mark {
             const str = isString(value)
                 ? value
                 : value === null
-                ? ""
-                : "" + value;
+                  ? ""
+                  : "" + value;
             charCount += (str && str.length) || 0;
         }
 

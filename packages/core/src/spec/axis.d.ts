@@ -139,7 +139,7 @@ export interface BaseAxis<
     S = string,
     C = string,
     FW = string,
-    FS = string
+    FS = string,
 > {
     /**
      * The minimum extent in pixels that axis ticks and labels should use. This determines a minimum offset value for axis titles.

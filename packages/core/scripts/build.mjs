@@ -18,7 +18,7 @@ function compressShader(source) {
     return source
         .replace(
             /\\(?:\r\n|\n\r|\n|\r)|\/\*.*?\*\/|\/\/(?:\\(?:\r\n|\n\r|\n|\r)|[^\n\r])*/g,
-            "",
+            ""
         )
         .split(/\n+/)
         .reduce((result, line) => {
@@ -34,8 +34,8 @@ function compressShader(source) {
                 result.push(
                     line.replace(
                         /\s*({|}|=|\*|,|\+|\/|>|<|&|\||\[|\]|\(|\)|\-|!|;)\s*/g,
-                        "$1",
-                    ),
+                        "$1"
+                    )
                 );
                 needNewline = true;
             }
@@ -52,7 +52,7 @@ function preprocessFile(filePath) {
     if (filePath.endsWith(".glsl.js")) {
         // Wrap .glsl.js contents in a string variable and export it
         const preprocessedContents = `const shader = ${JSON.stringify(
-            compressShader(fileContents),
+            compressShader(fileContents)
         )};
 export default shader;\n`;
         fs.writeFileSync(filePath, preprocessedContents, "utf8");
@@ -60,7 +60,7 @@ export default shader;\n`;
         // Replace import paths in other JavaScript files
         const preprocessedContents = fileContents.replace(
             importRegex,
-            '$1.js"',
+            '$1.js"'
         );
         fs.writeFileSync(filePath, preprocessedContents, "utf8");
     }

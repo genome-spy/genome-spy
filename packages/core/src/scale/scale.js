@@ -173,8 +173,8 @@ function scaleKey(_) {
         n = _.rawDomain
             ? _.rawDomain.length
             : _.domain
-            ? _.domain.length + +(_.domainMid != null)
-            : 0;
+              ? _.domain.length + +(_.domainMid != null)
+              : 0;
         d = n === 2 ? Sequential + "-" : n === 3 ? Diverging + "-" : "";
     }
 
@@ -282,12 +282,12 @@ function padDomain(type, domain, range, pad, exponent, constant) {
             type === Log
                 ? zoomLog(domain, null, frac)
                 : type === Sqrt
-                ? zoomPow(domain, null, frac, 0.5)
-                : type === Pow
-                ? zoomPow(domain, null, frac, exponent || 1)
-                : type === Symlog
-                ? zoomSymlog(domain, null, frac, constant || 1)
-                : zoomLinear(domain, null, frac);
+                  ? zoomPow(domain, null, frac, 0.5)
+                  : type === Pow
+                    ? zoomPow(domain, null, frac, exponent || 1)
+                    : type === Symlog
+                      ? zoomSymlog(domain, null, frac, constant || 1)
+                      : zoomLinear(domain, null, frac);
 
     domain = domain.slice();
     domain[0] = d[0];
@@ -432,19 +432,19 @@ function configureScheme(type, _, count) {
         type === Threshold
             ? count + 1
             : type === BinOrdinal
-            ? count - 1
-            : type === Quantile || type === Quantize
-            ? +_.schemeCount || DEFAULT_COUNT
-            : count;
+              ? count - 1
+              : type === Quantile || type === Quantize
+                ? +_.schemeCount || DEFAULT_COUNT
+                : count;
 
     // adjust and/or quantize scheme as appropriate
     return isInterpolating(type)
         ? adjustScheme(scheme, extent, _.reverse)
         : isFunction(scheme)
-        ? quantizeInterpolator(adjustScheme(scheme, extent), count)
-        : type === Ordinal
-        ? scheme
-        : scheme.slice(0, count);
+          ? quantizeInterpolator(adjustScheme(scheme, extent), count)
+          : type === Ordinal
+            ? scheme
+            : scheme.slice(0, count);
 }
 
 function adjustScheme(scheme, extent, reverse) {

@@ -628,8 +628,8 @@ export default class Mark {
                     discrete && "domain" in scale
                         ? (d) => scale.domain().indexOf(d)
                         : largeHp
-                        ? splitLargeHighPrecision
-                        : (d) => +d;
+                          ? splitLargeHighPrecision
+                          : (d) => +d;
 
                 this.#callAfterShaderCompilation.push(() => {
                     this.registerMarkUniformValue(

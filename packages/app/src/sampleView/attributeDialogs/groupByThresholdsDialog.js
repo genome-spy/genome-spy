@@ -36,19 +36,20 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
         modal.close();
     };
 
-    const templateButtons = () => html` <div class="modal-buttons">
-        <button class="btn btn-cancel" @click=${() => modal.close()}>
-            Cancel
-        </button>
+    const templateButtons = () =>
+        html` <div class="modal-buttons">
+            <button class="btn btn-cancel" @click=${() => modal.close()}>
+                Cancel
+            </button>
 
-        <button
-            class="btn btn-primary"
-            ?disabled=${!validateThresholds(thresholds)}
-            @click=${() => dispatchAndClose(false)}
-        >
-            ${icon(faObjectGroup).node[0]} Group
-        </button>
-    </div>`;
+            <button
+                class="btn btn-primary"
+                ?disabled=${!validateThresholds(thresholds)}
+                @click=${() => dispatchAndClose(false)}
+            >
+                ${icon(faObjectGroup).node[0]} Group
+            </button>
+        </div>`;
 
     const clampThreshold = (
         /** @type {number} */ value,
@@ -195,35 +196,36 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
                 ></genome-spy-histogram>
 
                 ${thresholds.map(
-                    (threshold, i) => html` <div class="threshold-flex">
-                        <select
-                            .value=${threshold.operator}
-                            @change=${(/** @type {InputEvent} */ event) =>
-                                operatorChanged(event, i)}
-                        >
-                            <option value="lt">${"<"}</option>
-                            <option value="lte">${"\u2264"}</option>
-                        </select>
-                        <input
-                            .value=${"" + threshold.operand}
-                            type="text"
-                            placeholder="Numeric value"
-                            @input=${(/** @type {InputEvent} */ event) =>
-                                operandChanged(event, i)}
-                            @blur=${(/** @type {InputEvent} */ event) => {
-                                /** @type {HTMLInputElement} */ (
-                                    event.target
-                                ).value = "" + thresholds[i].operand;
-                            }}
-                        />
-                        <button
-                            @click=${() => removeThreshold(i)}
-                            class="btn"
-                            title="Remove"
-                        >
-                            ${icon(faTrash).node[0]}
-                        </button>
-                    </div>`
+                    (threshold, i) =>
+                        html` <div class="threshold-flex">
+                            <select
+                                .value=${threshold.operator}
+                                @change=${(/** @type {InputEvent} */ event) =>
+                                    operatorChanged(event, i)}
+                            >
+                                <option value="lt">${"<"}</option>
+                                <option value="lte">${"\u2264"}</option>
+                            </select>
+                            <input
+                                .value=${"" + threshold.operand}
+                                type="text"
+                                placeholder="Numeric value"
+                                @input=${(/** @type {InputEvent} */ event) =>
+                                    operandChanged(event, i)}
+                                @blur=${(/** @type {InputEvent} */ event) => {
+                                    /** @type {HTMLInputElement} */ (
+                                        event.target
+                                    ).value = "" + thresholds[i].operand;
+                                }}
+                            />
+                            <button
+                                @click=${() => removeThreshold(i)}
+                                class="btn"
+                                title="Remove"
+                            >
+                                ${icon(faTrash).node[0]}
+                            </button>
+                        </div>`
                 )}
                 ${thresholds.length
                     ? html`<small>

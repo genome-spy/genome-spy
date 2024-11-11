@@ -37,22 +37,19 @@ export default class FilePane extends LitElement {
         return html`
             <ul class="tabs">
                 ${Object.keys(this.files).map(
-                    (name) =>
-                        html`
-                            <li
-                                data-name=${name}
-                                class=${name == this.#currentTab
-                                    ? "selected"
-                                    : ""}
+                    (name) => html`
+                        <li
+                            data-name=${name}
+                            class=${name == this.#currentTab ? "selected" : ""}
+                        >
+                            <a
+                                href="#"
+                                @click=${(/** @type {UIEvent} */ event) =>
+                                    this._changeTab(event)}
+                                >${name}</a
                             >
-                                <a
-                                    href="#"
-                                    @click=${(/** @type {UIEvent} */ event) =>
-                                        this._changeTab(event)}
-                                    >${name}</a
-                                >
-                            </li>
-                        `
+                        </li>
+                    `
                 )}
                 <li class=${this.#currentTab === undefined ? "selected" : ""}>
                     <a

@@ -48,13 +48,11 @@ export default class Toolbar extends LitElement {
 
         // Check that there's an undoable state
         if (provenance.isEnabled()) {
-            elements.push(
-                html`
-                    <genome-spy-provenance-buttons
-                        .provenance=${provenance}
-                    ></genome-spy-provenance-buttons>
-                `
-            );
+            elements.push(html`
+                <genome-spy-provenance-buttons
+                    .provenance=${provenance}
+                ></genome-spy-provenance-buttons>
+            `);
         }
 
         elements.push(
