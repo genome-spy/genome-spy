@@ -1,7 +1,11 @@
 import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faColumns, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import {
+    faColumns,
+    faQuestionCircle,
+    faIndent,
+} from "@fortawesome/free-solid-svg-icons";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import defaultSpec from "./defaultspec.json?raw";
@@ -158,6 +162,13 @@ const toolbarTemplate = () => html`
         <button @click=${toggleLayout} class="tool-button hide-mobile">
             ${icon(faColumns).node[0]}
             <span>Toggle layout</span>
+        </button>
+        <button
+            @click=${() => editorRef.value.formatDocument()}
+            class="tool-button hide-mobile"
+        >
+            ${icon(faIndent).node[0]}
+            <span>Format code</span>
         </button>
         <span class="vis-title">
             <span class="hide-mobile">${visTitle}</span>

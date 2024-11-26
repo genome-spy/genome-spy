@@ -12,6 +12,8 @@ import "monaco-editor/esm/vs/editor/contrib/multicursor/browser/multicursor.js";
 import "monaco-editor/esm/vs/editor/contrib/bracketMatching/browser/bracketMatching.js";
 import "monaco-editor/esm/vs/editor/contrib/hover/browser/hover.js";
 import "monaco-editor/esm/vs/editor/contrib/find/browser/findController.js";
+import "monaco-editor/esm/vs/editor/contrib/format/browser/formatActions.js";
+import "monaco-editor/esm/vs/editor/contrib/format/browser/format.js";
 
 // @ts-ignore
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -74,6 +76,10 @@ export default class CodeEditor extends LitElement {
             minimap: { enabled: false },
             fontFamily: "'Source Code Pro', monospace",
             fontSize: 12,
+            tabSize: 2,
+            autoIndent: "advanced",
+            formatOnPaste: true,
+            formatOnType: true,
         });
 
         this._editor.getModel().onDidChangeContent(() => {
@@ -84,6 +90,10 @@ export default class CodeEditor extends LitElement {
             this._editor.layout();
         });
         resizeObserver.observe(this);
+    }
+
+    formatDocument() {
+        this._editor.trigger("editor", "editor.action.formatDocument");
     }
 }
 
