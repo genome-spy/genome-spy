@@ -15,6 +15,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import schema from "@genome-spy/core/schema.json";
 
 import packageJson from "../package.json";
+import "./splitPanel.js";
 import "./codeEditor.js";
 import "./filePane.js";
 import "./playground.scss";
@@ -41,7 +42,7 @@ let embedResult;
 
 let previousStringifiedSpec = "";
 
-const layouts = ["stacked", "parallel", "full"];
+const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
 
 /** @type {string} */
@@ -192,22 +193,36 @@ const debouncedUpdate = debounce(() => update(), 500, false);
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
-        <section id="editor-pane">
-            <code-editor
-                ${ref(editorRef)}
-                @change=${debouncedUpdate}
-            ></code-editor>
-        </section>
-        <section id="genome-spy-pane">
-            <div ${ref(genomeSpyContainerRef)}></div>
-        </section>
-        <section id="file-pane">
-            <file-pane
-                @upload=${update}
-                .files=${files}
-                .missingFiles=${missingFiles}
-            ></file-pane>
-        </section>
+        <split-panel
+            .orientation=${layout}
+            .reverse=${layout != "vertical"}
+            id="main-panel"
+        >
+            <div
+                id="genome-spy-container"
+                ${ref(genomeSpyContainerRef)}
+                slot="1"
+            ></div>
+            <split-panel
+                .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
+                slot="2"
+                id="editor-and-others"
+            >
+                <code-editor
+                    style="position: absolute; inset: 0"
+                    ${ref(editorRef)}
+                    @change=${debouncedUpdate}
+                    slot="1"
+                ></code-editor>
+                <section id="file-pane" slot="2">
+                    <file-pane
+                        @upload=${update}
+                        .files=${files}
+                        .missingFiles=${missingFiles}
+                    ></file-pane>
+                </section>
+            </split-panel>
+        </split-panel>
     </section>
 `;
 

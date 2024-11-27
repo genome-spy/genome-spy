@@ -5,6 +5,8 @@ $basic-spacing: 10px;
 $border-color: lightgray;
 $border: 1px solid $border-color;
 
+$toolbar-bgcolor: #548fcc;
+
 body {
     margin: 0;
     padding: 0;
@@ -12,127 +14,46 @@ body {
     font-family: sans-serif;
 }
 
+split-panel {
+    --handle-hover-color: #{color.scale($toolbar-bgcolor, $alpha: -85%)};
+}
+
 #playground-layout {
-    display: grid;
+    display: flex;
     height: 100vh;
 
-    $toolbar-height: 46px;
+    flex-direction: column;
 
-    &.parallel {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: $toolbar-height 2fr 1fr;
-        grid-template-areas:
-            "toolbar toolbar"
-            "editor genome-spy"
-            "files genome-spy";
-    }
-
-    &.stacked {
-        grid-template-rows: $toolbar-height 1fr 1fr;
-        grid-template-columns: 1fr 500px;
-        grid-template-areas:
-            "toolbar toolbar"
-            "genome-spy genome-spy"
-            "editor files";
-    }
-
-    &.full {
-        grid-template-rows: $toolbar-height 1fr;
-        grid-template-areas:
-            "toolbar"
-            "genome-spy";
-    }
-
-    > * {
-        position: relative;
-    }
-
-    @media (max-width: 600px) {
-        &.parallel,
-        &.stacked {
-            grid-template-rows: $toolbar-height 1fr 1fr;
-            grid-template-columns: 1fr;
-            grid-template-areas:
-                "toolbar"
-                "genome-spy"
-                "editor";
-        }
-
-        #file-pane {
-            display: none;
-        }
+    > split-panel {
+        flex-grow: 1;
     }
 }
 
-#editor-pane {
-    grid-area: editor;
-    min-width: 0;
-    min-height: 0;
-
-    .full & {
-        display: none;
-    }
-
-    > code-editor {
-        position: absolute;
-        inset: 0;
-    }
+#genome-spy-container,
+#editor-and-others,
+code-editor,
+file-pane {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
 }
 
-#genome-spy-pane {
-    grid-area: genome-spy;
-
-    position: relative;
-
-    .stacked & {
-        border-bottom: $border;
-    }
-
-    .parallel & {
-        border-left: $border;
-    }
-
-    & > div {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-
-        overflow: hidden;
-    }
-}
-
-#file-pane {
-    grid-area: files;
+file-pane {
     padding: $basic-spacing;
-
-    //overflow: auto;
-
-    .stacked & {
-        border-left: $border;
-    }
-
-    .parallel & {
-        border-top: $border;
-    }
-
-    .full & {
-        display: none;
-    }
 }
 
 .toolbar {
-    $bgcolor: #548fcc;
+    $bgcolor: $toolbar-bgcolor;
     //$buttonColor: #315B8A;
 
-    grid-area: toolbar;
     background-color: $bgcolor;
     color: white;
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
 
     display: flex;
     align-items: center;
+
+    height: 46px;
 
     a,
     button,
