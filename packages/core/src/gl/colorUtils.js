@@ -175,10 +175,17 @@ function colorArrayToTextureData(scheme, count) {
 
     const textureData = new Uint8Array(size * 3);
     for (let i = 0; i < size; i++) {
-        const color = d3color(scheme[i % scheme.length]).rgb();
-        textureData[i * 3 + 0] = color.r;
-        textureData[i * 3 + 1] = color.g;
-        textureData[i * 3 + 2] = color.b;
+        const colorString = scheme[i % scheme.length];
+        const color = d3color(colorString);
+        if (!color) {
+            throw new Error(
+                `Invalid color "${colorString}" in the scheme ${JSON.stringify(scheme)}!`
+            );
+        }
+        const rgb = color.rgb();
+        textureData[i * 3 + 0] = rgb.r;
+        textureData[i * 3 + 1] = rgb.g;
+        textureData[i * 3 + 2] = rgb.b;
     }
     return textureData;
 }
