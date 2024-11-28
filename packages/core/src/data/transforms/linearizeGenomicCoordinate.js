@@ -87,7 +87,7 @@ export default class LinearizeGenomicCoordinate extends Transform {
             if (chrom !== lastChrom) {
                 chromOffset = genome.cumulativeChromPositions.get(chrom);
                 if (chromOffset === undefined) {
-                    throw new Error("Unknown chromosome/contig: " + chrom);
+                    return;
                 }
                 lastChrom = chrom;
             }
@@ -97,7 +97,14 @@ export default class LinearizeGenomicCoordinate extends Transform {
 
         /** @param {Record<string, any>} datum */
         this.handle = (datum) => {
-            setter(datum, getChromOffset(chromAccessor(datum)), posAccessors);
+            const chrom = chromAccessor(datum);
+            const chromOffset = getChromOffset(chrom);
+            if (chromOffset === undefined) {
+                throw new Error(
+                    `Unknown chromosome/contig "${chrom}" in datum: ${JSON.stringify(datum)}`
+                );
+            }
+            setter(datum, chromOffset, posAccessors);
             this._propagate(datum);
         };
     }
