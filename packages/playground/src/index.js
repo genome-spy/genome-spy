@@ -97,6 +97,22 @@ function getNamedData(name) {
     return file?.data;
 }
 
+async function formatWithPrettier() {
+    const [prettier, prettierPluginBabel, prettierPluginEstree] =
+        await Promise.all([
+            import("prettier/standalone"),
+            import("prettier/plugins/babel"),
+            import("prettier/plugins/estree"),
+        ]);
+
+    const formatted = await prettier.format(editorRef.value.value, {
+        parser: "json",
+        // @ts-ignore
+        plugins: [prettierPluginBabel, prettierPluginEstree],
+    });
+    editorRef.value.value = formatted;
+}
+
 async function update(force = false) {
     missingFiles = new Set();
 
@@ -165,7 +181,7 @@ const toolbarTemplate = () => html`
             <span>Toggle layout</span>
         </button>
         <button
-            @click=${() => editorRef.value.formatDocument()}
+            @click=${() => formatWithPrettier()}
             class="tool-button hide-mobile"
         >
             ${icon(faIndent).node[0]}

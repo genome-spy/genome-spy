@@ -18,6 +18,7 @@
     "@genome-spy/core": "^0.56.1",
     "lit": "^3.1.2",
     "monaco-editor": "^0.44.0",
+    "prettier": "^3.4.1",
     "vega-loader": "^4.4.0"
   }
 }
