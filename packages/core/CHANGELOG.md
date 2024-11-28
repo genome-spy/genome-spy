@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
+
+### Bug Fixes
+
+* **app:** extract sample ids from data when they are not specified explicitly ([b074ee3](https://github.com/genome-spy/genome-spy/commit/b074ee35ba4915910ad86a0e581ad41f89cb4306)) by @tuner
+* **core:** show a more informative error on unknown chromosomes ([2c6582e](https://github.com/genome-spy/genome-spy/commit/2c6582ec6c016b4a8b18e48036c9598468a3b14b)) by @tuner
+* **core:** show a useful error message when a scheme contains invalid colors ([7b637fb](https://github.com/genome-spy/genome-spy/commit/7b637fb9f4e32df65e94b94508d663c6f5e262ff)) by @tuner
+
+### Features
+
+* **core:** throw error when accessing unknown data fields ([357f39b](https://github.com/genome-spy/genome-spy/commit/357f39b40c5cb9e8a0d6272513648fe07f486289)) by @tuner
+
 ## [0.56.1](https://github.com/genome-spy/genome-spy/compare/v0.56.0...v0.56.1) (2024-08-21)
 
 ### Bug Fixes

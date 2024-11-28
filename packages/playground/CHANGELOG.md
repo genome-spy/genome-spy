@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
+
+### Bug Fixes
+
+* **playground:** file datatable styling ([18724bc](https://github.com/genome-spy/genome-spy/commit/18724bcf801e0c4b229d2a0a2dbd0d27e6d36981)) by @tuner
+
+### Features
+
+* **playground:** add "Format code" tool button ([861c0c9](https://github.com/genome-spy/genome-spy/commit/861c0c90f5652090050322ef14510b9806ca0391)) by @tuner
+* **playground:** format using prettier ([6be263d](https://github.com/genome-spy/genome-spy/commit/6be263d3d2152730296404afdc42e8e850d2de8d)) by @tuner
+* **playground:** resizeable panels ([a192431](https://github.com/genome-spy/genome-spy/commit/a1924310d53777f9f74a5bffb666c4295ea0f99b)) by @tuner
+
 ## [0.56.1](https://github.com/genome-spy/genome-spy/compare/v0.56.0...v0.56.1) (2024-08-21)
 
 **Note:** Version bump only for package @genome-spy/playground
