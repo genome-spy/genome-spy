@@ -35,57 +35,71 @@ export default class FilePane extends LitElement {
 
     render() {
         return html`
-            <ul class="tabs">
-                ${Object.keys(this.files).map(
-                    (name) => html`
-                        <li
-                            data-name=${name}
-                            class=${name == this.#currentTab ? "selected" : ""}
-                        >
-                            <a
-                                href="#"
-                                @click=${(/** @type {UIEvent} */ event) =>
-                                    this._changeTab(event)}
-                                >${name}</a
+            <div class="tab-wrapper">
+                <ul class="tabs">
+                    ${Object.keys(this.files).map(
+                        (name) => html`
+                            <li
+                                data-name=${name}
+                                class=${name == this.#currentTab
+                                    ? "selected"
+                                    : ""}
                             >
-                        </li>
-                    `
-                )}
-                <li class=${this.#currentTab === undefined ? "selected" : ""}>
-                    <a
-                        href="#"
-                        @click=${(/** @type {UIEvent} */ event) =>
-                            this._changeTab(event)}
-                        >Add new files</a
+                                <a
+                                    href="#"
+                                    @click=${(/** @type {UIEvent} */ event) =>
+                                        this._changeTab(event)}
+                                    >${name}</a
+                                >
+                            </li>
+                        `
+                    )}
+                    <li
+                        class=${this.#currentTab === undefined
+                            ? "selected"
+                            : ""}
                     >
-                </li>
-                <li style="flex-grow: 1"></li>
-            </ul>
-
-            <div class="tab-pages">
-                ${Object.keys(this.files).map(
-                    (name) => html`
-                        <div
-                            class=${name == this.#currentTab ? "selected" : ""}
+                        <a
+                            href="#"
+                            @click=${(/** @type {UIEvent} */ event) =>
+                                this._changeTab(event)}
+                            >Add new files</a
                         >
-                            ${makeDataTable(this.files[name].data)}
-                        </div>
-                    `
-                )}
+                    </li>
+                    <li style="flex-grow: 1"></li>
+                </ul>
 
-                <div class=${this.#currentTab === undefined ? "selected" : ""}>
-                    ${this.missingFiles.size
-                        ? html`<div class="missing-files">
-                              <p>Please add the following files:</p>
-                              <ul>
-                                  ${map(
-                                      this.missingFiles,
-                                      (name) => html`<li>${name}</li>`
-                                  )}
-                              </ul>
-                          </div>`
-                        : nothing}
-                    ${makeUploadForm((event) => this._handleFiles(event))}
+                <div class="tab-pages">
+                    ${Object.keys(this.files).map(
+                        (name) => html`
+                            <div
+                                class=${name == this.#currentTab
+                                    ? "selected"
+                                    : ""}
+                            >
+                                ${makeDataTable(this.files[name].data)}
+                            </div>
+                        `
+                    )}
+
+                    <div
+                        class=${this.#currentTab === undefined
+                            ? "selected"
+                            : ""}
+                    >
+                        ${this.missingFiles.size
+                            ? html`<div class="missing-files">
+                                  <p>Please add the following files:</p>
+                                  <ul>
+                                      ${map(
+                                          this.missingFiles,
+                                          (name) => html`<li>${name}</li>`
+                                      )}
+                                  </ul>
+                              </div>`
+                            : nothing}
+                        ${makeUploadForm((event) => this._handleFiles(event))}
+                    </div>
                 </div>
             </div>
         `;

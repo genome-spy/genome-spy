@@ -38,10 +38,6 @@ file-pane {
     overflow: hidden;
 }
 
-file-pane {
-    padding: $basic-spacing;
-}
-
 .toolbar {
     $bgcolor: $toolbar-bgcolor;
     //$buttonColor: #315B8A;
@@ -151,11 +147,23 @@ file-pane {
     }
 }
 
+file-pane {
+    position: absolute;
+}
+
+.tab-wrapper {
+    position: absolute;
+    inset: $basic-spacing;
+
+    display: flex;
+    flex-direction: column;
+    gap: $basic-spacing;
+}
+
 ul.tabs {
     display: flex;
     margin: 0;
     padding: 0;
-    margin-bottom: $basic-spacing;
 
     font-size: 13px;
 
@@ -180,6 +188,9 @@ ul.tabs {
 }
 
 .tab-pages {
+    flex: 1;
+    overflow: auto;
+
     > div {
         font-size: 0.9rem;
 
@@ -187,16 +198,6 @@ ul.tabs {
 
         &.selected {
             display: block;
-        }
-
-        overflow: auto;
-
-        .stacked & {
-            height: calc(50vh - 80px); // Fugly hack, 80px is an approx
-        }
-
-        .parallel & {
-            height: 25vh;
         }
     }
 }
@@ -210,12 +211,25 @@ ul.tabs {
     th {
         text-align: left;
 
-        $b: 1px solid #ddd;
+        padding: 5px;
 
+        max-width: 20em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-wrap: nowrap;
+    }
+
+    td {
+        $b: 1px solid #f0f0f0;
         border-top: $b;
         border-bottom: $b;
+    }
 
-        padding: 5px;
+    th {
+        top: 0;
+        position: sticky;
+        background-color: white;
+        border-bottom: 1px solid #c0c0c0;
     }
 }
 
