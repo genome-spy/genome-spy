@@ -205,7 +205,8 @@ ul.tabs {
 .data-sample-table {
     font-size: 11px;
 
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 
     td,
     th {
@@ -213,19 +214,22 @@ ul.tabs {
 
         padding: 5px;
 
-        max-width: 20em;
+        max-width: 15em;
         overflow: hidden;
         text-overflow: ellipsis;
         text-wrap: nowrap;
+
+        &:hover {
+            overflow: visible;
+            background-color: #fafafa;
+        }
     }
 
     td {
-        $b: 1px solid #f0f0f0;
-        border-top: $b;
-        border-bottom: $b;
+        border-bottom: 1px solid #f0f0f0;
     }
 
-    th {
+    thead th {
         top: 0;
         position: sticky;
         background-color: white;
