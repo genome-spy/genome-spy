@@ -170,6 +170,14 @@ export default class ScaleResolution {
     addMember(newMember) {
         const { channel, channelDef } = newMember;
 
+        if (!channelDef.type && !isSecondaryChannel(channel)) {
+            throw new Error(
+                `The "type" property must be defined in channel definition: "${channel}": ${JSON.stringify(
+                    channelDef
+                )}. Must be one of: "quantitative", "ordinal", "nominal", "locus", "index"`
+            );
+        }
+
         // A hack for sample channel, which really doesn't have a scale but the
         // domain is needed when samples are not specified explicitly.
         // @ts-expect-error "sample" is not really a channel with scale

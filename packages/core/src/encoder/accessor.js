@@ -100,9 +100,9 @@ export function createAccessor(channel, channelDef, paramMediator) {
         return potentialExprRefToAccessor(channelDef.value);
     } else {
         throw new Error(
-            `Invalid channel definition: ${JSON.stringify(
+            `Invalid channel definition: "${channel}": ${JSON.stringify(
                 channelDef
-            )}. Cannot create an accessor for channel ${channel}!`
+            )}! The channel definition must contain one of the following properties: "field", "datum", "value" or "expr".`
         );
     }
 }

@@ -114,7 +114,7 @@ export default class RuleMark extends Mark {
             }
         } else {
             throw new Error(
-                "Invalid x and y encodings for rule mark: " +
+                "At a minimum, either the x or y channel must be defined in the rule mark's encoding: " +
                     JSON.stringify(encoding)
             );
         }
