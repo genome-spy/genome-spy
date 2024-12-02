@@ -6,6 +6,7 @@ import {
     faQuestionCircle,
     faIndent,
 } from "@fortawesome/free-solid-svg-icons";
+import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import defaultSpec from "./defaultspec.json?raw";
@@ -246,8 +247,22 @@ function renderLayout() {
     render(layoutTemplate(), document.body);
 }
 
+setFavicon(favIcon);
 renderLayout();
 
 loadSpec().then((spec) => {
     editorRef.value.value = spec;
 });
+
+/**
+ * https://spemer.com/articles/set-favicon-with-javascript.html
+ *
+ * @param {string} favImg
+ */
+function setFavicon(favImg) {
+    const headTitle = document.querySelector("head");
+    const setFavicon = document.createElement("link");
+    setFavicon.setAttribute("rel", "shortcut icon");
+    setFavicon.setAttribute("href", favImg);
+    headTitle.appendChild(setFavicon);
+}
