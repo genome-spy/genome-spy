@@ -170,7 +170,12 @@ export default class ScaleResolution {
     addMember(newMember) {
         const { channel, channelDef } = newMember;
 
-        if (!channelDef.type && !isSecondaryChannel(channel)) {
+        if (
+            // @ts-expect-error "sample" is not really a channel with scale
+            channel != "sample" &&
+            !channelDef.type &&
+            !isSecondaryChannel(channel)
+        ) {
             throw new Error(
                 `The "type" property must be defined in channel definition: "${channel}": ${JSON.stringify(
                     channelDef

@@ -110,7 +110,12 @@ export default class Toolbar extends LitElement {
                       title="Dataflow Inspector"
                       @click=${() =>
                           showDataflowInspectorDialog(
-                              this.app.genomeSpy.viewRoot.context.dataFlow
+                              this.app.genomeSpy.viewRoot.context.dataFlow,
+                              {
+                                  highlightView:
+                                      this.app.genomeSpy.viewRoot.context
+                                          .highlightView,
+                              }
                           )}
                   >
                       ${icon(faBug).node[0]}

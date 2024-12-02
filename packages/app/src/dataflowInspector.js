@@ -5,10 +5,16 @@ import { handleTabClick } from "./utils/ui/tabs.js";
 import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
 
 /**
+ * @typedef {object} DataFlowInspectorOptions
+ * @property {(view: import("@genome-spy/core/view/view.js").default) => void} [highlightView]
+ */
+
+/**
  *
  * @param {import("@genome-spy/core/data/dataFlow.js").default<any>} dataFlow
+ * @param {DataFlowInspectorOptions} [options]
  */
-export function showDataflowInspectorDialog(dataFlow) {
+export function showDataflowInspectorDialog(dataFlow, options = {}) {
     const dataSources = dataFlow.dataSources;
 
     const propsRef = createRef();
@@ -153,10 +159,21 @@ ${JSON.stringify(flowNode.stats.first, null, 2)}</pre
      * @returns {import("lit").TemplateResult}
      */
     function flowNodeToHtml(flowNode) {
+        /** @type {import("@genome-spy/core/view/view.js").default} */
+        // @ts-ignore
+        const view = "view" in flowNode ? flowNode.view : null;
+
+        const onHover = options?.highlightView
+            ? (/** @type {MouseEvent} */ event) =>
+                  options.highlightView(event.type == "mouseover" ? view : null)
+            : () => false;
+
         return html`
             <li>
                 <span
                     @click=${() => onNodeClick(flowNode)}
+                    @mouseover=${onHover}
+                    @mouseout=${onHover}
                     tabindex="0"
                     class=${selectedFlowNode === flowNode ? "active" : ""}
                 >

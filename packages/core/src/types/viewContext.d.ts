@@ -83,6 +83,14 @@ export default interface ViewContext {
     ) => void;
 
     /**
+     * Highlights a view by adding a border around it. This is useful for debugging.
+     *
+     * @param view The view to highlight. Null to remove the highlight.
+     * @returns
+     */
+    highlightView?: (view: View | null) => void;
+
+    /**
      * Returns true if the view is configured to be visible.
      * N.B. This does NOT consider ancestors' visibility.
      */
