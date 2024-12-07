@@ -146,6 +146,8 @@ class MyPreprocessor(Preprocessor):
 
             propType = value.get('type')
             if propType:
+                if isinstance(propType, list):
+                    propType = ' | '.join(propType)
                 paragraphs.insert(0, 'Type: ' + propType)
             
             propTypes = value.get('anyOf')
