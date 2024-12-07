@@ -85,7 +85,7 @@ const css = `
   overflow: hidden;
   background: #f6f6f6;
   padding: 10px;
-  font-size: 13px;
+  font-size: 12px;
   box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
   pointer-events: none;
   z-index: 100;

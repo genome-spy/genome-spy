@@ -30,24 +30,44 @@ export default async function dataTooltipHandler(datum, mark, params) {
         return "";
     };
 
-    const strippedEntries = Object.entries(datum).filter(
-        ([key, _value]) => !key.startsWith("_")
-    );
+    /**
+     *
+     * @param {[string, any][]} entries
+     * @param {string} [prefix]
+     * @returns {ReturnType<typeof html>[]}
+     */
+    const entriesToHtml = (entries, prefix) => {
+        const strippedEntries = entries.filter(
+            ([key, _value]) => !key.startsWith("_")
+        );
 
-    if (strippedEntries.length === 0) {
+        if (strippedEntries.length === 0) {
+            return;
+        }
+
+        return strippedEntries.map(([key, value]) =>
+            typeof value === "object" && !Array.isArray(value)
+                ? html`${entriesToHtml(
+                      Object.entries(value),
+                      (prefix ? prefix : "") + key + "."
+                  )}`
+                : html`
+                      <tr>
+                          <th>${prefix}${key}</th>
+                          <td>${formatObject(value)} ${legend(key, datum)}</td>
+                      </tr>
+                  `
+        );
+    };
+
+    const tableContents = entriesToHtml(Object.entries(datum));
+    if (!tableContents) {
         return;
     }
 
     const table = html`
         <table class="attributes">
-            ${strippedEntries.map(
-                ([key, value]) => html`
-                    <tr>
-                        <th>${key}</th>
-                        <td>${formatObject(value)} ${legend(key, datum)}</td>
-                    </tr>
-                `
-            )}
+            ${tableContents}
         </table>
     `;
 
