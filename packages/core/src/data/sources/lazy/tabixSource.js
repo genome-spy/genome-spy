@@ -36,39 +36,30 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
-                import("buffer"),
                 import("@gmod/tabix"),
                 import("generic-filehandle"),
-            ]).then(
-                async ([{ Buffer }, { TabixIndexedFile }, { RemoteFile }]) => {
-                    // Hack needed by @gmod/tabix
-                    if (typeof window !== "undefined") {
-                        window.Buffer ??= Buffer;
-                    }
+            ]).then(async ([{ TabixIndexedFile }, { RemoteFile }]) => {
+                const withBase = (/** @type {string} */ uri) =>
+                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
-                    const withBase = (/** @type {string} */ uri) =>
-                        new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+                this.#tbiIndex = new TabixIndexedFile({
+                    filehandle: withBase(this.params.url),
+                    tbiFilehandle: withBase(
+                        this.params.indexUrl ?? this.params.url + ".tbi"
+                    ),
+                    renameRefSeqs:
+                        this.params.addChrPrefix === true
+                            ? (refSeq) => "chr" + refSeq
+                            : this.params.addChrPrefix
+                              ? (refSeq) => this.params.addChrPrefix + refSeq
+                              : undefined,
+                });
 
-                    this.#tbiIndex = new TabixIndexedFile({
-                        filehandle: withBase(this.params.url),
-                        tbiFilehandle: withBase(
-                            this.params.indexUrl ?? this.params.url + ".tbi"
-                        ),
-                        renameRefSeqs:
-                            this.params.addChrPrefix === true
-                                ? (refSeq) => "chr" + refSeq
-                                : this.params.addChrPrefix
-                                  ? (refSeq) =>
-                                        this.params.addChrPrefix + refSeq
-                                  : undefined,
-                    });
+                const header = await this.#tbiIndex.getHeader();
+                await this._handleHeader(header);
 
-                    const header = await this.#tbiIndex.getHeader();
-                    await this._handleHeader(header);
-
-                    resolve();
-                }
-            );
+                resolve();
+            });
         });
     }
 
