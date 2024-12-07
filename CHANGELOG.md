@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
+
+### Bug Fixes
+
+* **core:** add missing expression function `replace` ([66dd63e](https://github.com/genome-spy/genome-spy/commit/66dd63e3a5e7e000a9778519b997ed282d26d9f1)) by @tuner
+* **core:** fix BamSource to work with new gmod/bam-js package ([7c64820](https://github.com/genome-spy/genome-spy/commit/7c648207d8fd95086bc40794d75b09d54ee694a6)) by @
+* **core:** improve error messages ([bdeea93](https://github.com/genome-spy/genome-spy/commit/bdeea93084b5610e65ac26fd37a9fcb66e67e89f)) by @tuner
+
+### Features
+
+* **app:** highlight views in dataflow inspector ([b737634](https://github.com/genome-spy/genome-spy/commit/b7376341e3af37143fdb1be95ff03b3e5da27e54)) by @tuner
+* **core:** add support for `vcf` files ([7f5b3a5](https://github.com/genome-spy/genome-spy/commit/7f5b3a561fc98646e4b4e8efed57a4101cb9a37b)) by @tuner
+* **core:** show nested objects in tooltip ([b645cf9](https://github.com/genome-spy/genome-spy/commit/b645cf9b07b81b15b28ed0e63b3b66d42c9ca845)) by @tuner
+* **playground:** add favicon ([dc07dec](https://github.com/genome-spy/genome-spy/commit/dc07decb010f10d48809765236c6b9b50b8eafe3)) by @tuner
+
 # [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 ### Bug Fixes

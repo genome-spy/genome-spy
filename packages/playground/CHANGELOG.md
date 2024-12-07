@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
+
+### Features
+
+* **playground:** add favicon ([dc07dec](https://github.com/genome-spy/genome-spy/commit/dc07decb010f10d48809765236c6b9b50b8eafe3)) by @tuner
+
 # [0.57.0](https://github.com/genome-spy/genome-spy/compare/v0.56.1...v0.57.0) (2024-11-28)
 
 ### Bug Fixes
