@@ -33,6 +33,13 @@ const functionContext = {
     },
     lerp,
     linearstep,
+    replace(
+        /** @type {string} */ str,
+        /** @type {RegExp} */ pattern,
+        /** @type {string} */ replace
+    ) {
+        return String(str).replace(pattern, replace);
+    },
     smoothstep,
     selectionTest,
 };
