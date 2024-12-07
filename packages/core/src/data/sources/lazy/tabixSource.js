@@ -20,6 +20,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
             windowSize: 3_000_000,
             debounce: 200,
             debounceMode: "domain",
+            addChrPrefix: false,
             ...params,
         };
 
@@ -38,24 +39,36 @@ export default class TabixSource extends SingleAxisWindowedSource {
                 import("buffer"),
                 import("@gmod/tabix"),
                 import("generic-filehandle"),
-            ]).then(([{ Buffer }, { TabixIndexedFile }, { RemoteFile }]) => {
-                // Hack needed by @gmod/tabix
-                if (typeof window !== "undefined") {
-                    window.Buffer ??= Buffer;
+            ]).then(
+                async ([{ Buffer }, { TabixIndexedFile }, { RemoteFile }]) => {
+                    // Hack needed by @gmod/tabix
+                    if (typeof window !== "undefined") {
+                        window.Buffer ??= Buffer;
+                    }
+
+                    const withBase = (/** @type {string} */ uri) =>
+                        new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+
+                    this.#tbiIndex = new TabixIndexedFile({
+                        filehandle: withBase(this.params.url),
+                        tbiFilehandle: withBase(
+                            this.params.indexUrl ?? this.params.url + ".tbi"
+                        ),
+                        renameRefSeqs:
+                            this.params.addChrPrefix === true
+                                ? (refSeq) => "chr" + refSeq
+                                : this.params.addChrPrefix
+                                  ? (refSeq) =>
+                                        this.params.addChrPrefix + refSeq
+                                  : undefined,
+                    });
+
+                    const header = await this.#tbiIndex.getHeader();
+                    await this._handleHeader(header);
+
+                    resolve();
                 }
-
-                const withBase = (/** @type {string} */ uri) =>
-                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
-
-                this.#tbiIndex = new TabixIndexedFile({
-                    filehandle: withBase(this.params.url),
-                    tbiFilehandle: withBase(
-                        this.params.indexUrl ?? this.params.url + ".tbi"
-                    ),
-                });
-
-                resolve();
-            });
+            );
         });
     }
 
@@ -65,6 +78,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
+        await this.initializedPromise;
         const featureChunks = await this.discretizeAndLoad(
             interval,
             async (discreteInterval, signal) => {
@@ -90,6 +104,14 @@ export default class TabixSource extends SingleAxisWindowedSource {
         if (featureChunks) {
             this.publishData(featureChunks);
         }
+    }
+
+    /**
+     * @param {string} header
+     * @protected
+     */
+    async _handleHeader(header) {
+        //
     }
 
     /**

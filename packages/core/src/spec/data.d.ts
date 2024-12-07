@@ -201,7 +201,8 @@ export type LazyDataParams =
     | BigWigData
     | BigBedData
     | BamData
-    | Gff3Data;
+    | Gff3Data
+    | VcfData;
 
 export interface DebouncedData {
     /**
@@ -373,6 +374,14 @@ export interface TabixData extends DebouncedData {
     indexUrl?: string;
 
     /**
+     * Add a `chr` (boolean) or custom (string) prefix to the chromosome names
+     * in the Tabix file.
+     *
+     * __Default value:__ `false`
+     */
+    addChrPrefix?: boolean | string;
+
+    /**
      * Size of each chunk when fetching the Tabix file. Data is only fetched
      * when the length of the visible domain smaller than the window size.
      *
@@ -383,4 +392,8 @@ export interface TabixData extends DebouncedData {
 
 export interface Gff3Data extends TabixData {
     type: "gff3";
+}
+
+export interface VcfData extends TabixData {
+    type: "vcf";
 }

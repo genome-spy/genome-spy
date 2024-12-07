@@ -7,21 +7,15 @@ export default class Gff3Source extends TabixSource {
     /** @type {import("@gmod/gff").default} */
     #gff;
 
-    /**
-     * @param {import("../../../spec/data.js").TabixData} params
-     * @param {import("../../../view/view.js").default} view
-     */
-    constructor(params, view) {
-        super(params, view);
-
-        import("@gmod/gff").then((gff) => {
-            // TODO: Fix race condition
-            this.#gff = gff.default;
-        });
-    }
-
     get label() {
         return "gff3Source";
+    }
+
+    /**
+     * @param {string} header
+     */
+    async _handleHeader(header) {
+        this.#gff = (await import("@gmod/gff")).default;
     }
 
     /**

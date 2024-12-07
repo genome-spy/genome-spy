@@ -248,6 +248,24 @@ The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) com
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
 
+## VCF
+
+The tabix-based `"vcf"` source enables the retrieval of variant data stored in
+VCF files. The object format GenomeSpy uses is described in
+[vcf-js](https://github.com/GMOD/vcf-js/tree/master?tab=readme-ov-file#methods)'s
+documentation.
+
+### Parameters
+
+SCHEMA VcfData
+
+### Example
+
+TODO
+
+The data source is vased on [GMOD](http://gmod.org/)'s
+[vcf-js](https://github.com/GMOD/vcf-js) library.
+
 ## GFF3
 
 The tabix-based `"gff3"` source enables the retrieval of hierarchical data, such

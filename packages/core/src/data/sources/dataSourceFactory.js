@@ -8,6 +8,7 @@ import BigWigSource from "./lazy/bigWigSource.js";
 import BigBedSource from "./lazy/bigBedSource.js";
 import BamSource from "./lazy/bamSource.js";
 import Gff3Source from "./lazy/gff3Source.js";
+import VcfSource from "./lazy/vcfSource.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} params
@@ -102,6 +103,14 @@ function isGff3Source(params) {
 
 /**
  * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").VcfData}
+ */
+function isVcfSource(params) {
+    return params?.type == "vcf";
+}
+
+/**
+ * @param {import("../../spec/data.js").LazyDataParams} params
  * @param {import("../../view/view.js").default} view
  */
 function createLazyDataSource(params, view) {
@@ -119,6 +128,8 @@ function createLazyDataSource(params, view) {
         return new BamSource(params, view);
     } else if (isGff3Source(params)) {
         return new Gff3Source(params, view);
+    } else if (isVcfSource(params)) {
+        return new VcfSource(params, view);
     }
 
     throw new Error(
