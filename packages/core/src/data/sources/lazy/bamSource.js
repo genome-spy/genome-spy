@@ -92,13 +92,13 @@ export default class BamSource extends SingleAxisWindowedSource {
                     .then((records) =>
                         records.map((record) => ({
                             chrom: d.chrom,
-                            start: record.get("start"),
-                            end: record.get("end"),
-                            name: record.get("name"),
-                            MD: record.get("MD"),
-                            cigar: record.get("cigar"),
-                            mapq: record.get("mq"),
-                            strand: record.get("strand") === 1 ? "+" : "-",
+                            start: record.start,
+                            end: record.end,
+                            name: record.name,
+                            //MD: record.get("MD"),
+                            cigar: record.CIGAR,
+                            mapq: record.mq,
+                            strand: record.strand === 1 ? "+" : "-",
                         }))
                     )
         );
