@@ -46,7 +46,7 @@ export default async function dataTooltipHandler(datum, mark, params) {
         }
 
         return strippedEntries.map(([key, value]) =>
-            typeof value === "object" && !Array.isArray(value)
+            value !== null && typeof value === "object" && !Array.isArray(value)
                 ? html`${entriesToHtml(
                       Object.entries(value),
                       (prefix ? prefix : "") + key + "."
