@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.58.3](https://github.com/genome-spy/genome-spy/compare/v0.58.2...v0.58.3) (2024-12-20)
+
+### Bug Fixes
+
+* **app:** change the changed css file name, round 2 ([7e9cfc7](https://github.com/genome-spy/genome-spy/commit/7e9cfc79b93ce90e4b57e8b0dcb9e9b2af79d8e9)) by @tuner
+
 ## [0.58.2](https://github.com/genome-spy/genome-spy/compare/v0.58.1...v0.58.2) (2024-12-20)
 
 ### Bug Fixes
