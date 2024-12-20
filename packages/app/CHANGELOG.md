@@ -3,13 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.58.2](https://github.com/genome-spy/genome-spy/compare/v0.58.1...v0.58.2) (2024-12-20)
+
+### Bug Fixes
+
+* **app:** change the changed css file name ([caf4a4c](https://github.com/genome-spy/genome-spy/commit/caf4a4cb07fb25e0a71ab305811188f8a174ce0b)) by @tuner
+
 ## [0.58.1](https://github.com/genome-spy/genome-spy/compare/v0.58.0...v0.58.1) (2024-12-10)
 
 **Note:** Version bump only for package @genome-spy/app
-
-
-
-
 
 # [0.58.0](https://github.com/genome-spy/genome-spy/compare/v0.57.0...v0.58.0) (2024-12-07)
 
