@@ -23,7 +23,7 @@ export default defineConfig({
             formats: ["umd", "es"],
             entry: "index.js",
             name: "genomeSpyApp",
-            cssFileName: "index",
+            cssFileName: "style",
             fileName: (format) => `index.${format === "es" ? "es." : ""}js`,
         },
         rollupOptions: {
