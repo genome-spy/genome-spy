@@ -42,6 +42,11 @@ export class MetadataView extends ConcatView {
     #sampleView;
 
     /**
+     * @type {import("./sampleState.js").Sample[]} samples
+     */
+    #samples;
+
+    /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
      */
@@ -198,13 +203,6 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {string} sampleId
-     */
-    getSample(sampleId) {
-        return this.#sampleView.sampleHierarchy.sampleData?.entities[sampleId];
-    }
-
-    /**
      * @param {string} attribute
      */
     #getAttributeOpacity(attribute) {
@@ -268,6 +266,8 @@ export class MetadataView extends ConcatView {
             throw new Error("Children are already created!");
             // TODO: Check whether the attributes match and update the views and data accordingly
         }
+
+        this.#samples = samples;
 
         this._createViews();
 
@@ -370,20 +370,7 @@ export class MetadataView extends ConcatView {
     }
 
     getAttributeNames() {
-        // TODO: Use reselect
-        return this._cache("attributeNames", () => {
-            const samples = this.#sampleView.getSamples();
-
-            // Find all attributes
-            const attributes = samples
-                .flatMap((sample) => Object.keys(sample.attributes))
-                .reduce(
-                    (set, key) => set.add(/** @type {string} */ (key)),
-                    /** @type {Set<string>} */ (new Set())
-                );
-
-            return [...attributes];
-        });
+        return Object.keys(this.#samples[0].attributes);
     }
 
     /**
@@ -397,9 +384,10 @@ export class MetadataView extends ConcatView {
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
-            const samples = this.#sampleView.getSamples();
             switch (
-                inferType(samples.map((sample) => sample.attributes[attribute]))
+                inferType(
+                    this.#samples.map((sample) => sample.attributes[attribute])
+                )
             ) {
                 case "integer":
                 case "number":
@@ -474,7 +462,7 @@ export class MetadataView extends ConcatView {
         /** @type {string[]} */
         const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
 
-        const sample = this.getSample(sampleId);
+        const sample = this.#samples.find((s) => s.id == sampleId);
 
         /**
          * @param {string} attribute
@@ -539,11 +527,9 @@ export class MetadataView extends ConcatView {
         for (const name of this.getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.#sampleView
-                    .getSamples()
-                    .find(
-                        (sample) => sample.attributes[info.name] == searchKey
-                    );
+                const sample = this.#samples.find(
+                    (sample) => sample.attributes[info.name] == searchKey
+                );
 
                 if (sample) {
                     const action = this.#sampleView.actions.filterByNominal({
