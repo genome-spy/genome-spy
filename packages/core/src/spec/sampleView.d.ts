@@ -35,7 +35,7 @@ export interface SampleAttributeDef {
     /**
      * The attribute type. One of `"nominal"`, `"ordinal"`, or `"quantitative"`.
      */
-    type: Type; // TODO: Omit index/locus from available types
+    type?: Type; // TODO: Omit index/locus from available types
 
     /**
      * Scale definition for the (default) color channel

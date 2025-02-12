@@ -328,12 +328,6 @@ export class MetadataView extends ConcatView {
             this.#sampleView.spec.samples.attributeGroupSeparator
         );
 
-        for (const node of traverseAttributeHierarchy(nestedAttributes)) {
-            console.log(
-                `${node.attribute}: ${node.children.size > 0 ? "folder" : "attribute"}`
-            );
-        }
-
         this.appendChild(
             this.context.createView(
                 createLabelViewSpec(this.#sampleView.spec.samples),
@@ -346,28 +340,46 @@ export class MetadataView extends ConcatView {
          *
          * @param {AttributeNode} attributeNode
          * @param {ConcatView} container
+         * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} inheritedAttributeDef
          */
-        const createAttributeViews = (attributeNode, container) => {
+        const createAttributeViews = (
+            attributeNode,
+            container,
+            inheritedAttributeDef
+        ) => {
             for (const node of attributeNode.children.values()) {
                 if (node.children.size == 0) {
+                    // It's a leaf
+
                     const attribute = node.attribute;
 
-                    // It's a leaf
-                    const view = this.context.createView(
-                        this.#createAttributeViewSpec(attribute, node.part),
+                    const attributeDef = {
+                        ...inheritedAttributeDef,
+                        title: node.part,
+                        ...this.#getAttributeDef(attribute),
+                    };
+
+                    const view = new UnitView(
+                        this.#createAttributeViewSpec(attribute, attributeDef),
+                        this.context,
                         container,
-                        container
+                        container,
+                        `attribute-${attribute}`
                     );
                     view.opacityFunction = (parentOpacity) =>
                         parentOpacity * this.#getAttributeOpacity(attribute);
 
                     container.appendChild(view);
                 } else {
+                    const attributeDef =
+                        this.#getAttributeDef(node.attribute) ?? {};
+
                     const view = new ConcatView(
                         {
                             hconcat: [],
                             configurableVisibility: true,
-                            title: node.part,
+                            title: attributeDef.title ?? node.part,
+                            visible: attributeDef.visible ?? true,
                             spacing: 1, // TODO: Configurable
                             resolve: {
                                 scale: { default: "independent" },
@@ -381,12 +393,17 @@ export class MetadataView extends ConcatView {
                     );
                     container.appendChild(view);
 
-                    createAttributeViews(node, view);
+                    createAttributeViews(node, view, {
+                        ...inheritedAttributeDef,
+                        ...attributeDef,
+                        visible: undefined,
+                        title: undefined,
+                    });
                 }
             }
         };
 
-        createAttributeViews(nestedAttributes, this);
+        createAttributeViews(nestedAttributes, this, {});
 
         // This is a hack to ensure that the title views are not clipped.
         // TODO: Clipping should only be applied to the unit views inside GridChilds
@@ -418,11 +435,9 @@ export class MetadataView extends ConcatView {
      * Builds a view spec for attribute.
      *
      * @param {string} attribute
-     * @param {string} defaultTitle
+     * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
      */
-    #createAttributeViewSpec(attribute, defaultTitle) {
-        const attributeDef = this.#getAttributeDef(attribute);
-
+    #createAttributeViewSpec(attribute, attributeDef) {
         // Ensure that attributes have a type
         let fieldType = attributeDef ? attributeDef.type : undefined;
         if (!fieldType) {
@@ -443,7 +458,6 @@ export class MetadataView extends ConcatView {
         return createAttributeSpec(
             attribute,
             {
-                title: defaultTitle,
                 ...(attributeDef || {}),
                 type: fieldType,
             },
@@ -771,15 +785,4 @@ function getNestedAttributes(attributeNames, separator) {
         attribute: "",
         children: root,
     };
-}
-
-/**
- * @param {AttributeNode} parent
- * @returns {Generator<AttributeNode>}
- */
-function* traverseAttributeHierarchy(parent) {
-    for (const node of parent.children.values()) {
-        yield node;
-        yield* traverseAttributeHierarchy(node);
-    }
 }
