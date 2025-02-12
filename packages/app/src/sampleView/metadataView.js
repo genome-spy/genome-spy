@@ -14,6 +14,7 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
@@ -466,16 +467,6 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * Returns the view that displays the given attribute.
-     *
-     * @param {string} attribute
-     */
-    #findViewForAttribute(attribute) {
-        // This is a bit fragile.. +1 is for skipping the sample label
-        return this.children[this.getAttributeNames().indexOf(attribute) + 1];
-    }
-
-    /**
      * @param {View} view
      * @returns {import("./types.js").AttributeInfo}
      */
@@ -506,9 +497,19 @@ export class MetadataView extends ConcatView {
      * @param {string} attribute
      */
     getAttributeInfo(attribute) {
-        return this.#getAttributeInfoFromView(
-            this.#findViewForAttribute(attribute)
-        );
+        const viewNameToFind = `attribute-${attribute}`;
+
+        /** @type {View} */
+        let attributeView;
+
+        this.visit((view) => {
+            if (view.name == viewNameToFind) {
+                attributeView = view;
+                return VISIT_STOP;
+            }
+        });
+
+        return this.#getAttributeInfoFromView(attributeView);
     }
 
     /**
