@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
+
+### Features
+
+* **app:** hide hidden metadata attributes from tooltip ([da73108](https://github.com/genome-spy/genome-spy/commit/da731085dcff148ae0c80add5cd840268e53aafe)) by @tuner
+* **app:** hierarchical metadata attributes ([#274](https://github.com/genome-spy/genome-spy/issues/274)) ([dc4c483](https://github.com/genome-spy/genome-spy/commit/dc4c48321e59b925f868eda5090f6ba54a04e25b)) by @tuner
+
 ## [0.58.3](https://github.com/genome-spy/genome-spy/compare/v0.58.2...v0.58.3) (2024-12-20)
 
 ### Bug Fixes
