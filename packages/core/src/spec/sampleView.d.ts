@@ -35,7 +35,7 @@ export interface SampleAttributeDef {
     /**
      * The attribute type. One of `"nominal"`, `"ordinal"`, or `"quantitative"`.
      */
-    type: Type; // TODO: Omit index/locus from available types
+    type?: Type; // TODO: Omit index/locus from available types
 
     /**
      * Scale definition for the (default) color channel
@@ -57,6 +57,11 @@ export interface SampleAttributeDef {
      * Whether the attribute is visible by default.
      */
     visible?: boolean;
+
+    /**
+     * The title of the attribute. Defaults to attribute name.
+     */
+    title?: string;
 }
 
 export interface SampleDef {
@@ -64,6 +69,12 @@ export interface SampleDef {
      * Optional metadata about the samples.
      */
     data?: Data;
+
+    /**
+     * If attributes form a hierarchy, specify the separator character to
+     * split the attribute names into paths.
+     */
+    attributeGroupSeparator?: string;
 
     /**
      * Explicitly specify the sample attributes.

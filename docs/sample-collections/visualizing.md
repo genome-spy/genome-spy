@@ -167,6 +167,72 @@ the values on the metadata heatmap. The optional `barScale` property enables
 positional encoding, changing the heatmap cells into a horizontal bar chart. The
 `visible` property configures the default visibility for the attribute.
 
+### Hierarchical metadata attributes
+
+Metadata attributes can be grouped into hierarchical categories, which is
+practical when the number of attributes is large. You only need to define the
+data types and scales for the categories, and the attributes inherit these
+settings. Moreover, the user can easily toggle the visibility of the entire
+category with a single checkbox.
+
+Suppose you have the following metadata attributes that you would like to
+configure hierarchically:
+
+- patientId
+- Clinical data
+  - PFI
+  - OS
+- Mutational signatures
+  - HRD
+  - APOBEC
+
+To use hierarchical metadata attributes, the attribute names must have a
+(multi-level) group prefix, where a designated character separates the levels of
+the hierarchy. Use the `attributeGroupSeparator` property to delimit attribute
+names into groups. Then, specify settings for both individual attributes and
+groups if needed. The `visible` and `title` properties are not inherited; they
+only apply to the group itself.
+
+#### Example
+
+The above-mentioned metadata attributes could be named as follows:
+
+- `patientId`
+- `clinical.PFI`
+- `clinical.OS`
+- `signature.HRD`
+- `signature.APOBEC`
+
+... and configured as follows:
+
+```json title="Hierarchical metadata attributes"
+{
+  "samples": {
+    "data": { "url": "samples.tsv" },
+    "attributeGroupSeparator": ".",
+    "attributes": {
+      "patientId": {
+        "type": "nominal"
+      },
+      "clinical": {
+        "type": "quantitative",
+        "scale": {
+          "scheme": "blues"
+        }
+      },
+      "clinical.OS": {
+        "visible": false
+      },
+      "signature": {
+        "type": "quantitative",
+        "scale": { "scheme": "yelloworangered" },
+        "visible": false
+      }
+    }
+  }
+}
+```
+
 ### Adjusting font sizes, etc.
 
 The `samples` object can also be used to adjust the font sizes, etc. of the
