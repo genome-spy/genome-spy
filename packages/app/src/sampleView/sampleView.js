@@ -247,7 +247,12 @@ export default class SampleView extends ContainerView {
         });
 
         this.#gridChild = new SampleGridChild(
-            this.context.createView(childSpec, this, this, "sample-facets"),
+            await this.context.createOrImportView(
+                childSpec,
+                this,
+                this,
+                "sample-facets"
+            ),
             this,
             0,
             this.spec.view
@@ -285,14 +290,6 @@ export default class SampleView extends ContainerView {
         this.groupPanel = new GroupPanel(this, this.#sidebarView);
         this.metadataView = new MetadataView(this, this.#sidebarView);
         this.#sidebarView.setChildren([this.groupPanel, this.metadataView]);
-
-        if (this.#gridChild.view instanceof ContainerView) {
-            await this.#gridChild.view.initializeChildren();
-        }
-
-        if (this.#gridChild.summaryViews instanceof ContainerView) {
-            await this.#gridChild.summaryViews.initializeChildren();
-        }
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
@@ -828,11 +825,13 @@ export default class SampleView extends ContainerView {
                 };
 
                 const summaryView = /** @type { UnitView | LayerView } */ (
-                    this.context.createView(aggSpec, this, view, "summaryView")
+                    await this.context.createOrImportView(
+                        aggSpec,
+                        this,
+                        view,
+                        "summaryView"
+                    )
                 );
-                if (summaryView instanceof ContainerView) {
-                    await summaryView.initializeChildren();
-                }
 
                 /**
                  * @param {View} [whoIsAsking]

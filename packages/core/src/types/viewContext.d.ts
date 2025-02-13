@@ -99,21 +99,6 @@ export default interface ViewContext {
     isViewSpec: (spec: any) => boolean;
 
     /**
-     * @deprecated Use createOrImportView instead.
-     * @param spec
-     * @param layoutParent
-     * @param dataParent
-     * @param defaultName
-     * @returns
-     */
-    createView: (
-        spec: ViewSpec,
-        layoutParent?: ContainerView,
-        dataParent?: View,
-        defaultName?: string
-    ) => View;
-
-    /**
      *
      * @param spec
      * @param layoutParent

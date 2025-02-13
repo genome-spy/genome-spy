@@ -37,10 +37,6 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 
     // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
-        createView: function (spec, parent, defaultName) {
-            throw new Error("Not implemented: createView");
-        },
-
         createOrImportView: async function (
             spec,
             parent,

@@ -495,19 +495,6 @@ export default class GenomeSpy {
 
             isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
 
-            /**
-             * @deprecated: TODO: Kill this
-             */
-            createView: function (spec, layoutParent, dataParent, defaultName) {
-                return self.viewFactory.createView(
-                    spec,
-                    context,
-                    layoutParent,
-                    dataParent,
-                    defaultName
-                );
-            },
-
             createOrImportView: async function (
                 spec,
                 layoutParent,

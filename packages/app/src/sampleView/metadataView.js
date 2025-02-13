@@ -331,10 +331,12 @@ export class MetadataView extends ConcatView {
         );
 
         this.appendChild(
-            this.context.createView(
+            new UnitView(
                 createLabelViewSpec(this.#sampleView.spec.samples),
+                this.context,
                 this,
-                this
+                this,
+                "metadata-sample-name"
             )
         );
 
