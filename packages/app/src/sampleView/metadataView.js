@@ -109,9 +109,12 @@ export class MetadataView extends ConcatView {
 
             if (sample) {
                 const id = JSON.stringify([sample.id, attribute]);
-                this.context.updateTooltip(id, (id) =>
-                    Promise.resolve(this.#sampleToTooltip(id))
-                );
+                this.context.updateTooltip(id, (id) => {
+                    const [sampleId, attribute] = JSON.parse(id);
+                    return Promise.resolve(
+                        this.#sampleToTooltip(sampleId, attribute)
+                    );
+                });
             }
 
             this._handleAttributeHighlight(attribute);
@@ -522,13 +525,18 @@ export class MetadataView extends ConcatView {
 
     /**
      *
-     * @param {string} sampleAndAttribute
+     * @param {string} sampleId
+     * @param {string} attribute
      */
-    #sampleToTooltip(sampleAndAttribute) {
-        /** @type {string[]} */
-        const [sampleId, attribute] = JSON.parse(sampleAndAttribute);
-
+    #sampleToTooltip(sampleId, attribute) {
         const sample = this.#samples.find((s) => s.id == sampleId);
+
+        const attributeViews = new Map(
+            this.#attributeViews.map((view) => [
+                view.name.match(attributeViewRegex)[1],
+                view,
+            ])
+        );
 
         /**
          * @param {string} attribute
@@ -541,21 +549,25 @@ export class MetadataView extends ConcatView {
 
         const table = html`
             <table class="attributes">
-                ${Object.entries(sample.attributes).map(
-                    ([key, value]) => html`
-                        <tr class=${classMap({ hovered: key == attribute })}>
-                            <th>${key}</th>
-                            <td>${formatObject(value)}</td>
-                            <td
-                                class="color"
-                                .style="background-color: ${getColor(
-                                    key,
-                                    value
-                                )}"
-                            ></td>
-                        </tr>
-                    `
-                )}
+                ${Object.entries(sample.attributes)
+                    .filter(([key]) => attributeViews.get(key).isVisible())
+                    .map(
+                        ([key, value]) => html`
+                            <tr
+                                class=${classMap({ hovered: key == attribute })}
+                            >
+                                <th>${key}</th>
+                                <td>${formatObject(value)}</td>
+                                <td
+                                    class="color"
+                                    .style="background-color: ${getColor(
+                                        key,
+                                        value
+                                    )}"
+                                ></td>
+                            </tr>
+                        `
+                    )}
             </table>
         `;
 
