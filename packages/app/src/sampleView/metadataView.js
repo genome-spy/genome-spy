@@ -379,7 +379,9 @@ export class MetadataView extends ConcatView {
                             configurableVisibility: true,
                             title: attributeDef.title ?? node.part,
                             visible: attributeDef.visible ?? true,
-                            spacing: 1, // TODO: Configurable
+                            spacing:
+                                this.#sampleView.spec.samples
+                                    .attributeSpacing ?? 1,
                             resolve: {
                                 scale: { default: "independent" },
                                 axis: { default: "independent" },
