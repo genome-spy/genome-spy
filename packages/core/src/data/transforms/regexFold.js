@@ -23,6 +23,16 @@ export default class RegexFoldTransform extends Transform {
         const columnRegex = asArray(params.columnRegex).map(
             (re) => new RegExp(re)
         );
+
+        for (const re of columnRegex) {
+            // https://stackoverflow.com/a/79047655/1547896
+            if (RegExp("|" + re.source).exec("").length - 1 != 1) {
+                throw new Error(
+                    `Regex ${re.toString()} must have exactly one capturing group!`
+                );
+            }
+        }
+
         // TODO: Consider using named groups
         const as = asArray(params.asValue);
 

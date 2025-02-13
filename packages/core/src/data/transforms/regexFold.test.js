@@ -3,6 +3,19 @@ import { processData } from "../flowTestUtils.js";
 import RegexFoldTransform from "./regexFold.js";
 
 describe("RegexFold", () => {
+    test("Throws error if the number of capture groups in columnRegex != 1", () => {
+        /** @type { import("../../spec/transform.js").RegexFoldParams } */
+        const singleGatherConfig = {
+            type: "regexFold",
+            columnRegex: "^.+_a$",
+            asValue: "a",
+        };
+
+        expect(() => new RegexFoldTransform(singleGatherConfig)).toThrowError(
+            `Regex /^.+_a$/ must have exactly one capturing group!`
+        );
+    });
+
     test("Transform single variable", () => {
         const sampleData = [
             {
