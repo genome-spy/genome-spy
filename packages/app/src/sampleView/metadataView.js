@@ -14,7 +14,6 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
-import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
@@ -80,12 +79,11 @@ export class MetadataView extends ConcatView {
             abortController: new AbortController(),
         };
 
-        // TODO: Optimize the following
         this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
             (attribute) =>
-                this.children
-                    .map(this.#getAttributeInfoFromView.bind(this))
+                this.#attributeViews
+                    .map((view) => this.#getAttributeInfoFromView(view))
                     .find((info) => info && info.name == attribute.specifier)
         );
 
@@ -492,6 +490,22 @@ export class MetadataView extends ConcatView {
         }
     }
 
+    get #attributeViews() {
+        /** @type {UnitView[]} */
+        const attributeViews = [];
+
+        this.visit((view) => {
+            if (
+                view instanceof UnitView &&
+                attributeViewRegex.test(view.name)
+            ) {
+                attributeViews.push(view);
+            }
+        });
+
+        return attributeViews;
+    }
+
     /**
      *
      * @param {string} attribute
@@ -499,17 +513,9 @@ export class MetadataView extends ConcatView {
     getAttributeInfo(attribute) {
         const viewNameToFind = `attribute-${attribute}`;
 
-        /** @type {View} */
-        let attributeView;
-
-        this.visit((view) => {
-            if (view.name == viewNameToFind) {
-                attributeView = view;
-                return VISIT_STOP;
-            }
-        });
-
-        return this.#getAttributeInfoFromView(attributeView);
+        return this.#getAttributeInfoFromView(
+            this.#attributeViews.find((view) => view.name == viewNameToFind)
+        );
     }
 
     /**
