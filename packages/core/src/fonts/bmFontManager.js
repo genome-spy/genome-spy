@@ -1,7 +1,7 @@
 import { InternMap } from "internmap";
 import { createTexture } from "twgl.js";
 import { isString } from "vega-util";
-import latoRegular from "../fonts/Lato-Regular.json";
+import latoRegular from "../fonts/Lato-Regular.json" with { type: "json" };
 import latoRegularBitmap from "../fonts/Lato-Regular.png";
 import getMetrics from "./bmFontMetrics.js";
 
@@ -190,7 +190,7 @@ export default class BmFontManager {
                 .then((text) => parseMetadataPb(text))
                 .catch((error) => {
                     console.warn(error.message);
-                    return undefined;
+                    return /** @type {GoogleFontMetadataEntry[]} */ (undefined);
                 });
 
             this._metadataPromises.set(dir, promise);

@@ -1,5 +1,5 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import fontMetadata from "../../fonts/Lato-Regular.json";
+import fontMetadata from "../../fonts/Lato-Regular.json" with { type: "json" };
 import getMetrics from "../../fonts/bmFontMetrics.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";

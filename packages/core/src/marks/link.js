@@ -171,7 +171,7 @@ export default class LinkMark extends Mark {
         this.arrays = Object.fromEntries(
             Object.entries(vertexData.arrays).map(([k, v]) => [
                 k,
-                { ...v, data: undefined },
+                { ...v, data: /** @type {any} */ (undefined) },
             ])
         );
 

@@ -447,8 +447,8 @@ export function validateParameterName(name) {
  */
 export function makeConstantExprRef(value) {
     return Object.assign(() => value, {
-        addListener: () => undefined,
-        invalidate: () => undefined,
+        addListener: () => /** @type {void} */ (undefined),
+        invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",
         fields: [],
         globals: [],

@@ -11,7 +11,7 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
 import { messageBox } from "../utils/ui/modal.js";
 
-import packageJson from "../../package.json";
+import packageJson from "../../package.json" with { type: "json" };
 
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";

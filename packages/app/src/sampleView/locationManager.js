@@ -517,7 +517,7 @@ function calculateLocations(
                 group: entry.group,
                 depth: entry.depth,
                 n: entry.n,
-                attributeLabel: undefined,
+                attributeLabel: /** @type {string} */ (undefined),
             },
             locSize: entry.locSize,
         }));

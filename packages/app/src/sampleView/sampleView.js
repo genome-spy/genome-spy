@@ -396,7 +396,7 @@ export default class SampleView extends ContainerView {
                 id: s,
                 displayName: s,
                 indexNumber: i,
-                attributes: [],
+                attributes: /** @type {Record<string, any>} */ ([]),
             }));
 
             this.provenance.storeHelper.dispatch(
