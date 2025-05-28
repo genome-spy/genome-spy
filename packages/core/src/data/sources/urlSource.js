@@ -38,13 +38,43 @@ export default class UrlSource extends DataSource {
         return "urlSource";
     }
 
+    /**
+     *
+     * @param {import("../../spec/data.js").UrlList} props
+     */
+    async #loadUrlsFromFile(props) {
+        const listUrl = concatUrl(this.baseUrl, props.urlsFromFile);
+
+        const result = await fetch(listUrl);
+
+        if (!result.ok) {
+            throw new Error(
+                `Cannot load "${listUrl}": ${result.status} ${result.statusText}`
+            );
+        }
+        const text = await result.text();
+
+        const files = /** @type {string[] | {url: string}[]} */ (
+            read(text, { type: props.type ?? "tsv" })
+        )
+            .map((u) => (typeof u === "string" ? u : u.url))
+            .map((u) => concatUrl(listUrl, u));
+
+        return files;
+    }
+
     async load() {
         const url = withoutExprRef(this.params.url);
 
         /** @type {string[]} */
-        const urls = Array.isArray(url) ? url : [url];
+        const urls =
+            typeof url == "object" && "urlsFromFile" in url
+                ? await this.#loadUrlsFromFile(url)
+                : (Array.isArray(url) ? url : [url]).map((u) =>
+                      concatUrl(this.baseUrl, u)
+                  );
 
-        const format = getFormat(this.params);
+        const format = getFormat(this.params, urls);
         const type = responseType(format.type);
 
         if (urls.length === 0 || !urls[0]) {
@@ -56,8 +86,7 @@ export default class UrlSource extends DataSource {
         /** @param {string} url */
         const load = async (url) => {
             try {
-                const fullUrl = concatUrl(this.baseUrl, url);
-                const result = await fetch(fullUrl);
+                const result = await fetch(url);
                 if (!result.ok) {
                     throw new Error(`${result.status} ${result.statusText}`);
                 }

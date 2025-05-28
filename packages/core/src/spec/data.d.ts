@@ -119,12 +119,29 @@ export interface DataBase {
     name?: string;
 }
 
+export interface UrlList {
+    /**
+     * A URL that returns a list of URLs to load the data set.
+     * The URLs in the list can be absolute or relative to the URL of the list.
+     */
+    urlsFromFile: string;
+
+    /**
+     * The format of the data in the list.
+     * If the type is `"json"`, the list is expected to be an array of strings.
+     * If the type is `"csv"` or `"tsv"`, the list is expected to be a table with a single column named `file`.
+     *
+     * __Default value:__ `"txt"`
+     */
+    type?: "json" | "csv" | "tsv";
+}
+
 export interface UrlData extends DataBase {
     /**
      * An URL or an array of URLs from which to load the data set.
      * Use the `format.type` property to ensure the loaded data is correctly parsed.
      */
-    url: string | string[] | ExprRef;
+    url: string | string[] | ExprRef | UrlList;
 }
 
 export interface InlineData extends DataBase {

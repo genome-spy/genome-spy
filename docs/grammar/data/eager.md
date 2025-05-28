@@ -26,8 +26,8 @@ actually tab-delimited, and you must specify the `"tsv"` explicitly:
 }
 ```
 
-With the exception of the unsupported geographical formats, the data property of
-GenomeSpy is identical to Vega-Lite's
+With the exception of url arrays and the unsupported geographical formats, the
+data property of GenomeSpy is identical to Vega-Lite's
 [data](https://vega.github.io/vega-lite/docs/data.html) property.
 
 !!! warning "Type inference"
@@ -44,6 +44,47 @@ GenomeSpy is identical to Vega-Lite's
 
     Empty or missing values must be presented as **empty strings** instead of `NA`
     that R writes by default. Otherwise type inference fails for numeric fields.
+
+## URL Data
+
+Data can be loaded from a URL using the `url` property. The URL can be absolute
+or relative to the page where GenomeSpy is embedded.
+
+In addition to loading data from a single URL, you can also load data from
+multiple URLs by providing an array of URLs. This is useful when files have
+different columns that are [folded](../transform/regex-fold.md) (pivoted) into a
+long (tidy) format. The transformation pipeline is automatically initialized
+for each URL, and the final data is a concatenation of the results from all
+URLs.
+
+```json title="Example: Loading data from multiple URLs"
+{
+  "data": {
+    "url": [
+      "fileWithTabs1.tsv",
+      "fileWithTabs2.tsv"
+    ],
+    "format": { "type": "tsv" }
+  },
+  ...
+}
+```
+
+When the number of URLs is large, it is more convenient to place the list of
+files in a separate file instead of the view specification.
+
+```json title="Example: Loading data from multiple URLs listed in a file"
+{
+  "data": {
+    "url": { "urlsFromFile": "variant-file-list.tsv", "type": "tsv" },
+    "format": { "type": "tsv" }
+  },
+  ...
+}
+```
+
+The file containing the list of URLs must be a JSON file with a single string
+array or a tabular file with a single column named `url`.
 
 ## Named Data
 

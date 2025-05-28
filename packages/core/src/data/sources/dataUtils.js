@@ -1,5 +1,4 @@
 import { formats } from "vega-loader";
-import { withoutExprRef } from "../../view/paramMediator.js";
 import { isInlineData } from "./inlineSource.js";
 
 /**
@@ -8,15 +7,15 @@ import { isInlineData } from "./inlineSource.js";
  *
  * @param {import("../../spec/data.js").DataSource} params
  *      DataSource parameters
+ * @param {string | string[]} [urls]
  */
-export function getFormat(params) {
+export function getFormat(params, urls = []) {
     if (!isInlineData(params) && !isUrlData(params)) {
         return;
     }
     const format = { ...params.format };
 
-    format.type ??=
-        isUrlData(params) && extractTypeFromUrl(withoutExprRef(params.url));
+    format.type ??= isUrlData(params) && extractTypeFromUrl(urls);
     // @ts-ignore TODO: Fix typing
     format.parse ??= "auto";
 
