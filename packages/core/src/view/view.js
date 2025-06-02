@@ -150,6 +150,7 @@ export default class View {
 
         if (spec.params) {
             for (const param of spec.params) {
+                // TODO: If interval selection, validate `encodings` or provides defaults
                 this.paramMediator.registerParam(param);
             }
         }

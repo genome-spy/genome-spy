@@ -34,15 +34,14 @@ import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
-import {
+import GridChild, {
     createBackground,
     createBackgroundStroke,
-    GridChild,
-    translateAxisCoords,
-} from "@genome-spy/core/view/gridView.js";
+} from "@genome-spy/core/view/gridView/gridChild.js";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
+import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
