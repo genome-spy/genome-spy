@@ -1,5 +1,6 @@
 import {
     asSelectionConfig,
+    createIntervalSelection,
     isIntervalSelectionConfig,
 } from "../../selection/selection.js";
 import AxisGridView from "../axisGridView.js";
@@ -146,6 +147,9 @@ export default class GridChild {
                 view.addInteractionEventListener(
                     "mousedown",
                     (coords, event) => {
+                        // Clear existing selection
+                        setter(createIntervalSelection(select.encodings));
+
                         const start = invertPoint(event.point);
 
                         /** @type {import("../view.js").InteractionEventListener} */

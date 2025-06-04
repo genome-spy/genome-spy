@@ -568,7 +568,10 @@ export default class Mark {
                     selectionParameterUniforms.set(param, "interval");
 
                     /** @type {string[]} */
-                    const snippets = [];
+                    const testSnippets = [];
+
+                    /** @type {string[]} */
+                    const emptySnippets = [];
 
                     // Handle both channels separately
                     for (const channel of Object.keys(selection.intervals)) {
@@ -598,14 +601,17 @@ export default class Mark {
                                     ]
                             );
                         });
-                        snippets.push(
+                        testSnippets.push(
                             `(${uniformName}[0] <= ${ATTRIBUTE_PREFIX}${channel} && ${ATTRIBUTE_PREFIX}${channel} <= ${uniformName}[1])`
+                        );
+                        emptySnippets.push(
+                            `(${uniformName}[0] > ${uniformName}[1])`
                         );
                     }
 
                     scaleCode.push(
                         `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                            `    return ${snippets.join(" && ")};\n` +
+                            `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
                             `}`
                     );
                 }
