@@ -110,7 +110,7 @@ export default class GridChild {
     #setupIntervalSelection() {
         const view = this.view;
 
-        for (const [, param] of view.paramMediator.paramConfigs) {
+        for (const [name, param] of view.paramMediator.paramConfigs) {
             if (!("select" in param)) {
                 continue;
             }
@@ -118,7 +118,12 @@ export default class GridChild {
             const select = asSelectionConfig(param.select);
 
             if (isIntervalSelectionConfig(select)) {
-                this.selectionRect = new SelectionRect(this, select.encodings);
+                const selectionExpr = view.paramMediator.createExpression(name);
+                //const initialSelection = selectionExpr();
+
+                const setter = view.paramMediator.getSetter(name);
+
+                this.selectionRect = new SelectionRect(this, selectionExpr);
 
                 const invertPoint = (
                     /** @type {import("../layout/point.js").default} */ point
@@ -147,17 +152,25 @@ export default class GridChild {
                         const mouseMoveListener = (coords, event) => {
                             const current = invertPoint(event.point);
 
-                            // TODO: Should be updated when the selection param changes
-                            this.selectionRect.update(
-                                [start.x, current.x],
-                                [start.y, current.y]
-                            );
+                            setter({
+                                type: "interval",
+                                intervals: {
+                                    x: [
+                                        Math.min(start.x, current.x),
+                                        Math.max(start.x, current.x),
+                                    ],
+                                    y: [
+                                        Math.min(start.y, current.y),
+                                        Math.max(start.y, current.y),
+                                    ],
+                                },
+                            });
                         };
 
                         const mouseUpListener =
                             /** @type {function(MouseEvent)} */
                             (event) => {
-                                this.selectionRect.clear();
+                                //this.selectionRect.clear();
 
                                 view.removeInteractionEventListener(
                                     "mousemove",

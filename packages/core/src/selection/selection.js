@@ -33,7 +33,9 @@ export function createMultiPointSelection(data) {
 export function createIntervalSelection(channels) {
     return {
         type: "interval",
-        intervals: new Map(channels.map((c) => [c, null])),
+        intervals: Object.fromEntries(
+            channels.map((c) => [c, /** @type {number[]} */ (null)])
+        ),
     };
 }
 

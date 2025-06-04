@@ -8,7 +8,7 @@ export interface SelectionBase {
 export interface IntervalSelection extends SelectionBase {
     type: "interval";
 
-    intervals: Map<ChannelWithScale, number[] | null>;
+    intervals: Partial<Record<ChannelWithScale, number[] | null>>;
 }
 
 export interface ProjectedSelection extends SelectionBase {

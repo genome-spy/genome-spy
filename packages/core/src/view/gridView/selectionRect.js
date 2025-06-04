@@ -3,9 +3,15 @@ import UnitView from "../unitView.js";
 export default class SelectionRect extends UnitView {
     /**
      * @param {import("./gridChild.js").default} gridChild
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
      */
-    constructor(gridChild, channels) {
+    constructor(gridChild, selectionExpr) {
+        const initialSelection =
+            /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
+                selectionExpr()
+            );
+        const channels = Object.keys(initialSelection.intervals);
+
         super(
             {
                 configurableVisibility: false,
@@ -26,7 +32,7 @@ export default class SelectionRect extends UnitView {
                     tooltip: null,
                 },
                 encoding: {
-                    // TODO: Consider using Exprs instead
+                    // TODO: Consider using Exprs instead. Handling scoping is tricky, however.
                     ...(channels.includes("x")
                         ? {
                               x: { field: "x", type: null },
@@ -35,7 +41,7 @@ export default class SelectionRect extends UnitView {
                         : {}),
                     ...(channels.includes("y")
                         ? {
-                              y: { field: "y", type: "quantitative" },
+                              y: { field: "y", type: null },
                               y2: { field: "y2" },
                           }
                         : {}),
@@ -49,12 +55,17 @@ export default class SelectionRect extends UnitView {
                 blockEncodingInheritance: true,
             }
         );
-    }
 
-    get #datasource() {
-        return /** @type {import("../../data/sources/inlineSource.js").default} */ (
-            this.context.dataFlow.findDataSourceByKey(this)
-        );
+        selectionExpr.addListener(() => {
+            const selection =
+                /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
+                    selectionExpr()
+                );
+            const x = selection.intervals.x;
+            const y = selection.intervals.y;
+
+            this.update(x, y);
+        });
     }
 
     /**
@@ -63,17 +74,22 @@ export default class SelectionRect extends UnitView {
      * @param {number[]} y
      */
     update(x, y) {
-        const datum = {
-            x: x?.[0],
-            x2: x?.[1],
-            y: y?.[0],
-            y2: y?.[1],
-        };
+        const datasource =
+            /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                this.context.dataFlow.findDataSourceByKey(this)
+            );
 
-        this.#datasource.updateDynamicData([datum]);
-    }
-
-    clear() {
-        this.#datasource.updateDynamicData([]);
+        if (!x && !y) {
+            datasource.updateDynamicData([]);
+        } else {
+            datasource.updateDynamicData([
+                {
+                    x: x?.[0],
+                    x2: x?.[1],
+                    y: y?.[0],
+                    y2: y?.[1],
+                },
+            ]);
+        }
     }
 }
