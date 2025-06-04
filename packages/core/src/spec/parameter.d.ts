@@ -1,4 +1,8 @@
-import { ChannelWithScale, Scalar } from "./channel.js";
+import {
+    ChannelWithScale,
+    PrimaryPositionalChannel,
+    Scalar,
+} from "./channel.js";
 
 export interface ExprRef {
     /**
@@ -105,7 +109,7 @@ export interface BindRadioSelect extends BindBase {
 }
 
 export interface BindRange extends BindBase {
-    input: "range";
+    input: "interval";
 
     /**
      * Sets the minimum slider value. Defaults to the smaller of the signal value and `0`.
@@ -219,7 +223,12 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
 
 export interface IntervalSelectionConfig
     extends BaseSelectionConfig<"interval"> {
-    // TODO
+    type: "interval";
+
+    /**
+     * An array of encoding channels that define the interval selection.
+     */
+    encodings?: PrimaryPositionalChannel[];
 }
 
 export interface SelectionParameter<T extends SelectionType = SelectionType>

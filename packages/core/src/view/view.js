@@ -453,6 +453,24 @@ export default class View {
     }
 
     /**
+     * @param {string} type
+     * @param {InteractionEventListener} listener
+     * @param {boolean} [useCapture]
+     */
+    removeInteractionEventListener(type, listener, useCapture) {
+        const listenersByType = useCapture
+            ? this.#capturingInteractionEventListeners
+            : this.#nonCapturingInteractionEventListeners;
+        let listeners = listenersByType?.[type];
+        if (listeners) {
+            const index = listeners.indexOf(listener);
+            if (index >= 0) {
+                listeners.splice(index, 1);
+            }
+        }
+    }
+
+    /**
      * Visits child views in depth-first order. Visitor's return value
      * controls the traversal.
      *

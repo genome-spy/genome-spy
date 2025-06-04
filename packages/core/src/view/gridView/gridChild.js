@@ -1,3 +1,7 @@
+import {
+    asSelectionConfig,
+    isIntervalSelectionConfig,
+} from "../../selection/selection.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import LayerView from "../layerView.js";
@@ -6,6 +10,7 @@ import Rectangle from "../layout/rectangle.js";
 import createTitle from "../title.js";
 import UnitView from "../unitView.js";
 import Scrollbar from "./scrollbar.js";
+import SelectionRect from "./selectionRect.js";
 
 export default class GridChild {
     /**
@@ -33,7 +38,7 @@ export default class GridChild {
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
         this.scrollbars = {};
 
-        /** @type {UnitView} */
+        /** @type {SelectionRect} */
         this.selectionRect = undefined;
 
         /** @type {UnitView} */
@@ -97,6 +102,81 @@ export default class GridChild {
 
         if (view.spec.viewportHeight != null) {
             this.scrollbars.vertical = new Scrollbar(this, "vertical");
+        }
+
+        this.#setupIntervalSelection();
+    }
+
+    #setupIntervalSelection() {
+        const view = this.view;
+
+        for (const [, param] of view.paramMediator.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+
+            if (isIntervalSelectionConfig(select)) {
+                this.selectionRect = new SelectionRect(this, select.encodings);
+
+                const invertPoint = (
+                    /** @type {import("../layout/point.js").default} */ point
+                ) => {
+                    const inverted = { x: 0, y: 0 };
+
+                    const np = view.coords.normalizePoint(point.x, point.y);
+
+                    for (const channel of select.encodings) {
+                        const resolution =
+                            this.view.getScaleResolution(channel);
+                        inverted[channel] = resolution.scale.invert(
+                            channel == "x" ? np.x : 1 - np.y
+                        );
+                    }
+
+                    return inverted;
+                };
+
+                view.addInteractionEventListener(
+                    "mousedown",
+                    (coords, event) => {
+                        const start = invertPoint(event.point);
+
+                        /** @type {import("../view.js").InteractionEventListener} */
+                        const mouseMoveListener = (coords, event) => {
+                            const current = invertPoint(event.point);
+
+                            // TODO: Should be updated when the selection param changes
+                            this.selectionRect.update(
+                                [start.x, current.x],
+                                [start.y, current.y]
+                            );
+                        };
+
+                        const mouseUpListener =
+                            /** @type {function(MouseEvent)} */
+                            (event) => {
+                                this.selectionRect.clear();
+
+                                view.removeInteractionEventListener(
+                                    "mousemove",
+                                    mouseMoveListener
+                                );
+                                window.removeEventListener(
+                                    "mouseup",
+                                    mouseUpListener
+                                );
+                            };
+                        view.addInteractionEventListener(
+                            "mousemove",
+                            mouseMoveListener
+                        );
+
+                        window.addEventListener("mouseup", mouseUpListener);
+                    }
+                );
+            }
         }
     }
 

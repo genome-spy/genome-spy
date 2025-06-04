@@ -170,11 +170,17 @@ export default class ScaleResolution {
     addMember(newMember) {
         const { channel, channelDef } = newMember;
 
+        // A convenience hack for cases where the new member should adapt
+        // the scale type to the existing one. For example: SelectionRect
+        // TODO: Add test
+        const adapt = channelDef.type == null && this.type;
+
         if (
             // @ts-expect-error "sample" is not really a channel with scale
             channel != "sample" &&
             !channelDef.type &&
-            !isSecondaryChannel(channel)
+            !isSecondaryChannel(channel) &&
+            !adapt
         ) {
             throw new Error(
                 `The "type" property must be defined in channel definition: "${channel}": ${JSON.stringify(
@@ -198,15 +204,17 @@ export default class ScaleResolution {
             this.name = name;
         }
 
-        if (!this.type) {
-            this.type = type;
-        } else if (type !== this.type && !isSecondaryChannel(channel)) {
-            // TODO: Include a reference to the layer
-            throw new Error(
-                `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
-            );
-            // Actually, point scale could be changed into band scale
-            // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
+        if (!adapt) {
+            if (!this.type) {
+                this.type = type;
+            } else if (type !== this.type && !isSecondaryChannel(channel)) {
+                // TODO: Include a reference to the layer
+                throw new Error(
+                    `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
+                );
+                // Actually, point scale could be changed into band scale
+                // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
+            }
         }
 
         this.members.push(newMember);

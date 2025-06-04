@@ -2,8 +2,10 @@ import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
 import {
     asSelectionConfig,
+    createIntervalSelection,
     createMultiPointSelection,
     createSinglePointSelection,
+    isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "../selection/selection.js";
 
@@ -113,6 +115,13 @@ export default class ParamMediator {
                         ? createMultiPointSelection()
                         : createSinglePointSelection(null)
                 );
+            } else if (isIntervalSelectionConfig(select)) {
+                if (!select.encodings) {
+                    throw new Error(
+                        `Interval selection "${name}" must have encodings defined!`
+                    );
+                }
+                setter(createIntervalSelection(select.encodings));
             }
         }
 

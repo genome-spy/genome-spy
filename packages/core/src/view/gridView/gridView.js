@@ -480,6 +480,7 @@ export default class GridView extends ContainerView {
                 background,
                 backgroundStroke,
                 title,
+                selectionRect,
             } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
@@ -657,6 +658,8 @@ export default class GridView extends ContainerView {
             if (!clipped) {
                 view.render(context, viewCoords, options);
             }
+
+            selectionRect?.render(context, viewCoords, options);
 
             for (const scrollbar of Object.values(gridChild.scrollbars)) {
                 scrollbar.updateScrollbar(viewportCoords, viewCoords);
