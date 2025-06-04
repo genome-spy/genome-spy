@@ -40,7 +40,7 @@ export default class SelectionRect extends UnitView {
                     stroke: "black",
                     strokeWidth: 1,
                     strokeOpacity: 0.3,
-                    clip: false,
+                    clip: true,
                     tooltip: null,
                 },
                 encoding: {

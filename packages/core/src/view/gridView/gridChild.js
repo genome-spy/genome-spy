@@ -151,6 +151,9 @@ export default class GridChild {
             // TODO: What if there are multiple interval selection parameters?
             this.selectionRect = new SelectionRect(this, selectionExpr);
 
+            /** @type {Rectangle} */
+            let translatedRectangle = null;
+
             const invertPoint = (
                 /** @type {import("../layout/point.js").default} */ point
             ) => {
@@ -160,6 +163,7 @@ export default class GridChild {
 
                 for (const channel of select.encodings) {
                     const resolution = this.view.getScaleResolution(channel);
+                    // @ts-ignore
                     inverted[channel] = resolution.scale.invert(
                         channel == "x" ? np.x : np.y
                     );
@@ -170,44 +174,41 @@ export default class GridChild {
 
             /**
              * Converts the current selection intervals (in scale domain) to a rectangle
+             * in screen coordinates.
              * @param {import("../../types/selectionTypes.js").IntervalSelection} selection
              */
             const selectionToRect = (selection) => {
                 const { intervals } = selection;
 
-                const [a, b] = /** @type {{x: number, y: number}[]}*/ (
-                    [
-                        { x: intervals.x?.[0], y: intervals.y?.[0] },
-                        { x: intervals.x?.[1], y: intervals.y?.[1] },
-                    ].map((corner) => {
-                        const p = Object.fromEntries(
-                            /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
-                                "x",
-                                "y",
-                            ]).map((channel) => [
-                                channel,
-                                /** @type {number} */ (
-                                    corner[channel]
-                                        ? this.view
-                                              .getScaleResolution(channel)
-                                              ?.scale?.(corner[channel])
-                                        : null
-                                ),
-                            ])
-                        );
-                        return view.coords.denormalizePoint(p.x, p.y, true);
-                    })
-                );
+                const mapCorner = (
+                    /** @type {number} */ xVal,
+                    /** @type {number} */ yVal,
+                    /** @type {number} */ i
+                ) => {
+                    const getCoord = (
+                        /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel,
+                        /** @type {number} */ val
+                    ) => {
+                        if (val == null) return null;
+                        return this.view.getScaleResolution(channel).scale(val);
+                    };
+                    const px = getCoord("x", xVal) ?? i;
+                    const py = getCoord("y", yVal) ?? i;
+                    return view.coords.denormalizePoint(px, py, true);
+                };
+
+                const a = mapCorner(intervals.x?.[0], intervals.y?.[0], 0);
+                const b = mapCorner(intervals.x?.[1], intervals.y?.[1], 1);
 
                 return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
             };
 
             view.addInteractionEventListener("mousedown", (coords, event) => {
-                const translateRect = mouseOver
+                translatedRectangle = mouseOver
                     ? selectionToRect(selectionExpr())
                     : null;
 
-                if (translateRect) {
+                if (translatedRectangle) {
                     setCursor("grabbing");
                 } else {
                     // Clear existing selection
@@ -220,13 +221,13 @@ export default class GridChild {
                 const mouseMoveListener = (coords, event) => {
                     const current = event.point;
 
-                    if (translateRect) {
+                    if (translatedRectangle) {
                         // Translate the rectangle
                         const delta = {
                             x: current.x - start.x,
                             y: current.y - start.y,
                         };
-                        const newRect = translateRect.translate(
+                        const newRect = translatedRectangle.translate(
                             delta.x,
                             delta.y
                         );
@@ -256,8 +257,9 @@ export default class GridChild {
                     );
                     window.removeEventListener("mouseup", mouseUpListener);
 
-                    if (translateRect) {
+                    if (translatedRectangle) {
                         setCursor("move");
+                        translatedRectangle = null;
                     }
                 };
                 view.addInteractionEventListener(
@@ -285,10 +287,14 @@ export default class GridChild {
                     )
                 ) {
                     mouseOver = true;
-                    setCursor("move");
+                    if (!translatedRectangle) {
+                        setCursor("move");
+                    }
                 } else {
                     mouseOver = false;
-                    setCursor(null);
+                    if (!translatedRectangle) {
+                        setCursor(null);
+                    }
                 }
             });
         }
