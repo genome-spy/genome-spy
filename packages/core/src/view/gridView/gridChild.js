@@ -7,6 +7,7 @@ import AxisGridView from "../axisGridView.js";
 import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
+import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import createTitle from "../title.js";
 import UnitView from "../unitView.js";
@@ -111,6 +112,11 @@ export default class GridChild {
     #setupIntervalSelection() {
         const view = this.view;
 
+        // TODO: Move to context
+        const setCursor = (/** @type {string} */ cursor) => {
+            this.view.context.glHelper.canvas.style.cursor = cursor;
+        };
+
         for (const [name, param] of view.paramMediator.paramConfigs) {
             if (!("select" in param)) {
                 continue;
@@ -118,82 +124,173 @@ export default class GridChild {
 
             const select = asSelectionConfig(param.select);
 
-            if (isIntervalSelectionConfig(select)) {
-                const selectionExpr = view.paramMediator.createExpression(name);
-                //const initialSelection = selectionExpr();
+            if (!isIntervalSelectionConfig(select)) {
+                continue;
+            }
 
-                const setter = view.paramMediator.getSetter(name);
+            /**
+             * @param {{x: number, y: number}} a
+             * @param {{x: number, y: number}} b
+             */
+            const pointsToIntervals = (a, b) =>
+                Object.fromEntries(
+                    select.encodings.map((channel) => [
+                        channel,
+                        [
+                            Math.min(a[channel], b[channel]),
+                            Math.max(a[channel], b[channel]),
+                        ],
+                    ])
+                );
 
-                this.selectionRect = new SelectionRect(this, selectionExpr);
+            let mouseOver = false;
 
-                const invertPoint = (
-                    /** @type {import("../layout/point.js").default} */ point
-                ) => {
-                    const inverted = { x: 0, y: 0 };
+            const selectionExpr = view.paramMediator.createExpression(name);
+            const setter = view.paramMediator.getSetter(name);
 
-                    const np = view.coords.normalizePoint(point.x, point.y);
+            // TODO: What if there are multiple interval selection parameters?
+            this.selectionRect = new SelectionRect(this, selectionExpr);
 
-                    for (const channel of select.encodings) {
-                        const resolution =
-                            this.view.getScaleResolution(channel);
-                        inverted[channel] = resolution.scale.invert(
-                            channel == "x" ? np.x : 1 - np.y
+            const invertPoint = (
+                /** @type {import("../layout/point.js").default} */ point
+            ) => {
+                const inverted = { x: 0, y: 0 };
+
+                const np = view.coords.normalizePoint(point.x, point.y, true);
+
+                for (const channel of select.encodings) {
+                    const resolution = this.view.getScaleResolution(channel);
+                    inverted[channel] = resolution.scale.invert(
+                        channel == "x" ? np.x : np.y
+                    );
+                }
+
+                return inverted;
+            };
+
+            /**
+             * Converts the current selection intervals (in scale domain) to a rectangle
+             * @param {import("../../types/selectionTypes.js").IntervalSelection} selection
+             */
+            const selectionToRect = (selection) => {
+                const { intervals } = selection;
+
+                const [a, b] = /** @type {{x: number, y: number}[]}*/ (
+                    [
+                        { x: intervals.x?.[0], y: intervals.y?.[0] },
+                        { x: intervals.x?.[1], y: intervals.y?.[1] },
+                    ].map((corner) => {
+                        const p = Object.fromEntries(
+                            /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
+                                "x",
+                                "y",
+                            ]).map((channel) => [
+                                channel,
+                                /** @type {number} */ (
+                                    corner[channel]
+                                        ? this.view
+                                              .getScaleResolution(channel)
+                                              ?.scale?.(corner[channel])
+                                        : null
+                                ),
+                            ])
                         );
-                    }
+                        return view.coords.denormalizePoint(p.x, p.y, true);
+                    })
+                );
 
-                    return inverted;
+                return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
+            };
+
+            view.addInteractionEventListener("mousedown", (coords, event) => {
+                const translateRect = mouseOver
+                    ? selectionToRect(selectionExpr())
+                    : null;
+
+                if (translateRect) {
+                    setCursor("grabbing");
+                } else {
+                    // Clear existing selection
+                    setter(createIntervalSelection(select.encodings));
+                }
+
+                const start = event.point;
+
+                /** @type {import("../view.js").InteractionEventListener} */
+                const mouseMoveListener = (coords, event) => {
+                    const current = event.point;
+
+                    if (translateRect) {
+                        // Translate the rectangle
+                        const delta = {
+                            x: current.x - start.x,
+                            y: current.y - start.y,
+                        };
+                        const newRect = translateRect.translate(
+                            delta.x,
+                            delta.y
+                        );
+
+                        setter({
+                            type: "interval",
+                            intervals: pointsToIntervals(
+                                invertPoint(new Point(newRect.x, newRect.y)),
+                                invertPoint(new Point(newRect.x2, newRect.y2))
+                            ),
+                        });
+                    } else {
+                        setter({
+                            type: "interval",
+                            intervals: pointsToIntervals(
+                                invertPoint(start),
+                                invertPoint(current)
+                            ),
+                        });
+                    }
                 };
 
-                view.addInteractionEventListener(
-                    "mousedown",
-                    (coords, event) => {
-                        // Clear existing selection
-                        setter(createIntervalSelection(select.encodings));
+                const mouseUpListener = () => {
+                    view.removeInteractionEventListener(
+                        "mousemove",
+                        mouseMoveListener
+                    );
+                    window.removeEventListener("mouseup", mouseUpListener);
 
-                        const start = invertPoint(event.point);
-
-                        /** @type {import("../view.js").InteractionEventListener} */
-                        const mouseMoveListener = (coords, event) => {
-                            const current = invertPoint(event.point);
-
-                            setter({
-                                type: "interval",
-                                intervals: {
-                                    x: [
-                                        Math.min(start.x, current.x),
-                                        Math.max(start.x, current.x),
-                                    ],
-                                    y: [
-                                        Math.min(start.y, current.y),
-                                        Math.max(start.y, current.y),
-                                    ],
-                                },
-                            });
-                        };
-
-                        const mouseUpListener =
-                            /** @type {function(MouseEvent)} */
-                            (event) => {
-                                //this.selectionRect.clear();
-
-                                view.removeInteractionEventListener(
-                                    "mousemove",
-                                    mouseMoveListener
-                                );
-                                window.removeEventListener(
-                                    "mouseup",
-                                    mouseUpListener
-                                );
-                            };
-                        view.addInteractionEventListener(
-                            "mousemove",
-                            mouseMoveListener
-                        );
-
-                        window.addEventListener("mouseup", mouseUpListener);
+                    if (translateRect) {
+                        setCursor("move");
                     }
+                };
+                view.addInteractionEventListener(
+                    "mousemove",
+                    mouseMoveListener
                 );
-            }
+
+                window.addEventListener("mouseup", mouseUpListener);
+            });
+
+            view.addInteractionEventListener("mousemove", (coords, event) => {
+                const currentSelection =
+                    /** @type {import("../../types/selectionTypes.js").IntervalSelection}) */ (
+                        selectionExpr()
+                    );
+                const currentPoint = invertPoint(event.point);
+
+                if (
+                    Object.entries(currentSelection.intervals).every(
+                        ([channel, interval]) =>
+                            (channel == "x" || channel == "y") &&
+                            interval &&
+                            interval[0] < currentPoint[channel] &&
+                            interval[1] > currentPoint[channel]
+                    )
+                ) {
+                    mouseOver = true;
+                    setCursor("move");
+                } else {
+                    mouseOver = false;
+                    setCursor(null);
+                }
+            });
         }
     }
 

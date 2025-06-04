@@ -294,11 +294,31 @@ export default class Rectangle {
      *
      * @param {number} x
      * @param {number} y
+     * @param {boolean} [flipY]
      */
-    normalizePoint(x, y) {
-        return {
+    normalizePoint(x, y, flipY = false) {
+        const point = {
             x: (x - this.x) / this.width,
             y: (y - this.y) / this.height,
+        };
+        if (flipY) {
+            point.y = 1 - point.y;
+        }
+        return point;
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {boolean} flipY
+     */
+    denormalizePoint(x, y, flipY = false) {
+        if (flipY) {
+            y = 1 - y;
+        }
+        return {
+            x: this.x + x * this.width,
+            y: this.y + y * this.height,
         };
     }
 

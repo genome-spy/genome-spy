@@ -177,4 +177,16 @@ test("normalizePoint", () => {
     expect(r.normalizePoint(1, 2)).toEqual({ x: 0, y: 0 });
     expect(r.normalizePoint(7, 2)).toEqual({ x: 1, y: 0 });
     expect(r.normalizePoint(4, 4)).toEqual({ x: 0.5, y: 0.5 });
+
+    expect(r.normalizePoint(1, 6, true)).toEqual({ x: 0, y: 0 });
+});
+
+test("denormalizePoint", () => {
+    const r = Rectangle.create(1, 2, 6, 4);
+
+    expect(r.denormalizePoint(0, 0)).toEqual({ x: 1, y: 2 });
+    expect(r.denormalizePoint(1, 0)).toEqual({ x: 7, y: 2 });
+    expect(r.denormalizePoint(0.5, 0.5)).toEqual({ x: 4, y: 4 });
+
+    expect(r.denormalizePoint(0, 0, true)).toEqual({ x: 1, y: 6 });
 });
