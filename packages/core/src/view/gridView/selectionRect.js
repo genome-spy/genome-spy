@@ -12,6 +12,17 @@ export default class SelectionRect extends UnitView {
             );
         const channels = Object.keys(initialSelection.intervals);
 
+        if (
+            /** @type {import("../../spec/channel.js").ChannelWithScale[]} */ ([
+                "x",
+                "y",
+            ]).every((c) => !channels.includes(c))
+        ) {
+            throw new Error(
+                "SelectionRect requires at least one of the channels 'x' or 'y' to be present in the selection."
+            );
+        }
+
         super(
             {
                 configurableVisibility: false,
@@ -24,11 +35,12 @@ export default class SelectionRect extends UnitView {
                 data: { values: [] },
                 mark: {
                     type: "rect",
-                    fill: "#80f080",
+                    fill: "#808080",
                     fillOpacity: 0.05,
                     stroke: "black",
                     strokeWidth: 1,
-                    clip: true,
+                    strokeOpacity: 0.3,
+                    clip: false,
                     tooltip: null,
                 },
                 encoding: {

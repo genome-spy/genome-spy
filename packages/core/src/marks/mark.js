@@ -50,6 +50,7 @@ import ViewError from "../view/viewError.js";
 import { isExprRef, validateParameterName } from "../view/paramMediator.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
+    isIntervalSelection,
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../selection/selection.js";
@@ -464,7 +465,7 @@ export default class Mark {
 
         /**
          * Prevent duplicate registration.
-         * @type {Map<string, "single" | "multi" | "range">}
+         * @type {Map<string, "single" | "multi" | "interval">}
          */
         const selectionParameterUniforms = new Map();
 
@@ -487,9 +488,10 @@ export default class Mark {
                 // Register a mark uniform for each param. The uniform will have
                 // the value of uniqueId of the selected datum.
                 if (!selectionParameterUniforms.has(param)) {
+                    selectionParameterUniforms.set(param, "single");
+
                     const uniformName =
                         PARAM_PREFIX + validateParameterName(param);
-                    selectionParameterUniforms.set(param, "single");
 
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
@@ -560,6 +562,52 @@ export default class Mark {
                         glHelper.createSelectionTexture(selection);
                         this.getContext().animator.requestRender();
                     });
+                }
+            } else if (isIntervalSelection(selection)) {
+                if (!selectionParameterUniforms.has(param)) {
+                    selectionParameterUniforms.set(param, "interval");
+
+                    /** @type {string[]} */
+                    const snippets = [];
+
+                    // Handle both channels separately
+                    for (const channel of Object.keys(selection.intervals)) {
+                        if (!["x", "y"].includes(channel)) {
+                            continue;
+                        }
+
+                        const uniformName =
+                            PARAM_PREFIX +
+                            validateParameterName(param) +
+                            `_${channel}`;
+
+                        dynamicMarkUniforms.push(`    // Selection parameter`);
+                        dynamicMarkUniforms.push(
+                            `    uniform highp vec2 ${uniformName};`
+                        );
+                        this.#callAfterShaderCompilation.push(() => {
+                            this.registerMarkUniformValue(
+                                uniformName,
+                                { expr: param },
+                                (
+                                    /** @type {import("../types/selectionTypes.js").IntervalSelection} */ selection
+                                ) =>
+                                    selection.intervals[channel] ?? [
+                                        Infinity,
+                                        -Infinity,
+                                    ]
+                            );
+                        });
+                        snippets.push(
+                            `(${uniformName}[0] <= ${ATTRIBUTE_PREFIX}${channel} && ${ATTRIBUTE_PREFIX}${channel} <= ${uniformName}[1])`
+                        );
+                    }
+
+                    scaleCode.push(
+                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                            `    return ${snippets.join(" && ")};\n` +
+                            `}`
+                    );
                 }
             }
         }
