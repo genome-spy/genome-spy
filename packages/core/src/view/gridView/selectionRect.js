@@ -47,13 +47,13 @@ export default class SelectionRect extends UnitView {
                     // TODO: Consider using Exprs instead. Handling scoping is tricky, however.
                     ...(channels.includes("x")
                         ? {
-                              x: { field: "x", type: null },
+                              x: { field: "x", type: null, title: null },
                               x2: { field: "x2" },
                           }
                         : {}),
                     ...(channels.includes("y")
                         ? {
-                              y: { field: "y", type: null },
+                              y: { field: "y", type: null, title: null },
                               y2: { field: "y2" },
                           }
                         : {}),
