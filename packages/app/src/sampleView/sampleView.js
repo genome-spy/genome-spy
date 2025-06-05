@@ -754,6 +754,11 @@ export default class SampleView extends ContainerView {
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
             this.#gridChild.view.propagateInteractionEvent(event);
+
+            if (event.stopped) {
+                return;
+            }
+
             // Hmm. Perhaps this could be attached to the child
             interactionToZoom(
                 event,

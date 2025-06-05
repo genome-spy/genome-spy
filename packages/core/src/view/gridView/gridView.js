@@ -699,6 +699,12 @@ export default class GridView extends ContainerView {
         if (pointedView) {
             pointedView.propagateInteractionEvent(event);
 
+            if (event.stopped) {
+                return;
+            }
+
+            // Hmm, maybe this should be registered when needed and not include
+            // as a hardcoded interaction?
             if (
                 pointedView instanceof UnitView ||
                 pointedView instanceof LayerView

@@ -213,7 +213,14 @@ export default class GridChild {
                 } else {
                     // Clear existing selection
                     setter(createIntervalSelection(select.encodings));
+
+                    if (!(/** @type {MouseEvent} */ (event.uiEvent).shiftKey)) {
+                        return;
+                    }
                 }
+
+                // Prevent panning interaction
+                event.stopPropagation();
 
                 const start = event.point;
 
@@ -222,14 +229,9 @@ export default class GridChild {
                     const current = event.point;
 
                     if (translatedRectangle) {
-                        // Translate the rectangle
-                        const delta = {
-                            x: current.x - start.x,
-                            y: current.y - start.y,
-                        };
                         const newRect = translatedRectangle.translate(
-                            delta.x,
-                            delta.y
+                            current.x - start.x,
+                            current.y - start.y
                         );
 
                         setter({
