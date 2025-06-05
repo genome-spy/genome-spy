@@ -4,8 +4,9 @@ export default class SelectionRect extends UnitView {
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
+     * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
      */
-    constructor(gridChild, selectionExpr) {
+    constructor(gridChild, selectionExpr, brushConfig = {}) {
         const initialSelection =
             /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
                 selectionExpr()
@@ -35,13 +36,16 @@ export default class SelectionRect extends UnitView {
                 data: { values: [] },
                 mark: {
                     type: "rect",
-                    fill: "#808080",
-                    fillOpacity: 0.05,
-                    stroke: "black",
-                    strokeWidth: 1,
-                    strokeOpacity: 0.3,
                     clip: true,
                     tooltip: null,
+                    ...{
+                        fill: "#808080",
+                        fillOpacity: 0.05,
+                        stroke: "black",
+                        strokeWidth: 1,
+                        strokeOpacity: 0.2,
+                        ...brushConfig,
+                    },
                 },
                 encoding: {
                     // TODO: Consider using Exprs instead. Handling scoping is tricky, however.

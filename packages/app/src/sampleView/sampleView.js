@@ -540,6 +540,8 @@ export default class SampleView extends ContainerView {
                 firstFacet: i == 0,
             });
         }
+
+        gridChild.selectionRect?.render(context, coords, options);
     }
 
     /**

@@ -149,7 +149,11 @@ export default class GridChild {
             const setter = view.paramMediator.getSetter(name);
 
             // TODO: What if there are multiple interval selection parameters?
-            this.selectionRect = new SelectionRect(this, selectionExpr);
+            this.selectionRect = new SelectionRect(
+                this,
+                selectionExpr,
+                select.mark
+            );
 
             /** @type {Rectangle} */
             let translatedRectangle = null;

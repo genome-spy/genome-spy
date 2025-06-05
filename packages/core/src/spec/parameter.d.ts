@@ -229,8 +229,51 @@ export interface IntervalSelectionConfig
      * An array of encoding channels that define the interval selection.
      */
     encodings?: PrimaryPositionalChannel[];
+
+    /**
+     * Interval selections display a rectangle mark to show the selected range.
+     * Use the `mark` property to adjust the appearance of this rectangle.
+     */
+    mark?: BrushConfig;
 }
 
+export interface BrushConfig {
+    /**
+     * The fill color of the interval mark.
+     *
+     * __Default value:__ `"#808080"`
+     *
+     */
+    fill?: Color;
+
+    /**
+     * The fill opacity of the interval mark (a value between `0` and `1`).
+     *
+     * __Default value:__ `0.05`
+     */
+    fillOpacity?: number;
+
+    /**
+     * The stroke color of the interval mark.
+     *
+     * __Default value:__ `"black"`
+     */
+    stroke?: Color;
+
+    /**
+     * The stroke opacity of the interval mark (a value between `0` and `1`).
+     *
+     * __Default value:__ `0.2`
+     */
+    strokeOpacity?: number;
+
+    /**
+     * The stroke width of the interval mark.
+     *
+     * __Default value:__ `1`
+     */
+    strokeWidth?: number;
+}
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase {
     /**
