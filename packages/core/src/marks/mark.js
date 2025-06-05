@@ -595,9 +595,15 @@ export default class Mark {
                             validateParameterName(param) +
                             `_${channel}`;
 
+                        // TODO: High precision scales
+                        const { attributeType } = getAttributeAndArrayTypes(
+                            this.unitView.getScaleResolution(channel).scale,
+                            channel
+                        );
+
                         dynamicMarkUniforms.push(`    // Selection parameter`);
                         dynamicMarkUniforms.push(
-                            `    uniform highp vec2 ${uniformName};`
+                            `    uniform highp ${attributeType}[2] ${uniformName};`
                         );
                         this.#callAfterShaderCompilation.push(() => {
                             this.registerMarkUniformValue(
