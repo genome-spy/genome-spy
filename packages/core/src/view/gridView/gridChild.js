@@ -1,3 +1,4 @@
+import { isContinuous } from "vega-scale";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -128,6 +129,24 @@ export default class GridChild {
                 continue;
             }
 
+            // Validate channels
+            for (const channel of select.encodings) {
+                const scale = this.view.getScaleResolution(channel)?.scale;
+                if (!scale || !isContinuous(scale.type)) {
+                    throw new Error(
+                        `No continuous scale found for interval selection param "${name}" on channel "${channel}"! Scale type is "${scale?.type ?? "none"}".`
+                    );
+                }
+            }
+
+            if (this.selectionRect) {
+                throw new Error(
+                    "Only one interval selection per container is currently allowed!"
+                );
+            }
+
+            let mouseOver = false;
+
             /**
              * @param {{x: number, y: number}} a
              * @param {{x: number, y: number}} b
@@ -143,12 +162,9 @@ export default class GridChild {
                     ])
                 );
 
-            let mouseOver = false;
-
             const selectionExpr = view.paramMediator.createExpression(name);
             const setter = view.paramMediator.getSetter(name);
 
-            // TODO: What if there are multiple interval selection parameters?
             this.selectionRect = new SelectionRect(
                 this,
                 selectionExpr,
