@@ -472,7 +472,7 @@ export default class Mark {
         for (const predicate of paramPredicates) {
             const param = predicate.param;
             const paramMediator = this.unitView.paramMediator;
-            const selection = paramMediator.getValue(param);
+            const selection = paramMediator.findValue(param);
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
