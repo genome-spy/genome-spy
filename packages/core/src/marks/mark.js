@@ -11,6 +11,7 @@ import {
 } from "twgl.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import createEncoders, {
+    getSecondaryChannel,
     isChannelDefWithScale,
     isChannelWithScale,
     isDatumDef,
@@ -71,6 +72,8 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
  * @callback DrawFunction
  * @param {number} offset
  * @param {number} count
+ *
+ * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
  */
 
 /**
@@ -216,6 +219,14 @@ export default class Mark {
 
     get opaque() {
         return false;
+    }
+
+    /**
+     * Returns the default hit test mode for this mark.
+     * @returns {HitTestMode}
+     */
+    get defaultHitTestMode() {
+        return "intersects";
     }
 
     /**
@@ -601,12 +612,39 @@ export default class Mark {
                                     ]
                             );
                         });
-                        testSnippets.push(
-                            `(${uniformName}[0] <= ${ATTRIBUTE_PREFIX}${channel} && ${ATTRIBUTE_PREFIX}${channel} <= ${uniformName}[1])`
-                        );
-                        emptySnippets.push(
-                            `(${uniformName}[0] > ${uniformName}[1])`
-                        );
+
+                        const c = ATTRIBUTE_PREFIX + channel;
+                        const u = uniformName + "[0]";
+                        const u2 = uniformName + "[1]";
+                        const secondaryChannel = getSecondaryChannel(channel);
+                        if (this.encoding[secondaryChannel]) {
+                            const c2 = ATTRIBUTE_PREFIX + secondaryChannel;
+                            const mode = this.defaultHitTestMode;
+                            if (mode == "endpoints") {
+                                testSnippets.push(
+                                    `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
+                                );
+                            } else if (mode == "encloses") {
+                                testSnippets.push(
+                                    `(${u} <= ${c} && ${c2} <= ${u2})`
+                                );
+                            } else if (mode == "intersects") {
+                                testSnippets.push(
+                                    `(${u} <= ${c2} && ${c} <= ${u2})`
+                                );
+                            } else {
+                                throw new ViewError(
+                                    `Unsupported hit test mode "${mode}" for interval selection!`,
+                                    this.unitView
+                                );
+                            }
+                        } else {
+                            testSnippets.push(
+                                `(${u} <= ${c} && ${c} <= ${u2})`
+                            );
+                        }
+
+                        emptySnippets.push(`${u} > ${u2}`);
                     }
 
                     scaleCode.push(
