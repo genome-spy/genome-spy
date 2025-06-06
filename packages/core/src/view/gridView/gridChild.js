@@ -190,10 +190,12 @@ export default class GridChild {
                 const np = view.coords.normalizePoint(point.x, point.y, true);
 
                 for (const channel of channels) {
+                    const scale = scaleResolutions[channel].scale;
                     // @ts-ignore
-                    inverted[channel] = scaleResolutions[channel].scale.invert(
-                        channel == "x" ? np.x : np.y
-                    );
+                    const val = scale.invert(channel == "x" ? np.x : np.y);
+                    inverted[channel] =
+                        val +
+                        (["index", "locus"].includes(scale.type) ? 0.5 : 0);
                 }
 
                 return inverted;
@@ -276,8 +278,15 @@ export default class GridChild {
                     }
 
                     for (const channel of channels) {
-                        const zoomExtent = scaleResolutions[channel].zoomExtent;
+                        const scaleResolution = scaleResolutions[channel];
+                        const { zoomExtent, scale } = scaleResolution;
                         const interval = intervals[channel];
+
+                        if (["index", "locus"].includes(scale.type)) {
+                            // These scales use integer values. Need to round them.
+                            interval[0] = Math.ceil(interval[0]);
+                            interval[1] = Math.ceil(interval[1]);
+                        }
 
                         if (translatedRectangle) {
                             // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
@@ -301,6 +310,8 @@ export default class GridChild {
                         }
                         interval[1] = Math.min(zoomExtent[1], interval[1]);
                     }
+
+                    console.log("Intervals:", JSON.stringify(intervals));
 
                     setter({ type: "interval", intervals });
                 };
