@@ -85,9 +85,6 @@ export default class ScaleResolution {
      * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
      */
 
-    /** @type {number[]} */
-    #zoomExtent;
-
     /**
      * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
      */
@@ -98,6 +95,12 @@ export default class ScaleResolution {
 
     /** @type {ScaleWithProps} */
     #scale;
+
+    /**
+     * The initial domain before any zooming.
+     * @type {any[]}
+     */
+    #initialDomain;
 
     /**
      * Keeps track of the expression references in the range. If range is modified,
@@ -127,6 +130,12 @@ export default class ScaleResolution {
 
     get #viewContext() {
         return this.#firstMemberView.context;
+    }
+
+    get zoomExtent() {
+        return this.#scale && isContinuous(this.#scale.type)
+            ? this.#getZoomExtent()
+            : [-Infinity, Infinity];
     }
 
     /**
@@ -458,11 +467,8 @@ export default class ScaleResolution {
         scale.props = props;
         this.#configureRange();
 
-        if (isContinuous(scale.type)) {
-            this.#zoomExtent = this.#getZoomExtent();
-        }
-
         if (!domainWasInitialized) {
+            this.#initialDomain = scale.domain();
             this.#notifyListeners("domain");
             return;
         }
@@ -508,10 +514,6 @@ export default class ScaleResolution {
 
         if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());
-        }
-
-        if (isContinuous(scale.type)) {
-            this.#zoomExtent = this.#getZoomExtent();
         }
 
         // Hijack the range method
@@ -638,13 +640,8 @@ export default class ScaleResolution {
         }
 
         // TODO: Use the zoomTo method. Move clamping etc there.
-        if (this.#zoomExtent) {
-            newDomain = clampRange(
-                newDomain,
-                this.#zoomExtent[0],
-                this.#zoomExtent[1]
-            );
-        }
+        const zoomExtent = this.zoomExtent;
+        newDomain = clampRange(newDomain, zoomExtent[0], zoomExtent[1]);
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
@@ -749,7 +746,7 @@ export default class ScaleResolution {
     getZoomLevel() {
         // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
         if (this.isZoomable()) {
-            return span(this.#zoomExtent) / span(this.scale.domain());
+            return span(this.zoomExtent) / span(this.scale.domain());
         }
 
         return 1.0;
@@ -802,7 +799,7 @@ export default class ScaleResolution {
 
             // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
             // Would behave similarly to Vega-Lite, which doesn't have constraints.
-            return this.#scale.domain();
+            return this.#initialDomain;
         }
     }
 

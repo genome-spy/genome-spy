@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "title": "Select elements when they intersect with the brush",
+  "description": "Select elements when they intersect with the brush",
 
   "params": [
     {

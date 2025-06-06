@@ -118,6 +118,7 @@ export default class GridChild {
             this.view.context.glHelper.canvas.style.cursor = cursor;
         };
 
+        // TODO: If the child is a LayerView, selection params should be pulled from its children as well
         for (const [name, param] of view.paramMediator.paramConfigs) {
             if (!("select" in param)) {
                 continue;
@@ -129,15 +130,19 @@ export default class GridChild {
                 continue;
             }
 
-            // Validate channels
-            for (const channel of select.encodings) {
-                const scale = this.view.getScaleResolution(channel)?.scale;
-                if (!scale || !isContinuous(scale.type)) {
-                    throw new Error(
-                        `No continuous scale found for interval selection param "${name}" on channel "${channel}"! Scale type is "${scale?.type ?? "none"}".`
-                    );
-                }
-            }
+            const scaleResolutions = Object.fromEntries(
+                select.encodings.map((channel) => {
+                    const resolution = this.view.getScaleResolution(channel);
+                    const scale = resolution?.scale;
+
+                    if (!scale || !isContinuous(scale.type)) {
+                        throw new Error(
+                            `No continuous scale found for interval selection param "${name}" on channel "${channel}"! Scale type is "${scale?.type ?? "none"}".`
+                        );
+                    }
+                    return [channel, resolution];
+                })
+            );
 
             if (this.selectionRect) {
                 throw new Error(
@@ -150,6 +155,7 @@ export default class GridChild {
             /**
              * @param {{x: number, y: number}} a
              * @param {{x: number, y: number}} b
+             * @return {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, [number, number]>>}
              */
             const pointsToIntervals = (a, b) =>
                 Object.fromEntries(
@@ -182,9 +188,8 @@ export default class GridChild {
                 const np = view.coords.normalizePoint(point.x, point.y, true);
 
                 for (const channel of select.encodings) {
-                    const resolution = this.view.getScaleResolution(channel);
                     // @ts-ignore
-                    inverted[channel] = resolution.scale.invert(
+                    inverted[channel] = scaleResolutions[channel].scale.invert(
                         channel == "x" ? np.x : np.y
                     );
                 }
@@ -210,7 +215,7 @@ export default class GridChild {
                         /** @type {number} */ val
                     ) => {
                         if (val == null) return null;
-                        return this.view.getScaleResolution(channel).scale(val);
+                        return scaleResolutions[channel].scale(val);
                     };
                     const px = getCoord("x", xVal) ?? i;
                     const py = getCoord("y", yVal) ?? i;
@@ -248,28 +253,27 @@ export default class GridChild {
                 const mouseMoveListener = (coords, event) => {
                     const current = event.point;
 
+                    /** @type {ReturnType<typeof pointsToIntervals>} */
+                    let intervals;
+
                     if (translatedRectangle) {
                         const newRect = translatedRectangle.translate(
                             current.x - start.x,
                             current.y - start.y
                         );
 
-                        setter({
-                            type: "interval",
-                            intervals: pointsToIntervals(
-                                invertPoint(new Point(newRect.x, newRect.y)),
-                                invertPoint(new Point(newRect.x2, newRect.y2))
-                            ),
-                        });
+                        intervals = pointsToIntervals(
+                            invertPoint(new Point(newRect.x, newRect.y)),
+                            invertPoint(new Point(newRect.x2, newRect.y2))
+                        );
                     } else {
-                        setter({
-                            type: "interval",
-                            intervals: pointsToIntervals(
-                                invertPoint(start),
-                                invertPoint(current)
-                            ),
-                        });
+                        intervals = pointsToIntervals(
+                            invertPoint(start),
+                            invertPoint(current)
+                        );
                     }
+
+                    setter({ type: "interval", intervals });
                 };
 
                 const mouseUpListener = () => {
