@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Using interval selection to brush across concatenated views.",
+    "The views must have a shared scale."
+  ],
+
+  "data": {
+    "sequence": { "start": 0, "stop": 51, "as": "x" }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative"
+    },
+    "size": {
+      "condition": {
+        "param": "brush",
+        "value": 80,
+        "empty": false
+      },
+      "value": 10
+    }
+  },
+
+  "resolve": { "scale": { "x": "shared" } },
+
+  "params": [
+    {
+      "name": "brush",
+      "select": {
+        "type": "interval",
+        "encodings": ["x"]
+      }
+    }
+  ],
+
+  "vconcat": [{ "mark": "point" }, { "mark": "point" }]
+}

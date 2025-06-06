@@ -1,0 +1,59 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "2D scatter plot with normally distributed random data",
+
+  "params": [
+    {
+      "name": "brush",
+      "select": {
+        "type": "interval",
+        "encodings": ["x", "y"]
+      }
+    }
+  ],
+
+  "data": {
+    "sequence": { "start": 0, "stop": 100000, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "sqrt(-2 * log(random()))", "as": "_u" },
+    { "type": "formula", "expr": "random()", "as": "_v" },
+    {
+      "type": "formula",
+      "expr": "datum._u * cos(2 * PI * datum._v)",
+      "as": "x"
+    },
+    {
+      "type": "formula",
+      "expr": "datum._u * sin(2 * PI * datum._v)",
+      "as": "y"
+    }
+  ],
+
+  "mark": {
+    "type": "point",
+    "size": 9,
+    "opacity": 0.3
+  },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
+    "y": { "field": "y", "type": "quantitative", "scale": { "zoom": true } },
+    "color": {
+      "condition": {
+        "param": "brush",
+        "value": "#38c"
+      },
+      "value": "#aaa"
+    },
+    "size": {
+      "condition": {
+        "param": "brush",
+        "value": 10,
+        "empty": true
+      },
+      "value": 2
+    }
+  }
+}
