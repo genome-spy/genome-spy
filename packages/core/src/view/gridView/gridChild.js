@@ -130,8 +130,10 @@ export default class GridChild {
                 continue;
             }
 
+            const channels = select.encodings;
+
             const scaleResolutions = Object.fromEntries(
-                select.encodings.map((channel) => {
+                channels.map((channel) => {
                     const resolution = this.view.getScaleResolution(channel);
                     const scale = resolution?.scale;
 
@@ -159,7 +161,7 @@ export default class GridChild {
              */
             const pointsToIntervals = (a, b) =>
                 Object.fromEntries(
-                    select.encodings.map((channel) => [
+                    channels.map((channel) => [
                         channel,
                         [
                             Math.min(a[channel], b[channel]),
@@ -187,7 +189,7 @@ export default class GridChild {
 
                 const np = view.coords.normalizePoint(point.x, point.y, true);
 
-                for (const channel of select.encodings) {
+                for (const channel of channels) {
                     // @ts-ignore
                     inverted[channel] = scaleResolutions[channel].scale.invert(
                         channel == "x" ? np.x : np.y
@@ -237,7 +239,7 @@ export default class GridChild {
                     setCursor("grabbing");
                 } else {
                     // Clear existing selection
-                    setter(createIntervalSelection(select.encodings));
+                    setter(createIntervalSelection(channels));
 
                     if (!(/** @type {MouseEvent} */ (event.uiEvent).shiftKey)) {
                         return;
@@ -271,6 +273,33 @@ export default class GridChild {
                             invertPoint(start),
                             invertPoint(current)
                         );
+                    }
+
+                    for (const channel of channels) {
+                        const zoomExtent = scaleResolutions[channel].zoomExtent;
+                        const interval = intervals[channel];
+
+                        if (translatedRectangle) {
+                            // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
+                            const size = interval[1] - interval[0];
+                            const min = zoomExtent[0];
+                            const max = zoomExtent[1];
+
+                            // Clamp the start and end so the interval stays within bounds
+                            // Note: Only works reliably with linear scales. TODO: Handle other scales.
+                            if (interval[0] < min) {
+                                interval[0] = min;
+                                interval[1] = min + size;
+                            }
+                            if (interval[1] > max) {
+                                interval[1] = max;
+                                interval[0] = max - size;
+                            }
+                        } else {
+                            interval[0] = Math.max(zoomExtent[0], interval[0]);
+                            interval[1] = Math.min(zoomExtent[1], interval[1]);
+                        }
+                        interval[1] = Math.min(zoomExtent[1], interval[1]);
                     }
 
                     setter({ type: "interval", intervals });
