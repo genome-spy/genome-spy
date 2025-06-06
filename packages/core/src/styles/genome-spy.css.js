@@ -16,6 +16,9 @@ const css = `
   opacity: 1;
   transition: transform 0.6s, opacity 0.6s;
 }
+.genome-spy canvas:focus, .genome-spy canvas:focus-visible {
+  outline: none;
+}
 .genome-spy .loading-message {
   position: absolute;
   inset: 0;
