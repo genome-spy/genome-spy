@@ -112,7 +112,8 @@ parameters change.
 Parameters allow for defining interactive selections, which can be used in
 conditional encodings. GenomeSpy compiles the conditional encoding rules into
 efficient GPU shader code, enabling fast interactions in very large data sets.
-However, only point selections are currently supported.
+
+#### Point selection
 
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
@@ -168,6 +169,48 @@ bars by holding down the `Shift` key.
         { "param": "select", "value": 2, "empty": false },
         { "param": "highlight", "value": 1, "empty": false }
       ]
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+#### Interval selection
+
+Interval selections allow for selecting a range of data points along one or two axes.
+By default, the selection is done by holding down the `Shift` key and dragging
+the mouse cursor over the data points. The selection can be cleared by clicking
+outside the selected area.
+
+<div><genome-spy-doc-embed height="250">
+
+```json
+{
+  "params": [
+    {
+      "name": "brush",
+      "value": { "x": [2, 4] },
+      "select": {
+        "type": "interval",
+        "encodings": ["x"]
+      }
+    }
+  ],
+
+  "data": { "url": "sincos.csv" },
+
+  "mark": { "type": "point", "size": 100 },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
+    "y": { "field": "sin", "type": "quantitative" },
+    "color": {
+      "condition": {
+        "param": "brush",
+        "value": "#38c"
+      },
+      "value": "#ddd"
     }
   }
 }
