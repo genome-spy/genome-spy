@@ -33,7 +33,7 @@ export default class SelectionRect extends UnitView {
                         y: "forced",
                     },
                 },
-                data: { values: [] },
+                data: { values: selectionToData(selectionExpr()) },
                 mark: {
                     type: "rect",
                     clip: true,
@@ -77,35 +77,34 @@ export default class SelectionRect extends UnitView {
                 /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
                     selectionExpr()
                 );
-            const x = selection.intervals.x;
-            const y = selection.intervals.y;
 
-            this.update(x, y);
+            const datasource =
+                /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                    this.context.dataFlow.findDataSourceByKey(this)
+                );
+
+            datasource.updateDynamicData(selectionToData(selection));
         });
     }
+}
 
-    /**
-     *
-     * @param {number[]} x
-     * @param {number[]} y
-     */
-    update(x, y) {
-        const datasource =
-            /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                this.context.dataFlow.findDataSourceByKey(this)
-            );
+/**
+ *  @param {import("../../types/selectionTypes.js").IntervalSelection} selection
+ */
+function selectionToData(selection) {
+    const x = selection.intervals.x;
+    const y = selection.intervals.y;
 
-        if (!x && !y) {
-            datasource.updateDynamicData([]);
-        } else {
-            datasource.updateDynamicData([
-                {
-                    x: x?.[0],
-                    x2: x?.[1],
-                    y: y?.[0],
-                    y2: y?.[1],
-                },
-            ]);
-        }
+    if (!x && !y) {
+        return [];
+    } else {
+        return [
+            {
+                x: x?.[0],
+                x2: x?.[1],
+                y: y?.[0],
+                y2: y?.[1],
+            },
+        ];
     }
 }

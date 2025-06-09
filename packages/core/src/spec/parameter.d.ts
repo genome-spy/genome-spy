@@ -181,22 +181,6 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
     /**
      */
     on?: "click" | "mouseover" | "pointerover";
-
-    /**
-     * An array of encoding channels. The corresponding data field values
-     * must match for a data tuple to fall within the selection.
-     *
-     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
-     */
-    encodings?: ChannelWithScale[];
-
-    /**
-     * An array of field names whose values must match for a data tuple to
-     * fall within the selection.
-     *
-     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
-     */
-    fields?: string[];
 }
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
@@ -290,20 +274,15 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
                 ? IntervalSelectionConfig
                 : never);
 
-    /*
-     * Initialize the selection with a mapping between [projected channels or field names](https://vega.github.io/vega-lite/docs/selection.html#project) and initial values.
-     *
-     * __See also:__ [`init`](https://vega.github.io/vega-lite/docs/value.html) documentation.
+    /**
+     * Initial value for the selection.
      */
-    /*
-    // TODO TODO TODO TODO TODO TODO TODO TODO 
-    value?: T extends "point"
-        ? SelectionInit | SelectionInitMapping[]
-        : T extends "interval"
-        ? SelectionInitIntervalMapping
-        : never;
-        */
+    value?: T extends "interval" ? SelectionInitIntervalMapping : never;
 }
+
+export type SelectionInitIntervalMapping = Partial<
+    Record<PrimaryPositionalChannel, [number, number]>
+>;
 
 export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;

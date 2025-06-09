@@ -173,6 +173,10 @@ export default class GridChild {
             const selectionExpr = view.paramMediator.createExpression(name);
             const setter = view.paramMediator.getSetter(name);
 
+            if (param.value) {
+                setter({ type: "interval", intervals: param.value });
+            }
+
             this.selectionRect = new SelectionRect(
                 this,
                 selectionExpr,
@@ -310,8 +314,6 @@ export default class GridChild {
                         }
                         interval[1] = Math.min(zoomExtent[1], interval[1]);
                     }
-
-                    console.log("Intervals:", JSON.stringify(intervals));
 
                     setter({ type: "interval", intervals });
                 };

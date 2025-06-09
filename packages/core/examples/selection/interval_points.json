@@ -5,6 +5,7 @@
   "params": [
     {
       "name": "brush",
+      "value": { "x": [-2, -1], "y": [-2, -1] },
       "select": {
         "type": "interval",
         "encodings": ["x", "y"]
