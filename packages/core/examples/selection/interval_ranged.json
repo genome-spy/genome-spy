@@ -1,0 +1,63 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Select elements when they intersect with the brush",
+
+  "params": [
+    {
+      "name": "brush",
+      "select": { "type": "interval", "encodings": ["x"] }
+    }
+  ],
+
+  "data": {
+    "values": ["A", "B", "C", "D", "E", "F", "G"]
+  },
+  "transform": [
+    { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
+    { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" }
+  ],
+  "encoding": {
+    "x": {
+      "field": "a",
+      "type": "quantitative",
+      "scale": { "zoom": true },
+      "buildIndex": false
+    },
+    "x2": { "field": "b" },
+    "y": {
+      "field": "data",
+      "type": "nominal",
+      "scale": { "padding": 0.3 }
+    }
+  },
+  "layer": [
+    {
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "condition": { "param": "brush", "value": "#588157", "empty": false },
+          "value": "#eaeaea"
+        }
+      }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "align": "center",
+        "baseline": "middle",
+        "paddingX": 5
+      },
+      "encoding": {
+        "text": {
+          "expr": "'Hello ' + floor(datum.a)"
+        },
+        "size": { "value": 12 },
+        "color": {
+          "condition": { "param": "brush", "value": "white", "empty": false },
+          "value": "black"
+        }
+      }
+    }
+  ]
+}

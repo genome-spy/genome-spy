@@ -8,6 +8,8 @@ import { isArray, isObject, isString } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
+import { isSelectionParameter } from "./paramMediator.js";
+import { asSelectionConfig } from "../selection/selection.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
 
@@ -179,11 +181,21 @@ export class ViewFactory {
             viewSpec = spec;
         }
 
+        // A view with an interval selection always needs a parent.
+        const hasIntervalSelection = (/** @type {ViewSpec} */ spec) =>
+            spec?.params?.some(
+                (param) =>
+                    isSelectionParameter(param) &&
+                    asSelectionConfig(param.select).type == "interval"
+            );
+
         // Wrap a unit spec at root into a grid view to get axes, etc.
         if (
             !dataParent &&
             this.options.wrapRoot &&
-            (isUnitSpec(viewSpec) || isLayerSpec(viewSpec)) &&
+            (isUnitSpec(viewSpec) ||
+                isLayerSpec(viewSpec) ||
+                hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {
             viewSpec = {

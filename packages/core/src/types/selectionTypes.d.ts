@@ -5,13 +5,10 @@ export interface SelectionBase {
     type: string;
 }
 
-export interface RangeSelection extends SelectionBase {
-    type: "range";
+export interface IntervalSelection extends SelectionBase {
+    type: "interval";
 
-    fields?: string[];
-    channels?: ChannelWithScale[];
-
-    ranges: number[][];
+    intervals: Partial<Record<ChannelWithScale, number[] | null>>;
 }
 
 export interface ProjectedSelection extends SelectionBase {
@@ -38,7 +35,7 @@ export interface MultiPointSelection extends SelectionBase {
 }
 
 export type Selection =
-    | RangeSelection
+    | IntervalSelection
     | ProjectedSelection
     | SinglePointSelection
     | MultiPointSelection;

@@ -33,6 +33,7 @@ export default class InlineSource extends DataSource {
 
     /**
      * Returns true if the data source emits a single dummy datum.
+     * The behavior is unspecified if `updateDynamicData` is used.
      */
     isTrivial() {
         const values = this.params.values;
@@ -45,9 +46,24 @@ export default class InlineSource extends DataSource {
         );
     }
 
-    loadSynchronously() {
-        const values = this.params.values;
+    /**
+     * Programmatically updates the inline-provided data with new data.
+     *
+     * @param {import("../flowNode.js").Datum[]} data
+     */
+    updateDynamicData(data) {
+        this.#loadValuesSynchronously(data);
+    }
 
+    loadSynchronously() {
+        this.#loadValuesSynchronously(this.params.values);
+    }
+
+    /**
+     *
+     * @param {import("../../spec/data.js").InlineDataset} values
+     */
+    #loadValuesSynchronously(values) {
         let data = [];
 
         /** @type {(x: any) => import("../flowNode.js").Datum} */

@@ -26,6 +26,20 @@ export function createMultiPointSelection(data) {
 }
 
 /**
+ *
+ * @param {import("../spec/channel.js").ChannelWithScale[]} channels
+ * @returns {import("../types/selectionTypes.js").IntervalSelection}
+ */
+export function createIntervalSelection(channels) {
+    return {
+        type: "interval",
+        intervals: Object.fromEntries(
+            channels.map((c) => [c, /** @type {number[]} */ (null)])
+        ),
+    };
+}
+
+/**
  * Updates the backing data and returns a new instance of the selection object.
  * A new instance is required to trigger reactivity in parameters.
  *
@@ -78,6 +92,8 @@ export function selectionTest(selection, datum, empty = true) {
         return selection.data.size == 0
             ? empty
             : selection.data.has(datum[UNIQUE_ID_KEY]); // TODO: Binary search
+    } else if (isIntervalSelection(selection)) {
+        throw new Error("TODO: Implement interval selection test");
     } else {
         throw new Error("Not a selection: " + JSON.stringify(selection));
     }
@@ -94,10 +110,10 @@ export function makeSelectionTestExpression(params) {
 
 /**
  * @param {import("../types/selectionTypes.js").Selection} selection
- * @returns {selection is import("../types/selectionTypes.js").RangeSelection}
+ * @returns {selection is import("../types/selectionTypes.js").IntervalSelection}
  */
-export function isRangeSelection(selection) {
-    return selection.type === "range";
+export function isIntervalSelection(selection) {
+    return selection.type === "interval";
 }
 
 /**
@@ -151,4 +167,13 @@ export function asSelectionConfig(typeOrConfig) {
  */
 export function isPointSelectionConfig(config) {
     return config && config.type == "point";
+}
+
+/**
+ *
+ * @param {import("../spec/parameter.js").SelectionConfig} config
+ * @returns {config is import("../spec/parameter.js").IntervalSelectionConfig}
+ */
+export function isIntervalSelectionConfig(config) {
+    return config && config.type == "interval";
 }

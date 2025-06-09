@@ -150,6 +150,7 @@ export default class View {
 
         if (spec.params) {
             for (const param of spec.params) {
+                // TODO: If interval selection, validate `encodings` or provides defaults
                 this.paramMediator.registerParam(param);
             }
         }
@@ -449,6 +450,24 @@ export default class View {
         }
 
         listeners.push(listener);
+    }
+
+    /**
+     * @param {string} type
+     * @param {InteractionEventListener} listener
+     * @param {boolean} [useCapture]
+     */
+    removeInteractionEventListener(type, listener, useCapture) {
+        const listenersByType = useCapture
+            ? this.#capturingInteractionEventListeners
+            : this.#nonCapturingInteractionEventListeners;
+        let listeners = listenersByType?.[type];
+        if (listeners) {
+            const index = listeners.indexOf(listener);
+            if (index >= 0) {
+                listeners.splice(index, 1);
+            }
+        }
     }
 
     /**

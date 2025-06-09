@@ -1,4 +1,4 @@
-import { ChannelWithScale, Scalar } from "./channel.js";
+import { PrimaryPositionalChannel, Scalar } from "./channel.js";
 
 export interface ExprRef {
     /**
@@ -177,22 +177,6 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
     /**
      */
     on?: "click" | "mouseover" | "pointerover";
-
-    /**
-     * An array of encoding channels. The corresponding data field values
-     * must match for a data tuple to fall within the selection.
-     *
-     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
-     */
-    encodings?: ChannelWithScale[];
-
-    /**
-     * An array of field names whose values must match for a data tuple to
-     * fall within the selection.
-     *
-     * __See also:__ The [projection with `encodings` and `fields` section](https://vega.github.io/vega-lite/docs/selection.html#project) in the documentation.
-     */
-    fields?: string[];
 }
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
@@ -219,9 +203,57 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
 
 export interface IntervalSelectionConfig
     extends BaseSelectionConfig<"interval"> {
-    // TODO
+    type: "interval";
+
+    /**
+     * An array of encoding channels that define the interval selection.
+     */
+    encodings?: PrimaryPositionalChannel[];
+
+    /**
+     * Interval selections display a rectangle mark to show the selected range.
+     * Use the `mark` property to adjust the appearance of this rectangle.
+     */
+    mark?: BrushConfig;
 }
 
+export interface BrushConfig {
+    /**
+     * The fill color of the interval mark.
+     *
+     * __Default value:__ `"#808080"`
+     *
+     */
+    fill?: string;
+
+    /**
+     * The fill opacity of the interval mark (a value between `0` and `1`).
+     *
+     * __Default value:__ `0.05`
+     */
+    fillOpacity?: number;
+
+    /**
+     * The stroke color of the interval mark.
+     *
+     * __Default value:__ `"black"`
+     */
+    stroke?: string;
+
+    /**
+     * The stroke opacity of the interval mark (a value between `0` and `1`).
+     *
+     * __Default value:__ `0.2`
+     */
+    strokeOpacity?: number;
+
+    /**
+     * The stroke width of the interval mark.
+     *
+     * __Default value:__ `1`
+     */
+    strokeWidth?: number;
+}
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase {
     /**
@@ -238,20 +270,15 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
                 ? IntervalSelectionConfig
                 : never);
 
-    /*
-     * Initialize the selection with a mapping between [projected channels or field names](https://vega.github.io/vega-lite/docs/selection.html#project) and initial values.
-     *
-     * __See also:__ [`init`](https://vega.github.io/vega-lite/docs/value.html) documentation.
+    /**
+     * Initial value for the selection.
      */
-    /*
-    // TODO TODO TODO TODO TODO TODO TODO TODO 
-    value?: T extends "point"
-        ? SelectionInit | SelectionInitMapping[]
-        : T extends "interval"
-        ? SelectionInitIntervalMapping
-        : never;
-        */
+    value?: T extends "interval" ? SelectionInitIntervalMapping : never;
 }
+
+export type SelectionInitIntervalMapping = Partial<
+    Record<PrimaryPositionalChannel, [number, number]>
+>;
 
 export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;

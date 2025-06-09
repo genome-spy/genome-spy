@@ -11,6 +11,7 @@ import {
 } from "twgl.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import createEncoders, {
+    getSecondaryChannel,
     isChannelDefWithScale,
     isChannelWithScale,
     isDatumDef,
@@ -50,6 +51,7 @@ import ViewError from "../view/viewError.js";
 import { isExprRef, validateParameterName } from "../view/paramMediator.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
+    isIntervalSelection,
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../selection/selection.js";
@@ -70,6 +72,8 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
  * @callback DrawFunction
  * @param {number} offset
  * @param {number} count
+ *
+ * @typedef {"intersects" | "encloses" | "endpoints"} HitTestMode
  */
 
 /**
@@ -215,6 +219,14 @@ export default class Mark {
 
     get opaque() {
         return false;
+    }
+
+    /**
+     * Returns the default hit test mode for this mark.
+     * @returns {HitTestMode}
+     */
+    get defaultHitTestMode() {
+        return "intersects";
     }
 
     /**
@@ -464,14 +476,14 @@ export default class Mark {
 
         /**
          * Prevent duplicate registration.
-         * @type {Map<string, "single" | "multi" | "range">}
+         * @type {Map<string, "single" | "multi" | "interval">}
          */
         const selectionParameterUniforms = new Map();
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
             const paramMediator = this.unitView.paramMediator;
-            const selection = paramMediator.getValue(param);
+            const selection = paramMediator.findValue(param);
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
@@ -487,9 +499,10 @@ export default class Mark {
                 // Register a mark uniform for each param. The uniform will have
                 // the value of uniqueId of the selected datum.
                 if (!selectionParameterUniforms.has(param)) {
+                    selectionParameterUniforms.set(param, "single");
+
                     const uniformName =
                         PARAM_PREFIX + validateParameterName(param);
-                    selectionParameterUniforms.set(param, "single");
 
                     dynamicMarkUniforms.push(`    // Selection parameter`);
                     dynamicMarkUniforms.push(
@@ -560,6 +573,91 @@ export default class Mark {
                         glHelper.createSelectionTexture(selection);
                         this.getContext().animator.requestRender();
                     });
+                }
+            } else if (isIntervalSelection(selection)) {
+                if (!selectionParameterUniforms.has(param)) {
+                    selectionParameterUniforms.set(param, "interval");
+
+                    /** @type {string[]} */
+                    const testSnippets = [];
+
+                    /** @type {string[]} */
+                    const emptySnippets = [];
+
+                    // Handle both channels separately
+                    for (const channel of Object.keys(selection.intervals)) {
+                        if (!["x", "y"].includes(channel)) {
+                            continue;
+                        }
+
+                        const uniformName =
+                            PARAM_PREFIX +
+                            validateParameterName(param) +
+                            `_${channel}`;
+
+                        // TODO: High precision scales
+                        const { attributeType } = getAttributeAndArrayTypes(
+                            this.unitView.getScaleResolution(channel).scale,
+                            channel
+                        );
+
+                        dynamicMarkUniforms.push(`    // Selection parameter`);
+                        dynamicMarkUniforms.push(
+                            `    uniform highp ${attributeType}[2] ${uniformName};`
+                        );
+                        this.#callAfterShaderCompilation.push(() => {
+                            this.registerMarkUniformValue(
+                                uniformName,
+                                { expr: param },
+                                (
+                                    /** @type {import("../types/selectionTypes.js").IntervalSelection} */ selection
+                                ) =>
+                                    selection.intervals[channel] ?? [
+                                        Infinity,
+                                        -Infinity,
+                                    ]
+                            );
+                        });
+
+                        const c = ATTRIBUTE_PREFIX + channel;
+                        const u = uniformName + "[0]";
+                        const u2 = uniformName + "[1]";
+                        const secondaryChannel = getSecondaryChannel(channel);
+                        if (this.encoding[secondaryChannel]) {
+                            const c2 = ATTRIBUTE_PREFIX + secondaryChannel;
+                            const mode = this.defaultHitTestMode;
+                            if (mode == "endpoints") {
+                                testSnippets.push(
+                                    `((${u} <= ${c} && ${c} <= ${u2}) || (${u} <= ${c2} && ${c2} <= ${u2}))`
+                                );
+                            } else if (mode == "encloses") {
+                                testSnippets.push(
+                                    `(${u} <= ${c} && ${c2} <= ${u2})`
+                                );
+                            } else if (mode == "intersects") {
+                                testSnippets.push(
+                                    `(${u} <= ${c2} && ${c} <= ${u2})`
+                                );
+                            } else {
+                                throw new ViewError(
+                                    `Unsupported hit test mode "${mode}" for interval selection!`,
+                                    this.unitView
+                                );
+                            }
+                        } else {
+                            testSnippets.push(
+                                `(${u} <= ${c} && ${c} <= ${u2})`
+                            );
+                        }
+
+                        emptySnippets.push(`${u} > ${u2}`);
+                    }
+
+                    scaleCode.push(
+                        `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
+                            `    return ${testSnippets.join(" && ")} || (empty && (${emptySnippets.join(" || ")}));\n` +
+                            `}`
+                    );
                 }
             }
         }

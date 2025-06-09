@@ -54,6 +54,14 @@ export default class LinkMark extends Mark {
     }
 
     /**
+     * Returns the default hit test mode for this mark.
+     * @returns {import("./mark.js").HitTestMode}
+     */
+    get defaultHitTestMode() {
+        return "endpoints";
+    }
+
+    /**
      * @returns {import("../spec/channel.js").Channel[]}
      */
     getAttributes() {

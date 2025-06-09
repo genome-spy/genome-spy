@@ -1,0 +1,116 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Select elements when they intersect with the brush",
+    "Also shows how to use a brush to filter data in a second chart."
+  ],
+
+  "params": [{ "name": "brush" }],
+
+  "data": {
+    "values": ["A", "B", "C", "D", "E", "F", "G"]
+  },
+  "transform": [
+    { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
+    {
+      "type": "formula",
+      "expr": "datum.a + round(random() * 60)",
+      "as": "b"
+    },
+    {
+      "type": "formula",
+      "expr": "'Hello ' + floor(datum.a)",
+      "as": "text"
+    }
+  ],
+
+  "resolve": {
+    "scale": { "y": "shared" },
+    "axis": { "y": "shared" }
+  },
+
+  "hconcat": [
+    {
+      "params": [
+        {
+          "name": "brush",
+          "push": "outer",
+          "select": { "type": "interval", "encodings": ["x"] }
+        }
+      ],
+
+      "view": { "stroke": "lightgray" },
+
+      "encoding": {
+        "x": {
+          "field": "a",
+          "type": "quantitative",
+          "scale": { "zoom": true },
+          "buildIndex": false
+        },
+        "x2": { "field": "b" },
+        "y": {
+          "field": "data",
+          "type": "ordinal",
+          "scale": { "padding": 0.3 }
+        }
+      },
+      "layer": [
+        {
+          "mark": "rect",
+          "encoding": {
+            "color": {
+              "condition": {
+                "param": "brush",
+                "value": "#588157",
+                "empty": false
+              },
+              "value": "#eaeaea"
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "middle",
+            "paddingX": 5
+          },
+          "encoding": {
+            "text": { "field": "text" },
+            "size": { "value": 12 },
+            "color": {
+              "condition": {
+                "param": "brush",
+                "value": "white",
+                "empty": false
+              },
+              "value": "black"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "view": { "stroke": "lightgray" },
+      "width": 40,
+
+      "mark": "text",
+
+      "transform": [
+        { "type": "collect" },
+        {
+          "type": "filter",
+          "expr": "brush.intervals.x ? (datum.a <= brush.intervals.x[1] && datum.b >= brush.intervals.x[0]) : true"
+        }
+      ],
+
+      "encoding": {
+        "text": { "field": "data" },
+        "y": { "field": "data", "type": "ordinal" },
+        "size": { "value": 20 }
+      }
+    }
+  ]
+}
