@@ -274,9 +274,15 @@ export default class GridChild {
                 event.stopPropagation();
 
                 const start = event.point;
+                const viewOffset = Point.fromMouseEvent(
+                    /** @type {MouseEvent} */ (event.uiEvent)
+                ).subtract(start);
 
                 const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
-                    const current = Point.fromMouseEvent(event);
+                    // This listener is added to the document so that events are captured even if the mouse leaves the view.
+                    // Thus, coordinates need to be adjusted to the view's coordinate system.
+                    const current =
+                        Point.fromMouseEvent(event).subtract(viewOffset);
 
                     /** @type {ReturnType<typeof pointsToIntervals>} */
                     let intervals;
