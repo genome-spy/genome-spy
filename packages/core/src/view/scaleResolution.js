@@ -133,9 +133,11 @@ export default class ScaleResolution {
     }
 
     get zoomExtent() {
-        return this.#scale && isContinuous(this.#scale.type)
-            ? this.#getZoomExtent()
-            : [-Infinity, Infinity];
+        return (
+            (this.#scale &&
+                isContinuous(this.#scale.type) &&
+                this.#getZoomExtent()) ?? [-Infinity, Infinity]
+        );
     }
 
     /**
@@ -782,6 +784,9 @@ export default class ScaleResolution {
             : 0;
     }
 
+    /**
+     * @returns {number[]}
+     */
     #getZoomExtent() {
         const props = this.scale.props;
         const zoom = props.zoom;
@@ -796,11 +801,11 @@ export default class ScaleResolution {
             if (props.type == "locus") {
                 return this.getGenome().getExtent();
             }
-
-            // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
-            // Would behave similarly to Vega-Lite, which doesn't have constraints.
-            return this.#initialDomain;
         }
+
+        // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
+        // Would behave similarly to Vega-Lite, which doesn't have constraints.
+        return this.#initialDomain;
     }
 
     /**
