@@ -244,10 +244,28 @@ export default class GridChild {
                 if (translatedRectangle) {
                     setCursor("grabbing");
                 } else {
-                    // Clear existing selection
-                    setter(createIntervalSelection(channels));
+                    const mouseDownPoint = event.point;
+                    if (/** @type {MouseEvent} */ (event.uiEvent).shiftKey) {
+                        // Clear existing selection
+                        setter(createIntervalSelection(channels));
+                    } else {
+                        /** @type {import("../view.js").InteractionEventListener} */
+                        const listener = (coords, event) => {
+                            view.removeInteractionEventListener(
+                                "mouseup",
+                                listener
+                            );
+                            const mouseUpPoint = event.point;
 
-                    if (!(/** @type {MouseEvent} */ (event.uiEvent).shiftKey)) {
+                            // Retain selection if the viewport is panned by dragging
+                            if (
+                                mouseDownPoint.subtract(mouseUpPoint).length < 2
+                            ) {
+                                // Clear existing selection
+                                setter(createIntervalSelection(channels));
+                            }
+                        };
+                        view.addInteractionEventListener("mouseup", listener);
                         return;
                     }
                 }
