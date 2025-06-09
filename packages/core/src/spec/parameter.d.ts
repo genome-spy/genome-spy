@@ -109,7 +109,7 @@ export interface BindRadioSelect extends BindBase {
 }
 
 export interface BindRange extends BindBase {
-    input: "interval";
+    input: "range";
 
     /**
      * Sets the minimum slider value. Defaults to the smaller of the signal value and `0`.
@@ -244,7 +244,7 @@ export interface BrushConfig {
      * __Default value:__ `"#808080"`
      *
      */
-    fill?: Color;
+    fill?: string;
 
     /**
      * The fill opacity of the interval mark (a value between `0` and `1`).
@@ -258,7 +258,7 @@ export interface BrushConfig {
      *
      * __Default value:__ `"black"`
      */
-    stroke?: Color;
+    stroke?: string;
 
     /**
      * The stroke opacity of the interval mark (a value between `0` and `1`).
