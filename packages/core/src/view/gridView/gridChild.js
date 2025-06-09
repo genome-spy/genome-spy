@@ -275,17 +275,17 @@ export default class GridChild {
 
                 const start = event.point;
 
-                /** @type {import("../view.js").InteractionEventListener} */
-                const mouseMoveListener = (coords, event) => {
-                    const current = event.point;
+                const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
+                    const current = Point.fromMouseEvent(event);
 
                     /** @type {ReturnType<typeof pointsToIntervals>} */
                     let intervals;
 
                     if (translatedRectangle) {
+                        const offset = current.subtract(start);
                         const newRect = translatedRectangle.translate(
-                            current.x - start.x,
-                            current.y - start.y
+                            offset.x,
+                            offset.y
                         );
 
                         intervals = pointsToIntervals(
@@ -337,25 +337,23 @@ export default class GridChild {
                 };
 
                 const mouseUpListener = () => {
-                    view.removeInteractionEventListener(
+                    document.removeEventListener(
                         "mousemove",
                         mouseMoveListener
                     );
-                    window.removeEventListener("mouseup", mouseUpListener);
+                    document.removeEventListener("mouseup", mouseUpListener);
 
                     if (translatedRectangle) {
                         setCursor("move");
                         translatedRectangle = null;
                     }
                 };
-                view.addInteractionEventListener(
-                    "mousemove",
-                    mouseMoveListener
-                );
+                document.addEventListener("mousemove", mouseMoveListener);
 
-                window.addEventListener("mouseup", mouseUpListener);
+                document.addEventListener("mouseup", mouseUpListener);
             });
 
+            // Handle mouse cursor changes
             view.addInteractionEventListener("mousemove", (coords, event) => {
                 const currentSelection =
                     /** @type {import("../../types/selectionTypes.js").IntervalSelection}) */ (
