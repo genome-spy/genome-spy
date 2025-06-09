@@ -1,8 +1,4 @@
-import {
-    ChannelWithScale,
-    PrimaryPositionalChannel,
-    Scalar,
-} from "./channel.js";
+import { PrimaryPositionalChannel, Scalar } from "./channel.js";
 
 export interface ExprRef {
     /**
