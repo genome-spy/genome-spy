@@ -137,6 +137,10 @@ package.
 [`substring`](https://vega.github.io/vega/docs/expressions/#substring),
 [`trim`](https://vega.github.io/vega/docs/expressions/#trim)
 
+#### Formatting Functions
+
+[`format`](https://vega.github.io/vega/docs/expressions/#format)
+
 #### RegExp Functions
 
 [`regexp`](https://vega.github.io/vega/docs/expressions/#regexp),

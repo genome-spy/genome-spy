@@ -8,6 +8,7 @@ import {
     isString,
     lerp,
 } from "vega-util";
+import { format as d3format } from "d3-format";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
@@ -18,6 +19,9 @@ import { selectionTest } from "../selection/selection.js";
  */
 const functionContext = {
     clamp,
+    format(/** @type {number} */ value, /** @type {string} */ format) {
+        return d3format(format)(value);
+    },
     isArray,
     isBoolean,
     isDefined(/** @type {any} */ _) {
