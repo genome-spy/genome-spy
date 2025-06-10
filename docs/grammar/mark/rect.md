@@ -1,6 +1,6 @@
 # Rect
 
-Rect mark displays each data item as a rectangle.
+Rect mark displays each data object as a rectangle.
 
 <div><genome-spy-doc-embed>
 
@@ -114,6 +114,61 @@ channel is defined.
         "range": ["#ed553b", "#20639b"]
       }
     }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Hatch patterns
+
+Rect marks can be filled with hatch patterns using the `hatch` property. The
+hatch pattern is drawn inside the mark with the stroke color and stroke opacity,
+aligned in screen space and scaled by the stroke width. The value can be a fixed
+pattern string (such as `"diagonal"` or `"dots"`) or an expression that
+evaluates to one of these patterns.
+
+The hatch pattern is currently a mark property, i.e., the same for all instances
+of the mark, but may be promoted to a visual channel in the future to allow
+different hatch patterns for different data points.
+
+<div><genome-spy-doc-embed height="200">
+
+```json
+{
+  "params": [
+    {
+      "name": "hatch",
+      "value": "diagonal",
+      "bind": {
+        "input": "select",
+        "options": [
+          "none",
+          "diagonal",
+          "antiDiagonal",
+          "cross",
+          "vertical",
+          "horizontal",
+          "grid",
+          "dots",
+          "rings",
+          "ringsLarge"
+        ]
+      }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 2,
+      "bind": { "input": "range", "min": 0, "max": 50, "step": 0.25 }
+    }
+  ],
+  "data": { "values": {} },
+  "mark": {
+    "type": "rect",
+    "fill": "#caf0f8",
+    "stroke": "black",
+    "strokeWidth": { "expr": "strokeWidth" },
+    "hatch": { "expr": "hatch" }
   }
 }
 ```

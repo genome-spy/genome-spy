@@ -232,6 +232,25 @@ export interface RectProps
      * **Default value:** (None)
      */
     cornerRadiusBottomRight?: number | ExprRef;
+
+    /**
+     * A hatch pattern drawn inside the mark using the stroke width, color, and opacity.
+     * The pattern is aligned in screen space and scaled by the stroke width.
+     *
+     * **Default value:** `"none"`
+     */
+    hatch?:
+        | "none"
+        | "diagonal"
+        | "antiDiagonal"
+        | "cross"
+        | "vertical"
+        | "horizontal"
+        | "grid"
+        | "dots"
+        | "rings"
+        | "ringsLarge"
+        | ExprRef;
 }
 
 export interface RuleProps

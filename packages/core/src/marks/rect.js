@@ -11,6 +11,19 @@ import { isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 
+const hatchPatterns = [
+    "none",
+    "diagonal",
+    "antiDiagonal",
+    "cross",
+    "vertical",
+    "horizontal",
+    "grid",
+    "dots",
+    "rings",
+    "ringsLarge",
+];
+
 /**
  * @extends {Mark<import("../spec/mark.js").RectProps>}
  */
@@ -173,6 +186,10 @@ export default class RectMark extends Mark {
         this.registerMarkUniformValue(
             "uCornerRadiusBottomLeft",
             props.cornerRadiusBottomLeft ?? props.cornerRadius ?? 0
+        );
+
+        this.registerMarkUniformValue("uHatchPattern", props.hatch, (x) =>
+            Math.max(0, hatchPatterns.indexOf(x ?? "none"))
         );
     }
 

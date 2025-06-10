@@ -25,6 +25,89 @@ float sdSharpBox(vec2 p, vec2 b) {
     return max(q.x, q.y);
 }
 
+float diagonalPattern(vec2 uv, float spacing) {
+    // Using 1.5 to approximate sqrt(2.0) to reduce aliasing artifacts.
+    float divisor = spacing * vHalfStrokeWidth * 2.0 * 1.5;
+    return abs(mod(uv.x - uv.y, divisor) - 0.5 * divisor) / 1.5;
+}
+
+float verticalPattern(float x, float spacing) {
+    float divisor = spacing * vHalfStrokeWidth * 2.0;
+    return abs(mod(x, divisor)) / 2.0;
+}
+
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float masonryCirclePattern(vec2 uv, float spacing, float radius) {
+    float halfSpacing = 0.5 * spacing;
+
+    float row = floor(uv.y / spacing);
+    float shift = mod(row, 2.0) * halfSpacing;
+
+    vec2 shifted = vec2(uv.x + shift, uv.y + halfSpacing);
+    vec2 cell = mod(shifted + 0.5 * spacing, spacing) - halfSpacing;
+
+    return abs(circle(cell, radius));
+}
+
+/**
+ * Patterns:
+ * 0  none
+ * 1  diagonal (/)
+ * 2  antiDiagonal (\)
+ * 3  cross (X)
+ * 4  vertical (|)
+ * 5  horizontal (-)
+ * 6  grid (+)
+ * 7  dots (.)
+ * 8  rings (o)
+ * 9  ringsLarge (O)
+ */
+float pattern() {
+#ifdef STROKED
+    int patternType = uHatchPattern;
+    vec2 uv = vPosInPixels;
+    float spacing = 4.0;
+
+    switch (patternType) {
+        case 1:
+            return diagonalPattern(vec2(uv.x, -uv.y), spacing);
+        case 2:
+            return diagonalPattern(uv, spacing);
+        case 3:
+            return min(
+                diagonalPattern(uv, spacing),
+                diagonalPattern(vec2(uv.x, -uv.y), spacing)
+            );
+        case 4:
+            return verticalPattern(uv.x, spacing);
+        case 5:
+            return verticalPattern(uv.y, spacing);
+        case 6:
+            return min(
+                verticalPattern(uv.x, spacing),
+                verticalPattern(uv.y, spacing)
+            );
+        case 7:
+        case 8:
+        case 9: {
+            float spacing = vHalfStrokeWidth * 14.0;
+            float radius = spacing * (
+                patternType == 8 ? 0.2 :
+                patternType == 9 ? 0.35 :
+                0.07
+            );
+            return masonryCirclePattern(uv, spacing, radius);
+        }
+        default:
+            break;
+    }
+#endif
+    return 1.0 / 0.0; // Infinity
+}
+
 void main(void) {
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED)
@@ -34,6 +117,10 @@ void main(void) {
 #else
     float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
 #endif
+
+    if (vHalfStrokeWidth > 0.0 && uHatchPattern > 0) {
+        d = max(d, -pattern());
+    }
 
     fragColor = distanceToColor(d, vFillColor, vStrokeColor, vHalfStrokeWidth);
 

@@ -31,11 +31,11 @@
     },
     {
       "name": "fillColor",
-      "value": "navy",
+      "value": "darkseagreen",
       "bind": {
         "input": "radio",
-        "options": ["navy", "purple"],
-        "labels": ["Navy", "Purple"]
+        "options": ["darkseagreen", "purple"],
+        "labels": ["DarkSeaGreen", "Purple"]
       }
     }
   ],
@@ -85,7 +85,8 @@
         "cornerRadius": { "expr": "cornerRadius" },
         "fillOpacity": { "expr": "fillOpacity" },
         "stroke": { "expr": "redStroke ? 'firebrick' : 'black'" },
-        "fill": { "expr": "fillColor" }
+        "fill": { "expr": "fillColor" },
+        "hatch": "diagonal"
       },
 
       "encoding": {

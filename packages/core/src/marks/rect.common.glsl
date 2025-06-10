@@ -11,5 +11,7 @@ layout(std140) uniform Mark {
     uniform float uCornerRadiusTopLeft;
     uniform float uCornerRadiusBottomLeft;
 
+    uniform int uHatchPattern;
+
 #pragma markUniforms
 };
