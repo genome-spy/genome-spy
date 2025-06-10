@@ -253,6 +253,17 @@ export interface BrushConfig {
      * __Default value:__ `1`
      */
     strokeWidth?: number;
+
+    /**
+     * Where to display the measurement text (e.g., number of base pairs) for the interval selection.
+     *
+     * - `"none"` -- do not show the measurement.
+     * - `"inside"` -- show inside the brush rectangle.
+     * - `"outside"` -- show outside the brush rectangle.
+     *
+     * __Default value:__ `"none"`
+     */
+    measure?: "none" | "inside" | "outside";
 }
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase {

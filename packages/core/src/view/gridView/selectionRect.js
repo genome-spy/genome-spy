@@ -1,6 +1,6 @@
-import UnitView from "../unitView.js";
+import LayerView from "../layerView.js";
 
-export default class SelectionRect extends UnitView {
+export default class SelectionRect extends LayerView {
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
@@ -24,51 +24,117 @@ export default class SelectionRect extends UnitView {
             );
         }
 
-        super(
-            {
-                configurableVisibility: false,
-                resolve: {
-                    scale: {
-                        x: "forced",
-                        y: "forced",
-                    },
-                },
-                data: { values: selectionToData(selectionExpr()) },
-                mark: {
-                    type: "rect",
-                    clip: true,
-                    tooltip: null,
-                    ...{
-                        fill: "#808080",
-                        fillOpacity: 0.05,
-                        stroke: "black",
-                        strokeWidth: 1,
-                        strokeOpacity: 0.2,
-                        ...brushConfig,
-                    },
-                },
-                encoding: {
-                    // TODO: Consider using Exprs instead. Handling scoping is tricky, however.
-                    ...(channels.includes("x")
-                        ? {
-                              x: { field: "x", type: null, title: null },
-                              x2: { field: "x2" },
-                          }
-                        : {}),
-                    ...(channels.includes("y")
-                        ? {
-                              y: { field: "y", type: null, title: null },
-                              y2: { field: "y2" },
-                          }
-                        : {}),
+        /** @type {import("../../spec/view.js").LayerSpec} */
+        const layerSpec = {
+            name: "selectionRect",
+            configurableVisibility: false,
+            resolve: {
+                scale: {
+                    x: "forced",
+                    y: "forced",
                 },
             },
+            data: { values: selectionToData(selectionExpr()) },
+            encoding: {},
+            layer: [],
+        };
+
+        if (channels.includes("x")) {
+            layerSpec.encoding.x = { field: "x", type: null, title: null };
+            layerSpec.encoding.x2 = { field: "x2" };
+        }
+        if (channels.includes("y")) {
+            layerSpec.encoding.y = { field: "y", type: null, title: null };
+            layerSpec.encoding.y2 = { field: "y2" };
+        }
+
+        layerSpec.layer.push({
+            name: "selectionRectRect",
+            mark: {
+                type: "rect",
+                clip: true,
+                tooltip: null,
+                ...{
+                    fill: "#808080",
+                    fillOpacity: 0.05,
+                    stroke: "black",
+                    strokeWidth: 1,
+                    strokeOpacity: 0.2,
+                    ...brushConfig,
+                },
+            },
+        });
+
+        const makeExpr = (
+            /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel
+        ) => {
+            const resolution = gridChild.view.getScaleResolution(channel);
+            return (
+                `format(datum.${channel}2 - datum.${channel}, '.3s')` +
+                (resolution.type === "locus" ? " + 'b'" : "")
+            );
+        };
+
+        const labelOffset =
+            brushConfig.measure == "inside"
+                ? 9
+                : brushConfig.measure == "outside"
+                  ? -9
+                  : 0;
+
+        if (channels.includes("x") && labelOffset != 0) {
+            layerSpec.layer.push({
+                name: "selectionRectTextX",
+                mark: {
+                    type: "text",
+                    align: "center",
+                    paddingX: 5,
+                    dy: labelOffset,
+                    tooltip: null,
+                },
+                encoding: {
+                    text: { expr: makeExpr("x") },
+                    y: channels.includes("y")
+                        ? {
+                              field: "y2",
+                              type: null,
+                              title: null,
+                          }
+                        : {
+                              value: 1,
+                          },
+                    y2: null,
+                },
+            });
+        }
+
+        if (channels.includes("y") && labelOffset != 0) {
+            layerSpec.layer.push({
+                name: "selectionRectTextY",
+                mark: {
+                    type: "text",
+                    align: "center",
+                    paddingY: 5,
+                    dy: labelOffset,
+                    tooltip: null,
+                    angle: -90,
+                },
+                encoding: {
+                    text: { expr: makeExpr("y") },
+                    x2: null,
+                },
+            });
+        }
+
+        super(
+            layerSpec,
             gridChild.layoutParent.context,
             gridChild.layoutParent,
             gridChild.view,
             "selectionRect", // TODO: Serial
             {
                 blockEncodingInheritance: true,
+                contributesToScaleDomain: false,
             }
         );
 

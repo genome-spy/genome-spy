@@ -183,6 +183,10 @@ export default class GridChild {
                 select.mark
             );
 
+            // WARNING! The following is an async method! Seems to work (by chance).
+            // TODO: Should be called and awaited in a sensible place.
+            this.selectionRect.initializeChildren();
+
             /** @type {Rectangle} */
             let translatedRectangle = null;
 
