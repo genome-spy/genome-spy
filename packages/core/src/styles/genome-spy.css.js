@@ -90,8 +90,16 @@ const css = `
   padding: 10px;
   font-size: 12px;
   box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
-  pointer-events: none;
+  transition: outline-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  outline: 0px solid transparent;
   z-index: 100;
+}
+.genome-spy .tooltip:not(.sticky) {
+  pointer-events: none;
+}
+.genome-spy .tooltip.sticky {
+  outline: 2px solid black;
+  box-shadow: 0px 3px 18px 0px rgba(0, 0, 0, 0.3);
 }
 .genome-spy .tooltip > :last-child {
   margin-bottom: 0;

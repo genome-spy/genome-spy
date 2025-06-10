@@ -126,7 +126,20 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
         box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
-        pointer-events: none;
+        &:not(.sticky) {
+            pointer-events: none;
+        }
+
+        transition:
+            outline-color 0.3s ease-in-out,
+            box-shadow 0.3s ease-in-out;
+
+        outline: 0px solid transparent;
+        &.sticky {
+            outline: 2px solid black;
+            box-shadow: 0px 3px 18px 0px rgba(0, 0, 0, 0.3);
+        }
+
         z-index: 100;
 
         > :last-child {

@@ -688,6 +688,8 @@ export default class GenomeSpy {
 
         let lastWheelEvent = performance.now();
 
+        let longPressTriggered = false;
+
         /** @param {Event} event */
         const listener = (event) => {
             const now = performance.now();
@@ -781,6 +783,10 @@ export default class GenomeSpy {
 
                 // TODO: Should be handled at the view level, not globally
                 if (event.type == "click") {
+                    if (longPressTriggered) {
+                        return;
+                    }
+
                     const e = this._currentHover
                         ? {
                               type: event.type,
@@ -824,13 +830,41 @@ export default class GenomeSpy {
 
         canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
             this._mouseDownCoords = Point.fromMouseEvent(e);
+            if (this.tooltip.sticky) {
+                this.tooltip.sticky = false;
+                this.tooltip.clear();
+                // A hack to prevent selection if the tooltip is sticky.
+                // Let the tooltip be destickified first.
+                longPressTriggered = true;
+            } else {
+                longPressTriggered = false;
+            }
 
-            document.addEventListener(
-                "mouseup",
-                () => this.tooltip.popEnabledState(),
-                { once: true }
-            );
-            this.tooltip.pushEnabledState(false);
+            const disableTooltip = () => {
+                document.addEventListener(
+                    "mouseup",
+                    () => this.tooltip.popEnabledState(),
+                    { once: true }
+                );
+                this.tooltip.pushEnabledState(false);
+            };
+
+            // Opening context menu or using modifier keys disables the tooltip
+            if (e.button == 2 || e.shiftKey || e.ctrlKey || e.metaKey) {
+                disableTooltip();
+            } else if (this.tooltip.visible) {
+                // Make tooltip sticky if the user long-presses
+                const timeout = setTimeout(() => {
+                    longPressTriggered = true;
+                    this.tooltip.sticky = true;
+                }, 500);
+
+                document.addEventListener(
+                    "mouseup",
+                    () => clearTimeout(timeout),
+                    { once: true }
+                );
+            }
         });
 
         // Prevent text selections etc while dragging

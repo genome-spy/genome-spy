@@ -5,68 +5,96 @@ import { peek } from "../arrayUtils.js";
 export const SUPPRESS_TOOLTIP_CLASS_NAME = "gs-suppress-tooltip";
 
 export default class Tooltip {
+    #sticky = false;
+    #visible = true;
+
+    /** @type {any} */
+    #previousTooltipDatum = undefined;
+
+    #penaltyUntil = 0;
+
+    /** @type {[number, number]} */
+    #lastCoords = undefined;
+
+    #previousMove = 0;
+
+    /** @type {HTMLDivElement} */
+    #element;
+
+    /** @type {HTMLElement} */
+    #container;
+
+    #enabledStack = [true];
+
     /**
      * @param {HTMLElement} container
      */
     constructor(container) {
-        this.container = container;
+        this.#container = container;
 
-        this.element = document.createElement("div");
-        this.element.className = "tooltip";
-        this._visible = true;
-        this.container.appendChild(this.element);
-
-        /** @type {any} */
-        this._previousTooltipDatum = undefined;
-
-        this.enabledStack = [true];
-
-        this._penaltyUntil = 0;
-        /** @type {[number, number]} */
-        this._lastCoords = undefined;
-
-        this._previousMove = 0;
+        this.#element = document.createElement("div");
+        this.#element.className = "tooltip";
+        this.#container.appendChild(this.#element);
 
         this.clear();
+    }
+
+    /**
+     * @param {boolean} sticky
+     */
+    set sticky(sticky) {
+        if (!sticky && this.#sticky) {
+            this.clear();
+        }
+        this.#sticky = sticky;
+        this.#element.classList.toggle("sticky", this.#sticky);
+    }
+
+    get sticky() {
+        return this.#sticky;
     }
 
     /**
      * @param {boolean} visible
      */
     set visible(visible) {
-        if (visible != this._visible) {
-            this.element.style.display = visible ? null : "none";
-            this._visible = visible;
+        if (visible != this.#visible) {
+            this.#element.style.display = visible ? null : "none";
+            this.#visible = visible;
         }
     }
 
     get visible() {
-        return this._visible;
+        return this.#visible;
     }
 
     get enabled() {
-        return peek(this.enabledStack) ?? true;
+        return peek(this.#enabledStack) ?? true;
     }
 
     /**
      * @param {boolean} enabled True if tooltip is enabled (allowed to be shown)
      */
     pushEnabledState(enabled) {
-        this.enabledStack.push(enabled);
+        this.#enabledStack.push(enabled);
         if (!enabled) {
             this.visible = false;
         }
     }
 
     popEnabledState() {
-        this.enabledStack.pop();
+        this.#enabledStack.pop();
     }
 
     /**
      * @param {MouseEvent} mouseEvent
      */
     handleMouseMove(mouseEvent) {
-        this.mouseCoords = clientPoint(this.container, mouseEvent);
+        if (this.#sticky) {
+            return;
+        }
+
+        this.mouseCoords = clientPoint(this.#container, mouseEvent);
 
         const now = performance.now();
 
@@ -75,28 +103,28 @@ export default class Tooltip {
         if (
             !this.visible &&
             !this._isPenalty() &&
-            now - this._previousMove > 500
+            now - this.#previousMove > 500
         ) {
-            this._penaltyUntil = now + 70;
+            this.#penaltyUntil = now + 70;
         }
 
         // Disable the tooltip for a while if the mouse is being moved very quickly.
         // Makes the tooltip less annoying.
         // TODO: Should calculate speed: pixels per millisecond or something
         if (
-            this._lastCoords &&
-            distance(this.mouseCoords, this._lastCoords) > 20
+            this.#lastCoords &&
+            distance(this.mouseCoords, this.#lastCoords) > 20
         ) {
-            this._penaltyUntil = now + 400;
+            this.#penaltyUntil = now + 400;
         }
 
-        this._lastCoords = this.mouseCoords;
+        this.#lastCoords = this.mouseCoords;
 
         if (this.visible) {
             this.updatePlacement();
         }
 
-        this._previousMove = now;
+        this.#previousMove = now;
     }
 
     updatePlacement() {
@@ -106,15 +134,15 @@ export default class Tooltip {
         const [mouseX, mouseY] = this.mouseCoords;
 
         let x = mouseX + spacing;
-        if (x > this.container.clientWidth - this.element.offsetWidth) {
-            x = mouseX - spacing - this.element.offsetWidth;
+        if (x > this.#container.clientWidth - this.#element.offsetWidth) {
+            x = mouseX - spacing - this.#element.offsetWidth;
         }
-        this.element.style.left = x + "px";
+        this.#element.style.left = x + "px";
 
-        this.element.style.top =
+        this.#element.style.top =
             Math.min(
                 mouseY + spacing,
-                this.container.clientHeight - this.element.offsetHeight
+                this.#container.clientHeight - this.#element.offsetHeight
             ) + "px";
     }
 
@@ -122,16 +150,20 @@ export default class Tooltip {
      * @param {string | import("lit").TemplateResult | HTMLElement} content
      */
     setContent(content) {
-        if (!content || !this.enabled || this._isPenalty()) {
-            if (this.visible) {
-                render("", this.element);
-                this.visible = false;
-            }
-            this._previousTooltipDatum = undefined;
+        if (this.#sticky) {
             return;
         }
 
-        render(content, this.element);
+        if (!content || !this.enabled || this._isPenalty()) {
+            if (this.visible) {
+                render("", this.#element);
+                this.visible = false;
+            }
+            this.#previousTooltipDatum = undefined;
+            return;
+        }
+
+        render(content, this.#element);
 
         this.visible = true;
 
@@ -139,7 +171,7 @@ export default class Tooltip {
     }
 
     clear() {
-        this._previousTooltipDatum = undefined;
+        this.#previousTooltipDatum = undefined;
         this.setContent(undefined);
     }
 
@@ -152,8 +184,8 @@ export default class Tooltip {
      * @template T
      */
     updateWithDatum(datum, converter) {
-        if (datum !== this._previousTooltipDatum) {
-            this._previousTooltipDatum = datum;
+        if (datum !== this.#previousTooltipDatum) {
+            this.#previousTooltipDatum = datum;
             if (!converter) {
                 converter = (d) =>
                     Promise.resolve(html` ${JSON.stringify(d)} `);
@@ -170,7 +202,7 @@ export default class Tooltip {
     }
 
     _isPenalty() {
-        return this._penaltyUntil && this._penaltyUntil > performance.now();
+        return this.#penaltyUntil && this.#penaltyUntil > performance.now();
     }
 }
 
