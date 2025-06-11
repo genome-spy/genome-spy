@@ -68,6 +68,7 @@ export default class Collector extends FlowNode {
 
     #init() {
         this.#buffer = [];
+        this.#uniqueIdIndex = [];
 
         this.facetBatches.clear();
         this.facetBatches.set(undefined, this.#buffer);
