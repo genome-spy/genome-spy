@@ -1,4 +1,5 @@
 import { PrimaryPositionalChannel, Scalar } from "./channel.js";
+import { ShadowProps } from "./mark.js";
 
 export interface ExprRef {
     /**
@@ -217,7 +218,7 @@ export interface IntervalSelectionConfig
     mark?: BrushConfig;
 }
 
-export interface BrushConfig {
+export interface BrushConfig extends ShadowProps {
     /**
      * The fill color of the interval mark.
      *
@@ -265,6 +266,7 @@ export interface BrushConfig {
      */
     measure?: "none" | "inside" | "outside";
 }
+
 export interface SelectionParameter<T extends SelectionType = SelectionType>
     extends ParameterBase {
     /**

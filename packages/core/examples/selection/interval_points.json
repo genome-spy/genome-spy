@@ -5,12 +5,17 @@
   "params": [
     {
       "name": "brush",
-      "value": { "x": [-2, -1], "y": [-2, -1] },
+      "value": { "x": [-3, -1], "y": [-3, -1] },
       "select": {
         "type": "interval",
         "encodings": ["x", "y"],
         "mark": {
-          "measure": "outside"
+          "measure": "outside",
+          "stroke": "red",
+          "strokeOpacity": 1,
+          "shadowColor": "red",
+          "shadowOpacity": 0.5,
+          "shadowBlur": 20
         }
       }
     }
