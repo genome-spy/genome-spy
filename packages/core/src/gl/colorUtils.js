@@ -189,3 +189,11 @@ function colorArrayToTextureData(scheme, count) {
     }
     return textureData;
 }
+
+/**
+ * @param {string} color
+ */
+export function cssColorToArray(color) {
+    const rgb = d3color(color).rgb();
+    return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
+}

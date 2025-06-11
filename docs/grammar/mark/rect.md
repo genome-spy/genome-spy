@@ -120,7 +120,7 @@ channel is defined.
 
 </genome-spy-doc-embed></div>
 
-### Hatch patterns
+### Hatch Patterns
 
 Rect marks can be filled with hatch patterns using the `hatch` property. The
 hatch pattern is drawn inside the mark with the stroke color and stroke opacity,
@@ -169,6 +169,31 @@ different hatch patterns for different data points.
     "stroke": "black",
     "strokeWidth": { "expr": "strokeWidth" },
     "hatch": { "expr": "hatch" }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Drop Shadow
+
+<div><genome-spy-doc-embed height="300">
+
+```json
+{
+  "padding": 20,
+  "data": { "values": [1, 2, 3, 4] },
+  "mark": {
+    "type": "rect",
+    "shadowOpacity": 0.4,
+    "shadowBlur": 20,
+    "shadowOffsetX": 10,
+    "shadowOffsetY": 10,
+    "clip": true
+  },
+  "encoding": {
+    "x": { "field": "data", "type": "ordinal", "scale": { "padding": 0.3 } },
+    "y": { "field": "data", "type": "quantitative" }
   }
 }
 ```

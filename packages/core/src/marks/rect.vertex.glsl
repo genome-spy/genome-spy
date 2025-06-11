@@ -3,7 +3,7 @@ out lowp vec4 vStrokeColor;
 out float vHalfStrokeWidth;
 out vec4 vCornerRadii;
 
-#if defined(ROUNDED_CORNERS) || defined(STROKED)
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
 /** Position for SDF-strokes */
 out vec2 vPosInPixels;
 #endif
@@ -90,14 +90,19 @@ void main(void) {
 
     pos = applySampleFacet(pos);
 
-#if defined(ROUNDED_CORNERS) || defined(STROKED)
-    // Add an extra pixel to stroke width to accommodate edge antialiasing
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
+    // Add an extra pixel to the stroke width to accommodate edge antialiasing
     float aaPadding = 1.0 / uDevicePixelRatio;
+
+    // TODO: Only expand to the offset direction. Now high offsets result in
+    // a large expansion in all directions.
+    float shadowPadding = uShadowBlur + max(abs(uShadowOffsetX), abs(uShadowOffsetY));
+
     float strokeWidth = getScaled_strokeWidth();
     float strokeOpacity = getScaled_strokeOpacity() * opaFactor;
 
     vec2 centeredFrac = frac - 0.5;
-    vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
+    vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0) / uViewportSize;
     pos += expand;
 
     vec2 sizeInPixels = size * uViewportSize;

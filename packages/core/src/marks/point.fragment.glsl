@@ -100,6 +100,7 @@ void main() {
 			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
 			fillColor,
 			vStrokeColor,
+            vec4(0.0),
 			vHalfStrokeWidth);
 
 	} else if (d - vHalfStrokeWidth <= 0.0) {
