@@ -2,7 +2,9 @@ import { isContinuous } from "vega-scale";
 import {
     asSelectionConfig,
     createIntervalSelection,
+    isActiveIntervalSelection,
     isIntervalSelectionConfig,
+    selectionContainsPoint,
 } from "../../selection/selection.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
@@ -153,6 +155,7 @@ export default class GridChild {
             }
 
             let mouseOver = false;
+            let preventNextClickPropagation = false;
 
             /**
              * @param {{x: number, y: number}} a
@@ -176,6 +179,11 @@ export default class GridChild {
             if (param.value) {
                 setter({ type: "interval", intervals: param.value });
             }
+
+            const clearSelection = () => {
+                setter(createIntervalSelection(channels));
+                setCursor(null);
+            };
 
             this.selectionRect = new SelectionRect(
                 this,
@@ -253,9 +261,15 @@ export default class GridChild {
                     setCursor("grabbing");
                 } else {
                     const mouseDownPoint = event.point;
+                    if (isActiveIntervalSelection(selectionExpr())) {
+                        // If there's a selection, prevent the next click from propagating.
+                        // The first click will clear the selection, not trigger
+                        // any other possible selections.
+                        preventNextClickPropagation = true;
+                    }
+
                     if (/** @type {MouseEvent} */ (event.uiEvent).shiftKey) {
-                        // Clear existing selection
-                        setter(createIntervalSelection(channels));
+                        clearSelection();
                     } else {
                         /** @type {import("../view.js").InteractionEventListener} */
                         const listener = (coords, event) => {
@@ -269,8 +283,7 @@ export default class GridChild {
                             if (
                                 mouseDownPoint.subtract(mouseUpPoint).length < 2
                             ) {
-                                // Clear existing selection
-                                setter(createIntervalSelection(channels));
+                                clearSelection();
                             }
                         };
                         view.addInteractionEventListener("mouseup", listener);
@@ -367,23 +380,37 @@ export default class GridChild {
                 document.addEventListener("mouseup", mouseUpListener);
             });
 
+            view.addInteractionEventListener(
+                "click",
+                (coords, event) => {
+                    if (/** @type {MouseEvent} */ (event.uiEvent).button == 0) {
+                        if (preventNextClickPropagation) {
+                            event.stopPropagation();
+                            preventNextClickPropagation = false;
+                        }
+                    }
+                },
+                true
+            );
+
+            const isPointInsideSelection = (/** @type {Point} */ point) =>
+                selectionContainsPoint(selectionExpr(), invertPoint(point));
+
+            // TODO: Make behavior configurable
+            view.addInteractionEventListener(
+                "dblclick",
+                (coords, event) => {
+                    if (isPointInsideSelection(event.point)) {
+                        clearSelection();
+                        event.stopPropagation();
+                    }
+                },
+                true
+            );
+
             // Handle mouse cursor changes
             view.addInteractionEventListener("mousemove", (coords, event) => {
-                const currentSelection =
-                    /** @type {import("../../types/selectionTypes.js").IntervalSelection}) */ (
-                        selectionExpr()
-                    );
-                const currentPoint = invertPoint(event.point);
-
-                if (
-                    Object.entries(currentSelection.intervals).every(
-                        ([channel, interval]) =>
-                            (channel == "x" || channel == "y") &&
-                            interval &&
-                            interval[0] < currentPoint[channel] &&
-                            interval[1] > currentPoint[channel]
-                    )
-                ) {
+                if (isPointInsideSelection(event.point)) {
                     mouseOver = true;
                     if (!translatedRectangle) {
                         setCursor("move");

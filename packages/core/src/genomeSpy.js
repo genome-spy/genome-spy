@@ -826,6 +826,7 @@ export default class GenomeSpy {
             "mousemove",
             "gesturechange",
             "contextmenu",
+            "dblclick",
         ].forEach((type) => canvas.addEventListener(type, listener));
 
         canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {

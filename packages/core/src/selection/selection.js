@@ -177,3 +177,28 @@ export function isPointSelectionConfig(config) {
 export function isIntervalSelectionConfig(config) {
     return config && config.type == "interval";
 }
+
+/**
+ * @param {import("../types/selectionTypes.js").IntervalSelection} selection
+ */
+export function isActiveIntervalSelection(selection) {
+    return Object.values(selection.intervals).some(
+        (interval) => interval && interval.length === 2
+    );
+}
+
+/**
+ * @typedef {import("../types/selectionTypes.js").IntervalSelection} IntervalSelection
+ * @typedef {Partial<Record<keyof IntervalSelection["intervals"], number>>} IntervalPoint
+ * @param {IntervalSelection} selection
+ * @param {IntervalPoint} point
+ */
+export function selectionContainsPoint(selection, point) {
+    return Object.entries(selection.intervals).every(
+        ([channel, interval]) =>
+            (channel == "x" || channel == "y") &&
+            interval &&
+            interval[0] <= point[channel] &&
+            interval[1] >= point[channel]
+    );
+}
