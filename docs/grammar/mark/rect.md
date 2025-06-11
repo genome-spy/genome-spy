@@ -177,6 +177,8 @@ different hatch patterns for different data points.
 
 ### Drop Shadow
 
+#### Shadowed marks
+
 <div><genome-spy-doc-embed height="300">
 
 ```json
@@ -193,7 +195,40 @@ different hatch patterns for different data points.
   },
   "encoding": {
     "x": { "field": "data", "type": "ordinal", "scale": { "padding": 0.3 } },
-    "y": { "field": "data", "type": "quantitative" }
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+#### Shadowed view
+
+As the view background is a _rect_, it can also be decorated with a shadow.
+
+<div><genome-spy-doc-embed height="300">
+
+```json
+{
+  "padding": 20,
+  "view": {
+    "shadowOpacity": 0.2,
+    "shadowBlur": 15,
+    "shadowOffsetY": 3
+  },
+  "data": { "values": [1, 2, 3, 4] },
+  "mark": "rect",
+  "encoding": {
+    "x": { "field": "data", "type": "ordinal", "scale": { "padding": 0.3 } },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
   }
 }
 ```
