@@ -857,13 +857,11 @@ export default class GenomeSpy {
                 const timeout = setTimeout(() => {
                     longPressTriggered = true;
                     this.tooltip.sticky = true;
-                }, 500);
+                }, 400);
 
-                document.addEventListener(
-                    "mouseup",
-                    () => clearTimeout(timeout),
-                    { once: true }
-                );
+                const clear = () => clearTimeout(timeout);
+                document.addEventListener("mouseup", clear, { once: true });
+                document.addEventListener("mousemove", clear, { once: true });
             }
         });
 
