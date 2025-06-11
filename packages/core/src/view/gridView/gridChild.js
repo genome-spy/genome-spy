@@ -241,6 +241,10 @@ export default class GridChild {
             };
 
             view.addInteractionEventListener("mousedown", (coords, event) => {
+                if (/** @type {MouseEvent} */ (event.uiEvent).button != 0) {
+                    return;
+                }
+
                 translatedRectangle = mouseOver
                     ? selectionToRect(selectionExpr())
                     : null;
