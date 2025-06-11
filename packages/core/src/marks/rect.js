@@ -10,6 +10,7 @@ import { asArray } from "../utils/arrayUtils.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
+import { cssColorToArray } from "../gl/colorUtils.js";
 
 const hatchPatterns = [
     "none",
@@ -92,6 +93,7 @@ export default class RectMark extends Mark {
                 () =>
                     !this.#isRoundedCorners() &&
                     !this.#isStroked() &&
+                    !this.properties.shadowOpacity &&
                     isValueDef(this.encoding.fillOpacity) &&
                     this.encoding.fillOpacity.value == 1.0 &&
                     this.properties.minOpacity == 1.0
@@ -154,6 +156,9 @@ export default class RectMark extends Mark {
         if (this.#isStroked()) {
             defines.push("STROKED");
         }
+        if (this.properties.shadowOpacity) {
+            defines.push("SHADOW");
+        }
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
             COMMON_SHADER,
@@ -190,6 +195,25 @@ export default class RectMark extends Mark {
 
         this.registerMarkUniformValue("uHatchPattern", props.hatch, (x) =>
             Math.max(0, hatchPatterns.indexOf(x ?? "none"))
+        );
+
+        this.registerMarkUniformValue("uShadowBlur", props.shadowBlur ?? 0);
+        this.registerMarkUniformValue(
+            "uShadowOpacity",
+            props.shadowOpacity ?? 0
+        );
+        this.registerMarkUniformValue(
+            "uShadowOffsetX",
+            props.shadowOffsetX ?? 0
+        );
+        this.registerMarkUniformValue(
+            "uShadowOffsetY",
+            props.shadowOffsetY ?? 0
+        );
+        this.registerMarkUniformValue(
+            "uShadowColor",
+            props.shadowColor ?? "black",
+            cssColorToArray
         );
     }
 

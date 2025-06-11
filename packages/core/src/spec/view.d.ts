@@ -6,7 +6,13 @@ import {
     FacetFieldDef,
     PrimaryPositionalChannel,
 } from "./channel.js";
-import { FillAndStrokeProps, MarkProps, MarkType, RectProps } from "./mark.js";
+import {
+    FillAndStrokeProps,
+    MarkProps,
+    MarkType,
+    RectProps,
+    ShadowProps,
+} from "./mark.js";
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { SampleSpec } from "./sampleView.js";
@@ -74,7 +80,8 @@ interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
 export type ViewBackground = Pick<
     CompleteViewBackground,
     "fill" | "fillOpacity" | "stroke" | "strokeWidth" | "strokeOpacity"
->;
+> &
+    ShadowProps;
 
 export interface ViewSpecBase extends ResolveSpec {
     /**

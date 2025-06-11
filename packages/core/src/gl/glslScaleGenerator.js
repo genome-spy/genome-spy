@@ -5,7 +5,6 @@ import {
     isInterpolating,
 } from "vega-scale";
 import { isArray, isBoolean, isNumber, isString } from "vega-util";
-import { color as d3color } from "d3-color";
 
 import {
     getDiscreteRangeMapper,
@@ -18,6 +17,7 @@ import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
 import { isExprRef } from "../view/paramMediator.js";
 import scaleNull from "../utils/scaleNull.js";
+import { cssColorToArray } from "./colorUtils.js";
 
 export const ATTRIBUTE_PREFIX = "attr_";
 export const DOMAIN_PREFIX = "uDomain_";
@@ -616,14 +616,6 @@ export function getScaledDataTypeForChannel(channel) {
         : channel == "uniqueId"
           ? "uint"
           : "float";
-}
-
-/**
- * @param {string} color
- */
-function cssColorToArray(color) {
-    const rgb = d3color(color).rgb();
-    return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
 }
 
 /**

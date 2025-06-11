@@ -120,7 +120,7 @@ channel is defined.
 
 </genome-spy-doc-embed></div>
 
-### Hatch patterns
+### Hatch Patterns
 
 Rect marks can be filled with hatch patterns using the `hatch` property. The
 hatch pattern is drawn inside the mark with the stroke color and stroke opacity,
@@ -169,6 +169,66 @@ different hatch patterns for different data points.
     "stroke": "black",
     "strokeWidth": { "expr": "strokeWidth" },
     "hatch": { "expr": "hatch" }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Drop Shadow
+
+#### Shadowed marks
+
+<div><genome-spy-doc-embed height="300">
+
+```json
+{
+  "padding": 20,
+  "data": { "values": [1, 2, 3, 4] },
+  "mark": {
+    "type": "rect",
+    "shadowOpacity": 0.4,
+    "shadowBlur": 20,
+    "shadowOffsetX": 10,
+    "shadowOffsetY": 10,
+    "clip": true
+  },
+  "encoding": {
+    "x": { "field": "data", "type": "ordinal", "scale": { "padding": 0.3 } },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
+  }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+#### Shadowed view
+
+As the view background is a _rect_, it can also be decorated with a shadow.
+
+<div><genome-spy-doc-embed height="300">
+
+```json
+{
+  "padding": 20,
+  "view": {
+    "shadowOpacity": 0.2,
+    "shadowBlur": 15,
+    "shadowOffsetY": 3
+  },
+  "data": { "values": [1, 2, 3, 4] },
+  "mark": "rect",
+  "encoding": {
+    "x": { "field": "data", "type": "ordinal", "scale": { "padding": 0.3 } },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
   }
 }
 ```

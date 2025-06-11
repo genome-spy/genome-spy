@@ -1,4 +1,4 @@
-#if defined(ROUNDED_CORNERS) || defined(STROKED)
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
 in vec2 vPosInPixels;
 #endif
 
@@ -10,6 +10,63 @@ in float vHalfStrokeWidth;
 in vec4 vCornerRadii;
 
 out lowp vec4 fragColor;
+
+// ----------------------------------------------------------------------------
+// Shadow source: https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
+// License: CC0 (http://creativecommons.org/publicdomain/zero/1.0/)
+
+#ifdef SHADOW
+
+// A standard gaussian function, used for weighting samples
+float gaussian(float x, float sigma) {
+  const float pi = 3.141592653589793;
+  return exp(-(x * x) / (2.0 * sigma * sigma)) / (sqrt(2.0 * pi) * sigma);
+}
+
+// This approximates the error function, needed for the gaussian integral
+vec2 erf(vec2 x) {
+  vec2 s = sign(x), a = abs(x);
+  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+  x *= x;
+  return s - s / (x * x);
+}
+
+// Return the blurred mask along the x dimension
+float roundedBoxShadowX(float x, float y, float sigma, float corner, vec2 halfSize) {
+  float delta = min(halfSize.y - corner - abs(y), 0.0);
+  float curved = halfSize.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
+  vec2 integral = 0.5 + 0.5 * erf((x + vec2(-curved, curved)) * (sqrt(0.5) / sigma));
+  return integral.y - integral.x;
+}
+
+// Return the mask for the shadow of a box from lower to upper
+float roundedBoxShadow(vec2 lower, vec2 upper, vec2 point, float sigma, float corner) {
+  // Center everything to make the math easier
+  vec2 center = (lower + upper) * 0.5;
+  vec2 halfSize = (upper - lower) * 0.5;
+  point -= center;
+
+  // The signal is only non-zero in a limited range, so don't waste samples
+  float low = point.y - halfSize.y;
+  float high = point.y + halfSize.y;
+  float start = clamp(-3.0 * sigma, low, high);
+  float end = clamp(3.0 * sigma, low, high);
+
+  // Accumulate samples (we can get away with surprisingly few samples)
+  float step = (end - start) / 4.0;
+  float y = start + step * 0.5;
+  float value = 0.0;
+  for (int i = 0; i < 4; i++) {
+    value += roundedBoxShadowX(point.x, point.y - y, sigma, corner, halfSize) * gaussian(y, sigma) * step;
+    y += step;
+  }
+
+  return value;
+}
+
+// ----------------------------------------------------------------------------
+
+#endif
 
 // Source: https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
 float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
@@ -110,7 +167,7 @@ float pattern() {
 
 void main(void) {
 
-#if defined(ROUNDED_CORNERS) || defined(STROKED)
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
 #ifdef ROUNDED_CORNERS
     // Distance from rectangle's edge in pixels. Negative inside the rectangle.
     float d = sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
@@ -118,21 +175,49 @@ void main(void) {
     float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
 #endif
 
+    vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
+
+#ifdef SHADOW
+    float maxCornerRadius = max(vCornerRadii.x, max(vCornerRadii.y, max(vCornerRadii.z, vCornerRadii.w)));
+
+    float shadow = 0.0;
+    // Only calculate shadow for the region outside the stroke.
+    if (d >= vHalfStrokeWidth - 1.0 && uShadowOpacity > 0.0) {
+        shadow = roundedBoxShadow(
+            -vHalfSizeInPixels - vHalfStrokeWidth,
+            vHalfSizeInPixels + vHalfStrokeWidth,
+            vPosInPixels - vec2(uShadowOffsetX, -uShadowOffsetY),
+            max(uShadowBlur / 2.5, 0.25),
+            maxCornerRadius + vHalfStrokeWidth
+        ) * uShadowOpacity * uViewOpacity;
+    }
+    backgroundColor = vec4(uShadowColor * shadow, shadow);
+#endif
+
     if (vHalfStrokeWidth > 0.0 && uHatchPattern > 0) {
         d = max(d, -pattern());
     }
 
-    fragColor = distanceToColor(d, vFillColor, vStrokeColor, vHalfStrokeWidth);
+    fragColor = distanceToColor(
+        d,
+        vFillColor,
+        vStrokeColor,
+        backgroundColor,
+        vHalfStrokeWidth
+    );
 
-    if (fragColor.a == 0.0) {
+    if (uPickingEnabled) {
+        if (d < vHalfStrokeWidth) {
+            fragColor = vPickingColor;
+        }
+    } else if (fragColor.a == 0.0) {
         discard;
     }
 #else
     // The trivial, non-decorated case
     fragColor = vFillColor;
-#endif
-
     if (uPickingEnabled) {
         fragColor = vPickingColor;
     }
+#endif
 }

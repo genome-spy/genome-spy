@@ -91,15 +91,15 @@ float distanceToRatio(float d) {
 	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
 }
 
-vec4 distanceToColor(float d, vec4 fill, vec4 stroke, float halfStrokeWidth) {
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
     if (halfStrokeWidth > 0.0) {
         // Distance to stroke's edge. Negative inside the stroke.
         float sd = abs(d) - halfStrokeWidth;
         return mix(
             stroke,
-            d <= 0.0 ? fill : vec4(0.0),
+            d <= 0.0 ? fill : background,
             distanceToRatio(sd));
     } else {
-        return fill * distanceToRatio(-d);
+        return mix(background, fill, distanceToRatio(-d));
     }
 }

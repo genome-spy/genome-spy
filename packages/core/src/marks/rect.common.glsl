@@ -13,5 +13,11 @@ layout(std140) uniform Mark {
 
     uniform int uHatchPattern;
 
+    uniform vec3 uShadowColor;
+    uniform float uShadowOpacity;
+    uniform float uShadowBlur;
+    uniform float uShadowOffsetX;
+    uniform float uShadowOffsetY;
+
 #pragma markUniforms
 };
