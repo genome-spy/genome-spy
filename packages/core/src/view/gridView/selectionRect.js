@@ -40,12 +40,12 @@ export default class SelectionRect extends LayerView {
         };
 
         if (channels.includes("x")) {
-            layerSpec.encoding.x = { field: "x", type: null, title: null };
-            layerSpec.encoding.x2 = { field: "x2" };
+            layerSpec.encoding.x = { field: "_x", type: null, title: null };
+            layerSpec.encoding.x2 = { field: "_x2" };
         }
         if (channels.includes("y")) {
-            layerSpec.encoding.y = { field: "y", type: null, title: null };
-            layerSpec.encoding.y2 = { field: "y2" };
+            layerSpec.encoding.y = { field: "_y", type: null, title: null };
+            layerSpec.encoding.y2 = { field: "_y2" };
         }
 
         layerSpec.layer.push({
@@ -53,7 +53,6 @@ export default class SelectionRect extends LayerView {
             mark: {
                 type: "rect",
                 clip: true,
-                tooltip: null,
                 ...{
                     fill: "#808080",
                     fillOpacity: 0.05,
@@ -70,7 +69,7 @@ export default class SelectionRect extends LayerView {
         ) => {
             const resolution = gridChild.view.getScaleResolution(channel);
             return (
-                `format(datum.${channel}2 - datum.${channel}, '.3s')` +
+                `format(datum._${channel}2 - datum._${channel}, '.3s')` +
                 (resolution.type === "locus" ? " + 'b'" : "")
             );
         };
@@ -96,7 +95,7 @@ export default class SelectionRect extends LayerView {
                     text: { expr: makeExpr("x") },
                     y: channels.includes("y")
                         ? {
-                              field: "y2",
+                              field: "_y2",
                               type: null,
                               title: null,
                           }
@@ -166,10 +165,17 @@ function selectionToData(selection) {
     } else {
         return [
             {
-                x: x?.[0],
-                x2: x?.[1],
-                y: y?.[0],
-                y2: y?.[1],
+                // Using a hack here. All properties are prefixed with an underscore
+                // to prevent them from being visible in the tooltip.
+                // No properties, no tooltip. This still enables picking, masking
+                // elements under the selection rect and preventing them being
+                // selected or tooltipped.
+                // An alternative solution would necessitate adding more flags or
+                // logic to force picking in the absence of tooltips.
+                _x: x?.[0],
+                _x2: x?.[1],
+                _y: y?.[0],
+                _y2: y?.[1],
             },
         ];
     }
