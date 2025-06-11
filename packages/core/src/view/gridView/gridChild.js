@@ -617,11 +617,11 @@ export default class GridChild {
  * @returns {import("../../spec/view.js").UnitSpec}
  */
 export function createBackground(viewBackground) {
-    if (
-        !viewBackground ||
-        !viewBackground.fill ||
-        viewBackground.fillOpacity === 0
-    ) {
+    const required =
+        viewBackground?.fill ||
+        viewBackground?.fillOpacity ||
+        viewBackground?.shadowOpacity;
+    if (!required) {
         return;
     }
 
@@ -630,12 +630,18 @@ export function createBackground(viewBackground) {
         data: { values: [{}] },
         mark: {
             color: viewBackground.fill,
-            opacity: viewBackground.fillOpacity ?? 1.0,
+            opacity:
+                viewBackground.fillOpacity ?? (viewBackground.fill ? 1.0 : 0.0),
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,
             minHeight: 1,
             minOpacity: 0,
+            shadowBlur: viewBackground.shadowBlur,
+            shadowColor: viewBackground.shadowColor,
+            shadowOffsetX: viewBackground.shadowOffsetX,
+            shadowOffsetY: viewBackground.shadowOffsetY,
+            shadowOpacity: viewBackground.shadowOpacity,
         },
     };
 }

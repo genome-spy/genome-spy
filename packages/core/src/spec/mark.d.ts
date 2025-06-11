@@ -110,6 +110,43 @@ export interface FillAndStrokeProps {
     strokeOpacity?: number | ExprRef;
 }
 
+export interface ShadowProps {
+    /**
+     * The color of the drop shadow. Any valid CSS color string is allowed.
+     *
+     * **Default value:** `"black"`
+     */
+    shadowColor?: string | ExprRef;
+
+    /**
+     * The opacity of the drop shadow. Value between `0` (fully transparent) and `1` (fully opaque).
+     *
+     * **Default value:** `0` (disabled)
+     */
+    shadowOpacity?: number | ExprRef;
+
+    /**
+     * The horizontal offset of the drop shadow in pixels. Positive values move the shadow to the right.
+     *
+     * **Default value:** `0`
+     */
+    shadowOffsetX?: number | ExprRef;
+
+    /**
+     * The vertical offset of the drop shadow in pixels. Positive values move the shadow downward.
+     *
+     * **Default value:** `0`
+     */
+    shadowOffsetY?: number | ExprRef;
+
+    /**
+     * The blur radius of the drop shadow in pixels. Higher values produce a more diffuse shadow.
+     *
+     * **Default value:** `0`
+     */
+    shadowBlur?: number | ExprRef;
+}
+
 export interface SecondaryPositionProps {
     /**
      * The secondary position on the x axis.
@@ -161,7 +198,8 @@ export interface ViewportEdgeFadeProps {
 export interface RectProps
     extends MarkPropsBase,
         SecondaryPositionProps,
-        FillAndStrokeProps {
+        FillAndStrokeProps,
+        ShadowProps {
     type: "rect";
 
     /**
@@ -251,41 +289,6 @@ export interface RectProps
         | "rings"
         | "ringsLarge"
         | ExprRef;
-
-    /**
-     * The color of the drop shadow. Any valid CSS color string is allowed.
-     *
-     * **Default value:** `"black"`
-     */
-    shadowColor?: string | ExprRef;
-
-    /**
-     * The opacity of the drop shadow. Value between `0` (fully transparent) and `1` (fully opaque).
-     *
-     * **Default value:** `0` (disabled)
-     */
-    shadowOpacity?: number | ExprRef;
-
-    /**
-     * The horizontal offset of the drop shadow in pixels. Positive values move the shadow to the right.
-     *
-     * **Default value:** `0`
-     */
-    shadowOffsetX?: number | ExprRef;
-
-    /**
-     * The vertical offset of the drop shadow in pixels. Positive values move the shadow downward.
-     *
-     * **Default value:** `0`
-     */
-    shadowOffsetY?: number | ExprRef;
-
-    /**
-     * The blur radius of the drop shadow in pixels. Higher values produce a more diffuse shadow.
-     *
-     * **Default value:** `0`
-     */
-    shadowBlur?: number | ExprRef;
 }
 
 export interface RuleProps

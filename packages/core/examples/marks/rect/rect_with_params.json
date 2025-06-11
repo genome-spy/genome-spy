@@ -1,6 +1,14 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
+  "padding": 20,
+  "view": {
+    "stroke": "lightgray",
+    "shadowOpacity": 0.2,
+    "shadowBlur": 17,
+    "shadowOffsetY": 3
+  },
+
   "params": [
     {
       "name": "cornerRadius",

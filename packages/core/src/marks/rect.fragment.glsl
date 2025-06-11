@@ -189,7 +189,7 @@ void main(void) {
             vPosInPixels - vec2(uShadowOffsetX, -uShadowOffsetY),
             max(uShadowBlur / 2.5, 0.25),
             maxCornerRadius + vHalfStrokeWidth
-        ) * uShadowOpacity * max(vStrokeColor.a, vFillColor.a);
+        ) * uShadowOpacity * uViewOpacity;
     }
     backgroundColor = vec4(uShadowColor * shadow, shadow);
 #endif
