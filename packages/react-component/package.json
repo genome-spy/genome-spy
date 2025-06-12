@@ -1,6 +1,6 @@
 {
   "name": "@genome-spy/react-component",
-  "version": "0.60.0",
+  "version": "0.60.1",
   "description": "React wrapper for GenomeSpy",
   "license": "MIT",
   "type": "module",
@@ -11,7 +11,7 @@
     "src/"
   ],
   "dependencies": {
-    "@genome-spy/core": "^0.60.0"
+    "@genome-spy/core": "^0.60.1"
   },
   "peerDependencies": {
     "react": "^18.2.0",
