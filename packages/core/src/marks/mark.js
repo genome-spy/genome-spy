@@ -1186,26 +1186,14 @@ export default class Mark {
             gl.useProgram(this.programInfo.program);
         });
 
-        for (const [channel, channelDef] of Object.entries(this.encoding)) {
-            if (isChannelDefWithScale(channelDef)) {
-                const resolutionChannel =
-                    (isChannelDefWithScale(channelDef) &&
-                        channelDef.resolutionChannel) ||
-                    channel;
-
-                if (isChannelWithScale(resolutionChannel)) {
-                    const resolution =
-                        this.unitView.getScaleResolution(resolutionChannel);
-
-                    const texture = glHelper.rangeTextures.get(resolution);
-                    if (texture) {
-                        ops.push(() =>
-                            setUniforms(this.programInfo, {
-                                [RANGE_TEXTURE_PREFIX + channel]: texture,
-                            })
-                        );
-                    }
-                }
+        for (const [channel, encoder] of Object.entries(this.encoders)) {
+            const texture = glHelper.rangeTextures.get(encoder.scale);
+            if (texture) {
+                ops.push(() =>
+                    setUniforms(this.programInfo, {
+                        [RANGE_TEXTURE_PREFIX + channel]: texture,
+                    })
+                );
             }
         }
 

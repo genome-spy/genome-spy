@@ -12,6 +12,7 @@ import {
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
+    isValueDefWithCondition,
 } from "../encoder/encoder.js";
 import createDomain from "../utils/domainArray.js";
 import AxisResolution from "./axisResolution.js";
@@ -229,13 +230,35 @@ export default class UnitView extends View {
 
         const encoding = this.mark.encoding;
 
-        for (const [channel, channelDef] of Object.entries(encoding)) {
-            if (!isChannelDefWithScale(channelDef)) {
+        for (let [channel, channelDef] of Object.entries(encoding)) {
+            if (!channelDef) {
                 continue;
             }
 
+            /** @type {import("../spec/channel.js").ChannelDefWithScale} */
+            let channelDefWithScale;
+
+            if (isChannelDefWithScale(channelDef)) {
+                channelDefWithScale = channelDef;
+            } else {
+                if (isValueDefWithCondition(channelDef)) {
+                    const condition = channelDef.condition;
+                    if (
+                        !Array.isArray(condition) &&
+                        isChannelDefWithScale(condition)
+                    ) {
+                        // There's a single condition (maybe) with a scale
+                        channelDefWithScale = condition;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
             const targetChannel = getPrimaryChannel(
-                channelDef.resolutionChannel ?? channel
+                channelDefWithScale.resolutionChannel ?? channel
             );
 
             if (!isChannelWithScale(targetChannel)) {
@@ -279,7 +302,7 @@ export default class UnitView extends View {
                 view.resolutions[type][targetChannel].addMember({
                     view: this,
                     channel,
-                    channelDef,
+                    channelDef: channelDefWithScale,
                 });
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
@@ -301,15 +324,15 @@ export default class UnitView extends View {
                         .some(
                             (view) => !view.options.contributesToScaleDomain
                         ) ||
-                    (isChannelDefWithScale(channelDef) &&
-                        channelDef.contributesToScaleDomain === false)
+                    (isChannelDefWithScale(channelDefWithScale) &&
+                        channelDefWithScale.contributesToScaleDomain === false)
                         ? undefined
                         : this.extractDataDomain.bind(this);
 
                 view.resolutions[type][targetChannel].addMember({
                     view: this,
                     channel,
-                    channelDef,
+                    channelDef: channelDefWithScale,
                     dataDomainSource,
                 });
             }

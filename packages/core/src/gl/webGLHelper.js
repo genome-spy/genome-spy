@@ -56,7 +56,7 @@ export default class WebGLHelper {
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
 
-        /** @type {WeakMap<import("../view/scaleResolution.js").default, WebGLTexture>} */
+        /** @type {WeakMap<import("../types/encoder.js").VegaScale, WebGLTexture>} */
         this.rangeTextures = new WeakMap();
 
         /**
@@ -286,7 +286,7 @@ export default class WebGLHelper {
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
-        const existingTexture = this.rangeTextures.get(resolution);
+        const existingTexture = this.rangeTextures.get(resolution.scale);
         if (!update && existingTexture) {
             return;
         }
@@ -366,7 +366,7 @@ export default class WebGLHelper {
                 );
             }
 
-            this.rangeTextures.set(resolution, texture);
+            this.rangeTextures.set(scale, texture);
         } else {
             const scale = resolution.scale;
 
@@ -379,7 +379,7 @@ export default class WebGLHelper {
                 const range = /** @type {any[]} */ (scale.range());
 
                 this.rangeTextures.set(
-                    resolution,
+                    scale,
                     createDiscreteTexture(
                         range.map(mapper),
                         this.gl,
