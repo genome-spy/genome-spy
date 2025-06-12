@@ -283,8 +283,11 @@ export default class GridChild {
                         preventNextClickPropagation = true;
                     }
 
-                    if (/** @type {MouseEvent} */ (event.uiEvent).shiftKey) {
-                        // Start brushing a new selection, clear the existing selection
+                    const startSelection = /** @type {MouseEvent} */ (
+                        event.uiEvent
+                    ).shiftKey;
+
+                    if (startSelection) {
                         clearSelection();
                         nowBrushing = true;
                     } else if (isActiveIntervalSelection(selectionExpr())) {
@@ -308,6 +311,8 @@ export default class GridChild {
                             }
                         };
                         view.addInteractionEventListener("mouseup", listener);
+                        return;
+                    } else {
                         return;
                     }
                 }
