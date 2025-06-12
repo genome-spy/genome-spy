@@ -253,12 +253,19 @@ export default class GridChild {
                     return;
                 }
 
+                // Coordinates of the selection rectangle, if it exists.
+                // Must be operated in the view's coordinate system, not in data domain,
+                // as non-linear scales may be used.
                 translatedRectangle = mouseOver
                     ? selectionToRect(selectionExpr())
                     : null;
 
                 if (translatedRectangle) {
+                    // Started dragging an existing selection
                     setCursor("grabbing");
+                    // Start of dragging should prevent click propagation so that
+                    // no other selections or events are triggered.
+                    preventNextClickPropagation = true;
                 } else {
                     const mouseDownPoint = event.point;
                     if (isActiveIntervalSelection(selectionExpr())) {
@@ -269,8 +276,11 @@ export default class GridChild {
                     }
 
                     if (/** @type {MouseEvent} */ (event.uiEvent).shiftKey) {
+                        // Start brushing a new selection, clear the existing selection
                         clearSelection();
-                    } else {
+                    } else if (isActiveIntervalSelection(selectionExpr())) {
+                        // If mouse button is released and there was a selection,
+                        // it should be cleared unless the viewport was panned by dragging.
                         /** @type {import("../view.js").InteractionEventListener} */
                         const listener = (coords, event) => {
                             view.removeInteractionEventListener(
