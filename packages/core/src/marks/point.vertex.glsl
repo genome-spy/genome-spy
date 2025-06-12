@@ -37,7 +37,11 @@ vec2 getDxDy() {
 void main(void) {
     float shapeAngle = 0.0;
 
-    float semanticThresholdFactor = computeSemanticThresholdFactor();
+    // Selected points should always be visible
+    float semanticThresholdFactor = isPointSelected()
+        ? 1.0
+        : computeSemanticThresholdFactor();
+
     if (semanticThresholdFactor <= 0.0) {
         gl_PointSize = 0.0;
         // Place the vertex outside the viewport. The default (0, 0) makes this super-slow
