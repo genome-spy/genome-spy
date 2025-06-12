@@ -39,6 +39,7 @@ handler fetches a summary description for a gene symbol using the
 [Entrez](https://www.ncbi.nlm.nih.gov/home/develop/api/) API. For an example,
 check the RefSeq gene track in
 [this notebook](https://observablehq.com/@tuner/annotation-tracks).
+Custom search terms can be provided through the `params` property.
 
 Handlers are functions that receive the hovered mark's underlying datum and
 return a promise that resolves into a string, HTMLElement, or lit-html
@@ -67,11 +68,10 @@ import { html } from "lit-html";
 
 const options = {
   tooltipHandlers: {
-    default: async (datum, mark, props) =>
-      html`
-        The datum has
-        <strong>${Object.keys(datum).length}</strong> attributes!
-      `,
+    default: async (datum, mark, props) => html`
+      The datum has
+      <strong>${Object.keys(datum).length}</strong> attributes!
+    `,
   },
 };
 

@@ -7,18 +7,31 @@ import { html } from "lit";
  * TODO: Implement tool & email parameters: https://www.ncbi.nlm.nih.gov/books/NBK25497/
  */
 
-// TODO: Replace with an LRU-cache
 const symbolSummaryCache = new Map();
+
+const defaultParams = {
+    Organism: "Homo sapiens",
+};
 
 /**
  * @type {import("./tooltipHandler.js").TooltipHandler}
  */
-export default async function refseqGeneTooltipHandler(datum, mark, params) {
+export default async function refseqGeneTooltipHandler(
+    datum,
+    mark,
+    params = {}
+) {
     const symbol = datum.symbol;
+
+    const term = {
+        ...defaultParams,
+        ...params,
+        GENE: symbol,
+    };
 
     let summary =
         symbolSummaryCache.get(symbol) ??
-        (await debouncedFetchGeneSummary(datum.symbol));
+        (await debouncedFetchGeneSummary(term));
 
     if (summary) {
         symbolSummaryCache.set(symbol, summary);
@@ -36,29 +49,43 @@ export default async function refseqGeneTooltipHandler(datum, mark, params) {
 }
 
 /**
- * @param {string} symbol
+ * @param {Record<string, string>} term
  */
-async function fetchGeneSummary(symbol) {
-    // TODO: Add more search terms to ensure that we really find genes specific to the current genome
-
-    console.log("Searching: " + symbol);
-
+async function fetchGeneSummary(term) {
     /** @type {RequestInit} */
     const opts = { mode: "cors" };
 
-    const searchResult = await fetch(
-        `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gene&term=${symbol}[GENE]&sort=relevance&retmode=json`,
-        opts
-    ).then((res) => res.json());
+    const url = new URL(
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+    );
+    url.search = new URLSearchParams({
+        db: "gene",
+        term: termToQuery(term),
+        sort: "relevance",
+        retmax: "1",
+        retmode: "json",
+    }).toString();
+
+    const searchResult = await fetch(url.toString(), opts).then((res) =>
+        res.json()
+    );
 
     // TODO: Handle failed searchs
     const id = searchResult.esearchresult.idlist[0];
 
     if (id) {
-        const summaryResult = await fetch(
-            `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=gene&id=${id}&retmode=json`,
-            opts
-        ).then((res) => res.json());
+        const summaryUrl = new URL(
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+        );
+        summaryUrl.search = new URLSearchParams({
+            db: "gene",
+            id: id,
+            retmode: "json",
+        }).toString();
+
+        const summaryResult = await fetch(summaryUrl.toString(), opts).then(
+            (res) => res.json()
+        );
 
         const summary = summaryResult.result[id];
         return summary;
@@ -70,9 +97,21 @@ async function fetchGeneSummary(symbol) {
 const debounced = debounce(fetchGeneSummary, 500);
 
 /**
- *
- * @param {string} symbol
+ * @param {Record<string, string>} term
  */
-function debouncedFetchGeneSummary(symbol) {
-    return debounced(symbol);
+function debouncedFetchGeneSummary(term) {
+    return debounced(term);
+}
+
+/**
+ * @param {Record<string, string>} term
+ */
+function termToQuery(term) {
+    return (
+        Object.entries(term)
+            .filter(([_, value]) => value && value.length > 0)
+            // TODO: Escape
+            .map(([key, value]) => `("${value}"[${key}])`)
+            .join(" AND ")
+    );
 }
