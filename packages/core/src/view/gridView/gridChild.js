@@ -154,8 +154,18 @@ export default class GridChild {
                 );
             }
 
+            // --- Validation and early exits done ---
+
             let mouseOver = false;
             let preventNextClickPropagation = false;
+            let nowBrushing = false;
+
+            /**
+             * Selection rectangle in screen coordinates. Used when translating
+             * an existing selection.
+             * @type {Rectangle}
+             */
+            let translatedRectangle = null;
 
             /**
              * @param {{x: number, y: number}} a
@@ -192,11 +202,9 @@ export default class GridChild {
             );
 
             // WARNING! The following is an async method! Seems to work (by chance).
-            // TODO: Should be called and awaited in a sensible place.
+            // TODO: Should be called and awaited in a sensible place. Maybe provide some
+            // registration logic for such post-creation initializations?
             this.selectionRect.initializeChildren();
-
-            /** @type {Rectangle} */
-            let translatedRectangle = null;
 
             const invertPoint = (
                 /** @type {import("../layout/point.js").default} */ point
@@ -278,6 +286,7 @@ export default class GridChild {
                     if (/** @type {MouseEvent} */ (event.uiEvent).shiftKey) {
                         // Start brushing a new selection, clear the existing selection
                         clearSelection();
+                        nowBrushing = true;
                     } else if (isActiveIntervalSelection(selectionExpr())) {
                         // If mouse button is released and there was a selection,
                         // it should be cleared unless the viewport was panned by dragging.
@@ -290,8 +299,10 @@ export default class GridChild {
                             const mouseUpPoint = event.point;
 
                             // Retain selection if the viewport is panned by dragging
+                            const movementThreshold = 2; // pixels
                             if (
-                                mouseDownPoint.subtract(mouseUpPoint).length < 2
+                                mouseDownPoint.subtract(mouseUpPoint).length <
+                                movementThreshold
                             ) {
                                 clearSelection();
                             }
@@ -380,6 +391,7 @@ export default class GridChild {
                     );
                     document.removeEventListener("mouseup", mouseUpListener);
 
+                    nowBrushing = false;
                     if (translatedRectangle) {
                         setCursor("move");
                         translatedRectangle = null;
@@ -421,9 +433,13 @@ export default class GridChild {
             // Handle mouse cursor changes
             view.addInteractionEventListener("mousemove", (coords, event) => {
                 if (isPointInsideSelection(event.point)) {
-                    mouseOver = true;
-                    if (!translatedRectangle) {
-                        setCursor("move");
+                    // Brushing and translating the existing brush are different actions.
+                    if (!nowBrushing) {
+                        mouseOver = true;
+                        // When translation is active, the cursor shows a grabbing hand.
+                        if (!translatedRectangle) {
+                            setCursor("move");
+                        }
                     }
                 } else {
                     mouseOver = false;
