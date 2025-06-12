@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
+
+### Bug Fixes
+
+* **core:** clear uniqueIdIndex in collector upon reset ([6dfdbe4](https://github.com/genome-spy/genome-spy/commit/6dfdbe4ea286e3069f8a453006f3f42a6ff3fe3a)) by @tuner
+* **core:** don't drag selection with second  mouse button ([3f63c00](https://github.com/genome-spy/genome-spy/commit/3f63c001baab7f6db14c8e13bd997cbee423318b)) by @tuner
+* **core:** flickering mouse cursor when brushing a new selection ([ea0d6db](https://github.com/genome-spy/genome-spy/commit/ea0d6db83f6b9111ed467e3916fb200e6e2aeb16)) by @tuner
+* **core:** more click/selection behavior fixes ([fc8e01a](https://github.com/genome-spy/genome-spy/commit/fc8e01a9956df2b28d1c95f848a24401e6907806)) by @tuner
+* **core:** prevent picking of elements under the selection rect ([58ccd7a](https://github.com/genome-spy/genome-spy/commit/58ccd7aaa8d8c14715fa86d7c1a975e674f817cf)) by @tuner
+* **core:** sticky tooltip misbehavior when panning by dragging ([744f30e](https://github.com/genome-spy/genome-spy/commit/744f30e3bb3b55c3a3ff942f4d3e53512cab1de9)) by @tuner
+
+### Features
+
+* **core:** allows the array of source urls to be placed in a separate file ([998cfe4](https://github.com/genome-spy/genome-spy/commit/998cfe428e6ef04d28a83f9f60277c553e0eaddf)) by @tuner
+* **core:** dblclick clears interval selection ([5094e65](https://github.com/genome-spy/genome-spy/commit/5094e65d9100d5ddd8d4db7b645db481a8087fb4)) by @tuner
+* **core:** drop shadows for rect marks ([#282](https://github.com/genome-spy/genome-spy/issues/282)) ([866cc4e](https://github.com/genome-spy/genome-spy/commit/866cc4e4e94600ba8e1675ebb40144766f339a6e)) by @tuner
+* **core:** hatched rectangles ([d8366e1](https://github.com/genome-spy/genome-spy/commit/d8366e1a521420e0b098d7ed4752b49fddec6389)), closes [#280](https://github.com/genome-spy/genome-spy/issues/280) by @tuner
+* **core:** interval selection ([#281](https://github.com/genome-spy/genome-spy/issues/281)) ([200d280](https://github.com/genome-spy/genome-spy/commit/200d280517f66f086d6440dc61ec243b346f60e9)) by @tuner
+* **core:** keep selected `point`s visible regardless of score-based semantic zoom ([5538df9](https://github.com/genome-spy/genome-spy/commit/5538df90988b90661c451389fcdef102728aa371)) by @tuner
+* **core:** provide d3 `format` function in the expression language ([fff83eb](https://github.com/genome-spy/genome-spy/commit/fff83eba8703ee7742df5a6bb63da550848999f6)) by @tuner
+* **core:** show measures in the selection rectangle ([edfd516](https://github.com/genome-spy/genome-spy/commit/edfd516cd9cec159d4040238a3f0fb16602ad289)) by @tuner
+* **core:** sticky tooltips ([6bf7be4](https://github.com/genome-spy/genome-spy/commit/6bf7be4589ce9fc821d047c1dec12ef8bc7b2962)), closes [#86](https://github.com/genome-spy/genome-spy/issues/86) by @tuner
+
 # [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
 
 ### Bug Fixes

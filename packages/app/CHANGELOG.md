@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.60.0](https://github.com/genome-spy/genome-spy/compare/v0.59.0...v0.60.0) (2025-06-12)
+
+### Features
+
+* **core:** interval selection ([#281](https://github.com/genome-spy/genome-spy/issues/281)) ([200d280](https://github.com/genome-spy/genome-spy/commit/200d280517f66f086d6440dc61ec243b346f60e9)) by @tuner
+
 # [0.59.0](https://github.com/genome-spy/genome-spy/compare/v0.58.3...v0.59.0) (2025-02-13)
 
 ### Features
