@@ -1,4 +1,58 @@
+import {
+    isIntervalSelection,
+    makeSelectionTestExpression,
+} from "../selection/selection.js";
 import { createConditionalAccessors } from "./accessor.js";
+
+/**
+ * TODO: Complete this. Not tested yet.
+ *
+ * Creates a selection predicate that can be used in conditional encoding.
+ *
+ * @param {string} param
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {import("../view/paramMediator.js").default} paramMediator
+ * @param {boolean} empty
+ */
+// eslint-disable-next-line no-unused-vars
+function createSelectionPredicate(param, encoding, paramMediator, empty) {
+    const selection =
+        /** @type {import("../types/selectionTypes.js").Selection} */ (
+            paramMediator.findValue(param)
+        );
+    if (!selection) {
+        throw new Error(`No selection parameter found: ${param}`);
+    }
+
+    /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+    const fields = {};
+    if (isIntervalSelection(selection)) {
+        const channels = Object.keys(selection.intervals);
+        for (const channel of channels) {
+            const channelDef = encoding[channel];
+            if (isFieldDef(channelDef)) {
+                fields[channel] = channelDef.field;
+                continue;
+            } else if ("condition" in channelDef) {
+                const condition = channelDef.condition;
+                if (isFieldDef(condition)) {
+                    fields[channel] = condition.field;
+                    continue;
+                }
+            }
+            throw new Error(
+                `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+            );
+        }
+    }
+
+    const expr = makeSelectionTestExpression(
+        { type: "filter", param, fields, empty },
+        selection
+    );
+
+    return paramMediator.createExpression(expr);
+}
 
 /**
  * Creates an object that contains encoders for every channel of a mark
@@ -18,9 +72,10 @@ export default function createEncoders(unitView, encoding) {
     /** @type {Partial<Record<Channel, Encoder>>} */
     const encoders = {};
 
-    const scaleSource = (
-        /** @type {import("../spec/channel.js").ChannelWithScale}*/ channel
-    ) => unitView.getScaleResolution(channel)?.scale;
+    /**
+     * @param {import("../spec/channel.js").ChannelWithScale} channel */
+    const scaleSource = (channel) =>
+        unitView.getScaleResolution(channel)?.scale;
 
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {
