@@ -1,24 +1,24 @@
+import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import LayerView from "../layerView.js";
 
 export default class SelectionRect extends LayerView {
+    /**
+     * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
+     * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
+     */
+
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
      * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
      */
     constructor(gridChild, selectionExpr, brushConfig = {}) {
-        const initialSelection =
-            /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
-                selectionExpr()
-            );
+        const initialSelection = /** @type {IntervalSelection} */ (
+            selectionExpr()
+        );
         const channels = Object.keys(initialSelection.intervals);
 
-        if (
-            /** @type {import("../../spec/channel.js").ChannelWithScale[]} */ ([
-                "x",
-                "y",
-            ]).every((c) => !channels.includes(c))
-        ) {
+        if (primaryPositionalChannels.every((c) => !channels.includes(c))) {
             throw new Error(
                 "SelectionRect requires at least one of the channels 'x' or 'y' to be present in the selection."
             );
@@ -64,9 +64,7 @@ export default class SelectionRect extends LayerView {
             },
         });
 
-        const makeExpr = (
-            /** @type {import("../../spec/channel.js").PrimaryPositionalChannel} */ channel
-        ) => {
+        const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
             const resolution = gridChild.view.getScaleResolution(channel);
             return (
                 `format(datum._${channel}2 - datum._${channel}, '.3s')` +
