@@ -10,5 +10,5 @@ declare module "*.txt" {
 
 declare module "*.png" {
     const value: any;
-    export = value;
+    export default value;
 }

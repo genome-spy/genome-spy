@@ -1,6 +1,7 @@
 {
   "name": "root",
   "private": true,
+  "type": "module",
   "engines": {
     "npm": ">=7.0.0"
   },
@@ -30,7 +31,7 @@
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vite-raw-plugin": "^1.0.2",
-    "vitest": "^2.1.4"
+    "vitest": "^3.2.3"
   },
   "scripts": {
     "build": "lerna run build",

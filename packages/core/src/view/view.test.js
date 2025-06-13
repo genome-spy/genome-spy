@@ -11,14 +11,16 @@ import LayerView from "./layerView.js";
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
         // @ts-expect-error
-        expect(create({}, View)).rejects.toThrow();
+        await expect(create({}, View)).rejects.toThrow();
     });
 
-    test("Parses a trivial spec", () => {
-        expect(create({ mark: "point" }, View)).resolves.toBeInstanceOf(
+    test("Parses a trivial spec", async () => {
+        await expect(create({ mark: "point" }, View)).resolves.toBeInstanceOf(
             UnitView
         );
-        expect(create({ layer: [] }, View)).resolves.toBeInstanceOf(LayerView);
+        await expect(create({ layer: [] }, View)).resolves.toBeInstanceOf(
+            LayerView
+        );
     });
 
     test("Parses a more comples spec", async () => {
