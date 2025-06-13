@@ -126,9 +126,6 @@ export default class UnitView extends View {
                     /** @type {any} */ _,
                     /** @type {import("../utils/interactionEvent.js").default} */ event
                 ) => {
-                    const mouseEvent = /** @type {MouseEvent} */ (
-                        event.uiEvent
-                    );
                     const datum = getHoveredDatum();
                     const id = datum ? datum[UNIQUE_ID_KEY] : none;
 
@@ -136,7 +133,7 @@ export default class UnitView extends View {
                     let selection;
 
                     if (select.toggle) {
-                        const toggle = mouseEvent.shiftKey;
+                        const toggle = event.mouseEvent.shiftKey;
 
                         if (toggle) {
                             if (datum) {

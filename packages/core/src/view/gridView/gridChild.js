@@ -257,7 +257,7 @@ export default class GridChild {
             };
 
             view.addInteractionEventListener("mousedown", (coords, event) => {
-                if (/** @type {MouseEvent} */ (event.uiEvent).button != 0) {
+                if (event.mouseEvent.button != 0) {
                     return;
                 }
 
@@ -283,9 +283,7 @@ export default class GridChild {
                         preventNextClickPropagation = true;
                     }
 
-                    const startSelection = /** @type {MouseEvent} */ (
-                        event.uiEvent
-                    ).shiftKey;
+                    const startSelection = event.mouseEvent.shiftKey;
 
                     if (startSelection) {
                         clearSelection();
@@ -322,7 +320,7 @@ export default class GridChild {
 
                 const start = event.point;
                 const viewOffset = Point.fromMouseEvent(
-                    /** @type {MouseEvent} */ (event.uiEvent)
+                    event.mouseEvent
                 ).subtract(start);
 
                 const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
@@ -410,7 +408,7 @@ export default class GridChild {
             view.addInteractionEventListener(
                 "click",
                 (coords, event) => {
-                    if (/** @type {MouseEvent} */ (event.uiEvent).button == 0) {
+                    if (event.mouseEvent.button == 0) {
                         if (preventNextClickPropagation) {
                             event.stopPropagation();
                             preventNextClickPropagation = false;

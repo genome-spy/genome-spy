@@ -131,7 +131,6 @@ export class GroupPanel extends LayerView {
         });
 
         this.addInteractionEventListener("contextmenu", (coords, event) => {
-            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
             const hover = this.context.getCurrentHover();
 
             if (!hover) {
@@ -170,7 +169,7 @@ export class GroupPanel extends LayerView {
                         },
                     ],
                 },
-                mouseEvent
+                event.mouseEvent
             );
         });
     }

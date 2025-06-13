@@ -220,12 +220,10 @@ export class MetadataView extends ConcatView {
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     handleContextMenu(coords, event) {
-        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
-
         const sample = this.#sampleView.findSampleForMouseEvent(coords, event);
 
         if (!sample) {
-            mouseEvent.preventDefault();
+            event.mouseEvent.preventDefault();
             return;
         }
 
@@ -255,7 +253,7 @@ export class MetadataView extends ConcatView {
             );
         }
 
-        contextMenu({ items }, mouseEvent);
+        contextMenu({ items }, event.mouseEvent);
     }
 
     /**

@@ -83,11 +83,10 @@ export default class Scrollbar extends UnitView {
                     ? mouseEvent.clientY
                     : mouseEvent.clientX;
 
-            const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
-            mouseEvent.preventDefault();
+            event.mouseEvent.preventDefault();
 
             const initialScrollOffset = this.scrollOffset;
-            const initialOffset = getMouseOffset(mouseEvent);
+            const initialOffset = getMouseOffset(event.mouseEvent);
 
             const onMousemove = /** @param {MouseEvent} moveEvent */ (
                 moveEvent

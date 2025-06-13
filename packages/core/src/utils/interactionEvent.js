@@ -30,4 +30,12 @@ export default class InteractionEvent {
     get type() {
         return this.uiEvent.type;
     }
+
+    get mouseEvent() {
+        if (this.uiEvent instanceof MouseEvent) {
+            return this.uiEvent;
+        } else {
+            throw new Error("Not a MouseEvent!");
+        }
+    }
 }

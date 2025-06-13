@@ -96,10 +96,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
                 zDelta: 0,
             });
         }
-    } else if (
-        event.type == "mousedown" &&
-        /** @type {MouseEvent} */ (event.uiEvent).button === 0
-    ) {
+    } else if (event.type == "mousedown" && event.mouseEvent.button === 0) {
         if (smoother) {
             smoother.stop();
         }
@@ -107,7 +104,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         /** @type {RingBuffer<{point: Point, timestamp: number}>} */
         const eventBuffer = new RingBuffer(30);
 
-        const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+        const mouseEvent = event.mouseEvent;
         mouseEvent.preventDefault();
 
         let prevPoint = Point.fromMouseEvent(mouseEvent);
