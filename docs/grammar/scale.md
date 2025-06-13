@@ -388,7 +388,7 @@ of the chromosome axis and grid using various parameters.
 ```json
 {
   "genome": { "name": "hg38" },
-  "data": { "values": [{}] },
+  "data": { "values": [] },
   "mark": "point",
 
   "encoding": {
