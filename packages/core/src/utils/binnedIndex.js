@@ -75,10 +75,6 @@ export function createBinningRangeIndexer(
             lastIndex = startVertexIndex;
         } else {
             unordered = true;
-            // TODO: Contextual info like view path
-            console.debug(
-                "Items are not ordered properly. Disabling binned index."
-            );
             return;
         }
 
@@ -86,10 +82,6 @@ export function createBinningRangeIndexer(
 
         if (value < lastStart) {
             unordered = true;
-            // TODO: Contextual info like view path
-            console.debug(
-                "Items are not ordered properly. Disabling binned index."
-            );
             return;
         }
         lastStart = value;
