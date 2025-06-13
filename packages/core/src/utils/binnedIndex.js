@@ -125,18 +125,9 @@ export function createBinningRangeIndexer(
 
         if (start < lastStart) {
             unordered = true;
-            // TODO: Contextual info like view path
-            console.debug(
-                "Items are not ordered properly. Disabling binned index."
-            );
             return;
         } else if (end < start) {
             unordered = true;
-            // TODO: Contextual info like view path
-            console.debug(
-                "End index is less than start index. Disabling binned index. Datum: ",
-                datum
-            );
             return;
         }
         lastStart = start;
