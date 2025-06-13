@@ -224,13 +224,14 @@ export default class UnitView extends View {
         if (!type) {
             this.resolve("scale");
             this.resolve("axis");
+            return;
         }
 
         // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
 
         const encoding = this.mark.encoding;
 
-        for (let [channel, channelDef] of Object.entries(encoding)) {
+        for (const [channel, channelDef] of Object.entries(encoding)) {
             if (!channelDef) {
                 continue;
             }

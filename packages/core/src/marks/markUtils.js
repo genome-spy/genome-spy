@@ -2,6 +2,7 @@ import {
     isValueDef,
     getSecondaryChannel,
     isChannelDefWithScale,
+    isValueDefWithCondition,
 } from "../encoder/encoder.js";
 
 /**
@@ -67,6 +68,22 @@ export function fixPositional(encoding, channel) {
 }
 
 /**
+ *
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").ChannelWithScale} resolutionChannel
+ */
+function setResolutionChannel(channelDef, resolutionChannel) {
+    if (isValueDefWithCondition(channelDef)) {
+        const condition = channelDef.condition;
+        if (!Array.isArray(condition) && isChannelDefWithScale(condition)) {
+            condition.resolutionChannel = resolutionChannel;
+        }
+    } else if (isChannelDefWithScale(channelDef)) {
+        channelDef.resolutionChannel = resolutionChannel;
+    }
+}
+
+/**
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {boolean} filled
  */
@@ -75,10 +92,8 @@ export function fixStroke(encoding, filled) {
         if (filled) {
             encoding.stroke = { value: null };
         } else {
-            encoding.stroke = {
-                resolutionChannel: "color",
-                ...encoding.color,
-            };
+            encoding.stroke = structuredClone(encoding.color);
+            setResolutionChannel(encoding.stroke, "color");
             // TODO: Whattabout default strokeWidth?
         }
     }
@@ -88,10 +103,8 @@ export function fixStroke(encoding, filled) {
     }
 
     if (!encoding.strokeOpacity) {
-        encoding.strokeOpacity = {
-            resolutionChannel: "opacity",
-            ...encoding.opacity,
-        };
+        encoding.strokeOpacity = structuredClone(encoding.opacity);
+        setResolutionChannel(encoding.strokeOpacity, "opacity");
     }
 }
 
@@ -103,10 +116,9 @@ export function fixFill(encoding, filled) {
     if (isValueDef(encoding.fill) && encoding.fill.value === null) {
         encoding.fillOpacity = { value: 0 };
     } else if (!encoding.fill) {
-        encoding.fill = {
-            resolutionChannel: "color",
-            ...encoding.color,
-        };
+        encoding.fill = structuredClone(encoding.color);
+        setResolutionChannel(encoding.fill, "color");
+
         if (!filled && !encoding.fillOpacity) {
             encoding.fillOpacity = { value: 0 };
         }
@@ -114,10 +126,8 @@ export function fixFill(encoding, filled) {
 
     if (!encoding.fillOpacity) {
         if (filled) {
-            encoding.fillOpacity = {
-                resolutionChannel: "opacity",
-                ...encoding.opacity,
-            };
+            encoding.fillOpacity = structuredClone(encoding.opacity);
+            setResolutionChannel(encoding.fillOpacity, "opacity");
         } else {
             encoding.fillOpacity = { value: 0 };
         }
