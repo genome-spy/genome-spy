@@ -12,7 +12,6 @@ import { format as d3format } from "d3-format";
 import smoothstep from "./smoothstep.js";
 import clamp from "./clamp.js";
 import linearstep from "./linearstep.js";
-import { selectionTest } from "../selection/selection.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
@@ -21,6 +20,9 @@ const functionContext = {
     clamp,
     format(/** @type {number} */ value, /** @type {string} */ format) {
         return d3format(format)(value);
+    },
+    mapHasKey(/** @type {Map<any, any>} */ map, /** @type {any} */ key) {
+        return map.has(key);
     },
     isArray,
     isBoolean,
@@ -45,7 +47,6 @@ const functionContext = {
         return String(str).replace(pattern, replace);
     },
     smoothstep,
-    selectionTest,
 };
 
 /**

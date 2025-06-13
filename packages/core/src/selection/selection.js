@@ -79,31 +79,6 @@ export function updateMultiPointSelection(selection, { add, remove, toggle }) {
 }
 
 /**
- * @param {import("../types/selectionTypes.js").Selection} selection
- * @param {import("../data/flowNode.js").Datum} datum
- * @param {boolean} [empty] evaluate to true if the selection is empty
- */
-export function selectionTest(selection, datum, empty = true) {
-    if (!selection || !datum) {
-        return false;
-    }
-
-    if (isSinglePointSelection(selection)) {
-        return selection.uniqueId == null
-            ? empty
-            : selection.uniqueId === datum[UNIQUE_ID_KEY];
-    } else if (isMultiPointSelection(selection)) {
-        return selection.data.size == 0
-            ? empty
-            : selection.data.has(datum[UNIQUE_ID_KEY]); // TODO: Binary search
-    } else if (isIntervalSelection(selection)) {
-        throw new Error("TODO: Implement interval selection test");
-    } else {
-        throw new Error("Not a selection: " + JSON.stringify(selection));
-    }
-}
-
-/**
  * Returns a string expression that can be used to test if a datum is part of the selection.
  *
  * @param {import("../spec/transform.js").SelectionFilterParams} params
@@ -114,8 +89,14 @@ export function makeSelectionTestExpression(params, selection) {
     const paramName = validateParameterName(params.param);
     const fields = params.fields ?? {};
 
-    if (isSinglePointSelection(selection) || isMultiPointSelection(selection)) {
-        return `selectionTest(${paramName}, datum, ${empty})`;
+    if (isSinglePointSelection(selection)) {
+        return `${paramName}.uniqueId == null ? ${empty} : ${paramName}.uniqueId === datum[${JSON.stringify(
+            UNIQUE_ID_KEY
+        )}]`;
+    } else if (isMultiPointSelection(selection)) {
+        return `${paramName}.data.size == 0 ? ${empty} : mapHasKey(${paramName}.data, datum[${JSON.stringify(
+            UNIQUE_ID_KEY
+        )}])`;
     } else if (isIntervalSelection(selection)) {
         const channelsInSelection =
             /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
