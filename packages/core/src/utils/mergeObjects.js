@@ -6,8 +6,6 @@ import { isObject } from "vega-util";
  *
  * A boolean true and an object are compatible. The object survives, the boolean is overwritten.
  *
- * TODO: Support arrays. Should accept identical arrays and complain about others.
- *
  * @param  {T[]} objects Objects to merge
  * @param {string} propertyOf What are we merging? Used in warning messages
  * @param {string[]} [skip] Fields to skip. TODO: Support nested fields.
@@ -34,7 +32,11 @@ export default function mergeObjects(objects, propertyOf, skip) {
         a === b ||
         (isPlainObject(a) && isPlainObject(b)) ||
         (isPlainObject(a) && b === true) ||
-        (a === true && isObject(b));
+        (a === true && isObject(b)) ||
+        (Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((v, i) => v === b[i]));
 
     /** @param {any} obj */
     const merger = (obj) => {
