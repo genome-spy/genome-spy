@@ -10,7 +10,6 @@ import {
 } from "./encoder.js";
 import { field } from "../utils/field.js";
 import { isExprRef, makeConstantExprRef } from "../view/paramMediator.js";
-import { makeSelectionTestExpression } from "../selection/selection.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel
@@ -47,9 +46,15 @@ export function createAccessor(channel, channelDef, paramMediator) {
             undefined;
 
         if ("param" in channelDef) {
+            // TODO: Figure out how to fix it. Interval selection depends on FIELDS!
+            /*
             a.predicate = paramMediator.createExpression(
                 makeSelectionTestExpression(channelDef)
             );
+            a.predicate.param = channelDef.param;
+            a.predicate.empty = channelDef.empty ?? true;
+            */
+            a.predicate = makeConstantExprRef(false);
             a.predicate.param = channelDef.param;
             a.predicate.empty = channelDef.empty ?? true;
         } else {

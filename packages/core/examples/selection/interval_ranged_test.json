@@ -102,7 +102,11 @@
         { "type": "collect" },
         {
           "type": "filter",
-          "expr": "brush.intervals.x ? (datum.a <= brush.intervals.x[1] && datum.b >= brush.intervals.x[0]) : true"
+          "param": "brush",
+          "fields": {
+            "x": "a",
+            "x2": "b"
+          }
         }
       ],
 

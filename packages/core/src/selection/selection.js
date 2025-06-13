@@ -1,4 +1,8 @@
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import {
+    getSecondaryChannel,
+    isPrimaryPositionalChannel,
+} from "../encoder/encoder.js";
 import { validateParameterName } from "../view/paramMediator.js";
 
 /**
@@ -100,12 +104,67 @@ export function selectionTest(selection, datum, empty = true) {
 }
 
 /**
- * @param {{param: string, empty?: boolean}} params
+ * Returns a string expression that can be used to test if a datum is part of the selection.
+ *
+ * @param {import("../spec/transform.js").SelectionFilterParams} params
+ * @param {import("../types/selectionTypes.js").Selection} selection
  */
-export function makeSelectionTestExpression(params) {
-    return `selectionTest(${validateParameterName(params.param)}, datum, ${!!(
-        params.empty ?? true
-    )})`;
+export function makeSelectionTestExpression(params, selection) {
+    const empty = !!(params.empty ?? true);
+    const paramName = validateParameterName(params.param);
+    const fields = params.fields ?? {};
+
+    if (isSinglePointSelection(selection) || isMultiPointSelection(selection)) {
+        return `selectionTest(${paramName}, datum, ${empty})`;
+    } else if (isIntervalSelection(selection)) {
+        const channelsInSelection =
+            /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
+                Object.keys(selection.intervals)
+            );
+
+        const primaryChannelsInConfig = Object.keys(fields).filter(
+            isPrimaryPositionalChannel
+        );
+
+        if (primaryChannelsInConfig.length === 0) {
+            throw new Error(
+                "Filtering using interval selections requires at least one primary positional channel in the config! " +
+                    JSON.stringify(params)
+            );
+        }
+
+        if (
+            primaryChannelsInConfig.some(
+                (c) => !channelsInSelection.includes(c)
+            )
+        ) {
+            throw new Error(
+                `Selection channels (${channelsInSelection.join(", ")}) do not match the fields: ${JSON.stringify(params)}!`
+            );
+        }
+
+        const access = (/** @type {string} */ f) =>
+            `datum[${JSON.stringify(f)}]`;
+
+        const conditions = channelsInSelection
+            .map((channel) => {
+                const secondaryChannel = getSecondaryChannel(channel);
+                const f = fields[channel];
+                const f2 = fields[secondaryChannel] ?? fields[channel];
+
+                // TODO: Implement different hit tests: "intersects" | "encloses" | "endpoints"
+                // TODO: Implement tests
+                const a = `${paramName}.intervals.${channel}[0] <= ${access(f2)}`;
+                const b = `${access(f)} <= ${paramName}.intervals.${channel}[1]`;
+                return `(${paramName}.intervals.${channel} ? (${a} && ${b}) : ${empty})`;
+            })
+            .join(" && ");
+        return conditions;
+    } else {
+        throw new Error(
+            `Unrecognized selection type : ${JSON.stringify(selection)}`
+        );
+    }
 }
 
 /**

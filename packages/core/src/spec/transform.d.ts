@@ -1,3 +1,5 @@
+import { PositionalChannel } from "./channel.js";
+
 /**
  * The name of the field or a JavaScript expression for accessing nested properties.
  * Dots and brackets in the field name must be escaped.
@@ -38,6 +40,12 @@ export interface SelectionFilterParams extends TransformParamsBase {
      * **Default:** `true`
      */
     empty?: boolean;
+
+    /**
+     * An optional mapping of positional channels to fields. Used to determine which fields
+     * are checked against the selection intervals.
+     */
+    fields?: Partial<Record<PositionalChannel, Field>>;
 }
 
 export type FilterParams = ExprFilterParams | SelectionFilterParams;

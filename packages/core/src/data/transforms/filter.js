@@ -22,7 +22,13 @@ export default class FilterTransform extends Transform {
         if (isExprFilterParams(this.params)) {
             expression = this.params.expr;
         } else if (isSelectionFilterParams(this.params)) {
-            expression = makeSelectionTestExpression(this.params);
+            const selection = this.paramMediator.findValue(this.params.param);
+            if (!selection) {
+                throw new Error(
+                    `Cannot initialize filter transform. Selection parameter "${this.params.param}" not found!`
+                );
+            }
+            expression = makeSelectionTestExpression(this.params, selection);
         } else {
             throw new Error(
                 "Invalid filter params: " + JSON.stringify(this.params)

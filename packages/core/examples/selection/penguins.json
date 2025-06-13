@@ -1,0 +1,149 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Aggregating brushed penguins",
+    "Data: Gorman KB, Williams TD, Fraser WR (2014) Ecological Sexual Dimorphism and Environmental Variability within a Community of Antarctic Penguins (Genus Pygoscelis). PLoS ONE 9(3): e90081. doi:10.1371/journal.pone.0090081"
+  ],
+
+  "height": 350,
+  "padding": 30,
+
+  "data": { "url": "penguins_size.csv" },
+  "transform": [{ "type": "collect" }],
+
+  "params": [{ "name": "brush" }],
+
+  "resolve": {
+    "scale": {
+      "color": "shared",
+      "y": "independent"
+    }
+  },
+
+  "spacing": 30,
+
+  "hconcat": [
+    {
+      "title": { "text": "Palmer Penguins", "style": "overlay" },
+
+      "name": "scatterPlot",
+
+      "params": [
+        {
+          "name": "brush",
+          "select": { "type": "interval", "encodings": ["x", "y"] },
+          "push": "outer"
+        }
+      ],
+
+      "width": 350,
+
+      "mark": {
+        "type": "point",
+        "filled": false,
+        "size": 40,
+        "opacity": 0.7
+      },
+
+      "encoding": {
+        "x": {
+          "field": "culmen_length_mm",
+          "type": "quantitative",
+          "scale": { "zero": false, "padding": 0.1 }
+        },
+        "y": {
+          "field": "culmen_depth_mm",
+          "type": "quantitative",
+          "scale": { "zero": false, "padding": 0.1 }
+        },
+        "color": {
+          "condition": {
+            "param": "brush",
+            "field": "species",
+            "type": "nominal",
+            "scale": {
+              "domain": ["Chinstrap", "Adelie", "Gentoo"],
+              "range": ["#BF5CCA", "#FF6C02", "#0F7574"]
+            }
+          },
+          "value": "lightgrey"
+        }
+      }
+    },
+
+    {
+      "name": "barCharts",
+
+      "width": 200,
+
+      "transform": [
+        {
+          "type": "filter",
+          "param": "brush",
+          "fields": {
+            "x": "culmen_length_mm",
+            "y": "culmen_depth_mm"
+          }
+        }
+      ],
+
+      "resolve": {
+        "scale": { "x": "independent", "color": "shared" }
+      },
+
+      "encoding": {
+        "y": { "field": "count", "type": "quantitative" }
+      },
+
+      "vconcat": [
+        {
+          "name": "speciesChart",
+
+          "transform": [{ "type": "aggregate", "groupby": ["species"] }],
+
+          "mark": "rect",
+
+          "encoding": {
+            "x": {
+              "field": "species",
+              "type": "nominal",
+              "scale": { "padding": 0.3 },
+              "axis": { "labelAngle": 0 }
+            },
+            "color": {
+              "field": "species",
+              "type": "nominal"
+            }
+          }
+        },
+
+        {
+          "name": "sexChart",
+
+          "width": 200,
+
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.sex == 'MALE' || datum.sex == 'FEMALE'"
+            },
+            { "type": "aggregate", "groupby": ["sex"] }
+          ],
+
+          "mark": "rect",
+
+          "encoding": {
+            "x": {
+              "field": "sex",
+              "type": "nominal",
+              "scale": { "padding": 0.3 },
+              "axis": { "labelAngle": 0 }
+            },
+            "color": { "value": "gray" }
+          }
+        }
+      ]
+    }
+  ]
+}
