@@ -674,6 +674,16 @@ export default class SampleView extends ContainerView {
             // TODO: Log a warning if the view name is not unique
             .filter((info) => uniqueViewNames.has(info.view.name));
 
+        // The same field may be used on multiple channels.
+        const uniqueFieldInfos = Array.from(
+            new Map(
+                fieldInfos.map((info) => [
+                    JSON.stringify([info.view.name, info.field]),
+                    info,
+                ])
+            ).values()
+        );
+
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
             this.makePeekMenuItem(),
@@ -690,7 +700,7 @@ export default class SampleView extends ContainerView {
 
         let previousContextTitle = "";
 
-        for (const [i, fieldInfo] of fieldInfos.entries()) {
+        for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
             /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
             const specifier = {
                 view: fieldInfo.view.name,
