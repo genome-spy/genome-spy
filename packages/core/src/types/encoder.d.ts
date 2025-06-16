@@ -82,6 +82,10 @@ export interface Predicate extends ExprRefFunction {
  * Wraps one or more accessors, uses an optional scale to encode the data.
  */
 export interface Encoder {
+    /**
+     * Returns an encoded value for the given datum.
+     * If the encoder has a scale, the value is passed through the scale function.
+     */
     (datum: Datum): Scalar;
 
     /**
