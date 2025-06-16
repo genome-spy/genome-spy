@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
+
+### Bug Fixes
+
+* **core:** remove `console.log` from binnedIndex ([41c225c](https://github.com/genome-spy/genome-spy/commit/41c225c1c02dbc247c5c9d23f731d372cec28445)) by @tuner
+* **core:** remove more console.logs in binnedIndex ([95baf95](https://github.com/genome-spy/genome-spy/commit/95baf950c216bcc97503537fcfe3e4e433b939fb)) by @tuner
+* **core:** scale inside conditional encoding ([c2ddb7e](https://github.com/genome-spy/genome-spy/commit/c2ddb7e719d2a3647dae44829445b02a80240a9e)) by @tuner
+* **core:** scale resolution on conditional convenience channels ([7eb2a87](https://github.com/genome-spy/genome-spy/commit/7eb2a8788855282963d9acdc8db9eb1aea913db2)) by @tuner
+* **core:** silence erroneous warning about identical arrays in `mergeObjects` ([63b91b9](https://github.com/genome-spy/genome-spy/commit/63b91b95b5d4140d316e05877795fbfae734add6)) by @tuner
+* **core:** wrong organism in refseqGene tooltips ([b3ee6af](https://github.com/genome-spy/genome-spy/commit/b3ee6af3a7a64ce964095ae7359dd157589f4664)), closes [#279](https://github.com/genome-spy/genome-spy/issues/279) by @tuner
+
+### Features
+
+* **core:** filter by interval selection ([7dfe326](https://github.com/genome-spy/genome-spy/commit/7dfe326b4c14bbd2c768f37fdfb606354bd69daa)) by @tuner
+
 ## [0.60.1](https://github.com/genome-spy/genome-spy/compare/v0.60.0...v0.60.1) (2025-06-12)
 
 ### Bug Fixes

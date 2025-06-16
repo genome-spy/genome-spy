@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
+
+### Bug Fixes
+
+* **app:** show each data field only once in the context menu ([8b88696](https://github.com/genome-spy/genome-spy/commit/8b88696af710376630de176dc3f68eed0c71ec7d)) by @tuner
+
 ## [0.60.1](https://github.com/genome-spy/genome-spy/compare/v0.60.0...v0.60.1) (2025-06-12)
 
 **Note:** Version bump only for package @genome-spy/app
