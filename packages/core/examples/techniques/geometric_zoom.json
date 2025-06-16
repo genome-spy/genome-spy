@@ -14,12 +14,11 @@
   ],
   "mark": {
     "type": "point",
-    "geometricZoomBound": 10.5
+    "size": { "expr": "min(1 * zoomLevel * zoomLevel, 200)" }
   },
   "encoding": {
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
-    "size": { "value": 200 },
     "opacity": { "value": 0.6 }
   }
 }

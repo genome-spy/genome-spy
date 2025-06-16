@@ -93,16 +93,15 @@ adjust the point size and visibility based on the zoom level.
 
 ### Geometric zoom
 
-Geometric zoom scales the point size down if the current zoom level is lower
-than the specified level (bound). `geometricZoomBound` mark property enables
-geometric zooming. The value is the negative base two logarithm of the
-relative width of the visible domain. Example: `0`: (the default) full-size
-points are always shown, `1`: when a half of the domain is visible, `2`: when
-a quarter is visible, and so on.
-
-The example below displays 200 000 semi-randomly generated points. The points
-reach their full size when 1 / 2^10.5 of the domain is visible, which equals
-about 1500X zoom.
+Geometric zoom automatically changes the size of points as you zoom in or out.
+In the example below, the `size` property is set using an
+[expression](../expressions.md) that references the `zoomLevel`
+[parameter](../parameters.md). The expression `min(0.5 * pow(zoomLevel, 1.5), 200)`
+means that as you zoom in, point size increases, but the growth rate is
+controlled by the exponent. This helps keep points visible and reduces overlap
+at higher zoom levels, while preventing them from becoming too large. You can
+adjust the expression to fine-tune how point size responds to zooming for your
+specific visualization.
 
 <div><genome-spy-doc-embed>
 
@@ -121,12 +120,11 @@ about 1500X zoom.
   ],
   "mark": {
     "type": "point",
-    "geometricZoomBound": 10.5
+    "size": { "expr": "min(0.5 * pow(zoomLevel, 1.5), 200)" }
   },
   "encoding": {
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
-    "size": { "value": 200 },
     "opacity": { "value": 0.6 }
   }
 }

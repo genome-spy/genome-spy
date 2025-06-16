@@ -52,12 +52,11 @@ The example below is interactive. You can zoom in using the mouse wheel.
   ],
   "mark": {
     "type": "point",
-    "geometricZoomBound": 10.5
+    "size": { "expr": "min(0.5 * pow(zoomLevel, 1.5), 200)" }
   },
   "encoding": {
     "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
     "y": { "field": "y", "type": "quantitative" },
-    "size": { "value": 200 },
     "opacity": { "value": 0.6 }
   }
 }

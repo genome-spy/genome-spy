@@ -69,6 +69,12 @@ export default class PointMark extends Mark {
                 this.#semanticZoomFraction = () => szf;
             }
         }
+
+        if ("geometricZoomBound" in this.properties) {
+            console.warn(
+                'geometricZoomBound is deprecated. Use something like the following instead: "size": { "expr": "min(0.5 * pow(zoomLevel, 2), 200)" }.'
+            );
+        }
     }
 
     /**
