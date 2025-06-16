@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.61.1](https://github.com/genome-spy/genome-spy/compare/v0.61.0...v0.61.1) (2025-06-16)
+
+### Bug Fixes
+
+* **core:** zoom extent and geometric zoom ([8e469d3](https://github.com/genome-spy/genome-spy/commit/8e469d3aa28cf72858e86c28cad1313f6c232c3f)) by @
+
 # [0.61.0](https://github.com/genome-spy/genome-spy/compare/v0.60.1...v0.61.0) (2025-06-16)
 
 ### Bug Fixes
