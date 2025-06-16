@@ -1,4 +1,4 @@
-import { describe, expect, test, skip } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { createAccessor, createConditionalAccessors } from "./accessor.js";
 import ParamMediator from "../view/paramMediator.js";
