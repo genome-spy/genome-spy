@@ -469,6 +469,13 @@ export default class ScaleResolution {
         scale.props = props;
         this.#configureRange();
 
+        if (!this.#initialDomain && isContinuous(scale.type)) {
+            const domain = scale.domain();
+            if (span(domain) > 0) {
+                this.#initialDomain = domain;
+            }
+        }
+
         if (!domainWasInitialized) {
             this.#initialDomain = scale.domain();
             this.#notifyListeners("domain");
