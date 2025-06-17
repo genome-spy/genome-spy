@@ -100,10 +100,7 @@ export default class Collector extends FlowNode {
         // Free some memory
         this.#buffer = [];
 
-        const sort = this.params?.sort;
-        // Vega's "compare" function is incredibly slow (uses megamorphic field accessor)
-        // TODO: Implement a replacement for static data types
-        const comparator = sort ? compare(sort.field, sort.order) : undefined;
+        const comparator = makeComparator(this.params?.sort);
 
         /** @param {any[]} data */
         const sortData = (data) => {
@@ -328,4 +325,32 @@ function groupBy(data, accessor) {
         group.push(datum);
     }
     return groups;
+}
+
+/**
+ * Creates a comparator function based on the provided sort parameters.
+ *
+ * @param {import("../spec/transform.js").CompareParams} sort
+ * @returns {(a: number, b: number) => number}
+ */
+function makeComparator(sort) {
+    // For simple cases, create a simple comparator.
+    // For more complex cases, use Vega's compare function. However,
+    // is uses megamorphic field accessors, which makes it slow.
+    if (sort?.field) {
+        const fields = asArray(sort.field);
+        if (fields.length == 1 && !fields[0].includes(".")) {
+            const order = asArray(sort.order)[0] ?? "ascending";
+            const fieldName = JSON.stringify(fields[0]);
+            return /** @type {(a: number, b: number) => number} */ (
+                new Function(
+                    "a",
+                    "b",
+                    `return a[${fieldName}] ${order === "ascending" ? "-" : "+"} b[${fieldName}];`
+                )
+            );
+        }
+
+        return compare(sort.field, sort.order);
+    }
 }
