@@ -266,9 +266,7 @@ function createAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const offsetDirection =
-        //ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
-        -1;
+    const offsetDirection = ap.orient == "top" || ap.orient == "right" ? 1 : -1;
 
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
@@ -284,9 +282,7 @@ function createAxis(axisProps, type) {
             strokeDash: ap.domainDash,
             strokeCap: ap.domainCap,
             color: ap.domainColor,
-            [secondary]: anchor
-                ? { expr: DIMENSION_SIZES[secondary] }
-                : { value: 0 },
+            [secondary]: anchor ? { expr: DIMENSION_SIZES[secondary] } : 0,
             size: ap.domainWidth,
         },
     });

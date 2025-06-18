@@ -155,15 +155,15 @@ export default class View {
             }
         }
 
-        // All descendants of a layer view have the same coordinates - no need to redefine.
-        if (!this.layoutParent?.options.layeredChildren) {
-            // Width and height can be overriden by the view spec. Typically it
-            // doesn't make much sense, but it's used in the App's SampleView
-            // to set the height to sample facets' height.
-            const allocateIfFree = (/** @type {string} */ name) =>
-                //                this.paramMediator.findMediatorForParam(name)*/
-                //                    ? undefined :
-                this.paramMediator.allocateSetter(name, 0);
+        // @ts-ignore - substitute for instanceof LayerView
+        if (this.layoutParent?.spec.layer) {
+            // All descendants of a layer view have the same coordinates - no need to redefine.
+        } else {
+            const allocateIfFree = (/** @type {string} */ name) => {
+                if (!this.paramMediator.hasSetter(name)) {
+                    return this.paramMediator.allocateSetter(name, 0);
+                }
+            };
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }
