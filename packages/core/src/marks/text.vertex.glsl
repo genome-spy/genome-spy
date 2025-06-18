@@ -24,15 +24,23 @@ float maxValue(vec4 v) {
 }
 
 /**
- * All measures are in [0, 1]
+ * a - start coordinate of ranged text
+ * b - end coordinate of ranged text
+ * width - width of the text
+ * padding - how much padding to leave on each side of the text
+ * align - how the text should be aligned
+ * flush - whether to try to keep the text inside the range
+ * viewportSize - size of the viewport in pixels
  */
-RangeResult positionInsideRange(float a, float b, float width, float padding,
-                                int align, bool flush) {
+RangeResult positionInsideRange(float a, float b,
+                                float width, float padding,
+                                int align, bool flush,
+                                float viewportSize) {
     float span = b - a;
     float paddedWidth = width + 2.0 * padding;
 
     // Is the text clearly outside the viewport
-    if (a > 1.0 || b < 0.0) {
+    if (a > viewportSize || b < 0.0) {
         return RangeResult(0.0, 0.0);
     }
 
@@ -50,7 +58,7 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
             float leftOver = max(0.0, paddedWidth - centre);
             centre += min(leftOver, extra);
 
-            float rightOver = max(0.0, paddedWidth + centre - 2.0);
+            float rightOver = max(0.0, paddedWidth + centre - 2.0 * viewportSize);
             centre -= min(rightOver, extra);
         }
 
@@ -70,7 +78,7 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
         float edge = b;
 
         if (flush) {
-            float over = max(0.0, edge - 1.0);
+            float over = max(0.0, edge - viewportSize);
             edge -= min(over, extra);
         }
 
@@ -82,7 +90,6 @@ RangeResult positionInsideRange(float a, float b, float width, float padding,
     // How the text should be scaled to make it fit inside the range (if it didn't fit).
     float scale = clamp((span - padding) / paddedWidth, 0.0, 1.0);
 
-    // TODO: Fix padding in scale factor. Padding should stay constant
     return RangeResult(pos, scale);
 }
 
@@ -143,8 +150,9 @@ void main(void) {
         float x2 = getScaled_x2();
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
-            size.x * scale * flushSize.x / uViewportSize.x, uPaddingX / uViewportSize.x,
-            align.x, uFlushX);
+            size.x * scale * flushSize.x, uPaddingX,
+            align.x, uFlushX,
+            uViewportSize.x);
         
         x = result.pos;
         scale *= result.scale;
@@ -166,8 +174,9 @@ void main(void) {
     } else {
         RangeResult result = positionInsideRange(
             min(pos.y, pos2.y), max(pos.y, pos2.y),
-            size.y * scale * flushSize.y / uViewportSize.y, uPaddingY / uViewportSize.y,
-            align.y, uFlushY);
+            size.y * scale * flushSize.y, uPaddingY,
+            align.y, uFlushY,
+            uViewportSize.y);
         
         pos.y = result.pos;
         scale *= result.scale;
@@ -188,7 +197,7 @@ void main(void) {
 
         } else if (scale < 1.0) {
             // Eliminate the text
-            gl_Position = vec4(0.0);
+            gl_Position = vec4(-2.0, -2, 0.0, 1.0);
             return;
         }
     }
@@ -196,10 +205,9 @@ void main(void) {
     // Position of the character vertex in relation to the text origo
     vec2 charPos = rotationMatrix * (vertexCoord * size + uD);
 
-    // Position of the character vertex inside the unit viewport
-    vec2 unitPos = pos + charPos;
+    vec2 pixelPos = pos + charPos;
 
-    gl_Position = pixelsToNdc(unitPos);
+    gl_Position = pixelsToNdc(pixelPos);
 
     // Controls antialiasing of the SDF
     vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator);
@@ -219,7 +227,7 @@ void main(void) {
     // x: top, y: right, z: bottom, w: left
     if (maxValue(uViewportEdgeFadeDistance) > -pow(10.0, 10.0)) { // -Infinity would be nice
         vEdgeFadeOpacity = minValue(
-            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * unitPos.yxyx) *
+            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * pixelPos.yxyx) *
                 uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
     } else {
         vEdgeFadeOpacity = 1.0;

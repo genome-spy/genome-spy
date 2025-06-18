@@ -1,13 +1,11 @@
 #define PI 3.141593
 
 uniform View {
-    /** Canvas size in logical pixels */
-    mediump vec2 uCanvasSize;
-    /** Offset in "unit" units */
-    mediump vec2 uViewOffset;
-    mediump vec2 uViewScale;
-    /** Size of the logical viewport in pixels, i.e., the view */
+    /** Size of the viewport in logical pixels, i.e., the region that can be drawn to */
     mediump vec2 uViewportSize;
+    /** Offset of the view wrt the viewport */
+    mediump vec2 uViewOffset;
+
     lowp float uDevicePixelRatio;
     // TODO: Views with opacity less than 1.0 should be rendered into a texture
     // that is rendered with the specified opacity.
@@ -17,11 +15,10 @@ uniform View {
 
 
 /**
- * Maps a coordinate on the unit scale to a normalized device coordinate.
- * (0, 0) is at the bottom left corner.
+ * DEPRECATED
  */
 vec4 unitToNdc(vec2 coord) {
-    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+    return vec4(0.0);
 }
 
 vec4 unitToNdc(float x, float y) {
@@ -29,7 +26,7 @@ vec4 unitToNdc(float x, float y) {
 }
 
 vec4 pixelsToNdc(vec2 coord) {
-    return vec4((coord + uViewOffset) / uCanvasSize * 2.0 - 1.0, 0.0, 1.0);
+    return vec4((coord + uViewOffset) / uViewportSize * 2.0 - 1.0, 0.0, 1.0);
 }
 
 vec4 pixelsToNdc(float x, float y) {

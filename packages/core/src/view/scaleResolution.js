@@ -600,6 +600,8 @@ export default class ScaleResolution {
         }
 
         const scale = this.scale;
+        const fractionalPan =
+            pan / span(/** @type {number[]} */ (scale.range()));
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
@@ -620,11 +622,11 @@ export default class ScaleResolution {
             case "linear":
             case "index":
             case "locus":
-                newDomain = panLinear(newDomain, pan || 0);
+                newDomain = panLinear(newDomain, fractionalPan || 0);
                 newDomain = zoomLinear(newDomain, anchor, scaleFactor);
                 break;
             case "log":
-                newDomain = panLog(newDomain, pan || 0);
+                newDomain = panLog(newDomain, fractionalPan || 0);
                 newDomain = zoomLog(newDomain, anchor, scaleFactor);
                 break;
             case "pow":
@@ -633,7 +635,11 @@ export default class ScaleResolution {
                     /** @type {import("d3-scale").ScalePower<number, number>} */ (
                         scale
                     );
-                newDomain = panPow(newDomain, pan || 0, powScale.exponent());
+                newDomain = panPow(
+                    newDomain,
+                    fractionalPan || 0,
+                    powScale.exponent()
+                );
                 newDomain = zoomPow(
                     newDomain,
                     anchor,

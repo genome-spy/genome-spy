@@ -1403,9 +1403,6 @@ export default class Mark {
             let xClipOffset = 0;
             let yClipOffset = 0;
 
-            /** @type {[number, number]} */
-            let uViewScale;
-
             if (clipRect) {
                 // The following fails with axes that are handled by a GridView
                 // that itself is scrollable. The axes are clipped to the viewport
@@ -1416,15 +1413,8 @@ export default class Mark {
                     return false;
                 }
 
-                uViewScale = [
-                    coords.width / clippedCoords.width,
-                    coords.height / clippedCoords.height,
-                ];
-
                 yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
                 xClipOffset = Math.min(0, coords.x - clipRect.x);
-            } else {
-                uViewScale = [1, 1];
             }
 
             const physicalGlCoords = [
@@ -1450,12 +1440,10 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError / dpr) /
-                        clippedCoords.width,
-                    -(yOffset + yClipOffset - yError / dpr) /
-                        clippedCoords.height,
+                    xOffset + xClipOffset + xError / dpr,
+                    -(yOffset + yClipOffset - yError / dpr),
                 ],
-                uViewScale,
+                uViewportSize: [clippedCoords.width, clippedCoords.height],
             };
         } else {
             if (!coords.isDefined()) {
@@ -1477,15 +1465,13 @@ export default class Mark {
                     coords.x + xOffset,
                     logicalSize.height - coords.y - yOffset - coords.height,
                 ],
-                uViewScale: [coords.width, coords.height],
+                uViewportSize: [logicalSize.width, logicalSize.height],
             };
         }
 
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
-            uViewportSize: [coords.width, coords.height],
             uDevicePixelRatio: dpr,
-            uCanvasSize: [logicalSize.width, logicalSize.height],
         });
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);
