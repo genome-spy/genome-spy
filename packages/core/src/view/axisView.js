@@ -455,9 +455,12 @@ export function createGenomeAxis(axisProps, type) {
             type: "rule",
             strokeDash: axisProps.chromTickDash,
             strokeDashOffset: axisProps.chromTickDashOffset,
-            [secondary]: anchor,
-            [secondary + "2"]:
-                anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
+            [secondary]: {
+                expr: anchor ? DIMENSION_SIZES[secondary] : "0",
+            },
+            [secondary + "2"]: {
+                expr: `${anchor ? DIMENSION_SIZES[secondary] : 0} - ${ap.chromTickSize * (anchor ? 1 : -1)}`,
+            },
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
         },
@@ -484,7 +487,7 @@ export function createGenomeAxis(axisProps, type) {
                 break;
             case "bottom":
                 chromLabelMarkProps = {
-                    y: 1,
+                    y: { expr: "height" },
                     angle: 0,
                     paddingX: 4,
                     dy: ap.chromLabelPadding + ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
@@ -496,7 +499,7 @@ export function createGenomeAxis(axisProps, type) {
                 break;
             case "left":
                 chromLabelMarkProps = {
-                    x: 1,
+                    x: { expr: "width" },
                     angle: -90,
                     paddingY: 4,
                     dy: -ap.chromLabelPadding,

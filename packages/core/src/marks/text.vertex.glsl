@@ -225,8 +225,8 @@ void main(void) {
     // x: top, y: right, z: bottom, w: left
     if (maxValue(uViewportEdgeFadeDistance) > -Infinity) {
         vEdgeFadeOpacity = minValue(
-            ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * pixelPos.yxyx) *
-                uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
+            ((vec4(uViewSize.y, uViewSize.x, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * pixelPos.yxyx) -
+                uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);
     } else {
         vEdgeFadeOpacity = 1.0;
     }

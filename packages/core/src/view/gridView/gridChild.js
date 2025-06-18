@@ -211,12 +211,14 @@ export default class GridChild {
             ) => {
                 const inverted = { x: 0, y: 0 };
 
-                const np = view.coords.normalizePoint(point.x, point.y, true);
-
                 for (const channel of channels) {
                     const scale = scaleResolutions[channel].scale;
                     // @ts-ignore
-                    const val = scale.invert(channel == "x" ? np.x : np.y);
+                    const val = scale.invert(
+                        channel == "x"
+                            ? point.x - view.coords.x
+                            : view.coords.height - point.y + view.coords.y
+                    );
                     inverted[channel] =
                         val +
                         (["index", "locus"].includes(scale.type) ? 0.5 : 0);
@@ -245,9 +247,12 @@ export default class GridChild {
                         if (val == null) return null;
                         return scaleResolutions[channel].scale(val);
                     };
-                    const px = getCoord("x", xVal) ?? i;
-                    const py = getCoord("y", yVal) ?? i;
-                    return view.coords.denormalizePoint(px, py, true);
+                    return new Point(
+                        (getCoord("x", xVal) ?? i) + view.coords.x,
+                        view.coords.height -
+                            (getCoord("y", yVal) ?? i) +
+                            view.coords.y
+                    );
                 };
 
                 const a = mapCorner(intervals.x?.[0], intervals.y?.[0], 0);

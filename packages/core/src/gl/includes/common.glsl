@@ -3,6 +3,8 @@
 uniform View {
     /** Size of the viewport in logical pixels, i.e., the region that can be drawn to */
     mediump vec2 uViewportSize;
+    /** Size of the UnitView */
+    mediump vec2 uViewSize;
     /** Offset of the view wrt the viewport */
     mediump vec2 uViewOffset;
 

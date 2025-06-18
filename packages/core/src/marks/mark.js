@@ -1472,6 +1472,7 @@ export default class Mark {
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
             uDevicePixelRatio: dpr,
+            uViewSize: [coords.width, coords.height],
         });
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);
