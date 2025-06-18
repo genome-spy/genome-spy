@@ -1474,14 +1474,10 @@ export default class Mark {
             // Offset and scale all drawing to the view rectangle
             uniforms = {
                 uViewOffset: [
-                    (coords.x + xOffset) / logicalSize.width,
-                    (logicalSize.height - coords.y - yOffset - coords.height) /
-                        logicalSize.height,
+                    coords.x + xOffset,
+                    logicalSize.height - coords.y - yOffset - coords.height,
                 ],
-                uViewScale: [
-                    coords.width / logicalSize.width,
-                    coords.height / logicalSize.height,
-                ],
+                uViewScale: [coords.width, coords.height],
             };
         }
 
@@ -1489,6 +1485,7 @@ export default class Mark {
             ...uniforms,
             uViewportSize: [coords.width, coords.height],
             uDevicePixelRatio: dpr,
+            uCanvasSize: [logicalSize.width, logicalSize.height],
         });
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);

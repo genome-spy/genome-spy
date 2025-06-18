@@ -49,7 +49,7 @@ vec2 getVertexPos() {
 void main(void) {
     vec2 frac = getVertexPos();
 
-    vec2 normalizedMinSize = vec2(uMinWidth, uMinHeight) / uViewportSize;
+    vec2 minSize = vec2(uMinWidth, uMinHeight);
     vec4 cornerRadii = vec4(
         uCornerRadiusTopRight,
         uCornerRadiusBottomRight,
@@ -68,27 +68,32 @@ void main(void) {
     // Clamp x to prevent precision artifacts when the scale is zoomed very close.
 	// TODO: clamp y as well
 	float clampMargin = 1.0;
-    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+    //vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
+    //vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+    vec2 pos1 = vec2(x, y);
+    vec2 pos2 = vec2(x2, y2);
 
     vec2 size = pos2 - pos1;
 
     if (size.x <= 0.0 || size.y <= 0.0) {
         // Early exit. May increase performance or not...
-        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+        gl_Position = vec4(-1.1, -1.0, 0.0, 1.0);
         return;
     }
 
     vec2 pos = pos1 + frac * size;
 
-    size.y *= getSampleFacetHeight(pos);
+    //size.y *= getSampleFacetHeight(pos);
 
     // Clamp to minimum size, optionally compensate with opacity
+    /*
     float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
     pos = applySampleFacet(pos);
+    */
+    float opaFactor = uViewOpacity;
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
     // Add an extra pixel to the stroke width to accommodate edge antialiasing
@@ -102,10 +107,10 @@ void main(void) {
     float strokeOpacity = getScaled_strokeOpacity() * opaFactor;
 
     vec2 centeredFrac = frac - 0.5;
-    vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0) / uViewportSize;
+    vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0);
     pos += expand;
 
-    vec2 sizeInPixels = size * uViewportSize;
+    vec2 sizeInPixels = size;
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
 
     vHalfSizeInPixels = sizeInPixels / 2.0;
@@ -115,7 +120,7 @@ void main(void) {
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 #endif
 
-    gl_Position = unitToNdc(pos);
+    gl_Position = pixelsToNdc(pos);
 
     float fillOpacity = getScaled_fillOpacity() * opaFactor;
     vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);

@@ -161,9 +161,9 @@ export default class View {
             // doesn't make much sense, but it's used in the App's SampleView
             // to set the height to sample facets' height.
             const allocateIfFree = (/** @type {string} */ name) =>
-                this.paramMediator.findMediatorForParam(name)
-                    ? undefined
-                    : this.paramMediator.allocateSetter(name, 0);
+                //                this.paramMediator.findMediatorForParam(name)*/
+                //                    ? undefined :
+                this.paramMediator.allocateSetter(name, 0);
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }

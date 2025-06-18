@@ -98,7 +98,6 @@ ivec2 fixAlignForAngle(ivec2 align, float angleInDegrees) {
     int x = align.x;
     int y = -align.y;
 
-    // TODO: Optimize by avoiding branching
     if (a < 90.0) {
         return ivec2(x, y);
     } else if (a < 180.0) {
@@ -153,7 +152,8 @@ void main(void) {
 #endif
 
     // Position of the text origo 
-    vec2 pos = applySampleFacet(vec2(x, y));
+    //vec2 pos = applySampleFacet(vec2(x, y));
+    vec2 pos = vec2(x, y);
 
 #ifdef y2_DEFINED
     float y2 = getScaled_y2();
@@ -197,9 +197,9 @@ void main(void) {
     vec2 charPos = rotationMatrix * (vertexCoord * size + uD);
 
     // Position of the character vertex inside the unit viewport
-    vec2 unitPos = pos + charPos / uViewportSize;
+    vec2 unitPos = pos + charPos;
 
-    gl_Position = unitToNdc(unitPos);
+    gl_Position = pixelsToNdc(unitPos);
 
     // Controls antialiasing of the SDF
     vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator);

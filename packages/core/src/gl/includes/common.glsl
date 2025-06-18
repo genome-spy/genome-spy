@@ -1,6 +1,8 @@
 #define PI 3.141593
 
 uniform View {
+    /** Canvas size in logical pixels */
+    mediump vec2 uCanvasSize;
     /** Offset in "unit" units */
     mediump vec2 uViewOffset;
     mediump vec2 uViewScale;
@@ -27,7 +29,7 @@ vec4 unitToNdc(float x, float y) {
 }
 
 vec4 pixelsToNdc(vec2 coord) {
-    return unitToNdc(coord / uViewportSize);
+    return vec4((coord + uViewOffset) / uCanvasSize * 2.0 - 1.0, 0.0, 1.0);
 }
 
 vec4 pixelsToNdc(float x, float y) {

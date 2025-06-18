@@ -992,7 +992,10 @@ function getDefaultScaleType(channel, dataType) {
  */
 function applyLockedProperties(props, channel) {
     if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        props.range = [0, 1];
+        props.range = [
+            { expr: "0" },
+            { expr: channel.startsWith("x") ? "width" : "height" },
+        ];
     }
 
     if (channel == "opacity" && isContinuous(props.type)) {

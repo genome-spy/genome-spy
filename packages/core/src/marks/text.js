@@ -51,8 +51,8 @@ export default class TextMark extends Mark {
         super(unitView);
 
         this.augmentDefaultProperties({
-            x: 0.5,
-            y: 0.5,
+            x: { expr: "width / 2" },
+            y: { expr: "height / 2" },
             x2: undefined,
             y2: undefined,
             text: "",

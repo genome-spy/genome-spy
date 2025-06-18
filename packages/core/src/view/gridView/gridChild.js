@@ -720,37 +720,18 @@ export function createBackgroundStroke(viewBackground) {
         return;
     }
 
-    // Using rules to draw a non-filled rectangle.
-    // We are not using a rect mark because it is not optimized for outlines.
     // TODO: Implement "hollow" mesh for non-filled rectangles
     return {
         configurableVisibility: false,
-        resolve: {
-            scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
-        },
-        data: {
-            values: [
-                { x: 0, y: 0, x2: 1, y2: 0 },
-                { x: 1, y: 0, x2: 1, y2: 1 },
-                { x: 1, y: 1, x2: 0, y2: 1 },
-                { x: 0, y: 1, x2: 0, y2: 0 },
-            ],
-        },
+        data: { values: [{}] },
         mark: {
-            size: viewBackground.strokeWidth ?? 1.0,
+            type: "rect",
+            filled: false,
+            strokeWidth: viewBackground.strokeWidth ?? 1.0,
             color: viewBackground.stroke ?? "lightgray",
-            strokeCap: "square",
             opacity: viewBackground.strokeOpacity ?? 1.0,
-            type: "rule",
             clip: false,
             tooltip: null,
-        },
-        encoding: {
-            x: { field: "x", type: "quantitative", scale: null },
-            y: { field: "y", type: "quantitative", scale: null },
-            x2: { field: "x2" },
-            y2: { field: "y2" },
         },
     };
 }
