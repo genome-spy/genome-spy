@@ -143,11 +143,10 @@ void main(void) {
     float x2 = getScaled_x2();
 
     if (uLogoLetter) {
-        size.x = (x2 - x) * uViewportSize.x;
+        size.x = x2 - x;
         x += (x2 - x) / 2.0;
 
     } else {
-        float x2 = getScaled_x2();
         RangeResult result = positionInsideRange(
             min(x, x2), max(x, x2),
             size.x * scale * flushSize.x, uPaddingX,
@@ -160,15 +159,14 @@ void main(void) {
 #endif
 
     // Position of the text origo 
-    //vec2 pos = applySampleFacet(vec2(x, y));
-    vec2 pos = vec2(x, y);
+    vec2 pos = applySampleFacet(vec2(x, y));
 
 #ifdef y2_DEFINED
     float y2 = getScaled_y2();
     vec2 pos2 = applySampleFacet(vec2(x, y2));
 
     if (uLogoLetter) {
-        size.y = (pos2.y - pos.y) * uViewportSize.y;
+        size.y = pos2.y - pos.y;
         pos.y += (pos2.y - pos.y) / 2.0;
 
     } else {
@@ -187,8 +185,8 @@ void main(void) {
         if (uSqueeze) {
             vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;
 
-            if (scale  < scaleFadeExtent[0]) {
-                gl_Position = vec4(0.0);
+            if (scale < scaleFadeExtent[0]) {
+                gl_Position = vec4(-2.0, -2.0, 0.0, 1.0);
                 return;
             }
 
@@ -197,7 +195,7 @@ void main(void) {
 
         } else if (scale < 1.0) {
             // Eliminate the text
-            gl_Position = vec4(-2.0, -2, 0.0, 1.0);
+            gl_Position = vec4(-2.0, -2.0, 0.0, 1.0);
             return;
         }
     }
@@ -225,7 +223,7 @@ void main(void) {
     // Edge fading. The implementation is simplistic and fails with primitives that
     // span the whole viewport. However, it works just fine with reasonable font sizes.
     // x: top, y: right, z: bottom, w: left
-    if (maxValue(uViewportEdgeFadeDistance) > -pow(10.0, 10.0)) { // -Infinity would be nice
+    if (maxValue(uViewportEdgeFadeDistance) > -Infinity) {
         vEdgeFadeOpacity = minValue(
             ((vec4(1.0, 1.0, 0.0, 0.0) + vec4(-1.0, -1.0, 1.0, 1.0) * pixelPos.yxyx) *
                 uViewportSize.yxyx - uViewportEdgeFadeDistance) / uViewportEdgeFadeWidth);

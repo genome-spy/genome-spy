@@ -13,6 +13,7 @@ uniform View {
     bool uPickingEnabled;
 };
 
+const float Infinity = 1.0 / 0.0;
 
 /**
  * DEPRECATED

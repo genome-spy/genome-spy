@@ -28,7 +28,7 @@ float computeSemanticThresholdFactor() {
 // TODO: Move this into common.glsl or something
 vec2 getDxDy() {
 #if defined(dx_DEFINED) || defined(dy_DEFINED)
-    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+    return vec2(getScaled_dx(), getScaled_dy());
 #else
     return vec2(0.0, 0.0);
 #endif

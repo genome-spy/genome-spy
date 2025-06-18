@@ -774,6 +774,8 @@ export default class ScaleResolution {
      * This method is needed because positional channels have unit ranges and the
      * length of the axis is not directly available from the scale. Ideally, ranges would
      * be configured as pixels, but that is yet to be materialized.
+     *
+     * @deprecated Use span(scale.range()) instead.
      */
     getAxisLength() {
         if (this.channel !== "x" && this.channel !== "y") {

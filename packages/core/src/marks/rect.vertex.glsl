@@ -91,8 +91,8 @@ void main(void) {
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
-    pos = applySampleFacet(pos);
     */
+    pos = applySampleFacet(pos);
     float opaFactor = uViewOpacity;
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
