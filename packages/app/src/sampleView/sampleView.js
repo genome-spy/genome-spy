@@ -244,20 +244,24 @@ export default class SampleView extends ContainerView {
             value: 0,
         });
 
+        const childView = await this.context.createOrImportView(
+            childSpec,
+            this,
+            this,
+            "sample-facets"
+        );
+
+        childView.options.sampleFaceting = true;
+
+        // Override height to represent the sample facet's height.
+        this.#sampleHeightParam = childView.paramMediator.getSetter("height");
+
         this.#gridChild = new SampleGridChild(
-            await this.context.createOrImportView(
-                childSpec,
-                this,
-                this,
-                "sample-facets"
-            ),
+            childView,
             this,
             0,
             this.spec.view
         );
-
-        this.#sampleHeightParam =
-            this.#gridChild.view.paramMediator.getSetter("height");
 
         // TODO: Hack the sample height to sidebar as well.
 

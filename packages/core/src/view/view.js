@@ -64,6 +64,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {boolean} [layersChildren]
  *      View's children are layered on top of each other and they have the same
  *      coordinates as their parent.
+ * @prop {boolean} [sampleFaceting]
+ *      True if this view or its descendant use sample faceting.
  */
 export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -155,8 +157,7 @@ export default class View {
             }
         }
 
-        // @ts-ignore - substitute for instanceof LayerView
-        if (this.layoutParent?.spec.layer) {
+        if (this.layoutParent?.options.layersChildren) {
             // All descendants of a layer view have the same coordinates - no need to redefine.
         } else {
             const allocateIfFree = (/** @type {string} */ name) => {

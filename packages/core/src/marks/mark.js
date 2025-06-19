@@ -149,7 +149,7 @@ export default class Mark {
         this.markUniformInfo = undefined;
 
         /**
-         * Indicates whether the mark's uniforms have been altered since the last rendering.
+         * Indicates whether the mark's uniforms have been altered since the last animation frame.
          * If set to true, the uniforms will be sent to the GPU before rendering the next frame.
          *
          * @protected
@@ -421,7 +421,11 @@ export default class Mark {
     getSampleFacetMode() {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
-        } else if (this.encoders.sample) {
+        } else if (
+            this.unitView
+                .getLayoutAncestors()
+                .some((v) => v.options.sampleFaceting)
+        ) {
             return SAMPLE_FACET_UNIFORM;
         }
     }
