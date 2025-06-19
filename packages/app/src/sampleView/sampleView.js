@@ -801,13 +801,11 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
-        const tp = coords.normalizePoint(
-            zoomEvent.x + zoomEvent.xDelta,
-            zoomEvent.y + zoomEvent.yDelta
+        resolution.zoom(
+            2 ** zoomEvent.zDelta,
+            zoomEvent.x - coords.x,
+            zoomEvent.xDelta
         );
-
-        resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
 
         this.context.animator.requestRender();
     }
