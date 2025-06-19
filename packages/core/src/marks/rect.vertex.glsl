@@ -65,7 +65,15 @@ void main(void) {
     sort(x, x2);
     sort(y, y2);
 
-    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
+    if (uClamp) {
+        // Clamp the rectangle to the view.
+        x = max(x, 0.0);
+        x2 = min(x2, uViewSize.x);
+        y = max(y, 0.0);
+        y2 = min(y2, uViewSize.y);
+    }
+
+    // Force-clamp x to prevent precision artifacts when the scale is zoomed very close.
 	// TODO: clamp y as well
 	float clampMargin = uViewportSize.x * 10.0;
     vec2 pos1 = applySampleFacet(vec2(clamp(x, -clampMargin, clampMargin), y));

@@ -237,6 +237,16 @@ export interface RectProps
     minHeight?: number | ExprRef;
 
     /**
+     * If true, clamps the rectangle to the view edges so it cannot extend outside the view.
+     * Unlike `clip`, the stroke remains visible at the clamped edge instead of being clipped away.
+     * Alternatively, the scale can be configured to clamp. However, this property works
+     * even when no scale is used.
+     *
+     * **Default value:** `false`
+     */
+    clamp?: boolean | ExprRef;
+
+    /**
      * Radius of the rounded corners.
      *
      * **Default value:** `0`

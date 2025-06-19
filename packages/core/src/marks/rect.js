@@ -47,6 +47,8 @@ export default class RectMark extends Mark {
             minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
             minHeight: 0.5,
             minOpacity: 1.0,
+
+            clamp: false,
         });
     }
 
@@ -215,6 +217,8 @@ export default class RectMark extends Mark {
             props.shadowColor ?? "black",
             cssColorToArray
         );
+
+        this.registerMarkUniformValue("uClamp", props.clamp ?? false);
     }
 
     updateGraphicsData() {

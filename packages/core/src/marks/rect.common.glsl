@@ -19,5 +19,7 @@ layout(std140) uniform Mark {
     uniform float uShadowOffsetX;
     uniform float uShadowOffsetY;
 
+    uniform bool uClamp;
+
 #pragma markUniforms
 };

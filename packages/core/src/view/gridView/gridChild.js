@@ -707,6 +707,12 @@ export function createBackground(viewBackground) {
             shadowOffsetX: viewBackground.shadowOffsetX,
             shadowOffsetY: viewBackground.shadowOffsetY,
             shadowOpacity: viewBackground.shadowOpacity,
+
+            clamp: true,
+            x: 0,
+            y: 0,
+            x2: Infinity,
+            y2: Infinity,
         },
     };
 }
@@ -737,6 +743,12 @@ export function createBackgroundStroke(viewBackground) {
             opacity: viewBackground.strokeOpacity ?? 1.0,
             clip: false,
             tooltip: null,
+
+            clamp: true,
+            x: 0,
+            y: 0,
+            x2: Infinity,
+            y2: Infinity,
         },
     };
 }
