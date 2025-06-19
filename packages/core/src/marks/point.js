@@ -30,8 +30,8 @@ export default class PointMark extends Mark {
         super(unitView);
 
         this.augmentDefaultProperties({
-            x: 0.5,
-            y: 0.5,
+            x: { expr: "width / 2" },
+            y: { expr: "height / 2" },
             color: "#4c78a8",
             filled: true,
             opacity: 1.0,
@@ -44,8 +44,6 @@ export default class PointMark extends Mark {
             dx: 0,
             dy: 0,
             angle: 0,
-
-            sampleFacetPadding: 0.1,
 
             semanticZoomFraction: 0.02,
 

@@ -190,8 +190,8 @@ export class GroupPanel extends LayerView {
         const yRange = [];
 
         for (const g of groupLocations) {
-            yRange.push(1 - (g.locSize.location + g.locSize.size) / viewHeight);
-            yRange.push(1 - g.locSize.location / viewHeight);
+            yRange.push(viewHeight - (g.locSize.location + g.locSize.size));
+            yRange.push(viewHeight - g.locSize.location);
         }
 
         yRes.scale.range(yRange);

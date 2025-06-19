@@ -211,12 +211,14 @@ export default class GridChild {
             ) => {
                 const inverted = { x: 0, y: 0 };
 
-                const np = view.coords.normalizePoint(point.x, point.y, true);
-
                 for (const channel of channels) {
                     const scale = scaleResolutions[channel].scale;
                     // @ts-ignore
-                    const val = scale.invert(channel == "x" ? np.x : np.y);
+                    const val = scale.invert(
+                        channel == "x"
+                            ? point.x - view.coords.x
+                            : view.coords.height - point.y + view.coords.y
+                    );
                     inverted[channel] =
                         val +
                         (["index", "locus"].includes(scale.type) ? 0.5 : 0);
@@ -245,9 +247,12 @@ export default class GridChild {
                         if (val == null) return null;
                         return scaleResolutions[channel].scale(val);
                     };
-                    const px = getCoord("x", xVal) ?? i;
-                    const py = getCoord("y", yVal) ?? i;
-                    return view.coords.denormalizePoint(px, py, true);
+                    return new Point(
+                        (getCoord("x", xVal) ?? i) + view.coords.x,
+                        view.coords.height -
+                            (getCoord("y", yVal) ?? i) +
+                            view.coords.y
+                    );
                 };
 
                 const a = mapCorner(intervals.x?.[0], intervals.y?.[0], 0);
@@ -702,6 +707,12 @@ export function createBackground(viewBackground) {
             shadowOffsetX: viewBackground.shadowOffsetX,
             shadowOffsetY: viewBackground.shadowOffsetY,
             shadowOpacity: viewBackground.shadowOpacity,
+
+            clamp: true,
+            x: 0,
+            y: 0,
+            x2: Infinity,
+            y2: Infinity,
         },
     };
 }
@@ -720,37 +731,24 @@ export function createBackgroundStroke(viewBackground) {
         return;
     }
 
-    // Using rules to draw a non-filled rectangle.
-    // We are not using a rect mark because it is not optimized for outlines.
     // TODO: Implement "hollow" mesh for non-filled rectangles
     return {
         configurableVisibility: false,
-        resolve: {
-            scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
-        },
-        data: {
-            values: [
-                { x: 0, y: 0, x2: 1, y2: 0 },
-                { x: 1, y: 0, x2: 1, y2: 1 },
-                { x: 1, y: 1, x2: 0, y2: 1 },
-                { x: 0, y: 1, x2: 0, y2: 0 },
-            ],
-        },
+        data: { values: [{}] },
         mark: {
-            size: viewBackground.strokeWidth ?? 1.0,
+            type: "rect",
+            filled: false,
+            strokeWidth: viewBackground.strokeWidth ?? 1.0,
             color: viewBackground.stroke ?? "lightgray",
-            strokeCap: "square",
             opacity: viewBackground.strokeOpacity ?? 1.0,
-            type: "rule",
             clip: false,
             tooltip: null,
-        },
-        encoding: {
-            x: { field: "x", type: "quantitative", scale: null },
-            y: { field: "y", type: "quantitative", scale: null },
-            x2: { field: "x2" },
-            y2: { field: "y2" },
+
+            clamp: true,
+            x: 0,
+            y: 0,
+            x2: Infinity,
+            y2: Infinity,
         },
     };
 }

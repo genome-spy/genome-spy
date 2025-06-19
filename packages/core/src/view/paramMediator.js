@@ -182,6 +182,14 @@ export default class ParamMediator {
     }
 
     /**
+     * Checks if a setter has been allocated for a parameter.
+     * @param {string} paramName
+     */
+    hasSetter(paramName) {
+        return this.#allocatedSetters.has(paramName);
+    }
+
+    /**
      * Get the value of a parameter from this mediator.
      * @param {string} paramName
      */

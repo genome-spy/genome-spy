@@ -52,7 +52,8 @@ export default class SelectionRect extends LayerView {
             name: "selectionRectRect",
             mark: {
                 type: "rect",
-                clip: true,
+                clip: false,
+                clamp: true,
                 ...{
                     fill: "#808080",
                     fillOpacity: 0.05,

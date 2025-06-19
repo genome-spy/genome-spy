@@ -600,6 +600,8 @@ export default class ScaleResolution {
         }
 
         const scale = this.scale;
+        const fractionalPan =
+            pan / span(/** @type {number[]} */ (scale.range()));
         const oldDomain = scale.domain();
         let newDomain = [...oldDomain];
 
@@ -620,11 +622,11 @@ export default class ScaleResolution {
             case "linear":
             case "index":
             case "locus":
-                newDomain = panLinear(newDomain, pan || 0);
+                newDomain = panLinear(newDomain, fractionalPan || 0);
                 newDomain = zoomLinear(newDomain, anchor, scaleFactor);
                 break;
             case "log":
-                newDomain = panLog(newDomain, pan || 0);
+                newDomain = panLog(newDomain, fractionalPan || 0);
                 newDomain = zoomLog(newDomain, anchor, scaleFactor);
                 break;
             case "pow":
@@ -633,7 +635,11 @@ export default class ScaleResolution {
                     /** @type {import("d3-scale").ScalePower<number, number>} */ (
                         scale
                     );
-                newDomain = panPow(newDomain, pan || 0, powScale.exponent());
+                newDomain = panPow(
+                    newDomain,
+                    fractionalPan || 0,
+                    powScale.exponent()
+                );
                 newDomain = zoomPow(
                     newDomain,
                     anchor,
@@ -768,6 +774,8 @@ export default class ScaleResolution {
      * This method is needed because positional channels have unit ranges and the
      * length of the axis is not directly available from the scale. Ideally, ranges would
      * be configured as pixels, but that is yet to be materialized.
+     *
+     * @deprecated Use span(scale.range()) instead.
      */
     getAxisLength() {
         if (this.channel !== "x" && this.channel !== "y") {
@@ -992,7 +1000,10 @@ function getDefaultScaleType(channel, dataType) {
  */
 function applyLockedProperties(props, channel) {
     if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        props.range = [0, 1];
+        props.range = [
+            { expr: "0" },
+            { expr: channel.startsWith("x") ? "width" : "height" },
+        ];
     }
 
     if (channel == "opacity" && isContinuous(props.type)) {

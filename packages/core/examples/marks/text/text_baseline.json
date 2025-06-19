@@ -9,10 +9,10 @@
     {
       "layer": [
         {
-          "mark": "rule",
-          "encoding": {
-            "y": { "value": 0.5 },
-            "color": { "value": "gray" }
+          "mark": {
+            "type": "rule",
+            "y": { "expr": "height / 2" },
+            "color": "gray"
           }
         },
         {
@@ -22,14 +22,14 @@
             "baseline": "top",
             "clip": false,
             "font": "Lato",
-            "fontWeight": 900
+            "fontWeight": 900,
+            "y": { "expr": "height / 2" },
+            "x": 0,
+            "x2": { "expr": "width" },
+            "size": 100
           },
 
           "encoding": {
-            "y": { "value": 0.5 },
-            "x": { "value": 0 },
-            "x2": { "value": 1 },
-            "size": { "value": 100 },
             "text": { "field": "data" }
           }
         }
@@ -38,10 +38,10 @@
     {
       "layer": [
         {
-          "mark": "rule",
-          "encoding": {
-            "y": { "value": 0.5 },
-            "color": { "value": "gray" }
+          "mark": {
+            "type": "rule",
+            "y": { "expr": "height / 2" },
+            "color": "gray"
           }
         },
         {
@@ -50,14 +50,15 @@
             "align": "center",
             "baseline": "middle",
             "clip": false,
-            "font": "Indie Flower"
+            "font": "Indie Flower",
+            "fontWeight": 900,
+            "y": { "expr": "height / 2" },
+            "x": 0,
+            "x2": { "expr": "width" },
+            "size": 100
           },
 
           "encoding": {
-            "y": { "value": 0.5 },
-            "x": { "value": 0 },
-            "x2": { "value": 1 },
-            "size": { "value": 100 },
             "text": { "field": "data" }
           }
         }
@@ -66,26 +67,27 @@
     {
       "layer": [
         {
-          "mark": "rule",
-          "encoding": {
-            "y": { "value": 0.5 },
-            "color": { "value": "gray" }
+          "mark": {
+            "type": "rule",
+            "y": { "expr": "height / 2" },
+            "color": "gray"
           }
         },
         {
           "mark": {
             "type": "text",
             "align": "center",
-            "baseline": "baseline",
+            "baseline": "alphabetic",
             "clip": false,
-            "font": "Oswald"
+            "font": "Oswald",
+            "fontWeight": 900,
+            "y": { "expr": "height / 2" },
+            "x": 0,
+            "x2": { "expr": "width" },
+            "size": 100
           },
 
           "encoding": {
-            "y": { "value": 0.5 },
-            "x": { "value": 0 },
-            "x2": { "value": 1 },
-            "size": { "value": 100 },
             "text": { "field": "data" }
           }
         }
@@ -94,10 +96,10 @@
     {
       "layer": [
         {
-          "mark": "rule",
-          "encoding": {
-            "y": { "value": 0.5 },
-            "color": { "value": "gray" }
+          "mark": {
+            "type": "rule",
+            "y": { "expr": "height / 2" },
+            "color": "gray"
           }
         },
         {
@@ -106,15 +108,15 @@
             "align": "center",
             "baseline": "bottom",
             "clip": false,
-            "font": "Oswald",
-            "fontWeight": "bold"
+            "font": "Alice",
+            "fontWeight": 900,
+            "y": { "expr": "height / 2" },
+            "x": 0,
+            "x2": { "expr": "width" },
+            "size": 100
           },
 
           "encoding": {
-            "y": { "value": 0.5 },
-            "x": { "value": 0 },
-            "x2": { "value": 1 },
-            "size": { "value": 100 },
             "text": { "field": "data" }
           }
         }

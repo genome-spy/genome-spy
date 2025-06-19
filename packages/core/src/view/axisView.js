@@ -41,6 +41,11 @@ export function orient2channel(slot) {
     return ORIENT_CHANNELS[slot];
 }
 
+const DIMENSION_SIZES = {
+    x: "width",
+    y: "height",
+};
+
 /**
  * An internal view that renders an axis.
  *
@@ -261,8 +266,7 @@ function createAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const offsetDirection =
-        ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
+    const offsetDirection = ap.orient == "top" || ap.orient == "right" ? 1 : -1;
 
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
@@ -278,7 +282,7 @@ function createAxis(axisProps, type) {
             strokeDash: ap.domainDash,
             strokeCap: ap.domainCap,
             color: ap.domainColor,
-            [secondary]: anchor,
+            [secondary]: anchor ? { expr: DIMENSION_SIZES[secondary] } : 0,
             size: ap.domainWidth,
         },
     });
@@ -294,9 +298,9 @@ function createAxis(axisProps, type) {
             align: ap.labelAlign,
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,
-            [secondary + "Offset"]:
-                (ap.tickSize + ap.labelPadding) * offsetDirection,
-            [secondary]: anchor,
+            [secondary]: {
+                expr: `${anchor ? DIMENSION_SIZES[secondary] : 0} + ${(ap.tickSize + ap.labelPadding) * offsetDirection}`,
+            },
             size: ap.labelFontSize,
             color: ap.labelColor,
             minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
@@ -319,13 +323,13 @@ function createAxis(axisProps, type) {
             strokeCap: ap.tickCap,
             color: ap.tickColor,
             size: ap.tickWidth,
-            minBufferSize: 300,
-        },
-        encoding: {
-            [secondary]: { value: anchor },
-            [secondary + "2"]: {
-                value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1),
+            [secondary]: {
+                expr: anchor ? DIMENSION_SIZES[secondary] : "0",
             },
+            [secondary + "2"]: {
+                expr: `${anchor ? DIMENSION_SIZES[secondary] : 0} - ${ap.tickSize * (anchor ? 1 : -1)}`,
+            },
+            minBufferSize: 300,
         },
     });
 
@@ -345,7 +349,7 @@ function createAxis(axisProps, type) {
             ],
             text: ap.title,
             color: ap.titleColor,
-            [main]: 0.5,
+            [main]: { expr: `${main == "x" ? "width" : "height"} / 2` },
             [secondary]: 1 - anchor,
         },
     });
@@ -447,9 +451,12 @@ export function createGenomeAxis(axisProps, type) {
             type: "rule",
             strokeDash: axisProps.chromTickDash,
             strokeDashOffset: axisProps.chromTickDashOffset,
-            [secondary]: anchor,
-            [secondary + "2"]:
-                anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
+            [secondary]: {
+                expr: anchor ? DIMENSION_SIZES[secondary] : "0",
+            },
+            [secondary + "2"]: {
+                expr: `${anchor ? DIMENSION_SIZES[secondary] : 0} - ${ap.chromTickSize * (anchor ? 1 : -1)}`,
+            },
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
         },
@@ -476,7 +483,7 @@ export function createGenomeAxis(axisProps, type) {
                 break;
             case "bottom":
                 chromLabelMarkProps = {
-                    y: 1,
+                    y: { expr: "height" },
                     angle: 0,
                     paddingX: 4,
                     dy: ap.chromLabelPadding + ap.chromLabelFontSize * 0.73, // A hack to align baseline with other labels
@@ -488,7 +495,7 @@ export function createGenomeAxis(axisProps, type) {
                 break;
             case "left":
                 chromLabelMarkProps = {
-                    x: 1,
+                    x: { expr: "width" },
                     angle: -90,
                     paddingY: 4,
                     dy: -ap.chromLabelPadding,

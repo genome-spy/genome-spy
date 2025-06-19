@@ -73,20 +73,20 @@ export default class RuleMark extends Mark {
         if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
             // Everything is defined
         } else if (encoding.x && encoding.x2 && !encoding.y) {
-            encoding.y = { value: 0.5 };
+            encoding.y = { value: { expr: "height / 2" } };
             encoding.y2 = encoding.y;
         } else if (encoding.y && encoding.y2 && !encoding.x) {
-            encoding.x = { value: 0.5 };
+            encoding.x = { value: { expr: "width / 2" } };
             encoding.x2 = encoding.x;
         } else if (encoding.x && !encoding.y) {
             // Vertical rule
             encoding.y = { value: 0 };
-            encoding.y2 = { value: 1 };
+            encoding.y2 = { value: { expr: "height" } };
             encoding.x2 = encoding.x;
         } else if (encoding.y && !encoding.x) {
             // Horizontal rule
             encoding.x = { value: 0 };
-            encoding.x2 = { value: 1 };
+            encoding.x2 = { value: { expr: "width" } };
             encoding.y2 = encoding.y;
         } else if (encoding.x && encoding.y && encoding.y2) {
             // Limited vertical rule

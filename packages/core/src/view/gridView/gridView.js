@@ -745,22 +745,13 @@ export default class GridView extends ContainerView {
                 continue;
             }
 
-            const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
-            const tp = coords.normalizePoint(
-                zoomEvent.x + zoomEvent.xDelta,
-                zoomEvent.y + zoomEvent.yDelta
-            );
-
-            const delta = {
-                x: tp.x - p.x,
-                y: tp.y - p.y,
-            };
-
             for (const resolution of resolutionSet) {
                 resolution.zoom(
                     2 ** zoomEvent.zDelta,
-                    channel == "y" ? 1 - p[channel] : p[channel],
-                    channel == "x" ? delta.x : -delta.y
+                    channel == "x"
+                        ? zoomEvent.x - coords.x
+                        : coords.height - zoomEvent.y + coords.y,
+                    channel == "x" ? zoomEvent.xDelta : -zoomEvent.yDelta
                 );
             }
         }

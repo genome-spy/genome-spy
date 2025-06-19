@@ -77,11 +77,6 @@ export default class FilterScoredLabelsTransform extends Transform {
         super.reset();
 
         const scale = this.resolution.scale;
-        const rangeSpan = this.resolution.getAxisLength();
-        if (!rangeSpan) {
-            // The view size is not (yet) available
-            return;
-        }
 
         for (const reservationMap of this.reservationMaps.values()) {
             reservationMap.reset();
@@ -101,7 +96,7 @@ export default class FilterScoredLabelsTransform extends Transform {
         // Try to fit the elements on the available lanes and propagate if there was room
         for (const i of topIndices) {
             const datum = this._data[i];
-            const pos = scale(this.posAccessor(datum)) * rangeSpan;
+            const pos = scale(this.posAccessor(datum));
             const halfWidth = this.widthAccessor(datum) / 2 + this.padding;
 
             if (

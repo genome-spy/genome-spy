@@ -36,12 +36,12 @@
         "type": "text",
         "font": "Source Sans Pro",
         "fontWeight": 700,
-        "size": 1000,
+        "size": 100,
         "squeeze": true,
         "fitToBand": true,
 
         "y": 0,
-        "y2": 1,
+        "y2": { "expr": "height" },
         "paddingX": 0,
         "paddingY": 0,
 

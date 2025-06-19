@@ -64,6 +64,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {boolean} [layersChildren]
  *      View's children are layered on top of each other and they have the same
  *      coordinates as their parent.
+ * @prop {boolean} [sampleFaceting]
+ *      True if this view or its descendant use sample faceting.
  */
 export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
@@ -155,15 +157,14 @@ export default class View {
             }
         }
 
-        // All descendants of a layer view have the same coordinates - no need to redefine.
-        if (!this.layoutParent?.options.layeredChildren) {
-            // Width and height can be overriden by the view spec. Typically it
-            // doesn't make much sense, but it's used in the App's SampleView
-            // to set the height to sample facets' height.
-            const allocateIfFree = (/** @type {string} */ name) =>
-                this.paramMediator.findMediatorForParam(name)
-                    ? undefined
-                    : this.paramMediator.allocateSetter(name, 0);
+        if (this.layoutParent?.options.layersChildren) {
+            // All descendants of a layer view have the same coordinates - no need to redefine.
+        } else {
+            const allocateIfFree = (/** @type {string} */ name) => {
+                if (!this.paramMediator.hasSetter(name)) {
+                    return this.paramMediator.allocateSetter(name, 0);
+                }
+            };
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }

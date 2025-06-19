@@ -472,7 +472,7 @@ export function generateScaleGlsl(channel, scale, channelDef) {
     // 3. clamp
     if ("clamp" in scale && scale.clamp()) {
         scaleBody.push(
-            `transformed = clampToRange(transformed, ${vectorizeRange(range)});`
+            `transformed = clampToRange(transformed, ${rangeUniformName});`
         );
     }
 

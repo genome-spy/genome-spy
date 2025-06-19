@@ -48,9 +48,6 @@ export function fixPositional(encoding, channel) {
                 const adjustment = (1 - (primary.band ?? 1)) / 2;
                 primary.band = 0 + adjustment;
                 secondary.band = 1 - adjustment;
-
-                // TODO: If the secondary channel duplicates the primary channel
-                // the data should be uploaded to the GPU only once.
             }
         } else if (primary.type != "quantitative") {
             const adjustment = (1 - (primary.band || 1)) / 2;
@@ -60,7 +57,7 @@ export function fixPositional(encoding, channel) {
     } else {
         // Nothing specified, fill the whole viewport
         primary = { value: 0 };
-        secondary = { value: 1 };
+        secondary = { value: { expr: channel == "x" ? "width" : "height" } };
     }
 
     encoding[channel] = primary;

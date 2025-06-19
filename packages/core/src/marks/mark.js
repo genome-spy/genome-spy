@@ -149,7 +149,7 @@ export default class Mark {
         this.markUniformInfo = undefined;
 
         /**
-         * Indicates whether the mark's uniforms have been altered since the last rendering.
+         * Indicates whether the mark's uniforms have been altered since the last animation frame.
          * If set to true, the uniforms will be sent to the GPU before rendering the next frame.
          *
          * @protected
@@ -422,14 +422,9 @@ export default class Mark {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
         } else if (
-            // If the UnitView is inside app's SampleView.
-            // TODO: This may break if non-faceted stuff is added to SampleView,
-            // e.g., view background or an x axis.
-            // This could also be more generic and work with other faceting views
-            // that will be available in the future.
             this.unitView
                 .getLayoutAncestors()
-                .find((view) => "samples" in view.spec)
+                .some((v) => v.options.sampleFaceting)
         ) {
             return SAMPLE_FACET_UNIFORM;
         }
@@ -1250,36 +1245,21 @@ export default class Mark {
      *      false if it should be skipped
      */
     prepareSampleFacetRendering(options) {
-        const opts = options.sampleFacetRenderingOptions;
-        const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
+        const getOffset = options.sampleFacetOffset;
+        const getHeight = options.sampleFacetHeight;
 
-        if (opts && locationSetter) {
-            const pos = opts.locSize ? opts.locSize.location : 0.0;
-            const height = opts.locSize ? opts.locSize.size : 1.0;
+        if (getOffset != null) {
+            const offset = getOffset();
+            const height = getHeight();
 
-            if (pos > 1.0 || pos + height < 0.0) {
+            const viewHeight = this.unitView.coords.height;
+            if (offset > viewHeight || offset + height < 0.0) {
                 // Not visible
                 return false;
             }
 
-            const targetPos = opts.targetLocSize
-                ? opts.targetLocSize.location
-                : pos;
-            const targetHeight = opts.targetLocSize
-                ? opts.targetLocSize.size
-                : height;
-
-            // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
-            // inferior performance. Based on profiling, this optimization gives
-            // a significant performance boost.
-            this.gl.uniform4f(
-                // @ts-expect-error
-                locationSetter.location, // TODO: Make a twgl pull request to fix typing
-                pos,
-                height,
-                targetPos,
-                targetHeight
-            );
+            this.programInfo.uniformSetters.uSampleFacetOffset(offset);
+            this.programInfo.uniformSetters.uSampleFacetHeight(height);
         }
 
         return true;
@@ -1355,7 +1335,7 @@ export default class Mark {
                 : undefined;
         const rangeEntry = this.rangeMap.get(facetId);
 
-        return options.sampleFacetRenderingOptions
+        return options.sampleFacetHeight !== null
             ? function renderSampleFacetRange() {
                   if (rangeEntry.count) {
                       if (self.prepareSampleFacetRendering(options)) {
@@ -1403,9 +1383,6 @@ export default class Mark {
             let xClipOffset = 0;
             let yClipOffset = 0;
 
-            /** @type {[number, number]} */
-            let uViewScale;
-
             if (clipRect) {
                 // The following fails with axes that are handled by a GridView
                 // that itself is scrollable. The axes are clipped to the viewport
@@ -1416,15 +1393,8 @@ export default class Mark {
                     return false;
                 }
 
-                uViewScale = [
-                    coords.width / clippedCoords.width,
-                    coords.height / clippedCoords.height,
-                ];
-
                 yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
                 xClipOffset = Math.min(0, coords.x - clipRect.x);
-            } else {
-                uViewScale = [1, 1];
             }
 
             const physicalGlCoords = [
@@ -1450,12 +1420,10 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError / dpr) /
-                        clippedCoords.width,
-                    -(yOffset + yClipOffset - yError / dpr) /
-                        clippedCoords.height,
+                    xOffset + xClipOffset + xError / dpr,
+                    -(yOffset + yClipOffset - yError / dpr),
                 ],
-                uViewScale,
+                uViewportSize: [clippedCoords.width, clippedCoords.height],
             };
         } else {
             if (!coords.isDefined()) {
@@ -1474,21 +1442,17 @@ export default class Mark {
             // Offset and scale all drawing to the view rectangle
             uniforms = {
                 uViewOffset: [
-                    (coords.x + xOffset) / logicalSize.width,
-                    (logicalSize.height - coords.y - yOffset - coords.height) /
-                        logicalSize.height,
+                    coords.x + xOffset,
+                    logicalSize.height - coords.y - yOffset - coords.height,
                 ],
-                uViewScale: [
-                    coords.width / logicalSize.width,
-                    coords.height / logicalSize.height,
-                ],
+                uViewportSize: [logicalSize.width, logicalSize.height],
             };
         }
 
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
-            uViewportSize: [coords.width, coords.height],
             uDevicePixelRatio: dpr,
+            uViewSize: [coords.width, coords.height],
         });
 
         setUniformBlock(this.gl, this.programInfo, this.viewUniformInfo);

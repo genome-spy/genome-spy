@@ -33,8 +33,7 @@ const OVERLAY_TITLE_STYLE = {
     orient: "top",
     anchor: "start",
     align: "left",
-    baseline: "top",
-    offset: -10,
+    offset: -15,
     dx: 10,
     fontSize: 12,
 };
@@ -88,26 +87,31 @@ export default function createTitle(title) {
 
     /** @type {Partial<import("../spec/title.js").Title>} */
     let orientConfig = {};
-    let xy = { x: 0, y: 0 };
+    let xy = { x: "0", y: "0" };
 
     const anchorPos = ANCHORS[preliminarySpec.anchor ?? "middle"];
 
+    const offset = preliminarySpec.offset ?? 0;
     switch (preliminarySpec.orient) {
         case "top":
-            xy = { x: anchorPos, y: 1 };
+            xy = { x: `width * ${anchorPos}`, y: `height + ${offset}` };
             orientConfig = { baseline: "alphabetic", angle: 0 };
             break;
         case "right":
-            xy = { x: 1, y: 1 - anchorPos };
-            orientConfig = { baseline: "alphabetic", angle: 90 };
+            xy = { x: `width + ${offset}`, y: `height * ${anchorPos}` };
+            orientConfig = {
+                baseline: "alphabetic",
+                angle: -90,
+                align: "right",
+            };
             break;
         case "bottom":
-            xy = { x: anchorPos, y: 0 };
+            xy = { x: `width * ${anchorPos}`, y: `${-offset}` };
             orientConfig = { baseline: "top", angle: 0 };
             break;
         case "left":
-            xy = { x: 0, y: anchorPos };
-            orientConfig = { baseline: "alphabetic", angle: -90 };
+            xy = { x: `${-offset}`, y: `height * ${anchorPos}` };
+            orientConfig = { baseline: "top", angle: -90 };
             break;
         default:
     }
@@ -120,23 +124,6 @@ export default function createTitle(title) {
         ...titleSpec,
     };
 
-    const offsets = { xOffset: 0, yOffset: 0 };
-    switch (preliminarySpec.orient) {
-        case "top":
-            offsets.yOffset = -spec.offset;
-            break;
-        case "right":
-            offsets.xOffset = spec.offset;
-            break;
-        case "bottom":
-            offsets.yOffset = spec.offset;
-            break;
-        case "left":
-            offsets.xOffset = -spec.offset;
-            break;
-        default:
-    }
-
     return {
         configurableVisibility: false,
         data: { values: [{}] },
@@ -145,8 +132,8 @@ export default function createTitle(title) {
             tooltip: null,
             clip: false,
 
-            ...xy,
-            ...offsets,
+            x: { expr: xy.x },
+            y: { expr: xy.y },
 
             text: spec.text,
 

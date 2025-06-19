@@ -73,13 +73,20 @@
       "name": "shadowOffsetY",
       "value": 5,
       "bind": { "input": "range", "min": -20, "max": 20, "step": 0.5 }
+    },
+    {
+      "name": "clamp",
+      "value": true,
+      "bind": { "input": "checkbox" }
     }
   ],
 
   "data": {
     "values": [
+      { "x": -0.1, "x2": 0.1 },
       { "x": 0.2, "x2": 0.4 },
-      { "x": 0.6, "x2": 0.8 }
+      { "x": 0.6, "x2": 0.8 },
+      { "x": 0.9, "x2": 1.1 }
     ]
   },
 
@@ -127,7 +134,8 @@
         "shadowBlur": { "expr": "shadowBlur" },
         "shadowOpacity": { "expr": "shadowOpacity" },
         "shadowOffsetX": { "expr": "shadowOffsetX" },
-        "shadowOffsetY": { "expr": "shadowOffsetY" }
+        "shadowOffsetY": { "expr": "shadowOffsetY" },
+        "clamp": { "expr": "clamp" }
       },
 
       "encoding": {

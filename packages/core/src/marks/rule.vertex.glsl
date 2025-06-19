@@ -34,8 +34,10 @@ void main(void) {
         size = pixelSize;
     }
 
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
+    //vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
+    //vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
+    vec2 a = vec2(getScaled_x(), getScaled_y());
+    vec2 b = vec2(getScaled_x2(), getScaled_y2());
 
     vec2 tangent = b - a;
 
@@ -66,17 +68,17 @@ void main(void) {
     float aaPadding = pixelSize;
 
     // Extrude
-    vec2 normal = normalize(vec2(-tangent.y, tangent.x) / uViewportSize);
-    p += normal * side * (size + aaPadding) / uViewportSize;
+    vec2 normal = normalize(vec2(-tangent.y, tangent.x));
+    p += normal * side * (size + aaPadding);
 
-    gl_Position = unitToNdc(p);
+    gl_Position = pixelsToNdc(p);
 
     vColor = vec4(getScaled_color() * opacity, opacity);
     vSize = size;
     vNormalLengthInPixels = side * (size + aaPadding);
 
     // TODO: Here's a precision problem that breaks round caps when zoomed in enough
-    vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent * uViewportSize) -
+    vPosInPixels = vec2(pos, (1.0 - pos)) * (1.0 + relativeDiff) * length(tangent) -
         vec2(uStrokeCap != BUTT ? size / 2.0 : 0.0);
     
     setupPicking();

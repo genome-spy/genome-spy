@@ -42,6 +42,8 @@ export class LocationManager {
     /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
 
+    #sampleHeight = 0;
+
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
@@ -62,6 +64,10 @@ export class LocationManager {
         this.resetLocations();
     }
 
+    getSampleHeight() {
+        return this.#sampleHeight;
+    }
+
     /**
      *
      * @param {WheelEvent} wheelEvent
@@ -75,10 +81,10 @@ export class LocationManager {
     }
 
     #callOnLocationUpdate() {
-        const sampleHeight = this.#locations.samples[0]?.locSize.size ?? 0;
+        // TODO: Refactor to make acquiring sampleHeight easier
+        this.#sampleHeight = this.#locations.samples[0]?.locSize.size ?? 0;
         this.#locationContext.onLocationUpdate({
-            // TODO: Refactor to make acquiring sampleHeight easier
-            sampleHeight,
+            sampleHeight: this.#sampleHeight,
         });
     }
 
@@ -316,13 +322,11 @@ export class LocationManager {
         if (entities) {
             const sampleLocations = this.getLocations().samples;
 
-            const height = this.#locationContext.getHeight();
-
             for (const sampleLocation of sampleLocations) {
                 // TODO: Get rid of the map lookup
                 const index = entities[sampleLocation.key].indexNumber;
-                arr[index * 2 + 0] = sampleLocation.locSize.location / height;
-                arr[index * 2 + 1] = sampleLocation.locSize.size / height;
+                arr[index * 2 + 0] = sampleLocation.locSize.location;
+                arr[index * 2 + 1] = sampleLocation.locSize.size;
             }
         }
 

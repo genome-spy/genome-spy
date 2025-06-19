@@ -6,7 +6,6 @@ import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
-    scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadataView.js";
@@ -245,20 +244,24 @@ export default class SampleView extends ContainerView {
             value: 0,
         });
 
+        const childView = await this.context.createOrImportView(
+            childSpec,
+            this,
+            this,
+            "sample-facets"
+        );
+
+        childView.options.sampleFaceting = true;
+
+        // Override height to represent the sample facet's height.
+        this.#sampleHeightParam = childView.paramMediator.getSetter("height");
+
         this.#gridChild = new SampleGridChild(
-            await this.context.createOrImportView(
-                childSpec,
-                this,
-                this,
-                "sample-facets"
-            ),
+            childView,
             this,
             0,
             this.spec.view
         );
-
-        this.#sampleHeightParam =
-            this.#gridChild.view.paramMediator.getSetter("height");
 
         // TODO: Hack the sample height to sidebar as well.
 
@@ -463,9 +466,6 @@ export default class SampleView extends ContainerView {
 
         // Sample rendering --------
 
-        const heightFactor = 1 / coords.height;
-        const heightFactorSource = () => heightFactor;
-
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
@@ -473,13 +473,9 @@ export default class SampleView extends ContainerView {
 
         const sampleOptions = locations.samples.map((sampleLocation) => ({
             ...options,
-            sampleFacetRenderingOptions: {
-                locSize: scaleLocSize(
-                    sampleLocation.locSize,
-                    heightFactorSource
-                ),
-            },
             facetId: [sampleLocation.key],
+            sampleFacetOffset: () => sampleLocation.locSize.location,
+            sampleFacetHeight: () => this.locationManager.getSampleHeight(),
             clipRect,
         }));
 
@@ -809,13 +805,11 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
-        const tp = coords.normalizePoint(
-            zoomEvent.x + zoomEvent.xDelta,
-            zoomEvent.y + zoomEvent.yDelta
+        resolution.zoom(
+            2 ** zoomEvent.zDelta,
+            zoomEvent.x - coords.x,
+            zoomEvent.xDelta
         );
-
-        resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
 
         this.context.animator.requestRender();
     }

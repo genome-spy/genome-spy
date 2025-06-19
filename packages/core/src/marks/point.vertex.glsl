@@ -28,7 +28,7 @@ float computeSemanticThresholdFactor() {
 // TODO: Move this into common.glsl or something
 vec2 getDxDy() {
 #if defined(dx_DEFINED) || defined(dy_DEFINED)
-    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+    return vec2(getScaled_dx(), getScaled_dy());
 #else
     return vec2(0.0, 0.0);
 #endif
@@ -54,7 +54,7 @@ void main(void) {
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
 
-    gl_Position = unitToNdc(applySampleFacet(pos));
+    gl_Position = pixelsToNdc(applySampleFacet(pos));
 
     float strokeWidth = getScaled_strokeWidth();
 
