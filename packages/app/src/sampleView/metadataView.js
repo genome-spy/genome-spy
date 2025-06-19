@@ -732,13 +732,13 @@ function createLabelViewSpec(sampleDef) {
             fontWeight: sampleDef.labelFontWeight,
             align: sampleDef.labelAlign ?? "left",
             flushY: false,
+            x: 0,
+            x2: { expr: "width" },
+            y: 0,
+            y2: { expr: "height" },
         },
         encoding: {
             facetIndex: { field: "indexNumber" },
-            x: { value: 0 },
-            x2: { value: 1 },
-            y: { value: 0 },
-            y2: { value: 1 },
             text: { field: "displayName" },
         },
     };

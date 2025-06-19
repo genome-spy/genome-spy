@@ -6,7 +6,6 @@ import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
-    scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadataView.js";
@@ -463,9 +462,6 @@ export default class SampleView extends ContainerView {
 
         // Sample rendering --------
 
-        const heightFactor = 1 / coords.height;
-        const heightFactorSource = () => heightFactor;
-
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
@@ -473,13 +469,9 @@ export default class SampleView extends ContainerView {
 
         const sampleOptions = locations.samples.map((sampleLocation) => ({
             ...options,
-            sampleFacetRenderingOptions: {
-                locSize: scaleLocSize(
-                    sampleLocation.locSize,
-                    heightFactorSource
-                ),
-            },
             facetId: [sampleLocation.key],
+            sampleFacetOffset: () => sampleLocation.locSize.location,
+            sampleFacetHeight: () => this.locationManager.getSampleHeight(),
             clipRect,
         }));
 

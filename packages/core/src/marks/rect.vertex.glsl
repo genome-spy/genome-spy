@@ -68,8 +68,8 @@ void main(void) {
     // Clamp x to prevent precision artifacts when the scale is zoomed very close.
 	// TODO: clamp y as well
 	float clampMargin = uViewportSize.x * 10.0;
-    vec2 pos1 = vec2(clamp(x, -clampMargin, clampMargin), y);
-    vec2 pos2 = vec2(clamp(x2, -clampMargin, clampMargin), y2);
+    vec2 pos1 = applySampleFacet(vec2(clamp(x, -clampMargin, clampMargin), y));
+    vec2 pos2 = applySampleFacet(vec2(clamp(x2, -clampMargin, clampMargin), y2));
 
     vec2 size = pos2 - pos1;
 
@@ -81,15 +81,11 @@ void main(void) {
 
     vec2 pos = pos1 + frac * size;
 
-    size.y *= getSampleFacetHeight(pos);
-
     // Clamp to minimum size, optionally compensate with opacity
     float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, uMinWidth) *
         clampMinSize(pos.y, frac.y, size.y, uMinHeight));
     
-    pos = applySampleFacet(pos);
-
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
     // Add an extra pixel to the stroke width to accommodate edge antialiasing
     float aaPadding = 1.0 / uDevicePixelRatio;

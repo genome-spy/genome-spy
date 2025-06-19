@@ -110,7 +110,7 @@ export default function createTitle(title) {
             orientConfig = { baseline: "top", angle: 0 };
             break;
         case "left":
-            xy = { x: `${-offset}`, y: `width * ${anchorPos}` };
+            xy = { x: `${-offset}`, y: `height * ${anchorPos}` };
             orientConfig = { baseline: "top", angle: -90 };
             break;
         default:

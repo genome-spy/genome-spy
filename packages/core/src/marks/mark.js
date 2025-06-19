@@ -421,16 +421,7 @@ export default class Mark {
     getSampleFacetMode() {
         if (this.encoders.facetIndex) {
             return SAMPLE_FACET_TEXTURE;
-        } else if (
-            // If the UnitView is inside app's SampleView.
-            // TODO: This may break if non-faceted stuff is added to SampleView,
-            // e.g., view background or an x axis.
-            // This could also be more generic and work with other faceting views
-            // that will be available in the future.
-            this.unitView
-                .getLayoutAncestors()
-                .find((view) => "samples" in view.spec)
-        ) {
+        } else if (this.encoders.sample) {
             return SAMPLE_FACET_UNIFORM;
         }
     }
@@ -1250,36 +1241,21 @@ export default class Mark {
      *      false if it should be skipped
      */
     prepareSampleFacetRendering(options) {
-        const opts = options.sampleFacetRenderingOptions;
-        const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
+        const getOffset = options.sampleFacetOffset;
+        const getHeight = options.sampleFacetHeight;
 
-        if (opts && locationSetter) {
-            const pos = opts.locSize ? opts.locSize.location : 0.0;
-            const height = opts.locSize ? opts.locSize.size : 1.0;
+        if (getOffset != null) {
+            const offset = getOffset();
+            const height = getHeight();
 
-            if (pos > 1.0 || pos + height < 0.0) {
+            const viewHeight = this.unitView.coords.height;
+            if (offset > viewHeight || offset + height < 0.0) {
                 // Not visible
                 return false;
             }
 
-            const targetPos = opts.targetLocSize
-                ? opts.targetLocSize.location
-                : pos;
-            const targetHeight = opts.targetLocSize
-                ? opts.targetLocSize.size
-                : height;
-
-            // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
-            // inferior performance. Based on profiling, this optimization gives
-            // a significant performance boost.
-            this.gl.uniform4f(
-                // @ts-expect-error
-                locationSetter.location, // TODO: Make a twgl pull request to fix typing
-                pos,
-                height,
-                targetPos,
-                targetHeight
-            );
+            this.programInfo.uniformSetters.uSampleFacetOffset(offset);
+            this.programInfo.uniformSetters.uSampleFacetHeight(height);
         }
 
         return true;
@@ -1355,7 +1331,7 @@ export default class Mark {
                 : undefined;
         const rangeEntry = this.rangeMap.get(facetId);
 
-        return options.sampleFacetRenderingOptions
+        return options.sampleFacetHeight !== null
             ? function renderSampleFacetRange() {
                   if (rangeEntry.count) {
                       if (self.prepareSampleFacetRendering(options)) {

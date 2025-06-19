@@ -54,8 +54,7 @@ void main(void) {
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
 
-    //gl_Position = unitToNdc(applySampleFacet(pos));
-    gl_Position = pixelsToNdc(pos);
+    gl_Position = pixelsToNdc(applySampleFacet(pos));
 
     float strokeWidth = getScaled_strokeWidth();
 

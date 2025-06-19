@@ -1,23 +1,6 @@
 import Mark from "../marks/mark.js";
-import { LocSize } from "../view/layout/flexLayout.js";
 import Rectangle from "../view/layout/rectangle.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
-
-/**
- * Describes the location of a sample facet. Left is the primary pos, right is for
- * transitioning between two sets of samples.
- */
-export interface SampleFacetRenderingOptions {
-    /**
-     * Location and height on unit scale, zero at top
-     */
-    locSize: LocSize;
-
-    /**
-     * Target (during transition)
-     */
-    targetLocSize?: LocSize;
-}
 
 export interface RenderingOptions {
     /**
@@ -31,7 +14,8 @@ export interface RenderingOptions {
      */
     firstFacet?: boolean;
 
-    sampleFacetRenderingOptions?: SampleFacetRenderingOptions;
+    sampleFacetOffset?: () => number;
+    sampleFacetHeight?: () => number;
 
     /**
      * Clip rendering using the given rectangle.
