@@ -106,15 +106,20 @@ export default class UrlSource extends DataSource {
          * @param {any} content
          * @param {string} [url]
          */
-        const readAndParse = (content, url) => {
+        const readAndParse = async (content, url) => {
             try {
-                /** @type {any[]} */
-                const data = read(content, format);
+                /** @type {any[] | Promise<any[]>} */
+                const dataOrPromise = read(content, format);
+                const data =
+                    dataOrPromise instanceof Promise
+                        ? await dataOrPromise
+                        : dataOrPromise;
                 this.beginBatch({ type: "file", url: url });
                 for (const d of data) {
                     this._propagate(d);
                 }
             } catch (e) {
+                console.warn(e);
                 throw new Error(`Cannot parse: ${url}: ${e.message}`);
             }
         };

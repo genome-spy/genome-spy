@@ -56,6 +56,7 @@
     "d3-format": "^3.1.0",
     "events": "^3.3.0",
     "flatqueue": "^2.0.3",
+    "hyparquet": "^1.16.2",
     "internmap": "^2.0.3",
     "lit": "^3.3.0",
     "twgl.js": "^4.19.1",

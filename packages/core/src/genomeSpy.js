@@ -25,7 +25,6 @@ import { buildDataFlow } from "./view/flowBuilder.js";
 import { optimizeDataFlow } from "./data/flowOptimizer.js";
 import GenomeStore from "./genome/genomeStore.js";
 import BmFontManager from "./fonts/bmFontManager.js";
-import fasta from "./data/formats/fasta.js";
 import { VISIT_STOP } from "./view/view.js";
 import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
@@ -35,6 +34,8 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { isStillZooming } from "./view/zoom.js";
+import fasta from "./data/formats/fasta.js";
+import parquet from "./data/formats/parquet.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -42,6 +43,7 @@ import { isStillZooming } from "./view/zoom.js";
  */
 
 vegaFormats("fasta", fasta);
+vegaFormats("parquet", parquet);
 
 export default class GenomeSpy {
     /**
