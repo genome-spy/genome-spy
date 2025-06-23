@@ -44,6 +44,7 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
  */
 
 vegaFormats("fasta", fasta);
+vegaFormats("parquet", parquet);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
