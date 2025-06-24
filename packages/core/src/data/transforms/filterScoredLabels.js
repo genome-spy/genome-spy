@@ -1,6 +1,6 @@
 import { bisector } from "d3-array";
 import { BEHAVIOR_COLLECTS } from "../flowNode.js";
-import { topKSlice } from "../../utils/topK.js";
+import { topK } from "../../utils/topK.js";
 import ReservationMap from "../../utils/reservationMap.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
@@ -62,8 +62,6 @@ export default class FilterScoredLabelsTransform extends Transform {
         const posAccessor = this.posAccessor;
         this._data.sort((a, b) => posAccessor(a) - posAccessor(b));
 
-        this._scores = this._data.map(this.scoreAccessor);
-
         for (const lane of new Set(this._data.map(this.laneAccessor))) {
             this.reservationMaps.set(lane, new ReservationMap(200));
         }
@@ -91,16 +89,16 @@ export default class FilterScoredLabelsTransform extends Transform {
         const k = 70; // TODO: Configurable
 
         // Find the maximum of k elements from the visible domain in priority order
-        const topIndices = topKSlice(
-            this._scores,
+        const topElements = topK(
+            this._data,
             k,
+            this.scoreAccessor,
             this.posBisector.left(this._data, domain[0]),
             this.posBisector.right(this._data, domain[1])
         );
 
         // Try to fit the elements on the available lanes and propagate if there was room
-        for (const i of topIndices) {
-            const datum = this._data[i];
+        for (const datum of topElements) {
             const pos = scale(this.posAccessor(datum)) * rangeSpan;
             const halfWidth = this.widthAccessor(datum) / 2 + this.padding;
 
