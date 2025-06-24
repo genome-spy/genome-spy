@@ -489,9 +489,22 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     width: Field;
 
     /**
-     * The field representing element's position on the domain.
+     * The field representing element's start position on the domain.
      */
     pos: Field;
+
+    /**
+     * The field representing element's end position on the domain.
+     * If not specified, the `pos` field is used.
+     */
+    pos2: Field;
+
+    /**
+     * Outputs the average of pos and pos2 as the centroid of the element.
+     * This is useful for elements that have a width, such as transcripts.
+     * The centroid is clamped to the visible region of the element.
+     */
+    centroidAs?: string;
 
     /**
      * An optional field representing element's lane, e.g., if transcripts
