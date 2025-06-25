@@ -484,7 +484,7 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     score: Field;
 
     /**
-     * The field representing element's width in pixels
+     * The field representing element's width in pixels.
      */
     width: Field;
 
@@ -497,7 +497,7 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
      * The field representing element's end position on the domain.
      * If not specified, the `pos` field is used.
      */
-    pos2: Field;
+    pos2?: Field;
 
     /**
      * Outputs the average of pos and pos2 as the midpoint of the element.
@@ -508,7 +508,7 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
 
     /**
      * An optional field representing element's lane, e.g., if transcripts
-     * are shown using a piled up layout.
+     * are shown using a piled up layout. Each line is processed separately.
      */
     lane?: Field;
 
