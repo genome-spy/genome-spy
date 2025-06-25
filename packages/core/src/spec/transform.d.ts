@@ -1,4 +1,5 @@
 import { PositionalChannel } from "./channel.js";
+import { ExprRef } from "./parameter.js";
 
 /**
  * The name of the field or a JavaScript expression for accessing nested properties.
@@ -425,7 +426,7 @@ export interface MeasureTextParams extends TransformParamsBase {
 
     field: Field;
 
-    fontSize: number;
+    fontSize: number | ExprRef;
 
     as: string;
 
