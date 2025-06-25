@@ -484,18 +484,31 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     score: Field;
 
     /**
-     * The field representing element's width in pixels
+     * The field representing element's width in pixels.
      */
     width: Field;
 
     /**
-     * The field representing element's position on the domain.
+     * The field representing element's start position on the domain.
      */
     pos: Field;
 
     /**
+     * The field representing element's end position on the domain.
+     * If not specified, the `pos` field is used.
+     */
+    pos2?: Field;
+
+    /**
+     * Outputs the average of pos and pos2 as the midpoint of the element.
+     * This is useful for elements that have a width, such as transcripts.
+     * The midpoint is clamped to the visible region of the element.
+     */
+    asMidpoint?: string;
+
+    /**
      * An optional field representing element's lane, e.g., if transcripts
-     * are shown using a piled up layout.
+     * are shown using a piled up layout. Each line is processed separately.
      */
     lane?: Field;
 
