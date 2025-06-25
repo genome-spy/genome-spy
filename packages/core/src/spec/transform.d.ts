@@ -504,7 +504,7 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
      * This is useful for elements that have a width, such as transcripts.
      * The midpoint is clamped to the visible region of the element.
      */
-    midpointAs?: string;
+    asMidpoint?: string;
 
     /**
      * An optional field representing element's lane, e.g., if transcripts

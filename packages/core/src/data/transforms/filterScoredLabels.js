@@ -128,11 +128,11 @@ export default class FilterScoredLabelsTransform extends Transform {
                     .get(this.laneAccessor(datum))
                     .reserve(midpoint - width / 2, midpoint + width / 2)
             ) {
-                if (this.params.midpointAs) {
+                if (this.params.asMidpoint) {
                     // Clone the datum to avoid side effects
                     const clonedDatum = Object.assign({}, datum);
                     // @ts-ignore
-                    clonedDatum[this.params.midpointAs] = scale.invert(
+                    clonedDatum[this.params.asMidpoint] = scale.invert(
                         midpoint / rangeSpan
                     );
                     this._propagate(clonedDatum);
