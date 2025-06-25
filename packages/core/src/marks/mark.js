@@ -36,6 +36,7 @@ import {
     PARAM_PREFIX,
     ATTRIBUTE_PREFIX,
     SELECTION_CHECKER_PREFIX,
+    makeAttributeName,
 } from "../gl/glslScaleGenerator.js";
 import GLSL_COMMON from "../gl/includes/common.glsl";
 import GLSL_SCALES from "../gl/includes/scales.glsl";
@@ -493,7 +494,7 @@ export default class Mark {
                 );
             }
 
-            const uniqueIdAttr = ATTRIBUTE_PREFIX + "uniqueId";
+            const uniqueIdAttr = makeAttributeName("uniqueId");
 
             if (isSinglePointSelection(selection)) {
                 // Register a mark uniform for each param. The uniform will have

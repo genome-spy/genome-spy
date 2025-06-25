@@ -103,9 +103,7 @@ export class GeometryBuilder {
                         splitLargeHighPrecision(numberAccessor(d), largeHpArray)
                   : numberAccessor;
 
-            const attributeName = sharedChannels
-                ? makeAttributeName(sharedChannels)
-                : channel;
+            const attributeName = makeAttributeName(sharedChannels ?? channel);
 
             this.variableBuilder.addConverter(attributeName, {
                 f,

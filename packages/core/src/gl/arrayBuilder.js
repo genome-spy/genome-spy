@@ -1,5 +1,4 @@
 import { isNumber } from "vega-util";
-import { ATTRIBUTE_PREFIX } from "./glslScaleGenerator.js";
 
 /** Unrolling appears to give a 20% performance boost on Chrome but compiling the
  * dynamically generated code takes time and is thus not great for small dynamic data.
@@ -56,7 +55,7 @@ export default class ArrayBuilder {
      */
     addConverter(attribute, metadata) {
         const updater = this.createUpdater(
-            ATTRIBUTE_PREFIX + attribute,
+            attribute,
             metadata.numComponents || 1,
             metadata.targetArrayType ?? Float32Array,
             metadata.arrayReference

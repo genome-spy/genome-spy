@@ -182,8 +182,7 @@ export function generateDataGlsl(
     sharedQuantitativeChannels = [channel]
 ) {
     const { attributeType } = getAttributeAndArrayTypes(scale, channel);
-    const attributeName =
-        ATTRIBUTE_PREFIX + makeAttributeName(sharedQuantitativeChannels);
+    const attributeName = makeAttributeName(sharedQuantitativeChannels);
 
     const attributeGlsl = `in highp ${attributeType} ${attributeName};`;
 
@@ -215,7 +214,7 @@ export function generateDatumGlslAndUniform(channel, scale, conditionNumber) {
     const { attributeType } = getAttributeAndArrayTypes(scale, channel);
 
     // TODO: Use uniform prefix
-    const uniformName = ATTRIBUTE_PREFIX + makeAttributeName(channel);
+    const uniformName = makeAttributeName(channel);
     const uniformGlsl = `    uniform highp ${attributeType} ${uniformName};`;
 
     const accessorFunctionName = makeAccessorFunctionName(
@@ -797,7 +796,7 @@ export function dedupeEncodingFields(encoders) {
  * @param {import("../spec/channel.js").Channel | import("../spec/channel.js").Channel[]} channel
  */
 export function makeAttributeName(channel) {
-    return asArray(channel).join("_");
+    return ATTRIBUTE_PREFIX + asArray(channel).toSorted().join("_");
 }
 
 /**
