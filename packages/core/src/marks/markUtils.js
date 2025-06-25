@@ -2,7 +2,7 @@ import {
     isValueDef,
     getSecondaryChannel,
     isChannelDefWithScale,
-    isValueDefWithCondition,
+    findChannelDefWithScale,
 } from "../encoder/encoder.js";
 
 /**
@@ -73,13 +73,9 @@ export function fixPositional(encoding, channel) {
  * @param {import("../spec/channel.js").ChannelWithScale} resolutionChannel
  */
 function setResolutionChannel(channelDef, resolutionChannel) {
-    if (isValueDefWithCondition(channelDef)) {
-        const condition = channelDef.condition;
-        if (!Array.isArray(condition) && isChannelDefWithScale(condition)) {
-            condition.resolutionChannel = resolutionChannel;
-        }
-    } else if (isChannelDefWithScale(channelDef)) {
-        channelDef.resolutionChannel = resolutionChannel;
+    const def = findChannelDefWithScale(channelDef);
+    if (def) {
+        def.resolutionChannel = resolutionChannel;
     }
 }
 

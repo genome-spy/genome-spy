@@ -218,6 +218,20 @@ export function isChannelDefWithScale(channelDef) {
 }
 
 /**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ */
+export function findChannelDefWithScale(channelDef) {
+    if (isValueDefWithCondition(channelDef)) {
+        const condition = channelDef.condition;
+        if (!Array.isArray(condition) && isChannelDefWithScale(condition)) {
+            return condition;
+        }
+    } else if (isChannelDefWithScale(channelDef)) {
+        return channelDef;
+    }
+}
+
+/**
  * @param {import("../view/unitView.js").default} view
  * @param {import("../spec/channel.js").Channel} channel
  */

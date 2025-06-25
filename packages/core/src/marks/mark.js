@@ -11,8 +11,8 @@ import {
 } from "twgl.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import createEncoders, {
+    findChannelDefWithScale,
     getSecondaryChannel,
-    isChannelDefWithScale,
     isChannelWithScale,
     isDatumDef,
     isExprDef,
@@ -795,9 +795,10 @@ export default class Mark {
             // Generate scale if needed -------------------------------
 
             if (scale) {
+                const channelDefWithScale = findChannelDefWithScale(channelDef);
                 const resolutionChannel =
-                    (isChannelDefWithScale(channelDef) &&
-                        channelDef.resolutionChannel) ||
+                    (channelDefWithScale &&
+                        channelDefWithScale.resolutionChannel) ||
                     channel;
 
                 // TODO: The event listener should be in the scale, not the resolution
