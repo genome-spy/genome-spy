@@ -611,11 +611,7 @@ export default class Mark {
                                 { expr: param },
                                 (
                                     /** @type {import("../types/selectionTypes.js").IntervalSelection} */ selection
-                                ) =>
-                                    selection.intervals[channel] ?? [
-                                        Infinity,
-                                        -Infinity,
-                                    ]
+                                ) => selection.intervals[channel] ?? [1, 0]
                             );
                         });
 
