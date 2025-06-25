@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
+
+### Features
+
+* **core:** accept ExprRef as `size` in `measureText` transform ([fbda439](https://github.com/genome-spy/genome-spy/commit/fbda439d646d0aaeccb2d9119d7db65e55eeeed6)) by @tuner
+* **core:** support segment features in `filterScoredLabels` transform ([#286](https://github.com/genome-spy/genome-spy/issues/286)) ([5b35c54](https://github.com/genome-spy/genome-spy/commit/5b35c54a5f161ed83f1ac9b40fca87841f929d68)) by @tuner
+
+### Performance Improvements
+
+* **core:** optimize sorting in collector ([8f362d0](https://github.com/genome-spy/genome-spy/commit/8f362d014163f0bf3de3883e3d0bc56eec5093c6)) by @tuner
+* **core:** optimize sorting in collector ([fef8291](https://github.com/genome-spy/genome-spy/commit/fef829163bc881a750e686c4a7e78d8be2078d4e)) by @tuner
+
 ## [0.61.1](https://github.com/genome-spy/genome-spy/compare/v0.61.0...v0.61.1) (2025-06-16)
 
 ### Bug Fixes
