@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.62.2](https://github.com/genome-spy/genome-spy/compare/v0.62.1...v0.62.2) (2025-06-25)
+
+### Bug Fixes
+
+* **core:** conditional encoding in certain cases ([29e9adc](https://github.com/genome-spy/genome-spy/commit/29e9adc1d26d2376fcf8e01763f7ee1394fb538b)) by @tuner
+
 ## [0.62.1](https://github.com/genome-spy/genome-spy/compare/v0.62.0...v0.62.1) (2025-06-25)
 
 ### Bug Fixes
