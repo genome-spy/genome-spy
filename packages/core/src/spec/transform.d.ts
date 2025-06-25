@@ -500,11 +500,11 @@ export interface FilterScoredLabelsParams extends TransformParamsBase {
     pos2: Field;
 
     /**
-     * Outputs the average of pos and pos2 as the centroid of the element.
+     * Outputs the average of pos and pos2 as the midpoint of the element.
      * This is useful for elements that have a width, such as transcripts.
-     * The centroid is clamped to the visible region of the element.
+     * The midpoint is clamped to the visible region of the element.
      */
-    centroidAs?: string;
+    midpointAs?: string;
 
     /**
      * An optional field representing element's lane, e.g., if transcripts

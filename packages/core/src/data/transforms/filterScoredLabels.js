@@ -107,33 +107,33 @@ export default class FilterScoredLabelsTransform extends Transform {
             const span = endPos - startPos;
             const width = this.widthAccessor(datum) + this.padding * 2;
 
-            let centroid = (startPos + endPos) / 2;
+            let midpoint = (startPos + endPos) / 2;
 
             // How much extra space we have for adjusting the position so that the
             // text stays inside the range.
             const extra = Math.max(0.0, (span - width) / 2.0);
             if (extra > 0.0) {
-                const leftOver = Math.max(0.0, width / 2 - centroid);
-                centroid += Math.min(leftOver, extra);
+                const leftOver = Math.max(0.0, width / 2 - midpoint);
+                midpoint += Math.min(leftOver, extra);
 
                 const rightOver = Math.max(
                     0.0,
-                    width / 2 + centroid - rangeSpan
+                    width / 2 + midpoint - rangeSpan
                 );
-                centroid -= Math.min(rightOver, extra);
+                midpoint -= Math.min(rightOver, extra);
             }
 
             if (
                 this.reservationMaps
                     .get(this.laneAccessor(datum))
-                    .reserve(centroid - width / 2, centroid + width / 2)
+                    .reserve(midpoint - width / 2, midpoint + width / 2)
             ) {
-                if (this.params.centroidAs) {
+                if (this.params.midpointAs) {
                     // Clone the datum to avoid side effects
                     const clonedDatum = Object.assign({}, datum);
                     // @ts-ignore
-                    clonedDatum[this.params.centroidAs] = scale.invert(
-                        centroid / rangeSpan
+                    clonedDatum[this.params.midpointAs] = scale.invert(
+                        midpoint / rangeSpan
                     );
                     this._propagate(clonedDatum);
                 } else {
