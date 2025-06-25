@@ -1,7 +1,7 @@
 # Filter Scored Lables
 
 The `"filterScoredLables"` transform fits prioritized labels into the available
-space, and dynamically reflows the data when the scale domain is adjusted (i.e.,
+space, and dynamically reflows the data when the scale domain is changed (i.e.,
 zoomed).
 
 For an usage example, check the [Annotation
