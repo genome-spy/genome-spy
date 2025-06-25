@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.62.1](https://github.com/genome-spy/genome-spy/compare/v0.62.0...v0.62.1) (2025-06-25)
+
+### Bug Fixes
+
+* **core:** empty interval selection with index or locus scales ([3dc437a](https://github.com/genome-spy/genome-spy/commit/3dc437afbe308edae6066c59735ce7ffcdf9b5ed)) by @tuner
+* **core:** interval selection when both primary and secondary positional channel encode same field ([17d975b](https://github.com/genome-spy/genome-spy/commit/17d975b80cb240ea7a6e673a6d3641beb025f4de)) by @tuner
+
 # [0.62.0](https://github.com/genome-spy/genome-spy/compare/v0.61.1...v0.62.0) (2025-06-25)
 
 ### Features
