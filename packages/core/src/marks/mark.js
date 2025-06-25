@@ -34,7 +34,6 @@ import {
     generateDatumGlslAndUniform,
     generateConditionalEncoderGlsl,
     PARAM_PREFIX,
-    ATTRIBUTE_PREFIX,
     SELECTION_CHECKER_PREFIX,
     makeAttributeName,
 } from "../gl/glslScaleGenerator.js";
@@ -620,12 +619,26 @@ export default class Mark {
                             );
                         });
 
-                        const c = ATTRIBUTE_PREFIX + channel;
+                        const getAttributeName = (
+                            /** @type {Channel} */ channel
+                        ) => {
+                            for (const [
+                                k,
+                                channels,
+                            ] of dedupedEncodingFields.entries()) {
+                                if (k[1] && channels.includes(channel)) {
+                                    return makeAttributeName(channels);
+                                }
+                            }
+                            return makeAttributeName(channel);
+                        };
+
+                        const c = getAttributeName(channel);
                         const u = uniformName + "[0]";
                         const u2 = uniformName + "[1]";
                         const secondaryChannel = getSecondaryChannel(channel);
                         if (this.encoding[secondaryChannel]) {
-                            const c2 = ATTRIBUTE_PREFIX + secondaryChannel;
+                            const c2 = getAttributeName(secondaryChannel);
                             const mode = this.defaultHitTestMode;
                             if (mode == "endpoints") {
                                 testSnippets.push(
@@ -738,7 +751,7 @@ export default class Mark {
                     );
                 });
             } else if (isFieldDef(channelDef)) {
-                const fields = dedupedEncodingFields.get([
+                const dedupedChannels = dedupedEncodingFields.get([
                     channelDef.field,
                     true,
                 ]);
@@ -746,7 +759,9 @@ export default class Mark {
                     channel,
                     scale,
                     conditionNumber,
-                    fields?.includes(channel) ? fields : undefined
+                    dedupedChannels?.includes(channel)
+                        ? dedupedChannels
+                        : undefined
                 );
                 attributeCode.add(attributeGlsl);
                 scaleCode.push(accessorGlsl);
