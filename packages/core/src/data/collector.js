@@ -40,6 +40,11 @@ export default class Collector extends FlowNode {
      */
     #facetIndices;
 
+    /**
+     * @type {(a: Datum, b: Datum) => number}
+     */
+    #comparator;
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -62,6 +67,8 @@ export default class Collector extends FlowNode {
         // TODO: Consider nested maps instead of InternMap
         /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
         this.facetBatches = new InternMap([], JSON.stringify);
+
+        this.#comparator = makeComparator(this.params?.sort);
 
         this.#init();
     }
@@ -100,15 +107,6 @@ export default class Collector extends FlowNode {
         // Free some memory
         this.#buffer = [];
 
-        const comparator = makeComparator(this.params?.sort);
-
-        /** @param {any[]} data */
-        const sortData = (data) => {
-            if (comparator) {
-                data.sort(comparator);
-            }
-        };
-
         if (this.params.groupby?.length) {
             if (this.facetBatches.size > 1) {
                 throw new Error("TODO: Support faceted data!");
@@ -134,9 +132,11 @@ export default class Collector extends FlowNode {
             }
         }
 
-        for (const data of this.facetBatches.values()) {
-            // TODO: Only sort if not already sorted
-            sortData(data);
+        if (this.#comparator) {
+            for (const data of this.facetBatches.values()) {
+                // TODO: Only sort if not already sorted
+                data.sort(this.#comparator);
+            }
         }
 
         this.#buildUniqueIdIndex();
@@ -331,7 +331,7 @@ function groupBy(data, accessor) {
  * Creates a comparator function based on the provided sort parameters.
  *
  * @param {import("../spec/transform.js").CompareParams} sort
- * @returns {(a: number, b: number) => number}
+ * @returns {(a: Datum, b: Datum) => number}
  */
 function makeComparator(sort) {
     // For simple cases, create a simple comparator.
@@ -342,7 +342,7 @@ function makeComparator(sort) {
         if (fields.length == 1 && !fields[0].includes(".")) {
             const order = asArray(sort.order)[0] ?? "ascending";
             const fieldName = JSON.stringify(fields[0]);
-            return /** @type {(a: number, b: number) => number} */ (
+            return /** @type {(a: Datum, b: Datum) => number} */ (
                 new Function(
                     "a",
                     "b",
