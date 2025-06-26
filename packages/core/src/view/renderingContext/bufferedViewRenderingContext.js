@@ -3,6 +3,9 @@ import { group } from "d3-array";
 import ViewRenderingContext from "./viewRenderingContext.js";
 
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
+    /** @type {[number, number, number, number]} */
+    #clearColor = [0, 0, 0, 0];
+
     /** @type {(() => void)[]} */
     #batch;
 
@@ -33,6 +36,13 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
         this.#webGLHelper = webGLHelper;
         this.#framebufferInfo = framebufferInfo;
+
+        /*
+        if (clearColor) {
+            const c = color(clearColor).rgb();
+            this.#clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
+        }
+        */
     }
 
     /**
@@ -84,10 +94,18 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         }
 
         const gl = this.#webGLHelper.gl;
+        const fbi = this.#framebufferInfo;
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.#framebufferInfo?.framebuffer);
+        if (fbi) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbi.framebuffer);
+            gl.viewport(0, 0, fbi.width, fbi.height);
+        } else {
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        }
 
-        this.#webGLHelper.clearAll();
+        gl.disable(gl.SCISSOR_TEST);
+        gl.clearColor(...this.#clearColor);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
         for (const view of this.#views) {
             view.onBeforeRender();

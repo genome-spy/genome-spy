@@ -26,7 +26,6 @@ import {
     isColorChannel,
     isDiscreteChannel,
 } from "../encoder/encoder.js";
-import { color } from "d3-color";
 import { isMultiPointSelection } from "../selection/selection.js";
 
 export default class WebGLHelper {
@@ -97,8 +96,6 @@ export default class WebGLHelper {
 
         addExtensionsToContext(gl);
 
-        // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
-
         // Always use pre-multiplied alpha
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -124,13 +121,6 @@ export default class WebGLHelper {
         this.adjustGl();
 
         this._updateDpr();
-
-        /** @type {[number, number, number, number]} */
-        this._clearColor = [0, 0, 0, 0];
-        if (clearColor) {
-            const c = color(clearColor).rgb();
-            this._clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
-        }
     }
 
     invalidateSize() {
@@ -248,10 +238,10 @@ export default class WebGLHelper {
         x *= this.dpr;
         y *= this.dpr;
 
-        const height = this.getPhysicalCanvasSize().height;
+        const { height, framebuffer } = this._pickingBufferInfo;
 
         const pixel = new Uint8Array(4);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this._pickingBufferInfo.framebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
         gl.readPixels(
             x,
             height - y - 1,
@@ -264,15 +254,6 @@ export default class WebGLHelper {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         return pixel;
-    }
-
-    clearAll() {
-        const gl = this.gl;
-        const { width, height } = this.getPhysicalCanvasSize();
-        gl.viewport(0, 0, width, height);
-        gl.disable(gl.SCISSOR_TEST);
-        gl.clearColor(...this._clearColor);
-        gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
     /**
