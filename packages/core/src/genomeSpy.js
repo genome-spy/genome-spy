@@ -992,7 +992,8 @@ export default class GenomeSpy {
             {
                 picking: true,
             },
-            this._glHelper
+            this._glHelper,
+            this._glHelper._pickingBufferInfo
         );
 
         root.render(
