@@ -88,6 +88,7 @@ export async function embed(el, spec, options = {}) {
         },
 
         updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
+        exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
     };
 }
 

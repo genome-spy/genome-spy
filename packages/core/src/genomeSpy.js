@@ -975,7 +975,7 @@ export default class GenomeSpy {
      * @param {number} [logicalHeight] defaults to canvas height
      * @param {number} [devicePixelRatio] defaults to window.devicePixelRatio
      * @param {string} [clearColor] null for transparent
-     * @returns
+     * @returns A PNG data Url
      */
     exportCanvas(
         logicalWidth,
