@@ -1,7 +1,20 @@
 import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
+import { color } from "d3-color";
 
+/**
+ * @typedef {object} BufferedViewRenderingOptions
+ * @prop {import("../../gl/webGLHelper.js").default} webGLHelper
+ * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
+ * @prop {string} [clearColor] Clear color for the  WebGL context,
+ *      defaults to transparent black.
+ */
+
+/**
+ * View rendering context that buffers the actual WebGL rendering for
+ * efficient animation.
+ */
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {[number, number, number, number]} */
     #clearColor = [0, 0, 0, 0];
@@ -28,21 +41,18 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
-     * @param {import("../../gl/webGLHelper.js").default} webGLHelper
-     * @param {import("twgl.js").FramebufferInfo} [framebufferInfo]
+     * @param {BufferedViewRenderingOptions} bufferedOptions
      */
-    constructor(globalOptions, webGLHelper, framebufferInfo) {
+    constructor(globalOptions, bufferedOptions) {
         super(globalOptions);
 
-        this.#webGLHelper = webGLHelper;
-        this.#framebufferInfo = framebufferInfo;
+        this.#webGLHelper = bufferedOptions.webGLHelper;
+        this.#framebufferInfo = bufferedOptions.framebufferInfo;
 
-        /*
-        if (clearColor) {
-            const c = color(clearColor).rgb();
+        if (bufferedOptions.clearColor) {
+            const c = color(bufferedOptions.clearColor).rgb();
             this.#clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
         }
-        */
     }
 
     /**

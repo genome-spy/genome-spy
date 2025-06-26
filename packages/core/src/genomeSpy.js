@@ -368,7 +368,6 @@ export default class GenomeSpy {
                 this.viewRoot
                     ? calculateCanvasSize(this.viewRoot)
                     : { width: undefined, height: undefined },
-            this.spec.background,
             { powerPreference: this.options.powerPreference ?? "default" }
         );
 
@@ -985,17 +984,18 @@ export default class GenomeSpy {
         }
 
         this._renderingContext = new BufferedViewRenderingContext(
+            { picking: false },
             {
-                picking: false,
-            },
-            this._glHelper
+                webGLHelper: this._glHelper,
+                clearColor: this.spec.background,
+            }
         );
         this._pickingContext = new BufferedViewRenderingContext(
+            { picking: true },
             {
-                picking: true,
-            },
-            this._glHelper,
-            this._glHelper._pickingBufferInfo
+                webGLHelper: this._glHelper,
+                framebufferInfo: this._glHelper._pickingBufferInfo,
+            }
         );
 
         root.render(

@@ -35,15 +35,9 @@ export default class WebGLHelper {
      * @param {() => {width: number, height: number}} [sizeSource]
      *      A function that returns the content size. If a dimension is undefined,
      *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
-     * @param {string} [clearColor]
      * @param {WebGLContextAttributes} [webglContextAttributes]
      */
-    constructor(
-        container,
-        sizeSource,
-        clearColor,
-        webglContextAttributes = {}
-    ) {
+    constructor(container, sizeSource, webglContextAttributes = {}) {
         this._container = container;
         this._sizeSource =
             sizeSource ??
