@@ -38,4 +38,8 @@ export default class ViewRenderingContext {
     renderMark(mark, options) {
         //
     }
+
+    getDevicePixelRatio() {
+        return 1;
+    }
 }

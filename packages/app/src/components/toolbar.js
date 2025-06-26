@@ -5,6 +5,7 @@ import {
     faQuestionCircle,
     faExpandArrowsAlt,
     faBug,
+    faFileImage,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -17,6 +18,7 @@ import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
 import { showDataflowInspectorDialog } from "../dataflowInspector.js";
+import showSaveImageDialog from "../saveImageDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -103,6 +105,14 @@ export default class Toolbar extends LitElement {
                 href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
                 >v${packageJson.version}</a
             >
+
+            <button
+                class="tool-btn"
+                title="Download PNG"
+                @click=${() => showSaveImageDialog(this.app.genomeSpy)}
+            >
+                ${icon(faFileImage).node[0]}
+            </button>
 
             ${this.app.options.showInspectorButton
                 ? html` <button

@@ -1386,18 +1386,17 @@ export default class Mark {
     /**
      * Sets viewport, clipping, and uniforms related to scaling and translation
      *
+     * @param {{width: number, height: number}} canvasSize Size of the canvas in logical pixels
+     * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
      * @param {import("../view/layout/rectangle.js").default} [clipRect]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(coords, clipRect) {
+    setViewport(canvasSize, dpr, coords, clipRect) {
         coords = coords.flatten();
 
-        const dpr = this.unitView.context.devicePixelRatio;
         const gl = this.gl;
         const props = this.properties;
-
-        const logicalSize = this.glHelper.getLogicalCanvasSize();
 
         // Translate by half a pixel to place vertical / horizontal
         // rules inside pixels, not between pixels.
@@ -1442,7 +1441,7 @@ export default class Mark {
 
             const physicalGlCoords = [
                 clippedCoords.x,
-                logicalSize.height - clippedCoords.y2,
+                canvasSize.height - clippedCoords.y2,
                 clippedCoords.width,
                 clippedCoords.height,
             ].map((x) => x * dpr);
@@ -1476,24 +1475,19 @@ export default class Mark {
             }
 
             // Viewport comprises the full canvas
-            gl.viewport(
-                0,
-                0,
-                logicalSize.width * dpr,
-                logicalSize.height * dpr
-            );
+            gl.viewport(0, 0, canvasSize.width * dpr, canvasSize.height * dpr);
             gl.disable(gl.SCISSOR_TEST);
 
             // Offset and scale all drawing to the view rectangle
             uniforms = {
                 uViewOffset: [
-                    (coords.x + xOffset) / logicalSize.width,
-                    (logicalSize.height - coords.y - yOffset - coords.height) /
-                        logicalSize.height,
+                    (coords.x + xOffset) / canvasSize.width,
+                    (canvasSize.height - coords.y - yOffset - coords.height) /
+                        canvasSize.height,
                 ],
                 uViewScale: [
-                    coords.width / logicalSize.width,
-                    coords.height / logicalSize.height,
+                    coords.width / canvasSize.width,
+                    coords.height / canvasSize.height,
                 ],
             };
         }

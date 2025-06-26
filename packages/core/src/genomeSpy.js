@@ -13,7 +13,10 @@ import {
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
-import WebGLHelper from "./gl/webGLHelper.js";
+import WebGLHelper, {
+    framebufferToDataUrl,
+    readPickingPixel,
+} from "./gl/webGLHelper.js";
 import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
@@ -35,6 +38,7 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { isStillZooming } from "./view/zoom.js";
+import { createFramebufferInfo } from "twgl.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -148,6 +152,8 @@ export default class GenomeSpy {
 
         /** @type {Point} */
         this._mouseDownCoords = undefined;
+
+        this.dpr = window.devicePixelRatio;
     }
 
     get #canvasWrapper() {
@@ -307,12 +313,13 @@ export default class GenomeSpy {
     #setupDpr() {
         const dprSetter = this.viewRoot.paramMediator.allocateSetter(
             "devicePixelRatio",
-            window.devicePixelRatio
+            this.dpr
         );
 
         const resizeCallback = () => {
             this._glHelper.invalidateSize();
-            dprSetter(window.devicePixelRatio);
+            this.dpr = window.devicePixelRatio;
+            dprSetter(this.dpr);
             this.computeLayout();
             // Render immediately, without RAF
             this.renderAll();
@@ -368,7 +375,6 @@ export default class GenomeSpy {
                 this.viewRoot
                     ? calculateCanvasSize(this.viewRoot)
                     : { width: undefined, height: undefined },
-            this.spec.background,
             { powerPreference: this.options.powerPreference ?? "default" }
         );
 
@@ -443,10 +449,6 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this._glHelper),
-
-            get devicePixelRatio() {
-                return self._glHelper.dpr;
-            },
 
             requestLayoutReflow: () => {
                 // placeholder
@@ -877,13 +879,15 @@ export default class GenomeSpy {
      * @param {number} y
      */
     _handlePicking(x, y) {
-        const pixelValue = this._glHelper.readPickingPixel(x, y);
+        const dpr = this.dpr;
+        const pp = readPickingPixel(
+            this._glHelper.gl,
+            this._glHelper._pickingBufferInfo,
+            x * dpr,
+            y * dpr
+        );
 
-        const uniqueId =
-            pixelValue[0] |
-            (pixelValue[1] << 8) |
-            (pixelValue[2] << 16) |
-            (pixelValue[3] << 24);
+        const uniqueId = pp[0] | (pp[1] << 8) | (pp[2] << 16) | (pp[3] << 24);
 
         if (uniqueId == 0) {
             this._currentHover = null;
@@ -964,6 +968,72 @@ export default class GenomeSpy {
         }
     }
 
+    /**
+     * Returns a PNG data URL of the current canvas.
+     *
+     * @param {number} [logicalWidth] defaults to canvas width
+     * @param {number} [logicalHeight] defaults to canvas height
+     * @param {number} [devicePixelRatio] defaults to window.devicePixelRatio
+     * @param {string} [clearColor] null for transparent
+     * @returns A PNG data Url
+     */
+    exportCanvas(
+        logicalWidth,
+        logicalHeight,
+        devicePixelRatio,
+        clearColor = "white"
+    ) {
+        const helper = this._glHelper;
+
+        logicalWidth ??= helper.getLogicalCanvasSize().width;
+        logicalHeight ??= helper.getLogicalCanvasSize().height;
+        devicePixelRatio ??= window.devicePixelRatio ?? 1;
+
+        const gl = helper.gl;
+
+        const width = Math.floor(logicalWidth * devicePixelRatio);
+        const height = Math.floor(logicalHeight * devicePixelRatio);
+
+        const framebufferInfo = createFramebufferInfo(
+            gl,
+            [
+                {
+                    format: gl.RGBA,
+                    type: gl.UNSIGNED_BYTE,
+                    minMag: gl.LINEAR,
+                    wrap: gl.CLAMP_TO_EDGE,
+                },
+            ],
+            width,
+            height
+        );
+
+        const renderingContext = new BufferedViewRenderingContext(
+            { picking: false },
+            {
+                webGLHelper: this._glHelper,
+                canvasSize: { width: logicalWidth, height: logicalHeight },
+                devicePixelRatio,
+                clearColor,
+                framebufferInfo,
+            }
+        );
+
+        this.viewRoot.render(
+            renderingContext,
+            Rectangle.create(0, 0, logicalWidth, logicalHeight)
+        );
+        renderingContext.render();
+
+        const pngUrl = framebufferToDataUrl(gl, framebufferInfo, "image/png");
+
+        // Clean up
+        this.computeLayout();
+        this.renderAll();
+
+        return pngUrl;
+    }
+
     computeLayout() {
         const root = this.viewRoot;
         if (!root) {
@@ -982,17 +1052,25 @@ export default class GenomeSpy {
             return;
         }
 
+        const commonOptions = {
+            webGLHelper: this._glHelper,
+            canvasSize,
+            devicePixelRatio: window.devicePixelRatio ?? 1,
+        };
+
         this._renderingContext = new BufferedViewRenderingContext(
+            { picking: false },
             {
-                picking: false,
-            },
-            this._glHelper
+                ...commonOptions,
+                clearColor: this.spec.background,
+            }
         );
         this._pickingContext = new BufferedViewRenderingContext(
+            { picking: true },
             {
-                picking: true,
-            },
-            this._glHelper
+                ...commonOptions,
+                framebufferInfo: this._glHelper._pickingBufferInfo,
+            }
         );
 
         root.render(

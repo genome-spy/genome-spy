@@ -1,27 +1,69 @@
 import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
+import { color } from "d3-color";
 
+/**
+ * @typedef {object} BufferedViewRenderingOptions
+ * @prop {import("../../gl/webGLHelper.js").default} webGLHelper
+ * @prop {{width: number, height: number}} canvasSize Size of the canvas in logical pixels.
+ * @prop {number} devicePixelRatio
+ * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
+ * @prop {string} [clearColor] Clear color for the  WebGL context,
+ *      defaults to transparent black.
+ */
+
+/**
+ * View rendering context that buffers the actual WebGL rendering for
+ * efficient animation.
+ */
 export default class BufferedViewRenderingContext extends ViewRenderingContext {
+    /** @type {[number, number, number, number]} */
+    #clearColor = [0, 0, 0, 0];
+
+    /** @type {(() => void)[]} */
+    #batch;
+
+    /**
+     * @type {import("../../types/rendering.js").BufferedRenderingRequest[]}
+     */
+    #buffer = [];
+
+    /** @type {import("twgl.js").FramebufferInfo} */
+    #framebufferInfo;
+
+    /** @type {import("../../gl/webGLHelper.js").default} */
+    #webGLHelper;
+
+    /** @type {Set<import("../view.js").default>} */
+    #views = new Set();
+
+    /** @type {import("../layout/rectangle.js").default} */
+    #coords = undefined;
+
+    #dpr = 1;
+    #canvasSize = { width: 0, height: 0 };
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
-     * @param {import("../../gl/webGLHelper.js").default} webGLHelper
+     * @param {BufferedViewRenderingOptions} bufferedOptions
      */
-    constructor(globalOptions, webGLHelper) {
+    constructor(globalOptions, bufferedOptions) {
         super(globalOptions);
 
-        this.webGLHelper = webGLHelper;
+        this.#webGLHelper = bufferedOptions.webGLHelper;
+        this.#framebufferInfo = bufferedOptions.framebufferInfo;
+        this.#dpr = bufferedOptions.devicePixelRatio;
+        this.#canvasSize = bufferedOptions.canvasSize;
 
-        /**
-         * @type {import("../../types/rendering.js").BufferedRenderingRequest[]}
-         */
-        this.buffer = [];
+        if (bufferedOptions.clearColor) {
+            const c = color(bufferedOptions.clearColor).rgb();
+            this.#clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
+        }
+    }
 
-        /** @type {import("../layout/rectangle.js").default} */
-        this.coords = undefined;
-
-        /** @type {Set<import("../view.js").default>} */
-        this.views = new Set();
+    getDevicePixelRatio() {
+        return this.#dpr;
     }
 
     /**
@@ -33,8 +75,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * @override
      */
     pushView(view, coords) {
-        this.views.add(view);
-        this.coords = coords;
+        this.#views.add(view);
+        this.#coords = coords;
     }
 
     /**
@@ -50,10 +92,10 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
         const callback = mark.render(options);
         if (callback) {
-            this.buffer.push({
+            this.#buffer.push({
                 mark,
                 callback,
-                coords: this.coords,
+                coords: this.#coords,
                 clipRect: options.clipRect,
             });
         }
@@ -64,45 +106,47 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
      * changes.
      */
     render() {
-        if (!this.batch) {
-            this._buildBatch();
+        if (!this.#batch) {
+            this.#buildBatch();
         }
 
-        if (this.batch.length == 0) {
+        if (this.#batch.length == 0) {
             return;
         }
 
-        const gl = this.webGLHelper.gl;
-        const picking = this.globalOptions.picking;
+        const gl = this.#webGLHelper.gl;
+        const fbi = this.#framebufferInfo;
 
-        gl.bindFramebuffer(
-            gl.FRAMEBUFFER,
-            picking ? this.webGLHelper._pickingBufferInfo.framebuffer : null
-        );
+        if (fbi) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbi.framebuffer);
+            gl.viewport(0, 0, fbi.width, fbi.height);
+        } else {
+            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        }
 
-        this.webGLHelper.clearAll();
+        gl.disable(gl.SCISSOR_TEST);
+        gl.clearColor(...this.#clearColor);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-        for (const view of this.views) {
+        for (const view of this.#views) {
             view.onBeforeRender();
         }
 
         // Execute the batch
-        for (const op of this.batch) {
+        for (const op of this.#batch) {
             op();
         }
 
-        if (picking) {
+        if (this.#framebufferInfo) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
     }
 
-    _buildBatch() {
+    #buildBatch() {
         /**
          * Store the operations as a sequence of commands for cheap subsequent rendering.
-         *
-         * @type {(function():void)[]}
          */
-        this.batch = [];
+        this.#batch = [];
 
         /**
          * Is drawing enabled or not. As an optimization this is toggled off for invisible views.
@@ -129,7 +173,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         // Note: by reversing the buffer, we ensure ensure that the last instance
         // of a mark determines the order of the groups.
         const requestByMark = group(
-            this.buffer.reverse(),
+            this.#buffer.reverse(),
             (request) => request.mark
         );
 
@@ -140,11 +184,11 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             }
 
             // eslint-disable-next-line no-loop-func
-            this.batch.push(() => {
+            this.#batch.push(() => {
                 enabled = mark.unitView.getEffectiveOpacity() > 0;
             });
             // Change program, set common uniforms (mark properties, shared domains)
-            this.batch.push(
+            this.#batch.push(
                 ...mark
                     .prepareRender(this.globalOptions)
                     .map((op) => ifEnabled(op))
@@ -156,18 +200,20 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 const coords = request.coords;
                 // Render each facet
                 if (!coords.equals(previousCoords)) {
-                    this.batch.push(
+                    this.#batch.push(
                         // eslint-disable-next-line no-loop-func
                         ifEnabled(() => {
                             // Suppress rendering if viewport is outside the clipRect
                             viewportVisible = mark.setViewport(
+                                this.#canvasSize,
+                                this.#dpr,
                                 coords,
                                 request.clipRect
                             );
                         })
                     );
                 }
-                this.batch.push(ifEnabledAndVisible(request.callback));
+                this.#batch.push(ifEnabledAndVisible(request.callback));
                 previousCoords = request.coords;
             }
         }

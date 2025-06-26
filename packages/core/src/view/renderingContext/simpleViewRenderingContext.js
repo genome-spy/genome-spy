@@ -58,7 +58,11 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
         for (const op of mark.prepareRender(this.globalOptions)) {
             op();
         }
-        mark.setViewport(this.coords, options.clipRect);
+
+        const canvasSize = { width: 100, height: 100 }; // Placeholder, should be replaced with actual canvas size
+        const dpr = this.getDevicePixelRatio();
+
+        mark.setViewport(canvasSize, dpr, this.coords, options.clipRect);
         mark.render(options)();
     }
 }

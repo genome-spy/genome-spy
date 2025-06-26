@@ -26,7 +26,6 @@ import {
     isColorChannel,
     isDiscreteChannel,
 } from "../encoder/encoder.js";
-import { color } from "d3-color";
 import { isMultiPointSelection } from "../selection/selection.js";
 
 export default class WebGLHelper {
@@ -36,15 +35,9 @@ export default class WebGLHelper {
      * @param {() => {width: number, height: number}} [sizeSource]
      *      A function that returns the content size. If a dimension is undefined,
      *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
-     * @param {string} [clearColor]
      * @param {WebGLContextAttributes} [webglContextAttributes]
      */
-    constructor(
-        container,
-        sizeSource,
-        clearColor,
-        webglContextAttributes = {}
-    ) {
+    constructor(container, sizeSource, webglContextAttributes = {}) {
         this._container = container;
         this._sizeSource =
             sizeSource ??
@@ -97,8 +90,6 @@ export default class WebGLHelper {
 
         addExtensionsToContext(gl);
 
-        // TODO: view background: https://vega.github.io/vega-lite/docs/spec.html#view-background
-
         // Always use pre-multiplied alpha
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -122,25 +113,11 @@ export default class WebGLHelper {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         this.adjustGl();
-
-        this._updateDpr();
-
-        /** @type {[number, number, number, number]} */
-        this._clearColor = [0, 0, 0, 0];
-        if (clearColor) {
-            const c = color(clearColor).rgb();
-            this._clearColor = [c.r / 255, c.g / 255, c.b / 255, c.opacity];
-        }
     }
 
     invalidateSize() {
         this._logicalCanvasSize = undefined;
-        this._updateDpr();
         this.adjustGl();
-    }
-
-    _updateDpr() {
-        this.dpr = window.devicePixelRatio;
     }
 
     /**
@@ -202,15 +179,17 @@ export default class WebGLHelper {
      * @param {{ width: number, height: number }} [logicalSize]
      */
     getPhysicalCanvasSize(logicalSize) {
+        const dpr = window.devicePixelRatio ?? 1;
         logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
-            width: logicalSize.width * this.dpr,
-            height: logicalSize.height * this.dpr,
+            width: logicalSize.width * dpr,
+            height: logicalSize.height * dpr,
         };
     }
 
     /**
-     * Returns the canvas size in logical pixels (without devicePixelRatio correction)
+     * Returns the size of the canvas canvas container size in logical pixels,
+     * without devicePixelRatio correction.
      */
     getLogicalCanvasSize() {
         if (this._logicalCanvasSize) {
@@ -235,44 +214,6 @@ export default class WebGLHelper {
 
         this._logicalCanvasSize = { width, height };
         return this._logicalCanvasSize;
-    }
-
-    /**
-     *
-     * @param {number} x
-     * @param {number} y
-     */
-    readPickingPixel(x, y) {
-        const gl = this.gl;
-
-        x *= this.dpr;
-        y *= this.dpr;
-
-        const height = this.getPhysicalCanvasSize().height;
-
-        const pixel = new Uint8Array(4);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this._pickingBufferInfo.framebuffer);
-        gl.readPixels(
-            x,
-            height - y - 1,
-            1,
-            1,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            pixel
-        );
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        return pixel;
-    }
-
-    clearAll() {
-        const gl = this.gl;
-        const { width, height } = this.getPhysicalCanvasSize();
-        gl.viewport(0, 0, width, height);
-        gl.disable(gl.SCISSOR_TEST);
-        gl.clearColor(...this._clearColor);
-        gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
     /**
@@ -524,4 +465,56 @@ export function createOrUpdateTexture(gl, options, src, texture) {
         });
     }
     return texture;
+}
+
+/**
+ *
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {number} x
+ * @param {number} y
+ */
+export function readPickingPixel(gl, framebufferInfo, x, y) {
+    const { height, framebuffer } = framebufferInfo;
+
+    const pixel = new Uint8Array(4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.readPixels(x, height - y - 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return pixel;
+}
+
+/**
+ *
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {string} [type]
+ */
+export function framebufferToDataUrl(gl, framebufferInfo, type = "image/png") {
+    const { width, height } = framebufferInfo;
+    const pixels = new Uint8Array(width * height * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebufferInfo.framebuffer);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+    const ctx = exportCanvas.getContext("2d");
+    const imageData = ctx.createImageData(width, height);
+
+    // Flip Y axis (WebGL's origin is bottom-left, canvas is top-left)
+    for (let y = 0; y < height; y++) {
+        const srcStart = (height - 1 - y) * width * 4;
+        const destStart = y * width * 4;
+        imageData.data.set(
+            pixels.subarray(srcStart, srcStart + width * 4),
+            destStart
+        );
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    return exportCanvas.toDataURL(type);
 }

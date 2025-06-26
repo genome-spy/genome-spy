@@ -77,4 +77,20 @@ export interface EmbedResult {
      * @param data new data. If left undefined, the data is retrieved from a provider.
      */
     updateNamedData: (name: string, data?: any[]) => void;
+
+    /**
+     * Returns a PNG data URL of the current canvas.
+     *
+     * @param {number} [logicalWidth] Custom width, defaults to canvas width
+     * @param {number} [logicalHeight] Custom height, defaults to canvas height
+     * @param {number} [devicePixelRatio] Defaults to window.devicePixelRatio
+     * @param {string} [clearColor] Background color. A CSS color, null for transparent
+     * @returns A PNG data URL
+     */
+    exportCanvas: (
+        logicalWidth: number,
+        logicalHeight: number,
+        devicePixelRatio: number,
+        clearColor: string
+    ) => string;
 }
