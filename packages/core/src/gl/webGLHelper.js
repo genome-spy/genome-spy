@@ -228,35 +228,6 @@ export default class WebGLHelper {
     }
 
     /**
-     *
-     * @param {number} x
-     * @param {number} y
-     */
-    readPickingPixel(x, y) {
-        const gl = this.gl;
-
-        x *= this.dpr;
-        y *= this.dpr;
-
-        const { height, framebuffer } = this._pickingBufferInfo;
-
-        const pixel = new Uint8Array(4);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.readPixels(
-            x,
-            height - y - 1,
-            1,
-            1,
-            gl.RGBA,
-            gl.UNSIGNED_BYTE,
-            pixel
-        );
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        return pixel;
-    }
-
-    /**
      * Creates textures for color schemes and discrete/discretizing ranges.
      * N.B. Discrete range textures need domain. Thus, this cannot be called
      * before the final domains are resolved.
@@ -505,4 +476,22 @@ export function createOrUpdateTexture(gl, options, src, texture) {
         });
     }
     return texture;
+}
+
+/**
+ *
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {number} x
+ * @param {number} y
+ */
+export function readPickingPixel(gl, framebufferInfo, x, y) {
+    const { height, framebuffer } = framebufferInfo;
+
+    const pixel = new Uint8Array(4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.readPixels(x, height - y - 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return pixel;
 }

@@ -13,7 +13,7 @@ import {
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
-import WebGLHelper from "./gl/webGLHelper.js";
+import WebGLHelper, { readPickingPixel } from "./gl/webGLHelper.js";
 import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
@@ -877,13 +877,15 @@ export default class GenomeSpy {
      * @param {number} y
      */
     _handlePicking(x, y) {
-        const pixelValue = this._glHelper.readPickingPixel(x, y);
+        const dpr = this._glHelper.dpr;
+        const pp = readPickingPixel(
+            this._glHelper.gl,
+            this._glHelper._pickingBufferInfo,
+            x * dpr,
+            y * dpr
+        );
 
-        const uniqueId =
-            pixelValue[0] |
-            (pixelValue[1] << 8) |
-            (pixelValue[2] << 16) |
-            (pixelValue[3] << 24);
+        const uniqueId = pp[0] | (pp[1] << 8) | (pp[2] << 16) | (pp[3] << 24);
 
         if (uniqueId == 0) {
             this._currentHover = null;
