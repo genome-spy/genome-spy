@@ -104,6 +104,22 @@ export default class Toolbar extends LitElement {
                 >v${packageJson.version}</a
             >
 
+            <button
+                class="tool-btn"
+                title="Download PNG"
+                @click=${() => {
+                    const dataURL = this.app.genomeSpy.exportCanvas();
+                    const link = document.createElement("a");
+                    link.href = dataURL;
+                    link.download = "genomespy-visualization.png";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }}
+            >
+                PNG
+            </button>
+
             ${this.app.options.showInspectorButton
                 ? html` <button
                       class="tool-btn"

@@ -35,6 +35,7 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import { reconfigureScales } from "./view/scaleResolution.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { isStillZooming } from "./view/zoom.js";
+import { createFramebufferInfo } from "twgl.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -963,6 +964,76 @@ export default class GenomeSpy {
                 "Tooltip has already been updated! Duplicate event handler?"
             );
         }
+    }
+
+    exportCanvas() {
+        const gl = this._glHelper.gl;
+        const logicalSize = this._glHelper.getLogicalCanvasSize();
+        const devicePixelRatio = 4; //window.devicePixelRatio ?? 1;
+        const width = logicalSize.width * devicePixelRatio;
+        const height = logicalSize.height * devicePixelRatio;
+
+        const framebufferInfo = createFramebufferInfo(
+            gl,
+            [
+                {
+                    format: gl.RGBA,
+                    type: gl.UNSIGNED_BYTE,
+                    minMag: gl.LINEAR,
+                    wrap: gl.CLAMP_TO_EDGE,
+                },
+            ],
+            width,
+            height
+        );
+
+        const renderingContext = new BufferedViewRenderingContext(
+            { picking: false },
+            {
+                webGLHelper: this._glHelper,
+                canvasSize: logicalSize,
+                devicePixelRatio,
+                clearColor: "#f0f0f0",
+                framebufferInfo,
+            }
+        );
+
+        this.viewRoot.render(
+            renderingContext,
+            Rectangle.create(0, 0, logicalSize.width, logicalSize.height)
+        );
+        renderingContext.render();
+
+        const pixels = new Uint8Array(width * height * 4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebufferInfo.framebuffer);
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        const exportCanvas = document.createElement("canvas");
+        exportCanvas.width = width;
+        exportCanvas.height = height;
+        const ctx = exportCanvas.getContext("2d");
+        const imageData = ctx.createImageData(width, height);
+
+        // Flip Y axis (WebGL's origin is bottom-left, canvas is top-left)
+        for (let y = 0; y < height; y++) {
+            const srcStart = (height - 1 - y) * width * 4;
+            const destStart = y * width * 4;
+            imageData.data.set(
+                pixels.subarray(srcStart, srcStart + width * 4),
+                destStart
+            );
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        const pngUrl = exportCanvas.toDataURL("image/png");
+
+        // Clean up
+        this.computeLayout();
+        this.renderAll();
+
+        return pngUrl;
     }
 
     computeLayout() {
