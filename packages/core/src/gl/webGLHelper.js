@@ -484,3 +484,37 @@ export function readPickingPixel(gl, framebufferInfo, x, y) {
 
     return pixel;
 }
+
+/**
+ *
+ * @param {WebGL2RenderingContext} gl
+ * @param {import("twgl.js").FramebufferInfo} framebufferInfo
+ * @param {string} [type]
+ */
+export function framebufferToDataUrl(gl, framebufferInfo, type = "image/png") {
+    const { width, height } = framebufferInfo;
+    const pixels = new Uint8Array(width * height * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebufferInfo.framebuffer);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = width;
+    exportCanvas.height = height;
+    const ctx = exportCanvas.getContext("2d");
+    const imageData = ctx.createImageData(width, height);
+
+    // Flip Y axis (WebGL's origin is bottom-left, canvas is top-left)
+    for (let y = 0; y < height; y++) {
+        const srcStart = (height - 1 - y) * width * 4;
+        const destStart = y * width * 4;
+        imageData.data.set(
+            pixels.subarray(srcStart, srcStart + width * 4),
+            destStart
+        );
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    return exportCanvas.toDataURL(type);
+}

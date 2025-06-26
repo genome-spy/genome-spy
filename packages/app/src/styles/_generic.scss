@@ -481,9 +481,15 @@ $form-control-border: 1px solid $form-control-border-color;
         margin-top: 0.5em;
     }
 
-    label {
+    label,
+    div.label {
         display: inline-block;
         margin-bottom: 0.5em;
+    }
+
+    input[type="range"] {
+        display: block;
+        width: 100%;
     }
 
     input[type="text"],

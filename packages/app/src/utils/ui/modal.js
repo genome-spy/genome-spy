@@ -107,7 +107,7 @@ export function createModal(type = "default", container = document.body) {
 /**
  * @typedef {object} MessageBoxOptions
  * @prop {string} [title]
- * @prop {string} [okLabel]
+ * @prop {string | import("lit").TemplateResult } [okLabel]
  * @prop {boolean} [cancelButton]
  */
 
@@ -138,7 +138,7 @@ export function messageBox(content, options = {}) {
                         options.cancelButton
                             ? html`
                                   <button
-                                      class="btn"
+                                      class="btn btn-cancel"
                                       @click=${() => {
                                           modal.close();
                                           resolve(false);

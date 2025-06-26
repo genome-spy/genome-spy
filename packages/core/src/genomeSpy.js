@@ -13,7 +13,10 @@ import {
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
-import WebGLHelper, { readPickingPixel } from "./gl/webGLHelper.js";
+import WebGLHelper, {
+    framebufferToDataUrl,
+    readPickingPixel,
+} from "./gl/webGLHelper.js";
 import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
@@ -965,12 +968,31 @@ export default class GenomeSpy {
         }
     }
 
-    exportCanvas() {
-        const gl = this._glHelper.gl;
-        const logicalSize = this._glHelper.getLogicalCanvasSize();
-        const devicePixelRatio = 4; //window.devicePixelRatio ?? 1;
-        const width = logicalSize.width * devicePixelRatio;
-        const height = logicalSize.height * devicePixelRatio;
+    /**
+     * Returns a PNG data URL of the current canvas.
+     *
+     * @param {number} [logicalWidth] defaults to canvas width
+     * @param {number} [logicalHeight] defaults to canvas height
+     * @param {number} [devicePixelRatio] defaults to window.devicePixelRatio
+     * @param {string} [clearColor] null for transparent
+     * @returns
+     */
+    exportCanvas(
+        logicalWidth,
+        logicalHeight,
+        devicePixelRatio,
+        clearColor = "white"
+    ) {
+        const helper = this._glHelper;
+
+        logicalWidth ??= helper.getLogicalCanvasSize().width;
+        logicalHeight ??= helper.getLogicalCanvasSize().height;
+        devicePixelRatio ??= window.devicePixelRatio ?? 1;
+
+        const gl = helper.gl;
+
+        const width = Math.floor(logicalWidth * devicePixelRatio);
+        const height = Math.floor(logicalHeight * devicePixelRatio);
 
         const framebufferInfo = createFramebufferInfo(
             gl,
@@ -990,43 +1012,20 @@ export default class GenomeSpy {
             { picking: false },
             {
                 webGLHelper: this._glHelper,
-                canvasSize: logicalSize,
+                canvasSize: { width: logicalWidth, height: logicalHeight },
                 devicePixelRatio,
-                clearColor: "#f0f0f0",
+                clearColor,
                 framebufferInfo,
             }
         );
 
         this.viewRoot.render(
             renderingContext,
-            Rectangle.create(0, 0, logicalSize.width, logicalSize.height)
+            Rectangle.create(0, 0, logicalWidth, logicalHeight)
         );
         renderingContext.render();
 
-        const pixels = new Uint8Array(width * height * 4);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebufferInfo.framebuffer);
-        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        const exportCanvas = document.createElement("canvas");
-        exportCanvas.width = width;
-        exportCanvas.height = height;
-        const ctx = exportCanvas.getContext("2d");
-        const imageData = ctx.createImageData(width, height);
-
-        // Flip Y axis (WebGL's origin is bottom-left, canvas is top-left)
-        for (let y = 0; y < height; y++) {
-            const srcStart = (height - 1 - y) * width * 4;
-            const destStart = y * width * 4;
-            imageData.data.set(
-                pixels.subarray(srcStart, srcStart + width * 4),
-                destStart
-            );
-        }
-
-        ctx.putImageData(imageData, 0, 0);
-
-        const pngUrl = exportCanvas.toDataURL("image/png");
+        const pngUrl = framebufferToDataUrl(gl, framebufferInfo, "image/png");
 
         // Clean up
         this.computeLayout();
