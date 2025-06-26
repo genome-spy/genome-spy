@@ -194,7 +194,8 @@ export default class WebGLHelper {
     }
 
     /**
-     * Returns the canvas size in logical pixels (without devicePixelRatio correction)
+     * Returns the size of the canvas canvas container size in logical pixels,
+     * without devicePixelRatio correction.
      */
     getLogicalCanvasSize() {
         if (this._logicalCanvasSize) {

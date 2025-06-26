@@ -983,17 +983,23 @@ export default class GenomeSpy {
             return;
         }
 
+        const commonOptions = {
+            webGLHelper: this._glHelper,
+            canvasSize,
+            devicePixelRatio: window.devicePixelRatio ?? 1,
+        };
+
         this._renderingContext = new BufferedViewRenderingContext(
             { picking: false },
             {
-                webGLHelper: this._glHelper,
+                ...commonOptions,
                 clearColor: this.spec.background,
             }
         );
         this._pickingContext = new BufferedViewRenderingContext(
             { picking: true },
             {
-                webGLHelper: this._glHelper,
+                ...commonOptions,
                 framebufferInfo: this._glHelper._pickingBufferInfo,
             }
         );

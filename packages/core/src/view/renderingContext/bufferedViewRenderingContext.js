@@ -6,6 +6,8 @@ import { color } from "d3-color";
 /**
  * @typedef {object} BufferedViewRenderingOptions
  * @prop {import("../../gl/webGLHelper.js").default} webGLHelper
+ * @prop {{width: number, height: number}} canvasSize Size of the canvas in logical pixels.
+ * @prop {number} devicePixelRatio
  * @prop {import("twgl.js").FramebufferInfo} [framebufferInfo]
  * @prop {string} [clearColor] Clear color for the  WebGL context,
  *      defaults to transparent black.
@@ -39,6 +41,9 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
     /** @type {import("../layout/rectangle.js").default} */
     #coords = undefined;
 
+    #dpr = 1;
+    #canvasSize = { width: 0, height: 0 };
+
     /**
      * @param {import("../../types/rendering.js").GlobalRenderingOptions} globalOptions
      * @param {BufferedViewRenderingOptions} bufferedOptions
@@ -48,6 +53,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
         this.#webGLHelper = bufferedOptions.webGLHelper;
         this.#framebufferInfo = bufferedOptions.framebufferInfo;
+        this.#dpr = bufferedOptions.devicePixelRatio;
+        this.#canvasSize = bufferedOptions.canvasSize;
 
         if (bufferedOptions.clearColor) {
             const c = color(bufferedOptions.clearColor).rgb();
@@ -194,6 +201,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                         ifEnabled(() => {
                             // Suppress rendering if viewport is outside the clipRect
                             viewportVisible = mark.setViewport(
+                                this.#canvasSize,
+                                this.#dpr,
                                 coords,
                                 request.clipRect
                             );
