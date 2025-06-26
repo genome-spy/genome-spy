@@ -202,7 +202,7 @@ void main(void) {
     gl_Position = unitToNdc(unitPos);
 
     // Controls antialiasing of the SDF
-    vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator);
+    vSlope = max(1.0, min(size.x, size.y) / uSdfNumerator * uDevicePixelRatio);
 
     vec3 color = getScaled_color();
 

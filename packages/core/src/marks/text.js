@@ -171,21 +171,11 @@ export default class TextMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniformValue(
-            "uSdfNumerator",
-            /** @type {import("../spec/parameter.js").ExprRef | number} */
-            ({ expr: "devicePixelRatio" }),
-            (dpr) => {
-                let q = 0.35; // TODO: Ensure that this makes sense. Now chosen by trial & error
-                if (this.properties.logoLetters) {
-                    // Adjust to make stretched letters a bit less blurry
-                    // A proper solution would probably be to compute gradients in the fragment shader
-                    // to find a suitable divisor.
-                    q /= 2;
-                }
-                return this.font.metrics.common.base / (dpr / q);
-            }
-        );
+        // 0.35 is a magic number found by trial and error
+        const sdfNumerator =
+            this.font.metrics.common.base *
+            0.35 *
+            (this.properties.logoLetters ? 0.5 : 1);
 
         this.registerMarkUniformValue("uPaddingX", props.paddingX);
         this.registerMarkUniformValue("uPaddingY", props.paddingY);
@@ -199,6 +189,8 @@ export default class TextMark extends Mark {
             uD: [props.dx, -props.dy],
 
             uLogoLetter: !!props.logoLetters,
+
+            uSdfNumerator: sdfNumerator,
 
             uViewportEdgeFadeWidth: [
                 props.viewportEdgeFadeWidthTop,

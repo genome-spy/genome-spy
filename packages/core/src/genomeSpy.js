@@ -149,6 +149,8 @@ export default class GenomeSpy {
 
         /** @type {Point} */
         this._mouseDownCoords = undefined;
+
+        this.dpr = window.devicePixelRatio;
     }
 
     get #canvasWrapper() {
@@ -308,12 +310,13 @@ export default class GenomeSpy {
     #setupDpr() {
         const dprSetter = this.viewRoot.paramMediator.allocateSetter(
             "devicePixelRatio",
-            window.devicePixelRatio
+            this.dpr
         );
 
         const resizeCallback = () => {
             this._glHelper.invalidateSize();
-            dprSetter(window.devicePixelRatio);
+            this.dpr = window.devicePixelRatio;
+            dprSetter(this.dpr);
             this.computeLayout();
             // Render immediately, without RAF
             this.renderAll();
@@ -443,10 +446,6 @@ export default class GenomeSpy {
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this._glHelper),
-
-            get devicePixelRatio() {
-                return self._glHelper.dpr;
-            },
 
             requestLayoutReflow: () => {
                 // placeholder
@@ -877,7 +876,7 @@ export default class GenomeSpy {
      * @param {number} y
      */
     _handlePicking(x, y) {
-        const dpr = this._glHelper.dpr;
+        const dpr = this.dpr;
         const pp = readPickingPixel(
             this._glHelper.gl,
             this._glHelper._pickingBufferInfo,

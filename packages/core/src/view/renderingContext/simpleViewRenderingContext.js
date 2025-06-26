@@ -60,7 +60,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
         }
 
         const canvasSize = { width: 100, height: 100 }; // Placeholder, should be replaced with actual canvas size
-        const dpr = window.devicePixelRatio ?? 1;
+        const dpr = this.getDevicePixelRatio();
 
         mark.setViewport(canvasSize, dpr, this.coords, options.clipRect);
         mark.render(options)();

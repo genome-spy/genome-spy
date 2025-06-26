@@ -113,18 +113,11 @@ export default class WebGLHelper {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         this.adjustGl();
-
-        this._updateDpr();
     }
 
     invalidateSize() {
         this._logicalCanvasSize = undefined;
-        this._updateDpr();
         this.adjustGl();
-    }
-
-    _updateDpr() {
-        this.dpr = window.devicePixelRatio;
     }
 
     /**
@@ -186,10 +179,11 @@ export default class WebGLHelper {
      * @param {{ width: number, height: number }} [logicalSize]
      */
     getPhysicalCanvasSize(logicalSize) {
+        const dpr = window.devicePixelRatio ?? 1;
         logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
-            width: logicalSize.width * this.dpr,
-            height: logicalSize.height * this.dpr,
+            width: logicalSize.width * dpr,
+            height: logicalSize.height * dpr,
         };
     }
 

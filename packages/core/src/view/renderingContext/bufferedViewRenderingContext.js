@@ -62,6 +62,10 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
         }
     }
 
+    getDevicePixelRatio() {
+        return this.#dpr;
+    }
+
     /**
      * Must be called when a view's render() method is entered
      *
