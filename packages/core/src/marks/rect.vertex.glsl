@@ -12,12 +12,19 @@ out vec2 vPosInPixels;
 out vec2 vHalfSizeInPixels;
 
 /**
- * Clamps the minimumSize and returns an opacity that reflects the amount of clamping.
+ * Adjusts the vertex position to ensure that the rectangle is at least `minSpan`
+ * wide or high. Returns a value that reflects the amount of clamping and can be
+ * used to adjust the opacity of the rectangle.
+ *
+ * pos: vertex position
+ * frac: vertex position within the rectangle, [0, 1]
+ * size: width or height of the rectangle
+ * minSize: minimum width or height of the rectangle
  */
 float clampMinSize(inout float pos, float frac, float size, float minSize) {
-    if (minSize > 0.0 && abs(size) < minSize) {
-        pos += (frac - 0.5) * (minSize * sign(size) - size);
-        return abs(size) / minSize;
+    if (minSize > 0.0 && size < minSize) {
+        pos += (frac - 0.5) * (minSize - size);
+        return size / minSize;
     }
 
     return 1.0;
@@ -87,6 +94,8 @@ void main(void) {
     float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
+
+    size = max(size, normalizedMinSize);
 
     pos = applySampleFacet(pos);
 
