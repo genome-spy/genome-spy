@@ -47,6 +47,10 @@ bool isEmptyBinarySearchTexture(highp usampler2D s) {
 bool binarySearchTexture(highp usampler2D s, uint value) {
     int texSize = textureSize(s, 0).x;
 
+    if (texSize == 1 && texelFetch(s, ivec2(0, 0), 0).r == 0u) {
+        return false;
+    }
+
     int left = 0;
     int right = texSize - 1;
 
