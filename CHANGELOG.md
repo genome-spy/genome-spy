@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
+
+### Bug Fixes
+
+* **core:** minWidth/minHeight in rect mark resulted in blurry rectangles in some cases ([8791019](https://github.com/genome-spy/genome-spy/commit/87910195801d689d31e8212b903be2fc7b077198)) by @tuner
+* **core:** multi-point selection on Safari ([ec07b50](https://github.com/genome-spy/genome-spy/commit/ec07b502d32761d43301cb06b5a8d48e5ccbb4d8)) by @tuner
+
+### Features
+
+* **app:** add ellipsis menu button and move stuff there ([f857f9b](https://github.com/genome-spy/genome-spy/commit/f857f9b5b20418279c8c1d3cf753716f90aeee9c)) by @tuner
+* **app:** make about dialog fancier ([941ed2d](https://github.com/genome-spy/genome-spy/commit/941ed2d404d0f143f0e68bb84ef94efe3bb8472d)) by @tuner
+* **app:** save as PNG button ([#287](https://github.com/genome-spy/genome-spy/issues/287)) ([b15c304](https://github.com/genome-spy/genome-spy/commit/b15c304c1ff3f5326153022be4d6fda10d41565f)) by @tuner
+
 ## [0.62.2](https://github.com/genome-spy/genome-spy/compare/v0.62.1...v0.62.2) (2025-06-25)
 
 ### Bug Fixes
