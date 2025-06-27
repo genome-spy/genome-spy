@@ -1,6 +1,6 @@
 {
   "name": "@genome-spy/app",
-  "description": "GenomeSpy-based visualization tool for multiple patient samples",
+  "description": "GenomeSpy-based visualization tool for analyzing multiple biological samples.",
   "author": {
     "name": "Kari Lavikka",
     "email": "kari.lavikka@helsinki.fi"
