@@ -6,6 +6,7 @@ import {
     faExpandArrowsAlt,
     faBug,
     faFileImage,
+    faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -19,6 +20,8 @@ import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
 import { showDataflowInspectorDialog } from "../dataflowInspector.js";
 import showSaveImageDialog from "../saveImageDialog.js";
+import { toggleDropdown } from "../utils/ui/dropdown.js";
+import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -100,63 +103,103 @@ export default class Toolbar extends LitElement {
         elements.push(html`
             <span class="spacer"></span>
 
-            <a
-                class="version"
-                href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
-                >v${packageJson.version}</a
-            >
-
-            <button
-                class="tool-btn"
-                title="Download PNG"
-                @click=${() => showSaveImageDialog(this.app.genomeSpy)}
-            >
-                ${icon(faFileImage).node[0]}
-            </button>
-
-            ${this.app.options.showInspectorButton
-                ? html` <button
-                      class="tool-btn"
-                      title="Dataflow Inspector"
-                      @click=${() =>
-                          showDataflowInspectorDialog(
-                              this.app.genomeSpy.viewRoot.context.dataFlow,
-                              {
-                                  highlightView:
-                                      this.app.genomeSpy.viewRoot.context
-                                          .highlightView,
-                              }
-                          )}
-                  >
-                      ${icon(faBug).node[0]}
-                  </button>`
-                : nothing}
-            ${this.app.appContainer.requestFullscreen
-                ? html`
-                      <button
-                          class="tool-btn"
-                          title="Fullscreen"
-                          @click=${() => this.app.toggleFullScreen()}
-                      >
-                          ${icon(faExpandArrowsAlt).node[0]}
-                      </button>
-                  `
-                : nothing}
-
-            <button
-                class="tool-btn"
-                title="Help"
-                @click=${() =>
-                    window.open(
-                        "https://genomespy.app/docs/sample-collections/analyzing/",
-                        "_blank"
-                    )}
-            >
-                ${icon(faQuestionCircle).node[0]}
-            </button>
+            <div class="dropdown bookmark-dropdown">
+                <button
+                    class="tool-btn"
+                    title="Additional functions"
+                    @click=${(/** @type {MouseEvent} */ event) =>
+                        toggleDropdown(event)}
+                >
+                    ${icon(faEllipsisVertical).node[0]}
+                </button>
+                <ul class="gs-dropdown-menu gs-dropdown-menu-right">
+                    ${this.#makeEllipsisTemplate()}
+                </ul>
+            </div>
         `);
 
         return elements;
+    }
+
+    #makeEllipsisTemplate() {
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [];
+
+        items.push({
+            label: "Save PNG",
+            icon: faFileImage,
+            callback: () => showSaveImageDialog(this.app.genomeSpy),
+        });
+
+        if (this.app.options.showInspectorButton) {
+            items.push({
+                label: "Dataflow Inspector",
+                icon: faBug,
+                callback: () =>
+                    showDataflowInspectorDialog(
+                        this.app.genomeSpy.viewRoot.context.dataFlow,
+                        {
+                            highlightView:
+                                this.app.genomeSpy.viewRoot.context
+                                    .highlightView,
+                        }
+                    ),
+            });
+        }
+
+        if (this.app.appContainer.requestFullscreen) {
+            items.push({
+                label: "Fullscreen",
+                icon: faExpandArrowsAlt,
+                callback: () => this.app.toggleFullScreen(),
+            });
+        }
+
+        items.push({
+            label: "About GenomeSpy",
+            icon: faInfoCircle,
+            callback: () => this.#showAboutDialog(),
+        });
+
+        items.push({
+            label: "Help",
+            icon: faQuestionCircle,
+            callback: () =>
+                window.open(
+                    "https://genomespy.app/docs/sample-collections/analyzing/",
+                    "_blank"
+                ),
+        });
+
+        return items.map(menuItemToTemplate);
+    }
+
+    #showAboutDialog() {
+        messageBox(
+            html`<p>
+                    ${packageJson.description}<br />
+                    Read more about it on
+                    <a href="${packageJson.homepage}" target="_blank"
+                        >${packageJson.homepage}</a
+                    >.
+                </p>
+                <p>
+                    Copyright 2025 ${packageJson.author?.name ?? "The author"}
+                    and contributors.<br />
+                    ${packageJson.license} license.
+                </p>
+                <p>
+                    Version:
+                    <a
+                        href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
+                        >v${packageJson.version}</a
+                    >
+                    ${"commitHash" in packageJson
+                        ? `(${packageJson.commitHash})`
+                        : nothing}
+                </p>`,
+            { title: "About GenomeSpy App" }
+        );
     }
 
     render() {
