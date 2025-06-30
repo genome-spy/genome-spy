@@ -1,7 +1,7 @@
-out lowp vec4 vFillColor;
-out lowp vec4 vStrokeColor;
-out float vHalfStrokeWidth;
-out vec4 vCornerRadii;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out float vHalfStrokeWidth;
+flat out vec4 vCornerRadii;
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
 /** Position for SDF-strokes */
@@ -9,7 +9,7 @@ out vec2 vPosInPixels;
 #endif
 
 /** Size of the rect in pixels */
-out vec2 vHalfSizeInPixels;
+flat out vec2 vHalfSizeInPixels;
 
 /**
  * Adjusts the vertex position to ensure that the rectangle is at least `minSpan`

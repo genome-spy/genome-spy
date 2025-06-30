@@ -90,6 +90,14 @@ export default class WebGLHelper {
 
         addExtensionsToContext(gl);
 
+        // Make flat shading fast. All flat vertices have the same values, so
+        // it doesn't matter which one is the provoking vertex.
+        // https://registry.khronos.org/webgl/extensions/WEBGL_provoking_vertex/
+        const epv = gl.getExtension("WEBGL_provoking_vertex");
+        if (epv) {
+            epv.provokingVertexWEBGL(epv.FIRST_VERTEX_CONVENTION_WEBGL);
+        }
+
         // Always use pre-multiplied alpha
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 

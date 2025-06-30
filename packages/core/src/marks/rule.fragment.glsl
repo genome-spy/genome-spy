@@ -5,8 +5,8 @@ const int ROUND = 2;
 
 uniform sampler2D uDashTexture;
 
-in vec4 vColor;
-in float vSize;
+flat in vec4 vColor;
+flat in float vSize;
 
 /** Position on the rule along its length in pixels */
 in vec2 vPosInPixels;

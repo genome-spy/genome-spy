@@ -5,10 +5,10 @@ in lowp vec2 textureCoord;
 in float width;
 
 out vec2 vTexCoord;
-out vec4 vColor;
-out float vSlope;
 out float vEdgeFadeOpacity;
-out float vGamma;
+flat out vec4 vColor;
+flat out float vSlope;
+flat out float vGamma;
 
 struct RangeResult {
     float pos;

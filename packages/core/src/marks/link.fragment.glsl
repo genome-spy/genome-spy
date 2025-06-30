@@ -1,7 +1,7 @@
-in vec4 vColor;
-in float vSize;
+flat in vec4 vColor;
+flat in float vSize;
 in float vNormalLengthInPixels;
-in float vGamma;
+flat in float vGamma;
 
 out lowp vec4 fragColor;
 

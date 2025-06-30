@@ -1,12 +1,12 @@
-out vec4 vColor;
+flat out vec4 vColor;
 
 /** Stroke width */
-out float vSize;
+flat out float vSize;
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;
 
-out float vGamma;
+flat out float vGamma;
 
 const int SHAPE_ARC = 0;
 const int SHAPE_DOME = 1;

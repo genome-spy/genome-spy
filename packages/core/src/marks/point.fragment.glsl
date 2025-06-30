@@ -1,15 +1,15 @@
 const lowp vec4 white = vec4(1.0);
 const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
 
-in float vRadius;
-in float vRadiusWithPadding;
+flat in float vRadius;
+flat in float vRadiusWithPadding;
 
-in lowp vec4 vFillColor;
-in lowp vec4 vStrokeColor;
-in lowp float vShape;
-in lowp float vHalfStrokeWidth;
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in lowp float vShape;
+flat in lowp float vHalfStrokeWidth;
 
-in mat2 vRotationMatrix;
+flat in mat2 vRotationMatrix;
 
 out lowp vec4 fragColor;
 

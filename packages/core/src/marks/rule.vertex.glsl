@@ -9,10 +9,10 @@ in float pos;
 /** Which side of the stroke: -0.5 or 0.5 */
 in float side;
 
-out vec4 vColor;
+flat out vec4 vColor;
 
 /** Stroke width */
-out float vSize;
+flat out float vSize;
 
 /** The distance from the line center to the direction of normal in pixels */
 out float vNormalLengthInPixels;

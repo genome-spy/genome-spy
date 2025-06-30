@@ -1,10 +1,10 @@
-out float vRadius;
-out float vRadiusWithPadding;
-out lowp vec4 vFillColor;
-out lowp vec4 vStrokeColor;
-out lowp float vShape;
-out lowp float vHalfStrokeWidth;
-out mat2 vRotationMatrix;
+flat out float vRadius;
+flat out float vRadiusWithPadding;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out lowp float vShape;
+flat out lowp float vHalfStrokeWidth;
+flat out mat2 vRotationMatrix;
 
 // Copypaste from fragment shader
 const float CIRCLE = 0.0;
