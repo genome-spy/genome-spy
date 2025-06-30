@@ -1,0 +1,31 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Test quality of text mark rendering with different sizes.",
+
+  "data": {
+    "sequence": {
+      "start": 1,
+      "stop": 20,
+      "step": 1
+    }
+  },
+
+  "mark": {
+    "type": "text",
+    "text": "Quick brown fox jumps over the lazy dog. 1234567890"
+  },
+
+  "encoding": {
+    "y": {
+      "field": "data",
+      "type": "quantitative"
+    },
+
+    "size": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": null
+    }
+  }
+}
