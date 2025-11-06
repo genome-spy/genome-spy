@@ -1,12 +1,17 @@
-@use "sass:math";
+:root {
+    --genome-spy-basic-spacing: 10px;
+    --genome-spy-font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial,
+        sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
 
-$basic-spacing: 10px;
-
-$font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+@keyframes genome-spy-blinker {
+    50% {
+        opacity: 0;
+    }
+}
 
 .genome-spy {
-    font-family: $font-family;
+    font-family: var(--genome-spy-font-family);
 
     position: relative;
 
@@ -58,13 +63,7 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
             opacity: 1;
 
             .ellipsis {
-                animation: blinker 1s linear infinite;
-            }
-
-            @keyframes blinker {
-                50% {
-                    opacity: 0;
-                }
+                animation: genome-spy-blinker 1s linear infinite;
             }
         }
     }
@@ -119,9 +118,9 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         max-width: 450px;
         overflow: hidden;
 
-        $background-color: #f6f6f6;
-        background: $background-color;
-        padding: $basic-spacing;
+        --background-color: #f6f6f6;
+        background: var(--background-color);
+        padding: var(--genome-spy-basic-spacing);
         font-size: 12px;
 
         box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
@@ -147,9 +146,11 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         }
 
         > .title {
-            padding-bottom: math.div($basic-spacing, 2);
-            margin-bottom: math.div($basic-spacing, 2);
-            border-bottom: 1px dashed darken($background-color, 25%);
+            padding-bottom: calc(var(--genome-spy-basic-spacing) / 2);
+            margin-bottom: calc(var(--genome-spy-basic-spacing) / 2);
+            border-bottom: 1px dashed var(--background-color);
+            border-bottom: 1px dashed
+                color-mix(in srgb, black 25%, var(--background-color));
         }
 
         .summary {
@@ -264,5 +265,5 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 .gs-input-bindings {
     flex-basis: content;
     font-size: 14px;
-    padding: $basic-spacing;
+    padding: var(--genome-spy-basic-spacing);
 }
