@@ -122,7 +122,9 @@ overflow: hidden;
 --background-color: #f6f6f6;
 background: var(--background-color);
 padding: var(--genome-spy-basic-spacing);
-font-size: 12px;
+
+--font-size: 12px;
+font-size: var(--font-size);
 
 box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
 
@@ -169,6 +171,7 @@ th,
 td {
 padding: 2px 0.4em;
 vertical-align: top;
+font-size: var(--font-size);
 
 &:first-child {
 padding-left: 0;
