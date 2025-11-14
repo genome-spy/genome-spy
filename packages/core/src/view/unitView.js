@@ -115,6 +115,11 @@ export default class UnitView extends View {
                     select.on
                 );
 
+            const clearEventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.clear
+                );
+
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
 
@@ -179,9 +184,34 @@ export default class UnitView extends View {
                 this.addInteractionEventListener(
                     ["mouseover", "pointerover"].includes(eventConfig.type)
                         ? "mousemove"
-                        : "click",
+                        : eventConfig.type,
                     listener
                 );
+
+                if (clearEventConfig) {
+                    const clearPredicate = clearEventConfig.filter
+                        ? createEventFilterFunction(clearEventConfig.filter)
+                        : () => true;
+
+                    const clearListener = (
+                        /** @type {any} */ _,
+                        /** @type {import("../utils/interactionEvent.js").default} */ event
+                    ) => {
+                        if (!clearPredicate(event.mouseEvent)) {
+                            return;
+                        }
+                        lastId = none;
+                        const selection = select.toggle
+                            ? createMultiPointSelection()
+                            : createSinglePointSelection(null);
+                        setter(selection);
+                    };
+
+                    this.addInteractionEventListener(
+                        clearEventConfig.type,
+                        clearListener
+                    );
+                }
             }
         }
     }

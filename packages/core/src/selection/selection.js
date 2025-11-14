@@ -197,6 +197,13 @@ export function asSelectionConfig(typeOrConfig) {
           ? { type: "click" }
           : undefined;
 
+    config.clear =
+        config.clear === false
+            ? undefined
+            : config.clear === true || config.clear == null
+              ? { type: "dblclick" }
+              : asEventConfig(config.clear);
+
     // Set some default
     if (isPointSelectionConfig(config) && config.on.type === "click") {
         config.toggle = true;
