@@ -25,6 +25,7 @@ import {
     updateMultiPointSelection,
 } from "../selection/selection.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { createEventFilterFunction } from "../utils/expression.js";
 
 /**
  *
@@ -108,6 +109,11 @@ export default class UnitView extends View {
             }
 
             const select = asSelectionConfig(param.select);
+            // Normalized config has eventConfig in "on"
+            const eventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.on
+                );
 
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
@@ -122,10 +128,17 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
+                const eventPredicate = eventConfig.filter
+                    ? createEventFilterFunction(eventConfig.filter)
+                    : () => true;
+
                 const listener = (
                     /** @type {any} */ _,
                     /** @type {import("../utils/interactionEvent.js").default} */ event
                 ) => {
+                    if (!eventPredicate(event.mouseEvent)) {
+                        return;
+                    }
                     const datum = getHoveredDatum();
                     const id = datum ? datum[UNIQUE_ID_KEY] : none;
 
@@ -164,7 +177,7 @@ export default class UnitView extends View {
                 };
 
                 this.addInteractionEventListener(
-                    ["mouseover", "pointerover"].includes(select.on)
+                    ["mouseover", "pointerover"].includes(eventConfig.type)
                         ? "mousemove"
                         : "click",
                     listener

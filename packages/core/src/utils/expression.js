@@ -111,3 +111,40 @@ export default function createFunction(expr, globalObject = {}) {
         throw new Error(`Invalid expression: ${expr}, ${e.message}`);
     }
 }
+
+const eventFilterCg = codegenExpression({
+    forbidden: [],
+    allowed: ["event"],
+    globalvar: "globalObject",
+});
+
+/**
+ * @param {string} expr
+ * @returns {(event: UIEvent) => boolean}
+ */
+export function createEventFilterFunction(expr) {
+    try {
+        const parsed = parseExpression(expr);
+        const generatedCode = eventFilterCg(parsed);
+
+        // eslint-disable-next-line no-new-func
+        const fn = Function(
+            "event",
+            "globalObject",
+            `"use strict";
+            try {
+                return !!(${generatedCode.code});
+            } catch (e) {
+                throw new Error("Error evaluating expression: " + ${JSON.stringify(
+                    expr
+                )} + ", " + e.message, e);
+            }`
+        );
+
+        return /** @type {(event: UIEvent) => boolean} */ (
+            /** @type {any} */ (fn)
+        );
+    } catch (e) {
+        throw new Error(`Invalid expression: ${expr}, ${e.message}`);
+    }
+}
