@@ -77,7 +77,11 @@ export function createPrimitiveEventProxy(target) {
 
     /** @type {ProxyHandler<any>} */
     const handler = {
-        /** @param {any} target @param {PropertyKey} prop @param {any} receiver */
+        /**
+         * @param {any} target
+         * @param {PropertyKey} prop
+         * @param {any} receiver
+         */
         get(target, prop, receiver) {
             const value = Reflect.get(target, prop, target);
             if (!isPrimitiveOrNull(value)) {
@@ -87,18 +91,27 @@ export function createPrimitiveEventProxy(target) {
             }
             return value;
         },
-        /** @returns {null} */
+
         getPrototypeOf() {
             return null;
         },
-        /** @param {any} target @returns {ArrayLike<string|symbol>} */
+
+        /**
+         * @param {any} target
+         * @returns {ArrayLike<string|symbol>}
+         */
         ownKeys(target) {
             const keys = Reflect.ownKeys(target).filter((k) =>
                 isPrimitiveOrNull(target[k])
             );
             return keys.map((k) => (typeof k === "symbol" ? k : String(k)));
         },
-        /** @param {any} target @param {PropertyKey} prop @returns {PropertyDescriptor|undefined} */
+
+        /**
+         * @param {any} target
+         * @param {PropertyKey} prop
+         * @returns {PropertyDescriptor|undefined}
+         */
         getOwnPropertyDescriptor(target, prop) {
             const desc = Reflect.getOwnPropertyDescriptor(target, prop);
             if (!desc) return undefined;
@@ -113,7 +126,11 @@ export function createPrimitiveEventProxy(target) {
                 configurable: !!desc.configurable,
             };
         },
-        /** @param {any} target @param {PropertyKey} prop @returns {boolean} */
+
+        /**
+         * @param {any} target
+         * @param {PropertyKey} prop
+         * @returns {boolean} */
         has(target, prop) {
             if (!(prop in target)) return false;
             return isPrimitiveOrNull(target[prop]);
