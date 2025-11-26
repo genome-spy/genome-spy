@@ -141,7 +141,7 @@ export default class UnitView extends View {
                     /** @type {any} */ _,
                     /** @type {import("../utils/interactionEvent.js").default} */ event
                 ) => {
-                    if (!eventPredicate(event.mouseEvent)) {
+                    if (!eventPredicate(event.proxiedMouseEvent)) {
                         return;
                     }
                     const datum = getHoveredDatum();
@@ -197,7 +197,7 @@ export default class UnitView extends View {
                         /** @type {any} */ _,
                         /** @type {import("../utils/interactionEvent.js").default} */ event
                     ) => {
-                        if (!clearPredicate(event.mouseEvent)) {
+                        if (!clearPredicate(event.proxiedMouseEvent)) {
                             return;
                         }
                         lastId = none;
