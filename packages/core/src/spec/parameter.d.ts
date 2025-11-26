@@ -166,9 +166,27 @@ export type SelectionInitInterval =
 
 export type InteractionEventType = "click" | "dblclick" | "mouseover";
 
+// TODO: merge with InteractionEventType
+export type DomEventType = "click" | "dblclick" | "mouseover" | "pointerover";
+
+export interface EventConfig {
+    /**
+     * The type of event to listen to. For example, `"click"` or `"mouseover"`.
+     */
+    type: DomEventType;
+
+    /**
+     * An optional filter expression to further filter events of the specified type.
+     * The expression can only refer to the event object as `event`, and should
+     * evaluate to a boolean value indicating whether to include the event.
+     * No other data or parameters are in scope.
+     */
+    filter?: string;
+}
+
 export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
     /**
-     * Determines the default event processing and data query for the selection. Vega-Lite currently supports two selection types:
+     * The selection type.
      *
      * - `"point"` -- to select multiple discrete data values; the first value is selected on `click` and additional values toggled on shift-click.
      * - `"interval"` -- to select a continuous range of data values on `drag`.
@@ -176,8 +194,16 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
     type: T;
 
     /**
+     * A string or object that defines the events to which the selection should listen.
      */
-    on?: "click" | "mouseover" | "pointerover";
+    on?: DomEventType | EventConfig | string;
+
+    /**
+     * A string or object that defines the events that should clear the selection.
+     *
+     * __Default value:__ `"dblclick"`
+     */
+    clear?: DomEventType | EventConfig | string | boolean;
 }
 
 export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {

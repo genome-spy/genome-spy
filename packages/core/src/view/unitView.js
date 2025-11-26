@@ -25,6 +25,7 @@ import {
     updateMultiPointSelection,
 } from "../selection/selection.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
+import { createEventFilterFunction } from "../utils/expression.js";
 
 /**
  *
@@ -108,6 +109,16 @@ export default class UnitView extends View {
             }
 
             const select = asSelectionConfig(param.select);
+            // Normalized config has eventConfig in "on"
+            const eventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.on
+                );
+
+            const clearEventConfig =
+                /** @type {import("../spec/parameter.js").EventConfig} */ (
+                    select.clear
+                );
 
             if (isPointSelectionConfig(select)) {
                 // Handle projection-free point selections
@@ -122,10 +133,17 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
+                const eventPredicate = eventConfig.filter
+                    ? createEventFilterFunction(eventConfig.filter)
+                    : () => true;
+
                 const listener = (
                     /** @type {any} */ _,
                     /** @type {import("../utils/interactionEvent.js").default} */ event
                 ) => {
+                    if (!eventPredicate(event.proxiedMouseEvent)) {
+                        return;
+                    }
                     const datum = getHoveredDatum();
                     const id = datum ? datum[UNIQUE_ID_KEY] : none;
 
@@ -164,11 +182,36 @@ export default class UnitView extends View {
                 };
 
                 this.addInteractionEventListener(
-                    ["mouseover", "pointerover"].includes(select.on)
+                    ["mouseover", "pointerover"].includes(eventConfig.type)
                         ? "mousemove"
-                        : "click",
+                        : eventConfig.type,
                     listener
                 );
+
+                if (clearEventConfig) {
+                    const clearPredicate = clearEventConfig.filter
+                        ? createEventFilterFunction(clearEventConfig.filter)
+                        : () => true;
+
+                    const clearListener = (
+                        /** @type {any} */ _,
+                        /** @type {import("../utils/interactionEvent.js").default} */ event
+                    ) => {
+                        if (!clearPredicate(event.proxiedMouseEvent)) {
+                            return;
+                        }
+                        lastId = none;
+                        const selection = select.toggle
+                            ? createMultiPointSelection()
+                            : createSinglePointSelection(null);
+                        setter(selection);
+                    };
+
+                    this.addInteractionEventListener(
+                        clearEventConfig.type,
+                        clearListener
+                    );
+                }
             }
         }
     }

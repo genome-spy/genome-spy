@@ -185,17 +185,28 @@ export function isProjectedSelection(selection) {
  * @returns {import("../spec/parameter.js").SelectionConfig}
  */
 export function asSelectionConfig(typeOrConfig) {
+    /** @type {import("../spec/parameter.js").SelectionConfig} */
     const config =
         typeof typeOrConfig === "string"
             ? { type: typeOrConfig }
-            : typeOrConfig;
+            : { ...typeOrConfig };
+
+    config.on = config.on
+        ? asEventConfig(config.on)
+        : isPointSelectionConfig(config)
+          ? { type: "click" }
+          : undefined;
+
+    config.clear =
+        config.clear === false
+            ? undefined
+            : config.clear === true || config.clear == null
+              ? { type: "dblclick" }
+              : asEventConfig(config.clear);
 
     // Set some default
-    if (isPointSelectionConfig(config)) {
-        config.on ??= "click";
-        if (config.on === "click") {
-            config.toggle = true;
-        }
+    if (isPointSelectionConfig(config) && config.on.type === "click") {
+        config.toggle = true;
     }
 
     return config;
@@ -241,4 +252,30 @@ export function selectionContainsPoint(selection, point) {
             interval[0] <= point[channel] &&
             interval[1] >= point[channel]
     );
+}
+
+/**
+ * @param {import("../spec/parameter.js").SelectionConfig["on"]} eventType
+ * @returns {import("../spec/parameter.js").EventConfig}
+ */
+export function asEventConfig(eventType) {
+    if (typeof eventType === "string") {
+        const m = eventType.match(/^([a-zA-Z]+)(?:\[(.+)\])?$/);
+        if (!m) {
+            throw new Error(`Invalid event type string: ${eventType}`);
+        }
+        const [, type, filter] = m;
+        /** @type {import("../spec/parameter.js").EventConfig} */
+        const eventSpec = {
+            type: /** @type {import("../spec/parameter.js").DomEventType} */ (
+                type
+            ),
+        };
+        if (filter) {
+            eventSpec.filter = filter;
+        }
+        return eventSpec;
+    } else {
+        return eventType;
+    }
 }
