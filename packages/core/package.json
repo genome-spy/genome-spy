@@ -36,7 +36,7 @@
     "postpack": "node scripts/postpack.mjs"
   },
   "dependencies": {
-    "@gmod/bam": "^7.0.4",
+    "@gmod/bam": "^7.0.5",
     "@gmod/bbi": "^7.1.0",
     "@gmod/bed": "^2.1.7",
     "@gmod/indexedfasta": "^4.0.7",
