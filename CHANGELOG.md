@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
+
+### Bug Fixes
+
+* **core:** improve rendering of small text ([1f8a467](https://github.com/genome-spy/genome-spy/commit/1f8a467730db7472d68f04ff16e6b2396fe7aa50)), closes [#288](https://github.com/genome-spy/genome-spy/issues/288) by @tuner
+* **core:** tooltip font size ([e796f73](https://github.com/genome-spy/genome-spy/commit/e796f73e67c6af608e752623ca67706155840127)) by @tuner
+
+### Features
+
+* event filters in point selections ([#293](https://github.com/genome-spy/genome-spy/issues/293)) ([25d22d0](https://github.com/genome-spy/genome-spy/commit/25d22d02e02d30374e87a634f0fb5e22f7976ce9)) by @tuner
+
+### Performance Improvements
+
+* **core:** reintroduce flat shading to avoid unnecessary interpolation ([bf3d087](https://github.com/genome-spy/genome-spy/commit/bf3d0873807ea3969d08b83485c93606ae24ab77)), closes [#248](https://github.com/genome-spy/genome-spy/issues/248) by @tuner
+
 # [0.63.0](https://github.com/genome-spy/genome-spy/compare/v0.62.2...v0.63.0) (2025-06-27)
 
 ### Bug Fixes
