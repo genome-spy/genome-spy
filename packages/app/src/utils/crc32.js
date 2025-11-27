@@ -9,8 +9,10 @@
  */
 function getEncoder() {
     const Constr =
+        // @ts-ignore
         typeof process !== "undefined"
-            ? // eslint-disable-next-line no-undef
+            ? // @ts-ignore
+              // eslint-disable-next-line no-undef
               require("util").TextEncoder
             : TextEncoder;
     return new Constr();

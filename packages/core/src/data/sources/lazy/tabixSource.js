@@ -37,7 +37,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
                 import("@gmod/tabix"),
-                import("generic-filehandle"),
+                import("generic-filehandle2"),
             ]).then(async ([{ TabixIndexedFile }, { RemoteFile }]) => {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));

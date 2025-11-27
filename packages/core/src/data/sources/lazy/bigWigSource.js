@@ -62,7 +62,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([
                 import("@gmod/bbi"),
-                import("generic-filehandle"),
+                import("generic-filehandle2"),
             ]).then(([{ BigWig }, { RemoteFile }]) => {
                 this.#bbi = new BigWig({
                     filehandle: new RemoteFile(
