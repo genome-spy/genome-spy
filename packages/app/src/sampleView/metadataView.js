@@ -372,8 +372,19 @@ export class MetadataView extends ConcatView {
                         ...this.#getAttributeDef(attribute),
                     };
 
+                    attributeDef.type ??= inferFieldType(
+                        this.#samples,
+                        attribute
+                    );
+
+                    const viewSpec = createAttributeSpec(
+                        attribute,
+                        attributeDef,
+                        this.#sampleView.spec.samples
+                    );
+
                     const view = new UnitView(
-                        this.#createAttributeViewSpec(attribute, attributeDef),
+                        viewSpec,
                         this.context,
                         container,
                         container,
@@ -444,40 +455,6 @@ export class MetadataView extends ConcatView {
 
     getAttributeNames() {
         return this.#sampleData.attributeNames;
-    }
-
-    /**
-     * Builds a view spec for attribute.
-     *
-     * @param {string} attribute
-     * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
-     */
-    #createAttributeViewSpec(attribute, attributeDef) {
-        // Ensure that attributes have a type
-        let fieldType = attributeDef ? attributeDef.type : undefined;
-        if (!fieldType) {
-            switch (
-                inferType(
-                    this.#samples.map((sample) => sample.attributes[attribute])
-                )
-            ) {
-                case "integer":
-                case "number":
-                    fieldType = FieldType.QUANTITATIVE;
-                    break;
-                default:
-                    fieldType = FieldType.NOMINAL;
-            }
-        }
-
-        return createAttributeSpec(
-            attribute,
-            {
-                ...(attributeDef || {}),
-                type: fieldType,
-            },
-            this.#sampleView.spec.samples
-        );
     }
 
     /**
@@ -659,6 +636,24 @@ export class MetadataView extends ConcatView {
 }
 
 /**
+ * @param {import("./sampleState.js").Sample[]} samples
+ * @param {string} attributeName
+ */
+function inferFieldType(samples, attributeName) {
+    switch (
+        inferType(samples.map((sample) => sample.attributes[attributeName]))
+    ) {
+        case "integer":
+        case "number":
+            return FieldType.QUANTITATIVE;
+        default:
+            return FieldType.NOMINAL;
+    }
+}
+
+/**
+ * Creates a view spec for a single attribute.
+ *
  * @param {string} attributeName
  * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
  * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
