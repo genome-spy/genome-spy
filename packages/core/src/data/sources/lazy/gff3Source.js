@@ -1,10 +1,10 @@
 import TabixSource from "./tabixSource.js";
 
 /**
- * @extends {TabixSource<import("@gmod/gff").GFF3Feature>}
+ * @extends {TabixSource<import("gff-nostream").GFF3Feature>}
  */
 export default class Gff3Source extends TabixSource {
-    /** @type {import("@gmod/gff").default} */
+    /** @type {import("gff-nostream")} */
     #gff;
 
     get label() {
@@ -15,18 +15,14 @@ export default class Gff3Source extends TabixSource {
      * @param {string} header
      */
     async _handleHeader(header) {
-        this.#gff = (await import("@gmod/gff")).default;
+        this.#gff = await import("gff-nostream");
     }
 
     /**
      * @param {string[]} lines
      */
     _parseFeatures(lines) {
-        // Hmm. It's silly that we have to first collect individual lines and then join them.
-        // eslint-disable-next-line no-sync
-        const features = this.#gff?.parseStringSync(lines.join("\n"), {
-            parseSequences: false,
-        });
+        const features = this.#gff?.parseArraySync(lines);
 
         return features;
     }
