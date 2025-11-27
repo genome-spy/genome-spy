@@ -31,7 +31,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "@genome-spy/core": "^0.64.0",
-    "@reduxjs/toolkit": "^1.8.4",
+    "@reduxjs/toolkit": "^2.11.0",
     "idb": "^7.1.1",
     "lit": "^3.3.0",
     "lz-string": "^1.4.4",
