@@ -28,16 +28,9 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
 
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
-                import("buffer"),
                 import("@gmod/indexedfasta"),
-                import("generic-filehandle"),
-            ]).then(([{ Buffer }, { IndexedFasta }, { RemoteFile }]) => {
-                // Hack needed by @gmod/indexedfasta
-                // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
-                if (typeof window !== "undefined") {
-                    window.Buffer ??= Buffer;
-                }
-
+                import("generic-filehandle2"),
+            ]).then(([{ IndexedFasta }, { RemoteFile }]) => {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
@@ -68,15 +61,22 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
                     .getSequence(d.chrom, d.startPos, d.endPos, {
                         signal,
                     })
-                    .then((sequence) => ({
-                        chrom: d.chrom,
-                        start: d.startPos,
-                        sequence,
-                    }))
+                    .then((sequence) => {
+                        if (sequence != undefined) {
+                            return {
+                                chrom: d.chrom,
+                                start: d.startPos,
+                                sequence,
+                            };
+                        } else {
+                            console.log(
+                                `No sequence found for interval ${d.chrom}:${d.startPos}-${d.endPos}`
+                            );
+                            return undefined;
+                        }
+                    })
         );
 
-        if (features) {
-            this.publishData([features]);
-        }
+        this.publishData([features.filter((f) => f !== undefined)]);
     }
 }

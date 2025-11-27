@@ -43,7 +43,7 @@ export default class BamSource extends SingleAxisWindowedSource {
         this.initializedPromise = new Promise((resolve) => {
             Promise.all([
                 import("@gmod/bam"),
-                import("generic-filehandle"),
+                import("generic-filehandle2"),
             ]).then(([{ BamFile }, { RemoteFile }]) => {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));

@@ -63,7 +63,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             Promise.all([
                 import("@gmod/bed"),
                 import("@gmod/bbi"),
-                import("generic-filehandle"),
+                import("generic-filehandle2"),
             ]).then(([bed, { BigBed }, { RemoteFile }]) => {
                 const BED = bed.default;
 
