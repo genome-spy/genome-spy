@@ -44,12 +44,12 @@
     "@gmod/indexedfasta": "^2.1.1",
     "@gmod/tabix": "^1.6.1",
     "@gmod/vcf": "^6.0.0",
-    "@types/d3-array": "^3.2.1",
+    "@types/d3-array": "^3.2.2",
     "@types/d3-dsv": "^3.0.7",
     "@types/d3-ease": "^3.0.2",
     "@types/d3-format": "^3.0.4",
     "@types/d3-interpolate": "^3.0.4",
-    "@types/d3-scale": "^4.0.8",
+    "@types/d3-scale": "^4.0.9",
     "d3-array": "^3.2.4",
     "d3-color": "^3.1.0",
     "d3-ease": "^3.0.1",
@@ -59,10 +59,10 @@
     "internmap": "^2.0.3",
     "lit": "^3.3.0",
     "twgl.js": "^4.19.1",
-    "vega-expression": "^6.0.0",
-    "vega-loader": "^5.0.0",
-    "vega-scale": "^8.0.0",
-    "vega-util": "^2.0.0"
+    "vega-expression": "^6.1.0",
+    "vega-loader": "^5.1.0",
+    "vega-scale": "^8.1.0",
+    "vega-util": "^2.1.0"
   },
   "devDependencies": {
     "@types/long": "^4.0.1"
