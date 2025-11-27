@@ -30,7 +30,7 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
             Promise.all([
                 import("buffer"),
                 import("@gmod/indexedfasta"),
-                import("generic-filehandle"),
+                import("generic-filehandle2"),
             ]).then(([{ Buffer }, { IndexedFasta }, { RemoteFile }]) => {
                 // Hack needed by @gmod/indexedfasta
                 // TODO: Submit a PR to @gmod/indexedfasta to make this unnecessary
