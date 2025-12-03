@@ -14,6 +14,8 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import { watch } from "../state/watch.js";
+import { sampleHierarchySelector } from "./sampleSlice.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
@@ -24,7 +26,6 @@ const FieldType = {
 };
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
-const SAMPLE_NAME = "SAMPLE_NAME";
 
 const attributeViewRegex = /^attribute-(.*)$/;
 
@@ -87,11 +88,6 @@ export class MetadataView extends ConcatView {
                     .find((info) => info && info.name == attribute.specifier)
         );
 
-        this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
-            SAMPLE_NAME,
-            (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
-        );
-
         this.addInteractionEventListener(
             "contextmenu",
             this.handleContextMenu.bind(this)
@@ -119,6 +115,15 @@ export class MetadataView extends ConcatView {
 
             this._handleAttributeHighlight(attribute);
         });
+
+        sampleView.provenance.storeHelper.subscribe(
+            watch(
+                (state) => sampleHierarchySelector(state).sampleData,
+                (sampleData) => {
+                    this.#setSamples(Object.values(sampleData.entities));
+                }
+            )
+        );
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
         peek([
@@ -252,16 +257,6 @@ export class MetadataView extends ConcatView {
                     this.#sampleView
                 )
             );
-        } else {
-            //items.push(...this.generateSampleContextMenu(sample, dispatch));
-            items.push(
-                ...generateAttributeContextMenu(
-                    html`Sample: <strong>${sample.displayName}</strong>`,
-                    SAMPLE_NAME_ATTRIBUTE_INFO,
-                    sample.id,
-                    this.#sampleView
-                )
-            );
         }
 
         contextMenu({ items }, event.mouseEvent);
@@ -272,7 +267,7 @@ export class MetadataView extends ConcatView {
      *
      * @param {import("./sampleState.js").Sample[]} samples
      */
-    setSamples(samples) {
+    #setSamples(samples) {
         if (this.childCount) {
             throw new Error("Children are already created!");
             // TODO: Check whether the attributes match and update the views and data accordingly
@@ -337,16 +332,6 @@ export class MetadataView extends ConcatView {
         const nestedAttributes = getNestedAttributes(
             this.getAttributeNames(),
             this.#sampleView.spec.samples.attributeGroupSeparator
-        );
-
-        this.appendChild(
-            new UnitView(
-                createLabelViewSpec(this.#sampleView.spec.samples),
-                this.context,
-                this,
-                this,
-                "metadata-sample-name"
-            )
         );
 
         /**
@@ -710,50 +695,6 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 
 /**
  *
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
- */
-function createLabelViewSpec(sampleDef) {
-    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
-
-    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
-    const titleSpec = {
-        name: "metadata-sample-name",
-        title: {
-            text: sampleDef.labelTitleText ?? "Sample name",
-            orient: "bottom",
-            anchor: "start",
-            offset: 5,
-            font: sampleDef.attributeLabelFont,
-            fontSize: sampleDef.attributeLabelFontSize ?? 11,
-            fontStyle: sampleDef.attributeLabelFontStyle,
-            fontWeight: sampleDef.attributeLabelFontWeight,
-        },
-        width: sampleDef.labelLength ?? 140,
-        mark: {
-            type: "text",
-            baseline: "middle",
-            font: sampleDef.labelFont,
-            size: sampleDef.labelFontSize ?? 11,
-            fontStyle: sampleDef.labelFontStyle,
-            fontWeight: sampleDef.labelFontWeight,
-            align: sampleDef.labelAlign ?? "left",
-            flushY: false,
-        },
-        encoding: {
-            facetIndex: { field: "indexNumber" },
-            x: { value: 0 },
-            x2: { value: 1 },
-            y: { value: 0 },
-            y2: { value: 1 },
-            text: { field: "displayName" },
-        },
-    };
-
-    return titleSpec;
-}
-
-/**
- *
  * @param {any} value
  */
 function isDefined(value) {
@@ -763,15 +704,6 @@ function isDefined(value) {
         value !== null
     );
 }
-
-/** @type {import("./types.js").AttributeInfo} */
-const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
-    name: "sample",
-    attribute: { type: SAMPLE_NAME },
-    accessor: (/** @type {string} */ sampleId) => sampleId,
-    type: "identifier",
-    scale: undefined,
-});
 
 /**
  * @typedef {{attribute: string, part: string, children: Map<string, AttributeNode>}} AttributeNode
