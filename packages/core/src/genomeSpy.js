@@ -582,11 +582,6 @@ export default class GenomeSpy {
         optimizeDataFlow(flow);
         this.broadcast("dataFlowBuilt", flow);
 
-        // @ts-expect-error
-        if (import.meta.env?.DEV) {
-            flow.dataSources.forEach((ds) => console.log(ds.subtreeToString()));
-        }
-
         // Create encoders (accessors, scales and related metadata)
         unitViews.forEach((view) => view.mark.initializeEncoders());
 
