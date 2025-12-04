@@ -11,7 +11,6 @@
  */
 
 import { combineReducers } from "@reduxjs/toolkit";
-import { batchActions } from "redux-batched-actions";
 import undoable, { ActionCreators } from "redux-undo";
 import { isString } from "vega-util";
 
@@ -151,12 +150,12 @@ export default class Provenance {
      * @param {Action[]} actions Bookmarked actions
      */
     dispatchBookmark(actions) {
-        this.store.dispatch(
-            batchActions([
-                ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
-                ...actions,
-            ])
-        );
+        if (this.isUndoable()) {
+            this.store.dispatch(ActionCreators.jumpToPast(0));
+        }
+        for (const action of actions) {
+            this.store.dispatch(action);
+        }
     }
 
     isRedoable() {

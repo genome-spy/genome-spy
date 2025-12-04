@@ -23,7 +23,7 @@ import {
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
 import StoreHelper from "./state/storeHelper.js";
-import { subscribeTo } from "./state/subscribeTo.js";
+import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
@@ -199,7 +199,7 @@ export default class App {
             this.storeHelper.store,
             (/** @type {import("./state.js").State} */ state) =>
                 state.viewSettings?.visibilities,
-            () => {
+            withMicrotask(() => {
                 // TODO: Optimize: only invalidate the affected views
                 this.genomeSpy.viewRoot._invalidateCacheByPrefix(
                     "size",
@@ -209,7 +209,7 @@ export default class App {
                 const context = this.genomeSpy.viewRoot.context;
                 context.requestLayoutReflow();
                 context.animator.requestRender();
-            }
+            })
         );
 
         try {

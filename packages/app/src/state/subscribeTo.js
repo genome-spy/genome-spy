@@ -36,3 +36,38 @@ export function subscribeTo(
         }
     });
 }
+
+/**
+ * Wraps a listener so that it is called via `queueMicrotask`.
+ * If the wrapped listener is invoked multiple times in the same tick,
+ * it will actually run only once.
+ *
+ * @template T
+ *
+ * @param {(nextSlice: T, prevSlice: T) => void} listener
+ * @returns {(nextSlice: T, prevSlice: T) => void}
+ */
+export function withMicrotask(listener) {
+    let scheduled = false;
+
+    /** @type {T} */
+    let lastNextSlice;
+    /** @type {T} */
+    let firstPrevSlice;
+
+    const run = () => {
+        scheduled = false;
+        listener(lastNextSlice, firstPrevSlice);
+        firstPrevSlice = undefined;
+    };
+
+    return (nextSlice, prevSlice) => {
+        lastNextSlice = nextSlice;
+        firstPrevSlice ??= prevSlice;
+
+        if (!scheduled) {
+            scheduled = true;
+            queueMicrotask(run);
+        }
+    };
+}

@@ -1,5 +1,4 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { enableBatching } from "redux-batched-actions";
 
 /**
  * @typedef {import("@reduxjs/toolkit").Action} Action
@@ -36,9 +35,7 @@ export default class StoreHelper {
     addReducer(name, reducer) {
         this._reducers[name] = reducer;
 
-        this.store.replaceReducer(
-            enableBatching(combineReducers(this._reducers))
-        );
+        this.store.replaceReducer(combineReducers(this._reducers));
     }
 
     getDispatcher() {

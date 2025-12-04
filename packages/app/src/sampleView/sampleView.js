@@ -27,7 +27,7 @@ import {
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
-import { subscribeTo } from "../state/subscribeTo.js";
+import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
@@ -201,12 +201,12 @@ export default class SampleView extends ContainerView {
         subscribeTo(
             this.provenance.store,
             (state) => sampleHierarchySelector(state).rootGroup,
-            (rootGroup) => {
+            withMicrotask((rootGroup) => {
                 this.locationManager.reset();
                 this.groupPanel?.updateGroups();
                 this.context.requestLayoutReflow();
                 this.context.animator.requestRender();
-            }
+            })
         );
 
         subscribeTo(
