@@ -18,7 +18,7 @@ export default class ProvenanceButtons extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this.provenance.storeHelper.subscribe(() => {
+        this.provenance.store.subscribe(() => {
             this.requestUpdate();
         });
     }

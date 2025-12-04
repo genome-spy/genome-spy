@@ -19,6 +19,7 @@ import {
 import { handleTabClick } from "../utils/ui/tabs.js";
 import { compressToUrlHash } from "../utils/urlHash.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { batchActions } from "redux-batched-actions";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
@@ -48,12 +49,16 @@ export function resetToDefaultState(app) {
         }
     }
 
-    app.storeHelper.dispatch([
-        ...(app.provenance.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
-        // clearHistory clears the initial state too. TODO: Come up with something, maybe: https://github.com/omnidan/redux-undo#filtering-actions
-        //ActionCreators.clearHistory(),
-        viewSettingsSlice.actions.restoreDefaultVisibilities(),
-    ]);
+    app.storeHelper.store.dispatch(
+        batchActions([
+            ...(app.provenance.isUndoable()
+                ? [ActionCreators.jumpToPast(0)]
+                : []),
+            // clearHistory clears the initial state too. TODO: Come up with something, maybe: https://github.com/omnidan/redux-undo#filtering-actions
+            //ActionCreators.clearHistory(),
+            viewSettingsSlice.actions.restoreDefaultVisibilities(),
+        ])
+    );
 }
 
 /**
@@ -66,7 +71,7 @@ export async function restoreBookmark(entry, app) {
             app.provenance.dispatchBookmark(entry.actions);
         }
 
-        app.storeHelper.dispatch(
+        app.store.dispatch(
             viewSettingsSlice.actions.setViewSettings(entry.viewSettings)
         );
 

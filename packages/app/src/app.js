@@ -23,7 +23,7 @@ import {
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
 import StoreHelper from "./state/storeHelper.js";
-import { watch } from "./state/watch.js";
+import { subscribeTo } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
@@ -55,6 +55,7 @@ export default class App {
         /** @type {StoreHelper<import("./state.js").State>} */
         this.storeHelper = new StoreHelper();
         this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
+        this.store = this.storeHelper.store;
 
         /** @type {Provenance<import("./sampleView/sampleState.js").SampleHierarchy>} */
         this.provenance = new Provenance(this.storeHelper);
@@ -194,23 +195,21 @@ export default class App {
             .querySelector("canvas")
             .setAttribute("tabindex", "-1");
 
-        this.storeHelper.subscribe(
-            watch(
-                (/** @type {import("./state.js").State} */ state) =>
-                    state.viewSettings?.visibilities,
-                (_viewVisibilities, _oldViewVisibilities) => {
-                    // TODO: Optimize: only invalidate the affected views
-                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
-                        "size",
-                        "progeny"
-                    );
+        subscribeTo(
+            this.storeHelper.store,
+            (/** @type {import("./state.js").State} */ state) =>
+                state.viewSettings?.visibilities,
+            () => {
+                // TODO: Optimize: only invalidate the affected views
+                this.genomeSpy.viewRoot._invalidateCacheByPrefix(
+                    "size",
+                    "progeny"
+                );
 
-                    const context = this.genomeSpy.viewRoot.context;
-                    context.requestLayoutReflow();
-                    context.animator.requestRender();
-                },
-                this.storeHelper.store.getState()
-            )
+                const context = this.genomeSpy.viewRoot.context;
+                context.requestLayoutReflow();
+                context.animator.requestRender();
+            }
         );
 
         try {
@@ -230,7 +229,7 @@ export default class App {
             messageBox(e.toString());
         }
 
-        this.storeHelper.subscribe(() => {
+        this.store.subscribe(() => {
             this._updateStateToUrl();
         });
 

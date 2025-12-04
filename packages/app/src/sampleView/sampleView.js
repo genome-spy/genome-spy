@@ -27,7 +27,7 @@ import {
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
-import { watch } from "../state/watch.js";
+import { subscribeTo } from "../state/subscribeTo.js";
 import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
@@ -110,38 +110,6 @@ export default class SampleView extends ContainerView {
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
         });
-
-        this.provenance.storeHelper.subscribe(
-            watch(
-                (state) => sampleHierarchySelector(state).rootGroup,
-                (rootGroup) => {
-                    this.locationManager.reset();
-
-                    this.groupPanel?.updateGroups();
-
-                    this.context.requestLayoutReflow();
-                    this.context.animator.requestRender();
-                }
-            )
-        );
-
-        this.provenance.storeHelper.subscribe(
-            watch(
-                (state) => sampleHierarchySelector(state).sampleData,
-                (sampleData) => {
-                    const samples =
-                        sampleData && Object.values(sampleData.entities);
-                    if (!samples) {
-                        return;
-                    }
-
-                    this.metadataView.setSamples(samples);
-
-                    // Feed some initial dynamic data.
-                    this.groupPanel.updateGroups();
-                }
-            )
-        );
 
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
@@ -229,6 +197,34 @@ export default class SampleView extends ContainerView {
 
         /** Returns the samples as a flat array */
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
+
+        subscribeTo(
+            this.provenance.store,
+            (state) => sampleHierarchySelector(state).rootGroup,
+            (rootGroup) => {
+                this.locationManager.reset();
+                this.groupPanel?.updateGroups();
+                this.context.requestLayoutReflow();
+                this.context.animator.requestRender();
+            }
+        );
+
+        subscribeTo(
+            this.provenance.store,
+            (state) => sampleHierarchySelector(state).sampleData,
+            (sampleData) => {
+                const samples =
+                    sampleData && Object.values(sampleData.entities);
+                if (!samples) {
+                    return;
+                }
+
+                this.metadataView.setSamples(samples);
+
+                // Feed some initial dynamic data.
+                this.groupPanel.updateGroups();
+            }
+        );
 
         if (this.spec.samples.data) {
             this.#loadSamples();
@@ -370,7 +366,7 @@ export default class SampleView extends ContainerView {
 
         collector.observers.push((collector) => {
             const samples = /** @type {Sample[]} */ (collector.getData());
-            this.provenance.storeHelper.dispatch(
+            this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
         });
@@ -398,7 +394,7 @@ export default class SampleView extends ContainerView {
                 attributes: /** @type {Record<string, any>} */ ([]),
             }));
 
-            this.provenance.storeHelper.dispatch(
+            this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
         } else {

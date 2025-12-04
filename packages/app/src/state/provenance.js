@@ -1,5 +1,5 @@
 /**
- * @typedef {import("@reduxjs/toolkit").AnyAction} Action
+ * @typedef {import("@reduxjs/toolkit").Action} Action
  *
  * @typedef {object} ActionInfo
  * @prop {string | import("lit").TemplateResult} title A title shown in
@@ -11,6 +11,7 @@
  */
 
 import { combineReducers } from "@reduxjs/toolkit";
+import { batchActions } from "redux-batched-actions";
 import undoable, { ActionCreators } from "redux-undo";
 import { isString } from "vega-util";
 
@@ -37,6 +38,7 @@ export default class Provenance {
      */
     constructor(storeHelper) {
         this.storeHelper = storeHelper;
+        this.store = storeHelper.store;
 
         /**
          * Undoable reducers
@@ -90,7 +92,7 @@ export default class Provenance {
 
         // Set the initial state. Need to hack a bit because we aren't replacing
         // the Store's reducer.
-        this.storeHelper.dispatch({
+        this.store.dispatch({
             type:
                 "@@redux/REPLACE" +
                 Math.random().toString(36).substring(7).split("").join("."),
@@ -98,7 +100,7 @@ export default class Provenance {
     }
 
     get _storeState() {
-        return this.storeHelper.store.getState();
+        return this.store.getState();
     }
 
     /**
@@ -149,10 +151,12 @@ export default class Provenance {
      * @param {Action[]} actions Bookmarked actions
      */
     dispatchBookmark(actions) {
-        this.storeHelper.dispatch([
-            ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
-            ...actions,
-        ]);
+        this.store.dispatch(
+            batchActions([
+                ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
+                ...actions,
+            ])
+        );
     }
 
     isRedoable() {
@@ -160,7 +164,7 @@ export default class Provenance {
     }
 
     redo() {
-        this.storeHelper.dispatch(ActionCreators.redo());
+        this.store.dispatch(ActionCreators.redo());
     }
 
     isUndoable() {
@@ -168,7 +172,7 @@ export default class Provenance {
     }
 
     undo() {
-        this.storeHelper.dispatch(ActionCreators.undo());
+        this.store.dispatch(ActionCreators.undo());
     }
 
     isAtInitialState() {
@@ -189,9 +193,9 @@ export default class Provenance {
     activateState(index) {
         const current = this.getCurrentIndex();
         if (index < current) {
-            this.storeHelper.dispatch(ActionCreators.jumpToPast(index));
+            this.store.dispatch(ActionCreators.jumpToPast(index));
         } else if (index > current) {
-            this.storeHelper.dispatch(
+            this.store.dispatch(
                 ActionCreators.jumpToFuture(index - current - 1)
             );
         }

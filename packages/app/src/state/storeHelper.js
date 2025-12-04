@@ -1,8 +1,8 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { batchActions, enableBatching } from "redux-batched-actions";
+import { enableBatching } from "redux-batched-actions";
 
 /**
- * @typedef {import("@reduxjs/toolkit").AnyAction} Action
+ * @typedef {import("@reduxjs/toolkit").Action} Action
  */
 
 /**
@@ -21,16 +21,6 @@ export default class StoreHelper {
         // also include non-undoable reducers
         this.store = configureStore({
             reducer: {},
-        });
-
-        /** @type {Set<(state: any) => void>} */
-        this._listeners = new Set();
-
-        this.store.subscribe(() => {
-            const state = this.store.getState();
-            for (const listener of this._listeners) {
-                listener(state);
-            }
         });
     }
 
@@ -51,34 +41,7 @@ export default class StoreHelper {
         );
     }
 
-    /**
-     * @param {(state: T) => void} listener
-     */
-    subscribe(listener) {
-        this._listeners.add(listener);
-    }
-
-    /**
-     * @param {(state: T) => void} listener
-     */
-    unsubscribe(listener) {
-        this._listeners.delete(listener);
-    }
-
-    /**
-     * @param {Action | Action[]} action
-     */
-    dispatch(action) {
-        if (Array.isArray(action)) {
-            // TODO: Investigate
-            // @ts-ignore Typings broke down mysteriously although, afaik, nothing changed
-            this.store.dispatch(batchActions(action));
-        } else {
-            this.store.dispatch(action);
-        }
-    }
-
     getDispatcher() {
-        return (/** @type {Action} */ action) => this.dispatch(action);
+        return (/** @type {Action} */ action) => this.store.dispatch(action);
     }
 }

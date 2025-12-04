@@ -14,6 +14,7 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import { batchActions } from "redux-batched-actions";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
@@ -631,8 +632,10 @@ export class MetadataView extends ConcatView {
                         lastAction.payload.attribute.specifier == name &&
                         lastAction.payload.values.length == 1;
 
-                    this.#sampleView.provenance.storeHelper.dispatch(
-                        shouldUndo ? [ActionCreators.undo(), action] : action
+                    this.#sampleView.provenance.store.dispatch(
+                        shouldUndo
+                            ? batchActions([ActionCreators.undo(), action])
+                            : action
                     );
 
                     return true;

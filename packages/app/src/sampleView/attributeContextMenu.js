@@ -25,7 +25,7 @@ export default function generateAttributeContextMenu(
 
     const sampleHierarchy = sampleView.sampleHierarchy;
 
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.storeHelper.store;
 
     /** @type {MenuItem[]} */
     const items = [];
@@ -50,7 +50,7 @@ export default function generateAttributeContextMenu(
             icon: info.icon,
             callback: disabled
                 ? undefined
-                : (callback ?? (() => dispatch(action))),
+                : (callback ?? (() => store.dispatch(action))),
         };
     };
 

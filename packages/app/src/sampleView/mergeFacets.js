@@ -45,7 +45,7 @@ export default class MergeSampleFacets extends FlowNode {
             throw new Error("No SampleView was found!");
         }
 
-        this.provenance.storeHelper.subscribe((state) => {
+        this.provenance.store.subscribe(() => {
             if (!this.#shouldUpdate) {
                 return;
             }
