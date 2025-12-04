@@ -4,7 +4,7 @@ import { html, nothing, render } from "lit";
 import { createModal, messageBox } from "../../utils/ui/modal.js";
 import { makeCustomGroupAccessor } from "../groupOperations.js";
 import { map } from "lit/directives/map.js";
-import { formatSet } from "../sampleSlice.js";
+import { formatSet } from "../actionInfo.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 /**

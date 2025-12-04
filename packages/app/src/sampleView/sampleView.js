@@ -21,11 +21,11 @@ import UnitView from "@genome-spy/core/view/unitView.js";
 import { GroupPanel } from "./groupPanel.js";
 import {
     createSampleSlice,
-    getActionInfo,
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
 } from "./sampleSlice.js";
+import { getActionInfo } from "./actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { createSelector } from "@reduxjs/toolkit";
