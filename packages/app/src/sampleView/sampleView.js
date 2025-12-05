@@ -20,7 +20,6 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { GroupPanel } from "./groupPanel.js";
 import {
-    createSampleSlice,
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
@@ -83,8 +82,17 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance.js").default<any>} provenance
+     * @param {any} [sampleSlice] Slice instance provided by App
      */
-    constructor(spec, context, layoutParent, dataParent, name, provenance) {
+    constructor(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        name,
+        provenance,
+        sampleSlice
+    ) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
@@ -178,15 +186,23 @@ export default class SampleView extends ContainerView {
             /** @type {import("./types.js").AttributeInfo} */ attribute
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
-        const sampleSlice = createSampleSlice(getAttributeInfo);
-        this.provenance.addReducer(sampleSlice.name, sampleSlice.reducer);
+        // Use the sample slice provided by App. App must provide the
+        // slice instance; do not create a local fallback here.
+        if (!sampleSlice) {
+            throw new Error(
+                "SampleView requires a `sampleSlice` instance from App"
+            );
+        }
+        const slice = sampleSlice;
+        /** @type {any} */ (slice).setAttributeInfoGetter(getAttributeInfo);
+
         this.provenance.addActionInfoSource(
             (
                 /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
             ) => getActionInfo(action, getAttributeInfo)
         );
 
-        this.actions = sampleSlice.actions;
+        this.actions = slice.actions;
 
         const sampleSelector = createSelector(
             (

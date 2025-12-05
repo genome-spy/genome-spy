@@ -72,13 +72,37 @@ export function createSampleSlice(getAttributeInfo) {
      * @param {PayloadWithAttribute} payload
      * @param {SampleHierarchy} sampleHierarchy
      */
+    // Per-slice attributeInfo getter. If a `getAttributeInfo` function is
+    // provided, use it. Otherwise allow late-binding via
+    // `slice.setAttributeInfoGetter(fn)` on the returned slice object.
+    let attributeInfoGetter =
+        typeof getAttributeInfo === "function" ? getAttributeInfo : null;
+
+    /**
+     * Ensure attributeInfoGetter is available and return attribute info.
+     * @param {any} attribute
+     */
+    const ensureAttributeInfo = (attribute) => {
+        if (!attributeInfoGetter) {
+            throw new Error(
+                "getAttributeInfo is not set for this sample slice"
+            );
+        }
+        return attributeInfoGetter(attribute);
+    };
+
+    /**
+     * Returns an accessor to an abstract attribute.
+     * @param {PayloadWithAttribute} payload
+     * @param {SampleHierarchy} sampleHierarchy
+     */
     const getAccessor = (payload, sampleHierarchy) => {
-        const a = getAttributeInfo(payload.attribute).accessor;
+        const a = ensureAttributeInfo(payload.attribute).accessor;
         return (/** @type {string} */ attribute) =>
             a(attribute, sampleHierarchy);
     };
 
-    return createSlice({
+    const slice = createSlice({
         name: SAMPLE_SLICE_NAME,
         initialState: createInitialState(),
         reducers: {
@@ -140,7 +164,7 @@ export function createSampleSlice(getAttributeInfo) {
                         samples,
                         wrapAccessorForComparison(
                             getAccessor(action.payload, state),
-                            getAttributeInfo(action.payload.attribute)
+                            ensureAttributeInfo(action.payload.attribute)
                         ),
                         false
                     )
@@ -241,7 +265,7 @@ export function createSampleSlice(getAttributeInfo) {
                 /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
                 action
             ) => {
-                const domain = getAttributeInfo(
+                const domain = ensureAttributeInfo(
                     action.payload.attribute
                 ).scale?.domain();
 
@@ -348,6 +372,18 @@ export function createSampleSlice(getAttributeInfo) {
             },
         },
     });
+
+    /**
+     * Allow late binding of the attribute info getter for this slice.
+     * @param {(attribute:any)=>any} fn
+     */
+    /** @type {any} */ (slice).setAttributeInfoGetter = (
+        /** @type {any} */ fn
+    ) => {
+        attributeInfoGetter = fn;
+    };
+
+    return slice;
 }
 
 /**

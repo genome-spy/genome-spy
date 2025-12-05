@@ -25,7 +25,7 @@ export default function generateAttributeContextMenu(
 
     const sampleHierarchy = sampleView.sampleHierarchy;
 
-    const store = sampleView.provenance.storeHelper.store;
+    const store = sampleView.provenance.store;
 
     /** @type {MenuItem[]} */
     const items = [];

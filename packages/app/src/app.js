@@ -13,6 +13,8 @@ import "./components/toolbar.js";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
+import { createStore as createStaticStore } from "./state/createStore.js";
+import { createSampleSlice } from "./sampleView/sampleSlice.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
@@ -22,7 +24,6 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
-import StoreHelper from "./state/storeHelper.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
@@ -52,13 +53,45 @@ export default class App {
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";
 
-        /** @type {StoreHelper<import("./state.js").State>} */
-        this.storeHelper = new StoreHelper();
-        this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
-        this.store = this.storeHelper.store;
+        // Create sample slice early so we can include it in the static provenance reducer.
+        const sampleSlice = createSampleSlice(undefined);
+        // Keep a reference so child views can reuse the same slice instance
+        // (SampleView should use the App-created slice rather than creating
+        // its own instance).
+        this.sampleSlice = sampleSlice;
 
-        /** @type {Provenance<import("./sampleView/sampleState.js").SampleHierarchy>} */
-        this.provenance = new Provenance(this.storeHelper);
+        // Build a provenance reducers map that contains the sample slice reducer.
+        const provenanceReducers = {
+            [sampleSlice.name]: sampleSlice.reducer,
+        };
+
+        // Create a Provenance instance. It will build its internal provenance
+        // reducer from the provided initial reducers.
+        this.provenance = new Provenance(provenanceReducers);
+
+        // Create a root reducer where the `provenance` key delegates to the
+        // provenance instance's internal reducer. This keeps the reducer
+        // reference stable while allowing `Provenance.addReducer` to update
+        // its internal implementation and then dispatch a replace-like action
+        // to reinitialize state.
+        /** @type {import('redux').Reducer} */
+        const provenanceWrapper = (state, action) =>
+            this.provenance._reducer
+                ? this.provenance._reducer(state, action)
+                : (state ?? {});
+
+        // Create the store with static reducers composed up-front.
+        const store = createStaticStore({
+            viewSettings: viewSettingsSlice.reducer,
+            provenance: provenanceWrapper,
+        });
+
+        // Keep references for legacy code paths.
+        this.store = store;
+
+        // Bind the concrete store to provenance so it can dispatch
+        // replace-like actions when its internal reducer changes.
+        this.provenance.bindStore(this.store);
 
         /** @type {(() => void)[]} */
         this._initializationListeners = [];
@@ -139,13 +172,14 @@ export default class App {
                     layoutParent,
                     dataParent,
                     defaultName,
-                    this.provenance
+                    this.provenance,
+                    this.sampleSlice
                 )
         );
 
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
         this.genomeSpy.viewVisibilityPredicate = (view) =>
-            this.storeHelper.state.viewSettings?.visibilities[view.name] ??
+            this.store.getState().viewSettings?.visibilities[view.name] ??
             originalPredicate(view);
     }
 
@@ -196,7 +230,7 @@ export default class App {
             .setAttribute("tabindex", "-1");
 
         subscribeTo(
-            this.storeHelper.store,
+            this.store,
             (/** @type {import("./state.js").State} */ state) =>
                 state.viewSettings?.visibilities,
             withMicrotask(() => {
@@ -329,7 +363,7 @@ export default class App {
             }
         }
 
-        const viewSettings = this.storeHelper.state.viewSettings;
+        const viewSettings = this.store.getState().viewSettings;
         if (Object.keys(viewSettings.visibilities).length) {
             hashData.viewSettings = viewSettings;
         }

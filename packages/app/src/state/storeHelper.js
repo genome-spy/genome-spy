@@ -1,40 +1,11 @@
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
-
-/**
- * @typedef {import("@reduxjs/toolkit").Action} Action
- */
-
-/**
- * Provides some convenience stuff for redux store
- *
- * @template T
- */
+// StoreHelper was removed — left a small compatibility shim to produce a
+// clear runtime error if any remaining code still imports it. Replace
+// callsites with direct usage of the concrete `store` and remove this
+// file in a follow-up cleanup.
 export default class StoreHelper {
-    /**
-     * @param {import("redux").ReducersMapObject} [reducers]
-     */
-    constructor(reducers) {
-        this._reducers = reducers ?? {};
-
-        // TODO: The actual store could be outside of Provenance so that it could
-        // also include non-undoable reducers
-        this.store = configureStore({
-            reducer: {},
-        });
-    }
-
-    get state() {
-        return /** @type {T} */ (this.store.getState());
-    }
-
-    /**
-     *
-     * @param {string} name
-     * @param {import("redux").Reducer} reducer
-     */
-    addReducer(name, reducer) {
-        this._reducers[name] = reducer;
-
-        this.store.replaceReducer(combineReducers(this._reducers));
+    constructor() {
+        throw new Error(
+            "StoreHelper has been removed. Use the concrete `store` on App instead."
+        );
     }
 }

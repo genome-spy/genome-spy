@@ -10,9 +10,9 @@
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 
-import { combineReducers } from "@reduxjs/toolkit";
-import undoable, { ActionCreators } from "redux-undo";
+import { ActionCreators } from "redux-undo";
 import { isString } from "vega-util";
+import { createProvenanceReducer } from "./provenance/reducerBuilder.js";
 
 /**
  * Handles provenance, undo/redo, etc. In practice, this is a thin
@@ -32,18 +32,20 @@ import { isString } from "vega-util";
  */
 export default class Provenance {
     /**
-     *
-     * @param {import("./storeHelper.js").default<{provenance?: import("redux-undo").StateWithHistory<S>}>} storeHelper
+     * @param {import('redux').ReducersMapObject} [initialReducers] optional initial
+     * reducers to include in the provenance reducer (useful for static composition)
      */
-    constructor(storeHelper) {
-        this.storeHelper = storeHelper;
-        this.store = storeHelper.store;
+    constructor(initialReducers) {
+        // The store is bound later via `bindStore` so App can compose the
+        // top-level reducers (including the provenance wrapper) before the
+        // store exists.
+        this.store = undefined;
 
         /**
          * Undoable reducers
          * @type {import("redux").ReducersMapObject}
          */
-        this._reducers = {};
+        this._reducers = initialReducers ?? {};
 
         /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
@@ -51,51 +53,47 @@ export default class Provenance {
         /** @type {import("redux").Reducer} */
         this._reducer = undefined;
 
-        storeHelper.addReducer("provenance", (state, action) =>
-            this._reducer ? this._reducer(state, action) : (state ?? {})
-        );
+        // If there are initial reducers, build the provenance reducer now.
+        if (Object.keys(this._reducers).length > 0) {
+            const filterAction = (/** @type {Action} */ action) =>
+                Object.keys(this._reducers).some(
+                    (key) => isString(key) && action.type.startsWith(key)
+                );
+
+            this._reducer = createProvenanceReducer(
+                this._reducers,
+                filterAction,
+                {
+                    ignoreInitialState: true,
+                }
+            );
+        }
+
+        // Nothing to install into the global store here — the caller (App)
+        // composes a `provenance` wrapper reducer that delegates to
+        // `this._reducer`. This keeps composition explicit and avoids
+        // runtime dynamic reducer registration.
     }
 
     /**
-     *
-     * @param {string} name
-     * @param {import("redux").Reducer} reducer
+     * Bind a concrete store to this Provenance instance so that it can
+     * dispatch actions (e.g. a replace-like action) when its internal
+     * reducer changes.
+     * @param {import('@reduxjs/toolkit').EnhancedStore} store
      */
-    addReducer(name, reducer) {
-        this._reducers[name] = reducer;
+    bindStore(store) {
+        this.store = store;
 
-        const filterAction = (/** @type {Action} */ action) =>
-            Object.keys(this._reducers).some(
-                (key) => isString(key) && action.type.startsWith(key)
-            );
-
-        /**
-         * Stores the latest action into the state so that it can be shown
-         * in the provenance menu.
-         *
-         * @type {import("redux").Reducer}
-         */
-        const actionRecorder = (state, action) =>
-            filterAction(action) ? action : (state ?? null);
-
-        this._reducer = undoable(
-            combineReducers({
-                ...this._reducers,
-                lastAction: actionRecorder,
-            }),
-            {
-                ignoreInitialState: true,
-                filter: filterAction,
-            }
-        );
-
-        // Set the initial state. Need to hack a bit because we aren't replacing
-        // the Store's reducer.
-        this.store.dispatch({
-            type:
-                "@@redux/REPLACE" +
-                Math.random().toString(36).substring(7).split("").join("."),
-        });
+        // If we already have an internal reducer (built from initial
+        // reducers), dispatch a replace-like action so any top-level
+        // wrapper reducer can initialize the provenance slice.
+        if (this._reducer) {
+            this.store.dispatch({
+                type:
+                    "@@redux/REPLACE" +
+                    Math.random().toString(36).substring(7).split("").join("."),
+            });
+        }
     }
 
     /**

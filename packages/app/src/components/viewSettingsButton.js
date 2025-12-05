@@ -263,7 +263,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     getVisibilities() {
-        return this.app.storeHelper.state.viewSettings.visibilities;
+        return this.app.store.getState().viewSettings.visibilities;
     }
 }
 

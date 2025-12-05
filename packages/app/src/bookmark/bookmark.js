@@ -48,7 +48,7 @@ export function resetToDefaultState(app) {
         }
     }
 
-    const store = app.storeHelper.store;
+    const store = app.store;
 
     if (app.provenance.isUndoable()) {
         store.dispatch(ActionCreators.jumpToPast(0));
