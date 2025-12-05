@@ -13,7 +13,6 @@ import "./components/toolbar.js";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
-import { buildProvenanceWrapper } from "./state/provenance/reducerBuilder.js";
 import { createSampleSlice } from "./sampleView/sampleSlice.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
@@ -29,6 +28,7 @@ import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -56,10 +56,7 @@ export default class App {
 
         this.sampleSlice = createSampleSlice(undefined);
 
-        // Build the provenance wrapper (undoable reducer + filter) using the
-        // centralized builder and pass the built pieces to Provenance. This
-        // keeps reducer construction separate from the Provenance API.
-        const { reducer: provenanceReducer } = buildProvenanceWrapper(
+        const provenanceReducer = createProvenanceReducer(
             {
                 [this.sampleSlice.name]: this.sampleSlice.reducer,
             },
