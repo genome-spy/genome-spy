@@ -171,7 +171,7 @@ const actionHandlers = {
     }),
 
     [GROUP_CUSTOM]: ({ payload, template, attributeTitle }) => {
-        const groups = /** @type {any} */ (payload.groups);
+        const groups = /** @type {Record<string, any[]>} */ (payload.groups);
         const provenanceTitle = html`Create custom groups based on
         ${attributeTitle}.
         ${map(

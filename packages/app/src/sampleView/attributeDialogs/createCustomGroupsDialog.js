@@ -24,8 +24,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
             ? ["Identifier", "identifiers"]
             : ["Category", "categories"];
 
-    /** */
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.store;
 
     const scale =
         /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
@@ -88,7 +87,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
     `;
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        store.dispatch(
             sampleView.actions.groupCustomCategories({
                 attribute: attributeInfo.attribute,
                 groups,

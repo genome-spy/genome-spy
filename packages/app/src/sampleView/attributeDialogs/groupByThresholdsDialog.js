@@ -13,7 +13,7 @@ import {
  * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function groupByThresholdsDialog(attributeInfo, sampleView) {
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.store;
 
     /** @type {import("../payloadTypes.js").Threshold[]} */
     const thresholds = [];
@@ -27,7 +27,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     `;
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        store.dispatch(
             sampleView.actions.groupByThresholds({
                 attribute: attributeInfo.attribute,
                 thresholds,

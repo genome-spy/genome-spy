@@ -37,8 +37,4 @@ export default class StoreHelper {
 
         this.store.replaceReducer(combineReducers(this._reducers));
     }
-
-    getDispatcher() {
-        return (/** @type {Action} */ action) => this.store.dispatch(action);
-    }
 }

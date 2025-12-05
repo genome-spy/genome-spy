@@ -11,7 +11,7 @@ export default function retainFirstNCategoriesDialog(
     attributeInfo,
     sampleView
 ) {
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.store;
 
     let n = 5;
 
@@ -24,7 +24,7 @@ export default function retainFirstNCategoriesDialog(
     `;
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        store.dispatch(
             sampleView.actions.retainFirstNCategories({
                 attribute: attributeInfo.attribute,
                 n,

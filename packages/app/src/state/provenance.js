@@ -98,15 +98,11 @@ export default class Provenance {
         });
     }
 
-    get _storeState() {
-        return this.store.getState();
-    }
-
     /**
      * @returns {import("redux-undo").StateWithHistory<S & { lastAction: Action }>}
      */
     get _provenanceState() {
-        return this._storeState.provenance;
+        return this.store.getState().provenance;
     }
 
     /**

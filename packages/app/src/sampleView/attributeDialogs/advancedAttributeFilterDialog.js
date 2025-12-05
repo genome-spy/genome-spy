@@ -84,7 +84,7 @@ export function discreteAttributeFilterDialog(
     sampleView,
     categoryToMarker = (value) => nothing
 ) {
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.store;
 
     const presentValues = new Set(
         extractValues(
@@ -117,7 +117,7 @@ export function discreteAttributeFilterDialog(
     let search = "";
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        store.dispatch(
             sampleView.actions.filterByNominal({
                 // Sort the selection based on the domain. Otherwise they are in the selection order.
                 values: categories.filter((value) => selection.has(value)),
@@ -326,7 +326,7 @@ export function discreteAttributeFilterDialog(
  * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+    const store = sampleView.provenance.store;
 
     /** @type {ComparisonOperatorType} */
     let operator = "lt";
@@ -340,7 +340,7 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
     `;
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        store.dispatch(
             sampleView.actions.filterByQuantitative({
                 attribute: attributeInfo.attribute,
                 operator,
