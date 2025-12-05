@@ -21,7 +21,6 @@ import UnitView from "@genome-spy/core/view/unitView.js";
 import { GroupPanel } from "./groupPanel.js";
 import {
     getFlattenedGroupHierarchy,
-    sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
     sampleSlice,
     augmentAttributeAction,
@@ -220,10 +219,16 @@ export default class SampleView extends ContainerView {
         });
         this.intentExecutor = intentExecutor;
 
+        /**
+         * @returns {import("./sampleState.js").SampleHierarchy}
+         */
+        const sampleHierarchySelector = () =>
+            provenance.getPresentState()[SAMPLE_SLICE_NAME];
+
         subscribeTo(
             this.provenance.store,
-            (state) => sampleHierarchySelector(state).rootGroup,
-            withMicrotask((rootGroup) => {
+            () => sampleHierarchySelector().rootGroup,
+            withMicrotask(() => {
                 this.locationManager.reset();
                 this.groupPanel?.updateGroups();
                 this.context.requestLayoutReflow();
@@ -233,7 +238,7 @@ export default class SampleView extends ContainerView {
 
         subscribeTo(
             this.provenance.store,
-            (state) => sampleHierarchySelector(state).sampleData,
+            () => sampleHierarchySelector().sampleData,
             (sampleData) => {
                 const samples =
                     sampleData && Object.values(sampleData.entities);

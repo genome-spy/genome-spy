@@ -363,14 +363,6 @@ function getSampleGroups(sampleHierarchy) {
 }
 
 /**
- * @param {any} state
- * @returns {SampleHierarchy}
- */
-export function sampleHierarchySelector(state) {
-    return state.provenance.present[SAMPLE_SLICE_NAME];
-}
-
-/**
  * Returns a flattened group hierarchy. The result is an array of
  * flat hierarchies, i.e. each element is an array of groups and the
  * last group of each array is a SampleGroup which contains the samples.
