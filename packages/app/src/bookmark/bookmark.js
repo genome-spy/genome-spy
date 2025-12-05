@@ -48,12 +48,12 @@ export function resetToDefaultState(app) {
         }
     }
 
-    app.storeHelper.dispatch([
-        ...(app.provenance.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
-        // clearHistory clears the initial state too. TODO: Come up with something, maybe: https://github.com/omnidan/redux-undo#filtering-actions
-        //ActionCreators.clearHistory(),
-        viewSettingsSlice.actions.restoreDefaultVisibilities(),
-    ]);
+    const store = app.store;
+
+    if (app.provenance.isUndoable()) {
+        store.dispatch(ActionCreators.jumpToPast(0));
+    }
+    store.dispatch(viewSettingsSlice.actions.restoreDefaultVisibilities());
 }
 
 /**
@@ -66,7 +66,7 @@ export async function restoreBookmark(entry, app) {
             app.provenance.dispatchBookmark(entry.actions);
         }
 
-        app.storeHelper.dispatch(
+        app.store.dispatch(
             viewSettingsSlice.actions.setViewSettings(entry.viewSettings)
         );
 

@@ -4,7 +4,7 @@ import { html, nothing, render } from "lit";
 import { createModal, messageBox } from "../../utils/ui/modal.js";
 import { makeCustomGroupAccessor } from "../groupOperations.js";
 import { map } from "lit/directives/map.js";
-import { formatSet } from "../sampleSlice.js";
+import { formatSet } from "../actionInfo.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 /**
@@ -23,9 +23,6 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
         attributeInfo.type == "identifier"
             ? ["Identifier", "identifiers"]
             : ["Category", "categories"];
-
-    /** */
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     const scale =
         /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
@@ -88,7 +85,7 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
     `;
 
     const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        dispatch(
+        sampleView.dispatchAttributeAction(
             sampleView.actions.groupCustomCategories({
                 attribute: attributeInfo.attribute,
                 groups,

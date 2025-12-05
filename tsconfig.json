@@ -16,5 +16,7 @@
     "noImplicitAny": true,
     "types": [],
     "skipLibCheck": false
-  }
+  },
+  "include": ["packages/*/src", "packages/core/dist/schema.json"],
+  "exclude": ["packages/*/dist", "packages/*/build", "packages/*/lib"]
 }

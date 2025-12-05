@@ -22,11 +22,14 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
-import StoreHelper from "./state/storeHelper.js";
-import { watch } from "./state/watch.js";
+import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
+import { sampleSlice } from "./sampleView/sampleSlice.js";
+import IntentExecutor from "./state/intentExecutor.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -52,12 +55,24 @@ export default class App {
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";
 
-        /** @type {StoreHelper<import("./state.js").State>} */
-        this.storeHelper = new StoreHelper();
-        this.storeHelper.addReducer("viewSettings", viewSettingsSlice.reducer);
+        const provenanceReducer = createProvenanceReducer(
+            {
+                [sampleSlice.name]: sampleSlice.reducer,
+            },
+            {
+                ignoreInitialState: true,
+            }
+        );
 
-        /** @type {Provenance<import("./sampleView/sampleState.js").SampleHierarchy>} */
-        this.provenance = new Provenance(this.storeHelper);
+        this.store = configureStore({
+            reducer: combineReducers({
+                viewSettings: viewSettingsSlice.reducer,
+                provenance: provenanceReducer,
+            }),
+        });
+
+        this.intentExecutor = new IntentExecutor(this.store);
+        this.provenance = new Provenance(this.store, this.intentExecutor);
 
         /** @type {(() => void)[]} */
         this._initializationListeners = [];
@@ -138,13 +153,14 @@ export default class App {
                     layoutParent,
                     dataParent,
                     defaultName,
-                    this.provenance
+                    this.provenance,
+                    this.intentExecutor
                 )
         );
 
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
         this.genomeSpy.viewVisibilityPredicate = (view) =>
-            this.storeHelper.state.viewSettings?.visibilities[view.name] ??
+            this.store.getState().viewSettings?.visibilities[view.name] ??
             originalPredicate(view);
     }
 
@@ -194,23 +210,20 @@ export default class App {
             .querySelector("canvas")
             .setAttribute("tabindex", "-1");
 
-        this.storeHelper.subscribe(
-            watch(
-                (/** @type {import("./state.js").State} */ state) =>
-                    state.viewSettings?.visibilities,
-                (_viewVisibilities, _oldViewVisibilities) => {
-                    // TODO: Optimize: only invalidate the affected views
-                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
-                        "size",
-                        "progeny"
-                    );
+        subscribeTo(
+            this.store,
+            (state) => state.viewSettings?.visibilities,
+            withMicrotask(() => {
+                // TODO: Optimize: only invalidate the affected views
+                this.genomeSpy.viewRoot._invalidateCacheByPrefix(
+                    "size",
+                    "progeny"
+                );
 
-                    const context = this.genomeSpy.viewRoot.context;
-                    context.requestLayoutReflow();
-                    context.animator.requestRender();
-                },
-                this.storeHelper.store.getState()
-            )
+                const context = this.genomeSpy.viewRoot.context;
+                context.requestLayoutReflow();
+                context.animator.requestRender();
+            })
         );
 
         try {
@@ -230,10 +243,6 @@ export default class App {
             messageBox(e.toString());
         }
 
-        this.storeHelper.subscribe(() => {
-            this._updateStateToUrl();
-        });
-
         window.addEventListener(
             "hashchange",
             () =>
@@ -248,6 +257,9 @@ export default class App {
             500,
             false
         );
+
+        this.store.subscribe(debouncedUpdateUrl);
+
         for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
             if (res.isZoomable()) {
                 res.addEventListener("domain", debouncedUpdateUrl);
@@ -330,7 +342,7 @@ export default class App {
             }
         }
 
-        const viewSettings = this.storeHelper.state.viewSettings;
+        const viewSettings = this.store.getState().viewSettings;
         if (Object.keys(viewSettings.visibilities).length) {
             hashData.viewSettings = viewSettings;
         }

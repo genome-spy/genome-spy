@@ -631,9 +631,11 @@ export class MetadataView extends ConcatView {
                         lastAction.payload.attribute.specifier == name &&
                         lastAction.payload.values.length == 1;
 
-                    this.#sampleView.provenance.storeHelper.dispatch(
-                        shouldUndo ? [ActionCreators.undo(), action] : action
-                    );
+                    const store = this.#sampleView.provenance.store;
+                    if (shouldUndo) {
+                        store.dispatch(ActionCreators.undo());
+                    }
+                    store.dispatch(action);
 
                     return true;
                 }

@@ -156,7 +156,7 @@ export class GroupPanel extends LayerView {
                 path: foundPath.map((group) => group.name),
             });
             const info = sampleView.provenance.getActionInfo(action);
-            const dispatch = sampleView.provenance.storeHelper.getDispatcher();
+            const store = sampleView.provenance.store;
 
             contextMenu(
                 {
@@ -165,7 +165,7 @@ export class GroupPanel extends LayerView {
                         {
                             label: info.title,
                             icon: info.icon,
-                            callback: () => dispatch(action),
+                            callback: () => store.dispatch(action),
                         },
                     ],
                 },

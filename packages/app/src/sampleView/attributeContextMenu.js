@@ -7,6 +7,7 @@ import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttrib
 import groupByThresholdsDialog from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
 import createCustomGroupsDialog from "./attributeDialogs/createCustomGroupsDialog.js";
+import { sampleSlice } from "./sampleSlice.js";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -20,12 +21,10 @@ export default function generateAttributeContextMenu(
     attributeValue,
     sampleView
 ) {
-    const actions = sampleView.actions;
+    const actions = sampleSlice.actions;
     const attribute = attributeInfo.attribute;
 
     const sampleHierarchy = sampleView.sampleHierarchy;
-
-    const dispatch = sampleView.provenance.storeHelper.getDispatcher();
 
     /** @type {MenuItem[]} */
     const items = [];
@@ -38,7 +37,7 @@ export default function generateAttributeContextMenu(
     }
 
     /**
-     * @param {import("../state/provenance.js").Action} action
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
      * @param {boolean} [disabled]
      * @param {function} [callback]
      * @returns {MenuItem}
@@ -50,12 +49,13 @@ export default function generateAttributeContextMenu(
             icon: info.icon,
             callback: disabled
                 ? undefined
-                : (callback ?? (() => dispatch(action))),
+                : (callback ??
+                  (() => sampleView.dispatchAttributeAction(action))),
         };
     };
 
     /**
-     * @param {import("../state/provenance.js").Action[]} actions
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>[]} actions
      */
     const addActions = (...actions) =>
         items.push(...actions.map((action) => actionToItem(action)));

@@ -20,14 +20,14 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { GroupPanel } from "./groupPanel.js";
 import {
-    createSampleSlice,
-    getActionInfo,
     getFlattenedGroupHierarchy,
-    sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
+    sampleSlice,
+    augmentAttributeAction,
 } from "./sampleSlice.js";
+import { getActionInfo } from "./actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
-import { watch } from "../state/watch.js";
+import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
@@ -83,8 +83,17 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance.js").default<any>} provenance
+     * @param {import("../state/intentExecutor.js").default<any>} intentExecutor
      */
-    constructor(spec, context, layoutParent, dataParent, name, provenance) {
+    constructor(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        name,
+        provenance,
+        intentExecutor
+    ) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
@@ -110,38 +119,6 @@ export default class SampleView extends ContainerView {
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
         });
-
-        this.provenance.storeHelper.subscribe(
-            watch(
-                (state) => sampleHierarchySelector(state).rootGroup,
-                (rootGroup) => {
-                    this.locationManager.reset();
-
-                    this.groupPanel?.updateGroups();
-
-                    this.context.requestLayoutReflow();
-                    this.context.animator.requestRender();
-                }
-            )
-        );
-
-        this.provenance.storeHelper.subscribe(
-            watch(
-                (state) => sampleHierarchySelector(state).sampleData,
-                (sampleData) => {
-                    const samples =
-                        sampleData && Object.values(sampleData.entities);
-                    if (!samples) {
-                        return;
-                    }
-
-                    this.metadataView.setSamples(samples);
-
-                    // Feed some initial dynamic data.
-                    this.groupPanel.updateGroups();
-                }
-            )
-        );
 
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
@@ -210,8 +187,6 @@ export default class SampleView extends ContainerView {
             /** @type {import("./types.js").AttributeInfo} */ attribute
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
-        const sampleSlice = createSampleSlice(getAttributeInfo);
-        this.provenance.addReducer(sampleSlice.name, sampleSlice.reducer);
         this.provenance.addActionInfoSource(
             (
                 /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
@@ -229,6 +204,54 @@ export default class SampleView extends ContainerView {
 
         /** Returns the samples as a flat array */
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
+
+        // TODO: Should be removed when appropriate
+        intentExecutor.addActionAugmenter((action) => {
+            const getAttributeInfo =
+                this.compositeAttributeInfoSource.getAttributeInfo.bind(
+                    this.compositeAttributeInfoSource
+                );
+            return augmentAttributeAction(
+                action,
+                this.sampleHierarchy,
+                getAttributeInfo
+            );
+        });
+        this.intentExecutor = intentExecutor;
+
+        /**
+         * @returns {import("./sampleState.js").SampleHierarchy}
+         */
+        const sampleHierarchySelector = () =>
+            provenance.getPresentState()[SAMPLE_SLICE_NAME];
+
+        subscribeTo(
+            this.provenance.store,
+            () => sampleHierarchySelector().rootGroup,
+            withMicrotask(() => {
+                this.locationManager.reset();
+                this.groupPanel?.updateGroups();
+                this.context.requestLayoutReflow();
+                this.context.animator.requestRender();
+            })
+        );
+
+        subscribeTo(
+            this.provenance.store,
+            () => sampleHierarchySelector().sampleData,
+            (sampleData) => {
+                const samples =
+                    sampleData && Object.values(sampleData.entities);
+                if (!samples) {
+                    return;
+                }
+
+                this.metadataView.setSamples(samples);
+
+                // Feed some initial dynamic data.
+                this.groupPanel.updateGroups();
+            }
+        );
 
         if (this.spec.samples.data) {
             this.#loadSamples();
@@ -370,7 +393,7 @@ export default class SampleView extends ContainerView {
 
         collector.observers.push((collector) => {
             const samples = /** @type {Sample[]} */ (collector.getData());
-            this.provenance.storeHelper.dispatch(
+            this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
         });
@@ -398,7 +421,7 @@ export default class SampleView extends ContainerView {
                 attributes: /** @type {Record<string, any>} */ ([]),
             }));
 
-            this.provenance.storeHelper.dispatch(
+            this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
         } else {
@@ -878,6 +901,13 @@ export default class SampleView extends ContainerView {
             default:
                 return "independent";
         }
+    }
+
+    /**
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
+     */
+    dispatchAttributeAction(action) {
+        this.intentExecutor.dispatch(action);
     }
 }
 

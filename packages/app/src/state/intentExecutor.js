@@ -1,0 +1,62 @@
+/**
+ * @template {import("@reduxjs/toolkit").EnhancedStore<any, any, any>} S
+ */
+export default class IntentExecutor {
+    /**
+     * @template A
+     * @typedef {(action: import("@reduxjs/toolkit").PayloadAction<A>) => A} ActionAugmenter */
+
+    /** @type {S} */
+    #store;
+
+    /** @type {Set<ActionAugmenter<any>>} */
+    #augmenters = new Set();
+
+    /**
+     * @param {S} store
+     */
+    constructor(store) {
+        this.#store = store;
+    }
+
+    /**
+     * @param {import("@reduxjs/toolkit").Action} action
+     */
+    dispatch(action) {
+        if ("payload" in action) {
+            let payloadAction =
+                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ (
+                    action
+                );
+            for (const augmenter of this.#augmenters) {
+                payloadAction = augmenter(payloadAction);
+            }
+            action = payloadAction;
+        }
+        this.#store.dispatch(action);
+    }
+
+    /**
+     * @param {import("@reduxjs/toolkit").Action[]} actions
+     */
+    dispatchBatch(actions) {
+        for (const action of actions) {
+            this.dispatch(action);
+        }
+    }
+
+    /**
+     * @param {ActionAugmenter<any>} augmenter
+     */
+    addActionAugmenter(augmenter) {
+        this.#augmenters.add(augmenter);
+    }
+
+    /**
+     *
+     * @param {ActionAugmenter<any>} augmenter
+     */
+    removeActionAugmenter(augmenter) {
+        this.#augmenters.delete(augmenter);
+    }
+}

@@ -51,7 +51,7 @@ class BookmarkButton extends LitElement {
             scaleDomains: {},
         };
 
-        const viewSettings = this.app.storeHelper.state.viewSettings;
+        const viewSettings = this.app.store.getState().viewSettings;
         if (Object.keys(viewSettings.visibilities).length) {
             bookmark.viewSettings = viewSettings;
         }

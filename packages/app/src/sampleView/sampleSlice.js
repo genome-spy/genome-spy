@@ -16,20 +16,7 @@ import {
     sort,
     wrapAccessorForComparison,
 } from "./sampleOperations.js";
-
-import { format as d3format } from "d3-format";
-import { html } from "lit";
-import { join } from "lit/directives/join.js";
-import {
-    faSortAmountDown,
-    faFilter,
-    faMedal,
-    faObjectGroup,
-    faCircle,
-    faTrashAlt,
-    faCheck,
-} from "@fortawesome/free-solid-svg-icons";
-import { map } from "lit/directives/map.js";
+import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -45,19 +32,19 @@ import { map } from "lit/directives/map.js";
  * @typedef {import("@reduxjs/toolkit").PayloadAction<P>} PayloadAction
  */
 
-const SET_SAMPLES = "setSamples";
-const SORT_BY = "sortBy";
-const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
-const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
-const FILTER_BY_NOMINAL = "filterByNominal";
-const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
-const REMOVE_UNDEFINED = "removeUndefined";
-const GROUP_CUSTOM = "groupCustomCategories";
-const GROUP_BY_NOMINAL = "groupByNominal";
-const GROUP_BY_QUARTILES = "groupToQuartiles";
-const GROUP_BY_THRESHOLDS = "groupByThresholds";
-const REMOVE_GROUP = "removeGroup";
-const RETAIN_MATCHED = "retainMatched";
+export const SET_SAMPLES = "setSamples";
+export const SORT_BY = "sortBy";
+export const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
+export const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
+export const FILTER_BY_NOMINAL = "filterByNominal";
+export const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
+export const REMOVE_UNDEFINED = "removeUndefined";
+export const GROUP_CUSTOM = "groupCustomCategories";
+export const GROUP_BY_NOMINAL = "groupByNominal";
+export const GROUP_BY_QUARTILES = "groupToQuartiles";
+export const GROUP_BY_THRESHOLDS = "groupByThresholds";
+export const REMOVE_GROUP = "removeGroup";
+export const RETAIN_MATCHED = "retainMatched";
 
 export const SAMPLE_SLICE_NAME = "sampleView";
 
@@ -77,292 +64,269 @@ function createInitialState() {
 }
 
 /**
- * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ * @param {PayloadAction<PayloadWithAttribute>} action
+ * @returns {function(string):any}
  */
-export function createSampleSlice(getAttributeInfo) {
-    /**
-     * Returns an accessor to an abstract attribute.
-     * TODO: Memoize
-     * @param {PayloadWithAttribute} payload
-     * @param {SampleHierarchy} sampleHierarchy
-     */
-    const getAccessor = (payload, sampleHierarchy) => {
-        const a = getAttributeInfo(payload.attribute).accessor;
-        return (/** @type {string} */ attribute) =>
-            a(attribute, sampleHierarchy);
-    };
-
-    return createSlice({
-        name: SAMPLE_SLICE_NAME,
-        initialState: createInitialState(),
-        reducers: {
-            [SET_SAMPLES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
-            ) => {
-                const samples = action.payload.samples;
-
-                if (state.sampleData) {
-                    throw new Error("Samples have already been set!");
-                }
-
-                if (
-                    samples.some(
-                        (sample) =>
-                            sample.id === undefined || sample.id === null
-                    )
-                ) {
-                    throw new Error(
-                        'The sample metadata contains missing sample ids or the "sample" column is missing!'
-                    );
-                }
-
-                if (
-                    new Set(samples.map((sample) => sample.id)).size !=
-                    samples.length
-                ) {
-                    throw new Error(
-                        "The sample metadata contains duplicate sample ids!"
-                    );
-                }
-
-                const samplesWithIndices = samples.map((sample, index) => ({
-                    ...sample,
-                    indexNumber: index,
-                }));
-
-                state.sampleData = {
-                    ids: samplesWithIndices.map((sample) => sample.id),
-                    entities: Object.fromEntries(
-                        samplesWithIndices.map((sample) => [sample.id, sample])
-                    ),
-                };
-
-                state.rootGroup = {
-                    name: "ROOT",
-                    title: "Root",
-                    samples: state.sampleData.ids,
-                };
-            },
-
-            [SORT_BY]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    sort(
-                        samples,
-                        wrapAccessorForComparison(
-                            getAccessor(action.payload, state),
-                            getAttributeInfo(action.payload.attribute)
-                        ),
-                        false
-                    )
-                );
-            },
-
-            [RETAIN_FIRST_OF_EACH]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    retainFirstOfEachCategory(
-                        samples,
-                        getAccessor(action.payload, state)
-                    )
-                );
-            },
-
-            [RETAIN_FIRST_N_CATEGORIES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    retainFirstNCategories(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.n
-                    )
-                );
-            },
-
-            [FILTER_BY_QUANTITATIVE]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterQuantitative(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.operator,
-                        action.payload.operand
-                    )
-                );
-            },
-
-            [FILTER_BY_NOMINAL]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterNominal(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.remove ? "remove" : "retain",
-                        action.payload.values
-                    )
-                );
-            },
-
-            [REMOVE_UNDEFINED]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterUndefined(samples, getAccessor(action.payload, state))
-                );
-            },
-
-            [GROUP_CUSTOM]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
-                action
-            ) => {
-                const accessor = makeCustomGroupAccessor(
-                    getAccessor(action.payload, state),
-                    action.payload.groups
-                );
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByAccessor(
-                        sampleGroup,
-                        accessor,
-                        Object.keys(action.payload.groups)
-                    )
-                );
-
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_NOMINAL]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
-                action
-            ) => {
-                const domain = getAttributeInfo(
-                    action.payload.attribute
-                ).scale?.domain();
-
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByAccessor(
-                        sampleGroup,
-                        getAccessor(action.payload, state),
-                        domain
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_QUARTILES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
-                action
-            ) => {
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByQuartiles(
-                        sampleGroup,
-                        getAccessor(action.payload, state)
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_THRESHOLDS]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
-                action
-            ) => {
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByThresholds(
-                        sampleGroup,
-                        getAccessor(action.payload, state),
-                        action.payload.thresholds
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [REMOVE_GROUP]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
-                action
-            ) => {
-                const root = state.rootGroup;
-                if (isGroupGroup(root)) {
-                    removeGroup(root, action.payload.path);
-                }
-            },
-
-            [RETAIN_MATCHED]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
-                action
-            ) => {
-                const accessor = getAccessor(action.payload, state);
-
-                /** @type {Set<any>[]} Attribute values in each group */
-                const valueSets = [];
-
-                for (const sampleGroup of getSampleGroups(state)) {
-                    // Skip empty groups because they always cause empty intersections
-                    if (sampleGroup.samples.length > 0) {
-                        /** @type {Set<any>} */
-                        const values = new Set();
-                        for (const sample of sampleGroup.samples) {
-                            values.add(accessor(sample));
-                        }
-                        valueSets.push(values);
-                    }
-                }
-
-                /** @type {any[]} Values that are present in all groups */
-                const intersectedValues = [];
-
-                for (const value of valueSets[0]) {
-                    let found = true;
-                    for (let i = 1; i < valueSets.length && found; i++) {
-                        found = valueSets[i].has(value);
-                    }
-
-                    if (found) {
-                        intersectedValues.push(value);
-                    }
-                }
-
-                applyToSamples(state, (samples) =>
-                    filterNominal(
-                        samples,
-                        accessor,
-                        "retain",
-                        intersectedValues
-                    )
-                );
-            },
-        },
-    });
+function createObjectAccessor(action) {
+    const obj = action.payload[AUGMENTED_KEY]?.values;
+    if (!obj) {
+        throw new Error(
+            "No accessed values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
+        );
+    }
+    return (sampleId) => obj[sampleId];
 }
+
+export const sampleSlice = createSlice({
+    name: SAMPLE_SLICE_NAME,
+    initialState: createInitialState(),
+    reducers: {
+        [SET_SAMPLES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
+        ) => {
+            const samples = action.payload.samples;
+
+            if (state.sampleData) {
+                throw new Error("Samples have already been set!");
+            }
+
+            if (
+                samples.some(
+                    (sample) => sample.id === undefined || sample.id === null
+                )
+            ) {
+                throw new Error(
+                    'The sample metadata contains missing sample ids or the "sample" column is missing!'
+                );
+            }
+
+            if (
+                new Set(samples.map((sample) => sample.id)).size !=
+                samples.length
+            ) {
+                throw new Error(
+                    "The sample metadata contains duplicate sample ids!"
+                );
+            }
+
+            const samplesWithIndices = samples.map((sample, index) => ({
+                ...sample,
+                indexNumber: index,
+            }));
+
+            state.sampleData = {
+                ids: samplesWithIndices.map((sample) => sample.id),
+                entities: Object.fromEntries(
+                    samplesWithIndices.map((sample) => [sample.id, sample])
+                ),
+            };
+
+            state.rootGroup = {
+                name: "ROOT",
+                title: "Root",
+                samples: state.sampleData.ids,
+            };
+        },
+
+        [SORT_BY]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
+        ) => {
+            applyToSamples(state, (samples) =>
+                sort(samples, createObjectAccessor(action), false)
+            );
+        },
+
+        [RETAIN_FIRST_OF_EACH]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                retainFirstOfEachCategory(samples, createObjectAccessor(action))
+            );
+        },
+
+        [RETAIN_FIRST_N_CATEGORIES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                retainFirstNCategories(
+                    samples,
+                    createObjectAccessor(action),
+                    action.payload.n
+                )
+            );
+        },
+
+        [FILTER_BY_QUANTITATIVE]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterQuantitative(
+                    samples,
+                    createObjectAccessor(action),
+                    action.payload.operator,
+                    action.payload.operand
+                )
+            );
+        },
+
+        [FILTER_BY_NOMINAL]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterNominal(
+                    samples,
+                    createObjectAccessor(action),
+                    action.payload.remove ? "remove" : "retain",
+                    action.payload.values
+                )
+            );
+        },
+
+        [REMOVE_UNDEFINED]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterUndefined(samples, createObjectAccessor(action))
+            );
+        },
+
+        [GROUP_CUSTOM]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
+            action
+        ) => {
+            const accessor = makeCustomGroupAccessor(
+                createObjectAccessor(action),
+                action.payload.groups
+            );
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByAccessor(
+                    sampleGroup,
+                    accessor,
+                    Object.keys(action.payload.groups)
+                )
+            );
+
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_NOMINAL]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByAccessor(
+                    sampleGroup,
+                    createObjectAccessor(action),
+                    action.payload[AUGMENTED_KEY].domain
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_QUARTILES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByQuartiles(
+                    sampleGroup,
+                    createObjectAccessor(action)
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_THRESHOLDS]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByThresholds(
+                    sampleGroup,
+                    createObjectAccessor(action),
+                    action.payload.thresholds
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [REMOVE_GROUP]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                removeGroup(root, action.payload.path);
+            }
+        },
+
+        [RETAIN_MATCHED]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
+            action
+        ) => {
+            const accessor = createObjectAccessor(action);
+
+            /** @type {Set<any>[]} Attribute values in each group */
+            const valueSets = [];
+
+            for (const sampleGroup of getSampleGroups(state)) {
+                // Skip empty groups because they always cause empty intersections
+                if (sampleGroup.samples.length > 0) {
+                    /** @type {Set<any>} */
+                    const values = new Set();
+                    for (const sample of sampleGroup.samples) {
+                        values.add(accessor(sample));
+                    }
+                    valueSets.push(values);
+                }
+            }
+
+            /** @type {any[]} Values that are present in all groups */
+            const intersectedValues = [];
+
+            for (const value of valueSets[0]) {
+                let found = true;
+                for (let i = 1; i < valueSets.length && found; i++) {
+                    found = valueSets[i].has(value);
+                }
+
+                if (found) {
+                    intersectedValues.push(value);
+                }
+            }
+
+            applyToSamples(state, (samples) =>
+                filterNominal(samples, accessor, "retain", intersectedValues)
+            );
+        },
+    },
+});
 
 /**
  * Applies an operation to each group of samples.
@@ -396,14 +360,6 @@ function getSampleGroups(sampleHierarchy) {
     return /** @type {SampleGroup[]} */ (
         getFlattenedGroupHierarchy(sampleHierarchy).map((path) => peek(path))
     );
-}
-
-/**
- * @param {any} state
- * @returns {SampleHierarchy}
- */
-export function sampleHierarchySelector(state) {
-    return state.provenance.present[SAMPLE_SLICE_NAME];
 }
 
 /**
@@ -475,239 +431,64 @@ export function* iterateGroupHierarchy(group) {
     }
 }
 
-const attributeNumberFormat = d3format(".4");
-
-/** @type {Record<import("./sampleOperations.js").ComparisonOperatorType, string>} */
-const verboseOps = {
-    lt: "<",
-    lte: "\u2264",
-    eq: "=",
-    gte: "\u2265",
-    gt: ">",
-};
-
 /**
- * @param {Iterable<any>} values
- * @param {boolean} [braces]
- * @returns
- */
-export function formatSet(values, braces = true) {
-    const joined = html`${map(
-        values,
-        (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
-    )}`;
-    return braces ? html`{${joined}}` : joined;
-}
-
-/**
- * Describes an action for displaying it in menus or provenance tracking.
+ * Augments an attribute-related action by accessing and storing
+ * the attribute values for current samples prior to dispatching the action.
+ * This allows reducers to use the accessed values without needing to
+ * access attribute info or accessors, which would be an impure approach.
  *
- * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
+ * TODO: Make an async version for use cases when data must be fetched
+ * before accessing attribute values, e.g. when using lazy loading.
+ *
+ * @template {PayloadWithAttribute} T
+ * @param {PayloadAction<T>} action
+ * @param {SampleHierarchy} sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
- * @returns {import("../state/provenance.js").ActionInfo}
  */
-export function getActionInfo(action, getAttributeInfo) {
-    if (!action.type.startsWith(SAMPLE_SLICE_NAME)) {
-        return;
+export function augmentAttributeAction(
+    action,
+    sampleHierarchy,
+    getAttributeInfo
+) {
+    // TODO: Type properly
+
+    if (!action.payload.attribute) {
+        return action;
     }
 
-    // It would be great to have working payload typings here
-    const payload = action.payload;
+    const attributeInfo = getAttributeInfo(action.payload.attribute);
+    if (!attributeInfo) {
+        throw new Error(
+            `Attribute info for attribute "${action.payload.attribute}" not found`
+        );
+    }
 
-    const attributeInfo =
-        payload.attribute && getAttributeInfo(payload.attribute);
-    const attributeName = attributeInfo?.name;
-    const attributeTitle =
-        attributeInfo?.title || html` <em>${attributeName}</em> `;
+    const accessor = attributeInfo.accessor;
 
-    const template = {
-        attributeName, // TODO: This may actually be unnecessary
+    const wrappedAccessor =
+        action.type == SORT_BY
+            ? wrapAccessorForComparison(
+                  (sampleId) => accessor(sampleId, sampleHierarchy),
+                  attributeInfo
+              )
+            : accessor;
+
+    /** @type {import("./payloadTypes.js").AugmentedAttribute} */
+    const accessed = {
+        values: getSampleGroups(sampleHierarchy).reduce((acc, group) => {
+            for (const sampleId of group.samples) {
+                acc[sampleId] = wrappedAccessor(sampleId, sampleHierarchy);
+            }
+            return acc;
+        }, /** @type {Record<string, any>} */ ({})),
     };
 
-    const actionType = action.type.substring(SAMPLE_SLICE_NAME.length + 1);
-
-    switch (actionType) {
-        case SET_SAMPLES:
-            return {
-                ...template,
-                title: "The initial state",
-                icon: faCheck,
-            };
-        case SORT_BY:
-            return {
-                ...template,
-                title: "Sort by",
-                provenanceTitle: html` Sort by ${attributeTitle} `,
-                icon: faSortAmountDown,
-            };
-        case RETAIN_FIRST_OF_EACH:
-            return {
-                ...template,
-                title: html`
-                    Retain the first sample of each
-                    <em>${attributeName}</em>
-                `,
-                provenanceTitle: html`
-                    Retain the first sample of each ${attributeTitle}
-                `,
-
-                icon: faMedal,
-            };
-        case RETAIN_FIRST_N_CATEGORIES:
-            return {
-                ...template,
-                title: html`
-                    Retain first <strong>n</strong> categories of
-                    <em>${attributeName}</em>...
-                `,
-                provenanceTitle: html`
-                    Retain first <strong>${payload.n}</strong> categories of
-                    ${attributeTitle}
-                `,
-
-                icon: faMedal,
-            };
-        case FILTER_BY_NOMINAL: {
-            const values =
-                /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */ (
-                    payload.values
-                );
-
-            /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = (attr) => html`
-                ${payload.remove ? "Remove" : "Retain"} samples having
-                ${values[0] === undefined || values[0] === null
-                    ? html` undefined ${attr} `
-                    : html`${attr}
-                      ${values.length > 1
-                          ? html`in ${formatSet(values)}`
-                          : html`<span class="operator">=</span>
-                                <strong>${values[0]}</strong>`} `}
-            `;
-
-            return {
-                ...template,
-                title: makeTitle(html` <em>${attributeName}</em> `),
-                provenanceTitle: makeTitle(attributeTitle),
-                icon: payload.remove ? faTrashAlt : faFilter,
-            };
-        }
-        case FILTER_BY_QUANTITATIVE: {
-            /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = (attr) => html`
-                Retain samples having ${attr}
-                <span class="operator"
-                    >${verboseOps[
-                        /** @type {import("./payloadTypes.js").FilterByQuantitative} */ (
-                            payload
-                        ).operator
-                    ]}</span
-                >
-                <strong>${attributeNumberFormat(payload.operand)}</strong>
-            `;
-
-            return {
-                ...template,
-                title: makeTitle(html` <em>${attributeName}</em> `),
-                provenanceTitle: makeTitle(attributeTitle),
-                icon: faFilter,
-            };
-        }
-        case REMOVE_UNDEFINED:
-            return {
-                ...template,
-                title: "Remove samples having missing attribute",
-                provenanceTitle: html`
-                    Remove samples having missing ${attributeTitle}
-                `,
-                icon: faTrashAlt,
-            };
-        case GROUP_CUSTOM: {
-            const groups =
-                /** @type {import("./payloadTypes.js").CustomGroups} */ (
-                    payload.groups
-                );
-            const provenanceTitle = html`Create custom groups based on
-            ${attributeTitle}.
-            ${map(
-                Object.entries(groups),
-                ([groupName, categories], i) =>
-                    html`${i > 0 ? ", " : ""}<strong>${groupName}</strong> =
-                        ${formatSet(categories)}`
-            )}`;
-
-            return {
-                ...template,
-                title: "Group arbitrarily...",
-                provenanceTitle,
-                icon: faObjectGroup,
-            };
-        }
-        case GROUP_BY_NOMINAL:
-            return {
-                ...template,
-                title: "Group by",
-                provenanceTitle: html` Group by ${attributeTitle} `,
-                icon: faObjectGroup,
-            };
-        case GROUP_BY_QUARTILES:
-            return {
-                ...template,
-                title: "Group by quartiles",
-                provenanceTitle: html`
-                    Group by quartiles on ${attributeTitle}
-                `,
-                icon: faObjectGroup,
-            };
-        case GROUP_BY_THRESHOLDS:
-            return {
-                ...template,
-                title: "Group by thresholds",
-                provenanceTitle: html`
-                    Group by thresholds
-                    ${formatSet(
-                        /** @type {import("./payloadTypes.js").GroupByThresholds} */ (
-                            payload
-                        ).thresholds.map(
-                            (t) => `${verboseOps[t.operator]} ${t.operand}`
-                        )
-                    )}
-                    on ${attributeTitle}
-                `,
-                icon: faObjectGroup,
-            };
-        case REMOVE_GROUP:
-            return {
-                title: "Remove group",
-                provenanceTitle: html`
-                    Remove group
-                    ${join(
-                        /** @type {import("./payloadTypes.js").RemoveGroup} */ (
-                            payload
-                        ).path.map((name) => html`<strong>${name}</strong>`),
-                        " / "
-                    )}
-                `,
-                icon: faTrashAlt,
-            };
-        case RETAIN_MATCHED:
-            return {
-                ...template,
-                title: html`
-                    Retain group-wise matched samples using
-                    <em>${attributeName}</em>
-                `,
-                provenanceTitle: html`
-                    Retain group-wise matched samples using ${attributeTitle}
-                `,
-
-                icon: faFilter,
-            };
-        default:
-            return {
-                ...template,
-                title: JSON.stringify(action),
-                icon: faCircle,
-            };
+    // TODO: Is this comparison reliable?
+    if (action.type == SAMPLE_SLICE_NAME + "/" + GROUP_BY_NOMINAL) {
+        accessed.domain = attributeInfo.scale?.domain();
     }
+
+    action.payload[AUGMENTED_KEY] = accessed;
+
+    return action;
 }

@@ -1,5 +1,5 @@
 /**
- * @typedef {import("@reduxjs/toolkit").AnyAction} Action
+ * @typedef {import("@reduxjs/toolkit").Action} Action
  *
  * @typedef {object} ActionInfo
  * @prop {string | import("lit").TemplateResult} title A title shown in
@@ -10,102 +10,41 @@
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 
-import { combineReducers } from "@reduxjs/toolkit";
-import undoable, { ActionCreators } from "redux-undo";
-import { isString } from "vega-util";
+import { ActionCreators } from "redux-undo";
 
 /**
- * Handles provenance, undo/redo, etc. In practice, this is a thin
- * wrapper around Redux store and redux-undo. Provides some practical methods.
+ * An API for undo/redo and action history.
  *
- * This is somewhat inspired by:
- *     Z. T. Cutler, K. Gadhave and A. Lex,
- *     “Trrack: A Library for Provenance Tracking in Web-Based Visualizations”,
- *     osf.io preprint. https://doi.org/10.31219/osf.io/wnctb.
- * and
- *     S. Gratzl, A. Lex, N. Gehlenborg, N. Cosgrove, and M. Streit
- *     "From Visual Exploration to Storytelling and Back Again"
- *     Eurographics Conference on Visualization (EuroVis) 2016
- *     http://doi.wiley.com/10.1111/cgf.12925
- *
- * @template S State
+ * @template S
  */
 export default class Provenance {
-    /**
-     *
-     * @param {import("./storeHelper.js").default<{provenance?: import("redux-undo").StateWithHistory<S>}>} storeHelper
-     */
-    constructor(storeHelper) {
-        this.storeHelper = storeHelper;
+    /** @type {import('@reduxjs/toolkit').EnhancedStore} */
+    #store;
 
-        /**
-         * Undoable reducers
-         * @type {import("redux").ReducersMapObject}
-         */
-        this._reducers = {};
+    /** @type {import("./intentExecutor.js").default<any>} */
+    #intentExecutor;
+
+    /**
+     * @param {import('@reduxjs/toolkit').EnhancedStore} store
+     * @param {import("./intentExecutor.js").default<any>} intentExecutor
+     */
+    constructor(store, intentExecutor) {
+        this.#store = store;
+        this.#intentExecutor = intentExecutor;
 
         /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
+    }
 
-        /** @type {import("redux").Reducer} */
-        this._reducer = undefined;
-
-        storeHelper.addReducer("provenance", (state, action) =>
-            this._reducer ? this._reducer(state, action) : (state ?? {})
-        );
+    get store() {
+        return this.#store;
     }
 
     /**
-     *
-     * @param {string} name
-     * @param {import("redux").Reducer} reducer
-     */
-    addReducer(name, reducer) {
-        this._reducers[name] = reducer;
-
-        const filterAction = (/** @type {Action} */ action) =>
-            Object.keys(this._reducers).some(
-                (key) => isString(key) && action.type.startsWith(key)
-            );
-
-        /**
-         * Stores the latest action into the state so that it can be shown
-         * in the provenance menu.
-         *
-         * @type {import("redux").Reducer}
-         */
-        const actionRecorder = (state, action) =>
-            filterAction(action) ? action : (state ?? null);
-
-        this._reducer = undoable(
-            combineReducers({
-                ...this._reducers,
-                lastAction: actionRecorder,
-            }),
-            {
-                ignoreInitialState: true,
-                filter: filterAction,
-            }
-        );
-
-        // Set the initial state. Need to hack a bit because we aren't replacing
-        // the Store's reducer.
-        this.storeHelper.dispatch({
-            type:
-                "@@redux/REPLACE" +
-                Math.random().toString(36).substring(7).split("").join("."),
-        });
-    }
-
-    get _storeState() {
-        return this.storeHelper.store.getState();
-    }
-
-    /**
-     * @returns {import("redux-undo").StateWithHistory<S & { lastAction: Action }>}
+     * @returns {import("redux-undo").StateWithHistory<S & { lastAction: import("@reduxjs/toolkit").PayloadAction}>}
      */
     get _provenanceState() {
-        return this._storeState.provenance;
+        return this.#store.getState().provenance;
     }
 
     /**
@@ -130,6 +69,9 @@ export default class Provenance {
         this.actionInfoSources.push(source);
     }
 
+    // Provenance is an API-only helper; reducer construction/composition is
+    // handled by application bootstrap code (e.g. `app.js`).
+
     /**
      * @param {Action} action
      * @returns {ActionInfo}
@@ -149,10 +91,12 @@ export default class Provenance {
      * @param {Action[]} actions Bookmarked actions
      */
     dispatchBookmark(actions) {
-        this.storeHelper.dispatch([
-            ...(this.isUndoable() ? [ActionCreators.jumpToPast(0)] : []),
-            ...actions,
-        ]);
+        if (this.isUndoable()) {
+            this.#intentExecutor.dispatch(ActionCreators.jumpToPast(0));
+        }
+        for (const action of actions) {
+            this.#intentExecutor.dispatch(action);
+        }
     }
 
     isRedoable() {
@@ -160,7 +104,7 @@ export default class Provenance {
     }
 
     redo() {
-        this.storeHelper.dispatch(ActionCreators.redo());
+        this.#store.dispatch(ActionCreators.redo());
     }
 
     isUndoable() {
@@ -168,7 +112,7 @@ export default class Provenance {
     }
 
     undo() {
-        this.storeHelper.dispatch(ActionCreators.undo());
+        this.#store.dispatch(ActionCreators.undo());
     }
 
     isAtInitialState() {
@@ -189,9 +133,9 @@ export default class Provenance {
     activateState(index) {
         const current = this.getCurrentIndex();
         if (index < current) {
-            this.storeHelper.dispatch(ActionCreators.jumpToPast(index));
+            this.#store.dispatch(ActionCreators.jumpToPast(index));
         } else if (index > current) {
-            this.storeHelper.dispatch(
+            this.#store.dispatch(
                 ActionCreators.jumpToFuture(index - current - 1)
             );
         }

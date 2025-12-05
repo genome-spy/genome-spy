@@ -6,7 +6,7 @@ import { ref, createRef } from "lit/directives/ref.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
 import { findUniqueViewNames } from "@genome-spy/core/view/viewUtils.js";
-import { watch } from "../state/watch.js";
+import { subscribeTo } from "../state/subscribeTo.js";
 import { queryDependency } from "../utils/dependency.js";
 import { nestPaths } from "../utils/nestPaths.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
@@ -31,15 +31,12 @@ class ViewSettingsButton extends LitElement {
         /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
         this.nestedPaths = undefined;
 
-        this.sateWatcher = watch(
-            (/** @type {import("../state.js").State} */ state) =>
-                state.viewSettings,
-            (_old, viewSettings) => this.requestUpdate()
-        );
-
         this.style.display = "none";
 
         this.buttonRef = createRef();
+
+        /** @type {(() => void)[]} */
+        this._cleanupCallbacks = [];
     }
 
     connectedCallback() {
@@ -62,11 +59,19 @@ class ViewSettingsButton extends LitElement {
                 : "none";
         });
 
-        this.app.storeHelper.subscribe(this.sateWatcher);
+        const unsubscribe = subscribeTo(
+            this.app.store,
+            (state) => state.viewSettings,
+            () => this.requestUpdate()
+        );
+
+        this._cleanupCallbacks.push(() => unsubscribe());
     }
 
     disconnectedCallback() {
-        this.app.storeHelper.unsubscribe(this.sateWatcher);
+        this._cleanupCallbacks.forEach((cb) => cb());
+        this._cleanupCallbacks = [];
+        super.disconnectedCallback();
     }
 
     createRenderRoot() {
@@ -80,7 +85,7 @@ class ViewSettingsButton extends LitElement {
     #handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
 
-        this.app.storeHelper.dispatch(
+        this.app.store.dispatch(
             checked != view.isVisibleInSpec()
                 ? viewSettingsSlice.actions.setVisibility({
                       name: view.name,
@@ -99,7 +104,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     #handleResetClick() {
-        this.app.storeHelper.dispatch(
+        this.app.store.dispatch(
             viewSettingsSlice.actions.restoreDefaultVisibilities()
         );
         // Update checkboxes
@@ -260,7 +265,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     getVisibilities() {
-        return this.app.storeHelper.state.viewSettings.visibilities;
+        return this.app.store.getState().viewSettings.visibilities;
     }
 }
 

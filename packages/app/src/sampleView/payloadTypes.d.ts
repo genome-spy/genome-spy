@@ -14,8 +14,16 @@ export interface Threshold {
     operand: number;
 }
 
+export interface AugmentedAttribute {
+    /** Values accessed just prior to dispatching the action to reducers */
+    values: Record<string, any>;
+    /** Domain of the accessed attribute, if needed */
+    domain?: Scalar[];
+}
+
 export interface PayloadWithAttribute {
     attribute: AttributeIdentifier;
+    _augmented?: AugmentedAttribute;
 }
 
 export interface SortBy extends PayloadWithAttribute {}
