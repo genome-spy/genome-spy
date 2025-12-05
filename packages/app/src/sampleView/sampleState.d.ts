@@ -1,4 +1,3 @@
-import { AnyAction } from "redux";
 import { AttributeIdentifier } from "./types.js";
 import { PayloadAction } from "@reduxjs/toolkit";
 
