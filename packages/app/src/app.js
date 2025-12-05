@@ -246,10 +246,6 @@ export default class App {
             messageBox(e.toString());
         }
 
-        this.store.subscribe(() => {
-            this._updateStateToUrl();
-        });
-
         window.addEventListener(
             "hashchange",
             () =>
@@ -264,6 +260,9 @@ export default class App {
             500,
             false
         );
+
+        this.store.subscribe(debouncedUpdateUrl);
+
         for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
             if (res.isZoomable()) {
                 res.addEventListener("domain", debouncedUpdateUrl);
