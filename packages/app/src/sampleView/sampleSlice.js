@@ -63,328 +63,281 @@ function createInitialState() {
 }
 
 /**
- * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ *
+ * @param {Record<string, any>} obj
+ * @returns {function(string):any}
  */
-export function createSampleSlice(getAttributeInfo) {
-    /**
-     * Returns an accessor to an abstract attribute.
-     * TODO: Memoize
-     * @param {PayloadWithAttribute} payload
-     * @param {SampleHierarchy} sampleHierarchy
-     */
-    // Per-slice attributeInfo getter. If a `getAttributeInfo` function is
-    // provided, use it. Otherwise allow late-binding via
-    // `slice.setAttributeInfoGetter(fn)` on the returned slice object.
-    let attributeInfoGetter =
-        typeof getAttributeInfo === "function" ? getAttributeInfo : null;
-
-    /**
-     * Ensure attributeInfoGetter is available and return attribute info.
-     * @param {any} attribute
-     */
-    const ensureAttributeInfo = (attribute) => {
-        if (!attributeInfoGetter) {
-            throw new Error(
-                "getAttributeInfo is not set for this sample slice"
-            );
-        }
-        return attributeInfoGetter(attribute);
-    };
-
-    /**
-     * Returns an accessor to an abstract attribute.
-     * @param {PayloadWithAttribute} payload
-     * @param {SampleHierarchy} sampleHierarchy
-     */
-    const getAccessor = (payload, sampleHierarchy) => {
-        const a = ensureAttributeInfo(payload.attribute).accessor;
-        return (/** @type {string} */ attribute) =>
-            a(attribute, sampleHierarchy);
-    };
-
-    const slice = createSlice({
-        name: SAMPLE_SLICE_NAME,
-        initialState: createInitialState(),
-        reducers: {
-            [SET_SAMPLES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
-            ) => {
-                const samples = action.payload.samples;
-
-                if (state.sampleData) {
-                    throw new Error("Samples have already been set!");
-                }
-
-                if (
-                    samples.some(
-                        (sample) =>
-                            sample.id === undefined || sample.id === null
-                    )
-                ) {
-                    throw new Error(
-                        'The sample metadata contains missing sample ids or the "sample" column is missing!'
-                    );
-                }
-
-                if (
-                    new Set(samples.map((sample) => sample.id)).size !=
-                    samples.length
-                ) {
-                    throw new Error(
-                        "The sample metadata contains duplicate sample ids!"
-                    );
-                }
-
-                const samplesWithIndices = samples.map((sample, index) => ({
-                    ...sample,
-                    indexNumber: index,
-                }));
-
-                state.sampleData = {
-                    ids: samplesWithIndices.map((sample) => sample.id),
-                    entities: Object.fromEntries(
-                        samplesWithIndices.map((sample) => [sample.id, sample])
-                    ),
-                };
-
-                state.rootGroup = {
-                    name: "ROOT",
-                    title: "Root",
-                    samples: state.sampleData.ids,
-                };
-            },
-
-            [SORT_BY]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    sort(
-                        samples,
-                        wrapAccessorForComparison(
-                            getAccessor(action.payload, state),
-                            ensureAttributeInfo(action.payload.attribute)
-                        ),
-                        false
-                    )
-                );
-            },
-
-            [RETAIN_FIRST_OF_EACH]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    retainFirstOfEachCategory(
-                        samples,
-                        getAccessor(action.payload, state)
-                    )
-                );
-            },
-
-            [RETAIN_FIRST_N_CATEGORIES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    retainFirstNCategories(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.n
-                    )
-                );
-            },
-
-            [FILTER_BY_QUANTITATIVE]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterQuantitative(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.operator,
-                        action.payload.operand
-                    )
-                );
-            },
-
-            [FILTER_BY_NOMINAL]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterNominal(
-                        samples,
-                        getAccessor(action.payload, state),
-                        action.payload.remove ? "remove" : "retain",
-                        action.payload.values
-                    )
-                );
-            },
-
-            [REMOVE_UNDEFINED]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
-                action
-            ) => {
-                applyToSamples(state, (samples) =>
-                    filterUndefined(samples, getAccessor(action.payload, state))
-                );
-            },
-
-            [GROUP_CUSTOM]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
-                action
-            ) => {
-                const accessor = makeCustomGroupAccessor(
-                    getAccessor(action.payload, state),
-                    action.payload.groups
-                );
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByAccessor(
-                        sampleGroup,
-                        accessor,
-                        Object.keys(action.payload.groups)
-                    )
-                );
-
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_NOMINAL]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
-                action
-            ) => {
-                const domain = ensureAttributeInfo(
-                    action.payload.attribute
-                ).scale?.domain();
-
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByAccessor(
-                        sampleGroup,
-                        getAccessor(action.payload, state),
-                        domain
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_QUARTILES]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
-                action
-            ) => {
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByQuartiles(
-                        sampleGroup,
-                        getAccessor(action.payload, state)
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [GROUP_BY_THRESHOLDS]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
-                action
-            ) => {
-                applyToGroups(state, (sampleGroup) =>
-                    groupSamplesByThresholds(
-                        sampleGroup,
-                        getAccessor(action.payload, state),
-                        action.payload.thresholds
-                    )
-                );
-                state.groupMetadata.push({
-                    attribute: action.payload.attribute,
-                });
-            },
-
-            [REMOVE_GROUP]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
-                action
-            ) => {
-                const root = state.rootGroup;
-                if (isGroupGroup(root)) {
-                    removeGroup(root, action.payload.path);
-                }
-            },
-
-            [RETAIN_MATCHED]: (
-                state,
-                /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
-                action
-            ) => {
-                const accessor = getAccessor(action.payload, state);
-
-                /** @type {Set<any>[]} Attribute values in each group */
-                const valueSets = [];
-
-                for (const sampleGroup of getSampleGroups(state)) {
-                    // Skip empty groups because they always cause empty intersections
-                    if (sampleGroup.samples.length > 0) {
-                        /** @type {Set<any>} */
-                        const values = new Set();
-                        for (const sample of sampleGroup.samples) {
-                            values.add(accessor(sample));
-                        }
-                        valueSets.push(values);
-                    }
-                }
-
-                /** @type {any[]} Values that are present in all groups */
-                const intersectedValues = [];
-
-                for (const value of valueSets[0]) {
-                    let found = true;
-                    for (let i = 1; i < valueSets.length && found; i++) {
-                        found = valueSets[i].has(value);
-                    }
-
-                    if (found) {
-                        intersectedValues.push(value);
-                    }
-                }
-
-                applyToSamples(state, (samples) =>
-                    filterNominal(
-                        samples,
-                        accessor,
-                        "retain",
-                        intersectedValues
-                    )
-                );
-            },
-        },
-    });
-
-    /**
-     * Allow late binding of the attribute info getter for this slice.
-     * @param {(attribute:any)=>any} fn
-     */
-    /** @type {any} */ (slice).setAttributeInfoGetter = (
-        /** @type {any} */ fn
-    ) => {
-        attributeInfoGetter = fn;
-    };
-
-    return slice;
+function createObjectAccessor(obj) {
+    if (!obj) {
+        throw new Error(
+            "No accessed values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
+        );
+    }
+    return (sampleId) => obj[sampleId];
 }
+
+export const sampleSlice = createSlice({
+    name: SAMPLE_SLICE_NAME,
+    initialState: createInitialState(),
+    reducers: {
+        [SET_SAMPLES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
+        ) => {
+            const samples = action.payload.samples;
+
+            if (state.sampleData) {
+                throw new Error("Samples have already been set!");
+            }
+
+            if (
+                samples.some(
+                    (sample) => sample.id === undefined || sample.id === null
+                )
+            ) {
+                throw new Error(
+                    'The sample metadata contains missing sample ids or the "sample" column is missing!'
+                );
+            }
+
+            if (
+                new Set(samples.map((sample) => sample.id)).size !=
+                samples.length
+            ) {
+                throw new Error(
+                    "The sample metadata contains duplicate sample ids!"
+                );
+            }
+
+            const samplesWithIndices = samples.map((sample, index) => ({
+                ...sample,
+                indexNumber: index,
+            }));
+
+            state.sampleData = {
+                ids: samplesWithIndices.map((sample) => sample.id),
+                entities: Object.fromEntries(
+                    samplesWithIndices.map((sample) => [sample.id, sample])
+                ),
+            };
+
+            state.rootGroup = {
+                name: "ROOT",
+                title: "Root",
+                samples: state.sampleData.ids,
+            };
+        },
+
+        [SORT_BY]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
+        ) => {
+            applyToSamples(state, (samples) =>
+                sort(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues),
+                    false
+                )
+            );
+        },
+
+        [RETAIN_FIRST_OF_EACH]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                retainFirstOfEachCategory(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues)
+                )
+            );
+        },
+
+        [RETAIN_FIRST_N_CATEGORIES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                retainFirstNCategories(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues),
+                    action.payload.n
+                )
+            );
+        },
+
+        [FILTER_BY_QUANTITATIVE]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterQuantitative(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues),
+                    action.payload.operator,
+                    action.payload.operand
+                )
+            );
+        },
+
+        [FILTER_BY_NOMINAL]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterNominal(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues),
+                    action.payload.remove ? "remove" : "retain",
+                    action.payload.values
+                )
+            );
+        },
+
+        [REMOVE_UNDEFINED]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
+            action
+        ) => {
+            applyToSamples(state, (samples) =>
+                filterUndefined(
+                    samples,
+                    createObjectAccessor(action.payload.accessedValues)
+                )
+            );
+        },
+
+        [GROUP_CUSTOM]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
+            action
+        ) => {
+            const accessor = makeCustomGroupAccessor(
+                createObjectAccessor(action.payload.accessedValues),
+                action.payload.groups
+            );
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByAccessor(
+                    sampleGroup,
+                    accessor,
+                    Object.keys(action.payload.groups)
+                )
+            );
+
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_NOMINAL]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByAccessor(
+                    sampleGroup,
+                    createObjectAccessor(action.payload.accessedValues),
+                    action.payload.accessedDomain
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_QUARTILES]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByQuartiles(
+                    sampleGroup,
+                    createObjectAccessor(action.payload.accessedValues)
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [GROUP_BY_THRESHOLDS]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
+            action
+        ) => {
+            applyToGroups(state, (sampleGroup) =>
+                groupSamplesByThresholds(
+                    sampleGroup,
+                    createObjectAccessor(action.payload.accessedValues),
+                    action.payload.thresholds
+                )
+            );
+            state.groupMetadata.push({
+                attribute: action.payload.attribute,
+            });
+        },
+
+        [REMOVE_GROUP]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                removeGroup(root, action.payload.path);
+            }
+        },
+
+        [RETAIN_MATCHED]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
+            action
+        ) => {
+            const accessor = createObjectAccessor(
+                action.payload.accessedValues
+            );
+
+            /** @type {Set<any>[]} Attribute values in each group */
+            const valueSets = [];
+
+            for (const sampleGroup of getSampleGroups(state)) {
+                // Skip empty groups because they always cause empty intersections
+                if (sampleGroup.samples.length > 0) {
+                    /** @type {Set<any>} */
+                    const values = new Set();
+                    for (const sample of sampleGroup.samples) {
+                        values.add(accessor(sample));
+                    }
+                    valueSets.push(values);
+                }
+            }
+
+            /** @type {any[]} Values that are present in all groups */
+            const intersectedValues = [];
+
+            for (const value of valueSets[0]) {
+                let found = true;
+                for (let i = 1; i < valueSets.length && found; i++) {
+                    found = valueSets[i].has(value);
+                }
+
+                if (found) {
+                    intersectedValues.push(value);
+                }
+            }
+
+            applyToSamples(state, (samples) =>
+                filterNominal(samples, accessor, "retain", intersectedValues)
+            );
+        },
+    },
+});
 
 /**
  * Applies an operation to each group of samples.
@@ -495,4 +448,64 @@ export function* iterateGroupHierarchy(group) {
             }
         }
     }
+}
+
+/**
+ * Augments an attribute-related action by accessing and storing
+ * the attribute values for current samples prior to dispatching the action.
+ * This allows reducers to use the accessed values without needing to
+ * access attribute info or accessors, which would be an impure approach.
+ *
+ * TODO: Make an async version for use cases when data must be fetched
+ * before accessing attribute values, e.g. when using lazy loading.
+ *
+ * @template {PayloadWithAttribute} T
+ * @param {PayloadAction<T>} action
+ * @param {SampleHierarchy} sampleHierarchy
+ * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ */
+export function augmentAttributeAction(
+    action,
+    sampleHierarchy,
+    getAttributeInfo
+) {
+    // TODO: Type properly
+
+    if (!action.payload.attribute) {
+        return action;
+    }
+
+    const attributeInfo = getAttributeInfo(action.payload.attribute);
+    if (!attributeInfo) {
+        throw new Error(
+            `Attribute info for attribute "${action.payload.attribute}" not found`
+        );
+    }
+
+    const accessor = attributeInfo.accessor;
+
+    const wrappedAccessor =
+        action.type == SORT_BY
+            ? wrapAccessorForComparison(
+                  (sampleId) => accessor(sampleId, sampleHierarchy),
+                  attributeInfo
+              )
+            : accessor;
+
+    action.payload.accessedValues = getSampleGroups(sampleHierarchy).reduce(
+        (acc, group) => {
+            for (const sampleId of group.samples) {
+                acc[sampleId] = wrappedAccessor(sampleId, sampleHierarchy);
+            }
+            return acc;
+        },
+        /** @type {Record<string, any>} */ ({})
+    );
+
+    // TODO: Is this comparison reliable?
+    if (action.type == SAMPLE_SLICE_NAME + "/" + GROUP_BY_NOMINAL) {
+        action.payload.accessedDomain = attributeInfo.scale?.domain();
+    }
+
+    return action;
 }

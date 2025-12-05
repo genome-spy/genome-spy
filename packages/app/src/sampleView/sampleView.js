@@ -23,6 +23,8 @@ import {
     getFlattenedGroupHierarchy,
     sampleHierarchySelector,
     SAMPLE_SLICE_NAME,
+    sampleSlice,
+    augmentAttributeAction,
 } from "./sampleSlice.js";
 import { getActionInfo } from "./actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
@@ -82,17 +84,8 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance.js").default<any>} provenance
-     * @param {any} [sampleSlice] Slice instance provided by App
      */
-    constructor(
-        spec,
-        context,
-        layoutParent,
-        dataParent,
-        name,
-        provenance,
-        sampleSlice
-    ) {
+    constructor(spec, context, layoutParent, dataParent, name, provenance) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
@@ -186,23 +179,13 @@ export default class SampleView extends ContainerView {
             /** @type {import("./types.js").AttributeInfo} */ attribute
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
-        // Use the sample slice provided by App. App must provide the
-        // slice instance; do not create a local fallback here.
-        if (!sampleSlice) {
-            throw new Error(
-                "SampleView requires a `sampleSlice` instance from App"
-            );
-        }
-        const slice = sampleSlice;
-        /** @type {any} */ (slice).setAttributeInfoGetter(getAttributeInfo);
-
         this.provenance.addActionInfoSource(
             (
                 /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
             ) => getActionInfo(action, getAttributeInfo)
         );
 
-        this.actions = slice.actions;
+        this.actions = sampleSlice.actions;
 
         const sampleSelector = createSelector(
             (
@@ -890,6 +873,23 @@ export default class SampleView extends ContainerView {
             default:
                 return "independent";
         }
+    }
+
+    /**
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
+     */
+    dispatchAttributeAction(action) {
+        const getAttributeInfo =
+            this.compositeAttributeInfoSource.getAttributeInfo.bind(
+                this.compositeAttributeInfoSource
+            );
+        this.provenance.store.dispatch(
+            augmentAttributeAction(
+                action,
+                this.sampleHierarchy,
+                getAttributeInfo
+            )
+        );
     }
 }
 

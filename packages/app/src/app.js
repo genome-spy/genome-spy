@@ -13,7 +13,6 @@ import "./components/toolbar.js";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
-import { createSampleSlice } from "./sampleView/sampleSlice.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
@@ -29,6 +28,7 @@ import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
+import { sampleSlice } from "./sampleView/sampleSlice.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -54,11 +54,9 @@ export default class App {
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";
 
-        this.sampleSlice = createSampleSlice(undefined);
-
         const provenanceReducer = createProvenanceReducer(
             {
-                [this.sampleSlice.name]: this.sampleSlice.reducer,
+                [sampleSlice.name]: sampleSlice.reducer,
             },
             {
                 ignoreInitialState: true,
@@ -153,8 +151,7 @@ export default class App {
                     layoutParent,
                     dataParent,
                     defaultName,
-                    this.provenance,
-                    this.sampleSlice
+                    this.provenance
                 )
         );
 
