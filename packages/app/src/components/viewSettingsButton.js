@@ -31,7 +31,7 @@ class ViewSettingsButton extends LitElement {
         /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
         this.nestedPaths = undefined;
 
-        this.sateWatcher = this.style.display = "none";
+        this.style.display = "none";
 
         this.buttonRef = createRef();
 
@@ -59,11 +59,13 @@ class ViewSettingsButton extends LitElement {
                 : "none";
         });
 
-        subscribeTo(
+        const unsubscribe = subscribeTo(
             this.app.store,
             (state) => state.viewSettings,
             () => this.requestUpdate()
         );
+
+        this._cleanupCallbacks.push(() => unsubscribe());
     }
 
     disconnectedCallback() {
