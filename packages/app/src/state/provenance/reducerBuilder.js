@@ -5,7 +5,7 @@ import { isString } from "vega-util";
 /**
  * Create a predicate that returns true for actions whose type starts with
  * any of the provided reducer keys.
- * @param {string[]|import('redux').ReducersMapObject} reducerKeys
+ * @param {string[]|{[key:string]: import('redux').Reducer}} reducerKeys
  * @returns {(action:any)=>boolean}
  */
 export function makeFilterAction(reducerKeys) {
@@ -28,10 +28,11 @@ export function createActionRecorder(filterFn) {
 
 /**
  * Build an undoable provenance reducer from a reducers map and a filter.
- * @param {import('redux').ReducersMapObject} reducersMap
+ * @template T
+ * @param {import('redux').ReducersMapObject<T>} reducersMap
  * @param {(action:any)=>boolean} filterFn
  * @param {object} [opts]
- * @returns {import('redux').Reducer}
+ * @returns {import('redux').Reducer<import('redux-undo').StateWithHistory<T & { lastAction: any }>, any>}
  */
 export function createProvenanceReducer(reducersMap, filterFn, opts = {}) {
     const actionRecorder = createActionRecorder(filterFn);
@@ -44,4 +45,17 @@ export function createProvenanceReducer(reducersMap, filterFn, opts = {}) {
         ignoreInitialState: true,
         ...opts,
     });
+}
+
+/**
+ * Convenience builder that constructs a provenance reducer and its
+ * associated filter function from a reducers map.
+ * @template T
+ * @param {import('redux').ReducersMapObject<T>} reducersMap
+ * @param {object} [opts]
+ */
+export function buildProvenanceWrapper(reducersMap, opts = {}) {
+    const filter = makeFilterAction(reducersMap);
+    const reducer = createProvenanceReducer(reducersMap, filter, opts);
+    return { reducer, filter };
 }

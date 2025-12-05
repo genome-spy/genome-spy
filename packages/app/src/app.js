@@ -13,7 +13,7 @@ import "./components/toolbar.js";
 import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
-import { createStore as createStaticStore } from "./state/createStore.js";
+import { buildProvenanceWrapper } from "./state/provenance/reducerBuilder.js";
 import { createSampleSlice } from "./sampleView/sampleSlice.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
@@ -28,6 +28,7 @@ import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -53,45 +54,28 @@ export default class App {
         // App has a specialized handler for input bindings
         options.inputBindingContainer = "none";
 
-        // Create sample slice early so we can include it in the static provenance reducer.
-        const sampleSlice = createSampleSlice(undefined);
-        // Keep a reference so child views can reuse the same slice instance
-        // (SampleView should use the App-created slice rather than creating
-        // its own instance).
-        this.sampleSlice = sampleSlice;
+        this.sampleSlice = createSampleSlice(undefined);
 
-        // Build a provenance reducers map that contains the sample slice reducer.
-        const provenanceReducers = {
-            [sampleSlice.name]: sampleSlice.reducer,
-        };
+        // Build the provenance wrapper (undoable reducer + filter) using the
+        // centralized builder and pass the built pieces to Provenance. This
+        // keeps reducer construction separate from the Provenance API.
+        const { reducer: provenanceReducer } = buildProvenanceWrapper(
+            {
+                [this.sampleSlice.name]: this.sampleSlice.reducer,
+            },
+            {
+                ignoreInitialState: true,
+            }
+        );
 
-        // Create a Provenance instance. It will build its internal provenance
-        // reducer from the provided initial reducers.
-        this.provenance = new Provenance(provenanceReducers);
-
-        // Create a root reducer where the `provenance` key delegates to the
-        // provenance instance's internal reducer. This keeps the reducer
-        // reference stable while allowing `Provenance.addReducer` to update
-        // its internal implementation and then dispatch a replace-like action
-        // to reinitialize state.
-        /** @type {import('redux').Reducer} */
-        const provenanceWrapper = (state, action) =>
-            this.provenance._reducer
-                ? this.provenance._reducer(state, action)
-                : (state ?? {});
-
-        // Create the store with static reducers composed up-front.
-        const store = createStaticStore({
-            viewSettings: viewSettingsSlice.reducer,
-            provenance: provenanceWrapper,
+        this.store = configureStore({
+            reducer: combineReducers({
+                viewSettings: viewSettingsSlice.reducer,
+                provenance: provenanceReducer,
+            }),
         });
 
-        // Keep references for legacy code paths.
-        this.store = store;
-
-        // Bind the concrete store to provenance so it can dispatch
-        // replace-like actions when its internal reducer changes.
-        this.provenance.bindStore(this.store);
+        this.provenance = new Provenance(this.store);
 
         /** @type {(() => void)[]} */
         this._initializationListeners = [];
@@ -231,8 +215,7 @@ export default class App {
 
         subscribeTo(
             this.store,
-            (/** @type {import("./state.js").State} */ state) =>
-                state.viewSettings?.visibilities,
+            (state) => state.viewSettings?.visibilities,
             withMicrotask(() => {
                 // TODO: Optimize: only invalidate the affected views
                 this.genomeSpy.viewRoot._invalidateCacheByPrefix(

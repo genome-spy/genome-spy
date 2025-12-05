@@ -16,7 +16,7 @@ export function wrapAccessorForComparison(accessor, attributeInfo) {
         scale.copy().range(range(0, scale.domain().length)).unknown(-1);
 
     /** @type {function(any):any} */
-    let wrapper;
+    let wrapper = (x) => (x === undefined || x === null ? "" : x);
     switch (attributeInfo.type) {
         case "quantitative":
             wrapper = (x) => (isNumber(x) && !isNaN(x) ? -x : -Infinity);

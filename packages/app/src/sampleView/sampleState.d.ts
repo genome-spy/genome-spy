@@ -1,5 +1,6 @@
 import { AnyAction } from "redux";
 import { AttributeIdentifier } from "./types.js";
+import { PayloadAction } from "@reduxjs/toolkit";
 
 /**
  * Sample metadata
@@ -55,5 +56,5 @@ export interface SampleHierarchy {
     rootGroup: Group;
 
     // TODO: Extract this into a separate interface
-    lastAction?: AnyAction;
+    lastAction?: PayloadAction;
 }
