@@ -54,6 +54,199 @@ export function formatSet(values, braces = true) {
 }
 
 /**
+ * @typedef {Object} ActionHandlerContext
+ * @property {any} payload
+ * @property {Object} template
+ * @property {string} attributeName
+ * @property {string | import("lit").TemplateResult} attributeTitle
+ */
+
+/**
+ * Map of action type to handler function.
+ * Each handler receives (payload, template, attributeName, attributeTitle) and returns ActionInfo.
+ * @type {Record<string, (context: ActionHandlerContext) => import("../state/provenance.js").ActionInfo>}
+ */
+const actionHandlers = {
+    [SET_SAMPLES]: ({ template }) => ({
+        ...template,
+        title: "The initial state",
+        icon: faCheck,
+    }),
+
+    [SORT_BY]: ({ template, attributeTitle }) => ({
+        ...template,
+        title: "Sort by",
+        provenanceTitle: html` Sort by ${attributeTitle} `,
+        icon: faSortAmountDown,
+    }),
+
+    [RETAIN_FIRST_OF_EACH]: ({ template, attributeName, attributeTitle }) => ({
+        ...template,
+        title: html`
+            Retain the first sample of each
+            <em>${attributeName}</em>
+        `,
+        provenanceTitle: html`
+            Retain the first sample of each ${attributeTitle}
+        `,
+        icon: faMedal,
+    }),
+
+    [RETAIN_FIRST_N_CATEGORIES]: ({
+        payload,
+        template,
+        attributeName,
+        attributeTitle,
+    }) => ({
+        ...template,
+        title: html`
+            Retain first <strong>n</strong> categories of
+            <em>${attributeName}</em>...
+        `,
+        provenanceTitle: html`
+            Retain first <strong>${payload.n}</strong> categories of
+            ${attributeTitle}
+        `,
+        icon: faMedal,
+    }),
+
+    [FILTER_BY_NOMINAL]: ({
+        payload,
+        template,
+        attributeName,
+        attributeTitle,
+    }) => {
+        const values = /** @type {any[]} */ (payload.values);
+
+        /** @param {string | import("lit").TemplateResult} attr */
+        const makeTitle = (attr) => html`
+            ${payload.remove ? "Remove" : "Retain"} samples having
+            ${values[0] === undefined || values[0] === null
+                ? html` undefined ${attr} `
+                : html`${attr}
+                  ${values.length > 1
+                      ? html`in ${formatSet(values)}`
+                      : html`<span class="operator">=</span>
+                            <strong>${values[0]}</strong>`} `}
+        `;
+
+        return {
+            ...template,
+            title: makeTitle(html` <em>${attributeName}</em> `),
+            provenanceTitle: makeTitle(attributeTitle),
+            icon: payload.remove ? faTrashAlt : faFilter,
+        };
+    },
+
+    [FILTER_BY_QUANTITATIVE]: ({
+        payload,
+        template,
+        attributeName,
+        attributeTitle,
+    }) => {
+        /** @param {string | import("lit").TemplateResult} attr */
+        const makeTitle = (attr) => html`
+            Retain samples having ${attr}
+            <span class="operator"
+                >${verboseOps[/** @type {any} */ (payload).operator]}</span
+            >
+            <strong>${attributeNumberFormat(payload.operand)}</strong>
+        `;
+
+        return {
+            ...template,
+            title: makeTitle(html` <em>${attributeName}</em> `),
+            provenanceTitle: makeTitle(attributeTitle),
+            icon: faFilter,
+        };
+    },
+
+    [REMOVE_UNDEFINED]: ({ template, attributeTitle }) => ({
+        ...template,
+        title: "Remove samples having missing attribute",
+        provenanceTitle: html`
+            Remove samples having missing ${attributeTitle}
+        `,
+        icon: faTrashAlt,
+    }),
+
+    [GROUP_CUSTOM]: ({ payload, template, attributeTitle }) => {
+        const groups = /** @type {any} */ (payload.groups);
+        const provenanceTitle = html`Create custom groups based on
+        ${attributeTitle}.
+        ${map(
+            Object.entries(groups),
+            ([groupName, categories], i) =>
+                html`${i > 0 ? ", " : ""}<strong>${groupName}</strong> =
+                    ${formatSet(categories)}`
+        )}`;
+
+        return {
+            ...template,
+            title: "Group arbitrarily...",
+            provenanceTitle,
+            icon: faObjectGroup,
+        };
+    },
+
+    [GROUP_BY_NOMINAL]: ({ template, attributeTitle }) => ({
+        ...template,
+        title: "Group by",
+        provenanceTitle: html` Group by ${attributeTitle} `,
+        icon: faObjectGroup,
+    }),
+
+    [GROUP_BY_QUARTILES]: ({ template, attributeTitle }) => ({
+        ...template,
+        title: "Group by quartiles",
+        provenanceTitle: html` Group by quartiles on ${attributeTitle} `,
+        icon: faObjectGroup,
+    }),
+
+    [GROUP_BY_THRESHOLDS]: ({ payload, template, attributeTitle }) => ({
+        ...template,
+        title: "Group by thresholds",
+        provenanceTitle: html`
+            Group by thresholds
+            ${formatSet(
+                /** @type {any} */ (payload).thresholds.map(
+                    (/** @type {any} */ t) =>
+                        `${verboseOps[t.operator]} ${t.operand}`
+                )
+            )}
+            on ${attributeTitle}
+        `,
+        icon: faObjectGroup,
+    }),
+
+    [REMOVE_GROUP]: ({ payload }) => ({
+        title: "Remove group",
+        provenanceTitle: html`
+            Remove group
+            ${join(
+                /** @type {any} */ (payload).path.map(
+                    (/** @type {any} */ name) => html`<strong>${name}</strong>`
+                ),
+                " / "
+            )}
+        `,
+        icon: faTrashAlt,
+    }),
+
+    [RETAIN_MATCHED]: ({ template, attributeName, attributeTitle }) => ({
+        ...template,
+        title: html`
+            Retain group-wise matched samples using
+            <em>${attributeName}</em>
+        `,
+        provenanceTitle: html`
+            Retain group-wise matched samples using ${attributeTitle}
+        `,
+        icon: faFilter,
+    }),
+};
+
+/**
  * Describes an action for displaying it in menus or provenance tracking.
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
@@ -79,176 +272,14 @@ export function getActionInfo(action, getAttributeInfo) {
 
     const actionType = action.type.substring(SAMPLE_SLICE_NAME.length + 1);
 
-    switch (actionType) {
-        case SET_SAMPLES:
-            return {
-                ...template,
-                title: "The initial state",
-                icon: faCheck,
-            };
-        case SORT_BY:
-            return {
-                ...template,
-                title: "Sort by",
-                provenanceTitle: html` Sort by ${attributeTitle} `,
-                icon: faSortAmountDown,
-            };
-        case RETAIN_FIRST_OF_EACH:
-            return {
-                ...template,
-                title: html`
-                    Retain the first sample of each
-                    <em>${attributeName}</em>
-                `,
-                provenanceTitle: html`
-                    Retain the first sample of each ${attributeTitle}
-                `,
-                icon: faMedal,
-            };
-        case RETAIN_FIRST_N_CATEGORIES:
-            return {
-                ...template,
-                title: html`
-                    Retain first <strong>n</strong> categories of
-                    <em>${attributeName}</em>...
-                `,
-                provenanceTitle: html`
-                    Retain first <strong>${payload.n}</strong> categories of
-                    ${attributeTitle}
-                `,
-                icon: faMedal,
-            };
-        case FILTER_BY_NOMINAL: {
-            const values = /** @type {any[]} */ (payload.values);
-
-            /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = (attr) => html`
-                ${payload.remove ? "Remove" : "Retain"} samples having
-                ${values[0] === undefined || values[0] === null
-                    ? html` undefined ${attr} `
-                    : html`${attr}
-                      ${values.length > 1
-                          ? html`in ${formatSet(values)}`
-                          : html`<span class="operator">=</span>
-                                <strong>${values[0]}</strong>`} `}
-            `;
-
-            return {
-                ...template,
-                title: makeTitle(html` <em>${attributeName}</em> `),
-                provenanceTitle: makeTitle(attributeTitle),
-                icon: payload.remove ? faTrashAlt : faFilter,
-            };
-        }
-        case FILTER_BY_QUANTITATIVE: {
-            /** @param {string | import("lit").TemplateResult} attr */
-            const makeTitle = (attr) => html`
-                Retain samples having ${attr}
-                <span class="operator"
-                    >${verboseOps[/** @type {any} */ (payload).operator]}</span
-                >
-                <strong>${attributeNumberFormat(payload.operand)}</strong>
-            `;
-
-            return {
-                ...template,
-                title: makeTitle(html` <em>${attributeName}</em> `),
-                provenanceTitle: makeTitle(attributeTitle),
-                icon: faFilter,
-            };
-        }
-        case REMOVE_UNDEFINED:
-            return {
-                ...template,
-                title: "Remove samples having missing attribute",
-                provenanceTitle: html`
-                    Remove samples having missing ${attributeTitle}
-                `,
-                icon: faTrashAlt,
-            };
-        case GROUP_CUSTOM: {
-            const groups = /** @type {any} */ (payload.groups);
-            const provenanceTitle = html`Create custom groups based on
-            ${attributeTitle}.
-            ${map(
-                Object.entries(groups),
-                ([groupName, categories], i) =>
-                    html`${i > 0 ? ", " : ""}<strong>${groupName}</strong> =
-                        ${formatSet(categories)}`
-            )}`;
-
-            return {
-                ...template,
-                title: "Group arbitrarily...",
-                provenanceTitle,
-                icon: faObjectGroup,
-            };
-        }
-        case GROUP_BY_NOMINAL:
-            return {
-                ...template,
-                title: "Group by",
-                provenanceTitle: html` Group by ${attributeTitle} `,
-                icon: faObjectGroup,
-            };
-        case GROUP_BY_QUARTILES:
-            return {
-                ...template,
-                title: "Group by quartiles",
-                provenanceTitle: html`
-                    Group by quartiles on ${attributeTitle}
-                `,
-                icon: faObjectGroup,
-            };
-        case GROUP_BY_THRESHOLDS:
-            return {
-                ...template,
-                title: "Group by thresholds",
-                provenanceTitle: html`
-                    Group by thresholds
-                    ${formatSet(
-                        /** @type {any} */ (payload).thresholds.map(
-                            (/** @type {any} */ t) =>
-                                `${verboseOps[t.operator]} ${t.operand}`
-                        )
-                    )}
-                    on ${attributeTitle}
-                `,
-                icon: faObjectGroup,
-            };
-        case REMOVE_GROUP:
-            return {
-                title: "Remove group",
-                provenanceTitle: html`
-                    Remove group
-                    ${join(
-                        /** @type {any} */ (payload).path.map(
-                            (/** @type {any} */ name) =>
-                                html`<strong>${name}</strong>`
-                        ),
-                        " / "
-                    )}
-                `,
-                icon: faTrashAlt,
-            };
-        case RETAIN_MATCHED:
-            return {
-                ...template,
-                title: html`
-                    Retain group-wise matched samples using
-                    <em>${attributeName}</em>
-                `,
-                provenanceTitle: html`
-                    Retain group-wise matched samples using ${attributeTitle}
-                `,
-
-                icon: faFilter,
-            };
-        default:
-            return {
-                ...template,
-                title: JSON.stringify(action),
-                icon: faCircle,
-            };
+    const handler = actionHandlers[actionType];
+    if (handler) {
+        return handler({ payload, template, attributeName, attributeTitle });
     }
+
+    return {
+        ...template,
+        title: JSON.stringify(action),
+        icon: faCircle,
+    };
 }
