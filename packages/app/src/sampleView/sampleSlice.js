@@ -16,6 +16,7 @@ import {
     sort,
     wrapAccessorForComparison,
 } from "./sampleOperations.js";
+import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -63,11 +64,11 @@ function createInitialState() {
 }
 
 /**
- *
- * @param {Record<string, any>} obj
+ * @param {PayloadAction<PayloadWithAttribute>} action
  * @returns {function(string):any}
  */
-function createObjectAccessor(obj) {
+function createObjectAccessor(action) {
+    const obj = action.payload[AUGMENTED_KEY]?.values;
     if (!obj) {
         throw new Error(
             "No accessed values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
@@ -133,11 +134,7 @@ export const sampleSlice = createSlice({
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
         ) => {
             applyToSamples(state, (samples) =>
-                sort(
-                    samples,
-                    createObjectAccessor(action.payload.accessedValues),
-                    false
-                )
+                sort(samples, createObjectAccessor(action), false)
             );
         },
 
@@ -147,10 +144,7 @@ export const sampleSlice = createSlice({
             action
         ) => {
             applyToSamples(state, (samples) =>
-                retainFirstOfEachCategory(
-                    samples,
-                    createObjectAccessor(action.payload.accessedValues)
-                )
+                retainFirstOfEachCategory(samples, createObjectAccessor(action))
             );
         },
 
@@ -162,7 +156,7 @@ export const sampleSlice = createSlice({
             applyToSamples(state, (samples) =>
                 retainFirstNCategories(
                     samples,
-                    createObjectAccessor(action.payload.accessedValues),
+                    createObjectAccessor(action),
                     action.payload.n
                 )
             );
@@ -176,7 +170,7 @@ export const sampleSlice = createSlice({
             applyToSamples(state, (samples) =>
                 filterQuantitative(
                     samples,
-                    createObjectAccessor(action.payload.accessedValues),
+                    createObjectAccessor(action),
                     action.payload.operator,
                     action.payload.operand
                 )
@@ -191,7 +185,7 @@ export const sampleSlice = createSlice({
             applyToSamples(state, (samples) =>
                 filterNominal(
                     samples,
-                    createObjectAccessor(action.payload.accessedValues),
+                    createObjectAccessor(action),
                     action.payload.remove ? "remove" : "retain",
                     action.payload.values
                 )
@@ -204,10 +198,7 @@ export const sampleSlice = createSlice({
             action
         ) => {
             applyToSamples(state, (samples) =>
-                filterUndefined(
-                    samples,
-                    createObjectAccessor(action.payload.accessedValues)
-                )
+                filterUndefined(samples, createObjectAccessor(action))
             );
         },
 
@@ -217,7 +208,7 @@ export const sampleSlice = createSlice({
             action
         ) => {
             const accessor = makeCustomGroupAccessor(
-                createObjectAccessor(action.payload.accessedValues),
+                createObjectAccessor(action),
                 action.payload.groups
             );
             applyToGroups(state, (sampleGroup) =>
@@ -241,8 +232,8 @@ export const sampleSlice = createSlice({
             applyToGroups(state, (sampleGroup) =>
                 groupSamplesByAccessor(
                     sampleGroup,
-                    createObjectAccessor(action.payload.accessedValues),
-                    action.payload.accessedDomain
+                    createObjectAccessor(action),
+                    action.payload[AUGMENTED_KEY].domain
                 )
             );
             state.groupMetadata.push({
@@ -258,7 +249,7 @@ export const sampleSlice = createSlice({
             applyToGroups(state, (sampleGroup) =>
                 groupSamplesByQuartiles(
                     sampleGroup,
-                    createObjectAccessor(action.payload.accessedValues)
+                    createObjectAccessor(action)
                 )
             );
             state.groupMetadata.push({
@@ -274,7 +265,7 @@ export const sampleSlice = createSlice({
             applyToGroups(state, (sampleGroup) =>
                 groupSamplesByThresholds(
                     sampleGroup,
-                    createObjectAccessor(action.payload.accessedValues),
+                    createObjectAccessor(action),
                     action.payload.thresholds
                 )
             );
@@ -299,9 +290,7 @@ export const sampleSlice = createSlice({
             /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
             action
         ) => {
-            const accessor = createObjectAccessor(
-                action.payload.accessedValues
-            );
+            const accessor = createObjectAccessor(action);
 
             /** @type {Set<any>[]} Attribute values in each group */
             const valueSets = [];
@@ -492,20 +481,22 @@ export function augmentAttributeAction(
               )
             : accessor;
 
-    action.payload.accessedValues = getSampleGroups(sampleHierarchy).reduce(
-        (acc, group) => {
+    /** @type {import("./payloadTypes.js").AugmentedAttribute} */
+    const accessed = {
+        values: getSampleGroups(sampleHierarchy).reduce((acc, group) => {
             for (const sampleId of group.samples) {
                 acc[sampleId] = wrappedAccessor(sampleId, sampleHierarchy);
             }
             return acc;
-        },
-        /** @type {Record<string, any>} */ ({})
-    );
+        }, /** @type {Record<string, any>} */ ({})),
+    };
 
     // TODO: Is this comparison reliable?
     if (action.type == SAMPLE_SLICE_NAME + "/" + GROUP_BY_NOMINAL) {
-        action.payload.accessedDomain = attributeInfo.scale?.domain();
+        accessed.domain = attributeInfo.scale?.domain();
     }
+
+    action.payload[AUGMENTED_KEY] = accessed;
 
     return action;
 }

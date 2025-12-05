@@ -84,8 +84,17 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
      * @param {import("../state/provenance.js").default<any>} provenance
+     * @param {import("../state/intentExecutor.js").default<any>} intentExecutor
      */
-    constructor(spec, context, layoutParent, dataParent, name, provenance) {
+    constructor(
+        spec,
+        context,
+        layoutParent,
+        dataParent,
+        name,
+        provenance,
+        intentExecutor
+    ) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
@@ -196,6 +205,20 @@ export default class SampleView extends ContainerView {
 
         /** Returns the samples as a flat array */
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
+
+        // TODO: Should be removed when appropriate
+        intentExecutor.addActionAugmenter((action) => {
+            const getAttributeInfo =
+                this.compositeAttributeInfoSource.getAttributeInfo.bind(
+                    this.compositeAttributeInfoSource
+                );
+            return augmentAttributeAction(
+                action,
+                this.sampleHierarchy,
+                getAttributeInfo
+            );
+        });
+        this.intentExecutor = intentExecutor;
 
         subscribeTo(
             this.provenance.store,
@@ -879,17 +902,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
      */
     dispatchAttributeAction(action) {
-        const getAttributeInfo =
-            this.compositeAttributeInfoSource.getAttributeInfo.bind(
-                this.compositeAttributeInfoSource
-            );
-        this.provenance.store.dispatch(
-            augmentAttributeAction(
-                action,
-                this.sampleHierarchy,
-                getAttributeInfo
-            )
-        );
+        this.intentExecutor.dispatch(action);
     }
 }
 

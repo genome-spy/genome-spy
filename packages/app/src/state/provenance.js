@@ -21,15 +21,16 @@ export default class Provenance {
     /** @type {import('@reduxjs/toolkit').EnhancedStore} */
     #store;
 
+    /** @type {import("./intentExecutor.js").default<any>} */
+    #intentExecutor;
+
     /**
      * @param {import('@reduxjs/toolkit').EnhancedStore} store
+     * @param {import("./intentExecutor.js").default<any>} intentExecutor
      */
-    constructor(store) {
-        if (!store) {
-            throw new Error("Provenance requires a Redux store instance.");
-        }
-
+    constructor(store, intentExecutor) {
         this.#store = store;
+        this.#intentExecutor = intentExecutor;
 
         /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
@@ -91,10 +92,10 @@ export default class Provenance {
      */
     dispatchBookmark(actions) {
         if (this.isUndoable()) {
-            this.#store.dispatch(ActionCreators.jumpToPast(0));
+            this.#intentExecutor.dispatch(ActionCreators.jumpToPast(0));
         }
         for (const action of actions) {
-            this.#store.dispatch(action);
+            this.#intentExecutor.dispatch(action);
         }
     }
 

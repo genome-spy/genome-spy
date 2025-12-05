@@ -29,6 +29,7 @@ import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
 import { sampleSlice } from "./sampleView/sampleSlice.js";
+import IntentExecutor from "./state/intentExecutor.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -70,7 +71,8 @@ export default class App {
             }),
         });
 
-        this.provenance = new Provenance(this.store);
+        this.intentExecutor = new IntentExecutor(this.store);
+        this.provenance = new Provenance(this.store, this.intentExecutor);
 
         /** @type {(() => void)[]} */
         this._initializationListeners = [];
@@ -151,7 +153,8 @@ export default class App {
                     layoutParent,
                     dataParent,
                     defaultName,
-                    this.provenance
+                    this.provenance,
+                    this.intentExecutor
                 )
         );
 
