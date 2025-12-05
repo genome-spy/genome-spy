@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSelector, createSlice } from "@reduxjs/toolkit";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import {
     groupSamplesByAccessor,
@@ -430,6 +430,16 @@ export function* iterateGroupHierarchy(group) {
         }
     }
 }
+
+/**
+ * Returns the samples as a flat array
+ */
+export const sampleSelector = createSelector(
+    (
+        /** @type {import("./sampleState.js").SampleHierarchy} */ sampleHierarchy
+    ) => sampleHierarchy.sampleData?.entities,
+    (entities) => entities && Object.values(entities)
+);
 
 /**
  * Augments an attribute-related action by accessing and storing

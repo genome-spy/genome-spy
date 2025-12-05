@@ -24,11 +24,11 @@ import {
     SAMPLE_SLICE_NAME,
     sampleSlice,
     augmentAttributeAction,
+    sampleSelector,
 } from "./sampleSlice.js";
 import { getActionInfo } from "./actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
-import { createSelector } from "@reduxjs/toolkit";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
@@ -101,39 +101,65 @@ export default class SampleView extends ContainerView {
         this.spec = spec;
         this.#stickySummaries = spec.stickySummaries ?? true;
 
-        // TODO: Make this a function, not a class
-        this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
+        this.#initViewHelpers();
+        this.#setupBroadcastHandlers();
+        this.#setupInteractionHandlers();
+        this.#initAttributeInfo();
+        this.#setupActionAugmenter(intentExecutor);
+        this.#setupStoreSubscriptions();
 
-        this.childCoords = Rectangle.ZERO;
-        this.sidebarCoords = Rectangle.ZERO;
+        this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
-        this.locationManager = new LocationManager({
-            getSampleHierarchy: () => this.sampleHierarchy,
-            getHeight: () => this.childCoords.height,
-            getSummaryHeight: () =>
-                this.#gridChild.summaryViews.getSize().height.px,
-            onLocationUpdate: ({ sampleHeight }) => {
-                this.groupPanel.updateGroups();
-                this.#sampleHeightParam?.(sampleHeight);
-            },
-            viewContext: this.context,
-            isStickySummaries: () => this.#stickySummaries,
-        });
+        if (this.spec.samples.data) {
+            this.#loadSamples();
+        } else {
+            // TODO: schedule: extractSamplesFromData()
+        }
+    }
 
+    /**
+     * Initialize attribute info wiring and provenance action info source
+     */
+    #initAttributeInfo() {
+        const slice = sampleSlice;
         this.compositeAttributeInfoSource.addAttributeInfoSource(
             VALUE_AT_LOCUS,
             (attributeIdentifier) =>
                 getViewAttributeInfo(this, attributeIdentifier)
         );
 
+        const getAttributeInfo = (
+            /** @type {import("./types.js").AttributeInfo} */ attribute
+        ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+        // Register an action-info source so provenance UI can show readable titles
+        this.provenance.addActionInfoSource(
+            (
+                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
+            ) => getActionInfo(action, getAttributeInfo)
+        );
+
+        // Expose slice actions to the view
+        this.actions = slice.actions;
+    }
+
+    /**
+     * Setup broadcast handlers for lifecycle events
+     */
+    #setupBroadcastHandlers() {
         this._addBroadcastHandler("dataLoaded", () =>
             this.#extractSamplesFromData()
         );
-
         this._addBroadcastHandler("layout", () => {
             this.locationManager.resetLocations();
         });
+    }
 
+    /**
+     * Setup interaction and keyboard handlers
+     */
+    #setupInteractionHandlers() {
+        const context = this.context;
         this.addInteractionEventListener("mousemove", (coords, event) => {
             // TODO: Should be reset to undefined on mouseout
             this.#lastMouseY = event.point.y - this.childCoords.y;
@@ -147,13 +173,6 @@ export default class SampleView extends ContainerView {
                     this.locationManager.handleWheelEvent(wheelEvent);
 
                     this.groupPanel.updateRange();
-                    /*
-					// Putting this to transition phase causes latency of one frame.
-					// TODO: Investigate why.
-                    this.context.animator.requestTransition(() =>
-                        this.groupView.updateRange()
-					);
-					*/
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -170,42 +189,54 @@ export default class SampleView extends ContainerView {
             true
         );
 
-        // TODO: Remove when appropriate
-        // TODO: Check that the mouse pointer is inside the view (or inside the app instance)
-        context.addKeyboardListener("keydown", (event) => {
-            if (event.code == "KeyE" && !event.repeat) {
-                this.#openCloseup();
+        // Keyboard handlers
+        context.addKeyboardListener(
+            "keydown",
+            (/** @type {KeyboardEvent} */ event) => {
+                if (event.code == "KeyE" && !event.repeat) {
+                    this.#openCloseup();
+                }
             }
-        });
-        context.addKeyboardListener("keyup", (event) => {
-            if (event.code == "KeyE") {
-                this.locationManager.togglePeek(false);
+        );
+        context.addKeyboardListener(
+            "keyup",
+            (/** @type {KeyboardEvent} */ event) => {
+                if (event.code == "KeyE") {
+                    this.locationManager.togglePeek(false);
+                }
             }
+        );
+    }
+
+    /** Initialize view helper instances (attribute source, coords, location manager) */
+    #initViewHelpers() {
+        this.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
+        this.childCoords = Rectangle.ZERO;
+        this.sidebarCoords = Rectangle.ZERO;
+
+        this.locationManager = new LocationManager({
+            getSampleHierarchy: () => this.sampleHierarchy,
+            getHeight: () => this.childCoords.height,
+            getSummaryHeight: () =>
+                this.#gridChild?.summaryViews.getSize().height.px,
+            onLocationUpdate: ({ sampleHeight }) => {
+                this.groupPanel.updateGroups();
+                this.#sampleHeightParam?.(sampleHeight);
+            },
+            viewContext: this.context,
+            isStickySummaries: () => this.#stickySummaries,
         });
+    }
 
-        const getAttributeInfo = (
-            /** @type {import("./types.js").AttributeInfo} */ attribute
-        ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
+    /**
+     * Wire intent executor and related DI (action augmenters).
+     * @param {import("../state/intentExecutor.js").default<any>} intentExecutor
+     */
+    #setupActionAugmenter(intentExecutor) {
+        this.intentExecutor = intentExecutor;
 
-        this.provenance.addActionInfoSource(
-            (
-                /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ action
-            ) => getActionInfo(action, getAttributeInfo)
-        );
-
-        this.actions = sampleSlice.actions;
-
-        const sampleSelector = createSelector(
-            (
-                /** @type {import("./sampleState.js").SampleHierarchy} */ sampleHierarchy
-            ) => sampleHierarchy.sampleData?.entities,
-            (entities) => entities && Object.values(entities)
-        );
-
-        /** Returns the samples as a flat array */
-        this.getSamples = () => sampleSelector(this.sampleHierarchy);
-
-        // TODO: Should be removed when appropriate
+        // Attach an augmenter that enriches actions with attribute info when applicable
+        // TODO: Should be unregistered when the view is disposed
         intentExecutor.addActionAugmenter((action) => {
             const getAttributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo.bind(
@@ -217,17 +248,15 @@ export default class SampleView extends ContainerView {
                 getAttributeInfo
             );
         });
-        this.intentExecutor = intentExecutor;
+    }
 
-        /**
-         * @returns {import("./sampleState.js").SampleHierarchy}
-         */
-        const sampleHierarchySelector = () =>
-            provenance.getPresentState()[SAMPLE_SLICE_NAME];
-
+    /**
+     * Setup subscriptions for provenance-driven updates.
+     */
+    #setupStoreSubscriptions() {
         subscribeTo(
             this.provenance.store,
-            () => sampleHierarchySelector().rootGroup,
+            () => this.sampleHierarchy.rootGroup,
             withMicrotask(() => {
                 this.locationManager.reset();
                 this.groupPanel?.updateGroups();
@@ -238,7 +267,7 @@ export default class SampleView extends ContainerView {
 
         subscribeTo(
             this.provenance.store,
-            () => sampleHierarchySelector().sampleData,
+            () => this.sampleHierarchy.sampleData,
             (sampleData) => {
                 const samples =
                     sampleData && Object.values(sampleData.entities);
@@ -252,12 +281,6 @@ export default class SampleView extends ContainerView {
                 this.groupPanel.updateGroups();
             }
         );
-
-        if (this.spec.samples.data) {
-            this.#loadSamples();
-        } else {
-            // TODO: schedule: extractSamplesFromData()
-        }
     }
 
     async initializeChildren() {
