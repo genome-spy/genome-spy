@@ -26,7 +26,11 @@ import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
-import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import {
+    combineReducers,
+    configureStore,
+    createSelector,
+} from "@reduxjs/toolkit";
 import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
 import { sampleSlice } from "./sampleView/sampleSlice.js";
 import IntentExecutor from "./state/intentExecutor.js";
@@ -38,7 +42,6 @@ transforms.mergeFacets = MergeSampleFacets;
  */
 export default class App {
     /**
-     *
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
      * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
@@ -48,56 +51,26 @@ export default class App {
         const self = this;
 
         this.rootSpec = rootSpec;
-        this.options = options;
 
-        options.showInspectorButton ??= true;
+        this.options = {
+            showInspectorButton: true,
+            ...options,
+            // App has a specialized handler for input bindings
+            inputBindingContainer: /** @type {"none"} */ ("none"),
+        };
 
-        // App has a specialized handler for input bindings
-        options.inputBindingContainer = "none";
+        this.#setupStoreAndProvenance();
 
-        const provenanceReducer = createProvenanceReducer(
-            {
-                [sampleSlice.name]: sampleSlice.reducer,
-            },
-            {
-                ignoreInitialState: true,
-            }
-        );
-
-        this.store = configureStore({
-            reducer: combineReducers({
-                viewSettings: viewSettingsSlice.reducer,
-                provenance: provenanceReducer,
-            }),
-        });
-
-        this.intentExecutor = new IntentExecutor(this.store);
-        this.provenance = new Provenance(this.store, this.intentExecutor);
-
+        // TODO: Replace with redux state
         /** @type {(() => void)[]} */
         this._initializationListeners = [];
 
+        // TODO: Replace with redux state
         this.toolbarRef = createRef();
 
-        this.appContainer = appContainerElement;
-        this._configureContainer();
+        this.#configureContainer(appContainerElement);
 
-        // TODO: A registry for different types of bookmark sources
-
-        /**
-         * Local bookmarks in the IndexedDB
-         * @type {import("./bookmark/bookmarkDatabase.js").default}
-         */
-        this.localBookmarkDatabase =
-            typeof rootSpec.specId == "string"
-                ? new IDBBookmarkDatabase(rootSpec.specId)
-                : undefined;
-
-        /**
-         * Remote bookmarks loaded from a URL
-         * @type {import("./bookmark/bookmarkDatabase.js").default}
-         */
-        this.globalBookmarkDatabase = undefined;
+        this.#setupBookmarkDatabases();
 
         render(
             html`<div class="genome-spy-app">
@@ -107,12 +80,12 @@ export default class App {
                 ></genome-spy-toolbar>
                 <div class="genome-spy-container"></div>
             </div>`,
-            self.appContainer
+            this.appContainer
         );
 
         // Dependency injection
         // TODO: Replace this with something standard-based when such a thing becomes available
-        self.appContainer
+        this.appContainer
             .querySelector(".genome-spy-app")
             .addEventListener(
                 "query-dependency",
@@ -126,16 +99,14 @@ export default class App {
                 }
             );
 
-        /** @param {string} className */
-        const elem = (className) =>
-            /** @type {HTMLElement} */ (
-                this.appContainer.getElementsByClassName(className)[0]
-            );
-
         this.genomeSpy = new GenomeSpy(
-            elem("genome-spy-container"),
+            /** @type {HTMLElement} */ (
+                this.appContainer.getElementsByClassName(
+                    "genome-spy-container"
+                )[0]
+            ),
             this.rootSpec,
-            options
+            this.options
         );
 
         this.genomeSpy.viewFactory.addViewType(
@@ -158,13 +129,76 @@ export default class App {
                 )
         );
 
+        this.#setupViewVisibilityHandling();
+    }
+
+    #setupStoreAndProvenance() {
+        const provenanceReducer = createProvenanceReducer(
+            { [sampleSlice.name]: sampleSlice.reducer },
+            { ignoreInitialState: true }
+        );
+
+        this.store = configureStore({
+            reducer: combineReducers({
+                viewSettings: viewSettingsSlice.reducer,
+                provenance: provenanceReducer,
+            }),
+        });
+
+        this.intentExecutor = new IntentExecutor(this.store);
+        this.provenance = new Provenance(this.store, this.intentExecutor);
+    }
+
+    #setupBookmarkDatabases() {
+        // TODO: A registry for different types of bookmark sources
+
+        /**
+         * Local bookmarks in the IndexedDB
+         * @type {import("./bookmark/bookmarkDatabase.js").default}
+         */
+        this.localBookmarkDatabase =
+            typeof this.rootSpec.specId == "string"
+                ? new IDBBookmarkDatabase(this.rootSpec.specId)
+                : undefined;
+
+        /**
+         * Remote bookmarks loaded from a URL
+         * @type {import("./bookmark/bookmarkDatabase.js").default}
+         */
+        this.globalBookmarkDatabase = undefined;
+    }
+
+    /**
+     * @param {HTMLElement} appContainerElement
+     */
+    #configureContainer(appContainerElement) {
+        this.appContainer = appContainerElement;
+        if (this.isFullPage()) {
+            this.appContainer.style.margin = "0";
+            this.appContainer.style.padding = "0";
+            this.appContainer.style.overflow = "hidden";
+
+            setFavicon(favIcon);
+        } else {
+            this.appContainer.style.position = "relative";
+        }
+    }
+
+    #setupViewVisibilityHandling() {
+        const visibilitiesSelector = createSelector(
+            (/** @type {ReturnType<typeof this.store.getState>} */ state) =>
+                state.viewSettings?.visibilities,
+            (visibilities) => visibilities ?? {}
+        );
+
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
         this.genomeSpy.viewVisibilityPredicate = (view) =>
-            this.store.getState().viewSettings?.visibilities[view.name] ??
+            visibilitiesSelector(this.store.getState())[view.name] ??
             originalPredicate(view);
     }
 
     /**
+     * TODO: Replace this with a redux state
      * @param {() => void} listener
      */
     addInitializationListener(listener) {
@@ -405,18 +439,6 @@ export default class App {
             }
         }
         return false;
-    }
-
-    _configureContainer() {
-        if (this.isFullPage()) {
-            this.appContainer.style.margin = "0";
-            this.appContainer.style.padding = "0";
-            this.appContainer.style.overflow = "hidden";
-
-            setFavicon(favIcon);
-        } else {
-            this.appContainer.style.position = "relative";
-        }
     }
 
     getSampleView() {
