@@ -51,21 +51,27 @@ class ViewSettingsButton extends LitElement {
             )
         );
 
-        this.app.addInitializationListener(() => {
-            this.#updateToggles();
-            this.requestUpdate();
-            this.style.display = this.nestedPaths.children.length
-                ? "block"
-                : "none";
-        });
+        const unsubscribeLifecycle = subscribeTo(
+            this.app.store,
+            (state) => state.lifecycle.appInitialized,
+            (appInitialized) => {
+                if (appInitialized) {
+                    this.#updateToggles();
+                    this.requestUpdate();
+                    this.style.display = this.nestedPaths.children.length
+                        ? "block"
+                        : "none";
+                }
+            }
+        );
+        this._cleanupCallbacks.push(() => unsubscribeLifecycle());
 
-        const unsubscribe = subscribeTo(
+        const unsubscribeViewSettings = subscribeTo(
             this.app.store,
             (state) => state.viewSettings,
             () => this.requestUpdate()
         );
-
-        this._cleanupCallbacks.push(() => unsubscribe());
+        this._cleanupCallbacks.push(() => unsubscribeViewSettings());
     }
 
     disconnectedCallback() {

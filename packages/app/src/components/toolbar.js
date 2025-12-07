@@ -22,6 +22,7 @@ import { showDataflowInspectorDialog } from "../dataflowInspector.js";
 import showSaveImageDialog from "../saveImageDialog.js";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
+import { subscribeTo } from "../state/subscribeTo.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -29,20 +30,25 @@ export default class Toolbar extends LitElement {
 
         /** @type {import("../app.js").default} */
         this.app = undefined;
-
-        /** Just to signal (and re-render) once GenomeSpy has been launched */
-        this.appInitialized = false;
     }
 
     static get properties() {
         return {
             app: { type: Object },
-            appInitialized: { type: Boolean },
         };
     }
 
     createRenderRoot() {
         return this;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        subscribeTo(
+            this.app.store,
+            (state) => state.lifecycle.appInitialized,
+            () => this.requestUpdate()
+        );
     }
 
     _getToolButtons() {
@@ -242,13 +248,16 @@ export default class Toolbar extends LitElement {
     render() {
         const genomeSpy = this.app.genomeSpy;
 
+        const appInitialized =
+            this.app.store.getState().lifecycle.appInitialized;
+
         return html`
             <nav class="gs-toolbar">
                 <a href="https://genomespy.app" target="_blank" class="logo">
                     <img title="GenomeSpy" alt="GenomeSpy" src="${bowtie}" />
                 </a>
 
-                ${this.appInitialized &&
+                ${appInitialized &&
                 findGenomeScaleResolution(genomeSpy.viewRoot)
                     ? html`
                           <genome-spy-search-field

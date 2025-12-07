@@ -10,7 +10,6 @@ import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
 import "./components/toolbar.js";
-import { createRef, ref } from "lit/directives/ref.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
 
@@ -34,6 +33,7 @@ import {
 import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
 import { sampleSlice } from "./sampleView/sampleSlice.js";
 import IntentExecutor from "./state/intentExecutor.js";
+import { lifecycleSlice } from "./lifecycleSlice.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -61,23 +61,13 @@ export default class App {
 
         this.#setupStoreAndProvenance();
 
-        // TODO: Replace with redux state
-        /** @type {(() => void)[]} */
-        this._initializationListeners = [];
-
-        // TODO: Replace with redux state
-        this.toolbarRef = createRef();
-
         this.#configureContainer(appContainerElement);
 
         this.#setupBookmarkDatabases();
 
         render(
             html`<div class="genome-spy-app">
-                <genome-spy-toolbar
-                    ${ref(self.toolbarRef)}
-                    .app=${self}
-                ></genome-spy-toolbar>
+                <genome-spy-toolbar .app=${this}></genome-spy-toolbar>
                 <div class="genome-spy-container"></div>
             </div>`,
             this.appContainer
@@ -140,6 +130,7 @@ export default class App {
 
         this.store = configureStore({
             reducer: combineReducers({
+                lifecycle: lifecycleSlice.reducer,
                 viewSettings: viewSettingsSlice.reducer,
                 provenance: provenanceReducer,
             }),
@@ -195,18 +186,6 @@ export default class App {
         this.genomeSpy.viewVisibilityPredicate = (view) =>
             visibilitiesSelector(this.store.getState())[view.name] ??
             originalPredicate(view);
-    }
-
-    /**
-     * TODO: Replace this with a redux state
-     * @param {() => void} listener
-     */
-    addInitializationListener(listener) {
-        if (this._initializationListeners) {
-            this._initializationListeners.push(listener);
-        } else {
-            listener();
-        }
     }
 
     toggleFullScreen() {
@@ -300,23 +279,13 @@ export default class App {
             }
         }
 
-        const toolbar =
-            /** @type {import("./components/toolbar.js").default} */ (
-                this.toolbarRef.value
-            );
-        // Just trigger re-render. Need a way to broadcast this to all components.
-        toolbar.appInitialized = true;
-
         const title = asArray(this.genomeSpy.spec.description ?? []);
 
         if (this.isFullPage() && title.length > 0) {
             document.title = "GenomeSpy - " + title;
         }
 
-        for (const listener of this._initializationListeners) {
-            listener();
-        }
-        this._initializationListeners = undefined;
+        this.store.dispatch(lifecycleSlice.actions.setInitialized());
     }
 
     /**
