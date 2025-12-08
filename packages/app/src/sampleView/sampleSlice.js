@@ -138,7 +138,7 @@ export const sampleSlice = createSlice({
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
         ) => {
             applyToSamples(state, (samples) =>
-                sort(samples, createObjectAccessor(action), false)
+                sort(samples, createObjectAccessor(action), true)
             );
         },
 
