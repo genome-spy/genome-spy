@@ -22,18 +22,12 @@ import {
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
-import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
-import {
-    combineReducers,
-    configureStore,
-    createSelector,
-} from "@reduxjs/toolkit";
-import { createProvenanceReducer } from "./state/provenanceReducerBuilder.js";
-import { sampleSlice } from "./sampleView/sampleSlice.js";
+import { createSelector } from "@reduxjs/toolkit";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
+import setupStore from "./state/setupStore.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -123,19 +117,7 @@ export default class App {
     }
 
     #setupStoreAndProvenance() {
-        const provenanceReducer = createProvenanceReducer(
-            { [sampleSlice.name]: sampleSlice.reducer },
-            { ignoreInitialState: true }
-        );
-
-        this.store = configureStore({
-            reducer: combineReducers({
-                lifecycle: lifecycleSlice.reducer,
-                viewSettings: viewSettingsSlice.reducer,
-                provenance: provenanceReducer,
-            }),
-        });
-
+        this.store = setupStore();
         this.intentExecutor = new IntentExecutor(this.store);
         this.provenance = new Provenance(this.store, this.intentExecutor);
     }
