@@ -339,16 +339,6 @@ export class MetadataView extends ConcatView {
             this.#sampleView.spec.samples.attributeGroupSeparator
         );
 
-        this.appendChild(
-            new UnitView(
-                createLabelViewSpec(this.#sampleView.spec.samples),
-                this.context,
-                this,
-                this,
-                "metadata-sample-name"
-            )
-        );
-
         /**
          *
          * @param {AttributeNode} attributeNode
@@ -713,50 +703,6 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     }
 
     return attributeSpec;
-}
-
-/**
- *
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
- */
-function createLabelViewSpec(sampleDef) {
-    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
-
-    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
-    const titleSpec = {
-        name: "metadata-sample-name",
-        title: {
-            text: sampleDef.labelTitleText ?? "Sample name",
-            orient: "bottom",
-            anchor: "start",
-            offset: 5,
-            font: sampleDef.attributeLabelFont,
-            fontSize: sampleDef.attributeLabelFontSize ?? 11,
-            fontStyle: sampleDef.attributeLabelFontStyle,
-            fontWeight: sampleDef.attributeLabelFontWeight,
-        },
-        width: sampleDef.labelLength ?? 140,
-        mark: {
-            type: "text",
-            baseline: "middle",
-            font: sampleDef.labelFont,
-            size: sampleDef.labelFontSize ?? 11,
-            fontStyle: sampleDef.labelFontStyle,
-            fontWeight: sampleDef.labelFontWeight,
-            align: sampleDef.labelAlign ?? "left",
-            flushY: false,
-        },
-        encoding: {
-            facetIndex: { field: "indexNumber" },
-            x: { value: 0 },
-            x2: { value: 1 },
-            y: { value: 0 },
-            y2: { value: 1 },
-            text: { field: "displayName" },
-        },
-    };
-
-    return titleSpec;
 }
 
 /**

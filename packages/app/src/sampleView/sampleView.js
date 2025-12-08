@@ -42,6 +42,7 @@ import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
+import { SampleLabelView } from "./sampleLabelView.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -82,7 +83,7 @@ export default class SampleView extends ContainerView {
      * @param {ContainerView} layoutParent
      * @param {import("@genome-spy/core/view/view.js").default} dataParent
      * @param {string} name
-     * @param {import("../state/provenance.js").default<any>} provenance
+     * @param {import("../state/provenance.js").default} provenance
      * @param {import("../state/intentExecutor.js").default<any>} intentExecutor
      */
     constructor(
@@ -333,8 +334,13 @@ export default class SampleView extends ContainerView {
         );
 
         this.groupPanel = new GroupPanel(this, this.#sidebarView);
+        this.sampleLabelView = new SampleLabelView(this, this.#sidebarView);
         this.metadataView = new MetadataView(this, this.#sidebarView);
-        this.#sidebarView.setChildren([this.groupPanel, this.metadataView]);
+        this.#sidebarView.setChildren([
+            this.groupPanel,
+            this.sampleLabelView,
+            this.metadataView,
+        ]);
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();

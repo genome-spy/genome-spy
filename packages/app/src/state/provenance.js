@@ -14,18 +14,16 @@ import { ActionCreators } from "redux-undo";
 
 /**
  * An API for undo/redo and action history.
- *
- * @template S
  */
 export default class Provenance {
-    /** @type {import('@reduxjs/toolkit').EnhancedStore} */
+    /** @type {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} */
     #store;
 
     /** @type {import("./intentExecutor.js").default<any>} */
     #intentExecutor;
 
     /**
-     * @param {import('@reduxjs/toolkit').EnhancedStore} store
+     * @param {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} store
      * @param {import("./intentExecutor.js").default<any>} intentExecutor
      */
     constructor(store, intentExecutor) {
@@ -40,9 +38,6 @@ export default class Provenance {
         return this.#store;
     }
 
-    /**
-     * @returns {import("redux-undo").StateWithHistory<S & { lastAction: import("@reduxjs/toolkit").PayloadAction}>}
-     */
     get _provenanceState() {
         return this.#store.getState().provenance;
     }
