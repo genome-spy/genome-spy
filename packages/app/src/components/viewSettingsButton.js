@@ -17,26 +17,24 @@ import {
 import { dropdownMenu } from "../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/view/paramMediator.js";
+import SubscriptionController from "./subscriptionController.js";
 
 class ViewSettingsButton extends LitElement {
+    /** @type {import("../app.js").default} */
+    #app;
+
+    /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
+    #nestedPaths;
+
+    #buttonRef = createRef();
+
     /**
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      */
     constructor() {
         super();
-
-        /** @type {import("../app.js").default} */
-        this.app = undefined;
-
-        /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
-        this.nestedPaths = undefined;
-
+        this.subscriptionController = new SubscriptionController(this);
         this.style.display = "none";
-
-        this.buttonRef = createRef();
-
-        /** @type {(() => void)[]} */
-        this._cleanupCallbacks = [];
     }
 
     connectedCallback() {
@@ -46,42 +44,43 @@ class ViewSettingsButton extends LitElement {
             queryDependency(
                 "app",
                 (/** @type {import("../app.js").default} */ app) => {
-                    this.app = app;
+                    this.#app = app;
                 }
             )
         );
 
-        const unsubscribeLifecycle = subscribeTo(
-            this.app.store,
-            (state) => state.lifecycle.appInitialized,
-            (appInitialized) => {
-                if (appInitialized) {
-                    this.#updateToggles();
-                    this.requestUpdate();
-                    this.style.display = this.nestedPaths.children.length
-                        ? "block"
-                        : "none";
-                }
-            }
+        this.subscriptionController.addUnsubscribeCallback(
+            subscribeTo(
+                this.#app.store,
+                (state) => state.lifecycle.appInitialized,
+                (appInitialized) => this.#handleAppInitialized(appInitialized)
+            )
         );
-        this._cleanupCallbacks.push(() => unsubscribeLifecycle());
 
-        const unsubscribeViewSettings = subscribeTo(
-            this.app.store,
-            (state) => state.viewSettings,
-            () => this.requestUpdate()
+        this.subscriptionController.addUnsubscribeCallback(
+            subscribeTo(
+                this.#app.store,
+                (state) => state.viewSettings,
+                () => this.requestUpdate()
+            )
         );
-        this._cleanupCallbacks.push(() => unsubscribeViewSettings());
-    }
-
-    disconnectedCallback() {
-        this._cleanupCallbacks.forEach((cb) => cb());
-        this._cleanupCallbacks = [];
-        super.disconnectedCallback();
     }
 
     createRenderRoot() {
         return this;
+    }
+
+    /**
+     * @param {boolean} appInitialized
+     */
+    #handleAppInitialized(appInitialized) {
+        if (appInitialized) {
+            this.#updateToggles();
+            this.requestUpdate();
+            this.style.display = this.#nestedPaths.children.length
+                ? "block"
+                : "none";
+        }
     }
 
     /**
@@ -91,7 +90,7 @@ class ViewSettingsButton extends LitElement {
     #handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
 
-        this.app.store.dispatch(
+        this.#app.store.dispatch(
             checked != view.isVisibleInSpec()
                 ? viewSettingsSlice.actions.setVisibility({
                       name: view.name,
@@ -110,7 +109,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     #handleResetClick() {
-        this.app.store.dispatch(
+        this.#app.store.dispatch(
             viewSettingsSlice.actions.restoreDefaultVisibilities()
         );
         // Update checkboxes
@@ -118,7 +117,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     #updateToggles() {
-        const viewRoot = this.app.genomeSpy.viewRoot;
+        const viewRoot = this.#app.genomeSpy.viewRoot;
         if (!viewRoot) {
             return;
         }
@@ -154,13 +153,13 @@ class ViewSettingsButton extends LitElement {
                 [...view.getDataAncestors()].filter(isIncluded).reverse()
             );
 
-        this.nestedPaths = nestPaths(paths);
+        this.#nestedPaths = nestPaths(paths);
     }
 
     #makeToggles() {
         const visibilities = this.getVisibilities();
 
-        const viewRoot = this.app.genomeSpy.viewRoot;
+        const viewRoot = this.#app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
@@ -225,7 +224,7 @@ class ViewSettingsButton extends LitElement {
             }
         };
 
-        nestedItemToHtml(this.nestedPaths);
+        nestedItemToHtml(this.#nestedPaths);
 
         return items;
     }
@@ -249,7 +248,7 @@ class ViewSettingsButton extends LitElement {
                     ...items,
                 ],
             },
-            this.buttonRef.value,
+            this.#buttonRef.value,
             "bottom-start"
         );
     }
@@ -259,7 +258,7 @@ class ViewSettingsButton extends LitElement {
         return html`
             <div class="dropdown bookmark-dropdown">
                 <button
-                    ${ref(this.buttonRef)}
+                    ${ref(this.#buttonRef)}
                     class="tool-btn"
                     title="Toggle view visibilities"
                     @click=${this.#showDropdown.bind(this)}
@@ -271,7 +270,7 @@ class ViewSettingsButton extends LitElement {
     }
 
     getVisibilities() {
-        return this.app.store.getState().viewSettings.visibilities;
+        return this.#app.store.getState().viewSettings.visibilities;
     }
 }
 
