@@ -18,7 +18,7 @@ import FlowNode from "@genome-spy/core/data/flowNode.js";
 import { createChain } from "@genome-spy/core/view/flowBuilder.js";
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
-import { GroupPanel } from "./groupPanel.js";
+import SampleGroupView from "./sampleGroupView.js";
 import {
     getFlattenedGroupHierarchy,
     SAMPLE_SLICE_NAME,
@@ -333,7 +333,7 @@ export default class SampleView extends ContainerView {
             "sample-sidebar"
         );
 
-        this.groupPanel = new GroupPanel(this, this.#sidebarView);
+        this.groupPanel = new SampleGroupView(this, this.#sidebarView);
         this.sampleLabelView = new SampleLabelView(this, this.#sidebarView);
         this.metadataView = new MetadataView(this, this.#sidebarView);
         this.#sidebarView.setChildren([

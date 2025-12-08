@@ -7,7 +7,7 @@ import { iterateGroupHierarchy } from "./sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 
-export class GroupPanel extends LayerView {
+export default class SampleGroupView extends LayerView {
     /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
