@@ -70,7 +70,7 @@ export function formatSet(values, braces = true) {
 const actionHandlers = {
     [SET_SAMPLES]: ({ template }) => ({
         ...template,
-        title: "The initial state",
+        title: "Set samples",
         icon: faCheck,
     }),
 

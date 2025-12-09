@@ -5,6 +5,7 @@ import {
     faRedo,
     faEllipsisH,
     faCircle,
+    faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 
@@ -49,6 +50,12 @@ export default class ProvenanceButtons extends LitElement {
                 return nothing;
             }
 
+            const infoTemplate =
+                index == 0
+                    ? html`${icon(faCheck).node[0]} Initial state`
+                    : html` ${icon(info.icon ?? faCircle).node[0]}
+                      ${info.provenanceTitle ?? info.title}`;
+
             return html`
                 <li>
                     <a
@@ -56,10 +63,8 @@ export default class ProvenanceButtons extends LitElement {
                         class=${index == this.provenance.getCurrentIndex()
                             ? "active-state"
                             : ""}
+                        >${infoTemplate}</a
                     >
-                        ${icon(info.icon ?? faCircle).node[0]}
-                        ${info.provenanceTitle ?? info.title}
-                    </a>
                 </li>
             `;
         };

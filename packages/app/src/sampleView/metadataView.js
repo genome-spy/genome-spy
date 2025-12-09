@@ -271,9 +271,6 @@ export class MetadataView extends ConcatView {
 
         const flow = this.context.dataFlow;
 
-        // Fugly hack. TODO: Support tearing down the data flow
-        //dynamicSource.children = [];
-
         this.#createViews();
 
         buildDataFlow(this, flow);
@@ -330,7 +327,9 @@ export class MetadataView extends ConcatView {
         }
 
         // A terrible hack to initialize data sources.
-        // TODO: Come up with a clean solution.
+        // TODO: Come up with a clean solution. For example, when building the view
+        // hierarchy, data loading could be initiated when a a complete subtree with
+        // a data source has been created.
         this.visit((view) => {
             if (view.name.startsWith("title")) {
                 flow.findDataSourceByKey(view).load();

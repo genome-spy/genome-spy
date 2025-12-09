@@ -43,6 +43,7 @@ import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { SampleLabelView } from "./sampleLabelView.js";
+import { ActionCreators } from "redux-undo";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -265,23 +266,6 @@ export default class SampleView extends ContainerView {
                 this.context.animator.requestRender();
             })
         );
-
-        subscribeTo(
-            this.provenance.store,
-            () => this.sampleHierarchy.sampleData,
-            (sampleData) => {
-                const samples =
-                    sampleData && Object.values(sampleData.entities);
-                if (!samples) {
-                    return;
-                }
-
-                //this.metadataView.setSamples(samples);
-
-                // Feed some initial dynamic data.
-                this.sampleGroupView.updateGroups();
-            }
-        );
     }
 
     async initializeChildren() {
@@ -438,6 +422,10 @@ export default class SampleView extends ContainerView {
                         return [d.sample.id, d.attributes];
                     })
                 );
+
+                // Clear history, since if initial metadata is being set, it
+                // should represent the initial state.
+                this.provenance.store.dispatch(ActionCreators.clearHistory());
 
                 this.provenance.store.dispatch(
                     this.actions.setMetadata({ metadata })
