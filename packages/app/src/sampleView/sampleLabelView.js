@@ -56,7 +56,7 @@ export class SampleLabelView extends UnitView {
 
     /**
      *
-     * @param {import("./sampleState.js").Sample[]} samples
+     * @param {import("./state/sampleState.js").Sample[]} samples
      */
     #setSamples(samples) {
         const dynamicSource =

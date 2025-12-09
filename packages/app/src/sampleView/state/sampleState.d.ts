@@ -1,5 +1,5 @@
 import { scalar } from "@genome-spy/core/utils/domainArray.js";
-import { AttributeIdentifier } from "./types.js";
+import { AttributeIdentifier } from "../types.js";
 import { PayloadAction } from "@reduxjs/toolkit";
 
 export type SampleId = string;

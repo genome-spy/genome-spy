@@ -6,14 +6,14 @@ import { createModal } from "../../utils/ui/modal.js";
 import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
-} from "../groupOperations.js";
+} from "../state/groupOperations.js";
 
 /**
  * @param {import("../types.js").AttributeInfo} attributeInfo
  * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export default function groupByThresholdsDialog(attributeInfo, sampleView) {
-    /** @type {import("../payloadTypes.js").Threshold[]} */
+    /** @type {import("../state/payloadTypes.js").Threshold[]} */
     const thresholds = [];
 
     const modal = createModal();
@@ -69,7 +69,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
     ) => {
         const value = /** @type {HTMLInputElement} */ (event.target).value;
         thresholds[index].operator =
-            /** @type {import("../payloadTypes.js").ThresholdOperator} */ (
+            /** @type {import("../state/payloadTypes.js").ThresholdOperator} */ (
                 value
             );
 
@@ -122,7 +122,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
 
     function updateHtml() {
         const makeTable = () => {
-            /** @type {import("../payloadTypes.js").Threshold[]} */
+            /** @type {import("../state/payloadTypes.js").Threshold[]} */
             const t = [
                 { operand: -Infinity, operator: "lt" },
                 ...thresholds,
@@ -249,7 +249,7 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
 
 /**
  *
- * @param {import("../payloadTypes.js").Threshold[]} thresholds
+ * @param {import("../state/payloadTypes.js").Threshold[]} thresholds
  */
 function validateThresholds(thresholds) {
     // TODO: Check that the order is valid
@@ -263,7 +263,7 @@ function validateThresholds(thresholds) {
  *
  * @param {import("../types.js").AttributeInfo} attributeInfo
  * @param {string[]} samples
- * @param {import("../sampleSlice.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;

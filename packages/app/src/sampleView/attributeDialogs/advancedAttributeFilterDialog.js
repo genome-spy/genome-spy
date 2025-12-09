@@ -14,7 +14,7 @@ import "../../components/histogram.js";
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("../sampleOperations.js").ComparisonOperatorType} ComparisonOperatorType
+ * @typedef {import("../state/sampleOperations.js").ComparisonOperatorType} ComparisonOperatorType
  */
 
 /**
@@ -468,7 +468,7 @@ const verboseOps = {
  *
  * @param {import("../types.js").AttributeInfo} attributeInfo
  * @param {string[]} samples
- * @param {import("../sampleSlice.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;

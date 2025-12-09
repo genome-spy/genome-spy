@@ -1,5 +1,5 @@
 import { StateWithHistory } from "redux-undo";
-import { SampleHierarchy } from "./sampleView/sampleState.js";
+import { SampleHierarchy } from "./sampleView/state/sampleState.js";
 
 export interface ViewSettings {
     /**

@@ -7,7 +7,7 @@ import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttrib
 import groupByThresholdsDialog from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
 import createCustomGroupsDialog from "./attributeDialogs/createCustomGroupsDialog.js";
-import { sampleSlice } from "./sampleSlice.js";
+import { sampleSlice } from "./state/sampleSlice.js";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -37,7 +37,7 @@ export default function generateAttributeContextMenu(
     }
 
     /**
-     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      * @param {boolean} [disabled]
      * @param {function} [callback]
      * @returns {MenuItem}
@@ -55,7 +55,7 @@ export default function generateAttributeContextMenu(
     };
 
     /**
-     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>[]} actions
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>[]} actions
      */
     const addActions = (...actions) =>
         items.push(...actions.map((action) => actionToItem(action)));

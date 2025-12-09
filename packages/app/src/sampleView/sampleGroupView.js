@@ -3,7 +3,7 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
 import { contextMenu } from "../utils/ui/contextMenu.js";
-import { iterateGroupHierarchy } from "./sampleSlice.js";
+import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 
@@ -137,10 +137,10 @@ export default class SampleGroupView extends LayerView {
                 return;
             }
 
-            /** @type {import("./sampleState.js").Group} */
+            /** @type {import("./state/sampleState.js").Group} */
             const group = hover.datum._rawGroup;
 
-            /** @type {import("./sampleState.js").Group[]} */
+            /** @type {import("./state/sampleState.js").Group[]} */
             let foundPath;
             for (const path of iterateGroupHierarchy(
                 this.sampleView.sampleHierarchy.rootGroup

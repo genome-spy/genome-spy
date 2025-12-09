@@ -1,5 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { sampleSlice } from "../sampleView/sampleSlice.js";
+import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { lifecycleSlice } from "../lifecycleSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";

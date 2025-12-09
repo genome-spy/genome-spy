@@ -3,7 +3,7 @@ import {
     isSampleGroup,
     iterateGroupHierarchy,
     SAMPLE_SLICE_NAME,
-} from "./sampleSlice.js";
+} from "./state/sampleSlice.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { field } from "@genome-spy/core/utils/field.js";
 import kWayMerge from "@genome-spy/core/utils/kWayMerge.js";
@@ -144,7 +144,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     /**
-     * @param {import("./sampleSlice.js").SampleHierarchy} sampleHierarchy
+     * @param {import("./state/sampleSlice.js").SampleHierarchy} sampleHierarchy
      */
     #mergeAndPropagate(sampleHierarchy) {
         const groupPaths = [

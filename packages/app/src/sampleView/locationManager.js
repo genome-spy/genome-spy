@@ -11,7 +11,7 @@ import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
 import transition from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
-import { getFlattenedGroupHierarchy } from "./sampleSlice.js";
+import { getFlattenedGroupHierarchy } from "./state/sampleSlice.js";
 
 export class LocationManager {
     /**
@@ -391,7 +391,7 @@ function calculateLocations(
     { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
 ) {
     /**
-     * @typedef {import("./sampleState.js").Group} Group
+     * @typedef {import("./state/sampleState.js").Group} Group
      * @typedef {import("./sampleViewTypes.js").GroupLocation} GroupLocation
      * @typedef {import("./sampleViewTypes.js").SampleLocation} SampleLocation
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
@@ -403,7 +403,9 @@ function calculateLocations(
 
     /** @param {Group[]} path */
     const getSampleGroup = (path) =>
-        /** @type {import("./sampleSlice.js").SampleGroup} */ (peek(path));
+        /** @type {import("./state/sampleSlice.js").SampleGroup} */ (
+            peek(path)
+        );
 
     const sampleGroupEntries = flattenedGroupHierarchy
         .map((path) => ({
@@ -469,9 +471,10 @@ function calculateLocations(
         const stack = [];
         for (const entry of groupLocations) {
             const path = entry.key;
-            const last = /** @type {import("./sampleSlice.js").SampleGroup} */ (
-                peek(path)
-            );
+            const last =
+                /** @type {import("./state/sampleSlice.js").SampleGroup} */ (
+                    peek(path)
+                );
 
             while (
                 stack.length <= path.length &&

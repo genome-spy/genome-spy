@@ -65,7 +65,7 @@ export function formatSet(values, braces = true) {
 /**
  * Map of action type to handler function.
  * Each handler receives (payload, template, attributeName, attributeTitle) and returns ActionInfo.
- * @type {Record<string, (context: ActionHandlerContext) => import("../state/provenance.js").ActionInfo>}
+ * @type {Record<string, (context: ActionHandlerContext) => import("../../state/provenance.js").ActionInfo>}
  */
 const actionHandlers = {
     [SET_SAMPLES]: ({ template }) => ({
@@ -257,8 +257,8 @@ const actionHandlers = {
  * Describes an action for displaying it in menus or provenance tracking.
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
- * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
- * @returns {import("../state/provenance.js").ActionInfo}
+ * @param {import("../compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ * @returns {import("../../state/provenance.js").ActionInfo}
  */
 export function getActionInfo(action, getAttributeInfo) {
     if (!action.type.startsWith(SAMPLE_SLICE_NAME)) {

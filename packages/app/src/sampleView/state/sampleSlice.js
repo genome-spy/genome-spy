@@ -16,7 +16,7 @@ import {
     sort,
     wrapAccessorForComparison,
 } from "./sampleOperations.js";
-import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
+import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -493,7 +493,7 @@ export const sampleSelector = createSelector(
  * @template {PayloadWithAttribute} T
  * @param {PayloadAction<T>} action
  * @param {SampleHierarchy} sampleHierarchy
- * @param {import("./compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
+ * @param {import("../compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
  */
 export function augmentAttributeAction(
     action,

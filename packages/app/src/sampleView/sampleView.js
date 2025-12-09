@@ -25,8 +25,8 @@ import {
     sampleSlice,
     augmentAttributeAction,
     sampleSelector,
-} from "./sampleSlice.js";
-import { getActionInfo } from "./actionInfo.js";
+} from "./state/sampleSlice.js";
+import { getActionInfo } from "./state/actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
@@ -54,8 +54,8 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  */
 export default class SampleView extends ContainerView {
     /**
-     * @typedef {import("./sampleState.js").Group} Group
-     * @typedef {import("./sampleState.js").Sample} Sample
+     * @typedef {import("./state/sampleState.js").Group} Group
+     * @typedef {import("./state/sampleState.js").Sample} Sample
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
@@ -406,7 +406,7 @@ export default class SampleView extends ContainerView {
 
         collector.observers.push((collector) => {
             const result =
-                /** @type {{sample: Sample, attributes: import("./sampleState.js").Metadatum}[]} */ (
+                /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
                     collector.getData()
                 );
             const samples = result.map((d) => d.sample);
@@ -467,7 +467,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @returns {import("./sampleState.js").SampleHierarchy}
+     * @returns {import("./state/sampleState.js").SampleHierarchy}
      */
     get sampleHierarchy() {
         return this.provenance.getPresentState()[SAMPLE_SLICE_NAME];
@@ -476,7 +476,7 @@ export default class SampleView extends ContainerView {
     get leafSamples() {
         // TODO: Memoize using createSelector or something
         const sampleGroups =
-            /** @type {import("./sampleState.js").SampleGroup[]} */ (
+            /** @type {import("./state/sampleState.js").SampleGroup[]} */ (
                 getFlattenedGroupHierarchy(this.sampleHierarchy).map((path) =>
                     path.at(-1)
                 )
@@ -939,7 +939,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@reduxjs/toolkit").PayloadAction<import("./payloadTypes.js").PayloadWithAttribute>} action
+     * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      */
     dispatchAttributeAction(action) {
         this.intentExecutor.dispatch(action);

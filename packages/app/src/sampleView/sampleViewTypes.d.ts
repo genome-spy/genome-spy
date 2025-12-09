@@ -1,5 +1,5 @@
-import { SampleHierarchy } from "./sampleSlice.js";
-import { Group } from "./sampleState.js";
+import { SampleHierarchy } from "./state/sampleSlice.js";
+import { Group } from "./state/sampleState.js";
 import { LocSize } from "@genome-spy/core/view/layout/flexLayout.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import { Scalar } from "@genome-spy/core/spec/channel.js";

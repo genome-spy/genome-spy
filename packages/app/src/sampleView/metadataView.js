@@ -41,7 +41,7 @@ export class MetadataView extends ConcatView {
 
     /**
      * TODO: Don't use a local copy. Select from state directly.
-     * @type {import("./sampleState.js").Metadata}
+     * @type {import("./state/sampleState.js").Metadata}
      */
     #metadata;
 
@@ -264,7 +264,7 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {{entities: import("./sampleState.js").Metadata, attributeNames: string[]}} metadata
+     * @param {{entities: import("./state/sampleState.js").Metadata, attributeNames: string[]}} metadata
      */
     setMetadata({ entities, attributeNames }) {
         this.#metadata = entities;
