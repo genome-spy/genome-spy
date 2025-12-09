@@ -61,6 +61,9 @@ export function resetToDefaultState(app) {
  * @param {import("../app.js").default} app
  */
 export async function restoreBookmark(entry, app) {
+    return false;
+
+    // eslint-disable-next-line no-unreachable
     try {
         if (entry.actions) {
             app.provenance.dispatchBookmark(entry.actions);

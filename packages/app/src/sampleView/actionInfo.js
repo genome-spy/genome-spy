@@ -27,6 +27,7 @@ import {
     REMOVE_GROUP,
     RETAIN_MATCHED,
     SAMPLE_SLICE_NAME,
+    SET_METADATA,
 } from "./sampleSlice.js";
 
 const attributeNumberFormat = d3format(".4");
@@ -70,6 +71,12 @@ const actionHandlers = {
     [SET_SAMPLES]: ({ template }) => ({
         ...template,
         title: "The initial state",
+        icon: faCheck,
+    }),
+
+    [SET_METADATA]: ({ template }) => ({
+        ...template,
+        title: "Set metadata",
         icon: faCheck,
     }),
 

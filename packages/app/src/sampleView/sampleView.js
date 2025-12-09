@@ -173,7 +173,7 @@ export default class SampleView extends ContainerView {
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
                     this.locationManager.handleWheelEvent(wheelEvent);
 
-                    this.groupPanel.updateRange();
+                    this.sampleGroupView.updateRange();
                     this.context.animator.requestRender();
 
                     // Replace the uiEvent to prevent decoratorView from zooming.
@@ -221,7 +221,7 @@ export default class SampleView extends ContainerView {
             getSummaryHeight: () =>
                 this.#gridChild?.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
-                this.groupPanel.updateGroups();
+                this.sampleGroupView.updateGroups();
                 this.#sampleHeightParam?.(sampleHeight);
             },
             viewContext: this.context,
@@ -260,7 +260,7 @@ export default class SampleView extends ContainerView {
             () => this.sampleHierarchy.rootGroup,
             withMicrotask(() => {
                 this.locationManager.reset();
-                this.groupPanel?.updateGroups();
+                this.sampleGroupView?.updateGroups();
                 this.context.requestLayoutReflow();
                 this.context.animator.requestRender();
             })
@@ -276,10 +276,10 @@ export default class SampleView extends ContainerView {
                     return;
                 }
 
-                this.metadataView.setSamples(samples);
+                //this.metadataView.setSamples(samples);
 
                 // Feed some initial dynamic data.
-                this.groupPanel.updateGroups();
+                this.sampleGroupView.updateGroups();
             }
         );
     }
@@ -333,11 +333,11 @@ export default class SampleView extends ContainerView {
             "sample-sidebar"
         );
 
-        this.groupPanel = new SampleGroupView(this, this.#sidebarView);
+        this.sampleGroupView = new SampleGroupView(this, this.#sidebarView);
         this.sampleLabelView = new SampleLabelView(this, this.#sidebarView);
         this.metadataView = new MetadataView(this, this.#sidebarView);
         this.#sidebarView.setChildren([
-            this.groupPanel,
+            this.sampleGroupView,
             this.sampleLabelView,
             this.metadataView,
         ]);
@@ -347,7 +347,7 @@ export default class SampleView extends ContainerView {
         // @ts-expect-error TODO: Resolve this
         await this.#gridChild.summaryViews.createAxes();
 
-        await this.groupPanel.initializeChildren();
+        await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
 
         this.#gridChild.view.addInteractionEventListener(
@@ -421,10 +421,28 @@ export default class SampleView extends ContainerView {
         );
 
         collector.observers.push((collector) => {
-            const samples = /** @type {Sample[]} */ (collector.getData());
+            const result =
+                /** @type {{sample: Sample, attributes: import("./sampleState.js").Metadatum}[]} */ (
+                    collector.getData()
+                );
+            const samples = result.map((d) => d.sample);
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
+
+            const attributes = result[0]?.attributes;
+
+            if (attributes && Object.keys(attributes).length > 0) {
+                const metadata = Object.fromEntries(
+                    result.map((d) => {
+                        return [d.sample.id, d.attributes];
+                    })
+                );
+
+                this.provenance.store.dispatch(
+                    this.actions.setMetadata({ metadata })
+                );
+            }
         });
 
         // Synchronize loading with other data
@@ -443,11 +461,11 @@ export default class SampleView extends ContainerView {
         if (resolution) {
             // Use destructuring to get rid of the extra properties of DomainArray.
             // They are incompatible with Redux.
+            /** @type {Sample[]} */
             const samples = [...resolution.getDataDomain()].map((s, i) => ({
                 id: s,
                 displayName: s,
                 indexNumber: i,
-                attributes: /** @type {Record<string, any>} */ ([]),
             }));
 
             this.provenance.store.dispatch(
@@ -955,24 +973,16 @@ class ProcessSample extends FlowNode {
      * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
      */
     handle(datum) {
+        const { sample, displayName, ...attributes } = datum;
         this._propagate({
-            id: datum.sample,
-            displayName: datum.displayName || datum.sample,
-            indexNumber: this._index++,
-            attributes: extractAttributes(datum),
+            sample: {
+                id: sample,
+                displayName: displayName ?? sample,
+                indexNumber: this._index++,
+            },
+            attributes,
         });
     }
-}
-
-/**
- *
- * @param {any} row
- */
-function extractAttributes(row) {
-    const attributes = Object.assign({}, row);
-    delete attributes.sample;
-    delete attributes.displayName;
-    return attributes;
 }
 
 /**
