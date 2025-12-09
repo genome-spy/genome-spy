@@ -11,10 +11,9 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
  * @typedef {ReturnType<AppStore['getState']>} AppState
  */
 export default function setupStore() {
-    const provenanceReducer = createProvenanceReducer(
-        { [sampleSlice.name]: sampleSlice.reducer },
-        { ignoreInitialState: true }
-    );
+    const provenanceReducer = createProvenanceReducer({
+        [sampleSlice.name]: sampleSlice.reducer,
+    });
 
     return configureStore({
         reducer: combineReducers({
