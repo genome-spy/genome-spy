@@ -24,7 +24,6 @@ const FieldType = {
 };
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
-const SAMPLE_NAME = "SAMPLE_NAME";
 
 const attributeViewRegex = /^attribute-(.*)$/;
 
@@ -36,15 +35,20 @@ export class MetadataView extends ConcatView {
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      */
 
-    /**
-     * @type {import("./sampleView.js").default}
-     */
+    /** @type {import("./sampleView.js").default} */
     #sampleView;
 
-    /**
-     * @type {import("./sampleState.js").Sample[]} samples
-     */
+    /** @type {import("./sampleState.js").Sample[]} */
     #samples;
+
+    /**
+     * Lookup table: find attribute views by attribute name
+     * @type {Map<string, UnitView>}
+     */
+    #attributeViews = new Map();
+
+    /** @type {WeakMap<View, string>} */
+    #viewToAttribute = new WeakMap();
 
     /**
      * @param {import("./sampleView.js").default} sampleView
@@ -81,15 +85,7 @@ export class MetadataView extends ConcatView {
 
         this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
-            (attribute) =>
-                this.#attributeViews
-                    .map((view) => this.#getAttributeInfoFromView(view))
-                    .find((info) => info && info.name == attribute.specifier)
-        );
-
-        this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
-            SAMPLE_NAME,
-            (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
+            (attribute) => this.getAttributeInfo(attribute.specifier)
         );
 
         this.addInteractionEventListener(
@@ -103,12 +99,11 @@ export class MetadataView extends ConcatView {
                 coords,
                 event
             );
-            const attribute =
-                (view && this.#getAttributeInfoFromView(view)?.name) ||
-                undefined;
+            const attributeName =
+                this.#getAttributeInfoForView(view)?.attribute.specifier;
 
             if (sample) {
-                const id = JSON.stringify([sample.id, attribute]);
+                const id = JSON.stringify([sample.id, attributeName]);
                 this.context.updateTooltip(id, (id) => {
                     const [sampleId, attribute] = JSON.parse(id);
                     return Promise.resolve(
@@ -117,7 +112,7 @@ export class MetadataView extends ConcatView {
                 });
             }
 
-            this._handleAttributeHighlight(attribute);
+            this.#handleAttributeHighlight(attributeName);
         });
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
@@ -135,7 +130,7 @@ export class MetadataView extends ConcatView {
                 }
             }
 
-            this._handleAttributeHighlight(undefined);
+            this.#handleAttributeHighlight(undefined);
         });
     }
 
@@ -166,7 +161,7 @@ export class MetadataView extends ConcatView {
      *
      * @param {string} attribute The hovered attribute
      */
-    _handleAttributeHighlight(attribute) {
+    #handleAttributeHighlight(attribute) {
         const state = this._attributeHighlighState;
 
         if (attribute != state.currentAttribute) {
@@ -204,17 +199,6 @@ export class MetadataView extends ConcatView {
         state.currentAttribute = attribute;
     }
 
-    get #sampleData() {
-        return this.#sampleView.sampleHierarchy.sampleData;
-    }
-
-    /**
-     * @param {string} sampleId
-     */
-    getSample(sampleId) {
-        return this.#sampleData?.entities[sampleId];
-    }
-
     /**
      * @param {string} attribute
      */
@@ -241,7 +225,7 @@ export class MetadataView extends ConcatView {
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
 
-        const attributeInfo = this.#getAttributeInfoFromView(event.target);
+        const attributeInfo = this.#getAttributeInfoForView(event.target);
         if (attributeInfo) {
             const attributeValue = sample.attributes[attributeInfo.name];
             items.push(
@@ -249,16 +233,6 @@ export class MetadataView extends ConcatView {
                     html`Attribute: <strong>${attributeInfo.name}</strong>`,
                     attributeInfo,
                     attributeValue,
-                    this.#sampleView
-                )
-            );
-        } else {
-            //items.push(...this.generateSampleContextMenu(sample, dispatch));
-            items.push(
-                ...generateAttributeContextMenu(
-                    html`Sample: <strong>${sample.displayName}</strong>`,
-                    SAMPLE_NAME_ATTRIBUTE_INFO,
-                    sample.id,
                     this.#sampleView
                 )
             );
@@ -334,10 +308,19 @@ export class MetadataView extends ConcatView {
     }
 
     #createViews() {
+        this.#attributeViews.clear();
+
         const nestedAttributes = getNestedAttributes(
             this.getAttributeNames(),
             this.#sampleView.spec.samples.attributeGroupSeparator
         );
+
+        /**
+         * TODO: Import to state
+         * @param {string} attributeName
+         */
+        const getAttributeDef = (attributeName) =>
+            this.#sampleView.spec.samples?.attributes?.[attributeName];
 
         /**
          *
@@ -359,7 +342,7 @@ export class MetadataView extends ConcatView {
                     const attributeDef = {
                         ...inheritedAttributeDef,
                         title: node.part,
-                        ...this.#getAttributeDef(attribute),
+                        ...getAttributeDef(attribute),
                     };
 
                     const view = new UnitView(
@@ -373,9 +356,10 @@ export class MetadataView extends ConcatView {
                         parentOpacity * this.#getAttributeOpacity(attribute);
 
                     container.appendChild(view);
+                    this.#attributeViews.set(attribute, view);
+                    this.#viewToAttribute.set(view, attribute);
                 } else {
-                    const attributeDef =
-                        this.#getAttributeDef(node.attribute) ?? {};
+                    const attributeDef = getAttributeDef(node.attribute) ?? {};
 
                     const view = new ConcatView(
                         {
@@ -423,17 +407,8 @@ export class MetadataView extends ConcatView {
         checkForDuplicateScaleNames(this);
     }
 
-    /**
-     *
-     * @param {string} attributeName
-     * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef}
-     */
-    #getAttributeDef(attributeName) {
-        return this.#sampleView.spec.samples?.attributes?.[attributeName];
-    }
-
     getAttributeNames() {
-        return this.#sampleData.attributeNames;
+        return this.#sampleView.sampleHierarchy.sampleData.attributeNames;
     }
 
     /**
@@ -443,22 +418,11 @@ export class MetadataView extends ConcatView {
      * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
      */
     #createAttributeViewSpec(attribute, attributeDef) {
-        // Ensure that attributes have a type
-        let fieldType = attributeDef ? attributeDef.type : undefined;
-        if (!fieldType) {
-            switch (
-                inferType(
-                    this.#samples.map((sample) => sample.attributes[attribute])
-                )
-            ) {
-                case "integer":
-                case "number":
-                    fieldType = FieldType.QUANTITATIVE;
-                    break;
-                default:
-                    fieldType = FieldType.NOMINAL;
-            }
-        }
+        let fieldType =
+            attributeDef.type ??
+            inferFieldType(
+                this.#samples.map((sample) => sample.attributes[attribute])
+            );
 
         return createAttributeSpec(
             attribute,
@@ -472,56 +436,39 @@ export class MetadataView extends ConcatView {
 
     /**
      * @param {View} view
-     * @returns {import("./types.js").AttributeInfo}
      */
-    #getAttributeInfoFromView(view) {
-        const nameMatch = view?.name.match(attributeViewRegex);
-        if (nameMatch) {
-            // Foolhardily assume that color is always used for encoding.
-            const resolution = view.getScaleResolution("color");
-
-            const attributeName = nameMatch[1];
-
-            return {
-                name: attributeName,
-                attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
-                accessor: (sampleId, sampleHierarchy) =>
-                    sampleHierarchy.sampleData.entities[sampleId].attributes[
-                        attributeName
-                    ],
-                type: resolution.type,
-                scale: resolution.scale,
-                title: html`<em class="attribute">${attributeName}</em>`,
-            };
+    #getAttributeInfoForView(view) {
+        const attributeName = this.#viewToAttribute.get(view);
+        if (!attributeName) {
+            return;
         }
-    }
-
-    get #attributeViews() {
-        /** @type {UnitView[]} */
-        const attributeViews = [];
-
-        this.visit((view) => {
-            if (
-                view instanceof UnitView &&
-                attributeViewRegex.test(view.name)
-            ) {
-                attributeViews.push(view);
-            }
-        });
-
-        return attributeViews;
+        return this.getAttributeInfo(attributeName);
     }
 
     /**
-     *
-     * @param {string} attribute
+     * @param {string} attributeName
+     * @returns {import("./types.js").AttributeInfo}
      */
-    getAttributeInfo(attribute) {
-        const viewNameToFind = `attribute-${attribute}`;
+    getAttributeInfo(attributeName) {
+        const view = this.#attributeViews.get(attributeName);
+        if (!view) {
+            throw new Error("No such attribute: " + attributeName);
+        }
 
-        return this.#getAttributeInfoFromView(
-            this.#attributeViews.find((view) => view.name == viewNameToFind)
-        );
+        // Assume that color is always used for encoding.
+        const resolution = view.getScaleResolution("color");
+
+        return {
+            name: attributeName,
+            attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
+            accessor: (sampleId, sampleHierarchy) =>
+                sampleHierarchy.sampleData.entities[sampleId].attributes[
+                    attributeName
+                ],
+            type: resolution.type,
+            scale: resolution.scale,
+            title: html`<em class="attribute">${attributeName}</em>`,
+        };
     }
 
     /**
@@ -533,10 +480,9 @@ export class MetadataView extends ConcatView {
         const sample = this.#samples.find((s) => s.id == sampleId);
 
         const attributeViews = new Map(
-            this.#attributeViews.map((view) => [
-                view.name.match(attributeViewRegex)[1],
-                view,
-            ])
+            this.#attributeViews
+                .values()
+                .map((view) => [view.name.match(attributeViewRegex)[1], view])
         );
 
         /**
@@ -574,7 +520,7 @@ export class MetadataView extends ConcatView {
 
         return html`
             <div class="title">
-                <strong>${sample.displayName || sample.id}</strong>
+                <strong>${sample.displayName ?? sample.id}</strong>
             </div>
             ${table}
         `;
@@ -717,15 +663,6 @@ function isDefined(value) {
     );
 }
 
-/** @type {import("./types.js").AttributeInfo} */
-const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
-    name: "sample",
-    attribute: { type: SAMPLE_NAME },
-    accessor: (/** @type {string} */ sampleId) => sampleId,
-    type: "identifier",
-    scale: undefined,
-});
-
 /**
  * @typedef {{attribute: string, part: string, children: Map<string, AttributeNode>}} AttributeNode
  */
@@ -765,4 +702,18 @@ function getNestedAttributes(attributeNames, separator) {
         attribute: "",
         children: root,
     };
+}
+
+/**
+ *
+ * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
+ */
+function inferFieldType(values) {
+    switch (inferType(values)) {
+        case "integer":
+        case "number":
+            return FieldType.QUANTITATIVE;
+        default:
+            return FieldType.NOMINAL;
+    }
 }
