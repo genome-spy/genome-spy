@@ -625,7 +625,7 @@ export class MetadataView extends ConcatView {
                     if (shouldUndo) {
                         store.dispatch(ActionCreators.undo());
                     }
-                    store.dispatch(action);
+                    this.#sampleView.dispatchAttributeAction(action);
 
                     return true;
                 }
