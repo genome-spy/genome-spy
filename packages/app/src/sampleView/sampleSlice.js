@@ -33,6 +33,7 @@ import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
  */
 
 export const SET_SAMPLES = "setSamples";
+export const SET_METADATA = "setMetadata";
 export const SORT_BY = "sortBy";
 export const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
 export const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
@@ -54,6 +55,10 @@ export const SAMPLE_SLICE_NAME = "sampleView";
 function createInitialState() {
     return {
         sampleData: undefined,
+        sampleMetadata: {
+            entities: {},
+            attributeNames: [],
+        },
         groupMetadata: [],
         rootGroup: {
             name: "ROOT",
@@ -97,7 +102,7 @@ export const sampleSlice = createSlice({
                 )
             ) {
                 throw new Error(
-                    'The sample metadata contains missing sample ids or the "sample" column is missing!'
+                    'The sample data contains missing sample ids or the "sample" column is missing!'
                 );
             }
 
@@ -106,7 +111,7 @@ export const sampleSlice = createSlice({
                 samples.length
             ) {
                 throw new Error(
-                    "The sample metadata contains duplicate sample ids!"
+                    "The sample data contains duplicate sample ids!"
                 );
             }
 
@@ -120,16 +125,30 @@ export const sampleSlice = createSlice({
                 entities: Object.fromEntries(
                     samplesWithIndices.map((sample) => [sample.id, sample])
                 ),
-                attributeNames: extractObjectKeys(
-                    samples,
-                    (sample) => sample.attributes
-                ),
             };
 
             state.rootGroup = {
                 name: "ROOT",
                 title: "Root",
                 samples: state.sampleData.ids,
+            };
+        },
+
+        [SET_METADATA]: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
+        ) => {
+            const metadata = action.payload.metadata;
+
+            if (!state.sampleData) {
+                throw new Error("Samples must be set before setting metadata!");
+            }
+
+            state.sampleMetadata = {
+                entities: metadata,
+                attributeNames: extractObjectKeys(
+                    Array.from(Object.values(metadata))
+                ),
             };
         },
 

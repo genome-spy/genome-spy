@@ -14,6 +14,7 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import { subscribeTo } from "../state/subscribeTo.js";
 
 // TODO: Move to a more generic place
 /** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
@@ -38,8 +39,11 @@ export class MetadataView extends ConcatView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;
 
-    /** @type {import("./sampleState.js").Sample[]} */
-    #samples;
+    /**
+     * TODO: Don't use a local copy. Select from state directly.
+     * @type {import("./sampleState.js").Metadata}
+     */
+    #metadata;
 
     /**
      * Lookup table: find attribute views by attribute name
@@ -85,7 +89,18 @@ export class MetadataView extends ConcatView {
 
         this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
-            (attribute) => this.getAttributeInfo(attribute.specifier)
+            (attribute) =>
+                this.getAttributeInfo(
+                    /** @type {string} */ (attribute.specifier)
+                )
+        );
+
+        subscribeTo(
+            this.#sampleView.provenance.store,
+            (state) => state.provenance.present.sampleView.sampleMetadata,
+            (sampleMetadata) => {
+                this.setMetadata(sampleMetadata);
+            }
         );
 
         this.addInteractionEventListener(
@@ -99,8 +114,9 @@ export class MetadataView extends ConcatView {
                 coords,
                 event
             );
-            const attributeName =
-                this.#getAttributeInfoForView(view)?.attribute.specifier;
+            const attributeName = /** @type {string} */ (
+                this.#getAttributeInfoForView(view)?.attribute.specifier
+            );
 
             if (sample) {
                 const id = JSON.stringify([sample.id, attributeName]);
@@ -222,15 +238,21 @@ export class MetadataView extends ConcatView {
             return;
         }
 
+        const metadatum =
+            this.#sampleView.sampleHierarchy.sampleMetadata.entities[sample.id];
+
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
 
         const attributeInfo = this.#getAttributeInfoForView(event.target);
         if (attributeInfo) {
-            const attributeValue = sample.attributes[attributeInfo.name];
+            const name = /** @type {string} */ (
+                attributeInfo.attribute.specifier
+            );
+            const attributeValue = metadatum[name];
             items.push(
                 ...generateAttributeContextMenu(
-                    html`Attribute: <strong>${attributeInfo.name}</strong>`,
+                    html`Attribute: <strong>${name}</strong>`,
                     attributeInfo,
                     attributeValue,
                     this.#sampleView
@@ -242,23 +264,16 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * TODO: Attach this to state observer
-     *
-     * @param {import("./sampleState.js").Sample[]} samples
+     * @param {{entities: import("./sampleState.js").Metadata, attributeNames: string[]}} metadata
      */
-    setSamples(samples) {
-        if (this.childCount) {
-            throw new Error("Children are already created!");
-            // TODO: Check whether the attributes match and update the views and data accordingly
-        }
+    setMetadata({ entities, attributeNames }) {
+        this.#metadata = entities;
 
-        this.#samples = samples;
+        const flow = this.context.dataFlow;
 
         this.#createViews();
 
-        const flow = this.context.dataFlow;
         buildDataFlow(this, flow);
-        // TODO: optimizeDataFlow(dataFlow);
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
@@ -296,18 +311,37 @@ export class MetadataView extends ConcatView {
             // But also ensure that the cached batch is invalidated
         });
 
-        dynamicSource.updateDynamicData(samples);
+        const sampleEntities =
+            this.#sampleView.sampleHierarchy.sampleData.entities;
+
+        const metadataTable = Object.entries(entities).map(
+            ([sample, metadatum]) => ({
+                sample,
+                indexNumber: sampleEntities[sample]?.indexNumber,
+                ...metadatum,
+            })
+        );
+
+        if (metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0) {
+            console.warn("Some metadata entries do not match any sample data");
+        }
 
         // A terrible hack to initialize data sources.
-        // TODO: Come up with a clean solution.
+        // TODO: Come up with a clean solution. For example, when building the view
+        // hierarchy, data loading could be initiated when a a complete subtree with
+        // a data source has been created.
         this.visit((view) => {
             if (view.name.startsWith("title")) {
                 flow.findDataSourceByKey(view).load();
             }
         });
+
+        dynamicSource.updateDynamicData(metadataTable);
+        this.context.requestLayoutReflow();
     }
 
     #createViews() {
+        this.setChildren([]);
         this.#attributeViews.clear();
 
         const nestedAttributes = getNestedAttributes(
@@ -408,7 +442,7 @@ export class MetadataView extends ConcatView {
     }
 
     getAttributeNames() {
-        return this.#sampleView.sampleHierarchy.sampleData.attributeNames;
+        return this.#sampleView.sampleHierarchy.sampleMetadata.attributeNames;
     }
 
     /**
@@ -421,7 +455,9 @@ export class MetadataView extends ConcatView {
         let fieldType =
             attributeDef.type ??
             inferFieldType(
-                this.#samples.map((sample) => sample.attributes[attribute])
+                Object.values(
+                    this.#sampleView.sampleHierarchy.sampleMetadata.entities
+                ).map((d) => d[attribute])
             );
 
         return createAttributeSpec(
@@ -462,7 +498,7 @@ export class MetadataView extends ConcatView {
             name: attributeName,
             attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
             accessor: (sampleId, sampleHierarchy) =>
-                sampleHierarchy.sampleData.entities[sampleId].attributes[
+                sampleHierarchy.sampleMetadata.entities[sampleId][
                     attributeName
                 ],
             type: resolution.type,
@@ -477,8 +513,6 @@ export class MetadataView extends ConcatView {
      * @param {string} attribute
      */
     #sampleToTooltip(sampleId, attribute) {
-        const sample = this.#samples.find((s) => s.id == sampleId);
-
         const attributeViews = new Map(
             this.#attributeViews
                 .values()
@@ -494,9 +528,11 @@ export class MetadataView extends ConcatView {
                 ? this.getAttributeInfo(attribute).scale(value)
                 : "transparent";
 
+        const metadatum = this.#metadata[sampleId];
+
         const table = html`
             <table class="attributes">
-                ${Object.entries(sample.attributes)
+                ${Object.entries(metadatum)
                     .filter(([key]) => attributeViews.get(key).isVisible())
                     .map(
                         ([key, value]) => html`
@@ -518,9 +554,10 @@ export class MetadataView extends ConcatView {
             </table>
         `;
 
+        // TODO: Show displayName instead
         return html`
             <div class="title">
-                <strong>${sample.displayName ?? sample.id}</strong>
+                <strong>${sampleId}</strong>
             </div>
             ${table}
         `;
@@ -549,14 +586,20 @@ export class MetadataView extends ConcatView {
         // TODO: Provide an easier access to the attribute data
         const searchKey = command;
 
+        const metadata = Object.values(
+            this.#sampleView.sampleHierarchy.sampleMetadata.entities
+        );
+
         for (const name of this.getAttributeNames()) {
             const info = this.getAttributeInfo(name);
             if (info.type == ORDINAL || info.type == NOMINAL) {
-                const sample = this.#samples.find(
-                    (sample) => sample.attributes[info.name] == searchKey
+                const found = !!metadata.find(
+                    (d) =>
+                        d[/** @type {string} */ (info.attribute.specifier)] ==
+                        searchKey
                 );
 
-                if (sample) {
+                if (found) {
                     const action = this.#sampleView.actions.filterByNominal({
                         attribute: {
                             type: SAMPLE_ATTRIBUTE,
@@ -582,7 +625,7 @@ export class MetadataView extends ConcatView {
                     if (shouldUndo) {
                         store.dispatch(ActionCreators.undo());
                     }
-                    store.dispatch(action);
+                    this.#sampleView.dispatchAttributeAction(action);
 
                     return true;
                 }
@@ -602,7 +645,7 @@ export class MetadataView extends ConcatView {
  * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
-    const field = `attributes[${JSON.stringify(attributeName)}]`;
+    const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
     const attributeSpec = {
@@ -623,7 +666,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         },
         visible: attributeDef.visible ?? true,
         width: attributeDef.width ?? sampleDef.attributeSize ?? 10,
-        transform: [{ type: "filter", expr: `datum.${field} != null` }],
+        transform: [{ type: "filter", expr: `${escapedField} != null` }],
         mark: {
             type: "rect",
             xOffset: -0.5,
@@ -631,7 +674,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         encoding: {
             facetIndex: { field: "indexNumber" },
             color: {
-                field,
+                field: attributeName,
                 type: attributeDef.type,
                 scale: attributeDef.scale,
             },
@@ -641,7 +684,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 
     if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {
         attributeSpec.encoding.x = {
-            field,
+            field: attributeName,
             type: attributeDef.type,
             scale: attributeDef.barScale,
             axis: null,

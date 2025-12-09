@@ -5,7 +5,7 @@ import { SampleHierarchy } from "./sampleState.js";
  */
 export interface AttributeIdentifier {
     type: string;
-    specifier?: any;
+    specifier?: unknown;
 }
 
 export interface AttributeInfo {

@@ -1,22 +1,23 @@
+import { scalar } from "@genome-spy/core/utils/domainArray.js";
 import { AttributeIdentifier } from "./types.js";
 import { PayloadAction } from "@reduxjs/toolkit";
+
+export type SampleId = string;
 
 /**
  * Sample metadata
  */
 export interface Sample {
-    id: string;
+    id: SampleId;
 
     displayName: string;
 
-    /** For internal use, mainly for shaders */
+    /** For internal use. Identifies the sample facet efficiently. */
     indexNumber: number;
-
-    /** Arbitrary sample specific attributes */
-    attributes: Record<string, any>;
 }
 
-export type SampleId = Sample["id"];
+export type Metadatum = Record<string, scalar>;
+export type Metadata = Record<SampleId, Metadatum>;
 
 export interface BaseGroup {
     /** e.g., an attribute value that forms a group. Used as a key when identifying subgroups. */
@@ -44,14 +45,14 @@ export interface GroupMetadata {
 export interface SampleHierarchy {
     /** All known samples that are available for use */
     sampleData: {
-        ids: string[];
-        entities: Record<string, Sample>;
+        ids: SampleId[];
+        entities: Record<SampleId, Sample>;
+    };
 
-        /**
-         * An array of metadata attributes available in the sample data.
-         * Allows for efficient checking whether the attributes have
-         * changed between two states.
-         */
+    sampleMetadata: {
+        /** SampleIds as keys, attributes as values */
+        entities: Metadata;
+        /** Names of all available metadata attributes */
         attributeNames: string[];
     };
 

@@ -1,10 +1,14 @@
 import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
-import { Sample } from "./sampleState.js";
+import { Sample, Metadata } from "./sampleState.js";
 import { AttributeIdentifier } from "./types.js";
 
 export interface SetSamples {
     samples: Sample[];
+}
+
+export interface SetMetadata {
+    metadata: Metadata;
 }
 
 export type ThresholdOperator = "lt" | "lte";
