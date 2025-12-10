@@ -13,7 +13,7 @@ import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-import { buildPathThree, inferFieldType } from "./metadataUtils.js";
+import { buildPathTree } from "./metadataUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -255,10 +255,10 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {{entities: import("./state/sampleState.js").Metadata, attributeNames: string[]}} metadata
+     * @param {import("./state/sampleState.js").SampleMetadata} sampleMetadata
      */
-    #setMetadata({ entities, attributeNames }) {
-        this.#metadata = entities;
+    #setMetadata(sampleMetadata) {
+        this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
 
@@ -305,7 +305,7 @@ export class MetadataView extends ConcatView {
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;
 
-        const metadataTable = Object.entries(entities).map(
+        const metadataTable = Object.entries(sampleMetadata.entities).map(
             ([sample, metadatum]) => ({
                 sample,
                 indexNumber: sampleEntities[sample]?.indexNumber,
@@ -335,17 +335,13 @@ export class MetadataView extends ConcatView {
         this.setChildren([]);
         this.#attributeViews.clear();
 
-        const nestedAttributes = buildPathThree(
+        const nestedAttributes = buildPathTree(
             this.getAttributeNames(),
             this.#sampleView.spec.samples.attributeGroupSeparator
         );
 
-        /**
-         * TODO: Import to state
-         * @param {string} attributeName
-         */
-        const getAttributeDef = (attributeName) =>
-            this.#sampleView.spec.samples.attributes?.[attributeName];
+        const attributeDefs =
+            this.#sampleView.sampleHierarchy.sampleMetadata.attributeDefs;
 
         /**
          *
@@ -367,11 +363,15 @@ export class MetadataView extends ConcatView {
                     const attributeDef = {
                         ...inheritedAttributeDef,
                         title: node.part,
-                        ...getAttributeDef(attribute),
+                        ...(attributeDefs?.[attribute] ?? {}),
                     };
 
                     const view = new UnitView(
-                        this.#createAttributeViewSpec(attribute, attributeDef),
+                        createAttributeSpec(
+                            attribute,
+                            attributeDef,
+                            this.#sampleView.spec.samples
+                        ),
                         this.context,
                         container,
                         container,
@@ -384,7 +384,7 @@ export class MetadataView extends ConcatView {
                     this.#attributeViews.set(attribute, view);
                     this.#viewToAttribute.set(view, attribute);
                 } else {
-                    const attributeDef = getAttributeDef(node.path) ?? {};
+                    const attributeDef = attributeDefs?.[node.path] ?? {};
 
                     const view = new ConcatView(
                         {
@@ -396,6 +396,7 @@ export class MetadataView extends ConcatView {
                                 this.#sampleView.spec.samples
                                     .attributeSpacing ?? 1,
                             resolve: {
+                                // TODO: scale could be shared within groups
                                 scale: { default: "independent" },
                                 axis: { default: "independent" },
                             },
@@ -434,31 +435,6 @@ export class MetadataView extends ConcatView {
 
     getAttributeNames() {
         return this.#sampleView.sampleHierarchy.sampleMetadata.attributeNames;
-    }
-
-    /**
-     * Builds a view spec for attribute.
-     *
-     * @param {string} attribute
-     * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
-     */
-    #createAttributeViewSpec(attribute, attributeDef) {
-        let fieldType =
-            attributeDef.type ??
-            inferFieldType(
-                Object.values(
-                    this.#sampleView.sampleHierarchy.sampleMetadata.entities
-                ).map((d) => d[attribute])
-            );
-
-        return createAttributeSpec(
-            attribute,
-            {
-                ...(attributeDef || {}),
-                type: fieldType,
-            },
-            this.#sampleView.spec.samples
-        );
     }
 
     /**
@@ -636,6 +612,10 @@ export class MetadataView extends ConcatView {
  * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
+    if (!attributeDef) {
+        throw new Error("No attribute definition for " + attributeName);
+    }
+
     const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */

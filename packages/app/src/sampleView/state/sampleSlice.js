@@ -17,6 +17,7 @@ import {
     wrapAccessorForComparison,
 } from "./sampleOperations.js";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
+import { computeAttributeDefs } from "../metadataUtils.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -144,11 +145,23 @@ export const sampleSlice = createSlice({
                 throw new Error("Samples must be set before setting metadata!");
             }
 
-            state.sampleMetadata = {
+            /** @type {import("./sampleState.js").SampleMetadata} */
+            const sampleMetadata = {
                 entities: metadata,
                 attributeNames: extractObjectKeys(
                     Array.from(Object.values(metadata))
                 ),
+            };
+
+            // Complete attribute definitions by inferring missing fields
+            const completedAttributeDefs = computeAttributeDefs(
+                sampleMetadata,
+                action.payload.attributeDefs
+            );
+
+            state.sampleMetadata = {
+                ...sampleMetadata,
+                attributeDefs: completedAttributeDefs,
             };
         },
 
