@@ -13,7 +13,7 @@ import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-import { FieldType, buildPathThree, inferFieldType } from "./metadataUtils.js";
+import { buildPathThree, inferFieldType } from "./metadataUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -673,7 +673,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         opacity: 1,
     };
 
-    if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {
+    if (attributeDef.barScale && attributeDef.type == "quantitative") {
         attributeSpec.encoding.x = {
             field: attributeName,
             type: attributeDef.type,

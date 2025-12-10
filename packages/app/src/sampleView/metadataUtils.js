@@ -1,12 +1,5 @@
 import { inferType } from "vega-loader";
 
-/** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
-export const FieldType = {
-    NOMINAL: "nominal",
-    ORDINAL: "ordinal",
-    QUANTITATIVE: "quantitative",
-};
-
 /**
  * @typedef {{path: string, part: string, children: Map<string, PathTreeNode>}} PathTreeNode
  */
@@ -51,13 +44,14 @@ export function buildPathThree(items, separator) {
 /**
  *
  * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
+ * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType}
  */
 export function inferFieldType(values) {
     switch (inferType(values)) {
         case "integer":
         case "number":
-            return FieldType.QUANTITATIVE;
+            return "quantitative";
         default:
-            return FieldType.NOMINAL;
+            return "nominal";
     }
 }
