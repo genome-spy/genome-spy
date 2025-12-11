@@ -5,8 +5,8 @@ import {
     faInfoCircle,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog from "./components/baseDialog.js";
-import { faStyles } from "./components/componentStyles.js";
+import BaseDialog from "./baseDialog.js";
+import { faStyles } from "../componentStyles.js";
 
 /** @param {number} num */
 function roundToEven(num) {

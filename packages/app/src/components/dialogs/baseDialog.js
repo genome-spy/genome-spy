@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from "lit";
-import { formStyles } from "./componentStyles.js";
+import { formStyles } from "../componentStyles.js";
 
 /**
  * @typedef {object} DialogFinishEvent

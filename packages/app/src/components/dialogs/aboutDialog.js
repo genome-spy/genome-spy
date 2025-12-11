@@ -1,7 +1,7 @@
 import { html, nothing } from "lit";
 import BaseDialog from "./baseDialog.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
-import packageJson from "../../package.json" with { type: "json" };
+import packageJson from "../../../package.json" with { type: "json" };
 
 export default class AboutDialog extends BaseDialog {
     constructor() {

@@ -20,9 +20,9 @@ import { showDataflowInspectorDialog } from "../dataflowInspector.js";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-import { showDialog } from "./baseDialog.js";
-import "./aboutDialog.js";
-import "../saveImageDialog.js";
+import { showDialog } from "./dialogs/baseDialog.js";
+import "./dialogs/aboutDialog.js";
+import "./dialogs/saveImageDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
