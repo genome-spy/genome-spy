@@ -111,8 +111,6 @@ export default class BaseDialog extends LitElement {
         this.#dialog.showModal();
     }
 
-    updated(changed) {}
-
     /**
      * Subclasses call this to close the dialog and notify listeners.
      *
@@ -137,10 +135,13 @@ export default class BaseDialog extends LitElement {
     #onDialogCancel(e) {
         e.preventDefault();
         this.finish({ ok: false, reason: "cancel" });
-        this.#triggerClose();
+        this.triggerClose();
     }
 
-    #triggerClose() {
+    /**
+     * @protected
+     */
+    triggerClose() {
         this.#dialog.addEventListener("transitionend", () => {
             this.#dialog.close();
             this.dispatchEvent(
@@ -158,8 +159,12 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     onCloseButtonClick() {
-        this.finish({ ok: false, reason: "close-button" });
-        this.#dialog.requestClose();
+        if (this.#dialog.requestClose) {
+            this.#dialog.requestClose();
+        } else {
+            this.finish({ ok: false, reason: "cancel" });
+            this.triggerClose();
+        }
     }
 
     /**

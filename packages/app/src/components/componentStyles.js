@@ -1,7 +1,10 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
+import { dom } from "@fortawesome/fontawesome-svg-core";
+
+export const faStyles = unsafeCSS(dom.css());
 
 export const formStyles = css`
-    :root {
+    :host {
         --basic-spacing: var(--gs-basic-spacing, 10px);
         --form-control-color: #212529;
         --form-control-border-color: #ced4da;
@@ -176,6 +179,35 @@ export const formStyles = css`
             > :last-child {
                 padding: 0 var(--basic-spacing);
             }
+        }
+    }
+
+    .gs-alert {
+        display: flex;
+        align-items: center;
+
+        position: relative;
+        padding: 0.8em;
+        margin-bottom: 1em;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+
+        > svg:first-child {
+            width: 2em;
+            height: 2em;
+            margin-right: 0.8em;
+        }
+
+        &.warning {
+            color: #664d03;
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+        }
+
+        &.info {
+            color: #055160;
+            background-color: #cff4fc;
+            border-color: #b6effb;
         }
     }
 `;

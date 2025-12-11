@@ -17,12 +17,12 @@ import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
 import { showDataflowInspectorDialog } from "../dataflowInspector.js";
-import showSaveImageDialog from "../saveImageDialog.js";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
 import { subscribeTo } from "../state/subscribeTo.js";
 import { showDialog } from "./baseDialog.js";
 import "./aboutDialog.js";
+import "../saveImageDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -134,7 +134,13 @@ export default class Toolbar extends LitElement {
         items.push({
             label: "Save PNG",
             icon: faFileImage,
-            callback: () => showSaveImageDialog(this.app.genomeSpy),
+            callback: () =>
+                showDialog(
+                    "gs-save-image-dialog",
+                    (/** @type {any} */ saveImageDialog) => {
+                        saveImageDialog.genomeSpy = this.app.genomeSpy;
+                    }
+                ),
         });
 
         if (this.app.options.showInspectorButton) {

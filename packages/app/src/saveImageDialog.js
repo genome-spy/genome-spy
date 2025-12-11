@@ -1,97 +1,16 @@
-import { html, LitElement, nothing } from "lit";
-import { createRef, ref } from "lit/directives/ref.js";
-import { messageBox } from "./utils/ui/modal.js";
+import { html, nothing } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faDownload,
     faInfoCircle,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
+import BaseDialog from "./components/baseDialog.js";
+import { faStyles } from "./components/componentStyles.js";
 
 /** @param {number} num */
 function roundToEven(num) {
     return Math.round(num / 2) * 2;
-}
-
-/**
- *
- * @param {import("@genome-spy/core/genomeSpy.js").default} genomeSpy
- */
-export default function showSaveImageDialog(genomeSpy) {
-    // TODO: Make canvas size available through the official API
-    let { width, height } = genomeSpy._glHelper.getLogicalCanvasSize();
-
-    // Ensure that 0.5 scale factors behave nicely
-    width = roundToEven(width);
-    height = roundToEven(height);
-
-    /** @type {import("lit/directives/ref.js").Ref<ImageSettingsForm>} */
-    const formRef = createRef();
-
-    const template = html`
-        <div class="gs-alert info">
-            ${icon(faInfoCircle).node[0]}
-            <span>
-                <span
-                    style="float: right; cursor: pointer;"
-                    @click=${(/** @type {UIEvent} */ event) => {
-                        /** @type {HTMLElement} */ (
-                            /** @type {HTMLElement} */ (event.target).closest(
-                                ".gs-alert"
-                            )
-                        ).style.display = "none";
-                    }}
-                    >${icon(faXmark).node[0]}</span
-                >
-                To create publication-quality images:
-                <ol>
-                    <li>
-                        Adjust the GenomeSpy window so the visualization and
-                        labels appear as you want them.
-                    </li>
-                    <li>
-                        Use the scale factor slider below to increase
-                        resolution.
-                    </li>
-                    <li>
-                        Note: Smaller image dimensions with a higher scale
-                        factor will produce relatively larger and clearer labels
-                        and elements.
-                    </li>
-                </ol>
-            </span>
-        </div>
-
-        <genome-spy-image-settings-form
-            ${ref(formRef)}
-            .logicalWidth=${width}
-            .logicalHeight=${height}
-        ></genome-spy-image-settings-form>
-    `;
-
-    messageBox(template, {
-        title: "Save as PNG",
-        okLabel: html`${icon(faDownload).node[0]} Save`,
-        cancelButton: true,
-    }).then((result) => {
-        if (!result) {
-            return;
-        }
-
-        const form = formRef.value;
-        const dataURL = genomeSpy.exportCanvas(
-            width,
-            height,
-            form.devicePixelRatio,
-            form.transparentBackground ? null : form.backgroundColor
-        );
-        const link = document.createElement("a");
-        link.href = dataURL;
-        link.download = "genomespy-visualization.png";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
 }
 
 /**
@@ -103,8 +22,44 @@ function getInputElement(event) {
     return /** @type {HTMLInputElement} */ (event.target);
 }
 
-class ImageSettingsForm extends LitElement {
+const instructions = html`
+    <div class="gs-alert info" style="max-width: 500px">
+        ${icon(faInfoCircle).node[0]}
+        <span>
+            <span
+                style="float: right; cursor: pointer;"
+                @click=${(/** @type {UIEvent} */ event) => {
+                    /** @type {HTMLElement} */ (
+                        /** @type {HTMLElement} */ (event.target).closest(
+                            ".gs-alert"
+                        )
+                    ).style.display = "none";
+                }}
+                >${icon(faXmark).node[0]}</span
+            >
+            To create publication-quality images:
+            <ol>
+                <li>
+                    Adjust the GenomeSpy window so the visualization and labels
+                    appear as you want them.
+                </li>
+                <li>
+                    Use the scale factor slider below to increase resolution.
+                </li>
+                <li>
+                    Note: Smaller image dimensions with a higher scale factor
+                    will produce relatively larger and clearer labels and
+                    elements.
+                </li>
+            </ol>
+        </span>
+    </div>
+`;
+
+export default class SaveImageDialog extends BaseDialog {
     static properties = {
+        ...super.properties,
+        genomeSpy: { type: Object },
         logicalWidth: { type: Number },
         logicalHeight: { type: Number },
         devicePixelRatio: { type: Number },
@@ -114,8 +69,16 @@ class ImageSettingsForm extends LitElement {
         backgroundColor: { type: String },
     };
 
+    static styles = [...super.styles, faStyles];
+
     constructor() {
         super();
+
+        /** @type {import("@genome-spy/core/genomeSpy.js").default} */
+        this.genomeSpy = null;
+
+        this.dialogTitle = "Save Visualization as PNG Image";
+
         this.devicePixelRatio = 2;
         this.logicalWidth = 800; // Default logical width
         this.logicalHeight = 600; // Default logical height
@@ -127,21 +90,33 @@ class ImageSettingsForm extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        this.#updateImageDimensions();
+
+        // TODO: Make canvas size available through the official API
+        let { width, height } = this.genomeSpy._glHelper.getLogicalCanvasSize();
+
+        this.logicalWidth = roundToEven(width);
+        this.logicalHeight = roundToEven(height);
     }
 
-    firstUpdated() {
-        /** @type {HTMLElement} */ (
-            this.renderRoot.querySelector("#pngDevicePixelRatio")
-        ).focus();
+    /**
+     * @param {Map<string, any>} changed
+     */
+    willUpdate(changed) {
+        if (
+            ["logicalWidth", "logicalHeight", "devicePixelRatio"].some((prop) =>
+                changed.has(prop)
+            )
+        ) {
+            const dpr = this.devicePixelRatio;
+            this.imageWidth = Math.round(this.logicalWidth * dpr);
+            this.imageHeight = Math.round(this.logicalHeight * dpr);
+        }
     }
 
-    createRenderRoot() {
-        return this;
-    }
-
-    render() {
+    renderBody() {
         return html`
+            ${instructions}
+
             <div class="gs-form-group">
                 <label for="canvasDimensions">Visualization dimensions</label>
                 <input
@@ -162,7 +137,10 @@ class ImageSettingsForm extends LitElement {
                         max="4"
                         step="0.5"
                         .value=${"" + this.devicePixelRatio}
-                        @input=${this.#updateDPR}
+                        @input=${(/** @type {InputEvent} */ event) => {
+                            this.devicePixelRatio =
+                                getInputElement(event).valueAsNumber;
+                        }}
                     />
                     <span style="width: 2em; margin-left: 0.5em"
                         >${this.devicePixelRatio}</span
@@ -211,21 +189,44 @@ class ImageSettingsForm extends LitElement {
         `;
     }
 
-    /**
-     *
-     * @param {InputEvent} event
-     */
-    #updateDPR(event) {
-        this.devicePixelRatio = getInputElement(event).valueAsNumber;
-        this.#updateImageDimensions();
+    renderFooter() {
+        return html`
+            <div>
+                <button
+                    class="btn close"
+                    @click=${() => this.onCloseButtonClick()}
+                >
+                    Cancel
+                </button>
+
+                <button
+                    class="btn primary"
+                    @click=${() => {
+                        this.#downloadImage();
+                        this.finish({ ok: true });
+                        this.triggerClose();
+                    }}
+                >
+                    ${icon(faDownload).node[0]} Save PNG
+                </button>
+            </div>
+        `;
     }
 
-    #updateImageDimensions() {
-        this.imageWidth = Math.round(this.logicalWidth * this.devicePixelRatio);
-        this.imageHeight = Math.round(
-            this.logicalHeight * this.devicePixelRatio
+    #downloadImage() {
+        const dataURL = this.genomeSpy.exportCanvas(
+            this.logicalWidth,
+            this.logicalHeight,
+            this.devicePixelRatio,
+            this.transparentBackground ? null : this.backgroundColor
         );
+        const link = document.createElement("a");
+        link.href = dataURL;
+        link.download = "genomespy-visualization.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
-customElements.define("genome-spy-image-settings-form", ImageSettingsForm);
+customElements.define("gs-save-image-dialog", SaveImageDialog);
