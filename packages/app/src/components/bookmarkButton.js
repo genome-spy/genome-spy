@@ -40,7 +40,7 @@ class BookmarkButton extends LitElement {
         return this;
     }
 
-    _createBookmarkWithCurrentState() {
+    #createBookmarkWithCurrentState() {
         /** @type {import("../bookmark/databaseSchema.js").BookmarkEntry} */
         const bookmark = {
             name: undefined,
@@ -68,8 +68,8 @@ class BookmarkButton extends LitElement {
         return bookmark;
     }
 
-    async _shareCurrentState() {
-        const bookmark = this._createBookmarkWithCurrentState();
+    async #shareCurrentState() {
+        const bookmark = this.#createBookmarkWithCurrentState();
         if (await showEnterBookmarkInfoDialog(undefined, bookmark, "share")) {
             showShareBookmarkDialog(bookmark, false);
         }
@@ -79,14 +79,14 @@ class BookmarkButton extends LitElement {
      * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} [name] Name of an existing entry that will be updated
      */
-    async _addBookmark(bookmarkDatabase, name) {
+    async #addBookmark(bookmarkDatabase, name) {
         const existingBookmark = name
             ? await bookmarkDatabase.get(name)
             : undefined;
 
         const editing = !!existingBookmark;
 
-        const bookmark = this._createBookmarkWithCurrentState();
+        const bookmark = this.#createBookmarkWithCurrentState();
 
         bookmark.name ??= existingBookmark?.name;
         bookmark.notes ??= existingBookmark?.notes;
@@ -112,7 +112,7 @@ class BookmarkButton extends LitElement {
      * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
      */
-    async _loadBookmark(bookmarkDatabase, name) {
+    async #loadBookmark(bookmarkDatabase, name) {
         const entry = await bookmarkDatabase.get(name);
         if (entry) {
             restoreBookmarkAndShowInfoBox(entry, this.app, {
@@ -126,7 +126,7 @@ class BookmarkButton extends LitElement {
      * @param {string} name
      * @param {MouseEvent} event
      */
-    _createContextMenu(bookmarkDatabase, name, event) {
+    #createContextMenu(bookmarkDatabase, name, event) {
         event.stopPropagation();
 
         const opener = /** @type {HTMLElement} */ (event.target).closest("li");
@@ -151,7 +151,7 @@ class BookmarkButton extends LitElement {
             items.push({
                 label: "Edit and replace...",
                 icon: faPen,
-                callback: () => this._addBookmark(bookmarkDatabase, name),
+                callback: () => this.#addBookmark(bookmarkDatabase, name),
             });
             items.push({
                 label: "Delete",
@@ -177,14 +177,14 @@ class BookmarkButton extends LitElement {
      * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} databaseTitle
      */
-    async _makeBookmarkMenuItems(bookmarkDatabase, databaseTitle) {
+    async #makeBookmarkMenuItems(bookmarkDatabase, databaseTitle) {
         const names = await bookmarkDatabase.getNames();
 
         const items = names.map((name) => ({
             label: name,
-            callback: () => this._loadBookmark(bookmarkDatabase, name),
+            callback: () => this.#loadBookmark(bookmarkDatabase, name),
             ellipsisCallback: (/** @type {MouseEvent} */ event) =>
-                this._createContextMenu(bookmarkDatabase, name, event),
+                this.#createContextMenu(bookmarkDatabase, name, event),
         }));
         return items.length
             ? /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */ ([
@@ -195,7 +195,7 @@ class BookmarkButton extends LitElement {
             : nothing;
     }
 
-    _getBookmarks() {
+    #getBookmarks() {
         /**
          * @param {import("../bookmark/bookmarkDatabase.js").default} db
          * @param {string} title
@@ -203,7 +203,7 @@ class BookmarkButton extends LitElement {
         const makeTemplate = (db, title) =>
             db
                 ? until(
-                      this._makeBookmarkMenuItems(db, title),
+                      this.#makeBookmarkMenuItems(db, title),
                       html`Loading...`
                   )
                 : nothing;
@@ -225,7 +225,7 @@ class BookmarkButton extends LitElement {
 
         const add = localBookmarkDb
             ? html` <li>
-                  <a @click=${() => this._addBookmark(localBookmarkDb)}
+                  <a @click=${() => this.#addBookmark(localBookmarkDb)}
                       >Add bookmark...</a
                   >
               </li>`
@@ -248,7 +248,7 @@ class BookmarkButton extends LitElement {
                               ${icon(faBookmark).node[0]}
                           </button>
                           <ul class="gs-dropdown-menu">
-                              ${add} ${this._getBookmarks()}
+                              ${add} ${this.#getBookmarks()}
                           </ul>
                       </div>
                   `
@@ -260,7 +260,7 @@ class BookmarkButton extends LitElement {
                 <button
                     class="tool-btn"
                     title="Share"
-                    @click=${() => this._shareCurrentState()}
+                    @click=${() => this.#shareCurrentState()}
                 >
                     ${icon(faShare).node[0]}
                 </button>

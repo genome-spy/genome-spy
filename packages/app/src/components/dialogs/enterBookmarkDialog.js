@@ -6,9 +6,9 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "./baseDialog.js";
-import { messageBox } from "../../utils/ui/modal.js";
 import { faStyles } from "../componentStyles.js";
 import { createInputListener } from "./saveImageDialog.js";
+import { showMessageDialog } from "./messageDialog.js";
 
 /** @param {unknown} str */
 function trimString(str) {
@@ -142,7 +142,7 @@ export default class EnterBookmarkDialog extends BaseDialog {
         const mode = this.mode;
 
         if (mode != "share" && !bookmark.name) {
-            await messageBox("Name is missing!", { title: "Error" });
+            await showMessageDialog("Name is missing!", { type: "warning" });
             return;
         }
 
@@ -153,11 +153,15 @@ export default class EnterBookmarkDialog extends BaseDialog {
                 !(mode && bookmark.name == this.originalName) &&
                 (await this.bookmarkDatabase.get(bookmark.name))
             ) {
-                ok = await messageBox(
+                ok = await showMessageDialog(
                     html`A bookmark with the name
                         <em>${bookmark.name}</em> already exists. It will be
                         overwritten.`,
-                    { title: "Bookmark already exists", cancelButton: true }
+                    {
+                        title: "Bookmark already exists",
+                        confirm: true,
+                        type: "warning",
+                    }
                 );
             }
         } catch (e) {

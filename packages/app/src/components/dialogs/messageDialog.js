@@ -21,6 +21,7 @@ export default class MessageDialog extends BaseDialog {
         ...super.properties,
         message: {},
         type: { type: String },
+        confirm: { type: Boolean },
     };
 
     static styles = [
@@ -47,6 +48,21 @@ export default class MessageDialog extends BaseDialog {
         /** @type {string | import("lit").TemplateResult} */
         this.message = "";
         this.type = "info";
+        this.confirm = false;
+    }
+
+    renderButtons() {
+        if (this.confirm) {
+            return [
+                this.makeButton("OK", () => {
+                    this.finish({ ok: true });
+                    this.triggerClose();
+                }),
+                this.makeButton("Cancel", () => this.onCloseButtonClick()),
+            ];
+        } else {
+            return super.renderButtons();
+        }
     }
 
     renderBody() {
@@ -62,19 +78,27 @@ export default class MessageDialog extends BaseDialog {
 customElements.define("gs-message-dialog", MessageDialog);
 
 /**
+ * @typedef {object} MessageDialogOptions
+ * @property {string | import("lit").TemplateResult} [title]
+ * @property {"warning" | "error" | "info"} [type]
+ * @property {boolean} [confirm] If true, shows OK and Cancel buttons
+ */
+/**
  *
  * @param {string | import("lit").TemplateResult} message
- * @param {string | import("lit").TemplateResult} title
- * @param {"warning" | "error" | "info"} [type]
- * @returns {Promise<import("./baseDialog.js").DialogFinishDetail>}
+ * @param {MessageDialogOptions} [options]
+ * @returns {Promise<boolean>} Resolves to true if OK was clicked
  */
-export function showMessageDialog(message, title, type) {
+export function showMessageDialog(message, options = {}) {
     return showDialog(
         "gs-message-dialog",
         (/** @type {MessageDialog} */ el) => {
             el.message = message;
-            el.title = title;
-            el.type = type;
+            el.dialogTitle = options.title;
+            el.type = options.type;
+            el.confirm = options.confirm;
         }
-    );
+    ).then((result) => {
+        return result.ok;
+    });
 }

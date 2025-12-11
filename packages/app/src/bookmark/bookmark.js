@@ -8,9 +8,10 @@ import {
 import { html, nothing, render } from "lit";
 import { ActionCreators } from "redux-undo";
 import safeMarkdown from "../utils/safeMarkdown.js";
-import { createModal, messageBox } from "../utils/ui/modal.js";
+import { createModal } from "../utils/ui/modal.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { showMessageDialog } from "../components/dialogs/messageDialog.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
@@ -81,9 +82,10 @@ export async function restoreBookmark(entry, app) {
         await Promise.all(promises);
     } catch (e) {
         console.error(e);
-        messageBox(
+        showMessageDialog(
             html`<p>Cannot restore the state:</p>
-                <p>${e}</p>`
+                <p>${e}</p>`,
+            { type: "error" }
         );
         app.provenance.activateState(0);
     }
@@ -182,7 +184,9 @@ export async function updateBookmarkInfoBox(entry, app, options) {
                 await app.localBookmarkDatabase.put(entry);
             } catch (e) {
                 console.warn(e);
-                messageBox(`Cannot import bookmark: ${e}`);
+                showMessageDialog(`Cannot import bookmark: ${e}`, {
+                    type: "error",
+                });
             }
         }
     };
