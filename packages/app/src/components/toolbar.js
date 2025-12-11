@@ -11,8 +11,6 @@ import {
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
-import { messageBox } from "../utils/ui/modal.js";
-
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
@@ -23,6 +21,7 @@ import { subscribeTo } from "../state/subscribeTo.js";
 import { showDialog } from "./dialogs/baseDialog.js";
 import "./dialogs/aboutDialog.js";
 import "./dialogs/saveImageDialog.js";
+import { showMessageDialog } from "./dialogs/messageDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -88,11 +87,11 @@ export default class Toolbar extends LitElement {
                     class="tool-btn"
                     title="Show a description of the visualization"
                     @click=${() =>
-                        messageBox(
+                        showMessageDialog(
                             html`${description
                                 .slice(1)
                                 .map((line) => html`<p>${line}</p>`)}`,
-                            { title: description[0] }
+                            { title: description[0], type: "info" }
                         )}
                 >
                     ${icon(faInfoCircle).node[0]}

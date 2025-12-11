@@ -68,7 +68,7 @@ export default class MessageDialog extends BaseDialog {
     renderBody() {
         const iconDef = icons[this.type];
 
-        return html` ${iconDef
+        return html`${iconDef
                 ? html`<div class="icon">${icon(iconDef).node[0]}</div>`
                 : nothing}
             <div class="message-content">${this.message}</div>`;
