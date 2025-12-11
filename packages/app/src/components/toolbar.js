@@ -16,7 +16,7 @@ import { messageBox } from "../utils/ui/modal.js";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { showDataflowInspectorDialog } from "../dataflowInspector.js";
+import { showDataflowInspectorDialog } from "./dialogs/dataflowInspectorDialog.js";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
 import { subscribeTo } from "../state/subscribeTo.js";

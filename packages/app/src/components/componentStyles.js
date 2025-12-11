@@ -210,4 +210,56 @@ export const formStyles = css`
             border-color: #b6effb;
         }
     }
+
+    .gs-tabs {
+        margin: 0;
+
+        .tabs {
+            display: flex;
+            list-style: none;
+            padding: 0;
+            margin-top: 0;
+
+            &::after {
+                flex-grow: 1;
+                content: "";
+                display: block;
+                border-bottom: 1px solid var(--form-control-border-color);
+            }
+
+            button {
+                font-size: 1em;
+                background-color: transparent;
+                align-items: center;
+                padding: 0.6em var(--basic-spacing);
+
+                border: 1px solid var(--form-control-border-color);
+
+                --radius: 5px;
+                border-top-left-radius: var(--radius);
+                border-top-right-radius: var(--radius);
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+
+                cursor: pointer;
+            }
+
+            > li:not(:first-child) > button {
+                margin-left: -1px;
+            }
+
+            .active-tab button {
+                border-bottom-color: transparent;
+            }
+
+            :not(.active-tab) button {
+                border-color: transparent;
+                border-bottom-color: var(--form-control-border-color);
+            }
+        }
+
+        .panes > :not(.active-tab) {
+            display: none;
+        }
+    }
 `;
