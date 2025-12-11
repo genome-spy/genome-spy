@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { formStyles } from "../componentStyles.js";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /**
  * @typedef {object} DialogFinishEvent
@@ -185,16 +186,37 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     renderFooter() {
-        return html`
-            <div>
-                <button
-                    class="btn close"
-                    @click=${() => this.onCloseButtonClick()}
-                >
-                    Close
-                </button>
-            </div>
-        `;
+        const buttons = this.renderButtons();
+        if (buttons?.length) {
+            return html`<div>${buttons}</div>`;
+        } else {
+            return nothing;
+        }
+    }
+
+    /**
+     * @protected
+     */
+    renderButtons() {
+        return [this.makeButton("Close", () => this.onCloseButtonClick())];
+    }
+
+    /**
+     * @param {string} title
+     * @param {() => void} callback
+     * @param {import("@fortawesome/fontawesome-svg-core").IconDefinition} [iconDef]
+     */
+    makeButton(title, callback, iconDef) {
+        return html`<button
+            class="btn"
+            title=${title}
+            @click=${() => {
+                callback();
+                this.onCloseButtonClick();
+            }}
+        >
+            ${iconDef ? icon(iconDef).node[0] : nothing} ${title}
+        </button>`;
     }
 
     render() {

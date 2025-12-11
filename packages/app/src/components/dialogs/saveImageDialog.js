@@ -189,28 +189,19 @@ export default class SaveImageDialog extends BaseDialog {
         `;
     }
 
-    renderFooter() {
-        return html`
-            <div>
-                <button
-                    class="btn close"
-                    @click=${() => this.onCloseButtonClick()}
-                >
-                    Cancel
-                </button>
-
-                <button
-                    class="btn primary"
-                    @click=${() => {
-                        this.#downloadImage();
-                        this.finish({ ok: true });
-                        this.triggerClose();
-                    }}
-                >
-                    ${icon(faDownload).node[0]} Save PNG
-                </button>
-            </div>
-        `;
+    renderButtons() {
+        return [
+            this.makeButton("Cancel", () => this.onCloseButtonClick()),
+            this.makeButton(
+                "Save PNG",
+                () => {
+                    this.#downloadImage();
+                    this.finish({ ok: true });
+                    this.triggerClose();
+                },
+                faDownload
+            ),
+        ];
     }
 
     #downloadImage() {
