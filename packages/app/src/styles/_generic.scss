@@ -14,6 +14,13 @@ $font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
 
 $font-size: 14px;
 
+:root {
+    --gs-font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial,
+        sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    --gs-font-size: 14px;
+    --gs-basic-spacing: 10px;
+}
+
 .gs-modal {
     z-index: 101;
 

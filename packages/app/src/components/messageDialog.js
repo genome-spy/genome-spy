@@ -1,0 +1,80 @@
+import {
+    faExclamationTriangle,
+    faInfoCircle,
+    faTimesCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import { css, html, nothing } from "lit";
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import BaseDialog, { showDialog } from "./baseDialog.js";
+
+/**
+ * @type {Record<string, import("@fortawesome/fontawesome-svg-core").IconDefinition>}
+ */
+const icons = {
+    warning: faExclamationTriangle,
+    error: faTimesCircle,
+    info: faInfoCircle,
+};
+
+export default class MessageDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        message: {},
+        type: { type: String },
+    };
+
+    static styles = [
+        ...super.styles,
+        css`
+            section {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 15px;
+                padding: 20px;
+                box-sizing: border-box;
+                max-width: 400px;
+            }
+
+            .icon {
+                width: 2.5em;
+            }
+        `,
+    ];
+
+    constructor() {
+        super();
+        /** @type {string | import("lit").TemplateResult} */
+        this.message = "";
+        this.type = "info";
+    }
+
+    renderBody() {
+        const iconDef = icons[this.type];
+
+        return html` ${iconDef
+                ? html`<div class="icon">${icon(iconDef).node[0]}</div>`
+                : nothing}
+            <div class="message-content">${this.message}</div>`;
+    }
+}
+
+customElements.define("gs-message-dialog", MessageDialog);
+
+/**
+ *
+ * @param {string | import("lit").TemplateResult} message
+ * @param {string | import("lit").TemplateResult} title
+ * @param {"warning" | "error" | "info"} [type]
+ * @returns {Promise<import("./baseDialog.js").DialogFinishEvent>}
+ */
+export function showMessageDialog(message, title, type) {
+    return showDialog(
+        "gs-message-dialog",
+        (/** @type {MessageDialog} */ el) => {
+            el.message = message;
+            el.title = title;
+            el.type = type;
+        }
+    );
+}
