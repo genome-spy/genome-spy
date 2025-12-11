@@ -105,6 +105,10 @@ export default class BaseDialog extends LitElement {
 
         /** @type {string | import("lit").TemplateResult} */
         this.dialogTitle = null;
+
+        this.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+            e.stopPropagation();
+        });
     }
 
     firstUpdated() {
