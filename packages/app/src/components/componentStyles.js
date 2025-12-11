@@ -115,6 +115,7 @@ export const formStyles = css`
         textarea {
             display: block;
             width: 100%;
+            box-sizing: border-box;
             padding: 0.375em 0.75em;
             font-size: 1em;
             font-family: var(--font-family);

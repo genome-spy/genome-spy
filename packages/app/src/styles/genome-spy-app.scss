@@ -349,32 +349,6 @@ $basic-spacing: generic.$basic-spacing;
     }
 }
 
-.copy-url {
-    position: relative;
-
-    button {
-        $color: rgb(66, 127, 240);
-        position: absolute;
-
-        $pad: 0.4em;
-        right: $pad;
-        top: $pad;
-        bottom: $pad;
-
-        box-shadow: 0 0 $pad * 0.5 $pad * 0.5 white;
-
-        border: 1px solid $color;
-        border-radius: 3px;
-        color: $color;
-        background-color: white;
-
-        &:hover {
-            color: white;
-            background-color: $color;
-        }
-    }
-}
-
 .gs-suppress-tooltip .genome-spy .tooltip {
     display: none;
 }

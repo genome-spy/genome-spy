@@ -11,11 +11,9 @@ import { toggleDropdown } from "../utils/ui/dropdown.js";
 import { messageBox } from "../utils/ui/modal.js";
 import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu.js";
 import { queryDependency } from "../utils/dependency.js";
-import {
-    restoreBookmarkAndShowInfoBox,
-    showEnterBookmarkInfoDialog,
-    showShareBookmarkDialog,
-} from "../bookmark/bookmark.js";
+import { restoreBookmarkAndShowInfoBox } from "../bookmark/bookmark.js";
+import { showEnterBookmarkInfoDialog } from "./dialogs/enterBookmarkDialog.js";
+import { showShareBookmarkDialog } from "./dialogs/shareBookmarkDialog.js";
 
 class BookmarkButton extends LitElement {
     constructor() {

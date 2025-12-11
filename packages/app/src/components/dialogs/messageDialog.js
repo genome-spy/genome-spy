@@ -66,7 +66,7 @@ customElements.define("gs-message-dialog", MessageDialog);
  * @param {string | import("lit").TemplateResult} message
  * @param {string | import("lit").TemplateResult} title
  * @param {"warning" | "error" | "info"} [type]
- * @returns {Promise<import("./baseDialog.js").DialogFinishEvent>}
+ * @returns {Promise<import("./baseDialog.js").DialogFinishDetail>}
  */
 export function showMessageDialog(message, title, type) {
     return showDialog(

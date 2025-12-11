@@ -8,20 +8,6 @@ import {
 import BaseDialog from "./baseDialog.js";
 import { faStyles } from "../componentStyles.js";
 
-/** @param {number} num */
-function roundToEven(num) {
-    return Math.round(num / 2) * 2;
-}
-
-/**
- * Utility to cast event.target to HTMLInputElement
- * @param {Event} event
- * @returns {HTMLInputElement}
- */
-function getInputElement(event) {
-    return /** @type {HTMLInputElement} */ (event.target);
-}
-
 const instructions = html`
     <div class="gs-alert info" style="max-width: 500px">
         ${icon(faInfoCircle).node[0]}
@@ -137,10 +123,9 @@ export default class SaveImageDialog extends BaseDialog {
                         max="4"
                         step="0.5"
                         .value=${"" + this.devicePixelRatio}
-                        @input=${(/** @type {InputEvent} */ event) => {
-                            this.devicePixelRatio =
-                                getInputElement(event).valueAsNumber;
-                        }}
+                        @input=${createInputListener((input) => {
+                            this.devicePixelRatio = input.valueAsNumber;
+                        })}
                     />
                     <span style="width: 2em; margin-left: 0.5em"
                         >${this.devicePixelRatio}</span
@@ -165,10 +150,9 @@ export default class SaveImageDialog extends BaseDialog {
                         ><input
                             type="checkbox"
                             ?checked=${this.transparentBackground}
-                            @change=${(/** @type {Event} */ event) => {
-                                this.transparentBackground =
-                                    getInputElement(event).checked;
-                            }}
+                            @change=${createInputListener((input) => {
+                                this.transparentBackground = input.checked;
+                            })}
                         />
                         Transparent</label
                     >
@@ -178,10 +162,9 @@ export default class SaveImageDialog extends BaseDialog {
                               id="pngBackground"
                               style="margin-left: 1em"
                               .value=${this.backgroundColor}
-                              @change=${(/** @type {Event} */ event) => {
-                                  this.backgroundColor =
-                                      getInputElement(event).value;
-                              }}
+                              @change=${createInputListener((input) => {
+                                  this.backgroundColor = input.value;
+                              })}
                           />`
                         : nothing}
                 </div>
@@ -221,3 +204,26 @@ export default class SaveImageDialog extends BaseDialog {
 }
 
 customElements.define("gs-save-image-dialog", SaveImageDialog);
+
+/** @param {number} num */
+function roundToEven(num) {
+    return Math.round(num / 2) * 2;
+}
+
+/**
+ * @param {Event} event
+ * @returns {HTMLInputElement}
+ */
+export function getInputElement(event) {
+    return /** @type {HTMLInputElement} */ (event.target);
+}
+
+/**
+ * @param {(input: HTMLInputElement, event: UIEvent) => void} callback
+ */
+export function createInputListener(callback) {
+    return (/** @type {UIEvent} */ event) => {
+        const input = getInputElement(event);
+        callback(input, event);
+    };
+}

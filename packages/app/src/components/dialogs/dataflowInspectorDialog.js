@@ -240,7 +240,7 @@ customElements.define("gs-dataflow-inspector", DataFlowInspectorDialog);
  *
  * @param {import("@genome-spy/core/data/dataFlow.js").default<any>} dataFlow
  * @param {DataFlowInspectorOptions} [options]
- * @returns {Promise<import("./baseDialog.js").DialogFinishEvent>}
+ * @returns {Promise<import("./baseDialog.js").DialogFinishDetail>}
  */
 export function showDataflowInspectorDialog(dataFlow, options = {}) {
     return showDialog(

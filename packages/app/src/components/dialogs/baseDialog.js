@@ -3,7 +3,7 @@ import { formStyles } from "../componentStyles.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /**
- * @typedef {object} DialogFinishEvent
+ * @typedef {object} DialogFinishDetail
  * @property {boolean} ok
  * @property {string} [reason]
  * @property {unknown} [data]
@@ -119,7 +119,7 @@ export default class BaseDialog extends LitElement {
     /**
      * Subclasses call this to close the dialog and notify listeners.
      *
-     * @param {DialogFinishEvent} detail
+     * @param {DialogFinishDetail} detail
      * @protected
      */
     finish(detail) {
@@ -216,7 +216,7 @@ export default class BaseDialog extends LitElement {
             title=${title}
             @click=${() => {
                 callback();
-                this.onCloseButtonClick();
+                this.triggerClose();
             }}
         >
             ${iconDef ? icon(iconDef).node[0] : nothing} ${title}
@@ -224,13 +224,16 @@ export default class BaseDialog extends LitElement {
     }
 
     render() {
+        const header = this.renderHeader();
+        const footer = this.renderFooter();
+
         return html`
             <dialog
                 @cancel=${(/** @type {UIEvent} */ e) => this.#onDialogCancel(e)}
             >
-                <header>${this.renderHeader()}</header>
+                ${header ? html`<header>${header}</header>` : nothing}
                 <section>${this.renderBody()}</section>
-                <footer>${this.renderFooter()}</footer>
+                ${footer ? html`<footer>${footer}</footer>` : nothing}
             </dialog>
         `;
     }
@@ -242,7 +245,7 @@ export default class BaseDialog extends LitElement {
  * @template {BaseDialog} T
  * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
  * @param {(el: T) => void} [configure] - Optional function to configure props.
- * @returns {Promise<DialogFinishEvent>}
+ * @returns {Promise<DialogFinishDetail>}
  */
 export function showDialog(tagName, configure) {
     return new Promise((resolve) => {
@@ -254,8 +257,8 @@ export function showDialog(tagName, configure) {
 
         el.addEventListener(
             "gs-dialog-finished",
-            (/** @type {any} */ e) => {
-                resolve(/** @type {DialogFinishEvent} */ (e));
+            (/** @type {CustomEvent<DialogFinishDetail>} */ e) => {
+                resolve(e.detail);
             },
             { once: true }
         );
