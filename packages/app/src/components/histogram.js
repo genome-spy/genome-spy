@@ -1,10 +1,125 @@
-import { LitElement, html, nothing } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { bin } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import clientPoint from "@genome-spy/core/utils/point.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
+
+const histogramStyles = css`
+    .histogram-widget {
+        position: relative;
+
+        --grid-color: #333;
+        --background-color: #f0f0f0;
+    }
+
+    .histogram-plot {
+        position: relative;
+    }
+
+    .histogram-bars {
+        position: relative;
+        height: 4em;
+        background-color: var(--background-color);
+
+        border-top-left-radius: 0.25em;
+        border-top-right-radius: 0.25em;
+        overflow: hidden;
+
+        > div {
+            position: absolute;
+            background-color: #808080;
+        }
+    }
+
+    .histogram-thresholds {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        top: 0;
+    }
+
+    .histogram-threshold {
+        position: absolute;
+        width: 1px;
+        height: 100%;
+        background-color: black;
+    }
+
+    .histogram-knob {
+        --size: 1.2em;
+        position: absolute;
+        top: calc(var(--size) * -0.5);
+        left: calc(0.5px - var(--size) * 0.5);
+        width: var(--size);
+        height: var(--size);
+        border-radius: var(--size);
+
+        background: black;
+        color: white;
+
+        font-size: 80%;
+        text-align: center;
+        vertical-align: middle;
+
+        cursor: col-resize;
+    }
+
+    .histogram-domain {
+        position: absolute;
+        width: 100%;
+
+        height: 0.5em;
+
+        border: 1px solid var(--grid-color);
+        border-bottom-style: none;
+    }
+
+    .histogram-extent {
+        display: flex;
+        justify-content: space-between;
+
+        font-size: 90%;
+
+        > div {
+            margin: 0.1em 0.3em;
+            margin-bottom: 0;
+        }
+    }
+
+    .histogram-hint {
+        position: absolute;
+        inset: 0;
+        font-size: 85%;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        pointer-events: none;
+
+        opacity: 0;
+        transition: opacity 0.3s;
+
+        &.visible {
+            opacity: 1;
+        }
+
+        span {
+            position: relative;
+            top: -30%;
+
+            background-color: color-mix(
+                in srgb,
+                var(--background-color) 70%,
+                transparent
+            );
+            color: #333;
+            cursor: default;
+        }
+    }
+`;
 
 class Histogram extends LitElement {
     static properties = {
@@ -14,6 +129,8 @@ class Histogram extends LitElement {
         colors: { attribute: false },
         showThresholdNumbers: {},
     };
+
+    static styles = histogramStyles;
 
     #bin;
 
@@ -47,14 +164,6 @@ class Histogram extends LitElement {
         this.#bin = bin().thresholds(40);
         this.#bins = this.#bin([]);
         this.#scale = scaleLinear();
-    }
-
-    connectedCallback() {
-        super.connectedCallback();
-    }
-
-    createRenderRoot() {
-        return this;
     }
 
     /**

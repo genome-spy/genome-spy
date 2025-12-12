@@ -6,7 +6,6 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "./baseDialog.js";
-import { faStyles } from "../componentStyles.js";
 import { createInputListener } from "./saveImageDialog.js";
 import { showMessageDialog } from "./messageDialog.js";
 
@@ -30,7 +29,6 @@ export default class EnterBookmarkDialog extends BaseDialog {
 
     static styles = [
         ...super.styles,
-        faStyles,
         css`
             dialog {
                 width: 500px;

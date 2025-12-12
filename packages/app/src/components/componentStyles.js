@@ -9,6 +9,7 @@ export const formStyles = css`
         --form-control-color: #212529;
         --form-control-border-color: #ced4da;
         --form-control-border: 1px solid var(--form-control-border-color);
+        --form-control-border-radius: 0.25em;
     }
 
     .btn {
@@ -124,7 +125,7 @@ export const formStyles = css`
             background-color: #fff;
             background-clip: padding-box;
             border: var(--form-control-border);
-            border-radius: 0.25em;
+            border-radius: var(--form-control-border-radius);
             transition:
                 border-color 0.15s ease-in-out,
                 box-shadow 0.15s ease-in-out;

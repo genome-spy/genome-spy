@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from "lit";
-import { formStyles } from "../componentStyles.js";
+import { faStyles, formStyles } from "../componentStyles.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /**
@@ -23,6 +23,7 @@ export default class BaseDialog extends LitElement {
 
     static styles = [
         formStyles,
+        faStyles,
         css`
             dialog {
                 font-family: var(--gs-font-family, sans-serif);

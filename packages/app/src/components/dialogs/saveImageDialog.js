@@ -6,7 +6,6 @@ import {
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog from "./baseDialog.js";
-import { faStyles } from "../componentStyles.js";
 
 const instructions = html`
     <div class="gs-alert info" style="max-width: 500px">
@@ -55,7 +54,7 @@ export default class SaveImageDialog extends BaseDialog {
         backgroundColor: { type: String },
     };
 
-    static styles = [...super.styles, faStyles];
+    static styles = [...super.styles];
 
     constructor() {
         super();
