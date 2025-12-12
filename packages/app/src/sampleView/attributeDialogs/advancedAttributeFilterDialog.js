@@ -297,12 +297,10 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
     }
 }
 
-if (!customElements.get("gs-discrete-attribute-filter-dialog")) {
-    customElements.define(
-        "gs-discrete-attribute-filter-dialog",
-        DiscreteAttributeFilterDialog
-    );
-}
+customElements.define(
+    "gs-discrete-attribute-filter-dialog",
+    DiscreteAttributeFilterDialog
+);
 
 class QuantitativeAttributeFilterDialog extends BaseDialog {
     static properties = {
@@ -433,12 +431,10 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
     }
 }
 
-if (!customElements.get("gs-quantitative-attribute-filter-dialog")) {
-    customElements.define(
-        "gs-quantitative-attribute-filter-dialog",
-        QuantitativeAttributeFilterDialog
-    );
-}
+customElements.define(
+    "gs-quantitative-attribute-filter-dialog",
+    QuantitativeAttributeFilterDialog
+);
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
