@@ -8,7 +8,7 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../utils/ui/dropdown.js";
-import { messageBox } from "../utils/ui/modal.js";
+import { showMessageDialog } from "./dialogs/messageDialog.js";
 import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu.js";
 import { queryDependency } from "../utils/dependency.js";
 import { restoreBookmarkAndShowInfoBox } from "../bookmark/bookmark.js";
@@ -102,7 +102,9 @@ class BookmarkButton extends LitElement {
                 await bookmarkDatabase.put(bookmark, existingBookmark?.name);
                 this.requestUpdate();
             } catch (error) {
-                messageBox(`${error}`, { title: "Cannot save the bookmark!" });
+                showMessageDialog(`${error}`, {
+                    title: "Cannot save the bookmark!",
+                });
             }
         }
     }
@@ -132,10 +134,13 @@ class BookmarkButton extends LitElement {
         const opener = /** @type {HTMLElement} */ (event.target).closest("li");
 
         const deleteCallback = () =>
-            messageBox(html`The bookmark <em>${name}</em> will be deleted.`, {
-                title: "Are you sure?",
-                cancelButton: true,
-            }).then(async (confirmed) => {
+            showMessageDialog(
+                html`The bookmark <em>${name}</em> will be deleted.`,
+                {
+                    title: "Are you sure?",
+                    confirm: true,
+                }
+            ).then(async (confirmed) => {
                 if (confirmed) {
                     await bookmarkDatabase.delete(name);
                     this.requestUpdate();

@@ -266,64 +266,6 @@ $basic-spacing: generic.$basic-spacing;
     }
 }
 
-.group-arbitrarily-form {
-    span.na {
-        color: gray;
-        font-style: italic;
-        font-size: 90%;
-    }
-
-    span.color {
-        display: inline-block;
-        width: 0.7em;
-        height: 1em;
-        margin-right: 0.7em;
-    }
-
-    div.table {
-        color: generic.$form-control-color;
-        border: generic.$form-control-border;
-        border-radius: 0.25em;
-        overflow-x: auto;
-        max-height: 20em;
-
-        padding: 0.375em 0.75em;
-        padding-top: 0;
-
-        margin: 0;
-
-        table {
-            position: relative;
-            border-collapse: collapse;
-        }
-
-        td:first-child {
-            padding-right: 0.7em;
-        }
-
-        th {
-            text-align: left;
-            background: white;
-            background: linear-gradient(
-                rgba(255, 255, 255, 1) 0%,
-                rgba(253, 253, 255, 1) 90%,
-                rgba(255, 255, 255, 0) 100%
-            );
-
-            position: sticky;
-            top: 0;
-
-            padding-top: 0.55em;
-            padding-bottom: 0.375em;
-        }
-    }
-
-    &.gs-form-group select {
-        padding-top: 0.1em;
-        padding-bottom: 0.1em;
-    }
-}
-
 .gs-suppress-tooltip .genome-spy .tooltip {
     display: none;
 }

@@ -203,25 +203,40 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     renderButtons() {
-        return [this.makeButton("Close", () => this.onCloseButtonClick())];
+        return [this.makeCloseButton()];
     }
 
     /**
+     * Creates a button for the dialog footer.
+     * The dialog is closed automatically unless the callback returns a truthy value.
+     *
      * @param {string} title
-     * @param {() => void} callback
+     * @param {(() => boolean) | (() => void)} callback If returns truthy value, dialog closing is canceled
      * @param {import("@fortawesome/fontawesome-svg-core").IconDefinition} [iconDef]
+
+     * @protected
      */
     makeButton(title, callback, iconDef) {
         return html`<button
             class="btn"
+            type="button"
             title=${title}
-            @click=${() => {
-                callback();
-                this.triggerClose();
+            @click=${async () => {
+                const cancelClose = !!(await callback());
+                if (!cancelClose) {
+                    this.triggerClose();
+                }
             }}
         >
             ${iconDef ? icon(iconDef).node[0] : nothing} ${title}
         </button>`;
+    }
+
+    /**
+     * @protected
+     */
+    makeCloseButton(label = "Close") {
+        return this.makeButton(label, () => this.onCloseButtonClick());
     }
 
     render() {

@@ -27,18 +27,18 @@ export default class MessageDialog extends BaseDialog {
     static styles = [
         ...super.styles,
         css`
-            section {
+            .message-flex {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
-                gap: 15px;
-                padding: 20px;
+                gap: calc(var(--gs-basic-spacing) * 2);
+                padding: var(--gs-basic-spacing);
                 box-sizing: border-box;
                 max-width: 400px;
             }
 
-            .icon {
-                width: 2.5em;
+            .icon svg {
+                height: 3em;
             }
         `,
     ];
@@ -54,11 +54,11 @@ export default class MessageDialog extends BaseDialog {
     renderButtons() {
         if (this.confirm) {
             return [
+                this.makeCloseButton("Cancel"),
                 this.makeButton("OK", () => {
                     this.finish({ ok: true });
                     this.triggerClose();
                 }),
-                this.makeButton("Cancel", () => this.onCloseButtonClick()),
             ];
         } else {
             return super.renderButtons();
@@ -66,12 +66,17 @@ export default class MessageDialog extends BaseDialog {
     }
 
     renderBody() {
-        const iconDef = icons[this.type];
-
-        return html`${iconDef
-                ? html`<div class="icon">${icon(iconDef).node[0]}</div>`
-                : nothing}
-            <div class="message-content">${this.message}</div>`;
+        if (this.type) {
+            const iconDef = icons[this.type];
+            return html`<div class="message-flex">
+                ${iconDef
+                    ? html`<div class="icon">${icon(iconDef).node[0]}</div>`
+                    : nothing}
+                <div class="message">${this.message}</div>
+            </div>`;
+        } else {
+            return html`${this.message}`;
+        }
     }
 }
 
@@ -82,6 +87,7 @@ customElements.define("gs-message-dialog", MessageDialog);
  * @property {string | import("lit").TemplateResult} [title]
  * @property {"warning" | "error" | "info"} [type]
  * @property {boolean} [confirm] If true, shows OK and Cancel buttons
+ * @property {import("lit").TemplateResult<any>[]} [customButtons] Custom buttons to show instead of default ones
  */
 /**
  *

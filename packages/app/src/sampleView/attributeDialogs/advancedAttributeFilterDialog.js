@@ -8,7 +8,7 @@ import { css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
-import { messageBox } from "../../utils/ui/modal.js";
+import { showMessageDialog } from "../../components/dialogs/messageDialog.js";
 import { classMap } from "lit/directives/class-map.js";
 import "../../components/histogram.js";
 import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
@@ -458,7 +458,7 @@ export function advancedAttributeFilterDialog(attribute, sampleView) {
     } else if (attribute.type === "identifier") {
         identifierAttributeFilterDialog(attribute, sampleView);
     } else {
-        messageBox("Not implemented (yet).");
+        showMessageDialog("Not implemented (yet).");
     }
 }
 
