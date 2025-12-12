@@ -385,7 +385,7 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
                 )}
             </div>
 
-            <genome-spy-histogram
+            <gs-histogram
                 .values=${values}
                 .thresholds=${[this.operand].filter((o) => o !== undefined)}
                 .operators=${[this.operator]}
@@ -397,7 +397,7 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
                 @adjust=${(
                     /** @type {import("../../components/histogram.js").ThresholdEvent} */ e
                 ) => this.#thresholdAdjusted(e)}
-            ></genome-spy-histogram>
+            ></gs-histogram>
 
             <input
                 autofocus

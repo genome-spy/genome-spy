@@ -1,8 +1,8 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { html, nothing, render } from "lit";
+import { css, html, nothing } from "lit";
 import { defaultScheme } from "../../components/histogram.js";
-import { createModal } from "../../utils/ui/modal.js";
+import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
 import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
@@ -10,136 +10,164 @@ import {
 
 /**
  * @param {import("../types.js").AttributeInfo} attributeInfo
- * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("../sampleView.js").default} sampleView
  */
-export default function groupByThresholdsDialog(attributeInfo, sampleView) {
-    /** @type {import("../state/payloadTypes.js").Threshold[]} */
-    const thresholds = [];
+class GroupByThresholdsDialog extends BaseDialog {
+    /**
+     * @typedef {import("../../components/histogram.js").ThresholdEvent} ThresholdEvent
+     */
 
-    const modal = createModal();
-
-    const templateTitle = html`
-        <div class="modal-title">
-            Group by threshold on <em>${attributeInfo.name}</em>
-        </div>
-    `;
-
-    const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        sampleView.dispatchAttributeAction(
-            sampleView.actions.groupByThresholds({
-                attribute: attributeInfo.attribute,
-                thresholds,
-            })
-        );
-        modal.close();
+    /**
+     */
+    static properties = {
+        ...super.properties,
+        attributeInfo: {},
+        sampleView: {},
+        thresholds: {},
+        values: {},
     };
 
-    const templateButtons = () =>
-        html` <div class="modal-buttons">
-            <button class="btn btn-cancel" @click=${() => modal.close()}>
-                Cancel
-            </button>
+    static styles = [
+        ...super.styles,
+        css`
+            .group-by-thresholds-form {
+                width: 25em;
+            }
 
-            <button
-                class="btn btn-primary"
-                ?disabled=${!validateThresholds(thresholds)}
-                @click=${() => dispatchAndClose(false)}
-            >
-                ${icon(faObjectGroup).node[0]} Group
-            </button>
-        </div>`;
+            .group-color {
+                display: inline-block;
+                width: 0.7em;
+                height: 0.7em;
+            }
 
-    const clampThreshold = (
-        /** @type {number} */ value,
-        /** @type {number} */ index
-    ) => {
-        // TODO: This check could be moved to the Histogram component
-        if (index > 0) {
-            value = Math.max(value, thresholds[index - 1].operand);
+            .threshold-groups {
+                margin-top: var(--gs-basic-spacing);
+
+                text-align: left;
+                font-size: 90%;
+
+                :is(th, td) {
+                    padding-right: 1em;
+
+                    &:nth-child(2) {
+                        min-width: 9em;
+                    }
+                }
+            }
+
+            gs-histogram {
+                margin-top: var(--gs-basic-spacing, 10px);
+                margin-bottom: var(--gs-basic-spacing, 10px);
+            }
+        `,
+    ];
+
+    constructor() {
+        super();
+        /** @type {import("../state/payloadTypes.js").Threshold[]} */
+        this.thresholds = [];
+        /** @type {import("../types.js").AttributeInfo} */
+        this.attributeInfo = null;
+        /** @type {import("../sampleView.js").default} */
+        this.sampleView = null;
+        /** @type {number[]} */
+        this.values = [];
+    }
+
+    /** @param {Map<string, any>} changed */
+    willUpdate(changed) {
+        if (changed.has("attributeInfo") && this.attributeInfo) {
+            this.dialogTitle = `Group by threshold on ${this.attributeInfo.name}`;
         }
-        if (index < thresholds.length - 1) {
-            value = Math.min(value, thresholds[index + 1].operand);
+    }
+
+    /** @param {number} value @param {number} index */
+    #clampThreshold(value, index) {
+        if (index > 0) {
+            value = Math.max(value, this.thresholds[index - 1].operand);
+        }
+        if (index < this.thresholds.length - 1) {
+            value = Math.min(value, this.thresholds[index + 1].operand);
         }
         return value;
-    };
+    }
 
-    const operatorChanged = (
-        /** @type {UIEvent} */ event,
-        /** @type {number} */ index
-    ) => {
-        const value = /** @type {HTMLInputElement} */ (event.target).value;
-        thresholds[index].operator =
+    /**
+     * @param {Event} e
+     * @param {number} index
+     */
+    #operatorChanged(e, index) {
+        const value = /** @type {HTMLInputElement} */ (e.target).value;
+        this.thresholds[index].operator =
             /** @type {import("../state/payloadTypes.js").ThresholdOperator} */ (
                 value
             );
+        this.requestUpdate();
+    }
 
-        updateHtml();
-    };
-
-    const operandChanged = (
-        /** @type {UIEvent} */ event,
-        /** @type {number} */ index
-    ) => {
-        const value = /** @type {HTMLInputElement} */ (event.target).value;
+    /**
+     * @param {Event} e
+     * @param {number} index
+     */
+    #operandChanged(e, index) {
+        const value = /** @type {HTMLInputElement} */ (e.target).value;
         if (/^\d+(\.\d+)?$/.test(value)) {
-            thresholds[index].operand = clampThreshold(+value, index);
-            updateHtml();
+            this.thresholds[index].operand = this.#clampThreshold(
+                +value,
+                index
+            );
+            this.requestUpdate();
         }
-    };
+    }
 
-    const thresholdAdded = (
-        /** @type {import("../../components/histogram.js").ThresholdEvent}*/ event
-    ) => {
-        const index = thresholds.findIndex((t) => t.operand > event.value);
-
-        thresholds.splice(index < 0 ? thresholds.length : index, 0, {
-            operand: event.value,
-            operator: "lt",
+    /**
+     * @param {ThresholdEvent} e
+     */
+    #thresholdAdded(e) {
+        const index = this.thresholds.findIndex((t) => t.operand > e.value);
+        this.thresholds.splice(index < 0 ? this.thresholds.length : index, 0, {
+            operand: e.value,
+            operator:
+                /** @type {import("../state/payloadTypes.js").ThresholdOperator} */ (
+                    "lt"
+                ),
         });
-        updateHtml();
-    };
+        this.requestUpdate();
+    }
 
-    const thresholdAdjusted = (
-        /** @type {import("../../components/histogram.js").ThresholdEvent}*/ event
-    ) => {
-        thresholds[event.index].operand = clampThreshold(
-            event.value,
-            event.index
+    /**
+     * @param {ThresholdEvent} e
+     */
+    #thresholdAdjusted(e) {
+        this.thresholds[e.index].operand = this.#clampThreshold(
+            e.value,
+            e.index
         );
-        updateHtml();
-    };
+        this.requestUpdate();
+    }
 
-    const removeThreshold = (/** @type {number} */ index) => {
-        thresholds.splice(index, 1);
-        updateHtml();
-    };
+    /**
+     * @param {number} index
+     */
+    #removeThreshold(index) {
+        this.thresholds.splice(index, 1);
+        this.requestUpdate();
+    }
 
-    const values = extractValues(
-        attributeInfo,
-        sampleView.leafSamples,
-        sampleView.sampleHierarchy
-    );
-
-    function updateHtml() {
+    renderBody() {
         const makeTable = () => {
             /** @type {import("../state/payloadTypes.js").Threshold[]} */
             const t = [
                 { operand: -Infinity, operator: "lt" },
-                ...thresholds,
+                ...this.thresholds,
                 { operand: Infinity, operator: "lte" },
             ];
-
-            const a = createThresholdGroupAccessor((x) => x, t);
-            /** @type {number[]} */
-            const groupSizes = [];
-            for (let i = 1; i < t.length; i++) {
-                groupSizes.push(0);
-            }
-
-            for (const value of values) {
-                groupSizes[a(value) - 1]++;
-            }
-
+            const a = createThresholdGroupAccessor(
+                (x) => x,
+                /** @type {any} */ (t)
+            );
+            const groupSizes = new Array(t.length - 1).fill(0);
+            for (const value of this.values) groupSizes[a(value) - 1]++;
             const groups = [];
             for (let i = 1; i < t.length; i++) {
                 groups.push({
@@ -177,84 +205,111 @@ export default function groupByThresholdsDialog(attributeInfo, sampleView) {
                         `
                     )}
                 </tbody>
-            </table> `;
+            </table>`;
         };
 
-        const template = html`
-            <div class="gs-form-group group-by-thresholds-form">
-                <label>Split into groups using the thresholds:</label>
+        return html`<div class="gs-form-group group-by-thresholds-form">
+            <label>Split into groups using the thresholds:</label>
 
-                <genome-spy-histogram
-                    .values=${values}
-                    .thresholds=${thresholds.map((t) => t.operand)}
-                    .operators=${thresholds.map((t) => t.operator)}
-                    .showThresholdNumbers=${true}
-                    @add=${thresholdAdded}
-                    @adjust=${thresholdAdjusted}
-                ></genome-spy-histogram>
+            <gs-histogram
+                .values=${this.values}
+                .thresholds=${this.thresholds.map((t) => t.operand)}
+                .operators=${this.thresholds.map((t) => t.operator)}
+                .showThresholdNumbers=${true}
+                @add=${(/** @type {ThresholdEvent} */ e) =>
+                    this.#thresholdAdded(e)}
+                @adjust=${(/** @type {ThresholdEvent} */ e) =>
+                    this.#thresholdAdjusted(e)}
+            ></gs-histogram>
 
-                ${thresholds.map(
-                    (threshold, i) =>
-                        html` <div class="threshold-flex">
-                            <select
-                                .value=${threshold.operator}
-                                @change=${(/** @type {InputEvent} */ event) =>
-                                    operatorChanged(event, i)}
-                            >
-                                <option value="lt">${"<"}</option>
-                                <option value="lte">${"\u2264"}</option>
-                            </select>
-                            <input
-                                .value=${"" + threshold.operand}
-                                type="text"
-                                placeholder="Numeric value"
-                                @input=${(/** @type {InputEvent} */ event) =>
-                                    operandChanged(event, i)}
-                                @blur=${(/** @type {InputEvent} */ event) => {
-                                    /** @type {HTMLInputElement} */ (
-                                        event.target
-                                    ).value = "" + thresholds[i].operand;
-                                }}
-                            />
-                            <button
-                                @click=${() => removeThreshold(i)}
-                                class="btn"
-                                title="Remove"
-                            >
-                                ${icon(faTrash).node[0]}
-                            </button>
-                        </div>`
-                )}
-                ${thresholds.length
-                    ? html`<small>
-                              The operator specifies whether the upper endpoint
-                              of the interval (<em>i.e.</em>, the group) is
-                              exclusive (&lt;) or inclusive(&le;).
-                          </small>
-                          ${makeTable()}`
-                    : nothing}
-            </div>
-        `;
-
-        render(
-            html`${templateTitle}
-                <div class="modal-body">${template}</div>
-                ${templateButtons()}`,
-            modal.content
-        );
+            ${this.thresholds.map(
+                (threshold, i) =>
+                    html` <div class="threshold-flex">
+                        <select
+                            .value=${threshold.operator}
+                            @change=${(/** @type {InputEvent} */ event) =>
+                                this.#operatorChanged(event, i)}
+                        >
+                            <option value="lt">${"<"}</option>
+                            <option value="lte">${"\u2264"}</option>
+                        </select>
+                        <input
+                            .value=${"" + threshold.operand}
+                            type="text"
+                            placeholder="Numeric value"
+                            @input=${(/** @type {InputEvent} */ event) =>
+                                this.#operandChanged(event, i)}
+                            @blur=${(/** @type {InputEvent} */ event) => {
+                                /** @type {HTMLInputElement} */ (
+                                    event.target
+                                ).value = "" + this.thresholds[i].operand;
+                            }}
+                        />
+                        <button
+                            @click=${() => this.#removeThreshold(i)}
+                            class="btn"
+                            title="Remove"
+                        >
+                            ${icon(faTrash).node[0]}
+                        </button>
+                    </div>`
+            )}
+            ${this.thresholds.length
+                ? html`<small>
+                          The operator specifies whether the upper endpoint of
+                          the interval (<em>i.e.</em>, the group) is exclusive
+                          (&lt;) or inclusive(&le;).
+                      </small>
+                      ${makeTable()}`
+                : nothing}
+        </div>`;
     }
 
-    updateHtml();
+    renderButtons() {
+        return [
+            this.makeButton("Cancel", () => this.finish({ ok: false })),
+            this.makeButton("Group", () => this.#onGroup(), faObjectGroup),
+        ];
+    }
+
+    #onGroup() {
+        this.sampleView.dispatchAttributeAction(
+            this.sampleView.actions.groupByThresholds({
+                attribute: this.attributeInfo.attribute,
+                thresholds: this.thresholds,
+            })
+        );
+        this.finish({ ok: true });
+    }
+}
+
+customElements.define("gs-group-by-thresholds-dialog", GroupByThresholdsDialog);
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView
+ */
+export function showGroupByThresholdsDialog(attributeInfo, sampleView) {
+    return showDialog(
+        "gs-group-by-thresholds-dialog",
+        (/** @type {any} */ el) => {
+            el.thresholds =
+                /** @type {import("../state/payloadTypes.js").Threshold[]} */ ([]);
+            el.attributeInfo = attributeInfo;
+            el.sampleView = sampleView;
+            el.values = extractValues(
+                attributeInfo,
+                sampleView.leafSamples,
+                sampleView.sampleHierarchy
+            );
+        }
+    );
 }
 
 /**
  *
  * @param {import("../state/payloadTypes.js").Threshold[]} thresholds
  */
-function validateThresholds(thresholds) {
-    // TODO: Check that the order is valid
-    return thresholds.length;
-}
 
 /**
  * Extract values for histogram

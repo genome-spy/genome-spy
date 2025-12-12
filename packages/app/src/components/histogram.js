@@ -391,7 +391,7 @@ class Histogram extends LitElement {
     }
 }
 
-customElements.define("genome-spy-histogram", Histogram);
+customElements.define("gs-histogram", Histogram);
 
 export class ThresholdEvent extends Event {
     /**
