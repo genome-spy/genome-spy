@@ -173,6 +173,7 @@ export default class BaseDialog extends LitElement {
      */
     onCloseButtonClick() {
         if ("requestClose" in this.#dialog) {
+            // @ts-ignore -- requestClose is not yet in the types
             this.#dialog.requestClose();
         } else {
             this.finish({ ok: false, reason: "cancel" });
