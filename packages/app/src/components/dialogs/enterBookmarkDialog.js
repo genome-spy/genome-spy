@@ -141,7 +141,7 @@ export default class EnterBookmarkDialog extends BaseDialog {
 
         if (mode != "share" && !bookmark.name) {
             await showMessageDialog("Name is missing!", { type: "warning" });
-            return;
+            return true;
         }
 
         let ok = true;
@@ -168,7 +168,8 @@ export default class EnterBookmarkDialog extends BaseDialog {
 
         if (ok) {
             this.finish({ ok: true });
-            this.triggerClose();
+        } else {
+            return true;
         }
     }
 }
