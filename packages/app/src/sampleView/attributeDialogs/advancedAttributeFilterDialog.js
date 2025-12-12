@@ -4,13 +4,437 @@ import {
     faFilter,
     faTrashAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { html, nothing, render } from "lit";
+import { css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
-import { createModal, messageBox } from "../../utils/ui/modal.js";
+import { showMessageDialog } from "../../components/dialogs/messageDialog.js";
 import { classMap } from "lit/directives/class-map.js";
 import "../../components/histogram.js";
+import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
+import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
+
+const checkboxListStyles = css`
+    .gs-checkbox-list-wrapper {
+        position: relative;
+
+        .search-note {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            justify-content: center;
+            align-content: center;
+
+            color: #808080;
+            font-size: 85%;
+
+            pointer-events: none;
+
+            > * {
+                position: relative;
+                top: 0.7em;
+            }
+        }
+    }
+
+    .gs-checkbox-list {
+        color: var(--form-control-color);
+        border: var(--form-control-border);
+        border-radius: var(--form-control-border-radius);
+        overflow: auto;
+        max-height: 200px;
+        box-sizing: border-box;
+
+        padding: 0.375em 0.75em;
+
+        margin: 0;
+
+        .color {
+            display: inline-block;
+            width: 0.5em;
+            height: 1em;
+            margin-right: 0.4em;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        label.checkbox {
+            margin-bottom: 0;
+
+            &:hover {
+                background-color: #f4f4f4;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    }
+`;
+
+class DiscreteAttributeFilterDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        categories: {},
+        attributeInfo: {},
+        sampleView: {},
+        categoryToMarker: {},
+    };
+
+    static styles = [...super.styles, checkboxListStyles];
+
+    constructor() {
+        super();
+        /** @type {any[]} */
+        this.categories = [];
+        /** @type {any|null} */
+        this.attributeInfo = null;
+        /** @type {any|null} */
+        this.sampleView = null;
+        /** @type {(category: import("@genome-spy/core/utils/domainArray.js").scalar) => import("lit").TemplateResult} */
+        this.categoryToMarker = null;
+
+        this.selection = new Set();
+        this.search = "";
+    }
+
+    willUpdate(/** @type {Map<string, any>} */ changed) {
+        if (changed.has("attributeInfo")) {
+            this.dialogTitle = `Filter by ${this.attributeInfo.name}`;
+        }
+    }
+
+    getFilteredCategories() {
+        return this.categories.filter(
+            (category) =>
+                this.search.length == 0 ||
+                category.lowerCaseValue.includes(this.search)
+        );
+    }
+
+    /** @param {HTMLInputElement} input */
+    #onSearchInput(input) {
+        this.search = input.value.toLowerCase();
+        this.requestUpdate();
+    }
+
+    /** @param {Event} event */
+    #onChecked(event) {
+        const checkbox = /** @type {HTMLInputElement} */ (event.target);
+        const category = this.categories[+checkbox.value].value;
+        if (checkbox.checked) {
+            this.selection.add(category);
+        } else {
+            this.selection.delete(category);
+        }
+        this.requestUpdate();
+    }
+
+    /** @param {KeyboardEvent} e */
+    #handleSearchKeyDown(e) {
+        if (e.key == "ArrowDown") {
+            const el = /** @type {HTMLInputElement} */ (
+                this.renderRoot.querySelector(
+                    ".gs-checkbox-list li:first-child input[type='checkbox']"
+                )
+            );
+            el?.focus();
+            e.preventDefault();
+            e.stopPropagation();
+        } else if (e.key == "Enter") {
+            const cats = this.getFilteredCategories();
+            if (cats.length == 1) {
+                this.selection.add(cats[0].value);
+                this.requestUpdate();
+            }
+            e.stopPropagation();
+        }
+    }
+
+    /** @param {KeyboardEvent} event */
+    #handleCheckboxKeyDown(event) {
+        const element = /** @type {HTMLInputElement} */ (event.target);
+        if (element.type != "checkbox") return;
+
+        if (event.key == "ArrowDown") {
+            const next = /** @type {HTMLInputElement} */ (
+                element
+                    .closest("li")
+                    .nextElementSibling?.querySelector("input[type='checkbox']")
+            );
+            next?.focus();
+            event.preventDefault();
+        } else if (event.key == "ArrowUp") {
+            const previous = /** @type {HTMLInputElement} */ (
+                element
+                    .closest("li")
+                    .previousElementSibling?.querySelector(
+                        "input[type='checkbox']"
+                    )
+            );
+            if (previous) previous.focus();
+            else this.#focusSearch();
+            event.preventDefault();
+        } else if (event.key == "Esc") {
+            this.#focusSearch();
+            event.stopPropagation();
+        } else if (event.key == "Tab" && !event.shiftKey) {
+            const last = /** @type {HTMLInputElement} */ (
+                this.renderRoot.querySelector(
+                    ".gs-checkbox-list li:last-child input"
+                )
+            );
+            last?.focus();
+        } else if (event.key == "Tab" && event.shiftKey) {
+            const first = /** @type {HTMLInputElement} */ (
+                this.renderRoot.querySelector(
+                    ".gs-checkbox-list li:first-child input"
+                )
+            );
+            first?.focus();
+        }
+    }
+
+    #focusSearch() {
+        const el = /** @type {HTMLInputElement} */ (
+            this.renderRoot.querySelector("input[type='text']")
+        );
+        el?.focus();
+    }
+
+    renderBody() {
+        const filteredCats = this.getFilteredCategories();
+        return html`<div class="gs-form-group">
+            <p>Select one or more categories and choose an action.</p>
+            <input
+                autofocus
+                type="text"
+                placeholder="Type something to filter the list"
+                @keydown=${(/** @type {KeyboardEvent} */ e) =>
+                    this.#handleSearchKeyDown(e)}
+                @input=${createInputListener((input) =>
+                    this.#onSearchInput(input)
+                )}
+            />
+            <div class="gs-checkbox-list-wrapper">
+                <ul
+                    class="gs-checkbox-list"
+                    @input=${(/** @type {Event} */ e) => this.#onChecked(e)}
+                    @keydown=${(/** @type {KeyboardEvent} */ e) =>
+                        this.#handleCheckboxKeyDown(e)}
+                >
+                    ${repeat(
+                        filteredCats,
+                        (category) => category.value,
+                        (category) =>
+                            html`<li>
+                                <label class="checkbox">
+                                    ${this.categoryToMarker
+                                        ? this.categoryToMarker(category.value)
+                                        : nothing}
+                                    <input
+                                        type="checkbox"
+                                        .checked=${this.selection.has(
+                                            category.value
+                                        )}
+                                        .value=${"" + category.index}
+                                    />
+                                    ${category.stringValue}
+                                </label>
+                            </li>`
+                    )}
+                </ul>
+                ${filteredCats.length == 0
+                    ? html`<div class="search-note">
+                          <div>Nothing found</div>
+                      </div>`
+                    : filteredCats.length == 1 && this.categories.length > 1
+                      ? html`<div class="search-note">
+                            <div>
+                                ${icon(faArrowUp).node[0]} Hit enter to select
+                                the exact match
+                            </div>
+                        </div>`
+                      : nothing}
+            </div>
+            <small>
+                The number of selected categories:
+                <strong>${this.selection.size}</strong>
+            </small>
+        </div>`;
+    }
+
+    renderButtons() {
+        return [
+            this.makeButton("Cancel", () => this.finish({ ok: false })),
+            this.makeButton("Retain", () => this.#onRetain(false), faFilter),
+            this.makeButton("Remove", () => this.#onRetain(true), faTrashAlt),
+        ];
+    }
+
+    updated() {
+        // Prevent the checkbox list from changing size (to smaller) when filtering
+        const checkboxList = /** @type {HTMLElement} */ (
+            this.renderRoot.querySelector(".gs-checkbox-list")
+        );
+        checkboxList.style.minHeight = `${checkboxList.offsetHeight}px`;
+    }
+
+    /** @param {boolean} remove */
+    #onRetain(remove) {
+        this.sampleView.dispatchAttributeAction(
+            this.sampleView.actions.filterByNominal({
+                values: this.categories
+                    .map((c) => c.value)
+                    .filter((value) => this.selection.has(value)),
+                attribute: this.attributeInfo.attribute,
+                remove,
+            })
+        );
+        this.finish({ ok: true });
+    }
+}
+
+customElements.define(
+    "gs-discrete-attribute-filter-dialog",
+    DiscreteAttributeFilterDialog
+);
+
+class QuantitativeAttributeFilterDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        attributeInfo: {},
+        sampleView: {},
+        operator: {},
+        operand: {},
+    };
+
+    constructor() {
+        super();
+        /** @type {import("../types.js").AttributeInfo} */
+        this.attributeInfo = null;
+        /** @type {import("../sampleView.js").default} */
+        this.sampleView = null;
+        this.operator = "lt";
+        /** @type {number} */
+        this.operand = undefined;
+    }
+
+    willUpdate(/** @type {Map<string, any>} */ changed) {
+        if (changed.has("attributeInfo")) {
+            this.dialogTitle = `Filter by ${this.attributeInfo.name}`;
+        }
+    }
+
+    /** @param {Event} e */
+    #operatorChanged(e) {
+        const value = /** @type {HTMLInputElement} */ (e.target).value;
+        this.operator = /** @type {ComparisonOperatorType} */ (value);
+    }
+
+    /** @param {HTMLInputElement} input */
+    #operandChanged(input) {
+        const value = input.value;
+        if (/^\d+(\.(\d+)?)?$/.test(value)) {
+            this.operand = +value;
+        }
+    }
+
+    /** @param {import("../../components/histogram.js").ThresholdEvent} e */
+    #thresholdAdded(e) {
+        const val = /** @type {any} */ (e).detail?.value ?? e.value;
+        if (typeof this.operand !== "number") this.operand = val;
+    }
+
+    /** @param {import("../../components/histogram.js").ThresholdEvent} e */
+    #thresholdAdjusted(e) {
+        this.operand = /** @type {any} */ (e).detail?.value ?? e.value;
+    }
+
+    renderBody() {
+        const values = extractValues(
+            this.attributeInfo,
+            this.sampleView.leafSamples,
+            this.sampleView.sampleHierarchy
+        );
+
+        return html`<div class="gs-form-group">
+            <label
+                >Retain samples where
+                <em>${this.attributeInfo.name}</em> is</label
+            >
+            <div class="btn-group" role="group" style="margin-bottom: 1em;">
+                ${Object.entries(verboseOps).map(
+                    ([k, v]) =>
+                        html`<button
+                            class=${classMap({
+                                btn: true,
+                                chosen: k == this.operator,
+                            })}
+                            .value=${k}
+                            @click=${(/** @type {Event} */ e) =>
+                                this.#operatorChanged(e)}
+                            title="${v[1]}"
+                        >
+                            ${v[0]}
+                        </button>`
+                )}
+            </div>
+
+            <gs-histogram
+                .values=${values}
+                .thresholds=${[this.operand].filter((o) => o !== undefined)}
+                .operators=${[this.operator]}
+                .colors=${["#1f77b4", "#ddd"]}
+                .showThresholdNumbers=${false}
+                @add=${(
+                    /** @type {import("../../components/histogram.js").ThresholdEvent} */ e
+                ) => this.#thresholdAdded(e)}
+                @adjust=${(
+                    /** @type {import("../../components/histogram.js").ThresholdEvent} */ e
+                ) => this.#thresholdAdjusted(e)}
+            ></gs-histogram>
+
+            <input
+                autofocus
+                type="text"
+                placeholder="... or enter a numeric value here"
+                style="margin-top: 0.5em"
+                .value=${typeof this.operand == "number"
+                    ? "" + this.operand
+                    : ""}
+                @input=${createInputListener((input) =>
+                    this.#operandChanged(input)
+                )}
+            />
+        </div>`;
+    }
+
+    renderButtons() {
+        return [
+            this.makeButton("Cancel", () => this.finish({ ok: false })),
+            this.makeButton("Retain", () => this.#onRetain(), faFilter),
+        ];
+    }
+
+    #onRetain() {
+        this.sampleView.dispatchAttributeAction(
+            this.sampleView.actions.filterByQuantitative({
+                attribute: this.attributeInfo.attribute,
+                operator: /** @type {ComparisonOperatorType} */ (this.operator),
+                operand: this.operand,
+            })
+        );
+        this.finish({ ok: true });
+    }
+}
+
+customElements.define(
+    "gs-quantitative-attribute-filter-dialog",
+    QuantitativeAttributeFilterDialog
+);
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
@@ -30,7 +454,7 @@ export function advancedAttributeFilterDialog(attribute, sampleView) {
     } else if (attribute.type === "identifier") {
         identifierAttributeFilterDialog(attribute, sampleView);
     } else {
-        messageBox("Not implemented (yet).");
+        showMessageDialog("Not implemented (yet).");
     }
 }
 
@@ -92,7 +516,6 @@ export function discreteAttributeFilterDialog(
         )
     );
 
-    // Use domain to maintain a consistent order
     const categoryObjects = categories
         .filter((value) => presentValues.has(value))
         .map((value, index) => ({
@@ -102,221 +525,15 @@ export function discreteAttributeFilterDialog(
             lowerCaseValue: `${value}`.toLowerCase(),
         }));
 
-    const modal = createModal();
-
-    const templateTitle = html`
-        <div class="modal-title">Filter by <em>${attributeInfo.name}</em></div>
-    `;
-
-    /** @type {Set<Scalar>} */
-    const selection = new Set();
-
-    /** Filter the listed categories */
-    let search = "";
-
-    const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        sampleView.dispatchAttributeAction(
-            sampleView.actions.filterByNominal({
-                // Sort the selection based on the domain. Otherwise they are in the selection order.
-                values: categories.filter((value) => selection.has(value)),
-                attribute: attributeInfo.attribute,
-                remove,
-            })
-        );
-        modal.close();
-    };
-
-    const getFilteredCategories = () =>
-        categoryObjects.filter(
-            (category) =>
-                search.length == 0 || category.lowerCaseValue.includes(search)
-        );
-
-    const updateSearch = (/** @type {InputEvent} */ event) => {
-        const input = /** @type {HTMLInputElement} */ (event.target);
-        search = input.value.toLowerCase();
-        updateHtml();
-    };
-
-    const updateChecked = (/** @type {InputEvent} */ event) => {
-        const checkbox = /** @type {HTMLInputElement} */ (event.target);
-        const category = categoryObjects[+checkbox.value].value;
-        if (checkbox.checked) {
-            selection.add(category);
-        } else {
-            selection.delete(category);
+    return showDialog(
+        "gs-discrete-attribute-filter-dialog",
+        (/** @type {any} */ el) => {
+            el.categories = categoryObjects;
+            el.attributeInfo = attributeInfo;
+            el.sampleView = sampleView;
+            el.categoryToMarker = categoryToMarker;
         }
-        updateHtml();
-    };
-
-    const handleSearchKeyDown = (/** @type {KeyboardEvent} */ event) => {
-        if (event.key == "ArrowDown") {
-            /** @type {HTMLInputElement} */ (
-                modal.content.querySelector(
-                    ".gs-checkbox-list li:first-child input[type='checkbox']"
-                )
-            )?.focus();
-            event.preventDefault();
-            event.stopPropagation();
-        } else if (event.key == "Enter") {
-            const categories = getFilteredCategories();
-            if (categories.length == 1) {
-                selection.add(categories[0].value);
-                updateHtml();
-            }
-            event.stopPropagation();
-        }
-    };
-
-    const focusSearch = () => {
-        /** @type {HTMLElement} */ (
-            modal.content.querySelector("input[type='text']")
-        ).focus();
-    };
-
-    const handleCheckboxKeyDown = (/** @type {KeyboardEvent} */ event) => {
-        const element = /** @type {HTMLInputElement} */ (event.target);
-
-        if (element.type != "checkbox") {
-            return;
-        }
-
-        if (event.key == "ArrowDown") {
-            /** @type {HTMLInputElement} */ (
-                element
-                    .closest("li")
-                    .nextElementSibling?.querySelector("input[type='checkbox']")
-            )?.focus();
-            event.preventDefault();
-        } else if (event.key == "ArrowUp") {
-            const previous = /** @type {HTMLInputElement} */ (
-                element
-                    .closest("li")
-                    .previousElementSibling?.querySelector(
-                        "input[type='checkbox']"
-                    )
-            );
-
-            if (previous) {
-                previous.focus();
-            } else {
-                focusSearch();
-            }
-            event.preventDefault();
-        } else if (event.key == "Esc") {
-            focusSearch();
-            event.stopPropagation();
-        } else if (event.key == "Tab" && !event.shiftKey) {
-            // Don't prevent default, let the browser move focus to the next focusable element
-            // after we have focused the last checkbox.
-            /** @type {HTMLInputElement} */ (
-                element
-                    .closest(".gs-checkbox-list")
-                    .querySelector("li:last-child input")
-            )?.focus();
-        } else if (event.key == "Tab" && event.shiftKey) {
-            /** @type {HTMLInputElement} */ (
-                element
-                    .closest(".gs-checkbox-list")
-                    .querySelector("li:first-child input")
-            )?.focus();
-        }
-    };
-
-    const templateButtons = () =>
-        html` <div class="modal-buttons">
-            <button class="btn btn-cancel" @click=${() => modal.close()}>
-                Cancel
-            </button>
-
-            <button
-                class="btn"
-                ?disabled=${!selection.size}
-                @click=${() => dispatchAndClose(false)}
-            >
-                ${icon(faFilter).node[0]} Retain
-            </button>
-            <button
-                class="btn"
-                ?disabled=${!selection.size}
-                @click=${() => dispatchAndClose(true)}
-            >
-                ${icon(faTrashAlt).node[0]} Remove
-            </button>
-        </div>`;
-
-    function updateHtml() {
-        const filteredCats = getFilteredCategories();
-
-        const template = html`<div class="gs-form-group">
-            <p>Please select one or more categories and choose an action.</p>
-            <input
-                type="text"
-                placeholder="Type something to filter the list"
-                @keydown=${handleSearchKeyDown}
-                @input=${updateSearch}
-            />
-            <div class="gs-checkbox-list-wrapper">
-                <ul
-                    class="gs-checkbox-list"
-                    @input=${updateChecked}
-                    @keydown=${handleCheckboxKeyDown}
-                >
-                    ${repeat(
-                        filteredCats,
-                        (category) => category.value,
-                        (category) =>
-                            html`<li>
-                                <label class="checkbox">
-                                    ${categoryToMarker(category.value)}
-                                    <input
-                                        type="checkbox"
-                                        .checked=${selection.has(
-                                            category.value
-                                        )}
-                                        .value=${"" + category.index}
-                                    />
-                                    ${category.stringValue}
-                                </label>
-                            </li>`
-                    )}
-                </ul>
-                ${filteredCats.length == 0
-                    ? html`<div class="search-note">
-                          <div>Nothing found</div>
-                      </div>`
-                    : // check length of (all) categories to ensure there's room for the label
-                      filteredCats.length == 1 && categoryObjects.length > 1
-                      ? html`<div class="search-note">
-                            <div>
-                                ${icon(faArrowUp).node[0]} Hit enter to select
-                                the exact match
-                            </div>
-                        </div>`
-                      : nothing}
-            </div>
-            <small>
-                The number of selected categories:
-                <strong>${selection.size}</strong>
-            </small>
-        </div>`;
-
-        render(
-            html`${templateTitle}
-                <div class="modal-body">${template}</div>
-                ${templateButtons()}`,
-            modal.content
-        );
-
-        // Ensure that checkbox list's height stays constant when the list is filtered
-        const checkboxList = /** @type {HTMLElement} */ (
-            modal.content.querySelector(".gs-checkbox-list")
-        );
-        checkboxList.style.minHeight = `${checkboxList.offsetHeight}px`;
-    }
-
-    updateHtml();
-    focusSearch();
+    );
 }
 
 /**
@@ -324,134 +541,13 @@ export function discreteAttributeFilterDialog(
  * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
  */
 export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
-    /** @type {ComparisonOperatorType} */
-    let operator = "lt";
-    /** @type {number} */
-    let operand;
-
-    const modal = createModal();
-
-    const templateTitle = html`
-        <div class="modal-title">Filter by <em>${attributeInfo.name}</em></div>
-    `;
-
-    const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        sampleView.dispatchAttributeAction(
-            sampleView.actions.filterByQuantitative({
-                attribute: attributeInfo.attribute,
-                operator,
-                operand,
-            })
-        );
-        modal.close();
-    };
-
-    const templateButtons = () =>
-        html` <div class="modal-buttons">
-            <button class="btn btn-cancel" @click=${() => modal.close()}>
-                Cancel
-            </button>
-
-            <button
-                class="btn btn-primary"
-                ?disabled=${typeof operand === "undefined"}
-                @click=${() => dispatchAndClose(false)}
-            >
-                ${icon(faFilter).node[0]} Retain
-            </button>
-        </div>`;
-
-    const operatorChanged = (/** @type {UIEvent} */ event) => {
-        const value = /** @type {HTMLInputElement} */ (event.target).value;
-        operator = /** @type {ComparisonOperatorType} */ (value);
-
-        updateHtml();
-    };
-
-    const operandChanged = (/** @type {UIEvent} */ event) => {
-        const elem = /** @type {HTMLInputElement} */ (event.target);
-        const value = elem.value;
-        if (/^\d+(\.(\d+)?)?$/.test(value)) {
-            operand = +value;
-            updateHtml();
+    return showDialog(
+        "gs-quantitative-attribute-filter-dialog",
+        (/** @type {any} */ el) => {
+            el.attributeInfo = attributeInfo;
+            el.sampleView = sampleView;
         }
-    };
-
-    const thresholdAdded = (
-        /** @type {import("../../components/histogram.js").ThresholdEvent}*/ event
-    ) => {
-        if (typeof operand !== "number") {
-            operand = event.value;
-            updateHtml();
-        }
-    };
-
-    const thresholdAdjusted = (
-        /** @type {import("../../components/histogram.js").ThresholdEvent}*/ event
-    ) => {
-        operand = event.value;
-        updateHtml();
-    };
-
-    const values = extractValues(
-        attributeInfo,
-        sampleView.leafSamples,
-        sampleView.sampleHierarchy
     );
-
-    const template = () => html`
-        <div class="gs-form-group">
-            <label
-                >Retain samples where <em>${attributeInfo.name}</em> is</label
-            >
-            <div class="btn-group" role="group">
-                ${Object.entries(verboseOps).map(
-                    ([k, v]) =>
-                        html`<button
-                            class=${classMap({
-                                btn: true,
-                                chosen: k == operator,
-                            })}
-                            .value=${k}
-                            @click=${operatorChanged}
-                            title="${v[1]}"
-                        >
-                            ${v[0]}
-                        </button>`
-                )}
-            </div>
-            <genome-spy-histogram
-                .values=${values}
-                .thresholds=${[operand].filter((o) => o !== undefined)}
-                .operators=${[operator]}
-                .colors=${["#1f77b4", "#ddd"]}
-                .showThresholdNumbers=${false}
-                @add=${thresholdAdded}
-                @adjust=${thresholdAdjusted}
-            ></genome-spy-histogram>
-            <input
-                type="text"
-                placeholder="... or enter a numeric value here"
-                .value=${typeof operand == "number" ? "" + operand : ""}
-                @input=${operandChanged}
-            />
-        </div>
-    `;
-
-    function updateHtml() {
-        render(
-            html`${templateTitle}
-                <div class="modal-body">${template()}</div>
-                ${templateButtons()}`,
-            modal.content
-        );
-    }
-
-    updateHtml();
-
-    /** @type {HTMLInputElement} */ (
-        modal.content.querySelector("input[type='text']")
-    )?.focus();
 }
 
 /** @type {Record<ComparisonOperatorType, [string, string]>} */

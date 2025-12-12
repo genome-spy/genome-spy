@@ -15,7 +15,7 @@ import Provenance from "./state/provenance.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
-import { messageBox } from "./utils/ui/modal.js";
+import { showMessageDialog } from "./components/dialogs/messageDialog.js";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash.js";
 import {
     restoreBookmark,
@@ -235,14 +235,14 @@ export default class App {
         try {
             await this._restoreStateFromUrlOrBookmark();
         } catch (e) {
-            messageBox(e.toString());
+            showMessageDialog(e.toString());
         }
 
         window.addEventListener(
             "hashchange",
             () =>
                 this._restoreStateFromUrl().catch((e) =>
-                    messageBox(e.toString())
+                    showMessageDialog(e.toString())
                 ),
             false
         );
@@ -379,11 +379,14 @@ export default class App {
             try {
                 /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
                 const entry = decompressFromUrlHash(hash);
-                restoreBookmarkAndShowInfoBox(entry, this, { mode: "shared" });
+                restoreBookmarkAndShowInfoBox(entry, this, {
+                    mode: "shared",
+                    database: this.localBookmarkDatabase,
+                });
                 return true;
             } catch (e) {
                 console.error(e);
-                messageBox(
+                showMessageDialog(
                     html`<p>Cannot restore the state:</p>
                         <p>${e}</p>`
                 );
