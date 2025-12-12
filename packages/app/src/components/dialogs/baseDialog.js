@@ -166,6 +166,9 @@ export default class BaseDialog extends LitElement {
         });
 
         this.#dialog.classList.add("closing");
+        this.renderRoot
+            .querySelector(".non-modal-backdrop")
+            ?.classList.add("closing");
     }
 
     /**
@@ -252,6 +255,9 @@ export default class BaseDialog extends LitElement {
         const footer = this.renderFooter();
 
         return html`
+            ${!this.modal
+                ? html`<div class="non-modal-backdrop"></div>`
+                : nothing}
             <dialog
                 @cancel=${(/** @type {UIEvent} */ e) => this.#onDialogCancel(e)}
             >

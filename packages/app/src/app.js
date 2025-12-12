@@ -379,7 +379,10 @@ export default class App {
             try {
                 /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
                 const entry = decompressFromUrlHash(hash);
-                restoreBookmarkAndShowInfoBox(entry, this, { mode: "shared" });
+                restoreBookmarkAndShowInfoBox(entry, this, {
+                    mode: "shared",
+                    database: this.localBookmarkDatabase,
+                });
                 return true;
             } catch (e) {
                 console.error(e);

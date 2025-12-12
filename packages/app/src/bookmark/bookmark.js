@@ -1,17 +1,10 @@
-import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faBookmark,
-    faChevronDown,
-    faStepBackward,
-    faStepForward,
-} from "@fortawesome/free-solid-svg-icons";
-import { html, nothing, render } from "lit";
+import { html } from "lit";
 import { ActionCreators } from "redux-undo";
-import safeMarkdown from "../utils/safeMarkdown.js";
-import { createModal } from "../utils/ui/modal.js";
-import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
+import "../components/bookmark/bookmarkInfoBox.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { showMessageDialog } from "../components/dialogs/messageDialog.js";
+import { showDialog } from "../components/dialogs/baseDialog.js";
+import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
@@ -20,11 +13,6 @@ import { showMessageDialog } from "../components/dialogs/messageDialog.js";
  * @prop {"default" | "tour" | "shared"} [mode]
  * @prop {string} [afterTourBookmark] See `RemoteBookmarkConfig`
  */
-
-/**
- * @type {import("../utils/ui/modal.js").Modal}
- */
-let infoBox;
 
 /**
  * Resets the provenance and scales to defaults.
@@ -90,6 +78,28 @@ export async function restoreBookmark(entry, app) {
         app.provenance.activateState(0);
     }
 }
+/**
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
+ */
+export async function importBookmark(entry, app) {
+    if (
+        await showEnterBookmarkInfoDialog(
+            app.localBookmarkDatabase,
+            entry,
+            "add"
+        )
+    ) {
+        try {
+            await app.localBookmarkDatabase.put(entry);
+        } catch (e) {
+            console.warn(e);
+            showMessageDialog(`Cannot import bookmark: ${e}`, {
+                type: "error",
+            });
+        }
+    }
+}
 
 /**
  * @param {import("./databaseSchema.js").BookmarkEntry} entry
@@ -99,7 +109,6 @@ export async function restoreBookmark(entry, app) {
 export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
     await restoreBookmark(entry, app);
     if (
-        infoBox ||
         entry.notes ||
         (options.mode == "shared" && (entry.name || entry.notes))
     ) {
@@ -114,123 +123,73 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function showBookmarkInfoBox(entry, app, options = {}) {
-    infoBox ??= createModal("tour", app.appContainer);
+    const existingDialog =
+        /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */ (
+            document.body.querySelector("gs-bookmark-info-box")
+        );
 
-    await updateBookmarkInfoBox(entry, app, options);
-}
+    if (existingDialog) {
+        existingDialog.entry = entry;
+        existingDialog.mode = options.mode ?? "default";
+    } else {
+        showDialog(
+            "gs-bookmark-info-box",
+            async (
+                /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */
+                el
+            ) => {
+                // TODO: It's actually the bookmarkDatabase's url that should be used as a baseUrl
+                el.baseUrl = app.genomeSpy.spec.baseUrl;
+                el.entry = entry;
+                el.mode = options.mode ?? "default";
+                el.allowImport = !!options.database;
 
-/**
- *
- * @param {import("./databaseSchema.js").BookmarkEntry} entry
- * @param {import("../app.js").default} app
- * @param {BookmarkInfoBoxOptions} [options]
- */
-export async function updateBookmarkInfoBox(entry, app, options) {
-    const db = options.database;
-
-    const names = db ? await db.getNames() : [];
-
-    const entryIndex = names.indexOf(entry.name);
-
-    const of = db ? ` ${entryIndex + 1} of ${names.length}` : "";
-    const title = `${
-        options.mode == "shared" ? "Shared bookmark" : "Bookmark"
-    }${of}: ${entry.name ?? "Unnamed"}`;
-
-    const content = entry.notes
-        ? safeMarkdown(entry.notes, {
-              // TODO: It's actually the bookmarkDatabase's url that should be used as a baseUrl
-              baseUrl: app.genomeSpy.spec.baseUrl,
-          })
-        : html`<span class="no-notes">No notes provided</span>`;
-
-    const close = async () => {
-        infoBox?.close();
-        infoBox = undefined;
-
-        if (options.mode == "tour") {
-            const atb = options.afterTourBookmark;
-            if (typeof atb == "string") {
-                const entry = await options.database.get(atb);
-                if (!entry) {
-                    throw new Error(`No such bookmark: ${atb}`);
+                if (options.database) {
+                    el.names = await options.database.getNames();
                 }
-                restoreBookmark(entry, app);
-            } else if (atb === null) {
-                // Do nothing
-            } else {
-                resetToDefaultState(app);
             }
-        }
-    };
-
-    const jumpTo = async (/** @type {number} */ index) => {
-        // TODO: Prevent double clicks, etc
-        const entry = await db.get(names[index]);
-        restoreBookmarkAndShowInfoBox(entry, app, options);
-        // Transfer focus so that keyboard shortcuts such as peek (e) are handled correctly
-        app.appContainer.querySelector("canvas").focus();
-    };
-
-    const importBookmark = async () => {
-        if (
-            await showEnterBookmarkInfoDialog(
-                app.localBookmarkDatabase,
-                entry,
-                "add"
-            )
-        ) {
-            try {
-                await app.localBookmarkDatabase.put(entry);
-            } catch (e) {
-                console.warn(e);
-                showMessageDialog(`Cannot import bookmark: ${e}`, {
-                    type: "error",
-                });
+        ).then(async () => {
+            if (options.mode == "tour") {
+                const atb = options.afterTourBookmark;
+                if (typeof atb == "string") {
+                    const entry = await options.database.get(atb);
+                    if (!entry) {
+                        throw new Error(`No such bookmark: ${atb}`);
+                    }
+                    restoreBookmark(entry, app);
+                } else if (atb === null) {
+                    // Do nothing
+                } else {
+                    resetToDefaultState(app);
+                }
             }
+        });
+
+        // TODO: Come up with a nicer way to get handle to the element and define listeners
+        const addedDialog =
+            /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */ (
+                document.body.querySelector("gs-bookmark-info-box")
+            );
+
+        if (options.database) {
+            addedDialog.addEventListener(
+                "gs-jump-to-bookmark",
+                async (/** @type {CustomEvent} */ event) => {
+                    const name = event.detail.name;
+                    restoreBookmarkAndShowInfoBox(
+                        await options.database.get(name),
+                        app,
+                        options
+                    );
+                }
+            );
+
+            addedDialog.addEventListener(
+                "gs-import-bookmark",
+                async (/** @type {CustomEvent} */ event) => {
+                    importBookmark(event.detail.entry, app);
+                }
+            );
         }
-    };
-
-    const buttons = html` <button class="btn" @click=${close}>
-            ${options.mode == "tour" ? "End tour" : "Close"}
-        </button>
-        ${options.mode == "shared" && app.localBookmarkDatabase
-            ? html`
-                  <button class="btn" @click=${importBookmark}>
-                      ${icon(faBookmark).node[0]} Import bookmark
-                  </button>
-              `
-            : nothing}
-        ${db
-            ? html` <button
-                      class="btn"
-                      @click=${() => jumpTo(entryIndex - 1)}
-                      ?disabled=${entryIndex <= 0}
-                  >
-                      ${icon(faStepBackward).node[0]} Previous
-                  </button>
-                  <button
-                      class="btn"
-                      @click=${() => jumpTo(entryIndex + 1)}
-                      ?disabled=${entryIndex >= names.length - 1}
-                  >
-                      Next ${icon(faStepForward).node[0]}
-                  </button>`
-            : nothing}`;
-
-    const toggleCollapse = (/** @type {MouseEvent} */ event) =>
-        /** @type {HTMLElement} */ (event.target)
-            .closest(".gs-modal")
-            .classList.toggle("collapsed");
-
-    const template = html`
-        <button title="Collapse" class="btn collapse" @click=${toggleCollapse}>
-            ${icon(faChevronDown).node[0]}
-        </button>
-        <div class="modal-title">${title}</div>
-        <div class="modal-body" style="max-width: 600px">${content}</div>
-        <div class="modal-buttons">${buttons}</div>
-    `;
-
-    render(template, infoBox.content);
+    }
 }
