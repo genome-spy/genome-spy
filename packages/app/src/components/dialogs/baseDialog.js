@@ -172,7 +172,7 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     onCloseButtonClick() {
-        if (this.#dialog.requestClose) {
+        if ("requestClose" in this.#dialog) {
             this.#dialog.requestClose();
         } else {
             this.finish({ ok: false, reason: "cancel" });
