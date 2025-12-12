@@ -1,4 +1,4 @@
-import { html, nothing, render } from "lit";
+import { html, render } from "lit";
 import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip.js";
 
 const CLOSE_EVENT_TYPE = "close-dialog";
@@ -102,63 +102,4 @@ export function createModal(type = "default", container = document.body) {
         content: /** @type {HTMLDivElement} */ (root.querySelector(".content")),
         close,
     };
-}
-
-/**
- * @typedef {object} MessageBoxOptions
- * @prop {string} [title]
- * @prop {string | import("lit").TemplateResult } [okLabel]
- * @prop {boolean} [cancelButton]
- */
-
-/**
- * @param {string | import("lit").TemplateResult | HTMLElement} content
- * @param {MessageBoxOptions} [options]
- * @returns {Promise<boolean>}
- */
-export function messageBox(content, options = {}) {
-    const modal = createModal();
-
-    const title = options.title;
-    options.okLabel ??= "OK";
-
-    return new Promise((resolve, reject) => {
-        const close = () => {
-            modal.close();
-            resolve(true);
-        };
-
-        const template = html`
-            ${title ? html`<div class="modal-title">${title}</div>` : nothing}
-                <div class="modal-body" style="max-width: 700px">
-                    ${content}
-                </div>
-                <div class="modal-buttons">
-                    ${
-                        options.cancelButton
-                            ? html`
-                                  <button
-                                      class="btn btn-cancel"
-                                      @click=${() => {
-                                          modal.close();
-                                          resolve(false);
-                                      }}
-                                  >
-                                      Cancel
-                                  </button>
-                              `
-                            : nothing
-                    }
-                    <button class="btn btn-primary" @click=${close}>${
-                        options.okLabel
-                    }</button>
-                </div>
-            </div>`;
-        render(template, modal.content);
-
-        const input = /** @type {HTMLElement} */ (
-            modal.content.querySelector(":is(input, select)")
-        );
-        input?.focus();
-    });
 }
