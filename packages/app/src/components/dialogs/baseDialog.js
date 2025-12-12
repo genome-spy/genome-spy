@@ -16,6 +16,7 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 export default class BaseDialog extends LitElement {
     static properties = {
         dialogTitle: {},
+        modal: { type: Boolean },
     };
 
     /** @type {HTMLDialogElement} */
@@ -107,6 +108,8 @@ export default class BaseDialog extends LitElement {
         /** @type {string | import("lit").TemplateResult} */
         this.dialogTitle = null;
 
+        this.modal = true;
+
         this.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
             e.stopPropagation();
         });
@@ -114,7 +117,11 @@ export default class BaseDialog extends LitElement {
 
     firstUpdated() {
         this.#dialog = this.renderRoot.querySelector("dialog");
-        this.#dialog.showModal();
+        if (this.modal) {
+            this.#dialog.showModal();
+        } else {
+            this.#dialog.show();
+        }
     }
 
     /**
