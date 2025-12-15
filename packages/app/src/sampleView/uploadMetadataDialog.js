@@ -1,17 +1,23 @@
 import { read } from "vega-loader";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
-import { html, nothing, css } from "lit";
+import {
+    faArrowLeft,
+    faArrowRight,
+    faUpload,
+} from "@fortawesome/free-solid-svg-icons";
+import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/dialogs/baseDialog.js";
+import "../components/data-grid/dataGrid.js";
 import { createRef, ref } from "lit/directives/ref.js";
 
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         sampleView: {},
-        fileName: { state: true },
-        lineCount: { state: true },
-        headers: { state: true },
+        _fileName: { state: true },
+        _dragOver: { state: true },
+        _parsedItems: { state: true },
+        _page: { state: true },
     };
 
     constructor() {
@@ -25,16 +31,24 @@ class UploadMetadataDialog extends BaseDialog {
         /** @type {import("lit/directives/ref.js").Ref<HTMLInputElement>} */
         this._fileRef = createRef();
 
-        this.fileName = null;
-        this.lineCount = undefined;
-        /** @type {string[] | null} */
-        this.headers = null;
         this._dragOver = false;
+
+        /** @type {any[] | null} */
+        this._parsedItems = null;
+
+        /** @type {string} */
+        this._fileName = null;
+
+        this._page = 0;
     }
 
     static styles = [
         ...super.styles,
         css`
+            dialog {
+                width: 600px;
+            }
+
             .drop-zone {
                 border: 2px dashed var(--form-control-border-color);
                 border-radius: 8px;
@@ -79,30 +93,15 @@ class UploadMetadataDialog extends BaseDialog {
     async #processFile(file) {
         const textContent = await readFileAsync(file);
 
+        // TODO: Do all sorts of validation. There must be a sample column, etc.
+
         const type = inferFileType(textContent, file.name);
-        const data = read(textContent, { type, parse: "auto" });
 
-        // compute simple statistics
-        const lines = textContent.split(/\r?\n/).filter((l) => l.length > 0);
-        const headerLine = lines.length > 0 ? lines[0] : "";
-        const delimiter =
-            type === "tsv" || headerLine.indexOf("\t") >= 0 ? "\t" : ",";
-        const headers = headerLine.length
-            ? headerLine.split(delimiter).map((h) => h.trim())
-            : [];
-
-        this.fileName = file.name;
-        this.lineCount = lines.length;
-        this.headers = headers;
-        this.requestUpdate();
-
-        // TODO: integrate with sampleView to ingest metadata (use this.sampleView)
-        console.log("Parsed metadata", {
-            file: file.name,
-            headers,
-            lines: this.lineCount,
-            data,
-        });
+        this._parsedItems =
+            /** @type {import("@genome-spy/core/data/flowNode.js").Data} */
+            (read(textContent, { type, parse: "auto" }));
+        this._fileName = file.name;
+        this.#changePage(1);
     }
 
     async #onFileInputChange() {
@@ -147,9 +146,12 @@ class UploadMetadataDialog extends BaseDialog {
         this.requestUpdate();
     }
 
-    renderBody() {
-        return html`
-            <p>Select a metadata file (CSV, TSV or JSON)</p>
+    #renderUpload() {
+        return html` <p>
+                Select a metadata file (CSV, TSV or JSON). The file must have a
+                header row and a <em>sample</em> column that uniquely identifies
+                each sample.
+            </p>
 
             <div
                 class=${this._dragOver ? "drop-zone drop-over" : "drop-zone"}
@@ -175,23 +177,67 @@ class UploadMetadataDialog extends BaseDialog {
                     ${ref(this._fileRef)}
                     @change=${() => this.#onFileInputChange()}
                 />
-            </div>
+            </div>`;
+    }
 
-            ${this.fileName
-                ? html`<div class="upload-stats">
-                      <div><strong>File:</strong> ${this.fileName}</div>
-                      <div><strong>Lines:</strong> ${this.lineCount}</div>
-                      <div>
-                          <strong>Columns:</strong> ${this.headers?.join(", ")}
-                      </div>
-                  </div>`
-                : nothing}
+    #renderPreview() {
+        return html`
+            <p>Loaded file: <code>${this._fileName}</code></p>
+
+            <div style="margin-top: var(--gs-basic-spacing,10px)">
+                <gs-data-grid
+                    .items=${this._parsedItems}
+                    style="height: 240px"
+                ></gs-data-grid>
+            </div>
         `;
     }
 
+    renderBody() {
+        switch (this._page) {
+            case 0:
+                return this.#renderUpload();
+            case 1:
+                return this.#renderPreview();
+            default:
+                return html`<p>Invalid page</p>`;
+        }
+    }
+
+    /**
+     * @param {-1 | 1} direction
+     */
+    #changePage(direction) {
+        const newPage = this._page + direction;
+        if (newPage < 0) return;
+
+        this._page += direction;
+
+        // Prevent closing the dialog
+        return true;
+    }
+
+    #canAdvancePage() {
+        // Currently only 2 pages (0 and 1)
+        return this._page === 0 && this._parsedItems;
+    }
+
     renderButtons() {
-        // Footer only needs a close/cancel button; file is processed inline
-        return [this.makeCloseButton("Close")];
+        return [
+            this.makeCloseButton("Cancel"),
+            this.makeButton(
+                "Previous",
+                () => this.#changePage(-1),
+                faArrowLeft,
+                this._page === 0
+            ),
+            this.makeButton(
+                "Next",
+                () => this.#changePage(1),
+                faArrowRight,
+                !this.#canAdvancePage()
+            ),
+        ];
     }
 }
 

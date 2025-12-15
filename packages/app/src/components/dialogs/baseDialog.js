@@ -227,11 +227,12 @@ export default class BaseDialog extends LitElement {
 
      * @protected
      */
-    makeButton(title, callback, iconDef) {
+    makeButton(title, callback, iconDef, disabled = false) {
         return html`<button
             class="btn"
             type="button"
             title=${title}
+            ?disabled=${disabled}
             @click=${async () => {
                 const cancelClose = !!(await callback());
                 if (!cancelClose) {
