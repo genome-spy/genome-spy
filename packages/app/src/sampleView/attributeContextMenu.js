@@ -4,9 +4,9 @@
 
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttributeFilterDialog.js";
-import groupByThresholdsDialog from "./attributeDialogs/groupByThresholdsDialog.js";
+import { showGroupByThresholdsDialog } from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
-import createCustomGroupsDialog from "./attributeDialogs/createCustomGroupsDialog.js";
+import { showCreateCustomGroupsDialog } from "./attributeDialogs/createCustomGroupsDialog.js";
 import { sampleSlice } from "./state/sampleSlice.js";
 
 /**
@@ -72,7 +72,8 @@ export default function generateAttributeContextMenu(
         items.push({
             icon: faObjectGroup,
             label: "Create custom groups...",
-            callback: () => createCustomGroupsDialog(attributeInfo, sampleView),
+            callback: () =>
+                showCreateCustomGroupsDialog(attributeInfo, sampleView),
         });
 
         if (type != "identifier") {
@@ -118,7 +119,8 @@ export default function generateAttributeContextMenu(
         items.push({
             icon: faObjectGroup,
             label: "Group by thresholds...",
-            callback: () => groupByThresholdsDialog(attributeInfo, sampleView),
+            callback: () =>
+                showGroupByThresholdsDialog(attributeInfo, sampleView),
         });
         if (isDefined(attributeValue)) {
             addActions(

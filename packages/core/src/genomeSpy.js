@@ -867,6 +867,11 @@ export default class GenomeSpy {
         canvas.addEventListener("dragstart", (event) =>
             event.stopPropagation()
         );
+
+        canvas.addEventListener("mouseout", () => {
+            this.tooltip.clear();
+            this._currentHover = null;
+        });
     }
 
     /**

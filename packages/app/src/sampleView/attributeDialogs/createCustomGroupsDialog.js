@@ -1,11 +1,71 @@
-import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faPaste } from "@fortawesome/free-solid-svg-icons";
-import { html, nothing, render } from "lit";
-import { createModal, messageBox } from "../../utils/ui/modal.js";
+import { css, html, nothing } from "lit";
+import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
+import { showMessageDialog } from "../../components/dialogs/messageDialog.js";
 import { makeCustomGroupAccessor } from "../state/groupOperations.js";
 import { map } from "lit/directives/map.js";
 import { formatSet } from "../state/actionInfo.js";
 import { styleMap } from "lit/directives/style-map.js";
+
+const customStyles = css`
+    .group-arbitrarily-form {
+        span.na {
+            color: gray;
+            font-style: italic;
+            font-size: 90%;
+        }
+
+        span.color {
+            display: inline-block;
+            width: 0.7em;
+            height: 1em;
+            margin-right: 0.7em;
+        }
+
+        div.table {
+            color: var(--form-control-color);
+            border: var(--form-control-border);
+            border-radius: var(--form-control-border-radius);
+            overflow-x: auto;
+            max-height: 20em;
+
+            padding: 0.375em 0.75em;
+            padding-top: 0;
+
+            margin: 0;
+
+            table {
+                position: relative;
+                border-collapse: collapse;
+            }
+
+            td:first-child {
+                padding-right: 0.7em;
+            }
+
+            th {
+                text-align: left;
+                background: white;
+                background: linear-gradient(
+                    rgba(255, 255, 255, 1) 0%,
+                    rgba(253, 253, 255, 1) 90%,
+                    rgba(255, 255, 255, 0) 100%
+                );
+
+                position: sticky;
+                top: 0;
+
+                padding-top: 0.55em;
+                padding-bottom: 0.375em;
+            }
+        }
+
+        &.gs-form-group select {
+            padding-top: 0.1em;
+            padding-bottom: 0.1em;
+        }
+    }
+`;
 
 /**
  * Stratify chosen categories into arbitrary groups. The categories may be
@@ -13,121 +73,76 @@ import { styleMap } from "lit/directives/style-map.js";
  * quantitative.
  *
  * @param {import("../types.js").AttributeInfo} attributeInfo
- * @param {import("../sampleView.js").default} sampleView TODO: Figure out a better way to pass typings
+ * @param {import("../sampleView.js").default} sampleView
  */
-export default function createCustomGroupsDialog(attributeInfo, sampleView) {
+class CreateCustomGroupsDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        attributeInfo: {},
+        sampleView: {},
+        values: {},
+        groups: {},
+    };
+
+    static styles = [...super.styles, customStyles];
+
+    constructor() {
+        super();
+        /** @type {import("../types.js").AttributeInfo} */
+        this.attributeInfo = null;
+        /** @type {import("../sampleView.js").default} */
+        this.sampleView = null;
+        /** @type {any[]} */
+        this.values = [];
+        /** @type {import("../state/payloadTypes.js").CustomGroups} */
+        this.groups = {};
+    }
+
     /**
-     * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
+     * @param {Map<string, any>} changed
      */
-    const [type, types] =
-        attributeInfo.type == "identifier"
-            ? ["Identifier", "identifiers"]
-            : ["Category", "categories"];
+    willUpdate(changed) {
+        if (changed.has("attributeInfo") && this.attributeInfo) {
+            this.dialogTitle = html`Create custom groups using
+                <em>${this.attributeInfo.name}</em>`;
+        }
+    }
 
-    const scale =
-        /** @type {import("d3-scale").ScaleOrdinal<Scalar, Scalar>} */ (
-            attributeInfo.scale
-        );
-
-    const categoryToMarker = scale
-        ? (/** @type {Scalar} */ value) =>
-              html`<span
-                  class="color"
-                  style=${styleMap({
-                      backgroundColor: scale(value)?.toString() ?? "inherit",
-                  })}
-              ></span>`
-        : () => nothing;
-
-    const values = new Set(
-        extractValues(
-            attributeInfo,
-            sampleView.leafSamples,
-            sampleView.sampleHierarchy
-        )
-    );
-
-    /** @type {import("../state/payloadTypes.js").CustomGroups} */
-    const groups = {};
-
-    const setGroup = (
-        /** @type {Scalar} */ category,
-        /** @type {string} */ group
-    ) => {
-        // TODO: Using Set instead of array would be cleaner
-        for (const [groupName, categories] of Object.entries(groups)) {
+    /**
+     * @param {import("@genome-spy/core/spec/channel.js").Scalar} category
+     * @param {string} group
+     */
+    #setGroup(category, group) {
+        for (const [groupName, categories] of Object.entries(this.groups)) {
             if (categories.includes(category)) {
                 const index = categories.indexOf(category);
                 categories.splice(index, 1);
-                if (categories.length === 0) {
-                    delete groups[groupName];
-                }
+                if (categories.length === 0) delete this.groups[groupName];
             }
         }
 
-        if (!group) {
-            return;
-        }
+        if (!group) return;
 
-        if (group in groups) {
-            groups[group].push(category);
+        if (group in this.groups) {
+            this.groups[group].push(category);
         } else {
-            groups[group] = [category];
+            this.groups[group] = [category];
         }
-    };
 
-    const modal = createModal();
-
-    const templateTitle = html`
-        <div class="modal-title">
-            Create custom groups using <em>${attributeInfo.name}</em>
-        </div>
-    `;
-
-    const dispatchAndClose = (/** @type {boolean} */ remove) => {
-        sampleView.dispatchAttributeAction(
-            sampleView.actions.groupCustomCategories({
-                attribute: attributeInfo.attribute,
-                groups,
-            })
-        );
-        modal.close();
-    };
-
-    const templateButtons = () =>
-        html` <div class="modal-buttons">
-            <button class="btn" @click=${() => pasteCategoriesModal()}>
-                ${icon(faPaste).node[0]} Paste ${types}
-            </button>
-
-            <div style="flex-grow: 1"></div>
-
-            <button class="btn btn-cancel" @click=${() => modal.close()}>
-                Cancel
-            </button>
-
-            <button
-                class="btn btn-primary"
-                @click=${() => dispatchAndClose(false)}
-            >
-                ${icon(faObjectGroup).node[0]} Group
-            </button>
-        </div>`;
+        this.requestUpdate();
+    }
 
     /**
-     * @param {Scalar} category
-     * @param {HTMLElement} [opener]
+     * @param {import("@genome-spy/core/spec/channel.js").Scalar} category
+     * @param {HTMLInputElement} [opener]
      */
-    function newGroupModal(category, opener) {
+    #newGroupModal(category, opener) {
         let newGroup = "";
+        const onChange = (/** @type {Event} */ e) =>
+            (newGroup = /** @type {HTMLInputElement} */ (e.target).value);
 
-        const onChange = (/** @type {UIEvent} */ event) => {
-            newGroup = /** @type {HTMLInputElement} */ (event.target).value;
-        };
-
-        messageBox(
-            html` <div class="gs-form-group">
-                <label for="group-name">Group name</label>
+        showMessageDialog(
+            html`<div class="gs-form-group">
                 <input
                     type="text"
                     id="group-name"
@@ -135,22 +150,22 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
                     @keydown=${onChange}
                 />
             </div>`,
-            { cancelButton: true }
+            { confirm: true, title: "Group name" }
         ).then((ok) => {
             newGroup = newGroup.trim();
             if (ok && newGroup.length > 0) {
-                // Add the chosen category to the new group
-                setGroup(category, newGroup);
-                updateHtml();
-                opener?.focus();
+                this.#setGroup(category, newGroup);
+            } else if (opener) {
+                opener.value = "";
             }
+            opener?.focus();
         });
     }
 
-    function pasteCategoriesModal() {
-        let groupName = "";
-        let categoryText = "";
-
+    /**
+     * @param {string} types
+     */
+    #pasteCategoriesModal(types, groupName = "", categoryText = "") {
         const template = html` <p>
                 Select a large number of ${types} by pasting them into the text
                 area below. The ${types} should be separated by a newline.
@@ -161,88 +176,107 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
                     type="text"
                     id="paste-group-name"
                     placeholder="New or existing group name"
-                    @change=${(/** @type {UIEvent}*/ event) => {
-                        groupName = /** @type {HTMLInputElement} */ (
-                            event.target
-                        ).value;
-                    }}
+                    .value=${groupName}
+                    required
+                    @change=${(/** @type {Event} */ e) =>
+                        (groupName = /** @type {HTMLInputElement} */ (e.target)
+                            .value)}
                 />
+
                 <label for="paste-group-categories">${capitalize(types)}</label>
                 <textarea
                     id="paste-group-categories"
                     placeholder="Type or paste ${types} here, one per line"
+                    .value=${categoryText}
+                    required
                     rows="8"
-                    @change=${(/** @type {UIEvent}*/ event) => {
-                        categoryText = /** @type {HTMLInputElement} */ (
-                            event.target
-                        ).value;
-                    }}
+                    @change=${(/** @type {Event} */ e) =>
+                        (categoryText = /** @type {HTMLInputElement} */ (
+                            e.target
+                        ).value)}
                 ></textarea>
             </div>`;
 
-        messageBox(template, {
-            cancelButton: true,
-            title: `Paste ${types}`,
-        }).then((ok) => {
-            if (!ok) {
-                return;
+        const handle = async () => {
+            if (groupName.trim().length === 0) {
+                await showMessageDialog("Please enter a group name.", {
+                    title: "There's a problem",
+                    type: "warning",
+                });
+                return true;
             }
-
-            // TODO: Complain if the group name is empty
 
             const lines = categoryText
                 .split(/[\r\n]+/g)
                 .map((x) => x.trim())
                 .filter((x) => x.length > 0);
-
-            /** @type {Set<string>} */
             const notFound = new Set();
-
             for (const line of lines) {
-                if (!values.has(line)) {
+                if (!this.values.includes(line)) {
                     notFound.add(line);
-                } else {
-                    setGroup(line, groupName);
                 }
             }
 
-            updateHtml();
-
             if (notFound.size > 0) {
-                messageBox(
-                    html`<p>
-                        The following ${types} were not found:
-                        ${formatSet(notFound, false)}
-                    </p>`
+                await showMessageDialog(
+                    html`The following ${types} were not found:
+                    ${formatSet(notFound, false)}`,
+                    { title: "There's a problem", type: "warning" }
                 );
+                return true;
+            }
+
+            for (const line of lines) {
+                this.#setGroup(line, groupName);
+            }
+        };
+
+        showMessageDialog(template, {
+            title: `Paste ${types}`,
+            confirm: true,
+        }).then(async (ok) => {
+            if (ok) {
+                const retry = await handle();
+                if (retry) {
+                    this.#pasteCategoriesModal(types, groupName, categoryText);
+                }
             }
         });
     }
 
     /**
-     * @param {Scalar} category
-     * @param {UIEvent} event
+     * @param {import("@genome-spy/core/spec/channel.js").Scalar} category
+     * @param {Event} event
      */
-    function selectHandler(category, event) {
+    #selectHandler(category, event) {
         const eventTarget = /** @type {HTMLInputElement} */ (event.target);
         const value = eventTarget.value;
-        if (value === "__newGroup__") {
-            newGroupModal(category, eventTarget);
-        } else {
-            setGroup(category, value);
-        }
+        if (value === "__newGroup__")
+            this.#newGroupModal(category, eventTarget);
+        else this.#setGroup(category, value);
     }
 
-    function updateHtml() {
-        const groupAccessor = makeCustomGroupAccessor((x) => x, groups);
-        const groupNames = Object.keys(groups);
+    renderBody() {
+        const attributeInfo = this.attributeInfo;
+        const type =
+            attributeInfo.type == "identifier" ? "Identifier" : "Category";
+        const scale = /** @type {any} */ (attributeInfo.scale);
+        const categoryToMarker = scale
+            ? (/** @type {any} */ value) =>
+                  html`<span
+                      class="color"
+                      style=${styleMap({
+                          backgroundColor:
+                              scale(value)?.toString() ?? "inherit",
+                      })}
+                  ></span>`
+            : () => nothing;
+        const groupAccessor = makeCustomGroupAccessor((x) => x, this.groups);
+        const groupNames = Object.keys(this.groups);
 
-        /**
-         * @param {Scalar} category
-         */
+        /** @param {import("@genome-spy/core/spec/channel.js").Scalar} category */
         const makeTableRow = (category) => {
             const selectedGroup = groupAccessor(category);
-
             return html`<tr>
                 <td>
                     ${category != null
@@ -251,12 +285,10 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
                 </td>
                 <td>
                     <select
-                        @change=${(/** @type {UIEvent}*/ event) =>
-                            selectHandler(category, event)}
-                        @keydown=${(/** @type {KeyboardEvent} */ event) => {
-                            // Prevent the modal from closing accidentally
-                            event.stopPropagation();
-                        }}
+                        @change=${(/** @type {Event} */ e) =>
+                            this.#selectHandler(category, e)}
+                        @keydown=${(/** @type {KeyboardEvent} */ e) =>
+                            e.stopPropagation()}
                     >
                         <option .selected=${!selectedGroup} value="">
                             - No group -
@@ -278,36 +310,72 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
             </tr>`;
         };
 
-        const template = html`<div class="gs-form-group group-arbitrarily-form">
+        return html`<div class="gs-form-group group-arbitrarily-form">
             <div class="table">
                 <table>
                     <tr>
                         <th>${type}</th>
                         <th>Group</th>
                     </tr>
-                    ${map(values, makeTableRow)}
+                    ${map(this.values, makeTableRow)}
                 </table>
             </div>
         </div>`;
-
-        render(
-            html`${templateTitle}
-                <div class="modal-body">
-                    <p>
-                        Use the table below to combine multiple ${types} into
-                        custom groups.
-                    </p>
-                    ${template}
-                </div>
-                ${templateButtons()}`,
-            modal.content
-        );
     }
 
-    updateHtml();
+    renderButtons() {
+        const types =
+            this.attributeInfo.type == "identifier"
+                ? "identifiers"
+                : "categories";
+        return [
+            this.makeButton(
+                "Paste " + types,
+                () => {
+                    this.#pasteCategoriesModal(types);
+                    return true;
+                },
+                faPaste
+            ),
+            this.makeButton("Cancel", () => this.finish({ ok: false })),
+            this.makeButton("Group", () => this.#onGroup(), faObjectGroup),
+        ];
+    }
 
-    // Doesn't work. Why?
-    modal.content.querySelector("select")?.focus();
+    #onGroup() {
+        this.sampleView.dispatchAttributeAction(
+            this.sampleView.actions.groupCustomCategories({
+                attribute: this.attributeInfo.attribute,
+                groups: this.groups,
+            })
+        );
+        this.finish({ ok: true });
+    }
+}
+
+customElements.define(
+    "gs-create-custom-groups-dialog",
+    CreateCustomGroupsDialog
+);
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView
+ */
+export function showCreateCustomGroupsDialog(attributeInfo, sampleView) {
+    return showDialog(
+        "gs-create-custom-groups-dialog",
+        (/** @type {any} */ el) => {
+            el.attributeInfo = attributeInfo;
+            el.sampleView = sampleView;
+            el.values = extractValues(
+                attributeInfo,
+                sampleView.leafSamples,
+                sampleView.sampleHierarchy
+            );
+            el.groups = {};
+        }
+    );
 }
 
 /**
@@ -319,9 +387,12 @@ export default function createCustomGroupsDialog(attributeInfo, sampleView) {
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
     const a = attributeInfo.accessor;
-    return /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */ (
-        samples.map((sampleId) => a(sampleId, sampleHierarchy))
+    const asSet = new Set(
+        /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */ (
+            samples.map((sampleId) => a(sampleId, sampleHierarchy))
+        )
     );
+    return Array.from(asSet).sort();
 }
 
 /**
