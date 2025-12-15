@@ -1,29 +1,72 @@
 import { read } from "vega-loader";
 import { html } from "lit";
-import { messageBox } from "../utils/ui/modal.js";
+import BaseDialog, { showDialog } from "../components/dialogs/baseDialog.js";
 import { createRef, ref } from "lit/directives/ref.js";
 
-export async function showUploadMetadataDialog(sampleView) {
-    /** @type {import("lit/directives/ref.js").Ref<HTMLInputElement>} */
-    const fileRef = createRef();
+class UploadMetadataDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        sampleView: {},
+    };
 
-    const template = html`<p>Hello</p>
-        <input type="file" accept=".csv,.tsv" ${ref(fileRef)} /> `;
+    constructor() {
+        super();
 
-    if (await messageBox(template)) {
-        const fileInput = fileRef.value;
-        if (fileInput && fileInput.files && fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const textContent = await readFileAsync(file);
+        /** @typer {import("./sampleView.js").default} */
+        this.sampleView = null;
 
-            const data = read(textContent, {
-                type: inferFileType(textContent, file.name),
-                parse: "auto",
-            });
+        this.dialogTitle = "Load Custom Metadata";
 
-            console.log(data);
-        }
+        /** @type {import("lit/directives/ref.js").Ref<HTMLInputElement>} */
+        this._fileRef = createRef();
     }
+
+    async #onUpload() {
+        const fileInput = this._fileRef.value;
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+            return true;
+        }
+        const file = fileInput.files[0];
+        const textContent = await readFileAsync(file);
+
+        const data = read(textContent, {
+            type: inferFileType(textContent, file.name),
+            parse: "auto",
+        });
+
+        // TODO: integrate with sampleView to ingest metadata
+        console.log("Uploaded metadata:", data);
+    }
+
+    renderBody() {
+        return html`<p>Select a metadata file (CSV, TSV or JSON)</p>
+            <input
+                type="file"
+                accept=".csv,.tsv,.json"
+                ${ref(this._fileRef)}
+            />`;
+    }
+
+    renderButtons() {
+        return [
+            this.makeCloseButton("Cancel"),
+            this.makeButton("Upload", async () => {
+                await this.#onUpload();
+                return true;
+            }),
+        ];
+    }
+}
+
+customElements.define("gs-upload-metadata-dialog", UploadMetadataDialog);
+
+/**
+ * @param {import("./sampleView.js").default} sampleView
+ */
+export function showUploadMetadataDialog(sampleView) {
+    return showDialog("gs-upload-metadata-dialog", (/** @type {any} */ el) => {
+        el.sampleView = sampleView;
+    });
 }
 
 // --- copypasted from playground ---
