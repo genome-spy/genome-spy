@@ -240,7 +240,7 @@ export class MetadataView extends ConcatView {
             const name = /** @type {string} */ (
                 attributeInfo.attribute.specifier
             );
-            const attributeValue = metadatum[name];
+            const attributeValue = metadatum?.[name];
             items.push(
                 ...generateAttributeContextMenu(
                     html`Attribute: <strong>${name}</strong>`,
@@ -465,7 +465,7 @@ export class MetadataView extends ConcatView {
             name: attributeName,
             attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
             accessor: (sampleId, sampleHierarchy) =>
-                sampleHierarchy.sampleMetadata.entities[sampleId][
+                sampleHierarchy.sampleMetadata.entities[sampleId]?.[
                     attributeName
                 ],
             type: resolution.type,
