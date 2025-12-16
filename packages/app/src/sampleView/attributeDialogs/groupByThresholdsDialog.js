@@ -1,8 +1,8 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
-import { defaultScheme } from "../../components/histogram.js";
-import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
+import { defaultScheme } from "../../components/generic/histogram.js";
+import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
@@ -14,7 +14,7 @@ import {
  */
 class GroupByThresholdsDialog extends BaseDialog {
     /**
-     * @typedef {import("../../components/histogram.js").ThresholdEvent} ThresholdEvent
+     * @typedef {import("../../components/generic/histogram.js").ThresholdEvent} ThresholdEvent
      */
 
     /**
