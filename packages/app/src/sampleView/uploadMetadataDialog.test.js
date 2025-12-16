@@ -61,8 +61,8 @@ describe("validateMetadata", () => {
         const res = validateMetadata(existing, records);
         expect(res).toHaveProperty("statistics");
         const s = res.statistics;
-        expect(s.metadataNotInExisting.size).toBe(1);
-        expect(s.existingSamplesNotInMetadata.size).toBe(1);
+        expect(s.unknownSamples.size).toBe(1);
+        expect(s.notCoveredSamples.size).toBe(1);
         expect(s.samplesInBoth.size).toBe(1);
     });
 });

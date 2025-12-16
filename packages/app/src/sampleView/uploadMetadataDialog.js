@@ -162,8 +162,8 @@ class UploadMetadataDialog extends BaseDialog {
         } else if (this.#validationResult.statistics) {
             const stats = this.#validationResult.statistics;
             const caveats =
-                stats.metadataNotInExisting.size > 0 ||
-                stats.existingSamplesNotInMetadata.size > 0;
+                stats.unknownSamples.size > 0 ||
+                stats.notCoveredSamples.size > 0;
             return html`<div
                 class="${caveats ? "gs-alert warning" : "gs-alert info"}"
             >
@@ -177,15 +177,13 @@ class UploadMetadataDialog extends BaseDialog {
                     <ul>
                         <li>
                             Unknown samples to be ignored:
-                            <span>${stats.metadataNotInExisting.size}</span
-                            >${formatCases(stats.metadataNotInExisting)}
+                            <span>${stats.unknownSamples.size}</span
+                            >${formatCases(stats.unknownSamples)}
                         </li>
                         <li>
                             Existing samples not covered by loaded metadata:
-                            <span
-                                >${stats.existingSamplesNotInMetadata
-                                    .size}</span
-                            >${formatCases(stats.existingSamplesNotInMetadata)}
+                            <span>${stats.notCoveredSamples.size}</span
+                            >${formatCases(stats.notCoveredSamples)}
                         </li>
                         <li>
                             Matching samples:
@@ -390,10 +388,9 @@ export function validateMetadata(existingSamples, metadataRecords) {
 
     return {
         statistics: {
-            metadataNotInExisting:
+            unknownSamples: metadataSamplesSet.difference(existingSamplesSet),
+            notCoveredSamples:
                 existingSamplesSet.difference(metadataSamplesSet),
-            existingSamplesNotInMetadata:
-                metadataSamplesSet.difference(existingSamplesSet),
             samplesInBoth: metadataSamplesSet.intersection(existingSamplesSet),
         },
     };
