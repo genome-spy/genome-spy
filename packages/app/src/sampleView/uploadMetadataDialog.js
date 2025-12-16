@@ -1,21 +1,15 @@
 import { read } from "vega-loader";
-import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faArrowLeft,
-    faArrowRight,
-    faUpload,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/dialogs/baseDialog.js";
 import "../components/data-grid/dataGrid.js";
-import { createRef, ref } from "lit/directives/ref.js";
+import "../components/uploadDropZone.js";
 
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         sampleView: {},
         _fileName: { state: true },
-        _dragOver: { state: true },
         _parsedItems: { state: true },
         _page: { state: true },
     };
@@ -27,11 +21,6 @@ class UploadMetadataDialog extends BaseDialog {
         this.sampleView = null;
 
         this.dialogTitle = "Load Custom Metadata";
-
-        /** @type {import("lit/directives/ref.js").Ref<HTMLInputElement>} */
-        this._fileRef = createRef();
-
-        this._dragOver = false;
 
         /** @type {any[] | null} */
         this._parsedItems = null;
@@ -49,36 +38,6 @@ class UploadMetadataDialog extends BaseDialog {
                 width: 600px;
             }
 
-            .drop-zone {
-                border: 2px dashed var(--form-control-border-color);
-                border-radius: 8px;
-                padding: 1.25rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition:
-                    box-shadow 0.15s ease,
-                    transform 0.12s ease,
-                    background-color 0.12s ease;
-                cursor: pointer;
-            }
-
-            .drop-zone.drop-over {
-                background-color: rgba(106, 160, 255, 0.06);
-                border-color: var(--gs-accent-color, #6aa0ff);
-                box-shadow: 0 8px 24px rgba(106, 160, 255, 0.08);
-            }
-
-            .drop-inner {
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-            }
-
-            .drop-icon {
-                font-size: 2rem;
-            }
-
             .upload-stats {
                 margin-top: var(--gs-basic-spacing, 10px);
                 font-size: 90%;
@@ -87,7 +46,6 @@ class UploadMetadataDialog extends BaseDialog {
     ];
 
     /**
-     *
      * @param {File} file
      */
     async #processFile(file) {
@@ -104,46 +62,12 @@ class UploadMetadataDialog extends BaseDialog {
         this.#changePage(1);
     }
 
-    async #onFileInputChange() {
-        const fileInput = this._fileRef.value;
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0)
-            return;
-
-        await this.#processFile(fileInput.files[0]);
-    }
-
     /**
-     * @param {DragEvent} e
+     * @param {import("../components/uploadDropZone.js").FilesChosenEvent} e
      */
-    async #onDropFile(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const dt = e.dataTransfer;
-        if (!dt || !dt.files || dt.files.length === 0) return;
-        const file = dt.files[0];
-        this._dragOver = false;
-        this.requestUpdate();
-
+    async #onFilesChosen(e) {
+        const file = e.detail.files[0];
         await this.#processFile(file);
-    }
-
-    /**
-     * @param {DragEvent} e
-     */
-    #onDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-        this._dragOver = true;
-        this.requestUpdate();
-    }
-
-    /**
-     * @param {DragEvent} e
-     */
-    #onDragLeave(e) {
-        e.preventDefault();
-        this._dragOver = false;
-        this.requestUpdate();
     }
 
     #renderUpload() {
@@ -153,31 +77,12 @@ class UploadMetadataDialog extends BaseDialog {
                 each sample.
             </p>
 
-            <div
-                class=${this._dragOver ? "drop-zone drop-over" : "drop-zone"}
-                @dragover=${(/** @type {DragEvent} */ e) => this.#onDragOver(e)}
-                @dragleave=${(/** @type {DragEvent} */ e) =>
-                    this.#onDragLeave(e)}
-                @drop=${(/** @type {DragEvent} */ e) => this.#onDropFile(e)}
-            >
-                <div class="drop-inner">
-                    <div class="drop-icon">${icon(faUpload).node[0]}</div>
-                    <div class="drop-text">Drop a file here or</div>
-                    <button
-                        class="btn"
-                        @click=${() => this._fileRef.value?.click()}
-                    >
-                        Choose file
-                    </button>
-                </div>
-                <input
-                    style="display:none"
-                    type="file"
-                    accept=".csv,.tsv,.json"
-                    ${ref(this._fileRef)}
-                    @change=${() => this.#onFileInputChange()}
-                />
-            </div>`;
+            <gs-upload-drop-zone
+                accept=".csv,.tsv,.json"
+                @gs-files-chosen=${(
+                    /** @type {import("../components/uploadDropZone.js").FilesChosenEvent} */ e
+                ) => this.#onFilesChosen(e)}
+            ></gs-upload-drop-zone>`;
     }
 
     #renderPreview() {
