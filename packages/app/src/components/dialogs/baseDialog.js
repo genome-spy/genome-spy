@@ -228,8 +228,10 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     makeButton(title, callback, iconDef, disabled = false) {
+        // Ugly hack. TODO: Allow defining icon position in the future
+        const reverse = title == "Next";
         return html`<button
-            class="btn"
+            class=${reverse ? "btn reverse" : "btn"}
             type="button"
             title=${title}
             ?disabled=${disabled}

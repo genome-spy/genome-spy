@@ -1,9 +1,16 @@
 import { read } from "vega-loader";
-import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCaretLeft,
+    faCaretRight,
+    faExclamationCircle,
+    faInfoCircle,
+    faTimesCircle,
+} from "@fortawesome/free-solid-svg-icons";
 import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/dialogs/baseDialog.js";
 import "../components/data-grid/dataGrid.js";
 import "../components/uploadDropZone.js";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
@@ -14,10 +21,13 @@ class UploadMetadataDialog extends BaseDialog {
         _page: { state: true },
     };
 
+    /** @type {ReturnType<typeof validateMetadata>} */
+    #validationResult;
+
     constructor() {
         super();
 
-        /** @typer {import("./sampleView.js").default} */
+        /** @type {import("./sampleView.js").default} */
         this.sampleView = null;
 
         this.dialogTitle = "Load Custom Metadata";
@@ -59,6 +69,12 @@ class UploadMetadataDialog extends BaseDialog {
             /** @type {import("@genome-spy/core/data/flowNode.js").Data} */
             (read(textContent, { type, parse: "auto" }));
         this._fileName = file.name;
+
+        this.#validationResult = validateMetadata(
+            this.sampleView.sampleHierarchy.sampleData.ids,
+            this._parsedItems
+        );
+
         this.#changePage(1);
     }
 
@@ -71,10 +87,16 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #renderUpload() {
-        return html` <p>
-                Select a metadata file (CSV, TSV or JSON). The file must have a
-                header row and a <em>sample</em> column that uniquely identifies
-                each sample.
+        return html`<p>
+                This wizard helps you load custom metadata for samples in the
+                current visualization.
+            </p>
+
+            <p>
+                Select a metadata file (CSV, TSV, or JSON). The file must
+                include a header row and a <em>sample</em> column that uniquely
+                identifies each sample. Additional columns will be added as new
+                metadata fields.
             </p>
 
             <gs-upload-drop-zone
@@ -85,11 +107,65 @@ class UploadMetadataDialog extends BaseDialog {
             ></gs-upload-drop-zone>`;
     }
 
+    #renderValidationResults() {
+        if (this.#validationResult.error) {
+            return html`<div class="gs-alert danger">
+                ${icon(faTimesCircle).node[0]}
+                <div>
+                    <p>Errors found in metadata:</p>
+                    <ul>
+                        ${this.#validationResult.error.map(
+                            (err) => html`<li>${formatErrorEntry(err)}</li>`
+                        )}
+                    </ul>
+                    <p>Please fix the errors and try again.</p>
+                </div>
+            </div>`;
+        } else if (this.#validationResult.statistics) {
+            const stats = this.#validationResult.statistics;
+            const caveats =
+                stats.metadataNotInExisting.size > 0 ||
+                stats.existingSamplesNotInMetadata.size > 0;
+            return html`<div
+                class="${caveats ? "gs-alert warning" : "gs-alert info"}"
+            >
+                ${icon(caveats ? faExclamationCircle : faInfoCircle).node[0]}
+                <div>
+                    <p>
+                        ${caveats
+                            ? "Metadata loaded (with caveats)!"
+                            : "Metadata loaded successfully!"}
+                    </p>
+                    <ul>
+                        <li>
+                            Unknown samples to be ignored:
+                            <span>${stats.metadataNotInExisting.size}</span
+                            >${formatCases(stats.metadataNotInExisting)}
+                        </li>
+                        <li>
+                            Existing samples not covered by loaded metadata:
+                            <span
+                                >${stats.existingSamplesNotInMetadata
+                                    .size}</span
+                            >${formatCases(stats.existingSamplesNotInMetadata)}
+                        </li>
+                        <li>
+                            Matching samples:
+                            <span>${stats.samplesInBoth.size}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>`;
+        }
+    }
+
     #renderPreview() {
         return html`
-            <p>Loaded file: <code>${this._fileName}</code></p>
+            ${this.#renderValidationResults()}
 
-            <div style="margin-top: var(--gs-basic-spacing,10px)">
+            <p>Data preview (<code>${this._fileName}</code>):</p>
+
+            <div style="margin-top: var(--gs-basic-spacing, 10px)">
                 <gs-data-grid
                     .items=${this._parsedItems}
                     style="height: 240px"
@@ -123,8 +199,17 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #canAdvancePage() {
-        // Currently only 2 pages (0 and 1)
-        return this._page === 0 && this._parsedItems;
+        switch (this._page) {
+            case 0:
+                return this._parsedItems != null;
+            case 1:
+                // Must be no errors and at least one common sample
+                return (
+                    this.#validationResult?.statistics?.samplesInBoth.size > 0
+                );
+            default:
+                return false;
+        }
     }
 
     renderButtons() {
@@ -133,13 +218,13 @@ class UploadMetadataDialog extends BaseDialog {
             this.makeButton(
                 "Previous",
                 () => this.#changePage(-1),
-                faArrowLeft,
+                faCaretLeft,
                 this._page === 0
             ),
             this.makeButton(
                 "Next",
                 () => this.#changePage(1),
-                faArrowRight,
+                faCaretRight,
                 !this.#canAdvancePage()
             ),
         ];
@@ -155,6 +240,141 @@ export function showUploadMetadataDialog(sampleView) {
     return showDialog("gs-upload-metadata-dialog", (/** @type {any} */ el) => {
         el.sampleView = sampleView;
     });
+}
+
+/**
+ * Does the following validations:
+ * - `metadataRecords` all have 'sample' field (called newSamples from now on)
+ * - `metadataRecords` all have a proper value in 'sample' field
+ * - no duplicate sample IDs in newSamples
+ * - newSamples has at least one sample
+ *
+ * On error, return an object with `error` array containing error messages.
+ *
+ * Does the following calculations:
+ * - number of duplicate sample IDs in newSamples
+ * - number of unique samples in newSamples that are not in existingSamples
+ * - number of samples in existingSamples that are not in newSamples
+ * - number of samples in both existingSamples and newSamples
+ *
+ * Returns an object with `statistics` field containing the calculated statistics.
+ *
+ * @param {Iterable<string>} existingSamples
+ * @param {Iterable<Record<string, any>>} metadataRecords New metadata records to be added
+ *
+ * @typedef {{message: string | import("lit").TemplateResult<1>, count: number, cases: string[]}} ErrorEntry
+ */
+export function validateMetadata(existingSamples, metadataRecords) {
+    /**
+     * @type {Map<any, ErrorEntry>}
+     */
+    const errorMap = new Map();
+
+    /**
+     * @param {string | import("lit").TemplateResult<1>} msg
+     * @param {number} [n]
+     * @param {string} [caseInfo]
+     */
+    function addError(msg, n = 1, caseInfo = null) {
+        // Use object identity as the key.
+        const key = msg;
+        let entry = errorMap.get(key);
+        if (!entry) {
+            entry = { message: msg, count: 0, cases: [] };
+            errorMap.set(key, entry);
+        }
+        entry.count += n;
+        if (caseInfo) {
+            entry.cases.push(caseInfo);
+        }
+    }
+
+    const existingSamplesSet = new Set(existingSamples);
+    /** @type {Set<string>} */
+    const metadataSamplesSet = new Set();
+
+    for (const record of metadataRecords) {
+        if (!("sample" in record)) {
+            addError(MISSING_SAMPLE_FIELD_ERROR);
+            continue;
+        }
+
+        if (record.sample == null || record.sample === "") {
+            addError(EMPTY_SAMPLE_FIELD_ERROR);
+            continue;
+        }
+
+        const sampleId = String(record.sample);
+        if (metadataSamplesSet.has(sampleId)) {
+            addError(DUPLICATE_SAMPLE_IDS_ERROR, 1, sampleId);
+        }
+        metadataSamplesSet.add(sampleId);
+    }
+
+    if (metadataSamplesSet.size === 0) {
+        addError(NO_VALID_SAMPLES_ERROR);
+    }
+
+    if (errorMap.size > 0) {
+        return { error: Array.from(errorMap.values()) };
+    }
+
+    return {
+        statistics: {
+            metadataNotInExisting:
+                existingSamplesSet.difference(metadataSamplesSet),
+            existingSamplesNotInMetadata:
+                metadataSamplesSet.difference(existingSamplesSet),
+            samplesInBoth: metadataSamplesSet.intersection(existingSamplesSet),
+        },
+    };
+}
+
+export const MISSING_SAMPLE_FIELD_ERROR = html`Missing <em>sample</em> field in
+    metadata record`;
+export const EMPTY_SAMPLE_FIELD_ERROR = html`Empty <em>sample</em> field in
+    metadata record`;
+export const DUPLICATE_SAMPLE_IDS_ERROR =
+    "Duplicate sample IDs found in metadata";
+export const NO_VALID_SAMPLES_ERROR = "No valid samples found in metadata";
+
+/**
+ * @param {Iterable<string>} cases
+ * @param {number} [maxCasesToShow]
+ */
+function formatCases(cases, maxCasesToShow = 3) {
+    const caseArr = Array.from(cases);
+
+    /**
+     * @param {string[]} arr
+     * @param {string} [sep]
+     */
+    const join = (arr, sep = ", ") =>
+        arr.map((c, i) => html`${i > 0 ? sep : ""}<code>${c}</code>`);
+
+    if (caseArr.length === 0) {
+        return "";
+    } else if (caseArr.length <= maxCasesToShow) {
+        return html` (e.g., ${join(caseArr)})`;
+    } else {
+        const shownCases = caseArr.slice(0, maxCasesToShow);
+        return html` (e.g., ${join(shownCases)} and
+        ${caseArr.length - maxCasesToShow} more)`;
+    }
+}
+
+/**
+ *
+ * @param {ErrorEntry} entry
+ */
+function formatErrorEntry(entry) {
+    if (entry.cases.length > 0) {
+        return html`${entry.message}${formatCases(entry.cases)}`;
+    } else if (entry.count > 1) {
+        return html`${entry.message} (occurred ${entry.count} times)`;
+    } else {
+        return entry.message;
+    }
 }
 
 // --- copypasted from playground ---
