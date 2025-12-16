@@ -11,7 +11,12 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
+import { SET_METADATA } from "./state/sampleSlice.js";
 
+/**
+ * @typedef {object} MetadataUploadResult
+ * @prop {import("./state/sampleState.js").Metadatum[]} metadataTable
+ */
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
@@ -24,8 +29,6 @@ class UploadMetadataDialog extends BaseDialog {
     /** @type {ReturnType<typeof validateMetadata>} */
     #validationResult;
 
-    #lastPage = 2;
-
     constructor() {
         super();
 
@@ -34,13 +37,35 @@ class UploadMetadataDialog extends BaseDialog {
 
         this.dialogTitle = "Load Custom Metadata";
 
-        /** @type {any[] | null} */
+        /** @type {Record<string, any>[]} */
         this._parsedItems = null;
 
         /** @type {string} */
         this._fileName = null;
 
         this._page = 0;
+
+        /**
+         * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onPageChange?: (from:number,to:number)=>void }[]}
+         */
+        this._pages = [
+            {
+                title: "Load",
+                render: () => this.#renderUpload(),
+                canAdvance: () => this._parsedItems != null,
+            },
+            {
+                title: "Preview & Validate",
+                render: () => this.#renderPreview(),
+                canAdvance: () =>
+                    this.#validationResult?.statistics?.samplesInBoth?.size > 0,
+            },
+            {
+                title: "Configure Attributes",
+                render: () => this.#renderConfiguration(),
+                onPageChange: () => this.#submit(),
+            },
+        ];
     }
 
     static styles = [
@@ -56,6 +81,17 @@ class UploadMetadataDialog extends BaseDialog {
             }
         `,
     ];
+
+    #submit() {
+        this.finish({
+            ok: true,
+            data: /** @type {MetadataUploadResult} */ ({
+                metadataTable: this._parsedItems,
+            }),
+        });
+        this.triggerClose();
+        return false;
+    }
 
     /**
      * @param {File} file
@@ -181,16 +217,11 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     renderBody() {
-        switch (this._page) {
-            case 0:
-                return this.#renderUpload();
-            case 1:
-                return this.#renderPreview();
-            case 2:
-                return this.#renderConfiguration();
-            default:
-                return html`<p>Invalid page</p>`;
+        const pageEntry = this._pages[this._page];
+        if (!pageEntry) {
+            return html`<p>Invalid page</p>`;
         }
+        return pageEntry.render();
     }
 
     /**
@@ -198,33 +229,33 @@ class UploadMetadataDialog extends BaseDialog {
      */
     #changePage(direction) {
         const newPage = this._page + direction;
-        if (newPage < 0) return;
+        if (newPage < 0 || newPage >= this._pages.length) {
+            return;
+        }
 
-        this._page += direction;
+        const from = this._page;
+        this._page = newPage;
+
+        const pageEntry = this._pages[this._page];
+        if (typeof pageEntry.onPageChange === "function") {
+            return pageEntry.onPageChange(from, this._page);
+        }
 
         // Prevent closing the dialog
         return true;
     }
 
     #canAdvancePage() {
-        switch (this._page) {
-            case 0:
-                return this._parsedItems != null;
-            case 1:
-                // Must be no errors and at least one common sample
-                return (
-                    this.#validationResult?.statistics?.samplesInBoth.size > 0
-                );
-            case 2:
-                return true;
-            default:
-                return false;
+        const pageEntry = this._pages[this._page];
+        if (typeof pageEntry.canAdvance === "function") {
+            return !!pageEntry.canAdvance();
         }
+        return true;
     }
 
     renderButtons() {
         const next =
-            this._page == this.#lastPage
+            this._page === this._pages.length - 1
                 ? { label: "Finish", icon: null }
                 : { label: "Next", icon: faCaretRight };
 
@@ -252,8 +283,31 @@ customElements.define("gs-upload-metadata-dialog", UploadMetadataDialog);
  * @param {import("./sampleView.js").default} sampleView
  */
 export function showUploadMetadataDialog(sampleView) {
-    return showDialog("gs-upload-metadata-dialog", (/** @type {any} */ el) => {
-        el.sampleView = sampleView;
+    return showDialog(
+        "gs-upload-metadata-dialog",
+        (/** @type {UploadMetadataDialog} */ el) => {
+            el.sampleView = sampleView;
+        }
+    ).then((result) => {
+        if (!result.ok) {
+            return false;
+        }
+
+        const existingIds = new Set(sampleView.sampleHierarchy.sampleData.ids);
+
+        const metadata = Object.fromEntries(
+            /** @type {MetadataUploadResult} */ (result.data).metadataTable
+                .filter((record) => existingIds.has(String(record.sample)))
+                .map((record) => {
+                    const { sample, ...rest } = record;
+                    return [String(sample), rest];
+                })
+        );
+
+        sampleView.intentExecutor.dispatch(
+            sampleView.actions[SET_METADATA]({ metadata })
+        );
+        return true;
     });
 }
 
