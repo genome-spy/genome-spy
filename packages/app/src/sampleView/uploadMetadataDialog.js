@@ -29,6 +29,28 @@ class UploadMetadataDialog extends BaseDialog {
     /** @type {ReturnType<typeof validateMetadata>} */
     #validationResult;
 
+    /**
+     * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onPageChange?: (from:number,to:number)=>void }[]}
+     */
+    #pages = [
+        {
+            title: "Load",
+            render: () => this.#renderUpload(),
+            canAdvance: () => this._parsedItems != null,
+        },
+        {
+            title: "Preview & Validate",
+            render: () => this.#renderPreview(),
+            canAdvance: () =>
+                this.#validationResult?.statistics?.samplesInBoth?.size > 0,
+        },
+        {
+            title: "Configure Attributes",
+            render: () => this.#renderConfiguration(),
+            onPageChange: () => this.#submit(),
+        },
+    ];
+
     constructor() {
         super();
 
@@ -44,28 +66,6 @@ class UploadMetadataDialog extends BaseDialog {
         this._fileName = null;
 
         this._page = 0;
-
-        /**
-         * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onPageChange?: (from:number,to:number)=>void }[]}
-         */
-        this._pages = [
-            {
-                title: "Load",
-                render: () => this.#renderUpload(),
-                canAdvance: () => this._parsedItems != null,
-            },
-            {
-                title: "Preview & Validate",
-                render: () => this.#renderPreview(),
-                canAdvance: () =>
-                    this.#validationResult?.statistics?.samplesInBoth?.size > 0,
-            },
-            {
-                title: "Configure Attributes",
-                render: () => this.#renderConfiguration(),
-                onPageChange: () => this.#submit(),
-            },
-        ];
     }
 
     static styles = [
@@ -215,7 +215,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     renderBody() {
-        const pageEntry = this._pages[this._page];
+        const pageEntry = this.#pages[this._page];
         if (!pageEntry) {
             return html`<p>Invalid page</p>`;
         }
@@ -227,14 +227,14 @@ class UploadMetadataDialog extends BaseDialog {
      */
     #changePage(direction) {
         const newPage = this._page + direction;
-        if (newPage < 0 || newPage >= this._pages.length) {
+        if (newPage < 0 || newPage >= this.#pages.length) {
             return;
         }
 
         const from = this._page;
         this._page = newPage;
 
-        const pageEntry = this._pages[this._page];
+        const pageEntry = this.#pages[this._page];
         if (typeof pageEntry.onPageChange === "function") {
             return pageEntry.onPageChange(from, this._page);
         }
@@ -244,7 +244,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #canAdvancePage() {
-        const pageEntry = this._pages[this._page];
+        const pageEntry = this.#pages[this._page];
         if (typeof pageEntry.canAdvance === "function") {
             return !!pageEntry.canAdvance();
         }
@@ -253,7 +253,7 @@ class UploadMetadataDialog extends BaseDialog {
 
     renderButtons() {
         const next =
-            this._page === this._pages.length - 1
+            this._page === this.#pages.length - 1
                 ? { label: "Finish", icon: null }
                 : { label: "Next", icon: faCaretRight };
 
