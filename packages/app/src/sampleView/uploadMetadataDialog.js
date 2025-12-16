@@ -30,7 +30,7 @@ class UploadMetadataDialog extends BaseDialog {
     #validationResult;
 
     /**
-     * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onPageChange?: (from:number,to:number)=>void }[]}
+     * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onAdvance?: () => boolean}[]}
      */
     #pages = [
         {
@@ -47,7 +47,7 @@ class UploadMetadataDialog extends BaseDialog {
         {
             title: "Configure Attributes",
             render: () => this.#renderConfiguration(),
-            onPageChange: () => this.#submit(),
+            onAdvance: () => this.#submit(),
         },
     ];
 
@@ -226,18 +226,19 @@ class UploadMetadataDialog extends BaseDialog {
      * @param {-1 | 1} direction
      */
     #changePage(direction) {
+        if (direction > 0) {
+            const pageEntry = this.#pages[this._page];
+            if (typeof pageEntry.onAdvance === "function") {
+                pageEntry.onAdvance();
+            }
+        }
+
         const newPage = this._page + direction;
         if (newPage < 0 || newPage >= this.#pages.length) {
-            return;
+            return true;
         }
 
-        const from = this._page;
         this._page = newPage;
-
-        const pageEntry = this.#pages[this._page];
-        if (typeof pageEntry.onPageChange === "function") {
-            return pageEntry.onPageChange(from, this._page);
-        }
 
         // Prevent closing the dialog
         return true;
@@ -302,8 +303,24 @@ export function showUploadMetadataDialog(sampleView) {
                 })
         );
 
+        // Temporary definition for expression data
+
+        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+        const attributeDefs = Object.fromEntries(
+            Object.keys(Object.values(metadata)[0]).map((attribute) => [
+                attribute,
+                {
+                    type: "quantitative",
+                    scale: {
+                        domain: [-5, 0, 5],
+                        range: ["#0050f8", "#f6f6f6", "#ff3000"],
+                    },
+                },
+            ])
+        );
+
         sampleView.intentExecutor.dispatch(
-            sampleView.actions[SET_METADATA]({ metadata })
+            sampleView.actions[SET_METADATA]({ metadata, attributeDefs })
         );
         return true;
     });
