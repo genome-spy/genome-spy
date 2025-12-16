@@ -24,6 +24,8 @@ class UploadMetadataDialog extends BaseDialog {
     /** @type {ReturnType<typeof validateMetadata>} */
     #validationResult;
 
+    #lastPage = 2;
+
     constructor() {
         super();
 
@@ -174,12 +176,18 @@ class UploadMetadataDialog extends BaseDialog {
         `;
     }
 
+    #renderConfiguration() {
+        return html`<p>Configuration page (not implemented yet)</p>`;
+    }
+
     renderBody() {
         switch (this._page) {
             case 0:
                 return this.#renderUpload();
             case 1:
                 return this.#renderPreview();
+            case 2:
+                return this.#renderConfiguration();
             default:
                 return html`<p>Invalid page</p>`;
         }
@@ -207,12 +215,19 @@ class UploadMetadataDialog extends BaseDialog {
                 return (
                     this.#validationResult?.statistics?.samplesInBoth.size > 0
                 );
+            case 2:
+                return true;
             default:
                 return false;
         }
     }
 
     renderButtons() {
+        const next =
+            this._page == this.#lastPage
+                ? { label: "Finish", icon: null }
+                : { label: "Next", icon: faCaretRight };
+
         return [
             this.makeCloseButton("Cancel"),
             this.makeButton(
@@ -222,9 +237,9 @@ class UploadMetadataDialog extends BaseDialog {
                 this._page === 0
             ),
             this.makeButton(
-                "Next",
+                next.label,
                 () => this.#changePage(1),
-                faCaretRight,
+                next.icon,
                 !this.#canAdvancePage()
             ),
         ];
