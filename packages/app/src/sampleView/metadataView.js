@@ -6,7 +6,11 @@ import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
-import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution.js";
+import {
+    NOMINAL,
+    ORDINAL,
+    reconfigureScales,
+} from "@genome-spy/core/view/scaleResolution.js";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
@@ -328,6 +332,8 @@ export class MetadataView extends ConcatView {
         });
 
         dynamicSource.updateDynamicData(metadataTable);
+        reconfigureScales(this); // TODO: Should happen automatically
+
         this.context.requestLayoutReflow();
     }
 
