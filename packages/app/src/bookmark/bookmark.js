@@ -1,9 +1,9 @@
 import { html } from "lit";
 import { ActionCreators } from "redux-undo";
-import "../components/bookmark/bookmarkInfoBox.js";
+import "../components/dialogs/bookmarkInfoBox.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { showMessageDialog } from "../components/dialogs/messageDialog.js";
-import { showDialog } from "../components/dialogs/baseDialog.js";
+import { showMessageDialog } from "../components/generic/messageDialog.js";
+import { showDialog } from "../components/generic/baseDialog.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
 
 /**
@@ -124,7 +124,7 @@ export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
  */
 export async function showBookmarkInfoBox(entry, app, options = {}) {
     const existingDialog =
-        /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */ (
+        /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */ (
             document.body.querySelector("gs-bookmark-info-box")
         );
 
@@ -135,7 +135,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
         showDialog(
             "gs-bookmark-info-box",
             async (
-                /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */
+                /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */
                 el
             ) => {
                 // TODO: It's actually the bookmarkDatabase's url that should be used as a baseUrl
@@ -167,7 +167,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
 
         // TODO: Come up with a nicer way to get handle to the element and define listeners
         const addedDialog =
-            /** @type {import("../components/bookmark/bookmarkInfoBox.js").default} */ (
+            /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */ (
                 document.body.querySelector("gs-bookmark-info-box")
             );
 

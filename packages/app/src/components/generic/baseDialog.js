@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from "lit";
-import { faStyles, formStyles } from "../componentStyles.js";
+import { faStyles, formStyles } from "./componentStyles.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 /**

@@ -9,13 +9,13 @@ import SampleView from "./sampleView/sampleView.js";
 import IDBBookmarkDatabase from "./bookmark/idbBookmarkDatabase.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 
-import "./components/toolbar.js";
+import "./components/toolbar/toolbar.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import Provenance from "./state/provenance.js";
 
 import MergeSampleFacets from "./sampleView/mergeFacets.js";
 import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
-import { showMessageDialog } from "./components/dialogs/messageDialog.js";
+import { showMessageDialog } from "./components/generic/messageDialog.js";
 import { compressToUrlHash, decompressFromUrlHash } from "./utils/urlHash.js";
 import {
     restoreBookmark,

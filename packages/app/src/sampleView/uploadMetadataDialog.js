@@ -7,9 +7,9 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { html, css } from "lit";
-import BaseDialog, { showDialog } from "../components/dialogs/baseDialog.js";
-import "../components/data-grid/dataGrid.js";
-import "../components/uploadDropZone.js";
+import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
+import "../components/generic/dataGrid.js";
+import "../components/generic/uploadDropZone.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
 class UploadMetadataDialog extends BaseDialog {
@@ -79,7 +79,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     /**
-     * @param {import("../components/uploadDropZone.js").FilesChosenEvent} e
+     * @param {import("../components/generic/uploadDropZone.js").FilesChosenEvent} e
      */
     async #onFilesChosen(e) {
         const file = e.detail.files[0];
@@ -102,7 +102,7 @@ class UploadMetadataDialog extends BaseDialog {
             <gs-upload-drop-zone
                 accept=".csv,.tsv,.json"
                 @gs-files-chosen=${(
-                    /** @type {import("../components/uploadDropZone.js").FilesChosenEvent} */ e
+                    /** @type {import("../components/generic/uploadDropZone.js").FilesChosenEvent} */ e
                 ) => this.#onFilesChosen(e)}
             ></gs-upload-drop-zone>`;
     }

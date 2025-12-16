@@ -6,24 +6,24 @@ import { ref, createRef } from "lit/directives/ref.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
 import { findUniqueViewNames } from "@genome-spy/core/view/viewUtils.js";
-import { subscribeTo } from "../state/subscribeTo.js";
-import { queryDependency } from "../utils/dependency.js";
-import { nestPaths } from "../utils/nestPaths.js";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { subscribeTo } from "../../state/subscribeTo.js";
+import { queryDependency } from "../../utils/dependency.js";
+import { nestPaths } from "../../utils/nestPaths.js";
+import { viewSettingsSlice } from "../../viewSettingsSlice.js";
 import {
     nodesToTreesWithAccessor,
     visitTree,
 } from "@genome-spy/core/utils/trees.js";
-import { dropdownMenu } from "../utils/ui/contextMenu.js";
+import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/view/paramMediator.js";
-import SubscriptionController from "./subscriptionController.js";
+import SubscriptionController from "../generic/subscriptionController.js";
 
 class ViewSettingsButton extends LitElement {
-    /** @type {import("../app.js").default} */
+    /** @type {import("../../app.js").default} */
     #app;
 
-    /** @type {import("../utils/nestPaths.js").NestedItem<View>} */
+    /** @type {import("../../utils/nestPaths.js").NestedItem<View>} */
     #nestedPaths;
 
     #buttonRef = createRef();
@@ -43,7 +43,7 @@ class ViewSettingsButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app.js").default} */ app) => {
+                (/** @type {import("../../app.js").default} */ app) => {
                     this.#app = app;
                 }
             )
@@ -162,18 +162,18 @@ class ViewSettingsButton extends LitElement {
         const viewRoot = this.#app.genomeSpy.viewRoot;
         const uniqueNames = findUniqueViewNames(viewRoot);
 
-        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
         /**
-         * @param { import("../utils/nestPaths.js").NestedItem<View>} item
+         * @param { import("../../utils/nestPaths.js").NestedItem<View>} item
          * @param {number} [depth]
          */
         const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
             const checked = visibilities[view.name] ?? view.isVisibleInSpec();
 
-            /** @type {() => import("../utils/ui/contextMenu.js").MenuItem[]} */
+            /** @type {() => import("../../utils/ui/contextMenu.js").MenuItem[]} */
             let submenuOpener;
 
             if (

@@ -1,6 +1,6 @@
 import { html } from "lit";
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
+import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 
 /**
@@ -82,7 +82,7 @@ customElements.define(
  *
  * @param {import("../types.js").AttributeInfo} attributeInfo
  * @param {import("../sampleView.js").default} sampleView
- * @returns {Promise<import("../../components/dialogs/baseDialog.js").DialogFinishDetail>}
+ * @returns {Promise<import("../../components/generic/baseDialog.js").DialogFinishDetail>}
  */
 export default function retainFirstNCategoriesDialog(
     attributeInfo,

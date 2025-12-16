@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit";
-import SubscriptionController from "../subscriptionController.js";
+import SubscriptionController from "./subscriptionController.js";
 
 /**
  * gs-data-grid
