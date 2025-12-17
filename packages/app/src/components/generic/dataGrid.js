@@ -328,7 +328,7 @@ export default class DataGrid extends LitElement {
             columns.map((k) => ({
                 key: k,
                 label: k,
-                width: null,
+                width: /** @type {number} */ (null),
                 isNumeric: false,
             }));
 
