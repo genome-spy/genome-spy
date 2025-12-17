@@ -11,10 +11,12 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
+import { rowsToColumns } from "../utils/dataLayout.js";
 
 /**
  * @typedef {object} MetadataUploadResult
- * @prop {import("./state/sampleState.js").Metadatum[]} metadataTable
+ * @prop {import("./state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @prop {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
  */
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
@@ -87,10 +89,37 @@ class UploadMetadataDialog extends BaseDialog {
     ];
 
     #submit() {
+        const existingIds = new Set(
+            this.sampleView.sampleHierarchy.sampleData.ids
+        );
+        const filteredMetadata = this._parsedItems.filter((record) =>
+            existingIds.has(String(record.sample))
+        );
+        const columnarMetadata =
+            /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+                rowsToColumns(filteredMetadata)
+            );
+
+        // Temporary definition for expression data
+        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+        const attributeDefs = Object.fromEntries(
+            Object.keys(columnarMetadata).map((attribute) => [
+                attribute,
+                {
+                    type: "quantitative",
+                    scale: {
+                        domain: [-5, 0, 5],
+                        range: ["#0050f8", "#f6f6f6", "#ff3000"],
+                    },
+                },
+            ])
+        );
+
         this.finish({
             ok: true,
             data: /** @type {MetadataUploadResult} */ ({
-                metadataTable: this._parsedItems,
+                columnarMetadata,
+                attributeDefs,
             }),
         });
         this.triggerClose();
@@ -308,39 +337,11 @@ export function showUploadMetadataDialog(sampleView) {
             return false;
         }
 
-        const existingIds = new Set(sampleView.sampleHierarchy.sampleData.ids);
-
-        const metadata = Object.fromEntries(
-            /** @type {MetadataUploadResult} */ (result.data).metadataTable
-                .filter((record) => existingIds.has(String(record.sample)))
-                .map((record) => {
-                    const { sample, ...rest } = record;
-                    return [String(sample), rest];
-                })
-        );
-
-        // Temporary definition for expression data
-
-        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
-        const attributeDefs = Object.fromEntries(
-            Object.keys(Object.values(metadata)[0]).map((attribute) => [
-                attribute,
-                {
-                    type: "quantitative",
-                    scale: {
-                        domain: [-5, 0, 5],
-                        range: ["#0050f8", "#f6f6f6", "#ff3000"],
-                    },
-                },
-            ])
-        );
-
+        const uploadResult = /** @type {MetadataUploadResult} */ (result.data);
         sampleView.intentExecutor.dispatch(
-            sampleView.actions.addMetadata({
-                metadata,
-                attributeDefs,
-            })
+            sampleView.actions.addMetadata(uploadResult)
         );
+
         return true;
     });
 }

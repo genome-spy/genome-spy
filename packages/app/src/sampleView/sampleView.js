@@ -44,6 +44,7 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
+import { rowsToColumns } from "../utils/dataLayout.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -404,24 +405,34 @@ export default class SampleView extends ContainerView {
             new ProcessSample()
         );
 
-        collector.observers.push((collector) => {
+        // Here's quite a bit of wrangling but the number of samples is so low that
+        // performance doesn't really matter.
+
+        collector.observers.push(() => {
             const result =
                 /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
                     collector.getData()
                 );
+
             const samples = result.map((d) => d.sample);
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
 
             const attributes = result[0]?.attributes;
-
             if (attributes && Object.keys(attributes).length > 0) {
-                const metadata = Object.fromEntries(
-                    result.map((d) => {
-                        return [d.sample.id, d.attributes];
-                    })
-                );
+                const rowMetadata = result.map((r) => ({
+                    sample: r.sample.id,
+                    ...r.attributes,
+                }));
+
+                // Columnar format is used in "addMetadata" action as it is much more
+                // efficient in bookmarks and url sharing.
+                // Here, in the initial action, that optimization is unnecessary.
+                const columnarMetadata =
+                    /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+                        rowsToColumns(rowMetadata)
+                    );
 
                 // Clear history, since if initial metadata is being set, it
                 // should represent the initial state.
@@ -429,7 +440,7 @@ export default class SampleView extends ContainerView {
 
                 this.provenance.store.dispatch(
                     this.actions.addMetadata({
-                        metadata,
+                        columnarMetadata,
                         attributeDefs: this.spec.samples.attributes,
                         replace: true,
                     })

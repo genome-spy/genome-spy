@@ -1,15 +1,34 @@
 import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
-import { Sample, Metadata } from "./sampleState.js";
+import { Sample } from "./sampleState.js";
 import { AttributeIdentifier } from "../types.js";
 import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
+
+/**
+ * Columnar metadata representation
+ * Keys are attribute names, values are arrays of attribute values
+ * for each sample, in the same order as the samples array.
+ *
+ * Columnar format is more efficient for storage in bookmarked actions.
+ */
+export interface ColumnarMetadata {
+    /**
+     * Required sample identifier
+     */
+    sample: string[];
+
+    /**
+     * Attributes
+     */
+    [key: string]: Scalar[];
+}
 
 export interface SetSamples {
     samples: Sample[];
 }
 
 export interface SetMetadata {
-    metadata: Metadata;
+    columnarMetadata: ColumnarMetadata;
 
     attributeDefs?: Record<string, SampleAttributeDef>;
 

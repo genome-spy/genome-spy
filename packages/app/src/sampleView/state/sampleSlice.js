@@ -21,6 +21,7 @@ import {
     combineSampleMetadata,
     computeAttributeDefs,
 } from "../metadataUtils.js";
+import { columnsToRows } from "../../utils/dataLayout.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -130,17 +131,24 @@ export const sampleSlice = createSlice({
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
         ) => {
-            const metadata = action.payload.metadata;
-
             if (!state.sampleData) {
                 throw new Error("Samples must be set before setting metadata!");
             }
 
+            const columnarMetadata = action.payload.columnarMetadata;
+
+            const entities = Object.fromEntries(
+                columnsToRows(columnarMetadata).map((record) => {
+                    const { sample, ...rest } = record;
+                    return [String(sample), rest];
+                })
+            );
+
             /** @type {import("./sampleState.js").SampleMetadata} */
             const sampleMetadata = {
-                entities: metadata,
-                attributeNames: extractObjectKeys(
-                    Array.from(Object.values(metadata))
+                entities,
+                attributeNames: /** @type {string[]} */ (
+                    Object.keys(columnarMetadata).filter((k) => k !== "sample")
                 ),
             };
 
@@ -358,23 +366,6 @@ export const sampleSlice = createSlice({
         },
     },
 });
-
-/**
- * Given an array of objects, extract all unique keys used in the objects
- * and return them as an array.
- *
- * @param {object[]} objects
- * @param {(x: any) => object} [accessor]
- */
-function extractObjectKeys(objects, accessor = (x) => x) {
-    const keys = new Set();
-    for (const obj of objects) {
-        for (const key of Object.keys(accessor(obj))) {
-            keys.add(key);
-        }
-    }
-    return [...keys];
-}
 
 /**
  * Applies an operation to each group of samples.
