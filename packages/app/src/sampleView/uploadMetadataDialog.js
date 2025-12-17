@@ -23,6 +23,8 @@ class UploadMetadataDialog extends BaseDialog {
         _fileName: { state: true },
         _parsedItems: { state: true },
         _page: { state: true },
+
+        _addUnderGroup: { state: true },
     };
 
     /** @type {ReturnType<typeof validateMetadata>} */
@@ -63,6 +65,9 @@ class UploadMetadataDialog extends BaseDialog {
 
         /** @type {string} */
         this._fileName = null;
+
+        /** @type {string} Add new metadata under this (optional) group */
+        this._addUnderGroup = null;
 
         this._page = 0;
     }
@@ -210,7 +215,19 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #renderConfiguration() {
-        return html`<p>Configuration page (not implemented yet)</p>`;
+        return html` <div class="gs-form-group">
+            <label for="bookmark-title">Group name</label>
+            <input
+                type="text"
+                .value=${this._addUnderGroup ?? ""}
+                placeholder="(optional) Group name under which to add new metadata"
+                @input=${(/** @type {InputEvent} */ e) => {
+                    this._addUnderGroup = /** @type {HTMLInputElement} */ (
+                        e.target
+                    ).value;
+                }}
+            />
+        </div>`;
     }
 
     renderBody() {
