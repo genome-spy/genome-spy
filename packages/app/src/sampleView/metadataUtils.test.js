@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildPathTree, computeAttributeDefs } from "./metadataUtils.js";
+import {
+    buildPathTree,
+    computeAttributeDefs,
+    combineSampleMetadata,
+} from "./metadataUtils.js";
 
 describe("buildPathTree", () => {
     it("builds a hierarchy including three levels from dotted path names", () => {
@@ -191,5 +195,67 @@ describe("computeAttributeDefs", () => {
         expect(defs["group.sub"].type).toBe("quantitative");
         // Ensure ancestor is not added or modified
         expect(defs.group).toBeUndefined();
+    });
+});
+
+describe("combineSampleMetadata", () => {
+    it("merges two disjoint sample metadata objects", () => {
+        const a = {
+            entities: {
+                s1: { a1: 1 },
+                s2: { a1: 2 },
+            },
+            attributeNames: ["a1"],
+            attributeDefs: { a1: { type: "quantitative" } },
+        };
+
+        const b = {
+            entities: {
+                s2: { b1: "x" },
+                s3: { b1: "y" },
+            },
+            attributeNames: ["b1"],
+            attributeDefs: { b1: { type: "nominal" } },
+        };
+
+        const combined = combineSampleMetadata(a, b);
+
+        expect(combined.attributeNames).toEqual(["a1", "b1"]);
+        expect(combined.attributeDefs).toBeDefined();
+        expect(combined.attributeDefs.a1).toBeDefined();
+        expect(combined.attributeDefs.b1).toBeDefined();
+
+        // entities should include union of ids
+        expect(Object.keys(combined.entities).sort()).toEqual(
+            ["s1", "s2", "s3"].sort()
+        );
+
+        expect(combined.entities.s1).toEqual({ a1: 1, b1: undefined });
+        expect(combined.entities.s2).toEqual({ a1: 2, b1: "x" });
+        expect(combined.entities.s3).toEqual({ a1: undefined, b1: "y" });
+    });
+
+    it("throws on duplicate attribute names", () => {
+        const a = { entities: { s1: { a: 1 } }, attributeNames: ["a"] };
+        const b = { entities: { s2: { a: 2 } }, attributeNames: ["a"] };
+        expect(() => combineSampleMetadata(a, b)).toThrow(
+            /Duplicate attribute names/
+        );
+    });
+
+    it("throws on duplicate attributeDefs keys", () => {
+        const a = {
+            entities: {},
+            attributeNames: ["a"],
+            attributeDefs: { x: { type: "nominal" } },
+        };
+        const b = {
+            entities: {},
+            attributeNames: ["b"],
+            attributeDefs: { x: { type: "quantitative" } },
+        };
+        expect(() => combineSampleMetadata(a, b)).toThrow(
+            /Duplicate attribute definition key/
+        );
     });
 });

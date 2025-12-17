@@ -14,10 +14,10 @@ export interface SetMetadata {
     attributeDefs?: Record<string, SampleAttributeDef>;
 
     /**
-     * If true, the provided metadata will be added to existing metadata
-     * instead of replacing them.
+     * If true, the provided metadata will replace existing metadata
+     * instead of being added to them.
      */
-    add?: boolean;
+    replace?: boolean;
 }
 
 export type ThresholdOperator = "lt" | "lte";

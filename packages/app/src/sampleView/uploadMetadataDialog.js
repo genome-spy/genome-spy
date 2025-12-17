@@ -319,7 +319,10 @@ export function showUploadMetadataDialog(sampleView) {
         );
 
         sampleView.intentExecutor.dispatch(
-            sampleView.actions.setMetadata({ metadata, attributeDefs })
+            sampleView.actions.addMetadata({
+                metadata,
+                attributeDefs,
+            })
         );
         return true;
     });

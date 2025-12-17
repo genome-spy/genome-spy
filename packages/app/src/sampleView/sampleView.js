@@ -428,9 +428,10 @@ export default class SampleView extends ContainerView {
                 this.provenance.store.dispatch(ActionCreators.clearHistory());
 
                 this.provenance.store.dispatch(
-                    this.actions.setMetadata({
+                    this.actions.addMetadata({
                         metadata,
                         attributeDefs: this.spec.samples.attributes,
+                        replace: true,
                     })
                 );
             }

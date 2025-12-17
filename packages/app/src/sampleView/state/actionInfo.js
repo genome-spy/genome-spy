@@ -10,6 +10,7 @@ import {
     faCircle,
     faTrashAlt,
     faCheck,
+    faTable,
 } from "@fortawesome/free-solid-svg-icons";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
 
@@ -57,10 +58,10 @@ const actionHandlers = {
         icon: faCheck,
     }),
 
-    setMetadata: ({ template }) => ({
+    addMetadata: ({ template, payload }) => ({
         ...template,
-        title: "Set metadata",
-        icon: faCheck,
+        title: payload.replace ? "Set metadata" : "Add metadata",
+        icon: faTable,
     }),
 
     sortBy: ({ template, attributeTitle }) => ({

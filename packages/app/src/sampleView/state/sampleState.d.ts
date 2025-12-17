@@ -1,4 +1,5 @@
 import { scalar } from "@genome-spy/core/utils/domainArray.js";
+import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
 import { AttributeIdentifier } from "../types.js";
 import { PayloadAction } from "@reduxjs/toolkit";
 
@@ -48,10 +49,7 @@ export interface SampleMetadata {
     /** Names of all available metadata attributes */
     attributeNames: string[];
     /** A definition for each attribute or attribute group */
-    attributeDefs?: Record<
-        string,
-        import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef
-    >;
+    attributeDefs?: Record<string, SampleAttributeDef>;
 }
 
 export interface SampleHierarchy {

@@ -17,7 +17,10 @@ import {
     wrapAccessorForComparison,
 } from "./sampleOperations.js";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
-import { computeAttributeDefs } from "../metadataUtils.js";
+import {
+    combineSampleMetadata,
+    computeAttributeDefs,
+} from "../metadataUtils.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -123,7 +126,7 @@ export const sampleSlice = createSlice({
             };
         },
 
-        setMetadata: (
+        addMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
         ) => {
@@ -147,10 +150,14 @@ export const sampleSlice = createSlice({
                 action.payload.attributeDefs
             );
 
-            state.sampleMetadata = {
+            const newMetadata = {
                 ...sampleMetadata,
                 attributeDefs: completedAttributeDefs,
             };
+
+            state.sampleMetadata = action.payload.replace
+                ? newMetadata
+                : combineSampleMetadata(state.sampleMetadata, newMetadata);
         },
 
         sortBy: (

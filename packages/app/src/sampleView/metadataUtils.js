@@ -148,3 +148,77 @@ export function computeAttributeDefs(
 
     return attributeDefs;
 }
+
+/**
+ * Combines two SampleMetadata objects into one.
+ *
+ * It works as follows:
+ * - attributeNames: concatenate and throw error on duplicates
+ * - attributeDefs: merge the two, throw error on duplicate keys
+ * - samples: find the union of sample IDs, and for each sample ID,
+ *  combine the metadata from both a and b (if present). Each Metadatum
+ * should contain all attributes in attributeNames
+ *
+ * @param {import("./state/sampleState.js").SampleMetadata} a
+ * @param {import("./state/sampleState.js").SampleMetadata} b
+ * @returns {import("./state/sampleState.js").SampleMetadata}
+ */
+export function combineSampleMetadata(a, b) {
+    // a and b are required and expected to be valid SampleMetadata objects
+    const aNames = a.attributeNames;
+    const bNames = b.attributeNames;
+
+    // Check for duplicate attribute names
+    const dupNames = aNames.filter((n) => bNames.includes(n));
+    if (dupNames.length > 0) {
+        throw new Error(`Duplicate attribute names: ${dupNames.join(", ")}`);
+    }
+
+    const attributeNames = [...aNames, ...bNames];
+
+    // Merge attributeDefs, throwing on duplicate keys
+    const aDefs = a.attributeDefs ?? {};
+    const bDefs = b.attributeDefs ?? {};
+    const attributeDefs = { ...aDefs };
+    for (const k of Object.keys(bDefs)) {
+        if (k in attributeDefs) {
+            throw new Error(`Duplicate attribute definition key: ${k}`);
+        }
+        attributeDefs[k] = bDefs[k];
+    }
+
+    // Union of sample ids
+    const aIds = Object.keys(a.entities);
+    const bIds = Object.keys(b.entities);
+    const idSet = new Set([...aIds, ...bIds]);
+
+    /** @type {import("./state/sampleState.js").SampleMetadata["entities"]} */
+    const entities = {};
+
+    for (const id of idSet) {
+        const aEnt = a.entities[id] ?? {};
+        const bEnt = b.entities[id] ?? {};
+
+        /** @type {import("./state/sampleState.js").Metadatum} */
+        const combined = {};
+
+        for (const attr of attributeNames) {
+            if (aNames.includes(attr)) {
+                combined[attr] = aEnt[attr];
+            } else {
+                combined[attr] = bEnt[attr];
+            }
+        }
+
+        entities[id] = combined;
+    }
+
+    /** @type {import("./state/sampleState.js").SampleMetadata} */
+    const result = {
+        entities,
+        attributeNames,
+        attributeDefs,
+    };
+
+    return result;
+}
