@@ -7,6 +7,7 @@ import {
     faBug,
     faFileImage,
     faEllipsisVertical,
+    faFileUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -14,20 +15,21 @@ import bowtie from "@genome-spy/core/img/bowtie.svg";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { showDataflowInspectorDialog } from "./dialogs/dataflowInspectorDialog.js";
-import { toggleDropdown } from "../utils/ui/dropdown.js";
-import { menuItemToTemplate } from "../utils/ui/contextMenu.js";
-import { subscribeTo } from "../state/subscribeTo.js";
-import { showDialog } from "./dialogs/baseDialog.js";
-import "./dialogs/aboutDialog.js";
-import "./dialogs/saveImageDialog.js";
-import { showMessageDialog } from "./dialogs/messageDialog.js";
+import { showDataflowInspectorDialog } from "../dialogs/dataflowInspectorDialog.js";
+import { toggleDropdown } from "../../utils/ui/dropdown.js";
+import { menuItemToTemplate } from "../../utils/ui/contextMenu.js";
+import { subscribeTo } from "../../state/subscribeTo.js";
+import { showDialog } from "../generic/baseDialog.js";
+import "../dialogs/aboutDialog.js";
+import "../dialogs/saveImageDialog.js";
+import { showMessageDialog } from "../generic/messageDialog.js";
+import { showUploadMetadataDialog } from "../../sampleView/uploadMetadataDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app.js").default} */
+        /** @type {import("../../app.js").default} */
         this.app = undefined;
     }
 
@@ -60,8 +62,20 @@ export default class Toolbar extends LitElement {
         if (provenance.isEnabled()) {
             elements.push(html`
                 <genome-spy-provenance-buttons
+                    class="btn-group"
                     .provenance=${provenance}
                 ></genome-spy-provenance-buttons>
+            `);
+
+            elements.push(html`
+                <button
+                    class="tool-btn"
+                    title="Upload metadata"
+                    @click=${() =>
+                        showUploadMetadataDialog(this.app.getSampleView())}
+                >
+                    ${icon(faFileUpload).node[0]}
+                </button>
             `);
         }
 
@@ -127,7 +141,7 @@ export default class Toolbar extends LitElement {
     }
 
     #makeEllipsisTemplate() {
-        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
         items.push({

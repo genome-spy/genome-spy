@@ -7,13 +7,13 @@ import {
     faCircle,
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown.js";
+import { toggleDropdown } from "../../utils/ui/dropdown.js";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../state/provenance.js").default} */
+        /** @type {import("../../state/provenance.js").default} */
         this.provenance = undefined;
     }
 

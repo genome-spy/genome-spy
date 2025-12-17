@@ -12,6 +12,7 @@
     "allowJs": true,
     "checkJs": true,
     "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
     "strict": false,
     "noImplicitAny": true,
     "types": [],

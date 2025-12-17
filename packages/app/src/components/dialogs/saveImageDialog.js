@@ -5,7 +5,7 @@ import {
     faInfoCircle,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog from "./baseDialog.js";
+import BaseDialog from "../generic/baseDialog.js";
 
 const instructions = html`
     <div class="gs-alert info" style="max-width: 500px">

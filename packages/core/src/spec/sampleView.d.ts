@@ -31,11 +31,13 @@ export interface SampleSpec extends ViewSpecBase {
     stickySummaries?: boolean;
 }
 
+export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";
+
 export interface SampleAttributeDef {
     /**
      * The attribute type. One of `"nominal"`, `"ordinal"`, or `"quantitative"`.
      */
-    type?: Type; // TODO: Omit index/locus from available types
+    type?: SampleAttributeType;
 
     /**
      * Scale definition for the (default) color channel

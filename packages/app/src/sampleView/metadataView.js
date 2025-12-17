@@ -1,28 +1,23 @@
 import { html } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 
-import { inferType } from "vega-loader";
-
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
-import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution.js";
+import {
+    NOMINAL,
+    ORDINAL,
+    reconfigureScales,
+} from "@genome-spy/core/view/scaleResolution.js";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-
-// TODO: Move to a more generic place
-/** @type {Record<string, import("@genome-spy/core/spec/channel.js").Type>} */
-const FieldType = {
-    NOMINAL: "nominal",
-    ORDINAL: "ordinal",
-    QUANTITATIVE: "quantitative",
-};
+import { buildPathTree } from "./metadataUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -99,7 +94,7 @@ export class MetadataView extends ConcatView {
             this.#sampleView.provenance.store,
             (state) => state.provenance.present.sampleView.sampleMetadata,
             (sampleMetadata) => {
-                this.setMetadata(sampleMetadata);
+                this.#setMetadata(sampleMetadata);
             }
         );
 
@@ -249,7 +244,7 @@ export class MetadataView extends ConcatView {
             const name = /** @type {string} */ (
                 attributeInfo.attribute.specifier
             );
-            const attributeValue = metadatum[name];
+            const attributeValue = metadatum?.[name];
             items.push(
                 ...generateAttributeContextMenu(
                     html`Attribute: <strong>${name}</strong>`,
@@ -264,10 +259,10 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {{entities: import("./state/sampleState.js").Metadata, attributeNames: string[]}} metadata
+     * @param {import("./state/sampleState.js").SampleMetadata} sampleMetadata
      */
-    setMetadata({ entities, attributeNames }) {
-        this.#metadata = entities;
+    #setMetadata(sampleMetadata) {
+        this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
 
@@ -314,7 +309,7 @@ export class MetadataView extends ConcatView {
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;
 
-        const metadataTable = Object.entries(entities).map(
+        const metadataTable = Object.entries(sampleMetadata.entities).map(
             ([sample, metadatum]) => ({
                 sample,
                 indexNumber: sampleEntities[sample]?.indexNumber,
@@ -337,6 +332,8 @@ export class MetadataView extends ConcatView {
         });
 
         dynamicSource.updateDynamicData(metadataTable);
+        reconfigureScales(this); // TODO: Should happen automatically
+
         this.context.requestLayoutReflow();
     }
 
@@ -344,21 +341,17 @@ export class MetadataView extends ConcatView {
         this.setChildren([]);
         this.#attributeViews.clear();
 
-        const nestedAttributes = getNestedAttributes(
+        const nestedAttributes = buildPathTree(
             this.getAttributeNames(),
             this.#sampleView.spec.samples.attributeGroupSeparator
         );
 
-        /**
-         * TODO: Import to state
-         * @param {string} attributeName
-         */
-        const getAttributeDef = (attributeName) =>
-            this.#sampleView.spec.samples?.attributes?.[attributeName];
+        const attributeDefs =
+            this.#sampleView.sampleHierarchy.sampleMetadata.attributeDefs;
 
         /**
          *
-         * @param {AttributeNode} attributeNode
+         * @param {import("./metadataUtils.js").PathTreeNode} attributeNode
          * @param {ConcatView} container
          * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} inheritedAttributeDef
          */
@@ -371,16 +364,20 @@ export class MetadataView extends ConcatView {
                 if (node.children.size == 0) {
                     // It's a leaf
 
-                    const attribute = node.attribute;
+                    const attribute = node.path;
 
                     const attributeDef = {
                         ...inheritedAttributeDef,
                         title: node.part,
-                        ...getAttributeDef(attribute),
+                        ...(attributeDefs?.[attribute] ?? {}),
                     };
 
                     const view = new UnitView(
-                        this.#createAttributeViewSpec(attribute, attributeDef),
+                        createAttributeSpec(
+                            attribute,
+                            attributeDef,
+                            this.#sampleView.spec.samples
+                        ),
                         this.context,
                         container,
                         container,
@@ -393,7 +390,7 @@ export class MetadataView extends ConcatView {
                     this.#attributeViews.set(attribute, view);
                     this.#viewToAttribute.set(view, attribute);
                 } else {
-                    const attributeDef = getAttributeDef(node.attribute) ?? {};
+                    const attributeDef = attributeDefs?.[node.path] ?? {};
 
                     const view = new ConcatView(
                         {
@@ -405,6 +402,7 @@ export class MetadataView extends ConcatView {
                                 this.#sampleView.spec.samples
                                     .attributeSpacing ?? 1,
                             resolve: {
+                                // TODO: scale could be shared within groups
                                 scale: { default: "independent" },
                                 axis: { default: "independent" },
                             },
@@ -412,7 +410,7 @@ export class MetadataView extends ConcatView {
                         this.context,
                         container,
                         container,
-                        `attributeGroup-${node.attribute}`
+                        `attributeGroup-${node.path}`
                     );
                     container.appendChild(view);
 
@@ -446,31 +444,6 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * Builds a view spec for attribute.
-     *
-     * @param {string} attribute
-     * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
-     */
-    #createAttributeViewSpec(attribute, attributeDef) {
-        let fieldType =
-            attributeDef.type ??
-            inferFieldType(
-                Object.values(
-                    this.#sampleView.sampleHierarchy.sampleMetadata.entities
-                ).map((d) => d[attribute])
-            );
-
-        return createAttributeSpec(
-            attribute,
-            {
-                ...(attributeDef || {}),
-                type: fieldType,
-            },
-            this.#sampleView.spec.samples
-        );
-    }
-
-    /**
      * @param {View} view
      */
     #getAttributeInfoForView(view) {
@@ -498,7 +471,7 @@ export class MetadataView extends ConcatView {
             name: attributeName,
             attribute: { type: SAMPLE_ATTRIBUTE, specifier: attributeName },
             accessor: (sampleId, sampleHierarchy) =>
-                sampleHierarchy.sampleMetadata.entities[sampleId][
+                sampleHierarchy.sampleMetadata.entities[sampleId]?.[
                     attributeName
                 ],
             type: resolution.type,
@@ -543,7 +516,7 @@ export class MetadataView extends ConcatView {
                                 <td>${formatObject(value)}</td>
                                 <td
                                     class="color"
-                                    .style="background-color: ${getColor(
+                                    style="background-color: ${getColor(
                                         key,
                                         value
                                     )}"
@@ -645,6 +618,10 @@ export class MetadataView extends ConcatView {
  * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
+    if (!attributeDef) {
+        throw new Error("No attribute definition for " + attributeName);
+    }
+
     const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
@@ -682,7 +659,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         opacity: 1,
     };
 
-    if (attributeDef.barScale && attributeDef.type == FieldType.QUANTITATIVE) {
+    if (attributeDef.barScale && attributeDef.type == "quantitative") {
         attributeSpec.encoding.x = {
             field: attributeName,
             type: attributeDef.type,
@@ -704,59 +681,4 @@ function isDefined(value) {
         !(typeof value == "number" && isNaN(value)) &&
         value !== null
     );
-}
-
-/**
- * @typedef {{attribute: string, part: string, children: Map<string, AttributeNode>}} AttributeNode
- */
-/**
- * @param {string[]} attributeNames
- * @param {string} separator
- * @returns {AttributeNode}
- */
-function getNestedAttributes(attributeNames, separator) {
-    /** @type {(s: string) => string[]} */
-    const split = separator ? (s) => s.split(separator) : (s) => [s];
-
-    /** @type {Map<string, AttributeNode>} */
-    const root = new Map();
-
-    for (const attribute of attributeNames) {
-        const parts = split(attribute);
-        let current = root;
-        for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            if (!current.has(part)) {
-                current.set(part, {
-                    part,
-                    attribute:
-                        separator != null
-                            ? parts.slice(0, i + 1).join(separator)
-                            : part,
-                    children: new Map(),
-                });
-            }
-            current = current.get(part).children;
-        }
-    }
-
-    return {
-        part: "",
-        attribute: "",
-        children: root,
-    };
-}
-
-/**
- *
- * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
- */
-function inferFieldType(values) {
-    switch (inferType(values)) {
-        case "integer":
-        case "number":
-            return FieldType.QUANTITATIVE;
-        default:
-            return FieldType.NOMINAL;
-    }
 }

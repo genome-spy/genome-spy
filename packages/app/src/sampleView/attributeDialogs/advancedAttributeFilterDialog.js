@@ -8,10 +8,10 @@ import { css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
-import { showMessageDialog } from "../../components/dialogs/messageDialog.js";
+import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { classMap } from "lit/directives/class-map.js";
-import "../../components/histogram.js";
-import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
+import "../../components/generic/histogram.js";
+import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 
 const checkboxListStyles = css`
@@ -342,13 +342,13 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
         }
     }
 
-    /** @param {import("../../components/histogram.js").ThresholdEvent} e */
+    /** @param {import("../../components/generic/histogram.js").ThresholdEvent} e */
     #thresholdAdded(e) {
         const val = /** @type {any} */ (e).detail?.value ?? e.value;
         if (typeof this.operand !== "number") this.operand = val;
     }
 
-    /** @param {import("../../components/histogram.js").ThresholdEvent} e */
+    /** @param {import("../../components/generic/histogram.js").ThresholdEvent} e */
     #thresholdAdjusted(e) {
         this.operand = /** @type {any} */ (e).detail?.value ?? e.value;
     }
@@ -390,10 +390,10 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
                 .colors=${["#1f77b4", "#ddd"]}
                 .showThresholdNumbers=${false}
                 @add=${(
-                    /** @type {import("../../components/histogram.js").ThresholdEvent} */ e
+                    /** @type {import("../../components/generic/histogram.js").ThresholdEvent} */ e
                 ) => this.#thresholdAdded(e)}
                 @adjust=${(
-                    /** @type {import("../../components/histogram.js").ThresholdEvent} */ e
+                    /** @type {import("../../components/generic/histogram.js").ThresholdEvent} */ e
                 ) => this.#thresholdAdjusted(e)}
             ></gs-histogram>
 

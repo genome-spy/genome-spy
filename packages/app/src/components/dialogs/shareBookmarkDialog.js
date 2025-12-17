@@ -1,5 +1,5 @@
 import { css, html } from "lit";
-import BaseDialog, { showDialog } from "./baseDialog.js";
+import BaseDialog, { showDialog } from "../generic/baseDialog.js";
 import { compressToUrlHash } from "../../utils/urlHash.js";
 import { handleTabClick } from "../../utils/ui/tabs.js";
 

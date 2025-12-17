@@ -7,19 +7,22 @@ import {
     faPen,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import { toggleDropdown } from "../utils/ui/dropdown.js";
-import { showMessageDialog } from "./dialogs/messageDialog.js";
-import { dropdownMenu, menuItemToTemplate } from "../utils/ui/contextMenu.js";
-import { queryDependency } from "../utils/dependency.js";
-import { restoreBookmarkAndShowInfoBox } from "../bookmark/bookmark.js";
-import { showEnterBookmarkInfoDialog } from "./dialogs/enterBookmarkDialog.js";
-import { showShareBookmarkDialog } from "./dialogs/shareBookmarkDialog.js";
+import { toggleDropdown } from "../../utils/ui/dropdown.js";
+import { showMessageDialog } from "../generic/messageDialog.js";
+import {
+    dropdownMenu,
+    menuItemToTemplate,
+} from "../../utils/ui/contextMenu.js";
+import { queryDependency } from "../../utils/dependency.js";
+import { restoreBookmarkAndShowInfoBox } from "../../bookmark/bookmark.js";
+import { showEnterBookmarkInfoDialog } from "../dialogs/enterBookmarkDialog.js";
+import { showShareBookmarkDialog } from "../dialogs/shareBookmarkDialog.js";
 
 class BookmarkButton extends LitElement {
     constructor() {
         super();
 
-        /** @type {import("../app.js").default} */
+        /** @type {import("../../app.js").default} */
         this.app = undefined;
     }
 
@@ -29,7 +32,7 @@ class BookmarkButton extends LitElement {
         this.dispatchEvent(
             queryDependency(
                 "app",
-                (/** @type {import("../app.js").default} */ app) => {
+                (/** @type {import("../../app.js").default} */ app) => {
                     this.app = app;
                 }
             )
@@ -41,7 +44,7 @@ class BookmarkButton extends LitElement {
     }
 
     #createBookmarkWithCurrentState() {
-        /** @type {import("../bookmark/databaseSchema.js").BookmarkEntry} */
+        /** @type {import("../../bookmark/databaseSchema.js").BookmarkEntry} */
         const bookmark = {
             name: undefined,
             timestamp: Date.now(),
@@ -76,7 +79,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
+     * @param {import("../../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} [name] Name of an existing entry that will be updated
      */
     async #addBookmark(bookmarkDatabase, name) {
@@ -111,7 +114,7 @@ class BookmarkButton extends LitElement {
 
     /**
      *
-     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
+     * @param {import("../../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
      */
     async #loadBookmark(bookmarkDatabase, name) {
@@ -124,7 +127,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
+     * @param {import("../../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} name
      * @param {MouseEvent} event
      */
@@ -147,7 +150,7 @@ class BookmarkButton extends LitElement {
                 }
             });
 
-        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
 
         const global = bookmarkDatabase == this.app.globalBookmarkDatabase;
@@ -179,7 +182,7 @@ class BookmarkButton extends LitElement {
     }
 
     /**
-     * @param {import("../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
+     * @param {import("../../bookmark/bookmarkDatabase.js").default} bookmarkDatabase
      * @param {string} databaseTitle
      */
     async #makeBookmarkMenuItems(bookmarkDatabase, databaseTitle) {
@@ -192,7 +195,7 @@ class BookmarkButton extends LitElement {
                 this.#createContextMenu(bookmarkDatabase, name, event),
         }));
         return items.length
-            ? /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */ ([
+            ? /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */ ([
                   { type: "divider" },
                   { label: databaseTitle, type: "header" },
                   ...items,
@@ -202,7 +205,7 @@ class BookmarkButton extends LitElement {
 
     #getBookmarks() {
         /**
-         * @param {import("../bookmark/bookmarkDatabase.js").default} db
+         * @param {import("../../bookmark/bookmarkDatabase.js").default} db
          * @param {string} title
          */
         const makeTemplate = (db, title) =>

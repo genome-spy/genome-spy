@@ -1,7 +1,7 @@
 import { css, html, nothing } from "lit";
 import { handleTabClick } from "../../utils/ui/tabs.js";
 import InlineSource from "@genome-spy/core/data/sources/inlineSource.js";
-import BaseDialog, { showDialog } from "./baseDialog.js";
+import BaseDialog, { showDialog } from "../generic/baseDialog.js";
 
 /**
  * @typedef {object} DataFlowInspectorOptions
@@ -240,7 +240,7 @@ customElements.define("gs-dataflow-inspector", DataFlowInspectorDialog);
  *
  * @param {import("@genome-spy/core/data/dataFlow.js").default<any>} dataFlow
  * @param {DataFlowInspectorOptions} [options]
- * @returns {Promise<import("./baseDialog.js").DialogFinishDetail>}
+ * @returns {Promise<import("../generic/baseDialog.js").DialogFinishDetail>}
  */
 export function showDataflowInspectorDialog(dataFlow, options = {}) {
     return showDialog(

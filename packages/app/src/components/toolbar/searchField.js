@@ -3,7 +3,7 @@ import { createRef, ref } from "lit/directives/ref.js";
 import { guard } from "lit/directives/guard.js";
 import { zoomLinear } from "vega-util";
 
-import { MetadataView } from "../sampleView/metadataView.js";
+import { MetadataView } from "../../sampleView/metadataView.js";
 import { sampleIterable } from "@genome-spy/core/data/transforms/sample.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
@@ -14,7 +14,7 @@ export default class SearchField extends LitElement {
 
         this.inputRef = createRef();
 
-        /** @type {import("../app.js").default} */
+        /** @type {import("../../app.js").default} */
         this.app = undefined;
 
         /** @type {function():string} */

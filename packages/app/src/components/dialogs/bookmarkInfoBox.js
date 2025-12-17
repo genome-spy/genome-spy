@@ -1,5 +1,5 @@
 import { css, html } from "lit";
-import BaseDialog from "../dialogs/baseDialog.js";
+import BaseDialog from "../generic/baseDialog.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBookmark,

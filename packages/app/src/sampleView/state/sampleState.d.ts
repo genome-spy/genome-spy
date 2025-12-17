@@ -1,4 +1,5 @@
 import { scalar } from "@genome-spy/core/utils/domainArray.js";
+import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
 import { AttributeIdentifier } from "../types.js";
 import { PayloadAction } from "@reduxjs/toolkit";
 
@@ -42,6 +43,15 @@ export interface GroupMetadata {
     attribute: AttributeIdentifier;
 }
 
+export interface SampleMetadata {
+    /** SampleIds as keys, attributes as values */
+    entities: Metadata;
+    /** Names of all available metadata attributes */
+    attributeNames: string[];
+    /** A definition for each attribute or attribute group */
+    attributeDefs?: Record<string, SampleAttributeDef>;
+}
+
 export interface SampleHierarchy {
     /** All known samples that are available for use */
     sampleData: {
@@ -49,12 +59,8 @@ export interface SampleHierarchy {
         entities: Record<SampleId, Sample>;
     };
 
-    sampleMetadata: {
-        /** SampleIds as keys, attributes as values */
-        entities: Metadata;
-        /** Names of all available metadata attributes */
-        attributeNames: string[];
-    };
+    /** Metadata for samples. It's ok to have some samples missing. */
+    sampleMetadata: SampleMetadata;
 
     /** Metadata for each hierarchy level. Does not include the root. */
     groupMetadata: GroupMetadata[];

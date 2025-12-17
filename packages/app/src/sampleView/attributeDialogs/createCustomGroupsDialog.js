@@ -1,7 +1,7 @@
 import { faObjectGroup, faPaste } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
-import BaseDialog, { showDialog } from "../../components/dialogs/baseDialog.js";
-import { showMessageDialog } from "../../components/dialogs/messageDialog.js";
+import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { makeCustomGroupAccessor } from "../state/groupOperations.js";
 import { map } from "lit/directives/map.js";
 import { formatSet } from "../state/actionInfo.js";

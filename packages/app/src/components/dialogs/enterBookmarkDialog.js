@@ -5,9 +5,9 @@ import {
     faInfoCircle,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog, { showDialog } from "./baseDialog.js";
+import BaseDialog, { showDialog } from "../generic/baseDialog.js";
 import { createInputListener } from "./saveImageDialog.js";
-import { showMessageDialog } from "./messageDialog.js";
+import { showMessageDialog } from "../generic/messageDialog.js";
 
 /** @param {unknown} str */
 function trimString(str) {
@@ -192,7 +192,11 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
             el.mode = mode;
             el.originalName = bookmark.name;
         }
-    ).then((/** @type {import("./baseDialog.js").DialogFinishDetail} */ e) => {
-        return !!e.ok;
-    });
+    ).then(
+        (
+            /** @type {import("../generic/baseDialog.js").DialogFinishDetail} */ e
+        ) => {
+            return !!e.ok;
+        }
+    );
 }
