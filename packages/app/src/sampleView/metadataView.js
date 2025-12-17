@@ -516,7 +516,7 @@ export class MetadataView extends ConcatView {
                                 <td>${formatObject(value)}</td>
                                 <td
                                     class="color"
-                                    .style="background-color: ${getColor(
+                                    style="background-color: ${getColor(
                                         key,
                                         value
                                     )}"
