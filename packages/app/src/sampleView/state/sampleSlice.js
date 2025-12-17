@@ -33,21 +33,6 @@ import { computeAttributeDefs } from "../metadataUtils.js";
  * @typedef {import("@reduxjs/toolkit").PayloadAction<P>} PayloadAction
  */
 
-export const SET_SAMPLES = "setSamples";
-export const SET_METADATA = "setMetadata";
-export const SORT_BY = "sortBy";
-export const RETAIN_FIRST_OF_EACH = "retainFirstOfEach";
-export const RETAIN_FIRST_N_CATEGORIES = "retainFirstNCategories";
-export const FILTER_BY_NOMINAL = "filterByNominal";
-export const FILTER_BY_QUANTITATIVE = "filterByQuantitative";
-export const REMOVE_UNDEFINED = "removeUndefined";
-export const GROUP_CUSTOM = "groupCustomCategories";
-export const GROUP_BY_NOMINAL = "groupByNominal";
-export const GROUP_BY_QUARTILES = "groupToQuartiles";
-export const GROUP_BY_THRESHOLDS = "groupByThresholds";
-export const REMOVE_GROUP = "removeGroup";
-export const RETAIN_MATCHED = "retainMatched";
-
 export const SAMPLE_SLICE_NAME = "sampleView";
 
 /**
@@ -83,11 +68,14 @@ function createObjectAccessor(action) {
     return (sampleId) => obj[sampleId];
 }
 
+/**
+ * @typedef {keyof typeof sampleSlice.actions} SampleActionType
+ */
 export const sampleSlice = createSlice({
     name: SAMPLE_SLICE_NAME,
     initialState: createInitialState(),
     reducers: {
-        [SET_SAMPLES]: (
+        setSamples: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
         ) => {
@@ -135,7 +123,7 @@ export const sampleSlice = createSlice({
             };
         },
 
-        [SET_METADATA]: (
+        setMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
         ) => {
@@ -165,7 +153,7 @@ export const sampleSlice = createSlice({
             };
         },
 
-        [SORT_BY]: (
+        sortBy: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
         ) => {
@@ -174,7 +162,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [RETAIN_FIRST_OF_EACH]: (
+        retainFirstOfEach: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
             action
@@ -184,7 +172,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [RETAIN_FIRST_N_CATEGORIES]: (
+        retainFirstNCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
             action
@@ -198,7 +186,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [FILTER_BY_QUANTITATIVE]: (
+        filterByQuantitative: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
             action
@@ -213,7 +201,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [FILTER_BY_NOMINAL]: (
+        filterByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
             action
@@ -228,7 +216,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [REMOVE_UNDEFINED]: (
+        removeUndefined: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
             action
@@ -238,7 +226,7 @@ export const sampleSlice = createSlice({
             );
         },
 
-        [GROUP_CUSTOM]: (
+        groupCustomCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
             action
@@ -260,7 +248,7 @@ export const sampleSlice = createSlice({
             });
         },
 
-        [GROUP_BY_NOMINAL]: (
+        groupByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
             action
@@ -277,7 +265,7 @@ export const sampleSlice = createSlice({
             });
         },
 
-        [GROUP_BY_QUARTILES]: (
+        groupToQuartiles: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
             action
@@ -293,7 +281,7 @@ export const sampleSlice = createSlice({
             });
         },
 
-        [GROUP_BY_THRESHOLDS]: (
+        groupByThresholds: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
             action
@@ -310,7 +298,7 @@ export const sampleSlice = createSlice({
             });
         },
 
-        [REMOVE_GROUP]: (
+        removeGroup: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
             action
@@ -321,7 +309,7 @@ export const sampleSlice = createSlice({
             }
         },
 
-        [RETAIN_MATCHED]: (
+        retainMatched: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */
             action
@@ -513,8 +501,6 @@ export function augmentAttributeAction(
     sampleHierarchy,
     getAttributeInfo
 ) {
-    // TODO: Type properly
-
     if (!action.payload.attribute) {
         return action;
     }
@@ -526,10 +512,17 @@ export function augmentAttributeAction(
         );
     }
 
+    const actionType = /** @type {SampleActionType} */ (
+        action.type.split("/")[1]
+    );
+    if (!(actionType in sampleSlice.actions)) {
+        throw new Error(`Invalid action type: ${actionType}`);
+    }
+
     const accessor = attributeInfo.accessor;
 
     const wrappedAccessor =
-        action.type == SORT_BY
+        actionType == "sortBy"
             ? wrapAccessorForComparison(
                   (sampleId) => accessor(sampleId, sampleHierarchy),
                   attributeInfo
@@ -546,8 +539,7 @@ export function augmentAttributeAction(
         }, /** @type {Record<string, any>} */ ({})),
     };
 
-    // TODO: Is this comparison reliable?
-    if (action.type == SAMPLE_SLICE_NAME + "/" + GROUP_BY_NOMINAL) {
+    if (actionType == "groupByNominal") {
         accessed.domain = attributeInfo.scale?.domain();
     }
 

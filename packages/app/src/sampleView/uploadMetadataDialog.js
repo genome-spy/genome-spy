@@ -11,7 +11,6 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { SET_METADATA } from "./state/sampleSlice.js";
 
 /**
  * @typedef {object} MetadataUploadResult
@@ -320,7 +319,7 @@ export function showUploadMetadataDialog(sampleView) {
         );
 
         sampleView.intentExecutor.dispatch(
-            sampleView.actions[SET_METADATA]({ metadata, attributeDefs })
+            sampleView.actions.setMetadata({ metadata, attributeDefs })
         );
         return true;
     });
