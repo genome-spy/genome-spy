@@ -12,6 +12,11 @@ import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { rowsToColumns } from "../utils/dataLayout.js";
+import { splitPath } from "../utils/escapeSeparator.js";
+import {
+    placeKeysUnderGroup,
+    placeMetadataUnderGroup,
+} from "./metadataUtils.js";
 
 /**
  * @typedef {object} MetadataUploadResult
@@ -115,12 +120,22 @@ class UploadMetadataDialog extends BaseDialog {
             ])
         );
 
+        const prependPath = this._addUnderGroup
+            ? splitPath(this._addUnderGroup)
+            : [];
+
+        /** @type {MetadataUploadResult} */
+        const data = {
+            columnarMetadata: placeMetadataUnderGroup(
+                columnarMetadata,
+                prependPath
+            ),
+            attributeDefs: placeKeysUnderGroup(attributeDefs, prependPath),
+        };
+
         this.finish({
             ok: true,
-            data: /** @type {MetadataUploadResult} */ ({
-                columnarMetadata,
-                attributeDefs,
-            }),
+            data,
         });
         this.triggerClose();
         return false;

@@ -3,6 +3,8 @@ import {
     buildPathTree,
     computeAttributeDefs,
     combineSampleMetadata,
+    placeMetadataUnderGroup,
+    METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
 
 describe("buildPathTree", () => {
@@ -15,6 +17,7 @@ describe("buildPathTree", () => {
             "blaa.qwe",
             "blaa.asd",
             "single",
+            "escaped\\.single",
         ];
 
         const root = buildPathTree(paths, ".");
@@ -23,6 +26,7 @@ describe("buildPathTree", () => {
         expect(root.children.has("foo")).toBe(true);
         expect(root.children.has("blaa")).toBe(true);
         expect(root.children.has("single")).toBe(true);
+        expect(root.children.has("escaped.single")).toBe(true);
 
         const foo = root.children.get("foo");
         expect(foo).toBeDefined();
@@ -257,5 +261,167 @@ describe("combineSampleMetadata", () => {
         expect(() => combineSampleMetadata(a, b)).toThrow(
             /Duplicate attribute definition key/
         );
+    });
+});
+
+describe("placeMetadataUnderGroup", () => {
+    it("returns metadata unchanged when groupPath is empty", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+            age: [30, 25],
+            name: ["Alice", "Bob"],
+        };
+        const result = placeMetadataUnderGroup(metadata, []);
+        expect(result).toEqual(metadata);
+    });
+
+    it("prefixes all non-sample attributes with group path", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+            age: [30, 25],
+            name: ["Alice", "Bob"],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["clinical"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "clinical/age": [30, 25],
+            "clinical/name": ["Alice", "Bob"],
+        });
+    });
+
+    it("handles nested group paths", () => {
+        const metadata = {
+            sample: ["s1"],
+            value: [100],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group", "subgroup"]);
+        expect(result).toEqual({
+            sample: ["s1"],
+            "group/subgroup/value": [100],
+        });
+    });
+
+    it("preserves sample column unchanged", () => {
+        const sampleData = ["sample1", "sample2", "sample3"];
+        const metadata = {
+            sample: sampleData,
+            attr1: ["a", "b", "c"],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group"]);
+        expect(result.sample).toBe(sampleData);
+    });
+
+    it("handles metadata with only sample column", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+        });
+    });
+
+    it("handles multiple attributes", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+            age: [30, 25],
+            name: ["Alice", "Bob"],
+            score: [9.5, 8.2],
+            active: [true, false],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["patient"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "patient/age": [30, 25],
+            "patient/name": ["Alice", "Bob"],
+            "patient/score": [9.5, 8.2],
+            "patient/active": [true, false],
+        });
+    });
+
+    it("uses METADATA_PATH_SEPARATOR in prefix", () => {
+        const metadata = {
+            sample: ["s1"],
+            attr: [1],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group"]);
+        const keys = Object.keys(result);
+        expect(keys).toContain(`group${METADATA_PATH_SEPARATOR}attr`);
+    });
+
+    it("handles attributes with existing hierarchy", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+            "nested/path": [1, 2],
+            "other/deep/attr": ["a", "b"],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "group/nested/path": [1, 2],
+            "group/other/deep/attr": ["a", "b"],
+        });
+    });
+
+    it("preserves escaped separators in attribute names", () => {
+        const metadata = {
+            sample: ["s1"],
+            "nested/under\\/path": [100],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["group"]);
+        expect(result).toEqual({
+            sample: ["s1"],
+            "group/nested/under\\/path": [100],
+        });
+    });
+
+    it("handles complex case with multiple levels and escaped separators", () => {
+        const metadata = {
+            sample: ["s1", "s2"],
+            simple: [1, 2],
+            "level1/level2": [3, 4],
+            "with\\/escaped": [5, 6],
+            "mixed/path\\/with/escape": [7, 8],
+        };
+        const result = placeMetadataUnderGroup(metadata, ["root", "group"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "root/group/simple": [1, 2],
+            "root/group/level1/level2": [3, 4],
+            "root/group/with\\/escaped": [5, 6],
+            "root/group/mixed/path\\/with/escape": [7, 8],
+        });
+    });
+
+    it("handles group paths containing escaped slashes", () => {
+        const metadata = {
+            sample: ["s1"],
+            attr: [100],
+        };
+        const result = placeMetadataUnderGroup(metadata, [
+            "group/with/slash",
+            "subgroup",
+        ]);
+        expect(result).toEqual({
+            sample: ["s1"],
+            "group\\/with\\/slash/subgroup/attr": [100],
+        });
+    });
+
+    it("handles group paths with slashes and attributes with hierarchy", () => {
+        const metadata = {
+            sample: ["s1"],
+            "nested/attr": [1],
+            "escaped\\/part": [2],
+        };
+        const result = placeMetadataUnderGroup(metadata, [
+            "root/name",
+            "level",
+        ]);
+        expect(result).toEqual({
+            sample: ["s1"],
+            "root\\/name/level/nested/attr": [1],
+            "root\\/name/level/escaped\\/part": [2],
+        });
     });
 });

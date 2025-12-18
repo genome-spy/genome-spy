@@ -20,6 +20,15 @@ import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
  */
 
 /**
+ * An identifier or name for a sample attribute.
+ *
+ * As the identifiers may represent paths in a hierarchy, they are strings
+ * where path segments are separated by a forward slash ('/').
+ * Separators in path segments are always escaped to avoid ambiguity.
+ */
+export type AttributeName = string;
+
+/**
  * Columnar metadata representation
  * Keys are attribute names, values are arrays of attribute values
  * for each sample, in the same order as the samples array.
@@ -35,7 +44,7 @@ export interface ColumnarMetadata {
     /**
      * Attributes
      */
-    [key: string]: Scalar[];
+    [key: AttributeName]: Scalar[];
 }
 
 export interface SetSamples {
@@ -45,12 +54,7 @@ export interface SetSamples {
 export interface SetMetadata {
     columnarMetadata: ColumnarMetadata;
 
-    attributeDefs?: Record<string, SampleAttributeDef>;
-
-    /**
-     * If provided, the metadata will be placed under the specified group path.
-     */
-    placeUnderGroup?: string[];
+    attributeDefs?: Record<AttributeName, SampleAttributeDef>;
 
     /**
      * If true, the provided metadata will replace existing metadata

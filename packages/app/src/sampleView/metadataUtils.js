@@ -1,4 +1,5 @@
 import { inferType } from "vega-loader";
+import { joinPathParts, splitPath } from "../utils/escapeSeparator.js";
 
 /**
  * @typedef {Object} PathTreeNode
@@ -9,6 +10,16 @@ import { inferType } from "vega-loader";
  */
 
 /**
+ * A separator used to denote hierarchy levels in metadata attribute names.
+ * For example, "demographics/age" uses "/" as a separator.
+ *
+ * When loading metadata, another separator may be specified; however,
+ * the internal representation always uses this constant to join and split paths.
+ * Any existing separator in attribute names will be escaped to avoid conflicts.
+ */
+export const METADATA_PATH_SEPARATOR = "/";
+
+/**
  * Build a tree from path-like keys. Each node receives a `parent` pointer.
  * @param {string[]} items
  * @param {string} [separator]
@@ -17,7 +28,7 @@ import { inferType } from "vega-loader";
 export function buildPathTree(items, separator) {
     /** @type {(s: string) => string[]} */
     const split = separator
-        ? (/** @type {string} */ s) => s.split(separator)
+        ? (/** @type {string} */ s) => splitPath(s, separator)
         : (/** @type {string} */ s) => [s];
 
     /** @type {Map<string, PathTreeNode>} */
@@ -41,7 +52,7 @@ export function buildPathTree(items, separator) {
                     part,
                     path:
                         separator != null
-                            ? parts.slice(0, i + 1).join(separator)
+                            ? joinPathParts(parts.slice(0, i + 1), separator)
                             : part,
                     children: new Map(),
                     parent: currentNode,
@@ -53,6 +64,64 @@ export function buildPathTree(items, separator) {
     }
 
     return rootNode;
+}
+
+/**
+ * @param {string[]} groupPath array of unescaped path segments representing the group path
+ * @returns {string} the attribute path prefix for the given group path
+ */
+export function createAttributePathPrefix(groupPath) {
+    if (!groupPath.length) {
+        return "";
+    }
+    return (
+        joinPathParts(groupPath, METADATA_PATH_SEPARATOR) +
+        METADATA_PATH_SEPARATOR
+    );
+}
+
+/**
+ * Place all keys of an object under a group path by prefixing them.
+ * Optionally ignore specified keys (they are copied as-is without prefix).
+ *
+ * @template T
+ * @param {Record<string, T>} obj
+ * @param {string[]} groupPath array of unescaped path segments
+ * @param {string[]} [ignoredKeys=[]]
+ * @returns {Record<string, T>}
+ */
+export function placeKeysUnderGroup(obj, groupPath = [], ignoredKeys = []) {
+    if (!groupPath.length) {
+        return obj;
+    }
+
+    const prefix = createAttributePathPrefix(groupPath);
+    const ignoredSet = new Set(ignoredKeys);
+
+    /** @type {Record<string, T>} */
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (ignoredSet.has(key)) {
+            result[key] = value;
+        } else {
+            result[prefix + key] = value;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Takes columnar metadata where attribute names may represent paths in a hierarchy,
+ * and places them under a specified group path.
+ *
+ * @param {import("./state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @param {string[]} groupPath array of unescaped path segments representing the group path
+ */
+export function placeMetadataUnderGroup(columnarMetadata, groupPath = []) {
+    return /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+        placeKeysUnderGroup(columnarMetadata, groupPath, ["sample"])
+    );
 }
 
 /**
@@ -101,11 +170,15 @@ export function computeAttributeDefs(
      * Walk the path tree and populate `pathMap`.
      * @param {PathTreeNode} node
      */
-    function walk(node) {
-        if (node.path) pathMap.set(node.path, node);
-        for (const child of node.children.values()) walk(child);
+    function visit(node) {
+        if (node.path) {
+            pathMap.set(node.path, node);
+        }
+        for (const child of node.children.values()) {
+            visit(child);
+        }
     }
-    walk(tree);
+    visit(tree);
 
     for (const attributeName of sampleMetadata.attributeNames) {
         let existingDef = attributeDefs[attributeName];

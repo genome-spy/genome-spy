@@ -17,7 +17,8 @@ import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../state/subscribeTo.js";
-import { buildPathTree } from "./metadataUtils.js";
+import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
+import { splitPath } from "../utils/escapeSeparator.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -341,9 +342,12 @@ export class MetadataView extends ConcatView {
         this.setChildren([]);
         this.#attributeViews.clear();
 
+        // TODO: If the spec specifies a separator (in this.#sampleView.spec.samples.attributeGroupSeparator),
+        // convert them to METADATA_PATH_SEPARATOR
+
         const nestedAttributes = buildPathTree(
             this.getAttributeNames(),
-            this.#sampleView.spec.samples.attributeGroupSeparator
+            METADATA_PATH_SEPARATOR
         );
 
         const attributeDefs =
@@ -364,31 +368,33 @@ export class MetadataView extends ConcatView {
                 if (node.children.size == 0) {
                     // It's a leaf
 
-                    const attribute = node.path;
+                    // An escaped path string that identifies an attribute
+                    const attributeName = node.path;
 
                     const attributeDef = {
                         ...inheritedAttributeDef,
                         title: node.part,
-                        ...(attributeDefs?.[attribute] ?? {}),
+                        ...(attributeDefs?.[attributeName] ?? {}),
                     };
 
                     const view = new UnitView(
                         createAttributeSpec(
-                            attribute,
+                            attributeName,
                             attributeDef,
                             this.#sampleView.spec.samples
                         ),
                         this.context,
                         container,
                         container,
-                        `attribute-${attribute}`
+                        `attribute-${attributeName}`
                     );
                     view.opacityFunction = (parentOpacity) =>
-                        parentOpacity * this.#getAttributeOpacity(attribute);
+                        parentOpacity *
+                        this.#getAttributeOpacity(attributeName);
 
                     container.appendChild(view);
-                    this.#attributeViews.set(attribute, view);
-                    this.#viewToAttribute.set(view, attribute);
+                    this.#attributeViews.set(attributeName, view);
+                    this.#viewToAttribute.set(view, attributeName);
                 } else {
                     const attributeDef = attributeDefs?.[node.path] ?? {};
 
@@ -512,7 +518,7 @@ export class MetadataView extends ConcatView {
                             <tr
                                 class=${classMap({ hovered: key == attribute })}
                             >
-                                <th>${key}</th>
+                                <th>${formatAttributeName(key)}</th>
                                 <td>${formatObject(value)}</td>
                                 <td
                                     class="color"
@@ -669,6 +675,22 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     }
 
     return attributeSpec;
+}
+
+/**
+ * Returns a Lit TemplateResult representing the attribute name, formatted for display.
+ * Path segments are separated by stylized slashes.
+ *
+ * @param {import("./state/payloadTypes.js").AttributeName} attributeName
+ */
+function formatAttributeName(attributeName) {
+    const parts = splitPath(attributeName, METADATA_PATH_SEPARATOR);
+    return html`${parts.map(
+        (part, index) =>
+            html`${index > 0
+                ? html` <span style="color: gray;">&rsaquo;</span> `
+                : ""}${part}`
+    )}`;
 }
 
 /**

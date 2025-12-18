@@ -20,6 +20,7 @@ import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import {
     combineSampleMetadata,
     computeAttributeDefs,
+    METADATA_PATH_SEPARATOR,
 } from "../metadataUtils.js";
 import { columnsToRows } from "../../utils/dataLayout.js";
 
@@ -137,6 +138,11 @@ export const sampleSlice = createSlice({
 
             const columnarMetadata = action.payload.columnarMetadata;
 
+            const attributeNames =
+                /** @type {import("./payloadTypes.js").AttributeName[]} */ (
+                    Object.keys(columnarMetadata).filter((k) => k !== "sample")
+                );
+
             const entities = Object.fromEntries(
                 columnsToRows(columnarMetadata).map((record) => {
                     const { sample, ...rest } = record;
@@ -145,17 +151,13 @@ export const sampleSlice = createSlice({
             );
 
             /** @type {import("./sampleState.js").SampleMetadata} */
-            const sampleMetadata = {
-                entities,
-                attributeNames: /** @type {string[]} */ (
-                    Object.keys(columnarMetadata).filter((k) => k !== "sample")
-                ),
-            };
+            const sampleMetadata = { entities, attributeNames };
 
-            // Complete attribute definitions by inferring missing fields
+            // Complete attribute definitions by inferring missing fields.
             const completedAttributeDefs = computeAttributeDefs(
                 sampleMetadata,
-                action.payload.attributeDefs
+                action.payload.attributeDefs,
+                METADATA_PATH_SEPARATOR
             );
 
             const newMetadata = {
