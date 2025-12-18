@@ -96,18 +96,58 @@ export function placeKeysUnderGroup(obj, groupPath = [], ignoredKeys = []) {
     }
 
     const prefix = createAttributePathPrefix(groupPath);
-    const ignoredSet = new Set(ignoredKeys);
 
     /** @type {Record<string, T>} */
     const result = {};
     for (const [key, value] of Object.entries(obj)) {
-        if (ignoredSet.has(key)) {
+        if (ignoredKeys.includes(key)) {
             result[key] = value;
         } else {
             result[prefix + key] = value;
         }
     }
 
+    return result;
+}
+
+/**
+ * @param {string} s
+ * @param {string} oldSeparator
+ * @param {string} newSeparator
+ */
+export function replacePathSeparator(
+    s,
+    oldSeparator,
+    newSeparator = METADATA_PATH_SEPARATOR
+) {
+    const parts = splitPath(s, oldSeparator);
+    return joinPathParts(parts, newSeparator);
+}
+
+/**
+ * @template T
+ * @param {Record<string, T>} obj
+ * @param {string} oldSeparator
+ * @param {string} newSeparator
+ * @param {string[]} [ignoredKeys=[]]
+ * @returns {Record<string, T>}
+ */
+export function replacePathSeparatorInKeys(
+    obj,
+    oldSeparator,
+    newSeparator = METADATA_PATH_SEPARATOR,
+    ignoredKeys = []
+) {
+    /** @type {Record<string, any>} */
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (ignoredKeys.includes(key)) {
+            result[key] = value;
+            continue;
+        }
+        const newKey = replacePathSeparator(key, oldSeparator, newSeparator);
+        result[newKey] = value;
+    }
     return result;
 }
 

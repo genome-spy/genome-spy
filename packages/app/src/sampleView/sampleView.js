@@ -45,6 +45,10 @@ import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js"
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import { rowsToColumns } from "../utils/dataLayout.js";
+import {
+    METADATA_PATH_SEPARATOR,
+    replacePathSeparatorInKeys,
+} from "./metadataUtils.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -419,20 +423,14 @@ export default class SampleView extends ContainerView {
                 this.actions.setSamples({ samples })
             );
 
-            const attributes = result[0]?.attributes;
-            if (attributes && Object.keys(attributes).length > 0) {
+            const attributesNames = result[0]?.attributes;
+            if (attributesNames && Object.keys(attributesNames).length > 0) {
                 const rowMetadata = result.map((r) => ({
                     sample: r.sample.id,
                     ...r.attributes,
                 }));
 
-                // Columnar format is used in "addMetadata" action as it is much more
-                // efficient in bookmarks and url sharing.
-                // Here, in the initial action, that optimization is unnecessary.
-                const columnarMetadata =
-                    /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
-                        rowsToColumns(rowMetadata)
-                    );
+                const setMetadata = wrangleRowMetadata(rowMetadata, this.spec);
 
                 // Clear history, since if initial metadata is being set, it
                 // should represent the initial state.
@@ -440,8 +438,7 @@ export default class SampleView extends ContainerView {
 
                 this.provenance.store.dispatch(
                     this.actions.addMetadata({
-                        columnarMetadata,
-                        attributeDefs: this.spec.samples.attributes,
+                        ...setMetadata,
                         replace: true,
                     })
                 );
@@ -1062,4 +1059,46 @@ class SampleGridChild extends GridChild {
 
         yield* super.getChildren();
     }
+}
+
+/**
+ * @param {Record<string, any>[]} rowMetadata
+ * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} sampleSpec
+ */
+function wrangleRowMetadata(rowMetadata, sampleSpec) {
+    // Columnar format is used in "addMetadata" action as it is much more
+    // compact in bookmarks and shared urls.
+    // Here, in the initial action, that optimization is just nuisance.
+    const columnarMetadata =
+        /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+            rowsToColumns(rowMetadata)
+        );
+
+    const attributeDefs = sampleSpec.samples.attributes ?? {};
+    const separator = sampleSpec.samples.attributeGroupSeparator;
+    if (separator != null && typeof separator !== "string") {
+        throw new Error("attributeGroupSeparator must be a string");
+    }
+
+    /** @type {import("./state/payloadTypes.js").SetMetadata} */
+    return separator
+        ? {
+              columnarMetadata:
+                  /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+                      replacePathSeparatorInKeys(
+                          columnarMetadata,
+                          separator,
+                          METADATA_PATH_SEPARATOR,
+                          ["sample"]
+                      )
+                  ),
+              attributeDefs: replacePathSeparatorInKeys(
+                  attributeDefs,
+                  separator
+              ),
+          }
+        : {
+              columnarMetadata,
+              attributeDefs,
+          };
 }

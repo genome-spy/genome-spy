@@ -4,6 +4,7 @@ import {
     computeAttributeDefs,
     combineSampleMetadata,
     placeMetadataUnderGroup,
+    replacePathSeparatorInKeys,
     METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
 
@@ -422,6 +423,32 @@ describe("placeMetadataUnderGroup", () => {
             sample: ["s1"],
             "root\\/name/level/nested/attr": [1],
             "root\\/name/level/escaped\\/part": [2],
+        });
+    });
+});
+
+describe("replacePathSeparatorInKeys", () => {
+    it("replaces dot separator with slash in keys", () => {
+        const obj = {
+            "demographics.age": [30, 25],
+            "demographics.gender": ["M", "F"],
+        };
+        const result = replacePathSeparatorInKeys(obj, ".");
+        expect(result).toEqual({
+            "demographics/age": [30, 25],
+            "demographics/gender": ["M", "F"],
+        });
+    });
+
+    it("ignores specified keys", () => {
+        const obj = {
+            sample: ["s1", "s2"],
+            "clinical.age": [30, 25],
+        };
+        const result = replacePathSeparatorInKeys(obj, ".", "/", ["sample"]);
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "clinical/age": [30, 25],
         });
     });
 });
