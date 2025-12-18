@@ -13,7 +13,7 @@ function _escapeRegex(s) {
  * @param {string} [separator]
  * @returns {string}
  */
-export function escapeSlash(s, separator = "/") {
+export function escapeSeparator(s, separator = "/") {
     const escSep = _escapeRegex(separator);
     return s.replace(new RegExp(escSep, "g"), "\\" + separator);
 }
@@ -25,7 +25,7 @@ export function escapeSlash(s, separator = "/") {
  * @param {string} [separator='/']
  * @returns {string}
  */
-export function unescapeSlash(s, separator = "/") {
+export function unescapeSeparator(s, separator = "/") {
     const escSep = _escapeRegex(separator);
     return s.replace(new RegExp("\\\\" + escSep, "g"), separator);
 }
@@ -38,7 +38,7 @@ export function unescapeSlash(s, separator = "/") {
  * @returns {string}
  */
 export function joinPathParts(parts, separator = "/") {
-    return parts.map((p) => escapeSlash(p, separator)).join(separator);
+    return parts.map((p) => escapeSeparator(p, separator)).join(separator);
 }
 
 /**

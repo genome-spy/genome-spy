@@ -1,28 +1,28 @@
 import { describe, it, expect } from "vitest";
 import {
-    escapeSlash,
-    unescapeSlash,
+    escapeSeparator,
+    unescapeSeparator,
     joinPathParts,
     splitPath,
-} from "./escapeSlash.js";
+} from "./escapeSeparator.js";
 
-describe("escapeSlash / unescapeSlash", () => {
+describe("escapeSeparator / unescapeSeparator", () => {
     it("escapes forward slashes", () => {
-        expect(escapeSlash("/a/b/c")).toBe("\\/a\\/b\\/c");
+        expect(escapeSeparator("/a/b/c")).toBe("\\/a\\/b\\/c");
     });
 
     it("unescapes escaped forward slashes", () => {
-        expect(unescapeSlash("\\/a\\/b\\/c")).toBe("/a/b/c");
+        expect(unescapeSeparator("\\/a\\/b\\/c")).toBe("/a/b/c");
     });
 
     it("roundtrips (escape -> unescape)", () => {
         const s = "/path/to/resource";
-        expect(unescapeSlash(escapeSlash(s))).toBe(s);
+        expect(unescapeSeparator(escapeSeparator(s))).toBe(s);
     });
 
     it("leaves strings without slashes untouched", () => {
-        expect(escapeSlash("abc")).toBe("abc");
-        expect(unescapeSlash("abc")).toBe("abc");
+        expect(escapeSeparator("abc")).toBe("abc");
+        expect(unescapeSeparator("abc")).toBe("abc");
     });
 
     it("joinPathParts and splitPath roundtrip", () => {
@@ -63,7 +63,7 @@ describe("escapeSlash / unescapeSlash", () => {
 
     it("escapeSlash and unescapeSlash are inverses", () => {
         const str = "a/b/c";
-        expect(unescapeSlash(escapeSlash(str))).toBe(str);
+        expect(unescapeSeparator(escapeSeparator(str))).toBe(str);
     });
 
     it("handles consecutive separators", () => {
