@@ -123,11 +123,17 @@ const histogramStyles = css`
 
 class Histogram extends LitElement {
     static properties = {
+        // Arrays are not reflected as attributes (use properties)
         values: { attribute: false },
         thresholds: { attribute: false },
         operators: { attribute: false },
         colors: { attribute: false },
-        showThresholdNumbers: {},
+
+        // Show threshold numbers inside knobs
+        showThresholdNumbers: { type: Boolean },
+
+        // Number of histogram bins (uses d3.bin thresholds)
+        binCount: { type: Number, attribute: "bin-count" },
     };
 
     static styles = histogramStyles;
@@ -161,7 +167,9 @@ class Histogram extends LitElement {
 
         this.showThresholdNumbers = false;
 
-        this.#bin = bin().thresholds(40);
+        // How many bins (thresholds) to divide the values into.
+        this.binCount = 40;
+        this.#bin = bin().thresholds(this.binCount);
         this.#bins = this.#bin([]);
         this.#scale = scaleLinear();
     }
@@ -171,7 +179,14 @@ class Histogram extends LitElement {
      * @param {Map<string, any>} changedProperties
      */
     willUpdate(changedProperties) {
-        if (changedProperties.has("values")) {
+        if (changedProperties.has("binCount")) {
+            this.#bin = bin().thresholds(this.binCount);
+        }
+
+        if (
+            changedProperties.has("values") ||
+            changedProperties.has("binCount")
+        ) {
             this.#bins = this.#bin(this.values);
             this.#scale = scaleLinear().domain(this.domain).range([0, 100]);
         }
