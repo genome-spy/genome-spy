@@ -23,7 +23,7 @@ export const Basic = {
 
 export const LargeDataset = {
     render: () => {
-        const data = Array.from({ length: 100000 }, (_, i) => ({
+        const data = Array.from({ length: 10000 }, (_, i) => ({
             id: i + 1,
             name: `Person ${i + 1}`,
             value: Math.floor(Math.random() * 1000),

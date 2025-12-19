@@ -62,19 +62,11 @@ export default class DataGrid extends LitElement {
     static styles = css`
         :host {
             display: block;
-            /* inherit font properties from light DOM host */
+            position: relative;
+
             font-size: inherit;
             font-family: inherit;
-            /* fallback family for compatibility */
-            font-family: var(
-                --gs-font-family,
-                system-ui,
-                -apple-system,
-                "Segoe UI",
-                Roboto,
-                "Helvetica Neue",
-                Arial
-            );
+
             --dg-row-height: 32px;
             --dg-border: var(--form-control-border-color, #ccc);
         }
@@ -82,7 +74,14 @@ export default class DataGrid extends LitElement {
         .grid-root {
             border: 1px solid var(--dg-border);
             border-radius: var(--form-control-border-radius, 4px);
-            overflow: hidden;
+            overflow-x: auto;
+            position: absolute;
+            inset: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
             height: 100%;
         }
 
@@ -103,8 +102,8 @@ export default class DataGrid extends LitElement {
         }
 
         .grid-body {
-            overflow: auto;
-            height: 300px;
+            overflow-y: auto;
+            flex-grow: 1;
             position: relative;
             contain: content;
             -webkit-overflow-scrolling: touch;
@@ -385,15 +384,14 @@ export default class DataGrid extends LitElement {
 
         return html`
             <div class="grid-root">
-                <div class="hscroll" style="overflow-x:auto">
-                    <div
-                        style="min-width:${totalTableWidth
-                            ? totalTableWidth + "px"
-                            : "100%"}"
-                    >
-                        ${headerTable}
-                        <div class="grid-body" role="grid">${bodyTable}</div>
-                    </div>
+                <div
+                    class="container"
+                    style="min-width:${totalTableWidth
+                        ? totalTableWidth + "px"
+                        : "100%"}"
+                >
+                    ${headerTable}
+                    <div class="grid-body" role="grid">${bodyTable}</div>
                 </div>
             </div>
         `;

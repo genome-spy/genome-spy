@@ -7,6 +7,12 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 const histogramStyles = css`
+    :host {
+        display: block;
+        font-size: inherit;
+        font-family: inherit;
+    }
+
     .histogram-widget {
         position: relative;
 
