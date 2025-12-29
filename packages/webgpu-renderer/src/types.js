@@ -1,40 +1,40 @@
 /**
- * @typedef {import("./index.d.ts").ChannelConfig} ChannelConfig
- * @typedef {import("./index.d.ts").ChannelConfigWithScale} ChannelConfigWithScale
- * @typedef {import("./index.d.ts").ChannelConfigWithoutScale} ChannelConfigWithoutScale
- * @typedef {import("./index.d.ts").BufferChannelConfig} BufferChannelConfig
- * @typedef {import("./index.d.ts").BufferChannelConfigWithScale} BufferChannelConfigWithScale
- * @typedef {import("./index.d.ts").UniformChannelConfig} UniformChannelConfig
- * @typedef {import("./index.d.ts").UniformChannelConfigWithScale} UniformChannelConfigWithScale
+ * @typedef {import("./index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("./index.d.ts").ChannelConfigWithScaleInput} ChannelConfigWithScaleInput
+ * @typedef {import("./index.d.ts").ChannelConfigWithoutScaleInput} ChannelConfigWithoutScaleInput
+ * @typedef {import("./index.d.ts").SeriesChannelConfigWithScaleInput} SeriesChannelConfigWithScaleInput
+ * @typedef {import("./index.d.ts").SeriesChannelConfigWithoutScaleInput} SeriesChannelConfigWithoutScaleInput
+ * @typedef {import("./index.d.ts").ValueChannelConfigWithScaleInput} ValueChannelConfigWithScaleInput
+ * @typedef {import("./index.d.ts").ValueChannelConfigWithoutScaleInput} ValueChannelConfigWithoutScaleInput
  */
 
 /**
- * @param {ChannelConfig} config
- * @returns {config is ChannelConfigWithScale}
+ * @param {ChannelConfigInput} config
+ * @returns {config is ChannelConfigWithScaleInput}
  */
 export function isChannelConfigWithScale(config) {
     return !!config && "scale" in config && !!config.scale;
 }
 
 /**
- * @param {ChannelConfig} config
- * @returns {config is ChannelConfigWithoutScale}
+ * @param {ChannelConfigInput} config
+ * @returns {config is ChannelConfigWithoutScaleInput}
  */
 export function isChannelConfigWithoutScale(config) {
     return !isChannelConfigWithScale(config);
 }
 
 /**
- * @param {ChannelConfig} config
- * @returns {config is BufferChannelConfig | BufferChannelConfigWithScale}
+ * @param {ChannelConfigInput} config
+ * @returns {config is SeriesChannelConfigWithScaleInput | SeriesChannelConfigWithoutScaleInput}
  */
 export function isBufferChannelConfig(config) {
     return !!config && "data" in config && config.data != null;
 }
 
 /**
- * @param {ChannelConfig} config
- * @returns {config is UniformChannelConfig | UniformChannelConfigWithScale}
+ * @param {ChannelConfigInput} config
+ * @returns {config is ValueChannelConfigWithScaleInput | ValueChannelConfigWithoutScaleInput}
  */
 export function isUniformChannelConfig(config) {
     return !!config && "value" in config && config.value != null;

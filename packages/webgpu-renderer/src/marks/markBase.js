@@ -11,12 +11,13 @@ import { buildMarkShader } from "./markShaderBuilder.js";
 export default class MarkBase {
     /**
      * @typedef {import("../index.d.ts").TypedArray} TypedArray
-     * @typedef {import("../index.d.ts").ChannelConfig} ChannelConfig
+     * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
+     * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
      */
 
     /**
      * @param {import("../renderer.js").Renderer} renderer
-     * @param {{ channels: Record<string, ChannelConfig>, count: number }} config
+     * @param {{ channels: Record<string, ChannelConfigInput>, count: number }} config
      */
     constructor(renderer, config) {
         this.renderer = renderer;
@@ -26,6 +27,7 @@ export default class MarkBase {
         this._channels = this._normalizeChannels(config.channels);
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
+        /** @type {string[]} */
         this._uniformLayout = [];
         this._uniformOffsets = new Map();
         this._uniformValues = new Float32Array(0);
@@ -98,7 +100,7 @@ export default class MarkBase {
     }
 
     /**
-     * @returns {Record<string, ChannelConfig>}
+     * @returns {Record<string, ChannelConfigInput>}
      */
     get defaultChannelConfigs() {
         return {};
@@ -116,6 +118,16 @@ export default class MarkBase {
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * Override to provide default scale ranges for specific channels.
+     *
+     * @param {string} _name
+     * @returns {[number, number] | undefined}
+     */
+    getDefaultScaleRange(_name) {
+        return undefined;
     }
 
     /**
@@ -199,17 +211,38 @@ export default class MarkBase {
         // Accept both direct channel uniforms and scale domain/range updates.
         for (const [key, value] of Object.entries(uniforms)) {
             if (key.endsWith(".domain") || key.endsWith(".range")) {
-                const [channelName, suffix] = key.split(".");
+                const [channelName, rawSuffix] = key.split(".");
+                const suffix = rawSuffix === "domain" ? "domain" : "range";
                 const offsetKey =
                     suffix === "domain"
                         ? `${channelName}_domain`
                         : `${channelName}_range`;
-                this._setUniformVec2(offsetKey, value);
+                const range = this._coerceRangeValue(value, suffix);
+                this._setUniformVec2(offsetKey, range);
             } else {
-                this._setUniformValue(key, value);
+                this._setUniformValue(
+                    key,
+                    /** @type {number|number[]} */ (value)
+                );
             }
         }
         this._writeUniforms();
+    }
+
+    /**
+     * @param {number|number[]|{ domain?: [number, number], range?: [number, number] }} value
+     * @param {"domain"|"range"} suffix
+     * @returns {[number, number]}
+     */
+    _coerceRangeValue(value, suffix) {
+        if (Array.isArray(value)) {
+            return [value[0] ?? 0, value[1] ?? 1];
+        }
+        if (typeof value == "object" && value) {
+            const pair = suffix === "domain" ? value.domain : value.range;
+            return [pair?.[0] ?? 0, pair?.[1] ?? 1];
+        }
+        return [0, 1];
     }
 
     /**
@@ -253,7 +286,8 @@ export default class MarkBase {
                 );
                 this._setUniformVec2(
                     `${name}_range`,
-                    channel.scale.range ?? [0, 1]
+                    channel.scale.range ??
+                        this.getDefaultScaleRange(name) ?? [0, 1]
                 );
             }
             if (this._isValue(channel) && channel.scale?.type === "linear") {
@@ -263,7 +297,8 @@ export default class MarkBase {
                 );
                 this._setUniformVec2(
                     `${name}_range`,
-                    channel.scale.range ?? [0, 1]
+                    channel.scale.range ??
+                        this.getDefaultScaleRange(name) ?? [0, 1]
                 );
             }
         }
@@ -350,17 +385,19 @@ export default class MarkBase {
     }
 
     /**
-     * @param {Record<string, ChannelConfig>} [config]
-     * @returns {Record<string, ChannelConfig>}
+     * @param {Record<string, ChannelConfigInput>} [config]
+     * @returns {Record<string, ChannelConfigResolved>}
      */
     _normalizeChannels(config) {
-        /** @type {Record<string, ChannelConfig>} */
+        /** @type {Record<string, ChannelConfigResolved>} */
         const channels = {};
         for (const name of this.channelOrder) {
-            const merged = {
-                ...(this.defaultChannelConfigs[name] ?? {}),
-                ...(config?.[name] ?? {}),
-            };
+            const merged = /** @type {ChannelConfigInput} */ (
+                /** @type {unknown} */ ({
+                    ...(this.defaultChannelConfigs[name] ?? {}),
+                    ...(config?.[name] ?? {}),
+                })
+            );
             if (!merged.components) {
                 merged.components = 1;
             }
@@ -374,14 +411,14 @@ export default class MarkBase {
                 }
             }
             this._validateChannel(name, merged);
-            channels[name] = merged;
+            channels[name] = /** @type {ChannelConfigResolved} */ (merged);
         }
         return channels;
     }
 
     /**
      * @param {string} name
-     * @param {ChannelConfig} channel
+     * @param {ChannelConfigInput} channel
      */
     _validateChannel(name, channel) {
         if (!this.channelOrder.includes(name)) {
@@ -416,7 +453,7 @@ export default class MarkBase {
     }
 
     /**
-     * @param {ChannelConfig} channel
+     * @param {ChannelConfigInput} channel
      * @returns {boolean}
      */
     _isSeries(channel) {
@@ -424,7 +461,7 @@ export default class MarkBase {
     }
 
     /**
-     * @param {ChannelConfig} channel
+     * @param {ChannelConfigInput} channel
      * @returns {boolean}
      */
     _isValue(channel) {

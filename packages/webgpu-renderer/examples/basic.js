@@ -20,10 +20,10 @@ for (let i = 0; i < count; i++) {
 const markId = renderer.createMark("rect", {
     count,
     channels: {
-        x: { data: x, type: "f32" },
-        x2: { data: x2, type: "f32" },
-        y: { data: y, type: "f32" },
-        y2: { data: y2, type: "f32" },
+        x: { data: x, type: "f32", scale: { type: "identity" } },
+        x2: { data: x2, type: "f32", scale: { type: "identity" } },
+        y: { data: y, type: "f32", scale: { type: "identity" } },
+        y2: { data: y2, type: "f32", scale: { type: "identity" } },
         fill: { value: [0.2, 0.5, 0.8, 1.0] },
         stroke: { value: [0.1, 0.1, 0.1, 1.0] },
         fillOpacity: { value: 1.0 },
@@ -73,7 +73,11 @@ const rebuildData = (newCount) => {
 const animate = (now) => {
     const t = (now - start) / 1000;
     const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
-    renderer.updateUniforms(markId, { strokeWidth: width });
+    const corner = (Math.sin(t) * 0.5 + 0.5) * 8.0;
+    renderer.updateUniforms(markId, {
+        strokeWidth: width,
+        cornerRadius: corner,
+    });
 
     if (now >= nextDataUpdate) {
         dynamicCount = 80 + Math.floor(Math.random() * 240);
