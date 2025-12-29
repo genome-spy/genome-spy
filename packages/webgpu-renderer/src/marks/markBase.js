@@ -1,4 +1,5 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
+import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 
 /**
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -85,7 +86,7 @@ export default class MarkBase {
         this.updateInstances(
             Object.fromEntries(
                 Object.entries(this._channels)
-                    .filter(([, v]) => this._isSeries(v))
+                    .filter(([, v]) => isSeriesChannelConfig(v))
                     .map(([k, v]) => [k, v.data])
             ),
             config.count
@@ -141,7 +142,7 @@ export default class MarkBase {
         // Upload any columnar buffers to the GPU. Buffer identity is deduplicated
         // so a single array can feed multiple channels.
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (!this._isSeries(channel)) {
+            if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
             const array = fields[name] ?? channel.data;
@@ -166,7 +167,7 @@ export default class MarkBase {
         // Build storage buffer bindings in the same order as the shader expects.
         let bindingIndex = 1;
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (!this._isSeries(channel)) {
+            if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
             entries.push({
@@ -254,14 +255,20 @@ export default class MarkBase {
 
         // Create uniform slots for per-channel values and scale parameters.
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (this._isValue(channel)) {
+            if (isValueChannelConfig(channel)) {
                 layout.push(name);
             }
-            if (this._isSeries(channel) && channel.scale?.type === "linear") {
+            if (
+                isSeriesChannelConfig(channel) &&
+                channel.scale?.type === "linear"
+            ) {
                 layout.push(`${name}_domain`);
                 layout.push(`${name}_range`);
             }
-            if (this._isValue(channel) && channel.scale?.type === "linear") {
+            if (
+                isValueChannelConfig(channel) &&
+                channel.scale?.type === "linear"
+            ) {
                 layout.push(`${name}_domain`);
                 layout.push(`${name}_range`);
             }
@@ -276,10 +283,13 @@ export default class MarkBase {
         this._uniformValues = new Float32Array(layout.length * 4);
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (this._isValue(channel)) {
+            if (isValueChannelConfig(channel)) {
                 this._setUniformValue(name, channel.value);
             }
-            if (this._isSeries(channel) && channel.scale?.type === "linear") {
+            if (
+                isSeriesChannelConfig(channel) &&
+                channel.scale?.type === "linear"
+            ) {
                 this._setUniformVec2(
                     `${name}_domain`,
                     channel.scale.domain ?? [0, 1]
@@ -290,7 +300,10 @@ export default class MarkBase {
                         this.getDefaultScaleRange(name) ?? [0, 1]
                 );
             }
-            if (this._isValue(channel) && channel.scale?.type === "linear") {
+            if (
+                isValueChannelConfig(channel) &&
+                channel.scale?.type === "linear"
+            ) {
                 this._setUniformVec2(
                     `${name}_domain`,
                     channel.scale.domain ?? [0, 1]
@@ -401,9 +414,8 @@ export default class MarkBase {
             if (!merged.components) {
                 merged.components = 1;
             }
-            // Provide sensible defaults to avoid missing channels at render time.
-            // Defaults only apply when the channel is value-based.
-            if (!this._isSeries(merged) && merged.value === undefined) {
+            // Provide sensible defaults early so downstream code can assume data or value.
+            if (!isSeriesChannelConfig(merged) && merged.value === undefined) {
                 if (merged.default !== undefined) {
                     merged.value = merged.default;
                 } else if (this.defaultValues[name] !== undefined) {
@@ -424,7 +436,7 @@ export default class MarkBase {
         if (!this.channelOrder.includes(name)) {
             throw new Error(`Unknown channel: ${name}`);
         }
-        if (this._isSeries(channel)) {
+        if (isSeriesChannelConfig(channel)) {
             if (!channel.data) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
@@ -432,9 +444,14 @@ export default class MarkBase {
                 throw new Error(`Missing type for channel "${name}"`);
             }
         }
-        if (this._isSeries(channel) && this._isValue(channel)) {
+        if (isSeriesChannelConfig(channel) && isValueChannelConfig(channel)) {
             throw new Error(
                 `Channel "${name}" must not specify both data and value.`
+            );
+        }
+        if (!isSeriesChannelConfig(channel) && !isValueChannelConfig(channel)) {
+            throw new Error(
+                `Channel "${name}" must specify either data or value.`
             );
         }
         if (channel.components && ![1, 2, 4].includes(channel.components)) {
@@ -452,19 +469,5 @@ export default class MarkBase {
         }
     }
 
-    /**
-     * @param {ChannelConfigInput} channel
-     * @returns {boolean}
-     */
-    _isSeries(channel) {
-        return channel.data != null;
-    }
-
-    /**
-     * @param {ChannelConfigInput} channel
-     * @returns {boolean}
-     */
-    _isValue(channel) {
-        return channel.value != null || channel.default != null;
-    }
+    // Type guards live in src/types.js to keep runtime checks consistent across modules.
 }
