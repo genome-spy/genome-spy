@@ -4,7 +4,7 @@ export class RendererError extends Error {}
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @param {import("./index.js").RendererOptions} [options]
+ * @param {import("./index.d.ts").RendererOptions} [options]
  * @returns {Promise<Renderer>}
  */
 export async function createRenderer(canvas, options = {}) {
@@ -36,8 +36,8 @@ export async function createRenderer(canvas, options = {}) {
 
 export class Renderer {
     /**
-     * @typedef {import("./index.js").MarkId} MarkId
-     * @typedef {import("./index.js").TypedArray} TypedArray
+     * @typedef {import("./index.d.ts").MarkId} MarkId
+     * @typedef {import("./index.d.ts").TypedArray} TypedArray
      */
 
     /**
@@ -91,7 +91,7 @@ export class Renderer {
     }
 
     /**
-     * @param {import("./index.js").GlobalUniforms} globals
+     * @param {import("./index.d.ts").GlobalUniforms} globals
      * @returns {void}
      */
     updateGlobals(globals) {
@@ -101,8 +101,8 @@ export class Renderer {
     }
 
     /**
-     * @param {import("./index.js").MarkType} type
-     * @param {import("./index.js").MarkConfig} config
+     * @param {import("./index.d.ts").MarkType} type
+     * @param {import("./index.d.ts").MarkConfig} config
      * @returns {MarkId}
      */
     createMark(type, config) {
@@ -119,7 +119,7 @@ export class Renderer {
     }
 
     /**
-     * @param {import("./index.js").MarkId} markId
+     * @param {import("./index.d.ts").MarkId} markId
      * @param {Record<string, TypedArray>} fields
      * @param {number} count
      * @returns {void}

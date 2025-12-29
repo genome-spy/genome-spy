@@ -20,22 +20,50 @@ export type ChannelScale = {
     range?: [number, number];
 };
 
-export type ChannelConfig = {
-    /** Channel source. "buffer" uses storage buffers, "uniform" uses per-mark uniforms. */
-    source?: "buffer" | "uniform";
-    /** Columnar data for this channel when using buffers. */
-    data?: TypedArray;
-    /** Scalar element type for buffer data. */
-    type?: "f32" | "u32" | "i32";
-    /** Vector width when buffers store packed vectors (e.g., RGBA). */
+export type ChannelConfigBase = {
+    /** Vector width when series data stores packed vectors (e.g., RGBA). */
     components?: 1 | 2 | 4;
-    /** Optional scale applied to buffer values before use. */
-    scale?: ChannelScale;
-    /** Uniform value for this channel when using uniforms. */
-    value?: number | number[];
-    /** Default if no buffer or uniform is supplied. */
+    /** Default if no series data or value is supplied. */
     default?: number | number[];
 };
+
+export type ChannelConfigWithScale = ChannelConfigBase & {
+    /** Scale applied to raw (domain-space) values. */
+    scale: ChannelScale;
+};
+
+export type ChannelConfigWithoutScale = ChannelConfigBase & {
+    /** Range-space values; no scale transformation. */
+    scale?: never;
+};
+
+export type BufferChannelConfigWithScale = ChannelConfigWithScale & {
+    /** Columnar data for this channel when using series. */
+    data: TypedArray;
+    /** Scalar element type for series data. */
+    type: "f32" | "u32" | "i32";
+};
+
+export type BufferChannelConfig = ChannelConfigWithoutScale & {
+    data: TypedArray;
+    type: "f32" | "u32" | "i32";
+};
+
+export type UniformChannelConfigWithScale = ChannelConfigWithScale & {
+    /** Uniform value in domain space (scaled in the renderer). */
+    value: number | number[];
+};
+
+export type UniformChannelConfig = ChannelConfigWithoutScale & {
+    /** Uniform value in range space (used directly). */
+    value: number | number[];
+};
+
+export type ChannelConfig =
+    | BufferChannelConfigWithScale
+    | BufferChannelConfig
+    | UniformChannelConfigWithScale
+    | UniformChannelConfig;
 
 export type RectChannels = {
     /** Optional per-instance ID used for picking or selection. */
@@ -95,3 +123,16 @@ export function createRenderer(
     canvas: HTMLCanvasElement,
     options?: RendererOptions
 ): Promise<Renderer>;
+
+export function isChannelConfigWithScale(
+    config: ChannelConfig
+): config is ChannelConfigWithScale;
+export function isChannelConfigWithoutScale(
+    config: ChannelConfig
+): config is ChannelConfigWithoutScale;
+export function isBufferChannelConfig(
+    config: ChannelConfig
+): config is BufferChannelConfig | BufferChannelConfigWithScale;
+export function isUniformChannelConfig(
+    config: ChannelConfig
+): config is UniformChannelConfig | UniformChannelConfigWithScale;
