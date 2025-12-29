@@ -1,21 +1,7 @@
 import MarkBase from "./markBase.js";
 
 /**
- * @typedef {import("../renderer.js").TypedArray} TypedArray
- *
- * @typedef {object} ChannelScale
- * @prop {"identity"|"linear"} type
- * @prop {[number, number]} [domain]
- * @prop {[number, number]} [range]
- *
- * @typedef {object} ChannelConfig
- * @prop {"buffer"|"uniform"} [source]
- * @prop {TypedArray} [data]
- * @prop {"f32"|"u32"|"i32"} [type]
- * @prop {1|2|4} [components]
- * @prop {ChannelScale} [scale]
- * @prop {number|number[]} [value]
- * @prop {number|number[]} [default]
+ * @typedef {import("../index.d.ts").ChannelConfig} ChannelConfig
  */
 
 /** @type {string[]} */
@@ -50,43 +36,36 @@ const DEFAULTS = {
 /** @type {Record<string, ChannelConfig>} */
 const DEFAULT_CHANNEL_CONFIGS = {
     x: {
-        source: "buffer",
         type: "f32",
         components: 1,
         scale: { type: "identity" },
     },
     x2: {
-        source: "buffer",
         type: "f32",
         components: 1,
         scale: { type: "identity" },
     },
     y: {
-        source: "buffer",
         type: "f32",
         components: 1,
         scale: { type: "identity" },
     },
     y2: {
-        source: "buffer",
         type: "f32",
         components: 1,
         scale: { type: "identity" },
     },
-    fill: { source: "uniform", components: 4, value: DEFAULTS.fill },
-    stroke: { source: "uniform", components: 4, value: DEFAULTS.stroke },
+    fill: { components: 4, value: DEFAULTS.fill },
+    stroke: { components: 4, value: DEFAULTS.stroke },
     fillOpacity: {
-        source: "uniform",
         components: 1,
         value: DEFAULTS.fillOpacity,
     },
     strokeOpacity: {
-        source: "uniform",
         components: 1,
         value: DEFAULTS.strokeOpacity,
     },
     strokeWidth: {
-        source: "uniform",
         components: 1,
         value: DEFAULTS.strokeWidth,
     },
