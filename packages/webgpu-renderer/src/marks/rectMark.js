@@ -94,10 +94,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     vec2<f32>(1.0, 1.0)
   );
 
-  let x = value_x(i);
-  let x2 = value_x2(i);
-  let y = value_y(i);
-  let y2 = value_y2(i);
+  let x = getScaled_x(i);
+  let x2 = getScaled_x2(i);
+  let y = getScaled_y(i);
+  let y2 = getScaled_y2(i);
   let w = x2 - x;
   let h = y2 - y;
 
@@ -113,11 +113,11 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
   out.pos = vec4<f32>(clip, 0.0, 1.0);
   out.local = local;
   out.size = vec2<f32>(w, h);
-  out.fill = value_fill(i);
-  out.stroke = value_stroke(i);
-  out.fillOpacity = value_fillOpacity(i);
-  out.strokeOpacity = value_strokeOpacity(i);
-  out.strokeWidth = value_strokeWidth(i);
+  out.fill = getScaled_fill(i);
+  out.stroke = getScaled_stroke(i);
+  out.fillOpacity = getScaled_fillOpacity(i);
+  out.strokeOpacity = getScaled_strokeOpacity(i);
+  out.strokeWidth = getScaled_strokeWidth(i);
   return out;
 }
 
