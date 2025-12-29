@@ -85,19 +85,19 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         if (components === 1) {
             if (scale === "linear") {
                 channelFns.push(
-                    `fn value_${name}(i: u32) -> f32 {
+                    `fn getScaled_${name}(i: u32) -> f32 {
   let v = read_${name}(i);
   return scaleLinear(v, params.u_${name}_domain.xy, params.u_${name}_range.xy);
 }`
                 );
             } else {
                 channelFns.push(
-                    `fn value_${name}(i: u32) -> f32 { return read_${name}(i); }`
+                    `fn getScaled_${name}(i: u32) -> f32 { return read_${name}(i); }`
                 );
             }
         } else {
             channelFns.push(
-                `fn value_${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
+                `fn getScaled_${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
             );
         }
     }
@@ -107,13 +107,23 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             continue;
         }
         const components = channel.components ?? 1;
+        const scale = channel.scale?.type ?? "identity";
         if (components === 1) {
-            channelFns.push(
-                `fn value_${name}(_i: u32) -> f32 { return params.u_${name}.x; }`
-            );
+            if (scale === "linear") {
+                channelFns.push(
+                    `fn getScaled_${name}(_i: u32) -> f32 {
+  let v = params.u_${name}.x;
+  return scaleLinear(v, params.u_${name}_domain.xy, params.u_${name}_range.xy);
+}`
+                );
+            } else {
+                channelFns.push(
+                    `fn getScaled_${name}(_i: u32) -> f32 { return params.u_${name}.x; }`
+                );
+            }
         } else {
             channelFns.push(
-                `fn value_${name}(_i: u32) -> vec4<f32> { return params.u_${name}; }`
+                `fn getScaled_${name}(_i: u32) -> vec4<f32> { return params.u_${name}; }`
             );
         }
     }
