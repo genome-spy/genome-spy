@@ -20,67 +20,130 @@ export type ChannelScale = {
     range?: [number, number];
 };
 
-export type ChannelConfigBase = {
+export type ChannelConfigCommon = {
     /** Vector width when series data stores packed vectors (e.g., RGBA). */
     components?: 1 | 2 | 4;
     /** Default if no series data or value is supplied. */
     default?: number | number[];
 };
 
-export type ChannelConfigWithScale = ChannelConfigBase & {
+/** Scale-capable channel config. Used by both input and resolved variants. */
+export type ChannelConfigWithScale = ChannelConfigCommon & {
     /** Scale applied to raw (domain-space) values. */
     scale: ChannelScale;
 };
 
-export type ChannelConfigWithoutScale = ChannelConfigBase & {
+/** Range-space config without scale. Used by both input and resolved variants. */
+export type ChannelConfigWithoutScale = ChannelConfigCommon & {
     /** Range-space values; no scale transformation. */
     scale?: never;
 };
 
-export type BufferChannelConfigWithScale = ChannelConfigWithScale & {
+/** Utility type for requiring specific keys when resolving configs. */
+export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+/** Input shape for series-backed channels; data/type may be supplied later. */
+export type SeriesChannelConfigInput = {
     /** Columnar data for this channel when using series. */
-    data: TypedArray;
+    data?: TypedArray;
     /** Scalar element type for series data. */
-    type: "f32" | "u32" | "i32";
+    type?: "f32" | "u32" | "i32";
+    /** Value is not used for series data. */
+    value?: never;
 };
 
-export type BufferChannelConfig = ChannelConfigWithoutScale & {
-    data: TypedArray;
-    type: "f32" | "u32" | "i32";
-};
-
-export type UniformChannelConfigWithScale = ChannelConfigWithScale & {
-    /** Uniform value in domain space (scaled in the renderer). */
-    value: number | number[];
-};
-
-export type UniformChannelConfig = ChannelConfigWithoutScale & {
+/** Input shape for value-backed channels; value/type may be supplied later. */
+export type ValueChannelConfigInput = {
     /** Uniform value in range space (used directly). */
-    value: number | number[];
+    value?: number | number[];
+    /** Scalar element type for value data. */
+    type?: "f32" | "u32" | "i32";
+    /** Series data is not used for value channels. */
+    data?: never;
 };
 
-export type ChannelConfig =
-    | BufferChannelConfigWithScale
-    | BufferChannelConfig
-    | UniformChannelConfigWithScale
-    | UniformChannelConfig;
+/** User-supplied configs; may be partial because defaults are filled later. */
+export type ChannelConfigWithScaleInput = (
+    | SeriesChannelConfigInput
+    | ValueChannelConfigInput
+) &
+    ChannelConfigWithScale;
+/** User-supplied configs; may be partial because defaults are filled later. */
+export type ChannelConfigWithoutScaleInput = (
+    | SeriesChannelConfigInput
+    | ValueChannelConfigInput
+) &
+    ChannelConfigWithoutScale;
+/** Any user-facing channel config (may omit data/value until normalized). */
+export type ChannelConfigInput =
+    | ChannelConfigWithScaleInput
+    | ChannelConfigWithoutScaleInput;
+
+/** Helper aliases for guards that check input configs by source. */
+export type SeriesChannelConfigWithScaleInput = SeriesChannelConfigInput &
+    ChannelConfigWithScale;
+export type SeriesChannelConfigWithoutScaleInput = SeriesChannelConfigInput &
+    ChannelConfigWithoutScale;
+export type ValueChannelConfigWithScaleInput = ValueChannelConfigInput &
+    ChannelConfigWithScale;
+export type ValueChannelConfigWithoutScaleInput = ValueChannelConfigInput &
+    ChannelConfigWithoutScale;
+
+/** Resolved series config after normalization (data/type required). */
+export type SeriesChannelConfig = RequireKeys<
+    SeriesChannelConfigInput,
+    "data" | "type"
+>;
+
+/** Resolved value config after normalization (value required). */
+export type ValueChannelConfig = RequireKeys<ValueChannelConfigInput, "value">;
+
+export type SeriesChannelConfigWithScale = SeriesChannelConfig &
+    ChannelConfigWithScale;
+export type SeriesChannelConfigWithoutScale = SeriesChannelConfig &
+    ChannelConfigWithoutScale;
+export type ValueChannelConfigWithScale = ValueChannelConfig &
+    ChannelConfigWithScale;
+export type ValueChannelConfigWithoutScale = ValueChannelConfig &
+    ChannelConfigWithoutScale;
+
+/** Internal shape after normalization: every channel is series or value. */
+export type ChannelConfigResolved =
+    | SeriesChannelConfigWithScale
+    | SeriesChannelConfigWithoutScale
+    | ValueChannelConfigWithScale
+    | ValueChannelConfigWithoutScale;
+
+/** Public-facing channel config type (input form). */
+export type ChannelConfig = ChannelConfigInput;
 
 export type RectChannels = {
     /** Optional per-instance ID used for picking or selection. */
-    uniqueId?: ChannelConfig;
-    x?: ChannelConfig;
-    x2?: ChannelConfig;
-    y?: ChannelConfig;
-    y2?: ChannelConfig;
-    fill?: ChannelConfig;
-    stroke?: ChannelConfig;
-    fillOpacity?: ChannelConfig;
-    strokeOpacity?: ChannelConfig;
-    strokeWidth?: ChannelConfig;
+    uniqueId?: ChannelConfigInput;
+    x?: ChannelConfigInput;
+    x2?: ChannelConfigInput;
+    y?: ChannelConfigInput;
+    y2?: ChannelConfigInput;
+    fill?: ChannelConfigInput;
+    stroke?: ChannelConfigInput;
+    fillOpacity?: ChannelConfigInput;
+    strokeOpacity?: ChannelConfigInput;
+    strokeWidth?: ChannelConfigInput;
+    cornerRadius?: ChannelConfigInput;
+    minWidth?: ChannelConfigInput;
+    minHeight?: ChannelConfigInput;
+    minOpacity?: ChannelConfigInput;
+    shadowOffsetX?: ChannelConfigInput;
+    shadowOffsetY?: ChannelConfigInput;
+    shadowBlur?: ChannelConfigInput;
+    shadowOpacity?: ChannelConfigInput;
+    shadowColor?: ChannelConfigInput;
 };
 
 export type MarkConfig<T extends MarkType = MarkType> = {
-    channels: T extends "rect" ? RectChannels : Record<string, ChannelConfig>;
+    channels: T extends "rect"
+        ? RectChannels
+        : Record<string, ChannelConfigInput>;
     /** Number of instances to draw; must match the column lengths. */
     count: number;
 };
@@ -112,6 +175,7 @@ export class Renderer {
             string,
             | number
             | number[]
+            | [number, number]
             | { domain?: [number, number]; range?: [number, number] }
         >
     ): void;
@@ -125,14 +189,18 @@ export function createRenderer(
 ): Promise<Renderer>;
 
 export function isChannelConfigWithScale(
-    config: ChannelConfig
-): config is ChannelConfigWithScale;
+    config: ChannelConfigInput
+): config is ChannelConfigWithScaleInput;
 export function isChannelConfigWithoutScale(
-    config: ChannelConfig
-): config is ChannelConfigWithoutScale;
+    config: ChannelConfigInput
+): config is ChannelConfigWithoutScaleInput;
 export function isBufferChannelConfig(
-    config: ChannelConfig
-): config is BufferChannelConfig | BufferChannelConfigWithScale;
+    config: ChannelConfigInput
+): config is
+    | SeriesChannelConfigWithScaleInput
+    | SeriesChannelConfigWithoutScaleInput;
 export function isUniformChannelConfig(
-    config: ChannelConfig
-): config is UniformChannelConfig | UniformChannelConfigWithScale;
+    config: ChannelConfigInput
+): config is
+    | ValueChannelConfigWithScaleInput
+    | ValueChannelConfigWithoutScaleInput;

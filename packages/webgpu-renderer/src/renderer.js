@@ -98,6 +98,7 @@ export class Renderer {
         const { width, height, dpr } = globals;
         const data = new Float32Array([width, height, dpr]);
         this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
+        this._globals = { width, height, dpr };
     }
 
     /**
