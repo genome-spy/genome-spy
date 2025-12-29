@@ -1,4 +1,4 @@
-import BaseRenderer from "./baseRenderer.js";
+import BaseProgram from "./baseProgram.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -261,7 +261,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 }
 `;
 
-export default class RectRenderer extends BaseRenderer {
+export default class RectProgram extends BaseProgram {
     /**
      * @returns {string[]}
      */
