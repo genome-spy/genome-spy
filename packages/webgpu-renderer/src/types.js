@@ -28,7 +28,7 @@ export function isChannelConfigWithoutScale(config) {
  * @param {ChannelConfigInput} config
  * @returns {config is SeriesChannelConfigWithScaleInput | SeriesChannelConfigWithoutScaleInput}
  */
-export function isBufferChannelConfig(config) {
+export function isSeriesChannelConfig(config) {
     return !!config && "data" in config && config.data != null;
 }
 
@@ -36,6 +36,6 @@ export function isBufferChannelConfig(config) {
  * @param {ChannelConfigInput} config
  * @returns {config is ValueChannelConfigWithScaleInput | ValueChannelConfigWithoutScaleInput}
  */
-export function isUniformChannelConfig(config) {
+export function isValueChannelConfig(config) {
     return !!config && "value" in config && config.value != null;
 }

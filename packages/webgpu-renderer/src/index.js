@@ -3,6 +3,6 @@ export { RendererError } from "./renderer.js";
 export {
     isChannelConfigWithScale,
     isChannelConfigWithoutScale,
-    isBufferChannelConfig,
-    isUniformChannelConfig,
+    isSeriesChannelConfig,
+    isValueChannelConfig,
 } from "./types.js";
