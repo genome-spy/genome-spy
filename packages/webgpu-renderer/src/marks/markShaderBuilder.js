@@ -1,10 +1,10 @@
 import SCALES_WGSL from "../wgsl/scales.wgsl.js";
 
 /**
- * @typedef {import("../index.d.ts").ChannelConfig} ChannelConfig
+ * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  *
  * @typedef {object} ShaderBuildParams
- * @prop {Record<string, ChannelConfig>} channels
+ * @prop {Record<string, ChannelConfigResolved>} channels
  * @prop {string[]} uniformLayout
  * @prop {string} shaderBody
  *
