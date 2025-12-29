@@ -30,7 +30,7 @@ describe("buildMarkShader", () => {
 
         expect(bufferBindings.length).toBe(1);
         expect(shaderCode).toContain("fn read_x");
-        expect(shaderCode).toContain("fn value_x");
+        expect(shaderCode).toContain("fn getScaled_x");
         expect(shaderCode).toContain("scaleLinear");
     });
 
@@ -47,7 +47,7 @@ describe("buildMarkShader", () => {
         });
 
         expect(bufferBindings.length).toBe(0);
-        expect(shaderCode).toContain("fn value_fill");
+        expect(shaderCode).toContain("fn getScaled_fill");
         expect(shaderCode).toContain("u_fill: vec4<f32>");
     });
 });
