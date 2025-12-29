@@ -9,7 +9,7 @@ import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
  * Base class for marks that build WGSL dynamically based on channel configs.
  * Subclasses supply channel lists, defaults, and shader bodies.
  */
-export default class MarkBase {
+export default class BaseRenderer {
     /**
      * @typedef {import("../index.d.ts").TypedArray} TypedArray
      * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -97,6 +97,15 @@ export default class MarkBase {
      * @returns {string[]}
      */
     get channelOrder() {
+        return [];
+    }
+
+    /**
+     * Channels that may be omitted without data/value/defaults.
+     *
+     * @returns {string[]}
+     */
+    get optionalChannels() {
         return [];
     }
 
@@ -422,6 +431,13 @@ export default class MarkBase {
                     merged.value = this.defaultValues[name];
                 }
             }
+            if (
+                this.optionalChannels.includes(name) &&
+                !isSeriesChannelConfig(merged) &&
+                !isValueChannelConfig(merged)
+            ) {
+                continue;
+            }
             this._validateChannel(name, merged);
             channels[name] = /** @type {ChannelConfigResolved} */ (merged);
         }
@@ -435,6 +451,13 @@ export default class MarkBase {
     _validateChannel(name, channel) {
         if (!this.channelOrder.includes(name)) {
             throw new Error(`Unknown channel: ${name}`);
+        }
+        if (
+            this.optionalChannels.includes(name) &&
+            !isSeriesChannelConfig(channel) &&
+            !isValueChannelConfig(channel)
+        ) {
+            return;
         }
         if (isSeriesChannelConfig(channel)) {
             if (!channel.data) {
