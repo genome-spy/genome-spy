@@ -49,4 +49,46 @@ resize();
 window.addEventListener("resize", resize);
 
 renderer.updateInstances(markId, { x, x2, y, y2 }, count);
+
+let start = performance.now();
+let dynamicCount = count;
+let nextDataUpdate = 0;
+
+const rebuildData = (newCount) => {
+    const nx = new Float32Array(newCount);
+    const ny = new Float32Array(newCount);
+    const nx2 = new Float32Array(newCount);
+    const ny2 = new Float32Array(newCount);
+
+    for (let i = 0; i < newCount; i++) {
+        nx[i] = 20 + (i % 20) * 25;
+        ny[i] = 20 + Math.floor(i / 20) * 25;
+        nx2[i] = nx[i] + 20;
+        ny2[i] = ny[i] + 20;
+    }
+
+    return { nx, ny, nx2, ny2 };
+};
+
+const animate = (now) => {
+    const t = (now - start) / 1000;
+    const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
+    renderer.updateUniforms(markId, { strokeWidth: width });
+
+    if (now >= nextDataUpdate) {
+        dynamicCount = 80 + Math.floor(Math.random() * 240);
+        const { nx, ny, nx2, ny2 } = rebuildData(dynamicCount);
+        renderer.updateInstances(
+            markId,
+            { x: nx, x2: nx2, y: ny, y2: ny2 },
+            dynamicCount
+        );
+        nextDataUpdate = now + 1500;
+    }
+
+    renderer.render();
+    requestAnimationFrame(animate);
+};
+
 renderer.render();
+requestAnimationFrame(animate);
