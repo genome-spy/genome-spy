@@ -1,0 +1,147 @@
+## WebGPU Migration Plan
+
+This plan reflects the intended direction: a WebGPU-first renderer, columnar
+data, storage buffers + vertex pulling, and a clean separation between core
+(dataflow/params) and rendering (GPU execution).
+
+### 1) Split a renderer-only package
+
+Create a new package (`@genome-spy/webgpu-renderer`) that contains only:
+
+- Mark implementations (rect/point/rule/link/text)
+- WGSL codegen (scale transforms, conditional encodings, selection tests)
+- GPU resources (buffers, textures, pipelines)
+- Picking pass
+- Viewport/scissor management
+- SDF text rendering (glyph atlas, shaders, layout helpers)
+
+Explicitly exclude:
+
+- Dataflow
+- View hierarchy and layout
+- Param/expr evaluation
+- Scale domain computation
+
+Core remains responsible for dataflow, parameters, expressions, scale domains,
+and view/layout structure. Renderer becomes a "dumb" GPU execution backend.
+
+### 2) Columnar data as the renderer contract
+
+Renderer APIs accept typed arrays (SoA / columnar), not array-of-objects:
+
+- Numeric data only (categoricals are mapped to integers in core).
+- Schema describes which channels map to which arrays.
+- Instance count is explicit.
+
+This enables zero-copy transfer from workers and aligns with GPU-friendly
+layouts. The renderer should accept identical typed arrays for multiple channels
+and deduplicate internally.
+
+### 3) Storage buffers + vertex pulling
+
+Replace expanded vertex buffers (e.g., rect = 6 vertices) with:
+
+- One element per mark instance stored in a storage buffer.
+- Vertex pulling in WGSL uses `instance_index` to load per-instance data.
+- Mark geometry is procedurally generated in shader (rects, lines, etc.).
+
+Benefits:
+
+- No data duplication for multi-vertex marks.
+- Natural fit for columnar data and worker transfers.
+- Simpler CPU-side builders.
+
+### 4) Deduplication inside the renderer
+
+Deduplicate fields on the renderer side to keep the API clean:
+
+- If two channels reference the same `TypedArray`, store one GPU buffer and
+  alias it for multiple channels.
+- Keep a `Map<TypedArray, fieldId>` registry per mark to avoid redundant uploads.
+- Validate length/type consistency when a field is reused.
+
+Optional escape hatch:
+
+- Allow explicit `{ id, data, type }` field descriptors if identity-based
+  deduplication is insufficient.
+
+### 5) Uniforms and updates: no texture leakage
+
+Renderer should not expose textures in the public API. Use data-driven updates:
+
+- `updateGlobals`: viewport, DPR, global timing.
+- `updateMarkUniforms`: mark-specific constants (opacity, stroke width, etc.).
+- `updateScales`: domain/range data (renderer builds textures or buffers).
+- `updateSelections`: selection data (renderer builds/updates textures).
+
+Internally, map these to WebGPU bind groups:
+
+- `global`, `mark`, `scales`, `selection` bind groups with stable layouts.
+- Frequent updates use buffer writes, not pipeline recreation.
+
+### 6) Param/expr handling stays in core
+
+Core owns:
+
+- Param hierarchy and expression evaluation
+- Selection state logic
+- Scale domain computation
+- Dataflow repropagation
+
+Renderer only receives final numeric values (uniforms, ranges, indices) and
+buffers. This avoids leaking expression logic or selection semantics into the
+renderer.
+
+### 7) Rendering order strategy
+
+Start simple: draw in view hierarchy order (current mental model).
+
+- WebGPU renderer can later add safe local batching (within a view/layer) to
+  reduce pipeline/bind-group switches.
+- Avoid global reordering that could change visual stacking.
+
+### 8) Pipeline/shader strategy
+
+Expect many unique shader variants due to encoding differences.
+
+- Cache pipelines by stable keys (mark type + shader variant + blend mode).
+- Avoid recompilation on param changes; keep dynamics in buffers/uniforms.
+- ~100 unique shaders is acceptable if created once and reused.
+
+### 9) Picking in WebGPU
+
+Maintain a dedicated picking pass:
+
+- Render into offscreen texture (color attachment).
+- Use per-instance IDs (unique ID buffer) and encode to output.
+- Reuse the same draw order as the main pass.
+
+### 10) Worker-compatible data pipeline
+
+Prepare for web workers:
+
+- Workers load/transform data into typed arrays.
+- Transfer `ArrayBuffer`s to main thread (zero copy).
+- Renderer updates buffers without object reconstruction.
+
+This is a strong motivator for the columnar data contract.
+
+### 11) SDF text and font metadata split
+
+Renderer keeps GPU-side SDF rendering and glyph atlas.
+Core still needs font metrics for layout/measurement.
+
+Plan:
+
+- Share font metadata from a small shared module/package.
+- Renderer consumes metadata for atlas build.
+- Core uses the same metadata for CPU-side text measurement.
+
+### 12) Long-term vector output (SVG/canvas)
+
+The renderer package should not prevent a future vector backend:
+
+- Keep a stable "mark instance schema" that a future SVG/canvas backend can
+  consume (x/y/x2/y2, fill/stroke, opacity, etc.).
+- SVG/canvas backend can live in a separate package and implement the same
+  draw API without GPU resources.
