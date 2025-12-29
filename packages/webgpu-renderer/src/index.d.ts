@@ -194,12 +194,12 @@ export function isChannelConfigWithScale(
 export function isChannelConfigWithoutScale(
     config: ChannelConfigInput
 ): config is ChannelConfigWithoutScaleInput;
-export function isBufferChannelConfig(
+export function isSeriesChannelConfig(
     config: ChannelConfigInput
 ): config is
     | SeriesChannelConfigWithScaleInput
     | SeriesChannelConfigWithoutScaleInput;
-export function isUniformChannelConfig(
+export function isValueChannelConfig(
     config: ChannelConfigInput
 ): config is
     | ValueChannelConfigWithScaleInput
