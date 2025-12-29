@@ -112,13 +112,13 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             if (scale === "linear") {
                 channelFns.push(
                     `fn getScaled_${name}(_i: u32) -> f32 {
-  let v = params.u_${name}.x;
+  let v = params.u_${name};
   return scaleLinear(v, params.u_${name}_domain.xy, params.u_${name}_range.xy);
 }`
                 );
             } else {
                 channelFns.push(
-                    `fn getScaled_${name}(_i: u32) -> f32 { return params.u_${name}.x; }`
+                    `fn getScaled_${name}(_i: u32) -> f32 { return params.u_${name}; }`
                 );
             }
         } else {
