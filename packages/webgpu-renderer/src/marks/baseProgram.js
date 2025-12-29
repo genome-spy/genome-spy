@@ -9,7 +9,7 @@ import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
  * Base class for marks that build WGSL dynamically based on channel configs.
  * Subclasses supply channel lists, defaults, and shader bodies.
  */
-export default class BaseRenderer {
+export default class BaseProgram {
     /**
      * @typedef {import("../index.d.ts").TypedArray} TypedArray
      * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
