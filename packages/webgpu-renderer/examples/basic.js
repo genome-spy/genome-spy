@@ -20,15 +20,15 @@ for (let i = 0; i < count; i++) {
 const markId = renderer.createMark("rect", {
     count,
     channels: {
-        x: { source: "buffer", data: x, type: "f32" },
-        x2: { source: "buffer", data: x2, type: "f32" },
-        y: { source: "buffer", data: y, type: "f32" },
-        y2: { source: "buffer", data: y2, type: "f32" },
-        fill: { source: "uniform", value: [0.2, 0.5, 0.8, 1.0] },
-        stroke: { source: "uniform", value: [0.1, 0.1, 0.1, 1.0] },
-        fillOpacity: { source: "uniform", value: 1.0 },
-        strokeOpacity: { source: "uniform", value: 1.0 },
-        strokeWidth: { source: "uniform", value: 1.0 },
+        x: { data: x, type: "f32" },
+        x2: { data: x2, type: "f32" },
+        y: { data: y, type: "f32" },
+        y2: { data: y2, type: "f32" },
+        fill: { value: [0.2, 0.5, 0.8, 1.0] },
+        stroke: { value: [0.1, 0.1, 0.1, 1.0] },
+        fillOpacity: { value: 1.0 },
+        strokeOpacity: { value: 1.0 },
+        strokeWidth: { value: 1.0 },
     },
 });
 
