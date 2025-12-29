@@ -1,4 +1,4 @@
-import MarkBase from "./markBase.js";
+import BaseRenderer from "./baseRenderer.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -261,12 +261,19 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
 }
 `;
 
-export default class RectMark extends MarkBase {
+export default class RectRenderer extends BaseRenderer {
     /**
      * @returns {string[]}
      */
     get channelOrder() {
         return CHANNELS;
+    }
+
+    /**
+     * @returns {string[]}
+     */
+    get optionalChannels() {
+        return ["uniqueId"];
     }
 
     /**

@@ -1,4 +1,4 @@
-import RectMark from "./marks/rectMark.js";
+import RectRenderer from "./marks/rectRenderer.js";
 
 export class RendererError extends Error {}
 
@@ -49,7 +49,7 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
 
-        /** @type {Map<MarkId, import("./marks/rectMark.js").default>} */
+        /** @type {Map<MarkId, import("./marks/rectRenderer.js").default>} */
         this._marks = new Map();
         this._nextMarkId = 1;
 
@@ -109,7 +109,7 @@ export class Renderer {
     createMark(type, config) {
         let mark;
         if (type === "rect") {
-            mark = new RectMark(this, config);
+            mark = new RectRenderer(this, config);
         } else {
             throw new RendererError(`Unknown mark type: ${type}`);
         }
