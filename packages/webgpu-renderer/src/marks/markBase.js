@@ -10,13 +10,13 @@ import SCALES_WGSL from "../wgsl/scales.wgsl.js";
  */
 export default class MarkBase {
     /**
-     * @typedef {import("../index.js").TypedArray} TypedArray
-     * @typedef {import("../index.js").ChannelConfig} ChannelConfig
+     * @typedef {import("../index.d.ts").TypedArray} TypedArray
+     * @typedef {import("../index.d.ts").ChannelConfig} ChannelConfig
      */
 
     /**
      * @param {import("../renderer.js").Renderer} renderer
-     * @param {{ channels: Record<string, any>, count: number }} config
+     * @param {{ channels: Record<string, ChannelConfig>, count: number }} config
      */
     constructor(renderer, config) {
         this.renderer = renderer;
@@ -40,7 +40,7 @@ export default class MarkBase {
         });
         this._writeUniforms();
 
-        // Create a shader that matches the active channels (buffers vs uniforms)
+        // Create a shader that matches the active channels (series vs values)
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
         const { shaderCode, bufferBindings } = this._buildShader();
@@ -79,11 +79,11 @@ export default class MarkBase {
             primitive: { topology: "triangle-list" },
         });
 
-        // Initialize any buffer-backed channels.
+        // Initialize any series-backed channels.
         this.updateInstances(
             Object.fromEntries(
                 Object.entries(this._channels)
-                    .filter(([, v]) => v.source === "buffer")
+                    .filter(([, v]) => this._isSeries(v))
                     .map(([k, v]) => [k, v.data])
             ),
             config.count
@@ -129,7 +129,7 @@ export default class MarkBase {
         // Upload any columnar buffers to the GPU. Buffer identity is deduplicated
         // so a single array can feed multiple channels.
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source !== "buffer") {
+            if (!this._isSeries(channel)) {
                 continue;
             }
             const array = fields[name] ?? channel.data;
@@ -154,7 +154,7 @@ export default class MarkBase {
         // Build storage buffer bindings in the same order as the shader expects.
         let bindingIndex = 1;
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source !== "buffer") {
+            if (!this._isSeries(channel)) {
                 continue;
             }
             entries.push({
@@ -219,15 +219,12 @@ export default class MarkBase {
         /** @type {string[]} */
         const layout = [];
 
-        // Create uniform slots for per-channel uniforms and scale parameters.
+        // Create uniform slots for per-channel values and scale parameters.
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source === "uniform") {
+            if (this._isValue(channel)) {
                 layout.push(name);
             }
-            if (
-                channel.source === "buffer" &&
-                channel.scale?.type === "linear"
-            ) {
+            if (this._isSeries(channel) && channel.scale?.type === "linear") {
                 layout.push(`${name}_domain`);
                 layout.push(`${name}_range`);
             }
@@ -242,13 +239,10 @@ export default class MarkBase {
         this._uniformValues = new Float32Array(layout.length * 4);
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source === "uniform") {
+            if (this._isValue(channel)) {
                 this._setUniformValue(name, channel.value);
             }
-            if (
-                channel.source === "buffer" &&
-                channel.scale?.type === "linear"
-            ) {
+            if (this._isSeries(channel) && channel.scale?.type === "linear") {
                 this._setUniformVec2(
                     `${name}_domain`,
                     channel.scale.domain ?? [0, 1]
@@ -321,7 +315,7 @@ export default class MarkBase {
      */
     _buildShader() {
         // Dynamic shader generation: build per-channel read + scale functions
-        // based on buffer/uniform presence and scale types.
+        // based on series/value presence and scale types.
         /** @type {GPUBindGroupLayoutEntry[]} */
         const bufferBindings = [];
         /** @type {string[]} */
@@ -333,7 +327,7 @@ export default class MarkBase {
 
         let bindingIndex = 1;
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source !== "buffer") {
+            if (!this._isSeries(channel)) {
                 continue;
             }
 
@@ -404,7 +398,7 @@ export default class MarkBase {
         }
 
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (channel.source === "uniform") {
+            if (this._isValue(channel)) {
                 const components = channel.components ?? 1;
                 if (components === 1) {
                     channelFns.push(
@@ -482,21 +476,20 @@ ${this.shaderBody}
                 ...(this.defaultChannelConfigs[name] ?? {}),
                 ...(config?.[name] ?? {}),
             };
-            if (merged.source !== "buffer" && merged.source !== "uniform") {
-                merged.source = merged.data ? "buffer" : "uniform";
+            if (!this._isSeries(merged) && !this._isValue(merged)) {
+                // Leave as-is; defaults below will provide value if available.
             }
             if (!merged.components) {
                 merged.components = 1;
             }
             // Provide sensible defaults to avoid missing channels at render time.
-            if (merged.value === undefined && merged.default !== undefined) {
-                merged.value = merged.default;
-            }
-            if (
-                merged.value === undefined &&
-                this.defaultValues[name] !== undefined
-            ) {
-                merged.value = this.defaultValues[name];
+            // Defaults only apply when the channel is value-based.
+            if (!this._isSeries(merged) && merged.value === undefined) {
+                if (merged.default !== undefined) {
+                    merged.value = merged.default;
+                } else if (this.defaultValues[name] !== undefined) {
+                    merged.value = this.defaultValues[name];
+                }
             }
             this._validateChannel(name, merged);
             channels[name] = merged;
@@ -512,13 +505,18 @@ ${this.shaderBody}
         if (!this.channelOrder.includes(name)) {
             throw new Error(`Unknown channel: ${name}`);
         }
-        if (channel.source === "buffer") {
+        if (this._isSeries(channel)) {
             if (!channel.data) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
             if (!channel.type) {
                 throw new Error(`Missing type for channel "${name}"`);
             }
+        }
+        if (this._isSeries(channel) && this._isValue(channel)) {
+            throw new Error(
+                `Channel "${name}" must not specify both data and value.`
+            );
         }
         if (channel.components && ![1, 2, 4].includes(channel.components)) {
             throw new Error(`Invalid component count for "${name}"`);
@@ -533,5 +531,21 @@ ${this.shaderBody}
                 `Only f32 vectors are supported for "${name}" right now.`
             );
         }
+    }
+
+    /**
+     * @param {ChannelConfig} channel
+     * @returns {boolean}
+     */
+    _isSeries(channel) {
+        return channel.data != null;
+    }
+
+    /**
+     * @param {ChannelConfig} channel
+     * @returns {boolean}
+     */
+    _isValue(channel) {
+        return channel.value != null || channel.default != null;
     }
 }
