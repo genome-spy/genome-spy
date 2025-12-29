@@ -25,6 +25,7 @@
     "directory": "packages/webgpu-renderer"
   },
   "scripts": {
+    "dev": "vite",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit"
   },

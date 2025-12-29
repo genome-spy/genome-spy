@@ -28,25 +28,27 @@ export default class BaseProgram {
         this._channels = this._normalizeChannels(config.channels);
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
-        /** @type {string[]} */
+        /** @type {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} */
         this._uniformLayout = [];
-        this._uniformOffsets = new Map();
-        this._uniformValues = new Float32Array(0);
+        this._uniformEntries = new Map();
+        this._uniformByteLength = 0;
+        this._uniformData = new ArrayBuffer(0);
+        this._uniformView = new DataView(this._uniformData);
 
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
-        this._buildUniformLayout();
-        this._uniformBuffer = this.device.createBuffer({
-            size: this._uniformValues.byteLength,
-            // eslint-disable-next-line no-undef
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-        this._writeUniforms();
-
         // Create a shader that matches the active channels (series vs values)
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
+        this._buildUniformLayout();
         const { shaderCode, bufferBindings } = this._buildShader();
+        this._uniformBuffer = this.device.createBuffer({
+            size: this._uniformByteLength,
+            // eslint-disable-next-line no-undef
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this._initializeUniforms();
+        this._writeUniforms();
         this._bindGroupLayout = this.device.createBindGroupLayout({
             entries: [
                 {
@@ -259,42 +261,83 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildUniformLayout() {
-        /** @type {string[]} */
+        /** @type {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} */
         const layout = [];
 
         // Create uniform slots for per-channel values and scale parameters.
         for (const [name, channel] of Object.entries(this._channels)) {
             if (isValueChannelConfig(channel)) {
-                layout.push(name);
+                layout.push({
+                    name,
+                    type: channel.type ?? "f32",
+                    components: channel.components ?? 1,
+                });
             }
             if (
                 isSeriesChannelConfig(channel) &&
                 channel.scale?.type === "linear"
             ) {
-                layout.push(`${name}_domain`);
-                layout.push(`${name}_range`);
+                layout.push({
+                    name: `${name}_domain`,
+                    type: "f32",
+                    components: 2,
+                });
+                layout.push({
+                    name: `${name}_range`,
+                    type: "f32",
+                    components: 2,
+                });
             }
             if (
                 isValueChannelConfig(channel) &&
                 channel.scale?.type === "linear"
             ) {
-                layout.push(`${name}_domain`);
-                layout.push(`${name}_range`);
+                layout.push({
+                    name: `${name}_domain`,
+                    type: "f32",
+                    components: 2,
+                });
+                layout.push({
+                    name: `${name}_range`,
+                    type: "f32",
+                    components: 2,
+                });
             }
         }
 
         this._uniformLayout = layout;
         if (this._uniformLayout.length === 0) {
             // WebGPU does not allow empty uniform buffers; keep a dummy entry.
-            this._uniformLayout.push("dummy");
+            this._uniformLayout.push({
+                name: "dummy",
+                type: "f32",
+                components: 1,
+            });
         }
-        this._uniformOffsets = new Map(layout.map((name, i) => [name, i * 4]));
-        this._uniformValues = new Float32Array(layout.length * 4);
+        this._uniformEntries.clear();
+        let offset = 0;
+        for (const entry of this._uniformLayout) {
+            const alignment =
+                entry.components === 1 ? 4 : entry.components === 2 ? 8 : 16;
+            const size =
+                entry.components === 1 ? 4 : entry.components === 2 ? 8 : 16;
+            offset = this._alignTo(offset, alignment);
+            this._uniformEntries.set(entry.name, {
+                ...entry,
+                offset,
+            });
+            offset += size;
+        }
+        this._uniformByteLength = this._alignTo(offset, 16);
+        this._uniformData = new ArrayBuffer(this._uniformByteLength);
+        this._uniformView = new DataView(this._uniformData);
+    }
 
+    /**
+     * @returns {void}
+     */
+    _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (isValueChannelConfig(channel)) {
-                this._setUniformValue(name, channel.value);
-            }
             if (
                 isSeriesChannelConfig(channel) &&
                 channel.scale?.type === "linear"
@@ -322,6 +365,9 @@ export default class BaseProgram {
                     channel.scale.range ??
                         this.getDefaultScaleRange(name) ?? [0, 1]
                 );
+            }
+            if (isValueChannelConfig(channel)) {
+                this._setUniformValue(name, channel.value);
             }
         }
     }
@@ -332,21 +378,21 @@ export default class BaseProgram {
      * @returns {void}
      */
     _setUniformValue(name, value) {
-        const offset = this._uniformOffsets.get(name);
-        if (offset === undefined) {
+        const entry = this._uniformEntries.get(name);
+        if (!entry) {
             return;
         }
 
-        // Everything is stored as vec4<f32> slots for simplicity.
+        const components = entry.components;
         if (Array.isArray(value)) {
-            for (let i = 0; i < 4; i++) {
-                this._uniformValues[offset + i] = value[i] ?? 0;
+            for (let i = 0; i < components; i++) {
+                this._writeScalar(entry, entry.offset + i * 4, value[i] ?? 0);
             }
         } else {
-            this._uniformValues[offset] = value ?? 0;
-            this._uniformValues[offset + 1] = 0;
-            this._uniformValues[offset + 2] = 0;
-            this._uniformValues[offset + 3] = 0;
+            this._writeScalar(entry, entry.offset, value ?? 0);
+            for (let i = 1; i < components; i++) {
+                this._writeScalar(entry, entry.offset + i * 4, 0);
+            }
         }
     }
 
@@ -356,29 +402,57 @@ export default class BaseProgram {
      * @returns {void}
      */
     _setUniformVec2(name, value) {
-        const offset = this._uniformOffsets.get(name);
-        if (offset === undefined) {
+        const entry = this._uniformEntries.get(name);
+        if (!entry) {
             return;
         }
-        this._uniformValues[offset] = value?.[0] ?? 0;
-        this._uniformValues[offset + 1] = value?.[1] ?? 1;
-        this._uniformValues[offset + 2] = 0;
-        this._uniformValues[offset + 3] = 0;
+        this._writeScalar(entry, entry.offset, value?.[0] ?? 0);
+        if (entry.components > 1) {
+            this._writeScalar(entry, entry.offset + 4, value?.[1] ?? 1);
+        }
+        for (let i = 2; i < entry.components; i++) {
+            this._writeScalar(entry, entry.offset + i * 4, 0);
+        }
     }
 
     /**
      * @returns {void}
      */
     _writeUniforms() {
-        if (this._uniformValues.byteLength === 0) {
+        if (this._uniformData.byteLength === 0) {
             return;
         }
         // Single uniform buffer update keeps GPU bindings stable.
         this.device.queue.writeBuffer(
             this._uniformBuffer,
             0,
-            this._uniformValues
+            this._uniformData
         );
+    }
+
+    /**
+     * @param {{ type: "f32"|"u32"|"i32" }} entry
+     * @param {number} offset
+     * @param {number} value
+     * @returns {void}
+     */
+    _writeScalar(entry, offset, value) {
+        if (entry.type === "u32") {
+            this._uniformView.setUint32(offset, value >>> 0, true);
+        } else if (entry.type === "i32") {
+            this._uniformView.setInt32(offset, value | 0, true);
+        } else {
+            this._uniformView.setFloat32(offset, value ?? 0, true);
+        }
+    }
+
+    /**
+     * @param {number} value
+     * @param {number} alignment
+     * @returns {number}
+     */
+    _alignTo(value, alignment) {
+        return Math.ceil(value / alignment) * alignment;
     }
 
     /**

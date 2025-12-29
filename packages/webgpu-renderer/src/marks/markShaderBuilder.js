@@ -5,7 +5,7 @@ import SCALES_WGSL from "../wgsl/scales.wgsl.js";
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
- * @prop {string[]} uniformLayout
+ * @prop {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} uniformLayout
  * @prop {string} shaderBody
  *
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -129,7 +129,17 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     }
 
     const uniformFields = uniformLayout
-        .map((name) => `  u_${name}: vec4<f32>,`)
+        .map(({ name, type, components }) => {
+            const scalar =
+                type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+            const wgslType =
+                components === 1
+                    ? scalar
+                    : components === 2
+                      ? `vec2<${scalar}>`
+                      : `vec4<${scalar}>`;
+            return `  u_${name}: ${wgslType},`;
+        })
         .join("\n");
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
