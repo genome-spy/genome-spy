@@ -228,6 +228,10 @@ export default class MarkBase {
                 layout.push(`${name}_domain`);
                 layout.push(`${name}_range`);
             }
+            if (this._isValue(channel) && channel.scale?.type === "linear") {
+                layout.push(`${name}_domain`);
+                layout.push(`${name}_range`);
+            }
         }
 
         this._uniformLayout = layout;
@@ -243,6 +247,16 @@ export default class MarkBase {
                 this._setUniformValue(name, channel.value);
             }
             if (this._isSeries(channel) && channel.scale?.type === "linear") {
+                this._setUniformVec2(
+                    `${name}_domain`,
+                    channel.scale.domain ?? [0, 1]
+                );
+                this._setUniformVec2(
+                    `${name}_range`,
+                    channel.scale.range ?? [0, 1]
+                );
+            }
+            if (this._isValue(channel) && channel.scale?.type === "linear") {
                 this._setUniformVec2(
                     `${name}_domain`,
                     channel.scale.domain ?? [0, 1]
