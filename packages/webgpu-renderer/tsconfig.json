@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+
+  "include": ["src/**/*", "../../external-typings/**/*"],
+  "exclude": ["node_modules"],
+
+  "compilerOptions": {
+    "types": ["@webgpu/types"]
+  }
+}

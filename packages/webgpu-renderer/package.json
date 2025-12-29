@@ -1,0 +1,34 @@
+{
+  "name": "@genome-spy/webgpu-renderer",
+  "description": "Prototype WebGPU renderer for GenomeSpy (marks + WGSL + GPU resources only)",
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "license": "MIT",
+  "version": "0.64.0",
+  "type": "module",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": "./src/index.js",
+    "./*": "./src/*"
+  },
+  "files": [
+    "src/",
+    "examples/",
+    "MIGRATION_PLAN.md",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "github:genome-spy/genome-spy",
+    "directory": "packages/webgpu-renderer"
+  },
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "test:tsc": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@webgpu/types": "^0.1.68"
+  }
+}
