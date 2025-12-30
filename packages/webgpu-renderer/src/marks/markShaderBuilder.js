@@ -1,4 +1,9 @@
 import SCALES_WGSL from "../wgsl/scales.wgsl.js";
+import {
+    DOMAIN_PREFIX,
+    RANGE_PREFIX,
+    SCALED_FUNCTION_PREFIX,
+} from "../wgsl/prefixes.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -85,19 +90,19 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         if (components === 1) {
             if (scale === "linear") {
                 channelFns.push(
-                    `fn getScaled_${name}(i: u32) -> f32 {
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
   let v = read_${name}(i);
-  return scaleLinear(v, params.u_${name}_domain.xy, params.u_${name}_range.xy);
+  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
 }`
                 );
             } else {
                 channelFns.push(
-                    `fn getScaled_${name}(i: u32) -> f32 { return read_${name}(i); }`
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 { return read_${name}(i); }`
                 );
             }
         } else {
             channelFns.push(
-                `fn getScaled_${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
+                `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
             );
         }
     }
@@ -108,22 +113,23 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
         const components = channel.components ?? 1;
         const scale = channel.scale?.type ?? "identity";
+        const uniformName = `u_${name}`;
         if (components === 1) {
             if (scale === "linear") {
                 channelFns.push(
-                    `fn getScaled_${name}(_i: u32) -> f32 {
-  let v = params.u_${name};
-  return scaleLinear(v, params.u_${name}_domain.xy, params.u_${name}_range.xy);
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
+  let v = params.${uniformName};
+  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
 }`
                 );
             } else {
                 channelFns.push(
-                    `fn getScaled_${name}(_i: u32) -> f32 { return params.u_${name}; }`
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 { return params.${uniformName}; }`
                 );
             }
         } else {
             channelFns.push(
-                `fn getScaled_${name}(_i: u32) -> vec4<f32> { return params.u_${name}; }`
+                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return params.${uniformName}; }`
             );
         }
     }
@@ -138,7 +144,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     : components === 2
                       ? `vec2<${scalar}>`
                       : `vec4<${scalar}>`;
-            return `  u_${name}: ${wgslType},`;
+            return `  ${name}: ${wgslType},`;
         })
         .join("\n");
 
