@@ -150,6 +150,32 @@ export class Renderer {
     }
 
     /**
+     * @param {MarkId} markId
+     * @param {Record<string, [number, number]>} domains
+     * @returns {void}
+     */
+    updateScaleDomains(markId, domains) {
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+        mark.updateScaleDomains(domains);
+    }
+
+    /**
+     * @param {MarkId} markId
+     * @param {Record<string, [number, number]>} ranges
+     * @returns {void}
+     */
+    updateScaleRanges(markId, ranges) {
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+        mark.updateScaleRanges(ranges);
+    }
+
+    /**
      * @returns {void}
      */
     render() {

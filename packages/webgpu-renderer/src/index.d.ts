@@ -15,13 +15,22 @@ export type TypedArray =
 
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
-    type: "identity" | "linear";
+    type: "identity" | "linear" | "log" | "pow" | "sqrt" | "symlog";
 
     /** Domain for scale mapping, provided by the core module. */
     domain?: [number, number];
 
     /** Range for scale mapping, provided by the core module. */
     range?: [number, number];
+
+    /** Base for log scales. */
+    base?: number;
+
+    /** Exponent for pow scales (sqrt uses 0.5). */
+    exponent?: number;
+
+    /** Constant for symlog scales. */
+    constant?: number;
 };
 
 export type ChannelConfigCommon = {
@@ -194,6 +203,18 @@ export class Renderer {
             | [number, number]
             | { domain?: [number, number]; range?: [number, number] }
         >
+    ): void;
+
+    /** Update scale domain values by channel or scale name. */
+    updateScaleDomains(
+        markId: MarkId,
+        domains: Record<string, [number, number]>
+    ): void;
+
+    /** Update scale range values by channel or scale name. */
+    updateScaleRanges(
+        markId: MarkId,
+        ranges: Record<string, [number, number]>
     ): void;
 
     /** Draw the current frame. */
