@@ -53,6 +53,7 @@ const DEFAULTS = {
 
 // Default channel behavior for the rect mark. Channels can be overridden
 // per instance, but these defaults keep the shader predictable.
+
 /** @type {Record<string, ChannelConfigInput>} */
 const DEFAULT_CHANNEL_CONFIGS = {
     x: {
