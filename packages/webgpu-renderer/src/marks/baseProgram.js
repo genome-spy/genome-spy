@@ -1,8 +1,17 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
-import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
-import { getScaleUniformDef, validateScaleConfig } from "./scaleCodegen.js";
+import {
+    DOMAIN_PREFIX,
+    RANGE_PREFIX,
+    SCALE_THRESHOLD_COUNT_PREFIX,
+} from "../wgsl/prefixes.js";
+import {
+    THRESHOLD_RANGE_SLOTS,
+    getScaleUniformDef,
+    validateScaleConfig,
+} from "./scaleCodegen.js";
+import { cssColorToArray } from "../utils/colorUtils.js";
 
 /**
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -32,6 +41,7 @@ export default class BaseProgram {
         this._channels = this._normalizeChannels(config.channels);
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
+        this._thresholdScaleSizes = new Map();
 
         /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
         this._uniformLayout = [];
@@ -189,7 +199,9 @@ export default class BaseProgram {
                     `Channel "${name}" expects an Int32Array for i32 data`
                 );
             }
-            if (array.length < count * (channel.components ?? 1)) {
+            const inputComponents =
+                channel.inputComponents ?? channel.components ?? 1;
+            if (array.length < count * inputComponents) {
                 throw new Error(
                     `Channel "${name}" length (${array.length}) is less than count (${count})`
                 );
@@ -245,7 +257,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} values
+     * @param {Record<string, number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }>} values
      * @returns {void}
      */
     updateValues(values) {
@@ -254,6 +266,26 @@ export default class BaseProgram {
             if (key.endsWith(".domain") || key.endsWith(".range")) {
                 const [channelName, rawSuffix] = key.split(".");
                 const suffix = rawSuffix === "domain" ? "domain" : "range";
+                const scaleType =
+                    this._channels[channelName]?.scale?.type ?? "identity";
+                if (scaleType === "threshold") {
+                    if (suffix === "domain") {
+                        this._updateThresholdDomain(
+                            channelName,
+                            /** @type {number[]|{ domain?: number[] }} */ (
+                                value
+                            )
+                        );
+                    } else {
+                        this._updateThresholdRange(
+                            channelName,
+                            /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
+                                value
+                            )
+                        );
+                    }
+                    continue;
+                }
                 const offsetKey =
                     suffix === "domain"
                         ? `${DOMAIN_PREFIX}${channelName}`
@@ -283,54 +315,100 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, [number, number]>} domains
+     * @param {Record<string, number[]>} domains
      * @returns {void}
      */
     updateScaleDomains(domains) {
         for (const [name, domain] of Object.entries(domains)) {
             for (const channelName of this._resolveScaleTargets(name)) {
+                const scaleType =
+                    this._channels[channelName]?.scale?.type ?? "identity";
+                if (scaleType === "threshold") {
+                    this._updateThresholdDomain(channelName, domain);
+                    continue;
+                }
                 const uniformName = `${DOMAIN_PREFIX}${channelName}`;
                 if (!this._uniformBufferState?.entries.has(uniformName)) {
                     throw new Error(
                         `Uniform "${uniformName}" is not available for updates.`
                     );
                 }
-                this._setUniformValue(uniformName, domain);
+                if (!Array.isArray(domain)) {
+                    throw new Error(
+                        `Scale domain update for "${channelName}" must be an array.`
+                    );
+                }
+                this._setUniformValue(uniformName, [
+                    domain[0] ?? 0,
+                    domain[1] ?? 1,
+                ]);
             }
         }
         this._writeUniforms();
     }
 
     /**
-     * @param {Record<string, [number, number]>} ranges
+     * @param {Record<string, Array<number|number[]|string>>} ranges
      * @returns {void}
      */
     updateScaleRanges(ranges) {
         for (const [name, range] of Object.entries(ranges)) {
             for (const channelName of this._resolveScaleTargets(name)) {
+                const scaleType =
+                    this._channels[channelName]?.scale?.type ?? "identity";
+                if (scaleType === "threshold") {
+                    this._updateThresholdRange(channelName, range);
+                    continue;
+                }
                 const uniformName = `${RANGE_PREFIX}${channelName}`;
                 if (!this._uniformBufferState?.entries.has(uniformName)) {
                     throw new Error(
                         `Uniform "${uniformName}" is not available for updates.`
                     );
                 }
-                this._setUniformValue(uniformName, range);
+                if (
+                    !Array.isArray(range) ||
+                    typeof range[0] !== "number" ||
+                    typeof range[1] !== "number"
+                ) {
+                    throw new Error(
+                        `Scale range update for "${channelName}" must be numeric.`
+                    );
+                }
+                this._setUniformValue(uniformName, [
+                    range[0] ?? 0,
+                    range[1] ?? 1,
+                ]);
             }
         }
         this._writeUniforms();
     }
 
     /**
-     * @param {number|number[]|{ domain?: [number, number], range?: [number, number] }} value
+     * @param {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} value
      * @param {"domain"|"range"} suffix
      * @returns {[number, number]}
      */
     _coerceRangeValue(value, suffix) {
         if (Array.isArray(value)) {
+            if (typeof value[0] !== "number" || typeof value[1] !== "number") {
+                throw new Error(
+                    `Scale ${suffix} update expects numeric values.`
+                );
+            }
             return [value[0] ?? 0, value[1] ?? 1];
         }
         if (typeof value == "object" && value) {
             const pair = suffix === "domain" ? value.domain : value.range;
+            if (
+                !pair ||
+                typeof pair[0] !== "number" ||
+                typeof pair[1] !== "number"
+            ) {
+                throw new Error(
+                    `Scale ${suffix} update expects numeric values.`
+                );
+            }
             return [pair?.[0] ?? 0, pair?.[1] ?? 1];
         }
         return [0, 1];
@@ -353,10 +431,10 @@ export default class BaseProgram {
                 });
             }
             if (isSeriesChannelConfig(channel) && channel.scale) {
-                this._addScaleUniforms(layout, name, channel.scale.type);
+                this._addScaleUniforms(layout, name, channel);
             }
             if (isValueChannelConfig(channel) && channel.scale) {
-                this._addScaleUniforms(layout, name, channel.scale.type);
+                this._addScaleUniforms(layout, name, channel);
             }
         }
 
@@ -378,10 +456,10 @@ export default class BaseProgram {
     _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
             if (isSeriesChannelConfig(channel) && channel.scale) {
-                this._initializeScaleUniforms(name, channel.scale);
+                this._initializeScaleUniforms(name, channel, channel.scale);
             }
             if (isValueChannelConfig(channel) && channel.scale) {
-                this._initializeScaleUniforms(name, channel.scale);
+                this._initializeScaleUniforms(name, channel, channel.scale);
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);
@@ -392,10 +470,15 @@ export default class BaseProgram {
     /**
      * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
      * @param {string} name
-     * @param {string} scaleType
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
      * @returns {void}
      */
-    _addScaleUniforms(layout, name, scaleType) {
+    _addScaleUniforms(layout, name, channel) {
+        const scaleType = channel.scale?.type ?? "identity";
+        if (scaleType === "threshold") {
+            this._addThresholdScaleUniforms(layout, name, channel);
+            return;
+        }
         if (this._scaleUsesDomainRange(scaleType)) {
             layout.push({
                 name: `${DOMAIN_PREFIX}${name}`,
@@ -420,19 +503,32 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
      * @param {import("../index.d.ts").ChannelScale} scale
      * @returns {void}
      */
-    _initializeScaleUniforms(name, scale) {
+    _initializeScaleUniforms(name, channel, scale) {
+        if (scale.type === "threshold") {
+            this._initializeThresholdScaleUniforms(name, channel, scale);
+            return;
+        }
         if (this._scaleUsesDomainRange(scale.type)) {
-            this._setUniformValue(
-                `${DOMAIN_PREFIX}${name}`,
-                scale.domain ?? [0, 1]
-            );
-            this._setUniformValue(
-                `${RANGE_PREFIX}${name}`,
-                scale.range ?? this.getDefaultScaleRange(name) ?? [0, 1]
-            );
+            const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
+            const range = Array.isArray(scale.range)
+                ? scale.range
+                : (this.getDefaultScaleRange(name) ?? [0, 1]);
+            if (typeof range[0] !== "number" || typeof range[1] !== "number") {
+                throw new Error(`Scale range for "${name}" must be numeric.`);
+            }
+            const numericRange = /** @type {number[]} */ (range);
+            this._setUniformValue(`${DOMAIN_PREFIX}${name}`, [
+                domain[0] ?? 0,
+                domain[1] ?? 1,
+            ]);
+            this._setUniformValue(`${RANGE_PREFIX}${name}`, [
+                numericRange[0] ?? 0,
+                numericRange[1] ?? 1,
+            ]);
         }
         const def = getScaleUniformDef(scale.type);
         for (const param of def.params) {
@@ -441,6 +537,233 @@ export default class BaseProgram {
                 value = scale[param.prop];
             }
             this._setUniformValue(`${param.prefix}${name}`, value);
+        }
+    }
+
+    /**
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @returns {void}
+     */
+    _addThresholdScaleUniforms(layout, name, channel) {
+        const outputComponents = channel.components ?? 1;
+        const outputType =
+            outputComponents === 1 ? (channel.type ?? "f32") : "f32";
+
+        layout.push({
+            name: `${DOMAIN_PREFIX}${name}`,
+            type: "f32",
+            components: 4,
+        });
+        layout.push({
+            name: `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
+            type: "f32",
+            components: 1,
+        });
+
+        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
+            layout.push({
+                name: `${RANGE_PREFIX}${name}_${i}`,
+                type: outputType,
+                components: outputComponents,
+            });
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializeThresholdScaleUniforms(name, channel, scale) {
+        const outputComponents = channel.components ?? 1;
+        const thresholdCount = Array.isArray(scale.domain)
+            ? scale.domain.length
+            : 0;
+        const thresholds = this._normalizeThresholdDomain(name, scale.domain);
+        const range = this._normalizeThresholdRange(
+            name,
+            scale.range,
+            outputComponents
+        );
+        if (range.length !== thresholdCount + 1) {
+            throw new Error(
+                `Threshold scale on "${name}" requires range length of ${
+                    thresholdCount + 1
+                }, got ${range.length}.`
+            );
+        }
+
+        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, thresholds);
+        this._setUniformValue(
+            `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
+            thresholdCount
+        );
+        this._thresholdScaleSizes.set(name, thresholdCount);
+
+        const fallback = range[range.length - 1];
+        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
+            this._setUniformValue(
+                `${RANGE_PREFIX}${name}_${i}`,
+                range[i] ?? fallback
+            );
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @param {number[]|undefined} domain
+     * @returns {number[]}
+     */
+    _normalizeThresholdDomain(name, domain) {
+        if (!Array.isArray(domain) || domain.length === 0) {
+            throw new Error(
+                `Threshold scale on "${name}" must define a non-empty domain.`
+            );
+        }
+        if (domain.length >= THRESHOLD_RANGE_SLOTS) {
+            throw new Error(
+                `Threshold scale on "${name}" supports up to ${
+                    THRESHOLD_RANGE_SLOTS - 1
+                } breakpoints.`
+            );
+        }
+        const padded = domain.slice(0, THRESHOLD_RANGE_SLOTS);
+        while (padded.length < THRESHOLD_RANGE_SLOTS) {
+            padded.push(0);
+        }
+        return padded;
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|undefined} range
+     * @param {1|2|4} outputComponents
+     * @returns {Array<number|number[]>}
+     */
+    _normalizeThresholdRange(name, range, outputComponents) {
+        if (!Array.isArray(range) || range.length < 2) {
+            throw new Error(
+                `Threshold scale on "${name}" must define at least two range entries.`
+            );
+        }
+        if (range.length > THRESHOLD_RANGE_SLOTS) {
+            throw new Error(
+                `Threshold scale on "${name}" supports up to ${THRESHOLD_RANGE_SLOTS} range entries.`
+            );
+        }
+        return range.map((value) =>
+            this._normalizeThresholdRangeValue(name, value, outputComponents)
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {number|number[]|string} value
+     * @param {1|2|4} outputComponents
+     * @returns {number|number[]}
+     */
+    _normalizeThresholdRangeValue(name, value, outputComponents) {
+        if (outputComponents === 1) {
+            if (typeof value === "number") {
+                return value;
+            }
+            throw new Error(
+                `Threshold scale on "${name}" expects numeric range values.`
+            );
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 4) {
+                return value;
+            }
+            if (value.length === 3) {
+                return [...value, 1];
+            }
+        }
+        if (typeof value === "string") {
+            return [...cssColorToArray(value), 1];
+        }
+        throw new Error(
+            `Threshold scale on "${name}" expects vec4 range values or CSS colors.`
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {number[]|{ domain?: number[] }} value
+     * @returns {void}
+     */
+    _updateThresholdDomain(name, value) {
+        const channel = this._channels[name];
+        if (!channel || channel.scale?.type !== "threshold") {
+            throw new Error(
+                `Channel "${name}" does not use a threshold scale.`
+            );
+        }
+        const domain = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? (value.domain ?? [])
+              : [];
+        const expectedCount = this._thresholdScaleSizes.get(name);
+        if (expectedCount != null && domain.length !== expectedCount) {
+            throw new Error(
+                `Threshold scale on "${name}" expects ${expectedCount} domain entries, got ${domain.length}.`
+            );
+        }
+        const thresholds = this._normalizeThresholdDomain(name, domain);
+        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, thresholds);
+        this._setUniformValue(
+            `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
+            domain.length
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
+     * @returns {void}
+     */
+    _updateThresholdRange(name, value) {
+        const channel = this._channels[name];
+        if (!channel || channel.scale?.type !== "threshold") {
+            throw new Error(
+                `Channel "${name}" does not use a threshold scale.`
+            );
+        }
+        const range = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? (value.range ?? [])
+              : [];
+        const outputComponents = channel.components ?? 1;
+        const expectedCount = this._thresholdScaleSizes.get(name);
+        if (expectedCount == null) {
+            throw new Error(
+                `Threshold scale on "${name}" has no recorded size.`
+            );
+        }
+        if (range.length !== expectedCount + 1) {
+            throw new Error(
+                `Threshold scale on "${name}" expects ${
+                    expectedCount + 1
+                } range entries, got ${range.length}.`
+            );
+        }
+        const normalized = this._normalizeThresholdRange(
+            name,
+            range,
+            outputComponents
+        );
+        const fallback = normalized[normalized.length - 1];
+        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
+            this._setUniformValue(
+                `${RANGE_PREFIX}${name}_${i}`,
+                normalized[i] ?? fallback
+            );
         }
     }
 
@@ -531,6 +854,9 @@ export default class BaseProgram {
             if (!merged.components) {
                 merged.components = 1;
             }
+            if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
+                merged.inputComponents = merged.components;
+            }
             if (
                 isSeriesChannelConfig(merged) &&
                 (configChannel?.value !== undefined ||
@@ -611,6 +937,12 @@ export default class BaseProgram {
             throw new Error(`Invalid component count for "${name}"`);
         }
         if (
+            channel.inputComponents &&
+            ![1, 2, 4].includes(channel.inputComponents)
+        ) {
+            throw new Error(`Invalid input component count for "${name}"`);
+        }
+        if (
             channel.components &&
             channel.components > 1 &&
             channel.type &&
@@ -619,6 +951,60 @@ export default class BaseProgram {
             throw new Error(
                 `Only f32 vectors are supported for "${name}" right now.`
             );
+        }
+        if (
+            channel.inputComponents &&
+            channel.inputComponents > 1 &&
+            channel.type &&
+            channel.type !== "f32"
+        ) {
+            throw new Error(
+                `Only f32 vectors are supported for "${name}" input data.`
+            );
+        }
+        if (
+            channel.inputComponents &&
+            channel.inputComponents !== (channel.components ?? 1) &&
+            channel.scale?.type !== "threshold"
+        ) {
+            throw new Error(
+                `Channel "${name}" only supports mismatched input/output components with threshold scales.`
+            );
+        }
+
+        if (channel.scale?.type === "threshold") {
+            const domain = channel.scale.domain;
+            const range = channel.scale.range;
+            if (!Array.isArray(domain) || domain.length === 0) {
+                throw new Error(
+                    `Threshold scale on "${name}" requires a non-empty domain.`
+                );
+            }
+            if (!Array.isArray(range) || range.length < 2) {
+                throw new Error(
+                    `Threshold scale on "${name}" requires at least two range entries.`
+                );
+            }
+            if (range.length !== domain.length + 1) {
+                throw new Error(
+                    `Threshold scale on "${name}" requires range length of ${
+                        domain.length + 1
+                    }, got ${range.length}.`
+                );
+            }
+            if (range.length > THRESHOLD_RANGE_SLOTS) {
+                throw new Error(
+                    `Threshold scale on "${name}" supports up to ${THRESHOLD_RANGE_SLOTS} range entries.`
+                );
+            }
+            if (
+                isValueChannelConfig(channel) &&
+                (channel.components ?? 1) > 1
+            ) {
+                throw new Error(
+                    `Threshold scale on "${name}" requires scalar input values for vector outputs.`
+                );
+            }
         }
 
         const scaleError = validateScaleConfig(name, channel);

@@ -143,6 +143,44 @@ describe("BaseProgram channel validation", () => {
             })
         ).toThrow('Channel "vec" must use 4 components');
     });
+
+    it("rejects mismatched input/output components without threshold scales", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1, type: "f32" },
+                vec: {
+                    data: new Float32Array([0]),
+                    type: "f32",
+                    components: 4,
+                    inputComponents: 1,
+                },
+            })
+        ).toThrow(
+            'Channel "vec" only supports mismatched input/output components with threshold scales.'
+        );
+    });
+
+    it("allows mismatched input/output components with threshold scales", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1, type: "f32" },
+                vec: {
+                    data: new Float32Array([0]),
+                    type: "f32",
+                    components: 4,
+                    inputComponents: 1,
+                    scale: {
+                        type: "threshold",
+                        domain: [0],
+                        range: [
+                            [0, 0, 0, 1],
+                            [1, 1, 1, 1],
+                        ],
+                    },
+                },
+            })
+        ).not.toThrow();
+    });
 });
 
 describe("BaseProgram series type validation", () => {

@@ -2,6 +2,7 @@ import runBasicScene from "./basicScene.js";
 import runHatchScene from "./hatchScene.js";
 import runBarScene from "./barScene.js";
 import runPointScene from "./pointScene.js";
+import runThresholdScene from "./thresholdScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -22,6 +23,10 @@ const EXAMPLES = {
     bars: {
         label: "Bar Chart",
         run: runBarScene,
+    },
+    threshold: {
+        label: "Threshold Colors",
+        run: runThresholdScene,
     },
 };
 

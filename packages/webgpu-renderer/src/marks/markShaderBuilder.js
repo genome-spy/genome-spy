@@ -64,20 +64,21 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const type = channel.type ?? "f32";
         const scalarType =
             type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-        const components = channel.components ?? 1;
+        const outputComponents = channel.components ?? 1;
+        const inputComponents = channel.inputComponents ?? outputComponents;
         const bufferName = `buf_${name}`;
         const arrayType =
-            components === 1 ? `array<${scalarType}>` : "array<f32>";
+            inputComponents === 1 ? `array<${scalarType}>` : "array<f32>";
 
         bufferDecls.push(
             `@group(1) @binding(${binding}) var<storage, read> ${bufferName}: ${arrayType};`
         );
 
-        if (components > 1 && type !== "f32") {
+        if (inputComponents > 1 && type !== "f32") {
             // TODO: Support vector types with non-f32 data.
         }
 
-        if (components === 1) {
+        if (inputComponents === 1) {
             const readFn = `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`;
             bufferReaders.push(readFn);
         } else {
@@ -92,13 +93,27 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         // getScaled_* is the only function mark shaders call. It hides whether
         // values come from buffers or uniforms and applies scale logic.
         const scale = channel.scale?.type ?? "identity";
-        if (components === 1) {
+        const outputScalarType = outputComponents === 1 ? scalarType : "f32";
+        if (outputComponents === 1) {
             channelFns.push(
                 buildScaledFunction({
                     name,
                     scale,
                     rawValueExpr: `read_${name}(i)`,
                     scalarType,
+                    outputComponents,
+                    outputScalarType,
+                })
+            );
+        } else if (scale === "threshold") {
+            channelFns.push(
+                buildScaledFunction({
+                    name,
+                    scale,
+                    rawValueExpr: `read_${name}(i)`,
+                    scalarType,
+                    outputComponents,
+                    outputScalarType,
                 })
             );
         } else {
@@ -114,7 +129,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         if (channel.value == null && channel.default == null) {
             continue;
         }
-        const components = channel.components ?? 1;
+        const outputComponents = channel.components ?? 1;
         const scale = channel.scale?.type ?? "identity";
         const uniformName = `u_${name}`;
         const type = channel.type ?? "f32";
@@ -123,18 +138,20 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const isDynamic = "dynamic" in channel && channel.dynamic === true;
         const literal = formatLiteral(
             type,
-            components,
+            outputComponents,
 
             /** @type {number|number[]} */ (channel.value)
         );
         const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
-        if (components === 1) {
+        if (outputComponents === 1) {
             channelFns.push(
                 buildScaledFunction({
                     name,
                     scale,
                     rawValueExpr,
                     scalarType,
+                    outputComponents,
+                    outputScalarType: scalarType,
                 })
             );
         } else {
