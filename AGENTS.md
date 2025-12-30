@@ -46,6 +46,7 @@ aware interactions.
 - Always use type hints in any language which supports them
 - JavaScript/TypeScript files should use JSDoc for type annotations
 - JavaScript is indented with 4 spaces, no tabs
+- WGSL code should be indented with 4 spaces, no tabs
 - JSON files are indented with 2 spaces, no tabs
 - Use modern ESNext syntax (async/await, arrow functions, destructuring, spread)
 - Use Array.from instead of spread when converting NodeList to Array

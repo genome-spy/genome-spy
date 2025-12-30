@@ -72,7 +72,7 @@ export default async function runPointScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer);
 
-    renderer.updateInstances(
+    renderer.updateSeries(
         markId,
         {
             x,
