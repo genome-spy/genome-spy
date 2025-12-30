@@ -159,7 +159,7 @@ export function normalizeDiscreteRange(name, range, outputComponents, kind) {
  * @param {string} name
  * @param {number|number[]|string} value
  * @param {1|2|4} outputComponents
- * @param {"Threshold"|"Piecewise"} label
+ * @param {string} label
  * @returns {number|number[]}
  */
 export function normalizeDiscreteRangeValue(
@@ -217,4 +217,21 @@ export function coerceRangeValue(value, suffix) {
         return [pair?.[0] ?? 0, pair?.[1] ?? 1];
     }
     return [0, 1];
+}
+
+/**
+ * @param {string} name
+ * @param {Array<number|number[]|string>|undefined} range
+ * @param {1|2|4} outputComponents
+ * @returns {Array<number|number[]>}
+ */
+export function normalizeOrdinalRange(name, range, outputComponents) {
+    if (!Array.isArray(range) || range.length === 0) {
+        throw new Error(
+            `Ordinal scale on "${name}" must define at least one range entry.`
+        );
+    }
+    return range.map((value) =>
+        normalizeDiscreteRangeValue(name, value, outputComponents, "Ordinal")
+    );
 }
