@@ -1,16 +1,6 @@
 import SCALES_WGSL from "../wgsl/scales.wgsl.js";
-import {
-    DOMAIN_PREFIX,
-    RANGE_PREFIX,
-    SCALED_FUNCTION_PREFIX,
-    SCALE_ALIGN_PREFIX,
-    SCALE_BASE_PREFIX,
-    SCALE_BAND_PREFIX,
-    SCALE_CONSTANT_PREFIX,
-    SCALE_EXPONENT_PREFIX,
-    SCALE_PADDING_INNER_PREFIX,
-    SCALE_PADDING_OUTER_PREFIX,
-} from "../wgsl/prefixes.js";
+import { SCALED_FUNCTION_PREFIX } from "../wgsl/prefixes.js";
+import { buildScaledFunction, formatLiteral } from "./scaleCodegen.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -22,111 +12,6 @@ import {
  *
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
  */
-
-/**
- * @param {import("../types.js").ScalarType} type
- * @param {1|2|4} components
- * @param {number|number[]} value
- * @returns {string}
- */
-function formatLiteral(type, components, value) {
-    const scalarType = type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-
-    /**
-     * @param {number} v
-     * @returns {string}
-     */
-    const formatScalar = (v) => {
-        const num = Number(v ?? 0);
-        if (type === "u32") {
-            return `u32(${Math.trunc(num)})`;
-        }
-        if (type === "i32") {
-            return `i32(${Math.trunc(num)})`;
-        }
-        if (Number.isInteger(num)) {
-            return `${num}.0`;
-        }
-        return `${num}`;
-    };
-    if (components === 1) {
-        return formatScalar(Array.isArray(value) ? value[0] : value);
-    }
-    const values = Array.isArray(value) ? value : [value];
-    const padded = values.slice(0, components);
-    while (padded.length < components) {
-        padded.push(0);
-    }
-    return `vec${components}<${scalarType}>(${padded
-        .map(formatScalar)
-        .join(", ")})`;
-}
-
-/**
- * @param {object} params
- * @param {string} params.name
- * @param {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"} params.scale
- * @param {string} params.rawValueExpr
- * @param {"f32"|"u32"|"i32"} params.scalarType
- * @param {string} [params.argName]
- * @returns {string}
- */
-function buildScaledFunction({
-    name,
-    scale,
-    rawValueExpr,
-    scalarType,
-    argName = "_i",
-}) {
-    const floatExpr =
-        scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
-
-    const namePrefix = `fn ${SCALED_FUNCTION_PREFIX}${name}`;
-    const fnName = `${namePrefix}(${argName}: u32) -> `;
-
-    if (scale === "linear") {
-        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
-  let v = ${floatExpr};
-  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
-}`;
-    }
-    if (scale === "band") {
-        const valueU32 =
-            scalarType === "u32" ? rawValueExpr : `u32(f32(${rawValueExpr}))`;
-        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
-  let v = ${valueU32};
-  return scaleBand(
-    v,
-    params.${DOMAIN_PREFIX}${name}.xy,
-    params.${RANGE_PREFIX}${name}.xy,
-    params.${SCALE_PADDING_INNER_PREFIX}${name},
-    params.${SCALE_PADDING_OUTER_PREFIX}${name},
-    params.${SCALE_ALIGN_PREFIX}${name},
-    params.${SCALE_BAND_PREFIX}${name}
-  );
-}`;
-    }
-    if (scale === "log") {
-        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
-  let v = ${floatExpr};
-  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
-}`;
-    }
-    if (scale === "pow" || scale === "sqrt") {
-        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
-  let v = ${floatExpr};
-  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
-}`;
-    }
-    if (scale === "symlog") {
-        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
-  let v = ${floatExpr};
-  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
-}`;
-    }
-
-    return `${fnName}${scalarType} { return ${rawValueExpr}; }`;
-}
 
 /**
  * Builds WGSL shader code and bind group layout entries for a mark.
@@ -214,7 +99,6 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scale,
                     rawValueExpr: `read_${name}(i)`,
                     scalarType,
-                    argName: "i",
                 })
             );
         } else {
