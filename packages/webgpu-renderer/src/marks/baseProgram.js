@@ -229,11 +229,22 @@ export default class BaseProgram {
                     suffix === "domain"
                         ? `${DOMAIN_PREFIX}${channelName}`
                         : `${RANGE_PREFIX}${channelName}`;
+                if (!this._uniformBufferState?.entries.has(offsetKey)) {
+                    throw new Error(
+                        `Uniform "${offsetKey}" is not available for updates.`
+                    );
+                }
                 const range = this._coerceRangeValue(value, suffix);
                 this._setUniformValue(offsetKey, range);
             } else {
+                const uniformKey = `u_${key}`;
+                if (!this._uniformBufferState?.entries.has(uniformKey)) {
+                    throw new Error(
+                        `Uniform "${uniformKey}" is not available for updates.`
+                    );
+                }
                 this._setUniformValue(
-                    `u_${key}`,
+                    uniformKey,
                     /** @type {number|number[]} */ (value)
                 );
             }
@@ -266,7 +277,7 @@ export default class BaseProgram {
 
         // Create uniform slots for per-channel values and scale parameters.
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (isValueChannelConfig(channel)) {
+            if (isValueChannelConfig(channel) && channel.dynamic) {
                 layout.push({
                     name: `u_${name}`,
                     type: channel.type ?? "f32",
@@ -350,7 +361,7 @@ export default class BaseProgram {
                         this.getDefaultScaleRange(name) ?? [0, 1]
                 );
             }
-            if (isValueChannelConfig(channel)) {
+            if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);
             }
         }
