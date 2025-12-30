@@ -4,6 +4,7 @@ import { UniformBuffer } from "../utils/uniformBuffer.js";
 import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
 import {
     getScaleUniformDef,
+    getScaleOutputType,
     isPiecewiseScale,
     validateScaleConfig,
 } from "./scaleCodegen.js";
@@ -382,7 +383,9 @@ export default class BaseProgram {
             );
             const outputComponents = channel.components ?? 1;
             const outputType =
-                outputComponents === 1 ? (channel.type ?? "f32") : "f32";
+                outputComponents === 1
+                    ? getScaleOutputType(scaleType, channel.type ?? "f32")
+                    : "f32";
             layout.push({
                 name: `${DOMAIN_PREFIX}${name}`,
                 type: "f32",
@@ -486,11 +489,14 @@ export default class BaseProgram {
         }
 
         if (suffix === "domain") {
+            /** @type {{ domain?: number[] }} */
+            const domainContainer =
+                typeof value === "object" && value
+                    ? /** @type {{ domain?: number[] }} */ (value)
+                    : {};
             const domain = Array.isArray(value)
                 ? value
-                : typeof value === "object" && value
-                  ? /** @type {{ domain?: number[] }} */ ((value).domain ?? [])
-                  : [];
+                : (domainContainer.domain ?? []);
             if (domain.length !== sizes.domainLength) {
                 throw new Error(
                     `${label} scale on "${name}" expects ${sizes.domainLength} domain entries, got ${domain.length}.`
@@ -500,13 +506,16 @@ export default class BaseProgram {
             return;
         }
 
+        /** @type {{ range?: Array<number|number[]|string> }} */
+        const rangeContainer =
+            typeof value === "object" && value
+                ? /** @type {{ range?: Array<number|number[]|string> }} */ (
+                      value
+                  )
+                : {};
         const range = Array.isArray(value)
             ? value
-            : typeof value === "object" && value
-              ? /** @type {{ range?: Array<number|number[]|string> }} */ ((
-                    value
-                ).range ?? [])
-              : [];
+            : (rangeContainer.range ?? []);
         if (range.length !== sizes.rangeLength) {
             throw new Error(
                 `${label} scale on "${name}" expects ${sizes.rangeLength} range entries, got ${range.length}.`
