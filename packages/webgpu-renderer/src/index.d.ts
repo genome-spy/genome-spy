@@ -15,13 +15,21 @@ export type TypedArray =
 
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
-    type: "identity" | "linear" | "log" | "pow" | "sqrt" | "symlog" | "band";
+    type:
+        | "identity"
+        | "linear"
+        | "log"
+        | "pow"
+        | "sqrt"
+        | "symlog"
+        | "band"
+        | "threshold";
 
     /** Domain for scale mapping, provided by the core module. */
-    domain?: [number, number];
+    domain?: number[];
 
     /** Range for scale mapping, provided by the core module. */
-    range?: [number, number];
+    range?: Array<number | number[] | string>;
 
     /** Base for log scales. */
     base?: number;
@@ -48,6 +56,9 @@ export type ChannelScale = {
 export type ChannelConfigCommon = {
     /** Vector width when series data stores packed vectors (e.g., RGBA). */
     components?: 1 | 2 | 4;
+
+    /** Vector width of series data when it differs from the output components. */
+    inputComponents?: 1 | 2 | 4;
 
     /** Default if no series data or value is supplied. */
     default?: number | number[];
@@ -212,21 +223,17 @@ export class Renderer {
             string,
             | number
             | number[]
-            | [number, number]
-            | { domain?: [number, number]; range?: [number, number] }
+            | { domain?: number[]; range?: Array<number | number[] | string> }
         >
     ): void;
 
     /** Update scale domain values by channel or scale name. */
-    updateScaleDomains(
-        markId: MarkId,
-        domains: Record<string, [number, number]>
-    ): void;
+    updateScaleDomains(markId: MarkId, domains: Record<string, number[]>): void;
 
     /** Update scale range values by channel or scale name. */
     updateScaleRanges(
         markId: MarkId,
-        ranges: Record<string, [number, number]>
+        ranges: Record<string, Array<number | number[] | string>>
     ): void;
 
     /** Draw the current frame. */

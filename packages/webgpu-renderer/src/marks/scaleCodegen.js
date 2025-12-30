@@ -9,18 +9,25 @@ import {
     SCALE_EXPONENT_PREFIX,
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
+    SCALE_THRESHOLD_COUNT_PREFIX,
 } from "../wgsl/prefixes.js";
+
+export const THRESHOLD_RANGE_SLOTS = 4;
 
 /**
  * @typedef {object} ScaleFunctionParams
  * @prop {string} name
  *   Channel name used for function naming and uniform lookups.
- * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"} scale
+ * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"threshold"} scale
  *   Scale type that selects which WGSL helper is emitted.
  * @prop {string} rawValueExpr
  *   WGSL expression for the raw value (buffer read or literal/uniform).
  * @prop {"f32"|"u32"|"i32"} scalarType
  *   Scalar type of the raw value; used to choose casting behavior.
+ * @prop {1|2|4} outputComponents
+ *   Output vector width expected by the mark shader.
+ * @prop {"f32"|"u32"|"i32"} outputScalarType
+ *   Scalar type of the scaled output when outputComponents is 1.
  */
 
 /**
@@ -31,6 +38,10 @@ import {
  *   Raw value converted to `f32` so continuous scales can share one math path.
  * @prop {string} u32Expr
  *   Raw value coerced to `u32` for band/indexed lookups that operate on slots.
+ * @prop {1|2|4} outputComponents
+ *   Output vector width expected by the mark shader.
+ * @prop {"f32"|"u32"|"i32"} outputScalarType
+ *   Scalar type of the scaled output when outputComponents is 1.
  */
 
 /**
@@ -146,6 +157,46 @@ function emitSymlog({ name, floatExpr }) {
 }`;
 }
 
+/**
+ * @param {ScaleEmitParams & { outputComponents: 1|2|4, outputScalarType: "f32"|"u32"|"i32" }} params
+ * @returns {string}
+ */
+function emitThreshold({
+    name,
+    floatExpr,
+    outputComponents,
+    outputScalarType,
+}) {
+    const returnType =
+        outputComponents === 1
+            ? outputScalarType
+            : `vec${outputComponents}<f32>`;
+    const thresholds = `params.${DOMAIN_PREFIX}${name}`;
+    const count = `params.${SCALE_THRESHOLD_COUNT_PREFIX}${name}`;
+    const rangeValues = Array.from(
+        { length: THRESHOLD_RANGE_SLOTS },
+        (_, index) => `params.${RANGE_PREFIX}${name}_${index}`
+    );
+
+    const selector = outputComponents === 1 ? "var out" : "var out";
+    const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
+
+    return `${makeFnHeader(name, returnType)} {
+  let v = ${floatExpr};
+  let thresholds = ${thresholds};
+  let count = u32(${count});
+  var slot: u32 = 0u;
+  if (count > 0u && v >= thresholds.x) { slot = 1u; }
+  if (count > 1u && v >= thresholds.y) { slot = 2u; }
+  if (count > 2u && v >= thresholds.z) { slot = 3u; }
+  ${selector}: ${rangeType} = ${rangeValues[0]};
+  if (slot == 1u) { out = ${rangeValues[1]}; }
+  if (slot == 2u) { out = ${rangeValues[2]}; }
+  if (slot == 3u) { out = ${rangeValues[3]}; }
+  return out;
+}`;
+}
+
 /** @type {Record<string, { input: "any"|"numeric"|"u32", output: "same"|"f32", domainRange: boolean, params: ScaleUniformParam[], emitter?: ScaleEmitter }>} */
 const SCALE_DEFS = {
     identity: {
@@ -208,7 +259,7 @@ const SCALE_DEFS = {
         emitter: emitSymlog,
     },
     band: {
-        input: "u32",
+        input: "numeric",
         output: "f32",
         domainRange: true,
         params: [
@@ -226,6 +277,13 @@ const SCALE_DEFS = {
             { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
         ],
         emitter: emitBand,
+    },
+    threshold: {
+        input: "numeric",
+        output: "same",
+        domainRange: false,
+        params: [],
+        emitter: emitThreshold,
     },
 };
 
@@ -248,7 +306,14 @@ export function getScaleUniformDef(scaleType) {
  * @param {ScaleFunctionParams} params
  * @returns {string}
  */
-export function buildScaledFunction({ name, scale, rawValueExpr, scalarType }) {
+export function buildScaledFunction({
+    name,
+    scale,
+    rawValueExpr,
+    scalarType,
+    outputComponents,
+    outputScalarType,
+}) {
     const floatExpr =
         scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
     const u32Expr =
@@ -256,7 +321,13 @@ export function buildScaledFunction({ name, scale, rawValueExpr, scalarType }) {
 
     const def = SCALE_DEFS[scale];
     if (def?.emitter) {
-        return def.emitter({ name, floatExpr, u32Expr });
+        return def.emitter({
+            name,
+            floatExpr,
+            u32Expr,
+            outputComponents,
+            outputScalarType,
+        });
     }
     const returnType = getScaleOutputType(scale, scalarType);
     return `${makeFnHeader(name, returnType)} { return ${rawValueExpr}; }`;
@@ -274,8 +345,11 @@ export function validateScaleConfig(name, channel) {
     }
 
     const components = channel.components ?? 1;
-    if (components > 1 && scaleType !== "identity") {
+    if (components > 1 && !["identity", "threshold"].includes(scaleType)) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
+    }
+    if (scaleType === "threshold" && components !== 1 && components !== 4) {
+        return `Channel "${name}" uses ${components} components but threshold scales only support scalars or vec4 outputs.`;
     }
 
     const inputRule = SCALE_DEFS[scaleType]?.input ?? "any";
@@ -284,6 +358,9 @@ export function validateScaleConfig(name, channel) {
     }
 
     const type = channel.type ?? "f32";
+    if (inputRule === "numeric" && !["f32", "u32", "i32"].includes(type)) {
+        return `Channel "${name}" requires numeric input for "${scaleType}" scale.`;
+    }
     if (inputRule === "u32" && !["u32", "i32"].includes(type)) {
         return `Channel "${name}" requires integer input for "${scaleType}" scale.`;
     }
