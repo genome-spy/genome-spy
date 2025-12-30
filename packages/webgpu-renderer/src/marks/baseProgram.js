@@ -1,6 +1,7 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
+import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
 
 /**
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -226,13 +227,13 @@ export default class BaseProgram {
                 const suffix = rawSuffix === "domain" ? "domain" : "range";
                 const offsetKey =
                     suffix === "domain"
-                        ? `${channelName}_domain`
-                        : `${channelName}_range`;
+                        ? `${DOMAIN_PREFIX}${channelName}`
+                        : `${RANGE_PREFIX}${channelName}`;
                 const range = this._coerceRangeValue(value, suffix);
                 this._setUniformValue(offsetKey, range);
             } else {
                 this._setUniformValue(
-                    key,
+                    `u_${key}`,
                     /** @type {number|number[]} */ (value)
                 );
             }
@@ -267,7 +268,7 @@ export default class BaseProgram {
         for (const [name, channel] of Object.entries(this._channels)) {
             if (isValueChannelConfig(channel)) {
                 layout.push({
-                    name,
+                    name: `u_${name}`,
                     type: channel.type ?? "f32",
                     components: channel.components ?? 1,
                 });
@@ -277,12 +278,12 @@ export default class BaseProgram {
                 channel.scale?.type === "linear"
             ) {
                 layout.push({
-                    name: `${name}_domain`,
+                    name: `${DOMAIN_PREFIX}${name}`,
                     type: "f32",
                     components: 2,
                 });
                 layout.push({
-                    name: `${name}_range`,
+                    name: `${RANGE_PREFIX}${name}`,
                     type: "f32",
                     components: 2,
                 });
@@ -292,12 +293,12 @@ export default class BaseProgram {
                 channel.scale?.type === "linear"
             ) {
                 layout.push({
-                    name: `${name}_domain`,
+                    name: `${DOMAIN_PREFIX}${name}`,
                     type: "f32",
                     components: 2,
                 });
                 layout.push({
-                    name: `${name}_range`,
+                    name: `${RANGE_PREFIX}${name}`,
                     type: "f32",
                     components: 2,
                 });
@@ -326,11 +327,11 @@ export default class BaseProgram {
                 channel.scale?.type === "linear"
             ) {
                 this._setUniformValue(
-                    `${name}_domain`,
+                    `${DOMAIN_PREFIX}${name}`,
                     channel.scale.domain ?? [0, 1]
                 );
                 this._setUniformValue(
-                    `${name}_range`,
+                    `${RANGE_PREFIX}${name}`,
                     channel.scale.range ??
                         this.getDefaultScaleRange(name) ?? [0, 1]
                 );
@@ -340,17 +341,17 @@ export default class BaseProgram {
                 channel.scale?.type === "linear"
             ) {
                 this._setUniformValue(
-                    `${name}_domain`,
+                    `${DOMAIN_PREFIX}${name}`,
                     channel.scale.domain ?? [0, 1]
                 );
                 this._setUniformValue(
-                    `${name}_range`,
+                    `${RANGE_PREFIX}${name}`,
                     channel.scale.range ??
                         this.getDefaultScaleRange(name) ?? [0, 1]
                 );
             }
             if (isValueChannelConfig(channel)) {
-                this._setUniformValue(name, channel.value);
+                this._setUniformValue(`u_${name}`, channel.value);
             }
         }
     }
