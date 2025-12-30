@@ -36,6 +36,42 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     const channelFns = [];
 
     let bindingIndex = 1;
+    /**
+     * @param {"f32"|"u32"|"i32"} type
+     * @param {1|2|4} components
+     * @param {number|number[]} value
+     * @returns {string}
+     */
+    const formatLiteral = (type, components, value) => {
+        const scalarType =
+            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+        /**
+         * @param {number} v
+         * @returns {string}
+         */
+        const formatScalar = (v) => {
+            const num = Number(v ?? 0);
+            if (type === "u32") {
+                return `u32(${Math.trunc(num)})`;
+            }
+            if (type === "i32") {
+                return `i32(${Math.trunc(num)})`;
+            }
+            return `${num}`;
+        };
+        if (components === 1) {
+            return formatScalar(Array.isArray(value) ? value[0] : value);
+        }
+        const values = Array.isArray(value) ? value : [value];
+        const padded = values.slice(0, components);
+        while (padded.length < components) {
+            padded.push(0);
+        }
+        return `vec${components}<${scalarType}>(${padded
+            .map(formatScalar)
+            .join(", ")})`;
+    };
+
     for (const [name, channel] of Object.entries(channels)) {
         if (channel.data == null) {
             continue;
@@ -114,22 +150,32 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const components = channel.components ?? 1;
         const scale = channel.scale?.type ?? "identity";
         const uniformName = `u_${name}`;
+        const type = channel.type ?? "f32";
+        const isDynamic = "dynamic" in channel && channel.dynamic === true;
+        const literal = formatLiteral(
+            type,
+            components,
+            /** @type {number|number[]} */ (channel.value)
+        );
+        const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
+        const valueExpr =
+            type === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
         if (components === 1) {
             if (scale === "linear") {
                 channelFns.push(
                     `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = params.${uniformName};
+  let v = ${valueExpr};
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
 }`
                 );
             } else {
                 channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 { return params.${uniformName}; }`
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 { return ${valueExpr}; }`
                 );
             }
         } else {
             channelFns.push(
-                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return params.${uniformName}; }`
+                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${rawValueExpr}; }`
             );
         }
     }
