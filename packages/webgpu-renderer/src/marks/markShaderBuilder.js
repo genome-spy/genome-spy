@@ -15,7 +15,9 @@ import {
  * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  *
- * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
+ * @typedef {{ name: string, role: "series"|"ordinalRange" }} BufferLayoutEntry
+ *
+ * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[], bufferLayout: BufferLayoutEntry[] }} ShaderBuildResult
  */
 
 /**
@@ -34,6 +36,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     // their order stable so the pipeline layout matches the generated WGSL.
     /** @type {GPUBindGroupLayoutEntry[]} */
     const bufferBindings = [];
+    /** @type {BufferLayoutEntry[]} */
+    const bufferLayout = [];
 
     // WGSL snippets are accumulated and stitched together at the end. This
     // keeps generator logic readable and makes it easy to add/remove blocks.
@@ -65,6 +69,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             visibility: GPUShaderStage.VERTEX,
             buffer: { type: "read-only-storage" },
         });
+        bufferLayout.push({ name, role: "series" });
 
         const type = channel.type ?? "f32";
         const scalarType =
@@ -89,8 +94,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         } else {
             bufferReaders.push(
                 `fn read_${name}(i: u32) -> vec4<f32> {
-  let base = i * 4u;
-  return vec4<f32>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
+    let base = i * 4u;
+    return vec4<f32>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
 }`
             );
         }
@@ -114,7 +119,11 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scaleConfig: channel.scale,
                 })
             );
-        } else if (scale === "threshold" || isPiecewiseScale(channel.scale)) {
+        } else if (
+            scale === "threshold" ||
+            scale === "ordinal" ||
+            isPiecewiseScale(channel.scale)
+        ) {
             channelFns.push(
                 buildScaledFunction({
                     name,
@@ -131,6 +140,40 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                 `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
             );
         }
+    }
+
+    // Ordinal scales pull range values from storage buffers. These bindings are
+    // separate from data buffers so ranges can grow/shrink without changing
+    // per-instance series data.
+    for (const [name, channel] of Object.entries(channels)) {
+        if (channel.scale?.type !== "ordinal") {
+            continue;
+        }
+
+        const binding = bindingIndex++;
+        bufferBindings.push({
+            binding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: "read-only-storage" },
+        });
+        bufferLayout.push({ name, role: "ordinalRange" });
+
+        const outputComponents = channel.components ?? 1;
+        const type = channel.type ?? "f32";
+        const scalarType =
+            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+        const outputScalarType =
+            outputComponents === 1
+                ? getScaleOutputType("ordinal", scalarType)
+                : "f32";
+        const elementType =
+            outputComponents === 1 ? outputScalarType : "vec4<f32>";
+        const rangeBufferName = `range_${name}`;
+
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> ${rangeBufferName}: array<${elementType}>;`
+        );
     }
 
     // Second pass: value-backed channels become either uniforms (dynamic) or
@@ -158,6 +201,22 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                 ? getScaleOutputType(scale, scalarType)
                 : "f32";
         if (outputComponents === 1) {
+            channelFns.push(
+                buildScaledFunction({
+                    name,
+                    scale,
+                    rawValueExpr,
+                    scalarType,
+                    outputComponents,
+                    outputScalarType,
+                    scaleConfig: channel.scale,
+                })
+            );
+        } else if (
+            scale === "threshold" ||
+            scale === "ordinal" ||
+            isPiecewiseScale(channel.scale)
+        ) {
             channelFns.push(
                 buildScaledFunction({
                     name,
@@ -225,5 +284,5 @@ ${channelFns.join("\n")}
 ${shaderBody}
 `;
 
-    return { shaderCode, bufferBindings };
+    return { shaderCode, bufferBindings, bufferLayout };
 }

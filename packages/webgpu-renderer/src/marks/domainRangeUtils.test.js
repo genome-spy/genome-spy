@@ -3,6 +3,7 @@ import {
     coerceRangeValue,
     getDomainRangeKind,
     normalizeDomainRange,
+    normalizeOrdinalRange,
 } from "./domainRangeUtils.js";
 
 describe("domainRangeUtils", () => {
@@ -66,5 +67,14 @@ describe("domainRangeUtils", () => {
         const pair = coerceRangeValue({ domain: [3, 7] }, "domain");
 
         expect(pair).toEqual([3, 7]);
+    });
+
+    it("normalizes ordinal color ranges", () => {
+        const normalized = normalizeOrdinalRange("fill", ["#000", "#fff"], 4);
+
+        expect(normalized).toEqual([
+            [0, 0, 0, 1],
+            [1, 1, 1, 1],
+        ]);
     });
 });
