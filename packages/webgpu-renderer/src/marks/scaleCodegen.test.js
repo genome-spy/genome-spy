@@ -23,15 +23,13 @@ describe("scaleCodegen validation", () => {
         );
     });
 
-    it("requires integer input for band scales", () => {
+    it("allows numeric input for band scales", () => {
         const error = validateScaleConfig("x", {
             scale: { type: "band" },
             type: "f32",
         });
 
-        expect(error).toBe(
-            'Channel "x" requires integer input for "band" scale.'
-        );
+        expect(error).toBeNull();
     });
 
     it("allows integer input for band scales", () => {
@@ -46,6 +44,16 @@ describe("scaleCodegen validation", () => {
     it("allows identity scales with vector components", () => {
         const error = validateScaleConfig("fill", {
             scale: { type: "identity" },
+            type: "f32",
+            components: 4,
+        });
+
+        expect(error).toBeNull();
+    });
+
+    it("allows threshold scales with vec4 outputs", () => {
+        const error = validateScaleConfig("fill", {
+            scale: { type: "threshold" },
             type: "f32",
             components: 4,
         });
