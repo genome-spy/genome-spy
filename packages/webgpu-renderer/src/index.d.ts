@@ -129,49 +129,17 @@ export type ChannelConfigResolved =
 /** Public-facing channel config type (input form). */
 export type ChannelConfig = ChannelConfigInput;
 
-export type RectChannels = {
-    /** Optional per-instance ID used for picking or selection. */
-    uniqueId?: ChannelConfigInput;
-    x?: ChannelConfigInput;
-    x2?: ChannelConfigInput;
-    y?: ChannelConfigInput;
-    y2?: ChannelConfigInput;
-    fill?: ChannelConfigInput;
-    stroke?: ChannelConfigInput;
-    fillOpacity?: ChannelConfigInput;
-    strokeOpacity?: ChannelConfigInput;
-    strokeWidth?: ChannelConfigInput;
-    cornerRadius?: ChannelConfigInput;
-    minWidth?: ChannelConfigInput;
-    minHeight?: ChannelConfigInput;
-    minOpacity?: ChannelConfigInput;
-    shadowOffsetX?: ChannelConfigInput;
-    shadowOffsetY?: ChannelConfigInput;
-    shadowBlur?: ChannelConfigInput;
-    shadowOpacity?: ChannelConfigInput;
-    shadowColor?: ChannelConfigInput;
-    hatchPattern?: ChannelConfigInput;
-};
+export type RectChannelName =
+    keyof typeof import("./marks/rectProgram.js").RECT_CHANNEL_SPECS;
 
-export type PointChannels = {
-    /** Optional per-instance ID used for picking or selection. */
-    uniqueId?: ChannelConfigInput;
-    x?: ChannelConfigInput;
-    y?: ChannelConfigInput;
-    size?: ChannelConfigInput;
-    shape?: ChannelConfigInput;
-    strokeWidth?: ChannelConfigInput;
-    dx?: ChannelConfigInput;
-    dy?: ChannelConfigInput;
-    fill?: ChannelConfigInput;
-    stroke?: ChannelConfigInput;
-    fillOpacity?: ChannelConfigInput;
-    strokeOpacity?: ChannelConfigInput;
-    angle?: ChannelConfigInput;
-    gradientStrength?: ChannelConfigInput;
-    inwardStroke?: ChannelConfigInput;
-    minPickingSize?: ChannelConfigInput;
-};
+export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
+
+export type PointChannelName =
+    keyof typeof import("./marks/pointProgram.js").POINT_CHANNEL_SPECS;
+
+export type PointChannels = Partial<
+    Record<PointChannelName, ChannelConfigInput>
+>;
 
 export type MarkConfig<T extends MarkType = MarkType> = {
     channels: T extends "rect"

@@ -124,7 +124,7 @@ export class Renderer {
 
     /**
      * @param {import("./index.d.ts").MarkId} markId
-     * @param {Record<string, TypedArray>} fields
+     * @param {Record<string, TypedArray>} channels
      * @param {number} count
      * @returns {void}
      */
@@ -138,7 +138,7 @@ export class Renderer {
 
     /**
      * @param {MarkId} markId
-     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} uniforms
+     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} values
      * @returns {void}
      */
     updateValues(markId, values) {
