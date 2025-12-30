@@ -145,3 +145,74 @@ The renderer package should not prevent a future vector backend:
   consume (x/y/x2/y2, fill/stroke, opacity, etc.).
 - SVG/canvas backend can live in a separate package and implement the same
   draw API without GPU resources.
+
+### 13) Port `glslScaleGenerator.js` to WGSL (step-by-step)
+
+Goal: reproduce the current GLSL scale codegen in WGSL while keeping names
+compatible (`getScaled_`, `uDomain_`, `uRange_`, etc.). Range textures are
+implemented first. Params/selections come last.
+
+1) **Inventory current GLSL generator + call sites**
+   - Read `packages/core/src/gl/glslScaleGenerator.js` and note:
+     - Prefixes (`attr_`, `uDomain_`, `uRange_`, `getScaled_`, etc.).
+     - Generated pieces: accessor functions, scale functions, range texture
+       lookups, selection checks, param-driven accessors.
+   - Identify which mark shaders (`packages/core/src/marks/*.glsl`) rely on
+     which generated functions.
+
+2) **Define WGSL prefix constants (shared)**
+   - Mirror GLSL prefixes in `packages/webgpu-renderer/src/wgsl/prefixes.js`.
+   - Use them in WGSL codegen (already started for `uDomain_`, `uRange_`,
+     `getScaled_`).
+
+3) **Port low-level scale math to WGSL**
+   - Map `packages/core/src/gl/includes/scales.glsl` to WGSL equivalents
+     (already in `packages/webgpu-renderer/src/wgsl/scales.wgsl.js`).
+   - Ensure scale helpers have identical signatures and edge-case behavior.
+
+4) **Implement range textures (first-class in WGSL)**
+   - Decide texture format/layout for ranges (1D as 2D texture with height 1).
+   - Add WGSL helpers for `uRangeTexture_*` lookups (like GLSL).
+   - Plumb texture/sampler bindings into mark pipelines.
+   - Provide renderer APIs to upload/update range textures from core.
+
+5) **Port accessor generation (data vs. value)**
+   - Translate `accessor_` function logic to WGSL.
+   - Use WGSL storage buffers for `attr_*` data access (vertex pulling).
+   - Support constants for non-dynamic values (inline WGSL literals).
+
+6) **Port scale function generation**
+   - Generate `scale_*` functions that apply domain/range transforms.
+   - Ensure `getScaled_*` wraps `accessor_*` + `scale_*` consistently.
+   - Keep `getScaled_*` as the only mark-facing entry point.
+
+7) **Handle discrete vs. continuous ranges**
+   - Reproduce discrete range mapping logic (`getDiscreteRangeMapper` path):
+     - For small discrete ranges, inline literal vectors.
+     - For large or dynamic ranges, route through range textures.
+
+8) **Recreate shared-field logic**
+   - Support shared quantitative channels in WGSL (`makeAttributeName` /
+     shared accessors) to prevent duplicate buffer reads.
+
+9) **Wire domain/range updates**
+   - Core supplies domains/ranges; renderer writes `uDomain_*` / `uRange_*`
+     uniform entries.
+   - Confirm default range behavior for positional channels (viewport-based).
+
+10) **Build parity tests for codegen**
+    - Snapshot/substring tests comparing GLSL and WGSL output structure:
+      - `getScaled_*` presence
+      - `uDomain_` / `uRange_` usage
+      - range texture accessors
+    - Keep tests in WebGPU package so codegen stays stable.
+
+11) **Port selection + params last**
+    - Implement `checkSelection_*` and `uParam_*` only after scale/texture
+      parity is achieved.
+    - Core remains responsible for evaluating params; renderer only consumes
+      the final values or selection masks.
+
+12) **Deprecate GLSL generator (final step)**
+    - Once WGSL parity is achieved and all marks ported, remove GLSL generator
+      usage from the WebGPU path while keeping GLSL for the WebGL backend.

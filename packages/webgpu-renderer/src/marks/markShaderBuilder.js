@@ -86,16 +86,12 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         });
 
         const type = channel.type ?? "f32";
+        const scalarType =
+            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
         const components = channel.components ?? 1;
         const bufferName = `buf_${name}`;
         const arrayType =
-            components === 1
-                ? type === "f32"
-                    ? "array<f32>"
-                    : type === "u32"
-                      ? "array<u32>"
-                      : "array<i32>"
-                : "array<f32>";
+            components === 1 ? `array<${scalarType}>` : "array<f32>";
 
         bufferDecls.push(
             `@group(1) @binding(${binding}) var<storage, read> ${bufferName}: ${arrayType};`
@@ -106,12 +102,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
 
         if (components === 1) {
-            const readFn =
-                type === "f32"
-                    ? `fn read_${name}(i: u32) -> f32 { return ${bufferName}[i]; }`
-                    : type === "u32"
-                      ? `fn read_${name}(i: u32) -> f32 { return f32(${bufferName}[i]); }`
-                      : `fn read_${name}(i: u32) -> f32 { return f32(${bufferName}[i]); }`;
+            const readFn = `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`;
             bufferReaders.push(readFn);
         } else {
             bufferReaders.push(
@@ -125,15 +116,20 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const scale = channel.scale?.type ?? "identity";
         if (components === 1) {
             if (scale === "linear") {
+                const vExpr =
+                    scalarType === "f32"
+                        ? "read_" + name + "(i)"
+                        : `f32(read_${name}(i))`;
                 channelFns.push(
                     `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = read_${name}(i);
+  let v = ${vExpr};
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
 }`
                 );
             } else {
+                const returnType = scalarType;
                 channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 { return read_${name}(i); }`
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType} { return read_${name}(i); }`
                 );
             }
         } else {
@@ -151,6 +147,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const scale = channel.scale?.type ?? "identity";
         const uniformName = `u_${name}`;
         const type = channel.type ?? "f32";
+        const scalarType =
+            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
         const isDynamic = "dynamic" in channel && channel.dynamic === true;
         const literal = formatLiteral(
             type,
@@ -159,7 +157,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         );
         const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
         const valueExpr =
-            type === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
+            scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
         if (components === 1) {
             if (scale === "linear") {
                 channelFns.push(
@@ -169,8 +167,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 }`
                 );
             } else {
+                const returnType = scalarType;
                 channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 { return ${valueExpr}; }`
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> ${returnType} { return ${rawValueExpr}; }`
                 );
             }
         } else {

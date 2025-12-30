@@ -140,6 +140,7 @@ export type RectChannels = {
     shadowBlur?: ChannelConfigInput;
     shadowOpacity?: ChannelConfigInput;
     shadowColor?: ChannelConfigInput;
+    hatchPattern?: ChannelConfigInput;
 };
 
 export type MarkConfig<T extends MarkType = MarkType> = {
