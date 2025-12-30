@@ -23,7 +23,8 @@ export type ChannelScale = {
         | "sqrt"
         | "symlog"
         | "band"
-        | "threshold";
+        | "threshold"
+        | "ordinal";
 
     /** Domain for scale mapping, provided by the core module. */
     domain?: number[];

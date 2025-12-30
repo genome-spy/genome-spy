@@ -15,7 +15,7 @@ import {
  * @typedef {object} ScaleFunctionParams
  * @prop {string} name
  *   Channel name used for function naming and uniform lookups.
- * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"threshold"} scale
+ * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"threshold"|"ordinal"} scale
  *   Scale type that selects which WGSL helper is emitted.
  * @prop {string} rawValueExpr
  *   WGSL expression for the raw value (buffer read or literal/uniform).
@@ -188,6 +188,31 @@ function emitSymlog({ name, floatExpr, clamp }) {
 ${clampExpr}}`;
 }
 
+/** @type {ScaleEmitter} */
+function emitOrdinal({ name, u32Expr, outputComponents, outputScalarType }) {
+    const returnType =
+        outputComponents === 1
+            ? outputScalarType
+            : `vec${outputComponents}<f32>`;
+    const rangeName = `range_${name}`;
+    const zero =
+        outputComponents === 1
+            ? outputScalarType === "u32"
+                ? "0u"
+                : outputScalarType === "i32"
+                  ? "0"
+                  : "0.0"
+            : "vec4<f32>(0.0)";
+
+    return `${makeFnHeader(name, returnType)} {
+    let idx = ${u32Expr};
+    let count = arrayLength(&${rangeName});
+    if (count == 0u) { return ${zero}; }
+    let slot = min(idx, count - 1u);
+    return ${rangeName}[slot];
+}`;
+}
+
 /**
  * @param {ScaleEmitParams & { outputComponents: 1|2|4, outputScalarType: "f32"|"u32"|"i32" }} params
  * @returns {string}
@@ -351,6 +376,13 @@ const SCALE_DEFS = {
         ],
         emitter: emitBand,
     },
+    ordinal: {
+        input: "u32",
+        output: "same",
+        domainRange: false,
+        params: [],
+        emitter: emitOrdinal,
+    },
     threshold: {
         input: "numeric",
         output: "same",
@@ -468,13 +500,16 @@ export function validateScaleConfig(name, channel) {
     const piecewise = isPiecewiseScale(channel.scale);
     if (
         components > 1 &&
-        !["identity", "threshold"].includes(scaleType) &&
+        !["identity", "threshold", "ordinal"].includes(scaleType) &&
         !piecewise
     ) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
     }
     if (scaleType === "threshold" && components !== 1 && components !== 4) {
         return `Channel "${name}" uses ${components} components but threshold scales only support scalars or vec4 outputs.`;
+    }
+    if (scaleType === "ordinal" && components !== 1 && components !== 4) {
+        return `Channel "${name}" uses ${components} components but ordinal scales only support scalars or vec4 outputs.`;
     }
     if (piecewise && components !== 1 && components !== 4) {
         return `Channel "${name}" uses ${components} components but piecewise scales only support scalars or vec4 outputs.`;
