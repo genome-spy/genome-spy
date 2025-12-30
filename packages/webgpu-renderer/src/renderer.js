@@ -128,12 +128,12 @@ export class Renderer {
      * @param {number} count
      * @returns {void}
      */
-    updateInstances(markId, fields, count) {
+    updateSeries(markId, channels, count) {
         const mark = this._marks.get(markId);
         if (!mark) {
             throw new RendererError(`No such mark: ${markId}`);
         }
-        mark.updateInstances(fields, count);
+        mark.updateSeries(channels, count);
     }
 
     /**
@@ -141,12 +141,12 @@ export class Renderer {
      * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} uniforms
      * @returns {void}
      */
-    updateUniforms(markId, uniforms) {
+    updateValues(markId, values) {
         const mark = this._marks.get(markId);
         if (!mark) {
             throw new RendererError(`No such mark: ${markId}`);
         }
-        mark.updateUniforms(uniforms);
+        mark.updateValues(values);
     }
 
     /**
