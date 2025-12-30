@@ -3,6 +3,9 @@ import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
     SCALED_FUNCTION_PREFIX,
+    SCALE_BASE_PREFIX,
+    SCALE_CONSTANT_PREFIX,
+    SCALE_EXPONENT_PREFIX,
 } from "../wgsl/prefixes.js";
 
 /**
@@ -132,6 +135,39 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
 }`
                 );
+            } else if (scale === "log") {
+                const vExpr =
+                    scalarType === "f32"
+                        ? "read_" + name + "(i)"
+                        : `f32(read_${name}(i))`;
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
+  let v = ${vExpr};
+  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
+}`
+                );
+            } else if (scale === "pow" || scale === "sqrt") {
+                const vExpr =
+                    scalarType === "f32"
+                        ? "read_" + name + "(i)"
+                        : `f32(read_${name}(i))`;
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
+  let v = ${vExpr};
+  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
+}`
+                );
+            } else if (scale === "symlog") {
+                const vExpr =
+                    scalarType === "f32"
+                        ? "read_" + name + "(i)"
+                        : `f32(read_${name}(i))`;
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
+  let v = ${vExpr};
+  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
+}`
+                );
             } else {
                 const returnType = scalarType;
                 channelFns.push(
@@ -171,6 +207,27 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
   let v = ${valueExpr};
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
+}`
+                );
+            } else if (scale === "log") {
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
+  let v = ${valueExpr};
+  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
+}`
+                );
+            } else if (scale === "pow" || scale === "sqrt") {
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
+  let v = ${valueExpr};
+  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
+}`
+                );
+            } else if (scale === "symlog") {
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
+  let v = ${valueExpr};
+  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
 }`
                 );
             } else {
