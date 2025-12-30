@@ -1,6 +1,12 @@
 /**
- * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }} UniformSpec
- * @typedef {UniformSpec & { offset: number }} UniformEntry
+ * @typedef {object} UniformSpec
+ * @prop {string} name
+ * @prop {import("../types.js").ScalarType} type
+ * @prop {1|2|4} components
+ * @prop {number} [arrayLength]
+ *
+ * @typedef {UniformSpec & { offset: number, stride?: number }} UniformEntry
+ *
  * @typedef {{ entries: Map<string, UniformEntry>, byteLength: number }} UniformLayout
  */
 
@@ -14,11 +20,24 @@ export function buildUniformLayout(specs) {
     const entries = new Map();
     let offset = 0;
     for (const spec of specs) {
-        const alignment =
-            spec.components === 1 ? 4 : spec.components === 2 ? 8 : 16;
-        const size = spec.components === 1 ? 4 : spec.components === 2 ? 8 : 16;
+        const isArray = spec.arrayLength != null;
+        const alignment = isArray
+            ? 16
+            : spec.components === 1
+              ? 4
+              : spec.components === 2
+                ? 8
+                : 16;
+        const size = isArray
+            ? 16 * spec.arrayLength
+            : spec.components === 1
+              ? 4
+              : spec.components === 2
+                ? 8
+                : 16;
+        const stride = isArray ? 16 : undefined;
         offset = alignTo(offset, alignment);
-        entries.set(spec.name, { ...spec, offset });
+        entries.set(spec.name, { ...spec, offset, stride });
         offset += size;
     }
     return {
