@@ -4,3 +4,7 @@ export const SCALED_FUNCTION_PREFIX = "getScaled_";
 export const SCALE_BASE_PREFIX = "uScaleBase_";
 export const SCALE_EXPONENT_PREFIX = "uScaleExponent_";
 export const SCALE_CONSTANT_PREFIX = "uScaleConstant_";
+export const SCALE_PADDING_INNER_PREFIX = "uScalePaddingInner_";
+export const SCALE_PADDING_OUTER_PREFIX = "uScalePaddingOuter_";
+export const SCALE_ALIGN_PREFIX = "uScaleAlign_";
+export const SCALE_BAND_PREFIX = "uScaleBand_";

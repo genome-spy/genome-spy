@@ -4,9 +4,13 @@ import { UniformBuffer } from "../utils/uniformBuffer.js";
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
+    SCALE_ALIGN_PREFIX,
     SCALE_BASE_PREFIX,
+    SCALE_BAND_PREFIX,
     SCALE_CONSTANT_PREFIX,
     SCALE_EXPONENT_PREFIX,
+    SCALE_PADDING_INNER_PREFIX,
+    SCALE_PADDING_OUTER_PREFIX,
 } from "../wgsl/prefixes.js";
 
 /**
@@ -420,6 +424,28 @@ export default class BaseProgram {
                 components: 1,
             });
         }
+        if (scaleType === "band") {
+            layout.push({
+                name: `${SCALE_PADDING_INNER_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+            layout.push({
+                name: `${SCALE_PADDING_OUTER_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+            layout.push({
+                name: `${SCALE_ALIGN_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+            layout.push({
+                name: `${SCALE_BAND_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
         if (scaleType === "pow" || scaleType === "sqrt") {
             layout.push({
                 name: `${SCALE_EXPONENT_PREFIX}${name}`,
@@ -458,6 +484,24 @@ export default class BaseProgram {
                 scale.base ?? 10
             );
         }
+        if (scale.type === "band") {
+            this._setUniformValue(
+                `${SCALE_PADDING_INNER_PREFIX}${name}`,
+                scale.paddingInner ?? 0
+            );
+            this._setUniformValue(
+                `${SCALE_PADDING_OUTER_PREFIX}${name}`,
+                scale.paddingOuter ?? 0
+            );
+            this._setUniformValue(
+                `${SCALE_ALIGN_PREFIX}${name}`,
+                scale.align ?? 0.5
+            );
+            this._setUniformValue(
+                `${SCALE_BAND_PREFIX}${name}`,
+                scale.band ?? 0.5
+            );
+        }
         if (scale.type === "pow") {
             this._setUniformValue(
                 `${SCALE_EXPONENT_PREFIX}${name}`,
@@ -482,6 +526,7 @@ export default class BaseProgram {
     _scaleUsesDomainRange(scaleType) {
         return (
             scaleType === "linear" ||
+            scaleType === "band" ||
             scaleType === "log" ||
             scaleType === "pow" ||
             scaleType === "sqrt" ||
