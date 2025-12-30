@@ -15,7 +15,7 @@ export type TypedArray =
 
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
-    type: "identity" | "linear" | "log" | "pow" | "sqrt" | "symlog";
+    type: "identity" | "linear" | "log" | "pow" | "sqrt" | "symlog" | "band";
 
     /** Domain for scale mapping, provided by the core module. */
     domain?: [number, number];
@@ -31,6 +31,18 @@ export type ChannelScale = {
 
     /** Constant for symlog scales. */
     constant?: number;
+
+    /** Inner padding for band scales. */
+    paddingInner?: number;
+
+    /** Outer padding for band scales. */
+    paddingOuter?: number;
+
+    /** Alignment for band scales. */
+    align?: number;
+
+    /** Band position within the step (0..1). */
+    band?: number;
 };
 
 export type ChannelConfigCommon = {

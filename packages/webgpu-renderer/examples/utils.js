@@ -1,4 +1,4 @@
-export function setupResize(canvas, renderer) {
+export function setupResize(canvas, renderer, onResize) {
     const resize = () => {
         const dpr = window.devicePixelRatio ?? 1;
         const rect = canvas.getBoundingClientRect();
@@ -10,6 +10,12 @@ export function setupResize(canvas, renderer) {
             height: canvas.height,
             dpr,
         });
+
+        if (onResize) {
+            onResize({ width: canvas.width, height: canvas.height, dpr });
+        }
+
+        renderer.render();
     };
 
     resize();

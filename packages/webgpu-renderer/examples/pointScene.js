@@ -11,11 +11,9 @@ export default async function runPointScene(canvas) {
     const count = 160;
     const cols = 20;
     const rows = Math.ceil(count / cols);
-    const cellSize = 40;
-    const origin = { x: 40, y: 40 };
 
-    const x = new Float32Array(count);
-    const y = new Float32Array(count);
+    const x = new Uint32Array(count);
+    const y = new Uint32Array(count);
     const size = new Float32Array(count);
     const strokeWidth = new Float32Array(count);
     const angle = new Float32Array(count);
@@ -33,14 +31,12 @@ export default async function runPointScene(canvas) {
     for (let i = 0; i < count; i++) {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const px = origin.x + col * cellSize;
-        const py = origin.y + row * cellSize;
 
         const xField = col;
         const yField = row;
 
-        x[i] = px;
-        y[i] = py;
+        x[i] = xField;
+        y[i] = yField;
 
         const t = xField / (cols - 1);
         size[i] = Math.pow(t, 2) * 900;
@@ -59,8 +55,30 @@ export default async function runPointScene(canvas) {
     const markId = renderer.createMark("point", {
         count,
         channels: {
-            x: { data: x, type: "f32", scale: { type: "identity" } },
-            y: { data: y, type: "f32", scale: { type: "identity" } },
+            x: {
+                data: x,
+                type: "u32",
+                scale: {
+                    type: "band",
+                    domain: [0, cols],
+                    paddingInner: 0.1,
+                    paddingOuter: 0.2,
+                    align: 0.5,
+                    band: 0.5,
+                },
+            },
+            y: {
+                data: y,
+                type: "u32",
+                scale: {
+                    type: "band",
+                    domain: [0, rows],
+                    paddingInner: 0.1,
+                    paddingOuter: 0.2,
+                    align: 0.5,
+                    band: 0.5,
+                },
+            },
             size: { data: size, type: "f32" },
             shape: { data: shape, type: "u32" },
             fill: { data: fill, type: "f32", components: 4 },
@@ -70,7 +88,14 @@ export default async function runPointScene(canvas) {
         },
     });
 
-    const cleanupResize = setupResize(canvas, renderer);
+    const updateRanges = ({ width, height }) => {
+        renderer.updateScaleRanges(markId, {
+            x: [0, width],
+            y: [0, height],
+        });
+    };
+
+    const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
     renderer.updateSeries(
         markId,

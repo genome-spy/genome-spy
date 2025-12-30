@@ -1,0 +1,102 @@
+import { createRenderer } from "../src/index.js";
+import { setupResize } from "./utils.js";
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Promise<() => void>}
+ */
+export default async function runBarScene(canvas) {
+    const renderer = await createRenderer(canvas);
+
+    const data = [1, 2, 3, 4];
+    const count = data.length;
+    const padding = 20;
+
+    const x = new Float32Array(count);
+    const x2 = new Float32Array(count);
+    const y = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+        x[i] = i;
+        x2[i] = i;
+        y[i] = data[i];
+    }
+
+    const markId = renderer.createMark("rect", {
+        count,
+        channels: {
+            x: {
+                data: x,
+                type: "f32",
+                scale: {
+                    type: "band",
+                    domain: [0, count],
+                    paddingInner: 0.3,
+                    paddingOuter: 0.3,
+                    align: 0.5,
+                    band: 0.0,
+                },
+            },
+            x2: {
+                data: x2,
+                type: "f32",
+                scale: {
+                    type: "band",
+                    domain: [0, count],
+                    paddingInner: 0.3,
+                    paddingOuter: 0.3,
+                    align: 0.5,
+                    band: 1.0,
+                },
+            },
+            y: {
+                data: y,
+                type: "f32",
+                scale: {
+                    type: "linear",
+                    domain: [0, Math.max(...data)],
+                },
+            },
+            y2: {
+                value: 0,
+                type: "f32",
+                scale: {
+                    type: "linear",
+                    domain: [0, Math.max(...data)],
+                },
+            },
+            fill: { value: [0.2, 0.45, 0.85, 1.0] },
+            stroke: { value: [0.0, 0.0, 0.0, 1.0] },
+        },
+    });
+
+    const updateRanges = ({ width, height }) => {
+        const xRange = [padding, Math.max(padding, width - padding)];
+        const yRange = [Math.max(padding, height - padding), padding];
+        renderer.updateScaleRanges(markId, {
+            x: xRange,
+            x2: xRange,
+            y: yRange,
+            y2: yRange,
+        });
+    };
+
+    const cleanupResize = setupResize(canvas, renderer, updateRanges);
+
+    renderer.updateSeries(
+        markId,
+        {
+            x,
+            x2,
+            y,
+        },
+        count
+    );
+
+    renderer.render();
+
+    return () => {
+        cleanupResize();
+        renderer.destroyMark(markId);
+    };
+}

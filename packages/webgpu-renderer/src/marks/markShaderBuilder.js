@@ -3,9 +3,13 @@ import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
     SCALED_FUNCTION_PREFIX,
+    SCALE_ALIGN_PREFIX,
     SCALE_BASE_PREFIX,
+    SCALE_BAND_PREFIX,
     SCALE_CONSTANT_PREFIX,
     SCALE_EXPONENT_PREFIX,
+    SCALE_PADDING_INNER_PREFIX,
+    SCALE_PADDING_OUTER_PREFIX,
 } from "../wgsl/prefixes.js";
 
 /**
@@ -65,6 +69,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             }
             if (type === "i32") {
                 return `i32(${Math.trunc(num)})`;
+            }
+            if (Number.isInteger(num)) {
+                return `${num}.0`;
             }
             return `${num}`;
         };
@@ -133,6 +140,25 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
   let v = ${vExpr};
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
+}`
+                );
+            } else if (scale === "band") {
+                const vExpr =
+                    scalarType === "u32"
+                        ? `read_${name}(i)`
+                        : `u32(f32(read_${name}(i)))`;
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
+  let v = ${vExpr};
+  return scaleBand(
+    v,
+    params.${DOMAIN_PREFIX}${name}.xy,
+    params.${RANGE_PREFIX}${name}.xy,
+    params.${SCALE_PADDING_INNER_PREFIX}${name},
+    params.${SCALE_PADDING_OUTER_PREFIX}${name},
+    params.${SCALE_ALIGN_PREFIX}${name},
+    params.${SCALE_BAND_PREFIX}${name}
+  );
 }`
                 );
             } else if (scale === "log") {
@@ -207,6 +233,21 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
   let v = ${valueExpr};
   return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
+}`
+                );
+            } else if (scale === "band") {
+                channelFns.push(
+                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
+  let v = u32(${valueExpr});
+  return scaleBand(
+    v,
+    params.${DOMAIN_PREFIX}${name}.xy,
+    params.${RANGE_PREFIX}${name}.xy,
+    params.${SCALE_PADDING_INNER_PREFIX}${name},
+    params.${SCALE_PADDING_OUTER_PREFIX}${name},
+    params.${SCALE_ALIGN_PREFIX}${name},
+    params.${SCALE_BAND_PREFIX}${name}
+  );
 }`
                 );
             } else if (scale === "log") {

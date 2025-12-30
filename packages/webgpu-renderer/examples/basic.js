@@ -1,5 +1,6 @@
 import runBasicScene from "./basicScene.js";
 import runHatchScene from "./hatchScene.js";
+import runBarScene from "./barScene.js";
 import runPointScene from "./pointScene.js";
 
 const canvas = document.querySelector("canvas");
@@ -17,6 +18,10 @@ const EXAMPLES = {
     points: {
         label: "Point Grid",
         run: runPointScene,
+    },
+    bars: {
+        label: "Bar Chart",
+        run: runBarScene,
     },
 };
 
