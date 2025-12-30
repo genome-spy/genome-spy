@@ -9,10 +9,12 @@ import {
     SCALE_EXPONENT_PREFIX,
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
+    SCALE_PIECEWISE_COUNT_PREFIX,
     SCALE_THRESHOLD_COUNT_PREFIX,
 } from "../wgsl/prefixes.js";
 
 export const THRESHOLD_RANGE_SLOTS = 4;
+export const PIECEWISE_MAX_POINTS = 4;
 
 /**
  * @typedef {object} ScaleFunctionParams
@@ -28,6 +30,8 @@ export const THRESHOLD_RANGE_SLOTS = 4;
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
  *   Scalar type of the scaled output when outputComponents is 1.
+ * @prop {import("../index.d.ts").ChannelScale | undefined} scaleConfig
+ *   Full scale config for detecting piecewise scales and clamp behavior.
  */
 
 /**
@@ -42,6 +46,8 @@ export const THRESHOLD_RANGE_SLOTS = 4;
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
  *   Scalar type of the scaled output when outputComponents is 1.
+ * @prop {boolean} clamp
+ *   Whether to clamp the interpolant into the 0..1 range.
  */
 
 /**
@@ -110,51 +116,63 @@ function makeFnHeader(name, returnType) {
 }
 
 /** @type {ScaleEmitter} */
-function emitLinear({ name, floatExpr }) {
+function emitLinear({ name, floatExpr, clamp }) {
+    const clampExpr = clamp
+        ? `    return clampToRange(result, params.${RANGE_PREFIX}${name}.xy);\n`
+        : "    return result;\n";
     return `${makeFnHeader(name, "f32")} {
-  let v = ${floatExpr};
-  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
-}`;
+    let v = ${floatExpr};
+    let result = scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
+${clampExpr}}`;
 }
 
 /** @type {ScaleEmitter} */
 function emitBand({ name, u32Expr }) {
     return `${makeFnHeader(name, "f32")} {
-  let v = ${u32Expr};
-  return scaleBand(
-    v,
-    params.${DOMAIN_PREFIX}${name}.xy,
-    params.${RANGE_PREFIX}${name}.xy,
-    params.${SCALE_PADDING_INNER_PREFIX}${name},
-    params.${SCALE_PADDING_OUTER_PREFIX}${name},
-    params.${SCALE_ALIGN_PREFIX}${name},
-    params.${SCALE_BAND_PREFIX}${name}
-  );
+    let v = ${u32Expr};
+    return scaleBand(
+        v,
+        params.${DOMAIN_PREFIX}${name}.xy,
+        params.${RANGE_PREFIX}${name}.xy,
+        params.${SCALE_PADDING_INNER_PREFIX}${name},
+        params.${SCALE_PADDING_OUTER_PREFIX}${name},
+        params.${SCALE_ALIGN_PREFIX}${name},
+        params.${SCALE_BAND_PREFIX}${name}
+    );
 }`;
 }
 
 /** @type {ScaleEmitter} */
-function emitLog({ name, floatExpr }) {
+function emitLog({ name, floatExpr, clamp }) {
+    const clampExpr = clamp
+        ? `    return clampToRange(result, params.${RANGE_PREFIX}${name}.xy);\n`
+        : "    return result;\n";
     return `${makeFnHeader(name, "f32")} {
-  let v = ${floatExpr};
-  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
-}`;
+    let v = ${floatExpr};
+    let result = scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
+${clampExpr}}`;
 }
 
 /** @type {ScaleEmitter} */
-function emitPow({ name, floatExpr }) {
+function emitPow({ name, floatExpr, clamp }) {
+    const clampExpr = clamp
+        ? `    return clampToRange(result, params.${RANGE_PREFIX}${name}.xy);\n`
+        : "    return result;\n";
     return `${makeFnHeader(name, "f32")} {
-  let v = ${floatExpr};
-  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
-}`;
+    let v = ${floatExpr};
+    let result = scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
+${clampExpr}}`;
 }
 
 /** @type {ScaleEmitter} */
-function emitSymlog({ name, floatExpr }) {
+function emitSymlog({ name, floatExpr, clamp }) {
+    const clampExpr = clamp
+        ? `    return clampToRange(result, params.${RANGE_PREFIX}${name}.xy);\n`
+        : "    return result;\n";
     return `${makeFnHeader(name, "f32")} {
-  let v = ${floatExpr};
-  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
-}`;
+    let v = ${floatExpr};
+    let result = scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
+${clampExpr}}`;
 }
 
 /**
@@ -182,18 +200,61 @@ function emitThreshold({
     const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
 
     return `${makeFnHeader(name, returnType)} {
-  let v = ${floatExpr};
-  let thresholds = ${thresholds};
-  let count = u32(${count});
-  var slot: u32 = 0u;
-  if (count > 0u && v >= thresholds.x) { slot = 1u; }
-  if (count > 1u && v >= thresholds.y) { slot = 2u; }
-  if (count > 2u && v >= thresholds.z) { slot = 3u; }
-  ${selector}: ${rangeType} = ${rangeValues[0]};
-  if (slot == 1u) { out = ${rangeValues[1]}; }
-  if (slot == 2u) { out = ${rangeValues[2]}; }
-  if (slot == 3u) { out = ${rangeValues[3]}; }
-  return out;
+    let v = ${floatExpr};
+    let thresholds = ${thresholds};
+    let count = u32(${count});
+    var slot: u32 = 0u;
+    if (count > 0u && v >= thresholds.x) { slot = 1u; }
+    if (count > 1u && v >= thresholds.y) { slot = 2u; }
+    if (count > 2u && v >= thresholds.z) { slot = 3u; }
+    ${selector}: ${rangeType} = ${rangeValues[0]};
+    if (slot == 1u) { out = ${rangeValues[1]}; }
+    if (slot == 2u) { out = ${rangeValues[2]}; }
+    if (slot == 3u) { out = ${rangeValues[3]}; }
+    return out;
+}`;
+}
+
+/**
+ * @param {ScaleEmitParams & { outputComponents: 1|2|4, outputScalarType: "f32"|"u32"|"i32" }} params
+ * @returns {string}
+ */
+function emitPiecewiseLinear({
+    name,
+    floatExpr,
+    outputComponents,
+    outputScalarType,
+    clamp,
+}) {
+    const returnType =
+        outputComponents === 1
+            ? outputScalarType
+            : `vec${outputComponents}<f32>`;
+    const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
+    const rangeValues = Array.from(
+        { length: PIECEWISE_MAX_POINTS },
+        (_, index) => `params.${RANGE_PREFIX}${name}_${index}`
+    );
+    const clampExpr = clamp ? "    t = clamp(t, 0.0, 1.0);\n" : "";
+
+    return `${makeFnHeader(name, returnType)} {
+    let v = ${floatExpr};
+    let domain = params.${DOMAIN_PREFIX}${name};
+    let count = u32(params.${SCALE_PIECEWISE_COUNT_PREFIX}${name});
+    var slot: u32 = 0u;
+    if (count > 2u && v >= domain.y) { slot = 1u; }
+    if (count > 3u && v >= domain.z) { slot = 2u; }
+    var d0 = domain.x;
+    var d1 = domain.y;
+    if (slot == 1u) { d0 = domain.y; d1 = domain.z; }
+    if (slot == 2u) { d0 = domain.z; d1 = domain.w; }
+    let denom = d1 - d0;
+    var t = select(0.0, (v - d0) / denom, denom != 0.0);
+${clampExpr}    var r0: ${rangeType} = ${rangeValues[0]};
+    var r1: ${rangeType} = ${rangeValues[1]};
+    if (slot == 1u) { r0 = ${rangeValues[1]}; r1 = ${rangeValues[2]}; }
+    if (slot == 2u) { r0 = ${rangeValues[2]}; r1 = ${rangeValues[3]}; }
+    return mix(r0, r1, t);
 }`;
 }
 
@@ -313,11 +374,23 @@ export function buildScaledFunction({
     scalarType,
     outputComponents,
     outputScalarType,
+    scaleConfig,
 }) {
     const floatExpr =
         scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
     const u32Expr =
         scalarType === "u32" ? rawValueExpr : `u32(f32(${rawValueExpr}))`;
+
+    if (scale === "linear" && isPiecewiseScale(scaleConfig)) {
+        return emitPiecewiseLinear({
+            name,
+            floatExpr,
+            u32Expr,
+            outputComponents,
+            outputScalarType: "f32",
+            clamp: scaleConfig?.clamp === true,
+        });
+    }
 
     const def = SCALE_DEFS[scale];
     if (def?.emitter) {
@@ -327,6 +400,7 @@ export function buildScaledFunction({
             u32Expr,
             outputComponents,
             outputScalarType,
+            clamp: scaleConfig?.clamp === true,
         });
     }
     const returnType = getScaleOutputType(scale, scalarType);
@@ -334,8 +408,21 @@ export function buildScaledFunction({
 }
 
 /**
+ * @param {import("../index.d.ts").ChannelScale | undefined} scale
+ * @returns {boolean}
+ */
+export function isPiecewiseScale(scale) {
+    if (!scale || scale.type !== "linear") {
+        return false;
+    }
+    const domainLength = Array.isArray(scale.domain) ? scale.domain.length : 0;
+    const rangeLength = Array.isArray(scale.range) ? scale.range.length : 0;
+    return domainLength > 2 || rangeLength > 2;
+}
+
+/**
  * @param {string} name
- * @param {{ scale?: { type?: string }, type?: string, components?: number }} channel
+ * @param {{ scale?: import("../index.d.ts").ChannelScale, type?: string, components?: number }} channel
  * @returns {string | null}
  */
 export function validateScaleConfig(name, channel) {
@@ -345,11 +432,19 @@ export function validateScaleConfig(name, channel) {
     }
 
     const components = channel.components ?? 1;
-    if (components > 1 && !["identity", "threshold"].includes(scaleType)) {
+    const piecewise = isPiecewiseScale(channel.scale);
+    if (
+        components > 1 &&
+        !["identity", "threshold"].includes(scaleType) &&
+        !piecewise
+    ) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
     }
     if (scaleType === "threshold" && components !== 1 && components !== 4) {
         return `Channel "${name}" uses ${components} components but threshold scales only support scalars or vec4 outputs.`;
+    }
+    if (piecewise && components !== 1 && components !== 4) {
+        return `Channel "${name}" uses ${components} components but piecewise scales only support scalars or vec4 outputs.`;
     }
 
     const inputRule = SCALE_DEFS[scaleType]?.input ?? "any";

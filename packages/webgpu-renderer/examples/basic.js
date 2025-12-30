@@ -3,6 +3,7 @@ import runHatchScene from "./hatchScene.js";
 import runBarScene from "./barScene.js";
 import runPointScene from "./pointScene.js";
 import runThresholdScene from "./thresholdScene.js";
+import runPiecewiseScene from "./piecewiseScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -27,6 +28,10 @@ const EXAMPLES = {
     threshold: {
         label: "Threshold Colors",
         run: runThresholdScene,
+    },
+    piecewise: {
+        label: "Piecewise Colors",
+        run: runPiecewiseScene,
     },
 };
 
