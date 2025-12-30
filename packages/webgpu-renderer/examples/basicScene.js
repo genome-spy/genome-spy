@@ -39,7 +39,7 @@ export default async function runBasicScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer);
 
-    renderer.updateInstances(markId, { x, x2, y, y2 }, count);
+    renderer.updateSeries(markId, { x, x2, y, y2 }, count);
 
     let start = performance.now();
     let dynamicCount = count;
@@ -69,7 +69,7 @@ export default async function runBasicScene(canvas) {
         const t = (now - start) / 1000;
         const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
         const corner = (Math.sin(t) * 0.5 + 0.5) * 8.0;
-        renderer.updateUniforms(markId, {
+        renderer.updateValues(markId, {
             strokeWidth: width,
             cornerRadius: corner,
         });
@@ -77,7 +77,7 @@ export default async function runBasicScene(canvas) {
         if (now >= nextDataUpdate) {
             dynamicCount = 80 + Math.floor(Math.random() * 240);
             const { nx, ny, nx2, ny2 } = rebuildData(dynamicCount);
-            renderer.updateInstances(
+            renderer.updateSeries(
                 markId,
                 { x: nx, x2: nx2, y: ny, y2: ny2 },
                 dynamicCount

@@ -197,9 +197,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     // and the mark-specific shader body.
     const shaderCode = /* wgsl */ `
 struct Globals {
-  width: f32,
-  height: f32,
-  dpr: f32,
+    width: f32,
+    height: f32,
+    dpr: f32,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
