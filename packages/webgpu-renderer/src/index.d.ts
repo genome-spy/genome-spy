@@ -1,4 +1,4 @@
-export type MarkType = "rect";
+export type MarkType = "rect" | "point";
 export type MarkId = number & { __brand: "MarkId" };
 
 export type TypedArray =
@@ -143,10 +143,32 @@ export type RectChannels = {
     hatchPattern?: ChannelConfigInput;
 };
 
+export type PointChannels = {
+    /** Optional per-instance ID used for picking or selection. */
+    uniqueId?: ChannelConfigInput;
+    x?: ChannelConfigInput;
+    y?: ChannelConfigInput;
+    size?: ChannelConfigInput;
+    shape?: ChannelConfigInput;
+    strokeWidth?: ChannelConfigInput;
+    dx?: ChannelConfigInput;
+    dy?: ChannelConfigInput;
+    fill?: ChannelConfigInput;
+    stroke?: ChannelConfigInput;
+    fillOpacity?: ChannelConfigInput;
+    strokeOpacity?: ChannelConfigInput;
+    angle?: ChannelConfigInput;
+    gradientStrength?: ChannelConfigInput;
+    inwardStroke?: ChannelConfigInput;
+    minPickingSize?: ChannelConfigInput;
+};
+
 export type MarkConfig<T extends MarkType = MarkType> = {
     channels: T extends "rect"
         ? RectChannels
-        : Record<string, ChannelConfigInput>;
+        : T extends "point"
+          ? PointChannels
+          : Record<string, ChannelConfigInput>;
     /** Number of instances to draw; must match the column lengths. */
     count: number;
 };
