@@ -4,11 +4,14 @@ import { UniformBuffer } from "../utils/uniformBuffer.js";
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
+    SCALE_PIECEWISE_COUNT_PREFIX,
     SCALE_THRESHOLD_COUNT_PREFIX,
 } from "../wgsl/prefixes.js";
 import {
+    PIECEWISE_MAX_POINTS,
     THRESHOLD_RANGE_SLOTS,
     getScaleUniformDef,
+    isPiecewiseScale,
     validateScaleConfig,
 } from "./scaleCodegen.js";
 import { cssColorToArray } from "../utils/colorUtils.js";
@@ -42,6 +45,7 @@ export default class BaseProgram {
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
         this._thresholdScaleSizes = new Map();
+        this._piecewiseScaleSizes = new Map();
 
         /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
         this._uniformLayout = [];
@@ -286,6 +290,24 @@ export default class BaseProgram {
                     }
                     continue;
                 }
+                if (isPiecewiseScale(this._channels[channelName]?.scale)) {
+                    if (suffix === "domain") {
+                        this._updatePiecewiseDomain(
+                            channelName,
+                            /** @type {number[]|{ domain?: number[] }} */ (
+                                value
+                            )
+                        );
+                    } else {
+                        this._updatePiecewiseRange(
+                            channelName,
+                            /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
+                                value
+                            )
+                        );
+                    }
+                    continue;
+                }
                 const offsetKey =
                     suffix === "domain"
                         ? `${DOMAIN_PREFIX}${channelName}`
@@ -327,6 +349,10 @@ export default class BaseProgram {
                     this._updateThresholdDomain(channelName, domain);
                     continue;
                 }
+                if (isPiecewiseScale(this._channels[channelName]?.scale)) {
+                    this._updatePiecewiseDomain(channelName, domain);
+                    continue;
+                }
                 const uniformName = `${DOMAIN_PREFIX}${channelName}`;
                 if (!this._uniformBufferState?.entries.has(uniformName)) {
                     throw new Error(
@@ -358,6 +384,10 @@ export default class BaseProgram {
                     this._channels[channelName]?.scale?.type ?? "identity";
                 if (scaleType === "threshold") {
                     this._updateThresholdRange(channelName, range);
+                    continue;
+                }
+                if (isPiecewiseScale(this._channels[channelName]?.scale)) {
+                    this._updatePiecewiseRange(channelName, range);
                     continue;
                 }
                 const uniformName = `${RANGE_PREFIX}${channelName}`;
@@ -479,6 +509,10 @@ export default class BaseProgram {
             this._addThresholdScaleUniforms(layout, name, channel);
             return;
         }
+        if (isPiecewiseScale(channel.scale)) {
+            this._addPiecewiseScaleUniforms(layout, name, channel);
+            return;
+        }
         if (this._scaleUsesDomainRange(scaleType)) {
             layout.push({
                 name: `${DOMAIN_PREFIX}${name}`,
@@ -510,6 +544,10 @@ export default class BaseProgram {
     _initializeScaleUniforms(name, channel, scale) {
         if (scale.type === "threshold") {
             this._initializeThresholdScaleUniforms(name, channel, scale);
+            return;
+        }
+        if (isPiecewiseScale(scale)) {
+            this._initializePiecewiseScaleUniforms(name, channel, scale);
             return;
         }
         if (this._scaleUsesDomainRange(scale.type)) {
@@ -689,6 +727,222 @@ export default class BaseProgram {
         throw new Error(
             `Threshold scale on "${name}" expects vec4 range values or CSS colors.`
         );
+    }
+
+    /**
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @returns {void}
+     */
+    _addPiecewiseScaleUniforms(layout, name, channel) {
+        const outputComponents = channel.components ?? 1;
+        const outputType =
+            outputComponents === 1 ? (channel.type ?? "f32") : "f32";
+
+        layout.push({
+            name: `${DOMAIN_PREFIX}${name}`,
+            type: "f32",
+            components: 4,
+        });
+        layout.push({
+            name: `${SCALE_PIECEWISE_COUNT_PREFIX}${name}`,
+            type: "f32",
+            components: 1,
+        });
+
+        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
+            layout.push({
+                name: `${RANGE_PREFIX}${name}_${i}`,
+                type: outputType,
+                components: outputComponents,
+            });
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializePiecewiseScaleUniforms(name, channel, scale) {
+        const outputComponents = channel.components ?? 1;
+        const count = Array.isArray(scale.domain) ? scale.domain.length : 0;
+        const domain = this._normalizePiecewiseDomain(name, scale.domain);
+        const range = this._normalizePiecewiseRange(
+            name,
+            scale.range,
+            outputComponents
+        );
+        if (range.length !== count) {
+            throw new Error(
+                `Piecewise scale on "${name}" requires range length of ${count}, got ${range.length}.`
+            );
+        }
+
+        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
+        this._setUniformValue(`${SCALE_PIECEWISE_COUNT_PREFIX}${name}`, count);
+        this._piecewiseScaleSizes.set(name, count);
+
+        const fallback = range[range.length - 1];
+        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
+            this._setUniformValue(
+                `${RANGE_PREFIX}${name}_${i}`,
+                range[i] ?? fallback
+            );
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @param {number[]|undefined} domain
+     * @returns {number[]}
+     */
+    _normalizePiecewiseDomain(name, domain) {
+        if (!Array.isArray(domain) || domain.length < 2) {
+            throw new Error(
+                `Piecewise scale on "${name}" must define at least two domain entries.`
+            );
+        }
+        if (domain.length > PIECEWISE_MAX_POINTS) {
+            throw new Error(
+                `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} domain entries.`
+            );
+        }
+        const padded = domain.slice(0, PIECEWISE_MAX_POINTS);
+        while (padded.length < PIECEWISE_MAX_POINTS) {
+            padded.push(0);
+        }
+        return padded;
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|undefined} range
+     * @param {1|2|4} outputComponents
+     * @returns {Array<number|number[]>}
+     */
+    _normalizePiecewiseRange(name, range, outputComponents) {
+        if (!Array.isArray(range) || range.length < 2) {
+            throw new Error(
+                `Piecewise scale on "${name}" must define at least two range entries.`
+            );
+        }
+        if (range.length > PIECEWISE_MAX_POINTS) {
+            throw new Error(
+                `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} range entries.`
+            );
+        }
+        return range.map((value) =>
+            this._normalizePiecewiseRangeValue(name, value, outputComponents)
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {number|number[]|string} value
+     * @param {1|2|4} outputComponents
+     * @returns {number|number[]}
+     */
+    _normalizePiecewiseRangeValue(name, value, outputComponents) {
+        if (outputComponents === 1) {
+            if (typeof value === "number") {
+                return value;
+            }
+            throw new Error(
+                `Piecewise scale on "${name}" expects numeric range values.`
+            );
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 4) {
+                return value;
+            }
+            if (value.length === 3) {
+                return [...value, 1];
+            }
+        }
+        if (typeof value === "string") {
+            return [...cssColorToArray(value), 1];
+        }
+        throw new Error(
+            `Piecewise scale on "${name}" expects vec4 range values or CSS colors.`
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {number[]|{ domain?: number[] }} value
+     * @returns {void}
+     */
+    _updatePiecewiseDomain(name, value) {
+        const channel = this._channels[name];
+        if (!channel || !isPiecewiseScale(channel.scale)) {
+            throw new Error(
+                `Channel "${name}" does not use a piecewise scale.`
+            );
+        }
+        const domain = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? (value.domain ?? [])
+              : [];
+        const expectedCount = this._piecewiseScaleSizes.get(name);
+        if (expectedCount != null && domain.length !== expectedCount) {
+            throw new Error(
+                `Piecewise scale on "${name}" expects ${expectedCount} domain entries, got ${domain.length}.`
+            );
+        }
+        const normalized = this._normalizePiecewiseDomain(name, domain);
+        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, normalized);
+        this._setUniformValue(
+            `${SCALE_PIECEWISE_COUNT_PREFIX}${name}`,
+            domain.length
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
+     * @returns {void}
+     */
+    _updatePiecewiseRange(name, value) {
+        const channel = this._channels[name];
+        if (!channel || !isPiecewiseScale(channel.scale)) {
+            throw new Error(
+                `Channel "${name}" does not use a piecewise scale.`
+            );
+        }
+        const range = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? (value.range ?? [])
+              : [];
+        const expectedCount = this._piecewiseScaleSizes.get(name);
+        if (expectedCount == null) {
+            throw new Error(
+                `Piecewise scale on "${name}" has no recorded size.`
+            );
+        }
+        if (range.length !== expectedCount) {
+            throw new Error(
+                `Piecewise scale on "${name}" expects ${expectedCount} range entries, got ${range.length}.`
+            );
+        }
+        const outputComponents = channel.components ?? 1;
+        const normalized = this._normalizePiecewiseRange(
+            name,
+            range,
+            outputComponents
+        );
+        const fallback = normalized[normalized.length - 1];
+        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
+            this._setUniformValue(
+                `${RANGE_PREFIX}${name}_${i}`,
+                normalized[i] ?? fallback
+            );
+        }
     }
 
     /**
@@ -965,10 +1219,11 @@ export default class BaseProgram {
         if (
             channel.inputComponents &&
             channel.inputComponents !== (channel.components ?? 1) &&
-            channel.scale?.type !== "threshold"
+            channel.scale?.type !== "threshold" &&
+            !isPiecewiseScale(channel.scale)
         ) {
             throw new Error(
-                `Channel "${name}" only supports mismatched input/output components with threshold scales.`
+                `Channel "${name}" only supports mismatched input/output components with threshold or piecewise scales.`
             );
         }
 
@@ -1003,6 +1258,46 @@ export default class BaseProgram {
             ) {
                 throw new Error(
                     `Threshold scale on "${name}" requires scalar input values for vector outputs.`
+                );
+            }
+        }
+        if (isPiecewiseScale(channel.scale)) {
+            const domain = channel.scale?.domain;
+            const range = channel.scale?.range;
+            if (!Array.isArray(domain) || domain.length < 2) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires at least two domain entries.`
+                );
+            }
+            if (!Array.isArray(range) || range.length < 2) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires at least two range entries.`
+                );
+            }
+            if (domain.length !== range.length) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
+                );
+            }
+            if (domain.length > PIECEWISE_MAX_POINTS) {
+                throw new Error(
+                    `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} entries.`
+                );
+            }
+            if (
+                isSeriesChannelConfig(channel) &&
+                (channel.inputComponents ?? channel.components ?? 1) !== 1
+            ) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires scalar input data.`
+                );
+            }
+            if (
+                isValueChannelConfig(channel) &&
+                (channel.components ?? 1) > 1
+            ) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires scalar input values for vector outputs.`
                 );
             }
         }

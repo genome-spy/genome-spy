@@ -156,7 +156,7 @@ describe("BaseProgram channel validation", () => {
                 },
             })
         ).toThrow(
-            'Channel "vec" only supports mismatched input/output components with threshold scales.'
+            'Channel "vec" only supports mismatched input/output components with threshold or piecewise scales.'
         );
     });
 

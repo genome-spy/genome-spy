@@ -40,6 +40,9 @@ export type ChannelScale = {
     /** Constant for symlog scales. */
     constant?: number;
 
+    /** Clamp values to the domain/range for continuous scales. */
+    clamp?: boolean;
+
     /** Inner padding for band scales. */
     paddingInner?: number;
 
