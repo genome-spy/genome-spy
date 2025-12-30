@@ -30,8 +30,10 @@ export default class BaseProgram {
         this._channels = this._normalizeChannels(config.channels);
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
+
         /** @type {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} */
         this._uniformLayout = [];
+
         /** @type {UniformBuffer | null} */
         this._uniformBufferState = null;
 
@@ -245,6 +247,7 @@ export default class BaseProgram {
                 }
                 this._setUniformValue(
                     uniformKey,
+
                     /** @type {number|number[]} */ (value)
                 );
             }
