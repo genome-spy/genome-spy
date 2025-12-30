@@ -58,6 +58,8 @@ export type ValueChannelConfigInput = {
     value?: number | number[];
     /** Scalar element type for value data. */
     type?: "f32" | "u32" | "i32";
+    /** When true, value is provided via uniforms; otherwise emitted as WGSL constants. */
+    dynamic?: boolean;
     /** Series data is not used for value channels. */
     data?: never;
 };
