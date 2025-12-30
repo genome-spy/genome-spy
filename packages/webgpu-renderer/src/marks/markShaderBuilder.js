@@ -24,6 +24,111 @@ import {
  */
 
 /**
+ * @param {import("../types.js").ScalarType} type
+ * @param {1|2|4} components
+ * @param {number|number[]} value
+ * @returns {string}
+ */
+function formatLiteral(type, components, value) {
+    const scalarType = type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+
+    /**
+     * @param {number} v
+     * @returns {string}
+     */
+    const formatScalar = (v) => {
+        const num = Number(v ?? 0);
+        if (type === "u32") {
+            return `u32(${Math.trunc(num)})`;
+        }
+        if (type === "i32") {
+            return `i32(${Math.trunc(num)})`;
+        }
+        if (Number.isInteger(num)) {
+            return `${num}.0`;
+        }
+        return `${num}`;
+    };
+    if (components === 1) {
+        return formatScalar(Array.isArray(value) ? value[0] : value);
+    }
+    const values = Array.isArray(value) ? value : [value];
+    const padded = values.slice(0, components);
+    while (padded.length < components) {
+        padded.push(0);
+    }
+    return `vec${components}<${scalarType}>(${padded
+        .map(formatScalar)
+        .join(", ")})`;
+}
+
+/**
+ * @param {object} params
+ * @param {string} params.name
+ * @param {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"} params.scale
+ * @param {string} params.rawValueExpr
+ * @param {"f32"|"u32"|"i32"} params.scalarType
+ * @param {string} [params.argName]
+ * @returns {string}
+ */
+function buildScaledFunction({
+    name,
+    scale,
+    rawValueExpr,
+    scalarType,
+    argName = "_i",
+}) {
+    const floatExpr =
+        scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
+
+    const namePrefix = `fn ${SCALED_FUNCTION_PREFIX}${name}`;
+    const fnName = `${namePrefix}(${argName}: u32) -> `;
+
+    if (scale === "linear") {
+        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
+  let v = ${floatExpr};
+  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
+}`;
+    }
+    if (scale === "band") {
+        const valueU32 =
+            scalarType === "u32" ? rawValueExpr : `u32(f32(${rawValueExpr}))`;
+        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
+  let v = ${valueU32};
+  return scaleBand(
+    v,
+    params.${DOMAIN_PREFIX}${name}.xy,
+    params.${RANGE_PREFIX}${name}.xy,
+    params.${SCALE_PADDING_INNER_PREFIX}${name},
+    params.${SCALE_PADDING_OUTER_PREFIX}${name},
+    params.${SCALE_ALIGN_PREFIX}${name},
+    params.${SCALE_BAND_PREFIX}${name}
+  );
+}`;
+    }
+    if (scale === "log") {
+        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
+  let v = ${floatExpr};
+  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
+}`;
+    }
+    if (scale === "pow" || scale === "sqrt") {
+        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
+  let v = ${floatExpr};
+  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
+}`;
+    }
+    if (scale === "symlog") {
+        return `fn ${SCALED_FUNCTION_PREFIX}${name}(${argName}: u32) -> f32 {
+  let v = ${floatExpr};
+  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
+}`;
+    }
+
+    return `${fnName}${scalarType} { return ${rawValueExpr}; }`;
+}
+
+/**
  * Builds WGSL shader code and bind group layout entries for a mark.
  * This is pure string generation and does not touch the GPU.
  *
@@ -31,12 +136,17 @@ import {
  * @returns {ShaderBuildResult}
  */
 export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
-    // Dynamic shader generation: build per-channel read + scale functions
-    // based on series/value presence and scale types.
+    // Dynamic shader generation: each mark variant emits only the helpers it
+    // needs. This keeps WGSL small, avoids unused bindings, and lets us
+    // specialize per-mark scale logic without a single "uber" shader.
 
+    // Storage buffers are bound after the uniform buffer (binding 0). We keep
+    // their order stable so the pipeline layout matches the generated WGSL.
     /** @type {GPUBindGroupLayoutEntry[]} */
     const bufferBindings = [];
 
+    // WGSL snippets are accumulated and stitched together at the end. This
+    // keeps generator logic readable and makes it easy to add/remove blocks.
     /** @type {string[]} */
     const bufferDecls = [];
 
@@ -48,46 +158,11 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
     let bindingIndex = 1;
 
-    /**
-     * @param {import("../types.js").ScalarType} type
-     * @param {1|2|4} components
-     * @param {number|number[]} value
-     * @returns {string}
-     */
-    const formatLiteral = (type, components, value) => {
-        const scalarType =
-            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+    // Literal formatting is centralized so constants always match the expected
+    // WGSL types (e.g., float literals use ".0" when appropriate).
 
-        /**
-         * @param {number} v
-         * @returns {string}
-         */
-        const formatScalar = (v) => {
-            const num = Number(v ?? 0);
-            if (type === "u32") {
-                return `u32(${Math.trunc(num)})`;
-            }
-            if (type === "i32") {
-                return `i32(${Math.trunc(num)})`;
-            }
-            if (Number.isInteger(num)) {
-                return `${num}.0`;
-            }
-            return `${num}`;
-        };
-        if (components === 1) {
-            return formatScalar(Array.isArray(value) ? value[0] : value);
-        }
-        const values = Array.isArray(value) ? value : [value];
-        const padded = values.slice(0, components);
-        while (padded.length < components) {
-            padded.push(0);
-        }
-        return `vec${components}<${scalarType}>(${padded
-            .map(formatScalar)
-            .join(", ")})`;
-    };
-
+    // First pass: series-backed channels become storage buffers, read_* accessors,
+    // and getScaled_* wrappers.
     for (const [name, channel] of Object.entries(channels)) {
         if (channel.data == null) {
             continue;
@@ -129,77 +204,19 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             );
         }
 
+        // getScaled_* is the only function mark shaders call. It hides whether
+        // values come from buffers or uniforms and applies scale logic.
         const scale = channel.scale?.type ?? "identity";
         if (components === 1) {
-            if (scale === "linear") {
-                const vExpr =
-                    scalarType === "f32"
-                        ? "read_" + name + "(i)"
-                        : `f32(read_${name}(i))`;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = ${vExpr};
-  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
-}`
-                );
-            } else if (scale === "band") {
-                const vExpr =
-                    scalarType === "u32"
-                        ? `read_${name}(i)`
-                        : `u32(f32(read_${name}(i)))`;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = ${vExpr};
-  return scaleBand(
-    v,
-    params.${DOMAIN_PREFIX}${name}.xy,
-    params.${RANGE_PREFIX}${name}.xy,
-    params.${SCALE_PADDING_INNER_PREFIX}${name},
-    params.${SCALE_PADDING_OUTER_PREFIX}${name},
-    params.${SCALE_ALIGN_PREFIX}${name},
-    params.${SCALE_BAND_PREFIX}${name}
-  );
-}`
-                );
-            } else if (scale === "log") {
-                const vExpr =
-                    scalarType === "f32"
-                        ? "read_" + name + "(i)"
-                        : `f32(read_${name}(i))`;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = ${vExpr};
-  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
-}`
-                );
-            } else if (scale === "pow" || scale === "sqrt") {
-                const vExpr =
-                    scalarType === "f32"
-                        ? "read_" + name + "(i)"
-                        : `f32(read_${name}(i))`;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = ${vExpr};
-  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
-}`
-                );
-            } else if (scale === "symlog") {
-                const vExpr =
-                    scalarType === "f32"
-                        ? "read_" + name + "(i)"
-                        : `f32(read_${name}(i))`;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> f32 {
-  let v = ${vExpr};
-  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
-}`
-                );
-            } else {
-                const returnType = scalarType;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType} { return read_${name}(i); }`
-                );
-            }
+            channelFns.push(
+                buildScaledFunction({
+                    name,
+                    scale,
+                    rawValueExpr: `read_${name}(i)`,
+                    scalarType,
+                    argName: "i",
+                })
+            );
         } else {
             channelFns.push(
                 `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
@@ -207,6 +224,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
     }
 
+    // Second pass: value-backed channels become either uniforms (dynamic) or
+    // inline WGSL constants (static), but still expose getScaled_*.
     for (const [name, channel] of Object.entries(channels)) {
         if (channel.value == null && channel.default == null) {
             continue;
@@ -225,58 +244,15 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             /** @type {number|number[]} */ (channel.value)
         );
         const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
-        const valueExpr =
-            scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
         if (components === 1) {
-            if (scale === "linear") {
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = ${valueExpr};
-  return scaleLinear(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy);
-}`
-                );
-            } else if (scale === "band") {
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = u32(${valueExpr});
-  return scaleBand(
-    v,
-    params.${DOMAIN_PREFIX}${name}.xy,
-    params.${RANGE_PREFIX}${name}.xy,
-    params.${SCALE_PADDING_INNER_PREFIX}${name},
-    params.${SCALE_PADDING_OUTER_PREFIX}${name},
-    params.${SCALE_ALIGN_PREFIX}${name},
-    params.${SCALE_BAND_PREFIX}${name}
-  );
-}`
-                );
-            } else if (scale === "log") {
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = ${valueExpr};
-  return scaleLog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_BASE_PREFIX}${name});
-}`
-                );
-            } else if (scale === "pow" || scale === "sqrt") {
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = ${valueExpr};
-  return scalePow(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_EXPONENT_PREFIX}${name});
-}`
-                );
-            } else if (scale === "symlog") {
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> f32 {
-  let v = ${valueExpr};
-  return scaleSymlog(v, params.${DOMAIN_PREFIX}${name}.xy, params.${RANGE_PREFIX}${name}.xy, params.${SCALE_CONSTANT_PREFIX}${name});
-}`
-                );
-            } else {
-                const returnType = scalarType;
-                channelFns.push(
-                    `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> ${returnType} { return ${rawValueExpr}; }`
-                );
-            }
+            channelFns.push(
+                buildScaledFunction({
+                    name,
+                    scale,
+                    rawValueExpr,
+                    scalarType,
+                })
+            );
         } else {
             channelFns.push(
                 `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${rawValueExpr}; }`
@@ -284,6 +260,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
     }
 
+    // Uniform layout is provided by BaseProgram; we emit fields in the same order.
     const uniformFields = uniformLayout
         .map(({ name, type, components }) => {
             const scalar =
