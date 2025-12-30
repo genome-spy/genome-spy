@@ -1,6 +1,6 @@
 /**
  * @typedef {object} ChannelSpec
- * @prop {"f32"|"u32"|"i32"} [type]
+ * @prop {import("../types.js").ScalarType} [type]
  * @prop {1|2|4} [components]
  * @prop {number|number[]} [default]
  * @prop {"identity"|"linear"} [scale]
