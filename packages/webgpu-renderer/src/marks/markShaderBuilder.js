@@ -1,6 +1,11 @@
 import SCALES_WGSL from "../wgsl/scales.wgsl.js";
 import { SCALED_FUNCTION_PREFIX } from "../wgsl/prefixes.js";
-import { buildScaledFunction, formatLiteral } from "./scaleCodegen.js";
+import {
+    buildScaledFunction,
+    formatLiteral,
+    getScaleOutputType,
+    isPiecewiseScale,
+} from "./scaleCodegen.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -93,7 +98,10 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         // getScaled_* is the only function mark shaders call. It hides whether
         // values come from buffers or uniforms and applies scale logic.
         const scale = channel.scale?.type ?? "identity";
-        const outputScalarType = outputComponents === 1 ? scalarType : "f32";
+        const outputScalarType =
+            outputComponents === 1
+                ? getScaleOutputType(scale, scalarType)
+                : "f32";
         if (outputComponents === 1) {
             channelFns.push(
                 buildScaledFunction({
@@ -103,9 +111,10 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scalarType,
                     outputComponents,
                     outputScalarType,
+                    scaleConfig: channel.scale,
                 })
             );
-        } else if (scale === "threshold") {
+        } else if (scale === "threshold" || isPiecewiseScale(channel.scale)) {
             channelFns.push(
                 buildScaledFunction({
                     name,
@@ -114,6 +123,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scalarType,
                     outputComponents,
                     outputScalarType,
+                    scaleConfig: channel.scale,
                 })
             );
         } else {
@@ -143,6 +153,10 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             /** @type {number|number[]} */ (channel.value)
         );
         const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
+        const outputScalarType =
+            outputComponents === 1
+                ? getScaleOutputType(scale, scalarType)
+                : "f32";
         if (outputComponents === 1) {
             channelFns.push(
                 buildScaledFunction({
@@ -151,7 +165,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     rawValueExpr,
                     scalarType,
                     outputComponents,
-                    outputScalarType: scalarType,
+                    outputScalarType,
+                    scaleConfig: channel.scale,
                 })
             );
         } else {

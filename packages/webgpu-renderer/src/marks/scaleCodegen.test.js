@@ -4,7 +4,7 @@ import { validateScaleConfig } from "./scaleCodegen.js";
 describe("scaleCodegen validation", () => {
     it("rejects unknown scale types", () => {
         const error = validateScaleConfig("x", {
-            scale: { type: "mystery" },
+            scale: /** @type {any} */ ({ type: "mystery" }),
             type: "f32",
         });
 
@@ -21,6 +21,16 @@ describe("scaleCodegen validation", () => {
         expect(error).toBe(
             'Channel "x" uses vector components but scale "linear" only supports scalars.'
         );
+    });
+
+    it("allows piecewise linear scales with vec4 outputs", () => {
+        const error = validateScaleConfig("fill", {
+            scale: { type: "linear", domain: [0, 1, 2] },
+            type: "f32",
+            components: 4,
+        });
+
+        expect(error).toBeNull();
     });
 
     it("allows numeric input for band scales", () => {
