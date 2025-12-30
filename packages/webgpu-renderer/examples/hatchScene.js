@@ -52,7 +52,7 @@ export default async function runHatchScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer);
 
-    renderer.updateInstances(
+    renderer.updateSeries(
         hatchMarkId,
         {
             x: hx,

@@ -88,7 +88,7 @@ describe("buildMarkShader", () => {
             },
         });
 
-        expect(() => program.updateUniforms({ fillOpacity: 0.5 })).toThrow(
+        expect(() => program.updateValues({ fillOpacity: 0.5 })).toThrow(
             /u_fillOpacity/
         );
     });

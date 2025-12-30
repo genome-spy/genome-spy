@@ -187,16 +187,23 @@ export type GlobalUniforms = {
 export class RendererError extends Error {}
 
 export class Renderer {
+    /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
+    /** Create a new mark program and return its id. */
     createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkId;
-    updateInstances(
+    /** Upload columnar series data (storage buffers) for a mark. */
+    updateSeries(
         markId: MarkId,
-        fields: Record<string, TypedArray>,
+        channels: Record<string, TypedArray>,
         count: number
     ): void;
-    updateUniforms(
+    /**
+     * Update value-based uniforms for a mark and optional scale domain/range.
+     * Domain/range entries can be provided as `{ domain, range }` or `[min, max]`.
+     */
+    updateValues(
         markId: MarkId,
-        uniforms: Record<
+        values: Record<
             string,
             | number
             | number[]
@@ -204,7 +211,9 @@ export class Renderer {
             | { domain?: [number, number]; range?: [number, number] }
         >
     ): void;
+    /** Draw the current frame. */
     render(): void;
+    /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;
 }
 

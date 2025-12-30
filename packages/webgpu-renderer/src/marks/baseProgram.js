@@ -85,7 +85,7 @@ export default class BaseProgram {
         });
 
         // Initialize any series-backed channels.
-        this.updateInstances(
+        this.updateSeries(
             Object.fromEntries(
                 Object.entries(this._channels)
                     .filter(([, v]) => isSeriesChannelConfig(v))
@@ -143,11 +143,11 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, TypedArray>} fields
+     * @param {Record<string, TypedArray>} channels
      * @param {number} count
      * @returns {void}
      */
-    updateInstances(fields, count) {
+    updateSeries(channels, count) {
         this.count = count;
 
         // Upload any columnar buffers to the GPU. Buffer identity is deduplicated
@@ -156,7 +156,7 @@ export default class BaseProgram {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
-            const array = fields[name] ?? channel.data;
+            const array = channels[name] ?? channel.data;
             if (!array) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
@@ -219,9 +219,9 @@ export default class BaseProgram {
      * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} uniforms
      * @returns {void}
      */
-    updateUniforms(uniforms) {
+    updateValues(values) {
         // Accept both direct channel uniforms and scale domain/range updates.
-        for (const [key, value] of Object.entries(uniforms)) {
+        for (const [key, value] of Object.entries(values)) {
             if (key.endsWith(".domain") || key.endsWith(".range")) {
                 const [channelName, rawSuffix] = key.split(".");
                 const suffix = rawSuffix === "domain" ? "domain" : "range";

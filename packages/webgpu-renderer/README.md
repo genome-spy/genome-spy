@@ -24,7 +24,8 @@ You may need a local server due to module imports.
 
 - `createRenderer(canvas, options)`
 - `renderer.createMark(type, config)`
-- `renderer.updateInstances(markId, fields, count)`
+- `renderer.updateSeries(markId, fields, count)`
+- `renderer.updateValues(markId, values)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render()`
 
