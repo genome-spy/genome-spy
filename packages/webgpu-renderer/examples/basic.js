@@ -1,5 +1,6 @@
 import runBasicScene from "./basicScene.js";
 import runHatchScene from "./hatchScene.js";
+import runPointScene from "./pointScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -12,6 +13,10 @@ const EXAMPLES = {
     hatch: {
         label: "Hatch Patterns",
         run: runHatchScene,
+    },
+    points: {
+        label: "Point Grid",
+        run: runPointScene,
     },
 };
 

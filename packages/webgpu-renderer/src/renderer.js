@@ -1,4 +1,5 @@
 import RectProgram from "./marks/rectProgram.js";
+import PointProgram from "./marks/pointProgram.js";
 
 export class RendererError extends Error {}
 
@@ -49,7 +50,7 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
 
-        /** @type {Map<MarkId, import("./marks/rectProgram.js").default>} */
+        /** @type {Map<MarkId, import("./marks/rectProgram.js").default | import("./marks/pointProgram.js").default>} */
         this._marks = new Map();
         this._nextMarkId = 1;
 
@@ -110,6 +111,8 @@ export class Renderer {
         let mark;
         if (type === "rect") {
             mark = new RectProgram(this, config);
+        } else if (type === "point") {
+            mark = new PointProgram(this, config);
         } else {
             throw new RendererError(`Unknown mark type: ${type}`);
         }
