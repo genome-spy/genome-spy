@@ -9,6 +9,9 @@
             body {
                 height: 100%;
                 margin: 0;
+                font-family: sans-serif;
+                background: #0f1115;
+                color: #f2f2f2;
             }
             canvas {
                 width: 100%;
@@ -16,10 +19,39 @@
                 display: block;
                 background: #ffffff;
             }
+            .toolbar {
+                position: fixed;
+                top: 12px;
+                right: 12px;
+                z-index: 2;
+                padding: 8px 10px;
+                border-radius: 8px;
+                background: rgba(10, 12, 16, 0.7);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .toolbar label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+            }
+            .toolbar select {
+                background: #1b1f2a;
+                color: #f2f2f2;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 6px;
+                padding: 4px 8px;
+            }
         </style>
     </head>
     <body>
-        <canvas></canvas>
-        <script type="module" src="./basic.js"></script>
+    <div class="toolbar">
+      <label>
+        Example:
+        <select data-example></select>
+      </label>
+    </div>
+    <canvas></canvas>
+    <script type="module" src="./basic.js"></script>
     </body>
 </html>
