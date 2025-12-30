@@ -1,17 +1,8 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
-import {
-    DOMAIN_PREFIX,
-    RANGE_PREFIX,
-    SCALE_ALIGN_PREFIX,
-    SCALE_BASE_PREFIX,
-    SCALE_BAND_PREFIX,
-    SCALE_CONSTANT_PREFIX,
-    SCALE_EXPONENT_PREFIX,
-    SCALE_PADDING_INNER_PREFIX,
-    SCALE_PADDING_OUTER_PREFIX,
-} from "../wgsl/prefixes.js";
+import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
+import { getScaleUniformDef, validateScaleConfig } from "./scaleCodegen.js";
 
 /**
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -417,45 +408,10 @@ export default class BaseProgram {
                 components: 2,
             });
         }
-        if (scaleType === "log") {
+        const def = getScaleUniformDef(scaleType);
+        for (const param of def.params) {
             layout.push({
-                name: `${SCALE_BASE_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-        }
-        if (scaleType === "band") {
-            layout.push({
-                name: `${SCALE_PADDING_INNER_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-            layout.push({
-                name: `${SCALE_PADDING_OUTER_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-            layout.push({
-                name: `${SCALE_ALIGN_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-            layout.push({
-                name: `${SCALE_BAND_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-        }
-        if (scaleType === "pow" || scaleType === "sqrt") {
-            layout.push({
-                name: `${SCALE_EXPONENT_PREFIX}${name}`,
-                type: "f32",
-                components: 1,
-            });
-        }
-        if (scaleType === "symlog") {
-            layout.push({
-                name: `${SCALE_CONSTANT_PREFIX}${name}`,
+                name: `${param.prefix}${name}`,
                 type: "f32",
                 components: 1,
             });
@@ -478,44 +434,13 @@ export default class BaseProgram {
                 scale.range ?? this.getDefaultScaleRange(name) ?? [0, 1]
             );
         }
-        if (scale.type === "log") {
-            this._setUniformValue(
-                `${SCALE_BASE_PREFIX}${name}`,
-                scale.base ?? 10
-            );
-        }
-        if (scale.type === "band") {
-            this._setUniformValue(
-                `${SCALE_PADDING_INNER_PREFIX}${name}`,
-                scale.paddingInner ?? 0
-            );
-            this._setUniformValue(
-                `${SCALE_PADDING_OUTER_PREFIX}${name}`,
-                scale.paddingOuter ?? 0
-            );
-            this._setUniformValue(
-                `${SCALE_ALIGN_PREFIX}${name}`,
-                scale.align ?? 0.5
-            );
-            this._setUniformValue(
-                `${SCALE_BAND_PREFIX}${name}`,
-                scale.band ?? 0.5
-            );
-        }
-        if (scale.type === "pow") {
-            this._setUniformValue(
-                `${SCALE_EXPONENT_PREFIX}${name}`,
-                scale.exponent ?? 1
-            );
-        }
-        if (scale.type === "sqrt") {
-            this._setUniformValue(`${SCALE_EXPONENT_PREFIX}${name}`, 0.5);
-        }
-        if (scale.type === "symlog") {
-            this._setUniformValue(
-                `${SCALE_CONSTANT_PREFIX}${name}`,
-                scale.constant ?? 1
-            );
+        const def = getScaleUniformDef(scale.type);
+        for (const param of def.params) {
+            let value = param.defaultValue;
+            if (param.prop && scale[param.prop] !== undefined) {
+                value = scale[param.prop];
+            }
+            this._setUniformValue(`${param.prefix}${name}`, value);
         }
     }
 
@@ -524,14 +449,7 @@ export default class BaseProgram {
      * @returns {boolean}
      */
     _scaleUsesDomainRange(scaleType) {
-        return (
-            scaleType === "linear" ||
-            scaleType === "band" ||
-            scaleType === "log" ||
-            scaleType === "pow" ||
-            scaleType === "sqrt" ||
-            scaleType === "symlog"
-        );
+        return getScaleUniformDef(scaleType).domainRange;
     }
 
     /**
@@ -701,6 +619,11 @@ export default class BaseProgram {
             throw new Error(
                 `Only f32 vectors are supported for "${name}" right now.`
             );
+        }
+
+        const scaleError = validateScaleConfig(name, channel);
+        if (scaleError) {
+            throw new Error(scaleError);
         }
     }
 
