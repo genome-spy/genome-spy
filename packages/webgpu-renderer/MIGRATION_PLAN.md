@@ -4,16 +4,16 @@ This plan reflects the intended direction: a WebGPU-first renderer, columnar
 data, storage buffers + vertex pulling, and a clean separation between core
 (dataflow/params) and rendering (GPU execution).
 
-### 1) Split a renderer-only package
+### 1) Split a renderer-only package — IN PROGRESS
 
 Create a new package (`@genome-spy/webgpu-renderer`) that contains only:
 
-- Mark implementations (rect/point/rule/link/text)
-- WGSL codegen (scale transforms, conditional encodings, selection tests)
-- GPU resources (buffers, textures, pipelines)
-- Picking pass
-- Viewport/scissor management
-- SDF text rendering (glyph atlas, shaders, layout helpers)
+- Mark implementations (rect/point/rule/link/text) — IN PROGRESS
+- WGSL codegen (scale transforms, conditional encodings, selection tests) — IN PROGRESS
+- GPU resources (buffers, textures, pipelines) — IN PROGRESS
+- Picking pass — IN PROGRESS
+- Viewport/scissor management — IN PROGRESS
+- SDF text rendering (glyph atlas, shaders, layout helpers) — IN PROGRESS
 
 Explicitly exclude:
 
@@ -25,7 +25,7 @@ Explicitly exclude:
 Core remains responsible for dataflow, parameters, expressions, scale domains,
 and view/layout structure. Renderer becomes a "dumb" GPU execution backend.
 
-### 2) Columnar data as the renderer contract
+### 2) Columnar data as the renderer contract — OK
 
 Renderer APIs accept typed arrays (SoA / columnar), not array-of-objects:
 
@@ -37,7 +37,7 @@ This enables zero-copy transfer from workers and aligns with GPU-friendly
 layouts. The renderer should accept identical typed arrays for multiple channels
 and deduplicate internally.
 
-### 3) Storage buffers + vertex pulling
+### 3) Storage buffers + vertex pulling — IN PROGRESS
 
 Replace expanded vertex buffers (e.g., rect = 6 vertices) with:
 
@@ -51,7 +51,7 @@ Benefits:
 - Natural fit for columnar data and worker transfers.
 - Simpler CPU-side builders.
 
-### 4) Deduplication inside the renderer
+### 4) Deduplication inside the renderer — OK
 
 Deduplicate fields on the renderer side to keep the API clean:
 
@@ -65,7 +65,7 @@ Optional escape hatch:
 - Allow explicit `{ id, data, type }` field descriptors if identity-based
   deduplication is insufficient.
 
-### 5) Uniforms and updates: no texture leakage
+### 5) Uniforms and updates: no texture leakage — IN PROGRESS
 
 Renderer should not expose textures in the public API. Use data-driven updates:
 
@@ -79,7 +79,7 @@ Internally, map these to WebGPU bind groups:
 - `global`, `mark`, `scales`, `selection` bind groups with stable layouts.
 - Frequent updates use buffer writes, not pipeline recreation.
 
-### 6) Param/expr handling stays in core
+### 6) Param/expr handling stays in core — OK
 
 Core owns:
 
@@ -92,7 +92,7 @@ Renderer only receives final numeric values (uniforms, ranges, indices) and
 buffers. This avoids leaking expression logic or selection semantics into the
 renderer.
 
-### 7) Rendering order strategy
+### 7) Rendering order strategy — IN PROGRESS
 
 Start simple: draw in view hierarchy order (current mental model).
 
@@ -100,7 +100,7 @@ Start simple: draw in view hierarchy order (current mental model).
   reduce pipeline/bind-group switches.
 - Avoid global reordering that could change visual stacking.
 
-### 8) Pipeline/shader strategy
+### 8) Pipeline/shader strategy — IN PROGRESS
 
 Expect many unique shader variants due to encoding differences.
 
@@ -108,7 +108,7 @@ Expect many unique shader variants due to encoding differences.
 - Avoid recompilation on param changes; keep dynamics in buffers/uniforms.
 - ~100 unique shaders is acceptable if created once and reused.
 
-### 9) Picking in WebGPU
+### 9) Picking in WebGPU — IN PROGRESS
 
 Maintain a dedicated picking pass:
 
@@ -116,7 +116,7 @@ Maintain a dedicated picking pass:
 - Use per-instance IDs (unique ID buffer) and encode to output.
 - Reuse the same draw order as the main pass.
 
-### 10) Worker-compatible data pipeline
+### 10) Worker-compatible data pipeline — IN PROGRESS
 
 Prepare for web workers:
 
@@ -126,7 +126,7 @@ Prepare for web workers:
 
 This is a strong motivator for the columnar data contract.
 
-### 11) SDF text and font metadata split
+### 11) SDF text and font metadata split — IN PROGRESS
 
 Renderer keeps GPU-side SDF rendering and glyph atlas.
 Core still needs font metrics for layout/measurement.
@@ -146,13 +146,13 @@ The renderer package should not prevent a future vector backend:
 - SVG/canvas backend can live in a separate package and implement the same
   draw API without GPU resources.
 
-### 13) Port `glslScaleGenerator.js` to WGSL (step-by-step)
+### 13) Port `glslScaleGenerator.js` to WGSL (step-by-step) — IN PROGRESS
 
 Goal: reproduce the current GLSL scale codegen in WGSL while keeping names
 compatible (`getScaled_`, `uDomain_`, `uRange_`, etc.). Range textures are
 implemented first. Params/selections come last.
 
-1) **Inventory current GLSL generator + call sites**
+1) **Inventory current GLSL generator + call sites** — IN PROGRESS
    - Read `packages/core/src/gl/glslScaleGenerator.js` and note:
      - Prefixes (`attr_`, `uDomain_`, `uRange_`, `getScaled_`, etc.).
      - Generated pieces: accessor functions, scale functions, range texture
@@ -160,17 +160,17 @@ implemented first. Params/selections come last.
    - Identify which mark shaders (`packages/core/src/marks/*.glsl`) rely on
      which generated functions.
 
-2) **Define WGSL prefix constants (shared)**
+2) **Define WGSL prefix constants (shared)** — OK
    - Mirror GLSL prefixes in `packages/webgpu-renderer/src/wgsl/prefixes.js`.
    - Use them in WGSL codegen (already started for `uDomain_`, `uRange_`,
      `getScaled_`).
 
-3) **Port low-level scale math to WGSL**
+3) **Port low-level scale math to WGSL** — OK
    - Map `packages/core/src/gl/includes/scales.glsl` to WGSL equivalents
      (already in `packages/webgpu-renderer/src/wgsl/scales.wgsl.js`).
    - Ensure scale helpers have identical signatures and edge-case behavior.
 
-4) **Implement range textures (first-class in WGSL)**
+4) **Implement range textures (first-class in WGSL)** — IN PROGRESS
    - Decide texture format/layout for ranges (1D as 2D texture with height 1).
    - Add WGSL helpers for `uRangeTexture_*` lookups (like GLSL).
    - Plumb texture/sampler bindings into mark pipelines.
@@ -178,19 +178,19 @@ implemented first. Params/selections come last.
    - WebGPU writeTexture requires 256-byte row alignment; helper utilities
      should pad rows and keep width/height metadata.
 
-5) **Port accessor generation (data vs. value)**
+5) **Port accessor generation (data vs. value)** — IN PROGRESS
    - Translate `accessor_` function logic to WGSL.
    - Use WGSL storage buffers for `attr_*` data access (vertex pulling).
    - Support constants for non-dynamic values (inline WGSL literals).
    - Keep piecewise scale segment counts stable per scale instance; the size
      can change only when the scale is redefined (not per-frame).
 
-6) **Port scale function generation**
+6) **Port scale function generation** — IN PROGRESS
    - Generate `scale_*` functions that apply domain/range transforms.
    - Ensure `getScaled_*` wraps `accessor_*` + `scale_*` consistently.
    - Keep `getScaled_*` as the only mark-facing entry point.
 
-7) **Handle discrete vs. continuous ranges**
+7) **Handle discrete vs. continuous ranges** — IN PROGRESS
    - Reproduce discrete range mapping logic (`getDiscreteRangeMapper` path):
      - For small discrete ranges, inline literal vectors.
      - For large or dynamic ranges, route through range textures.
@@ -199,11 +199,11 @@ implemented first. Params/selections come last.
    - For piecewise scales, treat domains/ranges as fixed-length arrays per
      scale instance to avoid per-frame pipeline changes.
 
-8) **Recreate shared-field logic**
+8) **Recreate shared-field logic** — IN PROGRESS
    - Support shared quantitative channels in WGSL (`makeAttributeName` /
      shared accessors) to prevent duplicate buffer reads.
 
-9) **Wire domain/range updates**
+9) **Wire domain/range updates** — OK
    - Core supplies domains/ranges; renderer writes `uDomain_*` / `uRange_*`
      uniform entries.
    - Confirm default range behavior for positional channels (viewport-based).
@@ -211,7 +211,7 @@ implemented first. Params/selections come last.
      a fixed length after initial setup; changing the length requires
      re-registering the scale (pipeline/bind group rebuild).
 
-10) **Build parity tests for codegen**
+10) **Build parity tests for codegen** — IN PROGRESS
     - Snapshot/substring tests comparing GLSL and WGSL output structure:
       - `getScaled_*` presence
       - `uDomain_` / `uRange_` usage
