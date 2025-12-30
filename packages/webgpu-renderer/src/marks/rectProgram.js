@@ -25,6 +25,7 @@ const CHANNELS = [
     "shadowBlur",
     "shadowOpacity",
     "shadowColor",
+    "hatchPattern",
 ];
 
 /** @type {Record<string, number|number[]>} */
@@ -47,6 +48,7 @@ const DEFAULTS = {
     shadowBlur: 0.0,
     shadowOpacity: 0.0,
     shadowColor: [0.0, 0.0, 0.0, 1.0],
+    hatchPattern: 0,
 };
 
 // Default channel behavior for the rect mark. Channels can be overridden
@@ -123,6 +125,11 @@ const DEFAULT_CHANNEL_CONFIGS = {
         components: 4,
         value: DEFAULTS.shadowColor,
     },
+    hatchPattern: {
+        components: 1,
+        type: "u32",
+        value: DEFAULTS.hatchPattern,
+    },
 };
 
 const RECT_SHADER_BODY = /* wgsl */ `
@@ -167,6 +174,75 @@ fn shadowAlpha(d: f32, blur: f32) -> f32 {
   return clamp(1.0 - smoothstep(0.0, blur, d), 0.0, 1.0);
 }
 
+fn modf(x: f32, y: f32) -> f32 {
+  return x - y * floor(x / y);
+}
+
+fn diagonalPattern(uv: vec2<f32>, spacing: f32, halfStrokeWidth: f32) -> f32 {
+  // Using 1.5 to approximate sqrt(2.0) to reduce aliasing artifacts.
+  let divisor = spacing * halfStrokeWidth * 2.0 * 1.5;
+  return abs(modf(uv.x - uv.y, divisor) - 0.5 * divisor) / 1.5;
+}
+
+fn verticalPattern(x: f32, spacing: f32, halfStrokeWidth: f32) -> f32 {
+  let divisor = spacing * halfStrokeWidth * 2.0;
+  return abs(modf(x, divisor)) / 2.0;
+}
+
+fn circle(p: vec2<f32>, r: f32) -> f32 {
+  return length(p) - r;
+}
+
+fn masonryCirclePattern(uv: vec2<f32>, spacing: f32, radius: f32) -> f32 {
+  let halfSpacing = 0.5 * spacing;
+  let row = floor(uv.y / spacing);
+  let shift = (row % 2.0) * halfSpacing;
+
+  let shifted = vec2<f32>(uv.x + shift, uv.y + halfSpacing);
+  let cell = vec2<f32>(
+    modf(shifted.x + 0.5 * spacing, spacing),
+    modf(shifted.y + 0.5 * spacing, spacing)
+  ) - halfSpacing;
+
+  return abs(circle(cell, radius));
+}
+
+fn hatchPattern(uv: vec2<f32>, halfStrokeWidth: f32, patternType: i32) -> f32 {
+  let spacing = 4.0;
+
+  if (patternType == 1) {
+    return diagonalPattern(vec2<f32>(uv.x, -uv.y), spacing, halfStrokeWidth);
+  }
+  if (patternType == 2) {
+    return diagonalPattern(uv, spacing, halfStrokeWidth);
+  }
+  if (patternType == 3) {
+    return min(
+      diagonalPattern(uv, spacing, halfStrokeWidth),
+      diagonalPattern(vec2<f32>(uv.x, -uv.y), spacing, halfStrokeWidth)
+    );
+  }
+  if (patternType == 4) {
+    return verticalPattern(uv.x, spacing, halfStrokeWidth);
+  }
+  if (patternType == 5) {
+    return verticalPattern(uv.y, spacing, halfStrokeWidth);
+  }
+  if (patternType == 6) {
+    return min(
+      verticalPattern(uv.x, spacing, halfStrokeWidth),
+      verticalPattern(uv.y, spacing, halfStrokeWidth)
+    );
+  }
+  if (patternType == 7 || patternType == 8 || patternType == 9) {
+    let spacing = halfStrokeWidth * 14.0;
+    let radius = spacing * select(0.07, select(0.2, 0.35, patternType == 9), patternType == 8);
+    return masonryCirclePattern(uv, spacing, radius);
+  }
+
+  return 1.0e20;
+}
+
 struct VSOut {
   @builtin(position) pos: vec4<f32>,
   @location(0) local: vec2<f32>,
@@ -181,6 +257,7 @@ struct VSOut {
   @location(9) shadowBlur: f32,
   @location(10) shadowOpacity: f32,
   @location(11) shadowColor: vec4<f32>,
+  @location(12) @interpolate(flat) hatchPattern: u32,
 };
 
 @vertex
@@ -234,6 +311,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
   out.shadowBlur = getScaled_shadowBlur(i);
   out.shadowOpacity = getScaled_shadowOpacity(i);
   out.shadowColor = getScaled_shadowColor(i);
+  out.hatchPattern = getScaled_hatchPattern(i);
   return out;
 }
 
@@ -242,7 +320,7 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
   let halfSize = in.size * 0.5;
   let centered = (in.local - vec2<f32>(0.5)) * in.size;
 
-  let d = sdRoundedBox(centered, halfSize, in.cornerRadius);
+  var d = sdRoundedBox(centered, halfSize, in.cornerRadius);
 
   var fillColor = in.fill;
   fillColor.a = fillColor.a * in.fillOpacity;
@@ -257,7 +335,13 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     background = vec4<f32>(in.shadowColor.rgb, alpha);
   }
 
-  return distanceToColor(d, fillColor, strokeColor, background, in.strokeWidth * 0.5);
+  let halfStrokeWidth = in.strokeWidth * 0.5;
+  let patternType = i32(in.hatchPattern);
+  if (halfStrokeWidth > 0.0 && patternType > 0) {
+    d = max(d, -hatchPattern(centered, halfStrokeWidth, patternType));
+  }
+
+  return distanceToColor(d, fillColor, strokeColor, background, halfStrokeWidth);
 }
 `;
 

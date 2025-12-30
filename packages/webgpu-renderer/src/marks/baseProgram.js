@@ -428,6 +428,7 @@ export default class BaseProgram {
         /** @type {Record<string, ChannelConfigResolved>} */
         const channels = {};
         for (const name of this.channelOrder) {
+            const configChannel = config?.[name];
             const merged = /** @type {ChannelConfigInput} */ (
                 /** @type {unknown} */ ({
                     ...(this.defaultChannelConfigs[name] ?? {}),
@@ -436,6 +437,19 @@ export default class BaseProgram {
             );
             if (!merged.components) {
                 merged.components = 1;
+            }
+            if (
+                isSeriesChannelConfig(merged) &&
+                (configChannel?.value !== undefined ||
+                    configChannel?.default !== undefined)
+            ) {
+                throw new Error(
+                    `Channel "${name}" must not specify both data and value.`
+                );
+            }
+            if (isSeriesChannelConfig(merged)) {
+                delete merged.value;
+                delete merged.default;
             }
             // Provide sensible defaults early so downstream code can assume data or value.
             if (!isSeriesChannelConfig(merged) && merged.value === undefined) {

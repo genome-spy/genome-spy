@@ -1,98 +1,78 @@
-import { createRenderer } from "../src/index.js";
+import runBasicScene from "./basicScene.js";
+import runHatchScene from "./hatchScene.js";
 
 const canvas = document.querySelector("canvas");
+const picker = document.querySelector("select[data-example]");
 
-const renderer = await createRenderer(canvas);
+const EXAMPLES = {
+    basic: {
+        label: "Animated Grid",
+        run: runBasicScene,
+    },
+    hatch: {
+        label: "Hatch Patterns",
+        run: runHatchScene,
+    },
+};
 
-const count = 200;
-const x = new Float32Array(count);
-const y = new Float32Array(count);
-const x2 = new Float32Array(count);
-const y2 = new Float32Array(count);
+const getExampleKey = () => {
+    const raw = window.location.hash.replace("#", "");
+    if (raw && EXAMPLES[raw]) {
+        return raw;
+    }
+    return "basic";
+};
 
-for (let i = 0; i < count; i++) {
-    x[i] = 20 + (i % 20) * 25;
-    y[i] = 20 + Math.floor(i / 20) * 25;
-    x2[i] = x[i] + 20;
-    y2[i] = y[i] + 20;
+const syncDropdown = (key) => {
+    if (!picker) {
+        return;
+    }
+    picker.value = key;
+};
+
+const populateDropdown = () => {
+    if (!picker) {
+        return;
+    }
+    picker.innerHTML = "";
+    for (const [key, example] of Object.entries(EXAMPLES)) {
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = example.label;
+        picker.append(option);
+    }
+};
+
+populateDropdown();
+
+let cleanup = null;
+
+const runExample = async (key) => {
+    if (cleanup) {
+        cleanup();
+        cleanup = null;
+    }
+    const example = EXAMPLES[key] ?? EXAMPLES.basic;
+    cleanup = await example.run(canvas);
+};
+
+const applyHash = () => {
+    const key = getExampleKey();
+    syncDropdown(key);
+    runExample(key);
+};
+
+if (picker) {
+    picker.addEventListener("change", (event) => {
+        const value = event.target.value;
+        window.location.hash = value;
+    });
 }
 
-const markId = renderer.createMark("rect", {
-    count,
-    channels: {
-        x: { data: x, type: "f32", scale: { type: "identity" } },
-        x2: { data: x2, type: "f32", scale: { type: "identity" } },
-        y: { data: y, type: "f32", scale: { type: "identity" } },
-        y2: { data: y2, type: "f32", scale: { type: "identity" } },
-        fill: { value: [0.2, 0.5, 0.8, 1.0] },
-        stroke: { value: [0.1, 0.1, 0.1, 1.0], dynamic: true },
-        fillOpacity: { value: 1.0 },
-        strokeOpacity: { value: 1.0 },
-        strokeWidth: { value: 1.0, dynamic: true },
-    },
-});
+window.addEventListener("hashchange", applyHash);
 
-const resize = () => {
-    const dpr = window.devicePixelRatio ?? 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+if (!window.location.hash) {
+    window.location.hash = "basic";
+}
 
-    renderer.updateGlobals({
-        width: canvas.width,
-        height: canvas.height,
-        dpr,
-    });
-};
-
-resize();
-window.addEventListener("resize", resize);
-
-renderer.updateInstances(markId, { x, x2, y, y2 }, count);
-
-let start = performance.now();
-let dynamicCount = count;
-let nextDataUpdate = 0;
-
-const rebuildData = (newCount) => {
-    const nx = new Float32Array(newCount);
-    const ny = new Float32Array(newCount);
-    const nx2 = new Float32Array(newCount);
-    const ny2 = new Float32Array(newCount);
-
-    for (let i = 0; i < newCount; i++) {
-        nx[i] = 20 + (i % 20) * 25;
-        ny[i] = 20 + Math.floor(i / 20) * 25;
-        nx2[i] = nx[i] + 20;
-        ny2[i] = ny[i] + 20;
-    }
-
-    return { nx, ny, nx2, ny2 };
-};
-
-const animate = (now) => {
-    const t = (now - start) / 1000;
-    const width = 1.0 + (Math.sin(t * 2.0) * 0.5 + 0.5) * 3.0;
-    const corner = (Math.sin(t) * 0.5 + 0.5) * 8.0;
-    renderer.updateUniforms(markId, {
-        strokeWidth: width,
-        cornerRadius: corner,
-    });
-
-    if (now >= nextDataUpdate) {
-        dynamicCount = 80 + Math.floor(Math.random() * 240);
-        const { nx, ny, nx2, ny2 } = rebuildData(dynamicCount);
-        renderer.updateInstances(
-            markId,
-            { x: nx, x2: nx2, y: ny, y2: ny2 },
-            dynamicCount
-        );
-        nextDataUpdate = now + 1500;
-    }
-
-    renderer.render();
-    requestAnimationFrame(animate);
-};
-
-renderer.render();
-requestAnimationFrame(animate);
+applyHash();
