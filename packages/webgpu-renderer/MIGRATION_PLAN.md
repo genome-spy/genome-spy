@@ -175,6 +175,8 @@ implemented first. Params/selections come last.
    - Add WGSL helpers for `uRangeTexture_*` lookups (like GLSL).
    - Plumb texture/sampler bindings into mark pipelines.
    - Provide renderer APIs to upload/update range textures from core.
+   - WebGPU writeTexture requires 256-byte row alignment; helper utilities
+     should pad rows and keep width/height metadata.
 
 5) **Port accessor generation (data vs. value)**
    - Translate `accessor_` function logic to WGSL.
@@ -190,6 +192,8 @@ implemented first. Params/selections come last.
    - Reproduce discrete range mapping logic (`getDiscreteRangeMapper` path):
      - For small discrete ranges, inline literal vectors.
      - For large or dynamic ranges, route through range textures.
+   - For categorical lookups, storage buffers can be a simpler alternative
+     when interpolation is unnecessary.
 
 8) **Recreate shared-field logic**
    - Support shared quantitative channels in WGSL (`makeAttributeName` /
