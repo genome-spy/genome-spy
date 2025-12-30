@@ -1,7 +1,13 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
-import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
+import {
+    DOMAIN_PREFIX,
+    RANGE_PREFIX,
+    SCALE_BASE_PREFIX,
+    SCALE_CONSTANT_PREFIX,
+    SCALE_EXPONENT_PREFIX,
+} from "../wgsl/prefixes.js";
 
 /**
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -282,6 +288,44 @@ export default class BaseProgram {
     }
 
     /**
+     * @param {Record<string, [number, number]>} domains
+     * @returns {void}
+     */
+    updateScaleDomains(domains) {
+        for (const [name, domain] of Object.entries(domains)) {
+            for (const channelName of this._resolveScaleTargets(name)) {
+                const uniformName = `${DOMAIN_PREFIX}${channelName}`;
+                if (!this._uniformBufferState?.entries.has(uniformName)) {
+                    throw new Error(
+                        `Uniform "${uniformName}" is not available for updates.`
+                    );
+                }
+                this._setUniformValue(uniformName, domain);
+            }
+        }
+        this._writeUniforms();
+    }
+
+    /**
+     * @param {Record<string, [number, number]>} ranges
+     * @returns {void}
+     */
+    updateScaleRanges(ranges) {
+        for (const [name, range] of Object.entries(ranges)) {
+            for (const channelName of this._resolveScaleTargets(name)) {
+                const uniformName = `${RANGE_PREFIX}${channelName}`;
+                if (!this._uniformBufferState?.entries.has(uniformName)) {
+                    throw new Error(
+                        `Uniform "${uniformName}" is not available for updates.`
+                    );
+                }
+                this._setUniformValue(uniformName, range);
+            }
+        }
+        this._writeUniforms();
+    }
+
+    /**
      * @param {number|number[]|{ domain?: [number, number], range?: [number, number] }} value
      * @param {"domain"|"range"} suffix
      * @returns {[number, number]}
@@ -313,35 +357,11 @@ export default class BaseProgram {
                     components: channel.components ?? 1,
                 });
             }
-            if (
-                isSeriesChannelConfig(channel) &&
-                channel.scale?.type === "linear"
-            ) {
-                layout.push({
-                    name: `${DOMAIN_PREFIX}${name}`,
-                    type: "f32",
-                    components: 2,
-                });
-                layout.push({
-                    name: `${RANGE_PREFIX}${name}`,
-                    type: "f32",
-                    components: 2,
-                });
+            if (isSeriesChannelConfig(channel) && channel.scale) {
+                this._addScaleUniforms(layout, name, channel.scale.type);
             }
-            if (
-                isValueChannelConfig(channel) &&
-                channel.scale?.type === "linear"
-            ) {
-                layout.push({
-                    name: `${DOMAIN_PREFIX}${name}`,
-                    type: "f32",
-                    components: 2,
-                });
-                layout.push({
-                    name: `${RANGE_PREFIX}${name}`,
-                    type: "f32",
-                    components: 2,
-                });
+            if (isValueChannelConfig(channel) && channel.scale) {
+                this._addScaleUniforms(layout, name, channel.scale.type);
             }
         }
 
@@ -362,38 +382,119 @@ export default class BaseProgram {
      */
     _initializeUniforms() {
         for (const [name, channel] of Object.entries(this._channels)) {
-            if (
-                isSeriesChannelConfig(channel) &&
-                channel.scale?.type === "linear"
-            ) {
-                this._setUniformValue(
-                    `${DOMAIN_PREFIX}${name}`,
-                    channel.scale.domain ?? [0, 1]
-                );
-                this._setUniformValue(
-                    `${RANGE_PREFIX}${name}`,
-                    channel.scale.range ??
-                        this.getDefaultScaleRange(name) ?? [0, 1]
-                );
+            if (isSeriesChannelConfig(channel) && channel.scale) {
+                this._initializeScaleUniforms(name, channel.scale);
             }
-            if (
-                isValueChannelConfig(channel) &&
-                channel.scale?.type === "linear"
-            ) {
-                this._setUniformValue(
-                    `${DOMAIN_PREFIX}${name}`,
-                    channel.scale.domain ?? [0, 1]
-                );
-                this._setUniformValue(
-                    `${RANGE_PREFIX}${name}`,
-                    channel.scale.range ??
-                        this.getDefaultScaleRange(name) ?? [0, 1]
-                );
+            if (isValueChannelConfig(channel) && channel.scale) {
+                this._initializeScaleUniforms(name, channel.scale);
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);
             }
         }
+    }
+
+    /**
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {string} name
+     * @param {string} scaleType
+     * @returns {void}
+     */
+    _addScaleUniforms(layout, name, scaleType) {
+        if (this._scaleUsesDomainRange(scaleType)) {
+            layout.push({
+                name: `${DOMAIN_PREFIX}${name}`,
+                type: "f32",
+                components: 2,
+            });
+            layout.push({
+                name: `${RANGE_PREFIX}${name}`,
+                type: "f32",
+                components: 2,
+            });
+        }
+        if (scaleType === "log") {
+            layout.push({
+                name: `${SCALE_BASE_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
+        if (scaleType === "pow" || scaleType === "sqrt") {
+            layout.push({
+                name: `${SCALE_EXPONENT_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
+        if (scaleType === "symlog") {
+            layout.push({
+                name: `${SCALE_CONSTANT_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializeScaleUniforms(name, scale) {
+        if (this._scaleUsesDomainRange(scale.type)) {
+            this._setUniformValue(
+                `${DOMAIN_PREFIX}${name}`,
+                scale.domain ?? [0, 1]
+            );
+            this._setUniformValue(
+                `${RANGE_PREFIX}${name}`,
+                scale.range ?? this.getDefaultScaleRange(name) ?? [0, 1]
+            );
+        }
+        if (scale.type === "log") {
+            this._setUniformValue(
+                `${SCALE_BASE_PREFIX}${name}`,
+                scale.base ?? 10
+            );
+        }
+        if (scale.type === "pow") {
+            this._setUniformValue(
+                `${SCALE_EXPONENT_PREFIX}${name}`,
+                scale.exponent ?? 1
+            );
+        }
+        if (scale.type === "sqrt") {
+            this._setUniformValue(`${SCALE_EXPONENT_PREFIX}${name}`, 0.5);
+        }
+        if (scale.type === "symlog") {
+            this._setUniformValue(
+                `${SCALE_CONSTANT_PREFIX}${name}`,
+                scale.constant ?? 1
+            );
+        }
+    }
+
+    /**
+     * @param {string} scaleType
+     * @returns {boolean}
+     */
+    _scaleUsesDomainRange(scaleType) {
+        return (
+            scaleType === "linear" ||
+            scaleType === "log" ||
+            scaleType === "pow" ||
+            scaleType === "sqrt" ||
+            scaleType === "symlog"
+        );
+    }
+
+    /**
+     * @param {string} nameOrScale
+     * @returns {string[]}
+     */
+    _resolveScaleTargets(nameOrScale) {
+        return [nameOrScale];
     }
 
     /**

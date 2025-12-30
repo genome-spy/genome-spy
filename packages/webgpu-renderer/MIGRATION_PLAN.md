@@ -182,6 +182,8 @@ implemented first. Params/selections come last.
    - Translate `accessor_` function logic to WGSL.
    - Use WGSL storage buffers for `attr_*` data access (vertex pulling).
    - Support constants for non-dynamic values (inline WGSL literals).
+   - Keep piecewise scale segment counts stable per scale instance; the size
+     can change only when the scale is redefined (not per-frame).
 
 6) **Port scale function generation**
    - Generate `scale_*` functions that apply domain/range transforms.
@@ -194,6 +196,8 @@ implemented first. Params/selections come last.
      - For large or dynamic ranges, route through range textures.
    - For categorical lookups, storage buffers can be a simpler alternative
      when interpolation is unnecessary.
+   - For piecewise scales, treat domains/ranges as fixed-length arrays per
+     scale instance to avoid per-frame pipeline changes.
 
 8) **Recreate shared-field logic**
    - Support shared quantitative channels in WGSL (`makeAttributeName` /
@@ -203,6 +207,9 @@ implemented first. Params/selections come last.
    - Core supplies domains/ranges; renderer writes `uDomain_*` / `uRange_*`
      uniform entries.
    - Confirm default range behavior for positional channels (viewport-based).
+   - Renderer APIs should document that piecewise domain/range arrays must keep
+     a fixed length after initial setup; changing the length requires
+     re-registering the scale (pipeline/bind group rebuild).
 
 10) **Build parity tests for codegen**
     - Snapshot/substring tests comparing GLSL and WGSL output structure:
@@ -220,3 +227,33 @@ implemented first. Params/selections come last.
 12) **Deprecate GLSL generator (final step)**
     - Once WGSL parity is achieved and all marks ported, remove GLSL generator
       usage from the WebGPU path while keeping GLSL for the WebGL backend.
+
+### Scale properties used by the renderer
+
+Only a subset of `packages/core/src/spec/scale.d.ts` feeds the shader pipeline
+via `glslScaleGenerator.js`. When porting to WebGPU, focus on these properties
+and treat the rest as preprocessing handled in core.
+
+Directly consumed by `glslScaleGenerator.js`:
+- `type`
+- `domain()` (and domain length for piecewise + high precision)
+- `range()`
+- `props.range` (raw range to detect ExprRef-driven dynamic ranges)
+- `clamp()`
+- `base()` (log)
+- `constant()` (symlog)
+- `exponent()` (pow/sqrt)
+- `paddingInner()`, `paddingOuter()`, `align()` (band/point/index/locus)
+
+Not consumed directly in the generator (handled upstream in core):
+- `scheme`, `interpolate`, `reverse`, `nice`, `domainMin/Max/Mid`, `bins`,
+  `zero`, `round`, etc.
+
+### Vega scale metadata alignment
+
+`glslScaleGenerator` relies on category predicates (`isContinuous`,
+`isDiscrete`, `isDiscretizing`, `isInterpolating`, `isLogarithmic`,
+`isTemporal`). Vega derives these from scale metadata in
+`vega-scale/src/scales.js`. When porting to WebGPU, keep the same metadata
+flags in a scale registry so category checks remain consistent across WebGL
+and WebGPU.
