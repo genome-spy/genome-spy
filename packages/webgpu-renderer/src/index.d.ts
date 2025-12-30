@@ -1,6 +1,8 @@
 export type MarkType = "rect" | "point";
 export type MarkId = number & { __brand: "MarkId" };
 
+export type ScalarType = "f32" | "u32" | "i32";
+
 export type TypedArray =
     | Float32Array
     | Float64Array
@@ -51,7 +53,7 @@ export type SeriesChannelConfigInput = {
     data?: TypedArray;
 
     /** Scalar element type for series data. */
-    type?: "f32" | "u32" | "i32";
+    type?: ScalarType;
 
     /** Value is not used for series data. */
     value?: never;
@@ -63,7 +65,7 @@ export type ValueChannelConfigInput = {
     value?: number | number[];
 
     /** Scalar element type for value data. */
-    type?: "f32" | "u32" | "i32";
+    type?: ScalarType;
 
     /** When true, value is provided via uniforms; otherwise emitted as WGSL constants. */
     dynamic?: boolean;

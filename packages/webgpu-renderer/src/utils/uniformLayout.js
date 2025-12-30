@@ -1,5 +1,5 @@
 /**
- * @typedef {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }} UniformSpec
+ * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }} UniformSpec
  * @typedef {UniformSpec & { offset: number }} UniformEntry
  * @typedef {{ entries: Map<string, UniformEntry>, byteLength: number }} UniformLayout
  */

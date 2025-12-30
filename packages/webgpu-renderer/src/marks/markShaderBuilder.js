@@ -10,7 +10,7 @@ import {
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
- * @prop {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} uniformLayout
+ * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} uniformLayout
  * @prop {string} shaderBody
  *
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -42,7 +42,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     let bindingIndex = 1;
 
     /**
-     * @param {"f32"|"u32"|"i32"} type
+     * @param {import("../types.js").ScalarType} type
      * @param {1|2|4} components
      * @param {number|number[]} value
      * @returns {string}

@@ -6,6 +6,7 @@
  * @typedef {import("./index.d.ts").SeriesChannelConfigWithoutScaleInput} SeriesChannelConfigWithoutScaleInput
  * @typedef {import("./index.d.ts").ValueChannelConfigWithScaleInput} ValueChannelConfigWithScaleInput
  * @typedef {import("./index.d.ts").ValueChannelConfigWithoutScaleInput} ValueChannelConfigWithoutScaleInput
+ * @typedef {import("./index.d.ts").ScalarType} ScalarType
  */
 
 /**

@@ -32,7 +32,7 @@ export default class BaseProgram {
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
 
-        /** @type {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} */
+        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
         this._uniformLayout = [];
 
         /** @type {UniformBuffer | null} */
@@ -301,7 +301,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildUniformLayout() {
-        /** @type {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }[]} */
+        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
         const layout = [];
 
         // Create uniform slots for per-channel values and scale parameters.
