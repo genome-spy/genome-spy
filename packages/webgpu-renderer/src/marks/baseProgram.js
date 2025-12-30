@@ -16,6 +16,7 @@ export default class BaseProgram {
      * @typedef {import("../index.d.ts").TypedArray} TypedArray
      * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
      * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+     * @typedef {import("./channelSpecUtils.js").ChannelSpec} ChannelSpec
      */
 
     /**
@@ -114,6 +115,15 @@ export default class BaseProgram {
     }
 
     /**
+     * Channel metadata for validation and coercion.
+     *
+     * @returns {Record<string, ChannelSpec>}
+     */
+    get channelSpecs() {
+        return {};
+    }
+
+    /**
      * @returns {Record<string, ChannelConfigInput>}
      */
     get defaultChannelConfigs() {
@@ -161,6 +171,22 @@ export default class BaseProgram {
             const array = channels[name] ?? channel.data;
             if (!array) {
                 throw new Error(`Missing data for channel "${name}"`);
+            }
+            const spec = this.channelSpecs[name];
+            if (spec?.type === "f32" && !(array instanceof Float32Array)) {
+                throw new Error(
+                    `Channel "${name}" expects a Float32Array for f32 data`
+                );
+            }
+            if (spec?.type === "u32" && !(array instanceof Uint32Array)) {
+                throw new Error(
+                    `Channel "${name}" expects a Uint32Array for u32 data`
+                );
+            }
+            if (spec?.type === "i32" && !(array instanceof Int32Array)) {
+                throw new Error(
+                    `Channel "${name}" expects an Int32Array for i32 data`
+                );
             }
             if (array.length < count * (channel.components ?? 1)) {
                 throw new Error(
@@ -218,7 +244,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} uniforms
+     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} values
      * @returns {void}
      */
     updateValues(values) {
@@ -482,6 +508,15 @@ export default class BaseProgram {
     _validateChannel(name, channel) {
         if (!this.channelOrder.includes(name)) {
             throw new Error(`Unknown channel: ${name}`);
+        }
+        const spec = this.channelSpecs[name];
+        if (spec?.components && channel.components !== spec.components) {
+            throw new Error(
+                `Channel "${name}" must use ${spec.components} components`
+            );
+        }
+        if (spec?.type && channel.type && channel.type !== spec.type) {
+            throw new Error(`Channel "${name}" must use type "${spec.type}"`);
         }
         if (
             this.optionalChannels.includes(name) &&
