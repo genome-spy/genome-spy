@@ -12,7 +12,7 @@ import {
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
- * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} uniformLayout
+ * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  *
  * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
@@ -178,7 +178,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
     // Uniform layout is provided by BaseProgram; we emit fields in the same order.
     const uniformFields = uniformLayout
-        .map(({ name, type, components }) => {
+        .map(({ name, type, components, arrayLength }) => {
             const scalar =
                 type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
             const wgslType =
@@ -187,7 +187,13 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     : components === 2
                       ? `vec2<${scalar}>`
                       : `vec4<${scalar}>`;
-            return `  ${name}: ${wgslType},`;
+            const fieldType =
+                arrayLength != null
+                    ? // Uniform arrays require 16-byte aligned elements, so we
+                      // store scalars in vec4 slots and read `.x` in codegen.
+                      `array<vec4<${scalar}>, ${arrayLength}>`
+                    : wgslType;
+            return `    ${name}: ${fieldType},`;
         })
         .join("\n");
 
