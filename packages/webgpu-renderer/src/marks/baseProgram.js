@@ -14,10 +14,15 @@ import {
     getDomainRangeLengths,
     normalizeDomainRange,
     normalizeDiscreteRange,
+    normalizeOrdinalRange,
 } from "./domainRangeUtils.js";
 
 /**
- * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[] }} ShaderBuildResult
+ * @typedef {{
+ *   shaderCode: string,
+ *   bufferBindings: GPUBindGroupLayoutEntry[],
+ *   bufferLayout: { name: string, role: "series"|"ordinalRange" }[],
+ * }} ShaderBuildResult
  */
 
 /**
@@ -45,6 +50,11 @@ export default class BaseProgram {
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
         this._domainRangeSizes = new Map();
+        this._ordinalRangeBuffers = new Map();
+        this._ordinalRangeSizes = new Map();
+
+        /** @type {{ name: string, role: "series"|"ordinalRange" }[]} */
+        this._bufferLayout = [];
 
         /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         this._uniformLayout = [];
@@ -186,18 +196,18 @@ export default class BaseProgram {
             if (!array) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
-            const spec = this.channelSpecs[name];
-            if (spec?.type === "f32" && !(array instanceof Float32Array)) {
+            const expectedType = channel.type ?? this.channelSpecs[name]?.type;
+            if (expectedType === "f32" && !(array instanceof Float32Array)) {
                 throw new Error(
                     `Channel "${name}" expects a Float32Array for f32 data`
                 );
             }
-            if (spec?.type === "u32" && !(array instanceof Uint32Array)) {
+            if (expectedType === "u32" && !(array instanceof Uint32Array)) {
                 throw new Error(
                     `Channel "${name}" expects a Uint32Array for u32 data`
                 );
             }
-            if (spec?.type === "i32" && !(array instanceof Int32Array)) {
+            if (expectedType === "i32" && !(array instanceof Int32Array)) {
                 throw new Error(
                     `Channel "${name}" expects an Int32Array for i32 data`
                 );
@@ -212,6 +222,13 @@ export default class BaseProgram {
             this._ensureBuffer(name, array);
         }
 
+        this._rebuildBindGroup();
+    }
+
+    /**
+     * @returns {void}
+     */
+    _rebuildBindGroup() {
         const entries = [
             {
                 binding: 0,
@@ -221,13 +238,19 @@ export default class BaseProgram {
 
         // Build storage buffer bindings in the same order as the shader expects.
         let bindingIndex = 1;
-        for (const [name, channel] of Object.entries(this._channels)) {
-            if (!isSeriesChannelConfig(channel)) {
-                continue;
+        for (const entry of this._bufferLayout) {
+            let buffer = null;
+            if (entry.role === "series") {
+                buffer = this._buffersByField.get(entry.name) ?? null;
+            } else if (entry.role === "ordinalRange") {
+                buffer = this._ordinalRangeBuffers.get(entry.name) ?? null;
+            }
+            if (!buffer) {
+                throw new Error(`Missing buffer binding for "${entry.name}".`);
             }
             entries.push({
                 binding: bindingIndex++,
-                resource: { buffer: this._buffersByField.get(name) },
+                resource: { buffer },
             });
         }
 
@@ -264,25 +287,18 @@ export default class BaseProgram {
      * @returns {void}
      */
     updateValues(values) {
-        // Accept both direct channel uniforms and scale domain/range updates.
         for (const [key, value] of Object.entries(values)) {
-            if (key.endsWith(".domain") || key.endsWith(".range")) {
-                const [channelName, rawSuffix] = key.split(".");
-                const suffix = rawSuffix === "domain" ? "domain" : "range";
-                this._updateDomainRange(channelName, suffix, value);
-            } else {
-                const uniformKey = `u_${key}`;
-                if (!this._uniformBufferState?.entries.has(uniformKey)) {
-                    throw new Error(
-                        `Uniform "${uniformKey}" is not available for updates.`
-                    );
-                }
-                this._setUniformValue(
-                    uniformKey,
-
-                    /** @type {number|number[]} */ (value)
+            const uniformKey = `u_${key}`;
+            if (!this._uniformBufferState?.entries.has(uniformKey)) {
+                throw new Error(
+                    `Uniform "${uniformKey}" is not available for updates.`
                 );
             }
+            this._setUniformValue(
+                uniformKey,
+
+                /** @type {number|number[]} */ (value)
+            );
         }
         this._writeUniforms();
     }
@@ -305,12 +321,24 @@ export default class BaseProgram {
      * @returns {void}
      */
     updateScaleRanges(ranges) {
+        let needsRebind = false;
         for (const [name, range] of Object.entries(ranges)) {
             for (const channelName of this._resolveScaleTargets(name)) {
+                const scaleType =
+                    this._channels[channelName]?.scale?.type ?? "identity";
+                if (scaleType === "ordinal") {
+                    if (this._updateOrdinalRange(channelName, range)) {
+                        needsRebind = true;
+                    }
+                    continue;
+                }
                 this._updateDomainRange(channelName, "range", range);
             }
         }
         this._writeUniforms();
+        if (needsRebind) {
+            this._rebuildBindGroup();
+        }
     }
 
     /**
@@ -430,6 +458,9 @@ export default class BaseProgram {
                 rangeLength,
             });
         }
+        if (scale.type === "ordinal") {
+            this._initializeOrdinalRange(name, channel, scale);
+        }
         const def = getScaleUniformDef(scale.type);
         for (const param of def.params) {
             let value = param.defaultValue;
@@ -532,6 +563,113 @@ export default class BaseProgram {
     }
 
     /**
+     * @param {string} name
+     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializeOrdinalRange(name, channel, scale) {
+        const outputComponents = channel.components ?? 1;
+        const outputType =
+            outputComponents === 1
+                ? getScaleOutputType("ordinal", channel.type ?? "f32")
+                : "f32";
+        const normalized = normalizeOrdinalRange(
+            name,
+            scale.range,
+            outputComponents
+        );
+        const data = this._buildOrdinalRangeBufferData(
+            normalized,
+            outputComponents,
+            outputType
+        );
+        this._setOrdinalRangeBuffer(name, data, normalized.length);
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
+     * @returns {boolean}
+     */
+    _updateOrdinalRange(name, value) {
+        const channel = this._channels[name];
+        if (!channel || channel.scale?.type !== "ordinal") {
+            throw new Error(`Channel "${name}" does not use an ordinal scale.`);
+        }
+        const outputComponents = channel.components ?? 1;
+        const outputType =
+            outputComponents === 1
+                ? getScaleOutputType("ordinal", channel.type ?? "f32")
+                : "f32";
+        const range = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? /** @type {{ range?: Array<number|number[]|string> }} */ ((
+                    value
+                ).range ?? [])
+              : [];
+        const normalized = normalizeOrdinalRange(name, range, outputComponents);
+        const data = this._buildOrdinalRangeBufferData(
+            normalized,
+            outputComponents,
+            outputType
+        );
+        return this._setOrdinalRangeBuffer(name, data, normalized.length);
+    }
+
+    /**
+     * @param {Array<number|number[]>} range
+     * @param {1|2|4} outputComponents
+     * @param {import("../types.js").ScalarType} outputType
+     * @returns {TypedArray}
+     */
+    _buildOrdinalRangeBufferData(range, outputComponents, outputType) {
+        if (outputComponents === 1) {
+            const values = /** @type {number[]} */ (range);
+            if (outputType === "u32") {
+                return new Uint32Array(values);
+            }
+            if (outputType === "i32") {
+                return new Int32Array(values);
+            }
+            return new Float32Array(values);
+        }
+
+        const data = new Float32Array(range.length * 4);
+        for (let i = 0; i < range.length; i++) {
+            data.set(/** @type {number[]} */ (range[i]), i * 4);
+        }
+        return data;
+    }
+
+    /**
+     * @param {string} name
+     * @param {TypedArray} data
+     * @param {number} length
+     * @returns {boolean}
+     */
+    _setOrdinalRangeBuffer(name, data, length) {
+        const prev = this._ordinalRangeSizes.get(name);
+        const nextBytes = data.byteLength;
+        let buffer = this._ordinalRangeBuffers.get(name);
+        const needsNewBuffer = !buffer || prev?.byteLength !== nextBytes;
+
+        if (needsNewBuffer) {
+            buffer = this.device.createBuffer({
+                size: nextBytes,
+                // eslint-disable-next-line no-undef
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this._ordinalRangeBuffers.set(name, buffer);
+        }
+
+        this.device.queue.writeBuffer(buffer, 0, data);
+        this._ordinalRangeSizes.set(name, { length, byteLength: nextBytes });
+        return needsNewBuffer;
+    }
+
+    /**
      * @param {string} nameOrScale
      * @returns {string[]}
      */
@@ -571,11 +709,13 @@ export default class BaseProgram {
      * @returns {ShaderBuildResult}
      */
     _buildShader() {
-        return buildMarkShader({
+        const result = buildMarkShader({
             channels: this._channels,
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
         });
+        this._bufferLayout = result.bufferLayout;
+        return result;
     }
 
     /**
@@ -661,7 +801,19 @@ export default class BaseProgram {
                 `Channel "${name}" must use ${spec.components} components`
             );
         }
-        if (spec?.type && channel.type && channel.type !== spec.type) {
+        const scaleType = channel.scale?.type ?? "identity";
+        const allowsOrdinalTypeOverride =
+            scaleType === "ordinal" &&
+            spec?.type === "f32" &&
+            (channel.components ?? 1) > 1 &&
+            channel.type &&
+            ["u32", "i32"].includes(channel.type);
+        if (
+            spec?.type &&
+            channel.type &&
+            channel.type !== spec.type &&
+            !allowsOrdinalTypeOverride
+        ) {
             throw new Error(`Channel "${name}" must use type "${spec.type}"`);
         }
         if (
@@ -699,16 +851,6 @@ export default class BaseProgram {
             throw new Error(`Invalid input component count for "${name}"`);
         }
         if (
-            channel.components &&
-            channel.components > 1 &&
-            channel.type &&
-            channel.type !== "f32"
-        ) {
-            throw new Error(
-                `Only f32 vectors are supported for "${name}" right now.`
-            );
-        }
-        if (
             channel.inputComponents &&
             channel.inputComponents > 1 &&
             channel.type &&
@@ -718,14 +860,29 @@ export default class BaseProgram {
                 `Only f32 vectors are supported for "${name}" input data.`
             );
         }
+        const outputComponents = channel.components ?? 1;
+        const inputComponents = channel.inputComponents ?? outputComponents;
+        const allowsScalarToVector =
+            scaleType === "threshold" ||
+            scaleType === "ordinal" ||
+            isPiecewiseScale(channel.scale);
         if (
-            channel.inputComponents &&
-            channel.inputComponents !== (channel.components ?? 1) &&
-            channel.scale?.type !== "threshold" &&
-            !isPiecewiseScale(channel.scale)
+            outputComponents > 1 &&
+            channel.type &&
+            channel.type !== "f32" &&
+            !allowsScalarToVector
         ) {
             throw new Error(
-                `Channel "${name}" only supports mismatched input/output components with threshold or piecewise scales.`
+                `Only f32 vectors are supported for "${name}" right now.`
+            );
+        }
+        if (
+            channel.inputComponents &&
+            channel.inputComponents !== outputComponents &&
+            !allowsScalarToVector
+        ) {
+            throw new Error(
+                `Channel "${name}" only supports mismatched input/output components with threshold, ordinal, or piecewise scales.`
             );
         }
 
@@ -790,6 +947,28 @@ export default class BaseProgram {
             ) {
                 throw new Error(
                     `Piecewise scale on "${name}" requires scalar input values for vector outputs.`
+                );
+            }
+        }
+        if (channel.scale?.type === "ordinal") {
+            const range = channel.scale?.range;
+            if (!Array.isArray(range) || range.length === 0) {
+                throw new Error(
+                    `Ordinal scale on "${name}" requires a non-empty range.`
+                );
+            }
+            if (isSeriesChannelConfig(channel) && inputComponents !== 1) {
+                throw new Error(
+                    `Ordinal scale on "${name}" requires scalar input data.`
+                );
+            }
+            if (
+                isValueChannelConfig(channel) &&
+                outputComponents > 1 &&
+                Array.isArray(channel.value)
+            ) {
+                throw new Error(
+                    `Ordinal scale on "${name}" requires scalar input values for vector outputs.`
                 );
             }
         }

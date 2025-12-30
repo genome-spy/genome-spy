@@ -156,7 +156,7 @@ describe("BaseProgram channel validation", () => {
                 },
             })
         ).toThrow(
-            'Channel "vec" only supports mismatched input/output components with threshold or piecewise scales.'
+            'Channel "vec" only supports mismatched input/output components with threshold, ordinal, or piecewise scales.'
         );
     });
 
@@ -180,6 +180,42 @@ describe("BaseProgram channel validation", () => {
                 },
             })
         ).not.toThrow();
+    });
+
+    it("allows mismatched input/output components with ordinal scales", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1, type: "f32" },
+                vec: {
+                    data: new Uint32Array([0]),
+                    type: "u32",
+                    components: 4,
+                    inputComponents: 1,
+                    scale: {
+                        type: "ordinal",
+                        range: [
+                            [0, 0, 0, 1],
+                            [1, 1, 1, 1],
+                        ],
+                    },
+                },
+            })
+        ).not.toThrow();
+    });
+
+    it("rejects ordinal scales with empty ranges", () => {
+        expect(() =>
+            createProgram({
+                x: { value: 1, type: "f32" },
+                vec: {
+                    data: new Uint32Array([0]),
+                    type: "u32",
+                    components: 4,
+                    inputComponents: 1,
+                    scale: { type: "ordinal", range: [] },
+                },
+            })
+        ).toThrow('Ordinal scale on "vec" requires a non-empty range.');
     });
 });
 

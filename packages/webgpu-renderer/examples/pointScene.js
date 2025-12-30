@@ -18,7 +18,7 @@ export default async function runPointScene(canvas) {
     const strokeWidth = new Float32Array(count);
     const angle = new Float32Array(count);
     const shape = new Uint32Array(count);
-    const fill = new Float32Array(count * 4);
+    const fill = new Uint32Array(count);
 
     const palette = [
         [0.2, 0.45, 0.85, 1.0],
@@ -44,12 +44,7 @@ export default async function runPointScene(canvas) {
         angle[i] = (yField / Math.max(1, rows - 1)) * 45;
         shape[i] = xField % 12;
 
-        const color = palette[xField % palette.length];
-        const base = i * 4;
-        fill[base] = color[0];
-        fill[base + 1] = color[1];
-        fill[base + 2] = color[2];
-        fill[base + 3] = color[3];
+        fill[i] = xField % palette.length;
     }
 
     const markId = renderer.createMark("point", {
@@ -81,7 +76,16 @@ export default async function runPointScene(canvas) {
             },
             size: { data: size, type: "f32" },
             shape: { data: shape, type: "u32" },
-            fill: { data: fill, type: "f32", components: 4 },
+            fill: {
+                data: fill,
+                type: "u32",
+                components: 4,
+                inputComponents: 1,
+                scale: {
+                    type: "ordinal",
+                    range: palette,
+                },
+            },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
             strokeWidth: { data: strokeWidth, type: "f32" },
             angle: { data: angle, type: "f32" },
