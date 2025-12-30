@@ -39,3 +39,5 @@ dist/
 /packages/*/stats.html
 
 lerna-debug.log
+
+**/test-results/
