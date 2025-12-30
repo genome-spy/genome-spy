@@ -27,10 +27,14 @@
   "scripts": {
     "dev": "vite",
     "prepublishOnly": "npm run build",
-    "test:tsc": "tsc -p tsconfig.json --noEmit"
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
+    "test:gpu": "playwright test -c playwright.config.js"
   },
   "dependencies": {
     "@webgpu/types": "^0.1.68",
     "d3-color": "^3.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
   }
 }
