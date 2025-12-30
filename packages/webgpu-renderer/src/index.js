@@ -6,3 +6,15 @@ export {
     isSeriesChannelConfig,
     isValueChannelConfig,
 } from "./types.js";
+export {
+    createDiscreteColorTexture,
+    createDiscreteTexture,
+    createInterpolatedColorTexture,
+    createSchemeTexture,
+    cssColorToArray,
+} from "./utils/colorUtils.js";
+export {
+    createTextureFromData,
+    prepareTextureData,
+    writeTextureData,
+} from "./utils/webgpuTextureUtils.js";
