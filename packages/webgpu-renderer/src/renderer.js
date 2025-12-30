@@ -138,7 +138,7 @@ export class Renderer {
 
     /**
      * @param {MarkId} markId
-     * @param {Record<string, number|number[]|{ domain?: [number, number], range?: [number, number] }>} values
+     * @param {Record<string, number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }>} values
      * @returns {void}
      */
     updateValues(markId, values) {
@@ -151,7 +151,7 @@ export class Renderer {
 
     /**
      * @param {MarkId} markId
-     * @param {Record<string, [number, number]>} domains
+     * @param {Record<string, number[]>} domains
      * @returns {void}
      */
     updateScaleDomains(markId, domains) {
@@ -164,7 +164,7 @@ export class Renderer {
 
     /**
      * @param {MarkId} markId
-     * @param {Record<string, [number, number]>} ranges
+     * @param {Record<string, Array<number|number[]|string>>} ranges
      * @returns {void}
      */
     updateScaleRanges(markId, ranges) {
