@@ -25,8 +25,8 @@ describe("buildMarkShader", () => {
                 },
             },
             uniformLayout: [
-                { name: "x_domain", type: "f32", components: 2 },
-                { name: "x_range", type: "f32", components: 2 },
+                { name: "uDomain_x", type: "f32", components: 2 },
+                { name: "uRange_x", type: "f32", components: 2 },
             ],
             shaderBody,
         });
@@ -45,7 +45,7 @@ describe("buildMarkShader", () => {
                     components: 4,
                 },
             },
-            uniformLayout: [{ name: "fill", type: "f32", components: 4 }],
+            uniformLayout: [{ name: "u_fill", type: "f32", components: 4 }],
             shaderBody,
         });
 
