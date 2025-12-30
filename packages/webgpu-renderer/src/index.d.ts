@@ -14,8 +14,10 @@ export type TypedArray =
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
     type: "identity" | "linear";
+
     /** Domain for scale mapping, provided by the core module. */
     domain?: [number, number];
+
     /** Range for scale mapping, provided by the core module. */
     range?: [number, number];
 };
@@ -23,6 +25,7 @@ export type ChannelScale = {
 export type ChannelConfigCommon = {
     /** Vector width when series data stores packed vectors (e.g., RGBA). */
     components?: 1 | 2 | 4;
+
     /** Default if no series data or value is supplied. */
     default?: number | number[];
 };
@@ -46,8 +49,10 @@ export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
 export type SeriesChannelConfigInput = {
     /** Columnar data for this channel when using series. */
     data?: TypedArray;
+
     /** Scalar element type for series data. */
     type?: "f32" | "u32" | "i32";
+
     /** Value is not used for series data. */
     value?: never;
 };
@@ -56,10 +61,13 @@ export type SeriesChannelConfigInput = {
 export type ValueChannelConfigInput = {
     /** Uniform value in range space (used directly). */
     value?: number | number[];
+
     /** Scalar element type for value data. */
     type?: "f32" | "u32" | "i32";
+
     /** When true, value is provided via uniforms; otherwise emitted as WGSL constants. */
     dynamic?: boolean;
+
     /** Series data is not used for value channels. */
     data?: never;
 };
@@ -70,12 +78,14 @@ export type ChannelConfigWithScaleInput = (
     | ValueChannelConfigInput
 ) &
     ChannelConfigWithScale;
+
 /** User-supplied configs; may be partial because defaults are filled later. */
 export type ChannelConfigWithoutScaleInput = (
     | SeriesChannelConfigInput
     | ValueChannelConfigInput
 ) &
     ChannelConfigWithoutScale;
+
 /** Any user-facing channel config (may omit data/value until normalized). */
 export type ChannelConfigInput =
     | ChannelConfigWithScaleInput
@@ -169,6 +179,7 @@ export type MarkConfig<T extends MarkType = MarkType> = {
         : T extends "point"
           ? PointChannels
           : Record<string, ChannelConfigInput>;
+
     /** Number of instances to draw; must match the column lengths. */
     count: number;
 };
@@ -189,14 +200,17 @@ export class RendererError extends Error {}
 export class Renderer {
     /** Update global viewport-related uniforms (pixel size + device pixel ratio). */
     updateGlobals(globals: GlobalUniforms): void;
+
     /** Create a new mark program and return its id. */
     createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkId;
+
     /** Upload columnar series data (storage buffers) for a mark. */
     updateSeries(
         markId: MarkId,
         channels: Record<string, TypedArray>,
         count: number
     ): void;
+
     /**
      * Update value-based uniforms for a mark and optional scale domain/range.
      * Domain/range entries can be provided as `{ domain, range }` or `[min, max]`.
@@ -211,8 +225,10 @@ export class Renderer {
             | { domain?: [number, number]; range?: [number, number] }
         >
     ): void;
+
     /** Draw the current frame. */
     render(): void;
+
     /** Destroy GPU resources associated with a mark. */
     destroyMark(markId: MarkId): void;
 }
@@ -225,14 +241,17 @@ export function createRenderer(
 export function isChannelConfigWithScale(
     config: ChannelConfigInput
 ): config is ChannelConfigWithScaleInput;
+
 export function isChannelConfigWithoutScale(
     config: ChannelConfigInput
 ): config is ChannelConfigWithoutScaleInput;
+
 export function isSeriesChannelConfig(
     config: ChannelConfigInput
 ): config is
     | SeriesChannelConfigWithScaleInput
     | SeriesChannelConfigWithoutScaleInput;
+
 export function isValueChannelConfig(
     config: ChannelConfigInput
 ): config is

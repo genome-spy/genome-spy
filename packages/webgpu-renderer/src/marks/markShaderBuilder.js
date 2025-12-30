@@ -26,16 +26,21 @@ import {
 export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     // Dynamic shader generation: build per-channel read + scale functions
     // based on series/value presence and scale types.
+
     /** @type {GPUBindGroupLayoutEntry[]} */
     const bufferBindings = [];
+
     /** @type {string[]} */
     const bufferDecls = [];
+
     /** @type {string[]} */
     const bufferReaders = [];
+
     /** @type {string[]} */
     const channelFns = [];
 
     let bindingIndex = 1;
+
     /**
      * @param {"f32"|"u32"|"i32"} type
      * @param {1|2|4} components
@@ -45,6 +50,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     const formatLiteral = (type, components, value) => {
         const scalarType =
             type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+
         /**
          * @param {number} v
          * @returns {string}
@@ -153,6 +159,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         const literal = formatLiteral(
             type,
             components,
+
             /** @type {number|number[]} */ (channel.value)
         );
         const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
