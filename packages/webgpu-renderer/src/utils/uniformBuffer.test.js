@@ -19,4 +19,17 @@ describe("UniformBuffer", () => {
         expect(view.getFloat32(12, true)).toBe(4);
         expect(view.getUint32(16, true)).toBe(7);
     });
+
+    it("writes uniform arrays with 16-byte stride", () => {
+        const buffer = new UniformBuffer([
+            { name: "domain", type: "f32", components: 1, arrayLength: 3 },
+        ]);
+
+        buffer.setValue("domain", [1, 2, 3]);
+
+        const view = new DataView(buffer.data);
+        expect(view.getFloat32(0, true)).toBe(1);
+        expect(view.getFloat32(16, true)).toBe(2);
+        expect(view.getFloat32(32, true)).toBe(3);
+    });
 });

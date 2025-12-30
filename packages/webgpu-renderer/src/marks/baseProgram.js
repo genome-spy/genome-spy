@@ -1,15 +1,8 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
+import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
 import {
-    DOMAIN_PREFIX,
-    RANGE_PREFIX,
-    SCALE_PIECEWISE_COUNT_PREFIX,
-    SCALE_THRESHOLD_COUNT_PREFIX,
-} from "../wgsl/prefixes.js";
-import {
-    PIECEWISE_MAX_POINTS,
-    THRESHOLD_RANGE_SLOTS,
     getScaleUniformDef,
     isPiecewiseScale,
     validateScaleConfig,
@@ -47,7 +40,7 @@ export default class BaseProgram {
         this._thresholdScaleSizes = new Map();
         this._piecewiseScaleSizes = new Map();
 
-        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
+        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         this._uniformLayout = [];
 
         /** @type {UniformBuffer | null} */
@@ -448,7 +441,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildUniformLayout() {
-        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }[]} */
+        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         const layout = [];
 
         // Create uniform slots for per-channel values and scale parameters.
@@ -498,7 +491,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} layout
      * @param {string} name
      * @param {import("../index.d.ts").ChannelConfigResolved} channel
      * @returns {void}
@@ -517,12 +510,14 @@ export default class BaseProgram {
             layout.push({
                 name: `${DOMAIN_PREFIX}${name}`,
                 type: "f32",
-                components: 2,
+                components: 1,
+                arrayLength: 2,
             });
             layout.push({
                 name: `${RANGE_PREFIX}${name}`,
                 type: "f32",
-                components: 2,
+                components: 1,
+                arrayLength: 2,
             });
         }
         const def = getScaleUniformDef(scaleType);
@@ -579,7 +574,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} layout
      * @param {string} name
      * @param {import("../index.d.ts").ChannelConfigResolved} channel
      * @returns {void}
@@ -588,25 +583,25 @@ export default class BaseProgram {
         const outputComponents = channel.components ?? 1;
         const outputType =
             outputComponents === 1 ? (channel.type ?? "f32") : "f32";
+        const domain = Array.isArray(channel.scale?.domain)
+            ? channel.scale.domain
+            : [];
+        const range = Array.isArray(channel.scale?.range)
+            ? channel.scale.range
+            : [];
 
         layout.push({
             name: `${DOMAIN_PREFIX}${name}`,
             type: "f32",
-            components: 4,
+            components: 1,
+            arrayLength: domain.length,
         });
         layout.push({
-            name: `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
-            type: "f32",
-            components: 1,
+            name: `${RANGE_PREFIX}${name}`,
+            type: outputType,
+            components: outputComponents,
+            arrayLength: range.length,
         });
-
-        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
-            layout.push({
-                name: `${RANGE_PREFIX}${name}_${i}`,
-                type: outputType,
-                components: outputComponents,
-            });
-        }
     }
 
     /**
@@ -617,37 +612,23 @@ export default class BaseProgram {
      */
     _initializeThresholdScaleUniforms(name, channel, scale) {
         const outputComponents = channel.components ?? 1;
-        const thresholdCount = Array.isArray(scale.domain)
-            ? scale.domain.length
-            : 0;
-        const thresholds = this._normalizeThresholdDomain(name, scale.domain);
+        const domain = this._normalizeThresholdDomain(name, scale.domain);
         const range = this._normalizeThresholdRange(
             name,
             scale.range,
             outputComponents
         );
-        if (range.length !== thresholdCount + 1) {
+        if (range.length !== domain.length + 1) {
             throw new Error(
                 `Threshold scale on "${name}" requires range length of ${
-                    thresholdCount + 1
+                    domain.length + 1
                 }, got ${range.length}.`
             );
         }
 
-        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, thresholds);
-        this._setUniformValue(
-            `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
-            thresholdCount
-        );
-        this._thresholdScaleSizes.set(name, thresholdCount);
-
-        const fallback = range[range.length - 1];
-        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
-            this._setUniformValue(
-                `${RANGE_PREFIX}${name}_${i}`,
-                range[i] ?? fallback
-            );
-        }
+        this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
+        this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+        this._thresholdScaleSizes.set(name, domain.length);
     }
 
     /**
@@ -661,18 +642,7 @@ export default class BaseProgram {
                 `Threshold scale on "${name}" must define a non-empty domain.`
             );
         }
-        if (domain.length >= THRESHOLD_RANGE_SLOTS) {
-            throw new Error(
-                `Threshold scale on "${name}" supports up to ${
-                    THRESHOLD_RANGE_SLOTS - 1
-                } breakpoints.`
-            );
-        }
-        const padded = domain.slice(0, THRESHOLD_RANGE_SLOTS);
-        while (padded.length < THRESHOLD_RANGE_SLOTS) {
-            padded.push(0);
-        }
-        return padded;
+        return domain;
     }
 
     /**
@@ -685,11 +655,6 @@ export default class BaseProgram {
         if (!Array.isArray(range) || range.length < 2) {
             throw new Error(
                 `Threshold scale on "${name}" must define at least two range entries.`
-            );
-        }
-        if (range.length > THRESHOLD_RANGE_SLOTS) {
-            throw new Error(
-                `Threshold scale on "${name}" supports up to ${THRESHOLD_RANGE_SLOTS} range entries.`
             );
         }
         return range.map((value) =>
@@ -730,7 +695,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }>} layout
+     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} layout
      * @param {string} name
      * @param {import("../index.d.ts").ChannelConfigResolved} channel
      * @returns {void}
@@ -739,25 +704,25 @@ export default class BaseProgram {
         const outputComponents = channel.components ?? 1;
         const outputType =
             outputComponents === 1 ? (channel.type ?? "f32") : "f32";
+        const domain = Array.isArray(channel.scale?.domain)
+            ? channel.scale.domain
+            : [];
+        const range = Array.isArray(channel.scale?.range)
+            ? channel.scale.range
+            : [];
 
         layout.push({
             name: `${DOMAIN_PREFIX}${name}`,
             type: "f32",
-            components: 4,
+            components: 1,
+            arrayLength: domain.length,
         });
         layout.push({
-            name: `${SCALE_PIECEWISE_COUNT_PREFIX}${name}`,
-            type: "f32",
-            components: 1,
+            name: `${RANGE_PREFIX}${name}`,
+            type: outputType,
+            components: outputComponents,
+            arrayLength: range.length,
         });
-
-        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
-            layout.push({
-                name: `${RANGE_PREFIX}${name}_${i}`,
-                type: outputType,
-                components: outputComponents,
-            });
-        }
     }
 
     /**
@@ -768,30 +733,21 @@ export default class BaseProgram {
      */
     _initializePiecewiseScaleUniforms(name, channel, scale) {
         const outputComponents = channel.components ?? 1;
-        const count = Array.isArray(scale.domain) ? scale.domain.length : 0;
         const domain = this._normalizePiecewiseDomain(name, scale.domain);
         const range = this._normalizePiecewiseRange(
             name,
             scale.range,
             outputComponents
         );
-        if (range.length !== count) {
+        if (range.length !== domain.length) {
             throw new Error(
-                `Piecewise scale on "${name}" requires range length of ${count}, got ${range.length}.`
+                `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
             );
         }
 
         this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
-        this._setUniformValue(`${SCALE_PIECEWISE_COUNT_PREFIX}${name}`, count);
-        this._piecewiseScaleSizes.set(name, count);
-
-        const fallback = range[range.length - 1];
-        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
-            this._setUniformValue(
-                `${RANGE_PREFIX}${name}_${i}`,
-                range[i] ?? fallback
-            );
-        }
+        this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+        this._piecewiseScaleSizes.set(name, domain.length);
     }
 
     /**
@@ -805,16 +761,7 @@ export default class BaseProgram {
                 `Piecewise scale on "${name}" must define at least two domain entries.`
             );
         }
-        if (domain.length > PIECEWISE_MAX_POINTS) {
-            throw new Error(
-                `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} domain entries.`
-            );
-        }
-        const padded = domain.slice(0, PIECEWISE_MAX_POINTS);
-        while (padded.length < PIECEWISE_MAX_POINTS) {
-            padded.push(0);
-        }
-        return padded;
+        return domain;
     }
 
     /**
@@ -827,11 +774,6 @@ export default class BaseProgram {
         if (!Array.isArray(range) || range.length < 2) {
             throw new Error(
                 `Piecewise scale on "${name}" must define at least two range entries.`
-            );
-        }
-        if (range.length > PIECEWISE_MAX_POINTS) {
-            throw new Error(
-                `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} range entries.`
             );
         }
         return range.map((value) =>
@@ -896,10 +838,6 @@ export default class BaseProgram {
         }
         const normalized = this._normalizePiecewiseDomain(name, domain);
         this._setUniformValue(`${DOMAIN_PREFIX}${name}`, normalized);
-        this._setUniformValue(
-            `${SCALE_PIECEWISE_COUNT_PREFIX}${name}`,
-            domain.length
-        );
     }
 
     /**
@@ -936,13 +874,7 @@ export default class BaseProgram {
             range,
             outputComponents
         );
-        const fallback = normalized[normalized.length - 1];
-        for (let i = 0; i < PIECEWISE_MAX_POINTS; i++) {
-            this._setUniformValue(
-                `${RANGE_PREFIX}${name}_${i}`,
-                normalized[i] ?? fallback
-            );
-        }
+        this._setUniformValue(`${RANGE_PREFIX}${name}`, normalized);
     }
 
     /**
@@ -970,10 +902,6 @@ export default class BaseProgram {
         }
         const thresholds = this._normalizeThresholdDomain(name, domain);
         this._setUniformValue(`${DOMAIN_PREFIX}${name}`, thresholds);
-        this._setUniformValue(
-            `${SCALE_THRESHOLD_COUNT_PREFIX}${name}`,
-            domain.length
-        );
     }
 
     /**
@@ -1012,13 +940,7 @@ export default class BaseProgram {
             range,
             outputComponents
         );
-        const fallback = normalized[normalized.length - 1];
-        for (let i = 0; i < THRESHOLD_RANGE_SLOTS; i++) {
-            this._setUniformValue(
-                `${RANGE_PREFIX}${name}_${i}`,
-                normalized[i] ?? fallback
-            );
-        }
+        this._setUniformValue(`${RANGE_PREFIX}${name}`, normalized);
     }
 
     /**
@@ -1039,7 +961,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {number|number[]} value
+     * @param {number|number[]|Array<number|number[]>} value
      * @returns {void}
      */
     _setUniformValue(name, value) {
@@ -1247,11 +1169,6 @@ export default class BaseProgram {
                     }, got ${range.length}.`
                 );
             }
-            if (range.length > THRESHOLD_RANGE_SLOTS) {
-                throw new Error(
-                    `Threshold scale on "${name}" supports up to ${THRESHOLD_RANGE_SLOTS} range entries.`
-                );
-            }
             if (
                 isValueChannelConfig(channel) &&
                 (channel.components ?? 1) > 1
@@ -1277,11 +1194,6 @@ export default class BaseProgram {
             if (domain.length !== range.length) {
                 throw new Error(
                     `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
-                );
-            }
-            if (domain.length > PIECEWISE_MAX_POINTS) {
-                throw new Error(
-                    `Piecewise scale on "${name}" supports up to ${PIECEWISE_MAX_POINTS} entries.`
                 );
             }
             if (
