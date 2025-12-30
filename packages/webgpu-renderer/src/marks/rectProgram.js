@@ -1,137 +1,40 @@
 import BaseProgram from "./baseProgram.js";
+import { buildChannelMaps } from "./channelSpecUtils.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
  */
 
-/** @type {string[]} */
-const CHANNELS = [
-    "uniqueId",
-    "x",
-    "x2",
-    "y",
-    "y2",
-    "fill",
-    "stroke",
-    "fillOpacity",
-    "strokeOpacity",
-    "strokeWidth",
-    "cornerRadius",
-    "minWidth",
-    "minHeight",
-    "minOpacity",
-    "shadowOffsetX",
-    "shadowOffsetY",
-    "shadowBlur",
-    "shadowOpacity",
-    "shadowColor",
-    "hatchPattern",
-];
-
-/** @type {Record<string, number|number[]>} */
-const DEFAULTS = {
-    x: 0,
-    x2: 10,
-    y: 0,
-    y2: 10,
-    fill: [0.27, 0.49, 0.8, 1.0],
-    stroke: [0.0, 0.0, 0.0, 1.0],
-    fillOpacity: 1.0,
-    strokeOpacity: 1.0,
-    strokeWidth: 1.0,
-    cornerRadius: 0.0,
-    minWidth: 0.0,
-    minHeight: 0.0,
-    minOpacity: 0.0,
-    shadowOffsetX: 0.0,
-    shadowOffsetY: 0.0,
-    shadowBlur: 0.0,
-    shadowOpacity: 0.0,
-    shadowColor: [0.0, 0.0, 0.0, 1.0],
-    hatchPattern: 0,
+/** @type {Record<string, import("./channelSpecUtils.js").ChannelSpec>} */
+export const RECT_CHANNEL_SPECS = {
+    uniqueId: { type: "u32", components: 1, optional: true },
+    x: { type: "f32", components: 1, scale: "linear", default: 0 },
+    x2: { type: "f32", components: 1, scale: "linear", default: 10 },
+    y: { type: "f32", components: 1, scale: "linear", default: 0 },
+    y2: { type: "f32", components: 1, scale: "linear", default: 10 },
+    fill: { type: "f32", components: 4, default: [0.27, 0.49, 0.8, 1.0] },
+    stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    fillOpacity: { type: "f32", components: 1, default: 1.0 },
+    strokeOpacity: { type: "f32", components: 1, default: 1.0 },
+    strokeWidth: { type: "f32", components: 1, default: 1.0 },
+    cornerRadius: { type: "f32", components: 1, default: 0.0 },
+    minWidth: { type: "f32", components: 1, default: 0.0 },
+    minHeight: { type: "f32", components: 1, default: 0.0 },
+    minOpacity: { type: "f32", components: 1, default: 0.0 },
+    shadowOffsetX: { type: "f32", components: 1, default: 0.0 },
+    shadowOffsetY: { type: "f32", components: 1, default: 0.0 },
+    shadowBlur: { type: "f32", components: 1, default: 0.0 },
+    shadowOpacity: { type: "f32", components: 1, default: 0.0 },
+    shadowColor: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    hatchPattern: { type: "u32", components: 1, default: 0 },
 };
 
-// Default channel behavior for the rect mark. Channels can be overridden
-// per instance, but these defaults keep the shader predictable.
-
-/** @type {Record<string, ChannelConfigInput>} */
-const DEFAULT_CHANNEL_CONFIGS = {
-    x: {
-        type: "f32",
-        components: 1,
-        scale: { type: "linear" },
-    },
-    x2: {
-        type: "f32",
-        components: 1,
-        scale: { type: "linear" },
-    },
-    y: {
-        type: "f32",
-        components: 1,
-        scale: { type: "linear" },
-    },
-    y2: {
-        type: "f32",
-        components: 1,
-        scale: { type: "linear" },
-    },
-    fill: { components: 4, value: DEFAULTS.fill },
-    stroke: { components: 4, value: DEFAULTS.stroke },
-    fillOpacity: {
-        components: 1,
-        value: DEFAULTS.fillOpacity,
-    },
-    strokeOpacity: {
-        components: 1,
-        value: DEFAULTS.strokeOpacity,
-    },
-    strokeWidth: {
-        components: 1,
-        value: DEFAULTS.strokeWidth,
-    },
-    cornerRadius: {
-        components: 1,
-        value: DEFAULTS.cornerRadius,
-    },
-    minWidth: {
-        components: 1,
-        value: DEFAULTS.minWidth,
-    },
-    minHeight: {
-        components: 1,
-        value: DEFAULTS.minHeight,
-    },
-    minOpacity: {
-        components: 1,
-        value: DEFAULTS.minOpacity,
-    },
-    shadowOffsetX: {
-        components: 1,
-        value: DEFAULTS.shadowOffsetX,
-    },
-    shadowOffsetY: {
-        components: 1,
-        value: DEFAULTS.shadowOffsetY,
-    },
-    shadowBlur: {
-        components: 1,
-        value: DEFAULTS.shadowBlur,
-    },
-    shadowOpacity: {
-        components: 1,
-        value: DEFAULTS.shadowOpacity,
-    },
-    shadowColor: {
-        components: 4,
-        value: DEFAULTS.shadowColor,
-    },
-    hatchPattern: {
-        components: 1,
-        type: "u32",
-        value: DEFAULTS.hatchPattern,
-    },
-};
+const {
+    channels: CHANNELS,
+    defaults: DEFAULTS,
+    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
+    optionalChannels: OPTIONAL_CHANNELS,
+} = buildChannelMaps(RECT_CHANNEL_SPECS);
 
 const RECT_SHADER_BODY = /* wgsl */ `
 fn clampMinSize(pos: ptr<function, f32>, frac: f32, size: f32, minSize: f32) -> f32 {
@@ -358,7 +261,14 @@ export default class RectProgram extends BaseProgram {
      * @returns {string[]}
      */
     get optionalChannels() {
-        return ["uniqueId"];
+        return OPTIONAL_CHANNELS;
+    }
+
+    /**
+     * @returns {Record<string, import("./channelSpecUtils.js").ChannelSpec>}
+     */
+    get channelSpecs() {
+        return RECT_CHANNEL_SPECS;
     }
 
     /**

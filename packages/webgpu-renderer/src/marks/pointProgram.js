@@ -1,66 +1,36 @@
 import BaseProgram from "./baseProgram.js";
+import { buildChannelMaps } from "./channelSpecUtils.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
  */
 
-/** @type {string[]} */
-const CHANNELS = [
-    "uniqueId",
-    "x",
-    "y",
-    "size",
-    "shape",
-    "strokeWidth",
-    "dx",
-    "dy",
-    "fill",
-    "stroke",
-    "fillOpacity",
-    "strokeOpacity",
-    "angle",
-    "gradientStrength",
-    "inwardStroke",
-    "minPickingSize",
-];
-
-/** @type {Record<string, number|number[]>} */
-const DEFAULTS = {
-    x: 0.5,
-    y: 0.5,
-    size: 100.0,
-    shape: 0,
-    strokeWidth: 2.0,
-    dx: 0.0,
-    dy: 0.0,
-    fill: [0.3, 0.5, 0.7, 1.0],
-    stroke: [0.0, 0.0, 0.0, 1.0],
-    fillOpacity: 1.0,
-    strokeOpacity: 1.0,
-    angle: 0.0,
-    gradientStrength: 0.0,
-    inwardStroke: 0,
-    minPickingSize: 2.0,
+/** @type {Record<string, import("./channelSpecUtils.js").ChannelSpec>} */
+export const POINT_CHANNEL_SPECS = {
+    uniqueId: { type: "u32", components: 1, optional: true },
+    x: { type: "f32", components: 1, scale: "linear", default: 0.5 },
+    y: { type: "f32", components: 1, scale: "linear", default: 0.5 },
+    size: { type: "f32", components: 1, default: 100.0 },
+    shape: { type: "u32", components: 1, default: 0 },
+    strokeWidth: { type: "f32", components: 1, default: 2.0 },
+    dx: { type: "f32", components: 1, default: 0.0 },
+    dy: { type: "f32", components: 1, default: 0.0 },
+    fill: { type: "f32", components: 4, default: [0.3, 0.5, 0.7, 1.0] },
+    stroke: { type: "f32", components: 4, default: [0.0, 0.0, 0.0, 1.0] },
+    fillOpacity: { type: "f32", components: 1, default: 1.0 },
+    strokeOpacity: { type: "f32", components: 1, default: 1.0 },
+    angle: { type: "f32", components: 1, default: 0.0 },
+    gradientStrength: { type: "f32", components: 1, default: 0.0 },
+    inwardStroke: { type: "u32", components: 1, default: 0 },
+    minPickingSize: { type: "f32", components: 1, default: 2.0 },
 };
 
-/** @type {Record<string, ChannelConfigInput>} */
-const DEFAULT_CHANNEL_CONFIGS = {
-    x: { type: "f32", components: 1, scale: { type: "linear" } },
-    y: { type: "f32", components: 1, scale: { type: "linear" } },
-    size: { components: 1, value: DEFAULTS.size },
-    shape: { type: "u32", components: 1, value: DEFAULTS.shape },
-    strokeWidth: { components: 1, value: DEFAULTS.strokeWidth },
-    dx: { components: 1, value: DEFAULTS.dx },
-    dy: { components: 1, value: DEFAULTS.dy },
-    fill: { components: 4, value: DEFAULTS.fill },
-    stroke: { components: 4, value: DEFAULTS.stroke },
-    fillOpacity: { components: 1, value: DEFAULTS.fillOpacity },
-    strokeOpacity: { components: 1, value: DEFAULTS.strokeOpacity },
-    angle: { components: 1, value: DEFAULTS.angle },
-    gradientStrength: { components: 1, value: DEFAULTS.gradientStrength },
-    inwardStroke: { type: "u32", components: 1, value: DEFAULTS.inwardStroke },
-    minPickingSize: { components: 1, value: DEFAULTS.minPickingSize },
-};
+const {
+    channels: CHANNELS,
+    defaults: DEFAULTS,
+    defaultConfigs: DEFAULT_CHANNEL_CONFIGS,
+    optionalChannels: OPTIONAL_CHANNELS,
+} = buildChannelMaps(POINT_CHANNEL_SPECS);
 
 const POINT_SHADER_BODY = /* wgsl */ `
 const PI: f32 = 3.141592653589793;
@@ -295,7 +265,14 @@ export default class PointProgram extends BaseProgram {
      * @returns {string[]}
      */
     get optionalChannels() {
-        return ["uniqueId"];
+        return OPTIONAL_CHANNELS;
+    }
+
+    /**
+     * @returns {Record<string, import("./channelSpecUtils.js").ChannelSpec>}
+     */
+    get channelSpecs() {
+        return POINT_CHANNEL_SPECS;
     }
 
     /**
