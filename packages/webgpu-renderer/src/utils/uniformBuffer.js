@@ -1,6 +1,6 @@
 /**
- * @typedef {{ name: string, type: "f32"|"u32"|"i32", components: 1|2|4 }} UniformSpec
- * @typedef {{ type: "f32"|"u32"|"i32", components: 1|2|4, offset: number }} UniformEntry
+ * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4 }} UniformSpec
+ * @typedef {{ type: import("../types.js").ScalarType, components: 1|2|4, offset: number }} UniformEntry
  */
 
 import { buildUniformLayout } from "./uniformLayout.js";
