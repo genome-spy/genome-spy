@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMarkShader } from "./markShaderBuilder.js";
+import RectProgram from "./rectProgram.js";
+import { createMockRenderer } from "../testUtils/mockRenderer.js";
 
 const shaderBody = `
 @vertex
@@ -43,6 +45,7 @@ describe("buildMarkShader", () => {
                 fill: {
                     value: [1, 0, 0, 1],
                     components: 4,
+                    dynamic: true,
                 },
             },
             uniformLayout: [{ name: "u_fill", type: "f32", components: 4 }],
@@ -52,5 +55,41 @@ describe("buildMarkShader", () => {
         expect(bufferBindings.length).toBe(0);
         expect(shaderCode).toContain("fn getScaled_fill");
         expect(shaderCode).toContain("u_fill: vec4<f32>");
+    });
+
+    it("inlines constants for non-dynamic values", () => {
+        const { shaderCode, bufferBindings } = buildMarkShader({
+            channels: {
+                opacity: {
+                    value: 0.75,
+                    components: 1,
+                },
+            },
+            uniformLayout: [],
+            shaderBody,
+        });
+
+        expect(bufferBindings.length).toBe(0);
+        expect(shaderCode).toContain("fn getScaled_opacity");
+        expect(shaderCode).toContain("return 0.75");
+        expect(shaderCode).not.toContain("u_opacity");
+    });
+
+    it("throws when updating non-dynamic uniforms", () => {
+        const renderer = createMockRenderer();
+        const program = new RectProgram(renderer, {
+            count: 1,
+            channels: {
+                x: { value: 0, dynamic: true, scale: { type: "identity" } },
+                x2: { value: 1, dynamic: true, scale: { type: "identity" } },
+                y: { value: 0, dynamic: true, scale: { type: "identity" } },
+                y2: { value: 1, dynamic: true, scale: { type: "identity" } },
+                fillOpacity: { value: 1.0 },
+            },
+        });
+
+        expect(() => program.updateUniforms({ fillOpacity: 0.5 })).toThrow(
+            /u_fillOpacity/
+        );
     });
 });

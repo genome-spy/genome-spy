@@ -25,10 +25,10 @@ const markId = renderer.createMark("rect", {
         y: { data: y, type: "f32", scale: { type: "identity" } },
         y2: { data: y2, type: "f32", scale: { type: "identity" } },
         fill: { value: [0.2, 0.5, 0.8, 1.0] },
-        stroke: { value: [0.1, 0.1, 0.1, 1.0] },
+        stroke: { value: [0.1, 0.1, 0.1, 1.0], dynamic: true },
         fillOpacity: { value: 1.0 },
         strokeOpacity: { value: 1.0 },
-        strokeWidth: { value: 1.0 },
+        strokeWidth: { value: 1.0, dynamic: true },
     },
 });
 
