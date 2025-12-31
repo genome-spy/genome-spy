@@ -8,12 +8,55 @@ import {
     scaleThreshold,
 } from "d3-scale";
 import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
-import { buildScaledFunction } from "../src/marks/scaleCodegen.js";
+import {
+    buildScaledFunction,
+    getScaleOutputType,
+} from "../src/marks/scaleCodegen.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { normalizeRangePositions } from "../src/marks/domainRangeUtils.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
+
+/**
+ * @param {object} params
+ * @param {string} params.scale
+ * @param {import("../index.d.ts").ChannelScale} [params.scaleConfig]
+ * @param {string} [params.name]
+ * @param {string} [params.rawValueExpr]
+ * @param {"f32"|"u32"|"i32"} [params.inputScalarType]
+ * @param {1|2|4} [params.outputComponents]
+ * @param {"f32"|"u32"|"i32"} [params.outputScalarType]
+ * @param {boolean} [params.useRangeTexture]
+ * @returns {string}
+ */
+function buildScaleFn({
+    scale,
+    scaleConfig,
+    name = "x",
+    rawValueExpr = "input[i]",
+    inputScalarType = "f32",
+    outputComponents = 1,
+    outputScalarType,
+    useRangeTexture = false,
+}) {
+    const resolvedScale = scaleConfig?.type ?? scale;
+    const resolvedOutputScalar =
+        outputComponents === 1
+            ? (outputScalarType ??
+              getScaleOutputType(resolvedScale, inputScalarType))
+            : "f32";
+    return buildScaledFunction({
+        name,
+        scale,
+        rawValueExpr,
+        inputScalarType,
+        outputComponents,
+        outputScalarType: resolvedOutputScalar,
+        scaleConfig,
+        useRangeTexture,
+    });
+}
 
 /**
  * @param {object} params
@@ -544,13 +587,8 @@ test("scaleCodegen emits WGSL that executes", async ({ page }) => {
     const domain = [0, 1];
     const range = [0, 10];
     const reference = scaleLinear().domain(domain).range(range);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear" },
     });
     const shaderCode = buildScaleCodegenShader({
@@ -578,13 +616,8 @@ test("scaleCodegen clamps linear inputs to the domain extent", async ({
     const domain = [0, 1];
     const range = [0, 10];
     const reference = scaleLinear().domain(domain).range(range).clamp(true);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear", clamp: true },
     });
     const shaderCode = buildScaleCodegenShader({
@@ -617,13 +650,8 @@ test("scaleCodegen clamps log inputs to the domain extent", async ({
         .range(range)
         .base(base)
         .clamp(true);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "log",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "log", clamp: true },
     });
     const shaderCode = buildScaleCodegenShader({
@@ -652,13 +680,8 @@ test("scaleCodegen clamps piecewise linear inputs to the domain extent", async (
     const domain = [0, 1, 2];
     const range = [0, 10, 20];
     const reference = scaleLinear().domain(domain).range(range).clamp(true);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear", domain, range, clamp: true },
     });
     const shaderCode = buildScaleCodegenShader({
@@ -692,13 +715,8 @@ test("scaleCodegen rounds continuous scale outputs like d3 rangeRound", async ({
         .domain(domain)
         .rangeRound(range)
         .clamp(true);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: {
             type: "linear",
             domain,
@@ -736,13 +754,9 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
         [0.1, 0.7, 0.2, 1.0],
     ];
     const reference = scaleThreshold().domain(domain).range(range);
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "threshold",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
         outputComponents: 4,
-        outputScalarType: "f32",
         scaleConfig: { type: "threshold", domain, range },
     });
     const shaderCode = buildScaleCodegenShader({
@@ -794,13 +808,8 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
         throw new Error("Failed to create a color ramp texture.");
     }
 
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear", domain, range: unitRange },
     });
     const shaderCode = buildScaleCodegenRampShader({
@@ -841,13 +850,9 @@ test("scaleCodegen accepts interpolator functions in scaleConfig ranges", async 
         throw new Error("Failed to create a sequential color ramp texture.");
     }
 
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
         outputComponents: 4,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear", domain, range: interpolator },
         useRangeTexture: true,
     });
@@ -897,13 +902,8 @@ test("scaleCodegen reproduces d3 piecewise color interpolation via ramp texture"
         throw new Error("Failed to create a piecewise color ramp texture.");
     }
 
-    const codegenFn = buildScaledFunction({
-        name: "x",
+    const codegenFn = buildScaleFn({
         scale: "linear",
-        rawValueExpr: "input[i]",
-        inputScalarType: "f32",
-        outputComponents: 1,
-        outputScalarType: "f32",
         scaleConfig: { type: "linear", domain, range: unitRange },
     });
     const shaderCode = buildScaleCodegenRampShader({
