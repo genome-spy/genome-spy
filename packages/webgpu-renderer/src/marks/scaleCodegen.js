@@ -1,3 +1,17 @@
+/**
+ * Scale code generation bridges Vega-Lite style configs to WGSL helpers. We
+ * intentionally mirror d3 scale semantics (domains, ranges, clamp, etc.) but
+ * expose them through the renderer's low-level channel config API.
+ *
+ * The generator works in a few stages:
+ * 1) Validate channel + scale compatibility and derive expected input/output types.
+ * 2) Emit WGSL helpers for each scale (including piecewise and threshold cases).
+ * 3) Stitch per-channel `getScaled_*` accessors that hide whether values come
+ *    from buffers, uniforms, or ramp textures.
+ * 4) Keep uniforms, buffers, and textures aligned with the shader's bind layout
+ *    so the renderer can update data without regenerating WGSL unnecessarily.
+ */
+
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
