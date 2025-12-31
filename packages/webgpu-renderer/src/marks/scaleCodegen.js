@@ -42,7 +42,7 @@ import {
  * @prop {"f32"|"u32"|"i32"} outputScalarType
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {boolean} clamp
- *   Whether to clamp the interpolant into the 0..1 range.
+ *   Whether to clamp input values to the domain extent before scaling.
  * @prop {number} [domainLength]
  *   Domain length for scales that require fixed-size arrays in WGSL.
  */
@@ -131,12 +131,12 @@ function rangeVec2(name) {
 /** @type {ScaleEmitter} */
 function emitLinear({ name, floatExpr, clamp }) {
     const clampExpr = clamp
-        ? `    return clampToRange(result, ${rangeVec2(name)});\n`
-        : "    return result;\n";
+        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
+        : "";
     return `${makeFnHeader(name, "f32")} {
-    let v = ${floatExpr};
-    let result = scaleLinear(v, ${domainVec2(name)}, ${rangeVec2(name)});
-${clampExpr}}`;
+    var v = ${floatExpr};
+${clampExpr}    return scaleLinear(v, ${domainVec2(name)}, ${rangeVec2(name)});
+}`;
 }
 
 /** @type {ScaleEmitter} */
@@ -158,34 +158,34 @@ function emitBand({ name, u32Expr }) {
 /** @type {ScaleEmitter} */
 function emitLog({ name, floatExpr, clamp }) {
     const clampExpr = clamp
-        ? `    return clampToRange(result, ${rangeVec2(name)});\n`
-        : "    return result;\n";
+        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
+        : "";
     return `${makeFnHeader(name, "f32")} {
-    let v = ${floatExpr};
-    let result = scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name});
-${clampExpr}}`;
+    var v = ${floatExpr};
+${clampExpr}    return scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name});
+}`;
 }
 
 /** @type {ScaleEmitter} */
 function emitPow({ name, floatExpr, clamp }) {
     const clampExpr = clamp
-        ? `    return clampToRange(result, ${rangeVec2(name)});\n`
-        : "    return result;\n";
+        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
+        : "";
     return `${makeFnHeader(name, "f32")} {
-    let v = ${floatExpr};
-    let result = scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name});
-${clampExpr}}`;
+    var v = ${floatExpr};
+${clampExpr}    return scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name});
+}`;
 }
 
 /** @type {ScaleEmitter} */
 function emitSymlog({ name, floatExpr, clamp }) {
     const clampExpr = clamp
-        ? `    return clampToRange(result, ${rangeVec2(name)});\n`
-        : "    return result;\n";
+        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
+        : "";
     return `${makeFnHeader(name, "f32")} {
-    let v = ${floatExpr};
-    let result = scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name});
-${clampExpr}}`;
+    var v = ${floatExpr};
+${clampExpr}    return scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name});
+}`;
 }
 
 /** @type {ScaleEmitter} */
@@ -270,11 +270,14 @@ function emitPiecewiseLinear({
      * @returns {string}
      */
     const rangeAccess = (expr) => (outputComponents === 1 ? `${expr}.x` : expr);
-    const clampExpr = clamp ? "    t = clamp(t, 0.0, 1.0);\n" : "";
+    const clampInputExpr = clamp
+        ? `    v = clampToDomain(v, vec2<f32>(params.${DOMAIN_PREFIX}${name}[0].x, params.${DOMAIN_PREFIX}${name}[DOMAIN_LEN - 1u].x));\n`
+        : "";
 
     return `${makeFnHeader(name, returnType)} {
-    let v = ${floatExpr};
     const DOMAIN_LEN: u32 = ${domainLength}u;
+    var v = ${floatExpr};
+${clampInputExpr}
     var slot: u32 = 0u;
     for (var i: u32 = 1u; i + 1u < DOMAIN_LEN; i = i + 1u) {
         if (v >= params.${DOMAIN_PREFIX}${name}[i].x) {
@@ -285,7 +288,7 @@ function emitPiecewiseLinear({
     let d1 = params.${DOMAIN_PREFIX}${name}[slot + 1u].x;
     let denom = d1 - d0;
     var t = select(0.0, (v - d0) / denom, denom != 0.0);
-${clampExpr}    let r0: ${rangeType} = ${rangeAccess(
+    let r0: ${rangeType} = ${rangeAccess(
         `params.${RANGE_PREFIX}${name}[slot]`
     )};
     let r1: ${rangeType} = ${rangeAccess(

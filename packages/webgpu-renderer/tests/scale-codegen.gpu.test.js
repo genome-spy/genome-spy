@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { scaleLinear, scaleThreshold } from "d3-scale";
+import { scaleLinear, scaleLog, scaleThreshold } from "d3-scale";
 import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
 import { buildScaledFunction } from "../src/marks/scaleCodegen.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
@@ -13,6 +13,7 @@ const WORKGROUP_SIZE = 64;
  * @param {1|4} [params.outputComponents]
  * @param {number} [params.domainLength]
  * @param {number} [params.rangeLength]
+ * @param {string[]} [params.extraUniformFields]
  * @returns {string}
  */
 function buildScaleCodegenShader({
@@ -21,14 +22,19 @@ function buildScaleCodegenShader({
     outputComponents = 1,
     domainLength = 2,
     rangeLength = 2,
+    extraUniformFields = [],
 }) {
     const outputType = outputComponents === 1 ? "f32" : "vec4<f32>";
+    const extraFields = extraUniformFields.length
+        ? `\n    ${extraUniformFields.join("\n    ")}`
+        : "";
     return `
 ${SCALES_WGSL}
 
 struct Params {
     uDomain_x: array<vec4<f32>, ${domainLength}>,
     uRange_x: array<vec4<f32>, ${rangeLength}>,
+${extraFields}
 };
 
 @group(0) @binding(0) var<uniform> params: Params;
@@ -53,14 +59,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 /**
  * @param {[number, number]} domain
  * @param {[number, number]} range
+ * @param {number[]} [extraValues]
  * @returns {number[]}
  */
-function packContinuousDomainRange(domain, range) {
-    const data = new Float32Array(16);
+function packContinuousDomainRange(domain, range, extraValues = []) {
+    const totalValues = 16 + extraValues.length;
+    const paddedValues = Math.ceil(totalValues / 4) * 4;
+    const data = new Float32Array(paddedValues);
     data[0] = domain[0];
     data[4] = domain[1];
     data[8] = range[0];
     data[12] = range[1];
+    for (let i = 0; i < extraValues.length; i++) {
+        data[16 + i] = extraValues[i];
+    }
     return Array.from(data);
 }
 
@@ -74,6 +86,24 @@ function packThresholdDomainRangeVec4(domain, range) {
     data[0] = domain[0];
     data.set(range[0], 4);
     data.set(range[1], 8);
+    return Array.from(data);
+}
+
+/**
+ * @param {number[]} domain
+ * @param {number[]} range
+ * @returns {number[]}
+ */
+function packPiecewiseDomainRange(domain, range) {
+    const total = (domain.length + range.length) * 4;
+    const data = new Float32Array(total);
+    for (let i = 0; i < domain.length; i++) {
+        data[i * 4] = domain[i];
+    }
+    const rangeOffset = domain.length * 4;
+    for (let i = 0; i < range.length; i++) {
+        data[rangeOffset + i * 4] = range[i];
+    }
     return Array.from(data);
 }
 
@@ -192,7 +222,7 @@ test("scaleCodegen emits WGSL that executes", async ({ page }) => {
         name: "x",
         scale: "linear",
         rawValueExpr: "input[i]",
-        scalarType: "f32",
+        inputScalarType: "f32",
         outputComponents: 1,
         outputScalarType: "f32",
         scaleConfig: { type: "linear" },
@@ -205,6 +235,116 @@ test("scaleCodegen emits WGSL that executes", async ({ page }) => {
         shaderCode,
         input,
         uniformData: packContinuousDomainRange(domain, range),
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        expect(result[index]).toBeCloseTo(reference(value), 5);
+    });
+});
+
+test("scaleCodegen clamps linear inputs to the domain extent", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [-1, 0, 0.5, 2];
+    const domain = [0, 1];
+    const range = [0, 10];
+    const reference = scaleLinear().domain(domain).range(range).clamp(true);
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: { type: "linear", clamp: true },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, range),
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        expect(result[index]).toBeCloseTo(reference(value), 5);
+    });
+});
+
+test("scaleCodegen clamps log inputs to the domain extent", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [0.1, 1, 10, 1000];
+    const domain = [1, 100];
+    const range = [0, 1];
+    const base = 10;
+    const reference = scaleLog()
+        .domain(domain)
+        .range(range)
+        .base(base)
+        .clamp(true);
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "log",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: { type: "log", clamp: true },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        extraUniformFields: ["uScaleBase_x: f32,"],
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, range, [base]),
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        expect(result[index]).toBeCloseTo(reference(value), 5);
+    });
+});
+
+test("scaleCodegen clamps piecewise linear inputs to the domain extent", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [-1, 0, 1, 2, 3];
+    const domain = [0, 1, 2];
+    const range = [0, 10, 20];
+    const reference = scaleLinear().domain(domain).range(range).clamp(true);
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: { type: "linear", domain, range, clamp: true },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        domainLength: domain.length,
+        rangeLength: range.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packPiecewiseDomainRange(domain, range),
     });
 
     expect(result).toHaveLength(input.length);
@@ -231,7 +371,7 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
         name: "x",
         scale: "threshold",
         rawValueExpr: "input[i]",
-        scalarType: "f32",
+        inputScalarType: "f32",
         outputComponents: 4,
         outputScalarType: "f32",
         scaleConfig: { type: "threshold", domain, range },
