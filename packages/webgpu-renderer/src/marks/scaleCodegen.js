@@ -680,11 +680,14 @@ export function validateScaleConfig(name, channel) {
     }
 
     const type = channel.type ?? "f32";
+    if (scaleType === "ordinal" && type !== "u32") {
+        return `Channel "${name}" requires u32 input for "ordinal" scale.`;
+    }
     if (inputRule === "numeric" && !["f32", "u32", "i32"].includes(type)) {
         return `Channel "${name}" requires numeric input for "${scaleType}" scale.`;
     }
-    if (inputRule === "u32" && !["u32", "i32"].includes(type)) {
-        return `Channel "${name}" requires integer input for "${scaleType}" scale.`;
+    if (inputRule === "u32" && type !== "u32") {
+        return `Channel "${name}" requires u32 input for "${scaleType}" scale.`;
     }
 
     return null;
