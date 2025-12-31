@@ -188,7 +188,7 @@ function emitContinuousScale({
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
-    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
+    const scalarExpr = round ? `roundAwayFromZero(${valueExpr})` : valueExpr;
     const returnType = useRangeTexture ? "vec4<f32>" : "f32";
     const returnExpr = useRangeTexture
         ? emitRampSample(name, valueExpr)
