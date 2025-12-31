@@ -11,9 +11,9 @@ import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
 import {
     buildScaledFunction,
     getScaleOutputType,
-} from "../src/marks/scaleCodegen.js";
+} from "../src/marks/scales/scaleCodegen.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
-import { normalizeRangePositions } from "../src/marks/domainRangeUtils.js";
+import { normalizeRangePositions } from "../src/marks/scales/domainRangeUtils.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;

@@ -1,5 +1,5 @@
-import RectProgram from "./marks/rectProgram.js";
-import PointProgram from "./marks/pointProgram.js";
+import RectProgram from "./marks/programs/rectProgram.js";
+import PointProgram from "./marks/programs/pointProgram.js";
 
 export class RendererError extends Error {}
 
@@ -50,7 +50,7 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
 
-        /** @type {Map<MarkId, import("./marks/rectProgram.js").default | import("./marks/pointProgram.js").default>} */
+        /** @type {Map<MarkId, import("./marks/programs/rectProgram.js").default | import("./marks/programs/pointProgram.js").default>} */
         this._marks = new Map();
         this._nextMarkId = 1;
 

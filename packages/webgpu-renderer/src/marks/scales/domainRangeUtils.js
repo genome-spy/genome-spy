@@ -1,4 +1,4 @@
-import { cssColorToArray } from "../utils/colorUtils.js";
+import { cssColorToArray } from "../../utils/colorUtils.js";
 import { getScaleUniformDef, isPiecewiseScale } from "./scaleCodegen.js";
 
 /**
@@ -14,7 +14,7 @@ export function scaleUsesDomainRange(scaleType) {
 }
 
 /**
- * @param {import("../index.d.ts").ChannelScale | undefined} scale
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @returns {DomainRangeKind | null}
  */
 export function getDomainRangeKind(scale) {
@@ -36,7 +36,7 @@ export function getDomainRangeKind(scale) {
 /**
  * @param {string} name
  * @param {DomainRangeKind} kind
- * @param {import("../index.d.ts").ChannelScale} scale
+ * @param {import("../../index.d.ts").ChannelScale} scale
  * @returns {{ domainLength: number, rangeLength: number }}
  */
 export function getDomainRangeLengths(name, kind, scale) {
@@ -88,8 +88,8 @@ export function getDomainRangeLengths(name, kind, scale) {
 
 /**
  * @param {string} name
- * @param {import("../index.d.ts").ChannelConfigResolved} channel
- * @param {import("../index.d.ts").ChannelScale} scale
+ * @param {import("../../index.d.ts").ChannelConfigResolved} channel
+ * @param {import("../../index.d.ts").ChannelScale} scale
  * @param {DomainRangeKind} kind
  * @param {(name: string) => number[] | null | undefined} getDefaultScaleRange
  * @returns {{ domain: number[], range: Array<number|number[]>, domainLength: number, rangeLength: number }}
@@ -243,7 +243,7 @@ export function normalizeOrdinalRange(name, range, outputComponents) {
 }
 
 /**
- * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|undefined} range
+ * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|undefined} range
  * @returns {boolean}
  */
 export function isColorRange(range) {
@@ -289,14 +289,14 @@ export function normalizeRangePositions(length) {
 
 /**
  * @param {unknown} range
- * @returns {range is import("../index.d.ts").ColorInterpolatorFn}
+ * @returns {range is import("../../index.d.ts").ColorInterpolatorFn}
  */
 export function isRangeFunction(range) {
     return typeof range === "function";
 }
 
 /**
- * @param {import("../index.d.ts").ChannelScale | undefined} scale
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @param {number} outputComponents
  * @returns {boolean}
  */

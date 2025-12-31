@@ -10,7 +10,7 @@ import { test, expect } from "@playwright/test";
 import { color as d3color } from "d3-color";
 import { interpolateHcl } from "d3-interpolate";
 import { scaleLinear } from "d3-scale";
-import { buildMarkShader } from "../src/marks/markShaderBuilder.js";
+import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { UniformBuffer } from "../src/utils/uniformBuffer.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
@@ -160,12 +160,12 @@ function packTextureData(textureData) {
 
 /**
  * @param {object} params
- * @param {Record<string, import("../src/marks/markShaderBuilder.js").ChannelConfigResolved>} params.channels
- * @param {import("../src/marks/markShaderBuilder.js").ShaderBuildParams["uniformLayout"]} params.uniformLayout
+ * @param {Record<string, import("../src/marks/shaders/markShaderBuilder.js").ChannelConfigResolved>} params.channels
+ * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildParams["uniformLayout"]} params.uniformLayout
  * @param {string} params.outputType
  * @param {number} params.outputLength
  * @param {string} params.channelName
- * @returns {import("../src/marks/markShaderBuilder.js").ShaderBuildResult & { outputBinding: number }}
+ * @returns {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult & { outputBinding: number }}
  */
 function buildComputeShader({
     channels,
@@ -195,7 +195,7 @@ function buildComputeShader({
 }
 
 /**
- * @param {import("../src/marks/markShaderBuilder.js").ShaderBuildResult} result
+ * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult} result
  * @returns {{ binding: number, name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[]}
  */
 function mapBindings(result) {

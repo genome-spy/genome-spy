@@ -1,11 +1,11 @@
 import BaseProgram from "./baseProgram.js";
-import { buildChannelMaps } from "./channelSpecUtils.js";
+import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /**
- * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
  */
 
-/** @type {Record<string, import("./channelSpecUtils.js").ChannelSpec>} */
+/** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 export const RECT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1, scale: "linear", default: 0 },
@@ -265,7 +265,7 @@ export default class RectProgram extends BaseProgram {
     }
 
     /**
-     * @returns {Record<string, import("./channelSpecUtils.js").ChannelSpec>}
+     * @returns {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>}
      */
     get channelSpecs() {
         return RECT_CHANNEL_SPECS;

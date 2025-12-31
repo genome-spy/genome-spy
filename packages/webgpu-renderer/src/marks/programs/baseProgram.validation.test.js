@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import BaseProgram from "./baseProgram.js";
-import { createMockRenderer } from "../testUtils/mockRenderer.js";
+import { createMockRenderer } from "../../testUtils/mockRenderer.js";
 
 const TEST_SHADER_BODY = /* wgsl */ `
 struct VSOut {
@@ -20,7 +20,7 @@ fn fs_main() -> @location(0) vec4<f32> {
 }
 `;
 
-/** @type {Record<string, import("./channelSpecUtils.js").ChannelSpec>} */
+/** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 const TEST_CHANNEL_SPECS = {
     id: { type: "u32", components: 1, optional: true },
     x: { type: "f32", components: 1 },
@@ -46,13 +46,13 @@ class TestProgram extends BaseProgram {
 }
 
 /**
- * @param {Record<string, import("../index.d.ts").ChannelConfigInput>} channels
+ * @param {Record<string, import("../../index.js").ChannelConfigInput>} channels
  */
 function createProgram(channels) {
     return new TestProgram(createMockRenderer(), { channels, count: 1 });
 }
 
-/** @type {Record<string, import("./channelSpecUtils.js").ChannelSpec>} */
+/** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
 const SERIES_CHANNEL_SPECS = {
     xF32: { type: "f32", components: 1 },
     xU32: { type: "u32", components: 1 },
@@ -74,7 +74,7 @@ class SeriesTypeProgram extends BaseProgram {
 }
 
 /**
- * @param {Record<string, import("../index.d.ts").ChannelConfigInput>} channels
+ * @param {Record<string, import("../../index.js").ChannelConfigInput>} channels
  * @param {number} count
  */
 function createSeriesProgram(channels, count) {
@@ -101,7 +101,7 @@ describe("BaseProgram channel validation", () => {
 
     it("rejects channels with both data and value", () => {
         const invalidChannel =
-            /** @type {import("../index.d.ts").ChannelConfigInput} */ (
+            /** @type {import("../../index.js").ChannelConfigInput} */ (
                 /** @type {unknown} */ ({
                     data: new Float32Array([1]),
                     value: 0.5,

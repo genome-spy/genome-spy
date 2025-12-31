@@ -79,7 +79,6 @@ export default async function runPointScene(canvas) {
             fill: {
                 data: fill,
                 type: "u32",
-                components: 4,
                 inputComponents: 1,
                 scale: {
                     type: "ordinal",

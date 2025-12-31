@@ -184,12 +184,12 @@ export type ChannelConfigResolved =
 export type ChannelConfig = ChannelConfigInput;
 
 export type RectChannelName =
-    keyof typeof import("./marks/rectProgram.js").RECT_CHANNEL_SPECS;
+    keyof typeof import("./marks/programs/rectProgram.js").RECT_CHANNEL_SPECS;
 
 export type RectChannels = Partial<Record<RectChannelName, ChannelConfigInput>>;
 
 export type PointChannelName =
-    keyof typeof import("./marks/pointProgram.js").POINT_CHANNEL_SPECS;
+    keyof typeof import("./marks/programs/pointProgram.js").POINT_CHANNEL_SPECS;
 
 export type PointChannels = Partial<
     Record<PointChannelName, ChannelConfigInput>
