@@ -19,7 +19,7 @@ import {
  *   Scale type that selects which WGSL helper is emitted.
  * @prop {string} rawValueExpr
  *   WGSL expression for the raw value (buffer read or literal/uniform).
- * @prop {"f32"|"u32"|"i32"} scalarType
+ * @prop {"f32"|"u32"|"i32"} inputScalarType
  *   Scalar type of the raw value; used to choose casting behavior.
  * @prop {1|2|4} outputComponents
  *   Output vector width expected by the mark shader.
@@ -415,7 +415,7 @@ export function buildScaledFunction({
     name,
     scale,
     rawValueExpr,
-    scalarType,
+    inputScalarType: scalarType,
     outputComponents,
     outputScalarType,
     scaleConfig,
