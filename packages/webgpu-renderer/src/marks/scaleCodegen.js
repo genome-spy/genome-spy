@@ -163,6 +163,42 @@ function emitRampSample(name, unitExpr) {
     return vec4<f32>(rgb, 1.0);`;
 }
 
+/**
+ * @typedef {object} ContinuousEmitParams
+ * @prop {string} name
+ * @prop {string} floatExpr
+ * @prop {boolean} clamp
+ * @prop {boolean} round
+ * @prop {boolean} [useRangeTexture]
+ * @prop {string} valueExpr
+ */
+
+/**
+ * @param {ContinuousEmitParams} params
+ * @returns {string}
+ */
+function emitContinuousScale({
+    name,
+    floatExpr,
+    clamp,
+    round,
+    useRangeTexture,
+    valueExpr,
+}) {
+    const clampExpr = clamp
+        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
+        : "";
+    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
+    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
+    const returnExpr = useRangeTexture
+        ? emitRampSample(name, valueExpr)
+        : `    return ${scalarExpr};`;
+    return `${makeFnHeader(name, returnType)} {
+    var v = ${floatExpr};
+${clampExpr}${returnExpr}
+}`;
+}
+
 /** @type {ScaleEmitter} */
 function emitBand({ name, u32Expr }) {
     return `${makeFnHeader(name, "f32")} {
@@ -179,56 +215,36 @@ function emitBand({ name, u32Expr }) {
 }`;
 }
 
-/** @type {ScaleEmitter} */
-function emitLog({ name, floatExpr, clamp, round, useRangeTexture }) {
-    const clampExpr = clamp
-        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
-        : "";
-    const valueExpr = `scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`;
-    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
-    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
-    const returnExpr = useRangeTexture
-        ? emitRampSample(name, valueExpr)
-        : `    return ${scalarExpr};`;
-    return `${makeFnHeader(name, returnType)} {
-    var v = ${floatExpr};
-${clampExpr}${returnExpr}
-}`;
+/**
+ * @param {(params: ScaleEmitParams) => string} valueExprFn
+ * @returns {ScaleEmitter}
+ */
+function makeContinuousEmitter(valueExprFn) {
+    return (params) =>
+        emitContinuousScale({
+            name: params.name,
+            floatExpr: params.floatExpr,
+            clamp: params.clamp,
+            round: params.round,
+            useRangeTexture: params.useRangeTexture,
+            valueExpr: valueExprFn(params),
+        });
 }
 
-/** @type {ScaleEmitter} */
-function emitPow({ name, floatExpr, clamp, round, useRangeTexture }) {
-    const clampExpr = clamp
-        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
-        : "";
-    const valueExpr = `scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`;
-    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
-    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
-    const returnExpr = useRangeTexture
-        ? emitRampSample(name, valueExpr)
-        : `    return ${scalarExpr};`;
-    return `${makeFnHeader(name, returnType)} {
-    var v = ${floatExpr};
-${clampExpr}${returnExpr}
-}`;
-}
+const emitLog = makeContinuousEmitter(
+    ({ name }) =>
+        `scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`
+);
 
-/** @type {ScaleEmitter} */
-function emitSymlog({ name, floatExpr, clamp, round, useRangeTexture }) {
-    const clampExpr = clamp
-        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
-        : "";
-    const valueExpr = `scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`;
-    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
-    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
-    const returnExpr = useRangeTexture
-        ? emitRampSample(name, valueExpr)
-        : `    return ${scalarExpr};`;
-    return `${makeFnHeader(name, returnType)} {
-    var v = ${floatExpr};
-${clampExpr}${returnExpr}
-}`;
-}
+const emitPow = makeContinuousEmitter(
+    ({ name }) =>
+        `scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`
+);
+
+const emitSymlog = makeContinuousEmitter(
+    ({ name }) =>
+        `scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`
+);
 
 /** @type {ScaleEmitter} */
 function emitOrdinal({ name, u32Expr, outputComponents, outputScalarType }) {
