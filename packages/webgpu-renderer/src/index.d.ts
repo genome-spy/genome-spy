@@ -20,6 +20,8 @@ export type ColorInterpolator =
           gamma?: number;
       };
 
+export type ColorInterpolatorFn = (t: number) => string;
+
 export type TypedArray =
     | Float32Array
     | Float64Array
@@ -46,8 +48,8 @@ export type ChannelScale = {
     /** Domain for scale mapping, provided by the core module. */
     domain?: number[];
 
-    /** Range for scale mapping, provided by the core module. */
-    range?: Array<number | number[] | string>;
+    /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */
+    range?: Array<number | number[] | string> | ColorInterpolatorFn;
 
     /** Interpolation method for color ranges; only used for vec4 color ranges. */
     interpolate?: ColorInterpolator;
