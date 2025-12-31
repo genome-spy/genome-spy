@@ -1,15 +1,5 @@
 import { color as d3color } from "d3-color";
-import {
-    interpolateRgb,
-    interpolateHsl,
-    interpolateHslLong,
-    interpolateLab,
-    interpolateHcl,
-    interpolateHclLong,
-    interpolateCubehelix,
-    interpolateCubehelixLong,
-    piecewise,
-} from "d3-interpolate";
+import { interpolateRgb, piecewise } from "d3-interpolate";
 /**
  * @typedef {(t: number) => string} ColorInterpolatorFn
  * @typedef {string | number[]} ColorStop
@@ -21,7 +11,7 @@ import {
  * @prop {boolean} [reverse]
  * @prop {number} [count]
  * @prop {"discrete"|"interpolate"} [mode]
- * @prop {import("../index.d.ts").ColorInterpolator} [interpolate]
+ * @prop {import("../index.d.ts").ColorInterpolatorFactory} [interpolate]
  *
  * @typedef {object} TextureData
  * @prop {GPUTextureFormat} format
@@ -65,7 +55,7 @@ export function createSchemeTexture(schemeParams, count) {
  * Creates an interpolated color texture from color stops.
  *
  * @param {ColorStop[]} colors
- * @param {{ extent?: [number, number], reverse?: boolean, count?: number, interpolate?: import("../index.d.ts").ColorInterpolator }} [options]
+ * @param {{ extent?: [number, number], reverse?: boolean, count?: number, interpolate?: import("../index.d.ts").ColorInterpolatorFactory }} [options]
  * @returns {TextureData}
  */
 export function createInterpolatedColorTexture(colors, options = {}) {
@@ -195,61 +185,16 @@ function normalizeColorStop(stop) {
 }
 
 /**
- * @param {import("../index.d.ts").ColorInterpolator | undefined} interpolate
+ * @param {import("../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
  * @returns {(a: string, b: string) => ColorInterpolatorFn}
  */
 function getInterpolatorFactory(interpolate) {
-    const type =
-        typeof interpolate === "string"
-            ? interpolate
-            : (interpolate?.type ?? "rgb");
-    const gamma = typeof interpolate === "object" ? interpolate.gamma : null;
-
-    /** @type {((a: string, b: string) => ColorInterpolatorFn) & { gamma?: (g: number) => (a: string, b: string) => ColorInterpolatorFn }} */
-    let factory;
-    switch (type) {
-        case "rgb":
-            factory = interpolateRgb;
-            break;
-        case "hsl":
-            factory = interpolateHsl;
-            break;
-        case "hsl-long":
-            factory = interpolateHslLong;
-            break;
-        case "lab":
-            factory = interpolateLab;
-            break;
-        case "hcl":
-            factory = interpolateHcl;
-            break;
-        case "hcl-long":
-            factory = interpolateHclLong;
-            break;
-        case "cubehelix":
-            factory = interpolateCubehelix;
-            break;
-        case "cubehelix-long":
-            factory = interpolateCubehelixLong;
-            break;
-        default:
-            throw new Error(`Unsupported interpolate type "${type}".`);
-    }
-
-    if (gamma == null) {
-        return factory;
-    }
-    if (typeof factory.gamma !== "function") {
-        throw new Error(
-            `Interpolate gamma is not supported for "${type}" interpolators.`
-        );
-    }
-    return factory.gamma(gamma);
+    return interpolate ?? interpolateRgb;
 }
 
 /**
  * @param {ColorStop[]} colors
- * @param {import("../index.d.ts").ColorInterpolator | undefined} interpolate
+ * @param {import("../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
  * @returns {ColorInterpolatorFn}
  */
 function createColorInterpolator(colors, interpolate) {

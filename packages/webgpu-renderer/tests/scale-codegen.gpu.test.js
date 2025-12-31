@@ -794,14 +794,15 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
     const unitRange = [0, 1];
     const colors = ["#ed553b", "#20639b"];
     const gamma = 2.2;
+    const gammaInterpolator = interpolateRgb.gamma(gamma);
     const colorScale = scaleLinear()
         .domain(domain)
         .range(colors)
-        .interpolate(interpolateRgb.gamma(gamma));
+        .interpolate(gammaInterpolator);
     const textureData = createSchemeTexture({
         scheme: colors,
         mode: "interpolate",
-        interpolate: { type: "rgb", gamma },
+        interpolate: gammaInterpolator,
         count: 256,
     });
     if (!textureData) {
@@ -895,7 +896,7 @@ test("scaleCodegen reproduces d3 piecewise color interpolation via ramp texture"
     const textureData = createSchemeTexture({
         scheme: colors,
         mode: "interpolate",
-        interpolate: "hcl",
+        interpolate: interpolateHcl,
         count: 1024,
     });
     if (!textureData) {
