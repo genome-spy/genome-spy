@@ -19,7 +19,7 @@ describe("domainRangeUtils", () => {
 
     it("normalizes continuous domain/range using defaults", () => {
         const channel =
-            /** @type {import("../index.d.ts").ChannelConfigResolved} */ ({
+            /** @type {import("../../index.js").ChannelConfigResolved} */ ({
                 value: 0,
                 type: "f32",
                 components: 1,
@@ -40,7 +40,7 @@ describe("domainRangeUtils", () => {
 
     it("normalizes threshold colors to vec4 arrays", () => {
         const channel =
-            /** @type {import("../index.d.ts").ChannelConfigResolved} */ ({
+            /** @type {import("../../index.js").ChannelConfigResolved} */ ({
                 value: [0, 0, 0, 1],
                 type: "f32",
                 components: 4,

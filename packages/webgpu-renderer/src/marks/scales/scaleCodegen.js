@@ -24,7 +24,7 @@ import {
     SCALE_EXPONENT_PREFIX,
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
-} from "../wgsl/prefixes.js";
+} from "../../wgsl/prefixes.js";
 import {
     applyScaleStep,
     castToF32Step,
@@ -49,7 +49,7 @@ import {
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
  *   Scalar type of the scaled output when outputComponents is 1.
- * @prop {import("../index.d.ts").ChannelScale | undefined} scaleConfig
+ * @prop {import("../../index.d.ts").ChannelScale | undefined} scaleConfig
  *   Full scale config for detecting piecewise scales and clamp behavior.
  * @prop {boolean} [useRangeTexture]
  *   Whether to map scale output through a color ramp texture.
@@ -95,7 +95,7 @@ import {
  */
 
 /**
- * @param {import("../types.js").ScalarType} type
+ * @param {import("../../types.js").ScalarType} type
  * @param {1|2|4} components
  * @param {number|number[]} value
  * @returns {string}
@@ -609,7 +609,7 @@ export function buildScaledFunction({
 }
 
 /**
- * @param {import("../index.d.ts").ChannelScale | undefined} scale
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @returns {boolean}
  */
 export function isPiecewiseScale(scale) {
@@ -622,7 +622,7 @@ export function isPiecewiseScale(scale) {
 }
 
 /**
- * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|undefined} range
+ * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|undefined} range
  * @returns {boolean}
  */
 function isColorRange(range) {
@@ -638,7 +638,7 @@ function isColorRange(range) {
 
 /**
  * @param {string} name
- * @param {{ scale?: import("../index.d.ts").ChannelScale, type?: string, components?: number }} channel
+ * @param {{ scale?: import("../../index.d.ts").ChannelScale, type?: string, components?: number }} channel
  * @returns {string | null}
  */
 export function validateScaleConfig(name, channel) {

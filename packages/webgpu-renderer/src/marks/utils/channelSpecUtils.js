@@ -1,6 +1,6 @@
 /**
  * @typedef {object} ChannelSpec
- * @prop {import("../types.js").ScalarType} [type]
+ * @prop {import("../../types.js").ScalarType} [type]
  * @prop {1|2|4} [components]
  * @prop {number|number[]} [default]
  * @prop {"identity"|"linear"} [scale]
@@ -12,14 +12,14 @@
  * @returns {{
  *   channels: string[],
  *   defaults: Record<string, number|number[]>,
- *   defaultConfigs: Record<string, import("../index.d.ts").ChannelConfigInput>,
+ *   defaultConfigs: Record<string, import("../../index.d.ts").ChannelConfigInput>,
  *   optionalChannels: string[],
  * }}
  */
 export function buildChannelMaps(specs) {
     /** @type {Record<string, number|number[]>} */
     const defaults = {};
-    /** @type {Record<string, import("../index.d.ts").ChannelConfigInput>} */
+    /** @type {Record<string, import("../../index.d.ts").ChannelConfigInput>} */
     const defaultConfigs = {};
     /** @type {string[]} */
     const optionalChannels = [];
@@ -47,7 +47,7 @@ export function buildChannelMaps(specs) {
         }
         if (Object.keys(config).length > 0) {
             defaultConfigs[name] =
-                /** @type {import("../index.d.ts").ChannelConfigInput} */ (
+                /** @type {import("../../index.d.ts").ChannelConfigInput} */ (
                     config
                 );
         }

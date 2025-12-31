@@ -4,7 +4,7 @@ import {
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
-} from "../wgsl/prefixes.js";
+} from "../../wgsl/prefixes.js";
 
 /**
  * @typedef {object} ScalePipelineState

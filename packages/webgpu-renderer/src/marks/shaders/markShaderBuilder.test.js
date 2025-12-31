@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildMarkShader } from "./markShaderBuilder.js";
-import RectProgram from "./rectProgram.js";
-import { createMockRenderer } from "../testUtils/mockRenderer.js";
+import RectProgram from "../programs/rectProgram.js";
+import { createMockRenderer } from "../../testUtils/mockRenderer.js";
 
 const shaderBody = `
 @vertex
