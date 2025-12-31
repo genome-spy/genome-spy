@@ -46,7 +46,8 @@ describe("buildMarkShader", () => {
         expect(resourceBindings.length).toBe(1);
         expect(shaderCode).toContain("fn read_x");
         expect(shaderCode).toContain("fn getScaled_x");
-        expect(shaderCode).toContain("DOMAIN_LEN");
+        expect(shaderCode).toContain("uDomain_x");
+        expect(shaderCode).toContain("uRange_x");
     });
 
     it("generates value accessors for value-based channels", () => {
