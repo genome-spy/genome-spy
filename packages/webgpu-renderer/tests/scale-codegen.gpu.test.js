@@ -1,7 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { color as d3color } from "d3-color";
+import { interpolateHcl, interpolateRgb } from "d3-interpolate";
 import { scaleLinear, scaleLog, scaleThreshold } from "d3-scale";
 import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
 import { buildScaledFunction } from "../src/marks/scaleCodegen.js";
+import { createSchemeTexture } from "../src/utils/colorUtils.js";
+import { normalizeRangePositions } from "../src/marks/domainRangeUtils.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
@@ -57,6 +61,60 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 /**
+ * @param {object} params
+ * @param {string} params.scaleFn
+ * @param {number} params.inputLength
+ * @param {number} [params.domainLength]
+ * @param {number} [params.rangeLength]
+ * @returns {string}
+ */
+function buildScaleCodegenRampShader({
+    scaleFn,
+    inputLength,
+    domainLength = 2,
+    rangeLength = 2,
+}) {
+    return `
+${SCALES_WGSL}
+
+struct Params {
+    uDomain_x: array<vec4<f32>, ${domainLength}>,
+    uRange_x: array<vec4<f32>, ${rangeLength}>,
+};
+
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var<storage, read> input: array<f32>;
+@group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
+@group(0) @binding(3) var rampTexture: texture_2d<f32>;
+@group(0) @binding(4) var rampSampler: sampler;
+
+${scaleFn}
+
+fn sampleRamp(unitValue: f32) -> vec3<f32> {
+    return textureSampleLevel(
+        rampTexture,
+        rampSampler,
+        vec2<f32>(unitValue, 0.0),
+        0.0
+    ).rgb;
+}
+
+const INPUT_LEN: u32 = ${inputLength}u;
+
+@compute @workgroup_size(${WORKGROUP_SIZE})
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    if (i >= INPUT_LEN) {
+        return;
+    }
+    let unitValue = clamp(getScaled_x(i), 0.0, 1.0);
+    let rgb = sampleRamp(unitValue);
+    output[i] = vec4<f32>(rgb, 1.0);
+}
+`;
+}
+
+/**
  * @param {[number, number]} domain
  * @param {[number, number]} range
  * @param {number[]} [extraValues]
@@ -105,6 +163,94 @@ function packPiecewiseDomainRange(domain, range) {
         data[rangeOffset + i * 4] = range[i];
     }
     return Array.from(data);
+}
+
+/**
+ * @param {string} format
+ * @returns {number}
+ */
+function bytesPerPixelForFormat(format) {
+    switch (format) {
+        case "rgba8unorm":
+        case "rgba8unorm-srgb":
+            return 4;
+        default:
+            return 4;
+    }
+}
+
+/**
+ * @param {number} value
+ * @param {number} alignment
+ * @returns {number}
+ */
+function alignTo(value, alignment) {
+    return Math.ceil(value / alignment) * alignment;
+}
+
+/**
+ * @param {import("../src/utils/colorUtils.js").TextureData} textureData
+ * @returns {{ format: string, width: number, height: number, bytesPerRow: number, data: Uint8Array }}
+ */
+function prepareTextureData(textureData) {
+    const bytesPerPixel = bytesPerPixelForFormat(textureData.format);
+    const unpaddedBytesPerRow = textureData.width * bytesPerPixel;
+    const bytesPerRow = alignTo(unpaddedBytesPerRow, 256);
+
+    if (bytesPerRow === unpaddedBytesPerRow) {
+        return {
+            ...textureData,
+            bytesPerRow,
+            data: new Uint8Array(
+                textureData.data.buffer,
+                textureData.data.byteOffset,
+                textureData.data.byteLength
+            ),
+        };
+    }
+
+    const rowCount = Math.max(1, textureData.height);
+    const padded = new Uint8Array(bytesPerRow * rowCount);
+    const source = new Uint8Array(
+        textureData.data.buffer,
+        textureData.data.byteOffset,
+        textureData.data.byteLength
+    );
+
+    for (let row = 0; row < rowCount; row++) {
+        const srcOffset = row * unpaddedBytesPerRow;
+        const destOffset = row * bytesPerRow;
+        padded.set(
+            source.subarray(srcOffset, srcOffset + unpaddedBytesPerRow),
+            destOffset
+        );
+    }
+
+    return {
+        ...textureData,
+        bytesPerRow,
+        data: padded,
+    };
+}
+
+/**
+ * @param {import("../src/utils/colorUtils.js").TextureData} textureData
+ * @returns {{ format: string, width: number, height: number, bytesPerRow: number, data: number[] }}
+ */
+function packTextureData(textureData) {
+    const prepared = prepareTextureData(textureData);
+    const bytes = new Uint8Array(
+        prepared.data.buffer,
+        prepared.data.byteOffset,
+        prepared.data.byteLength
+    );
+    return {
+        format: prepared.format,
+        width: prepared.width,
+        height: prepared.height,
+        bytesPerRow: prepared.bytesPerRow,
+        data: Array.from(bytes),
+    };
 }
 
 /**
@@ -206,6 +352,138 @@ async function runScaleCodegenCompute(
             input,
             uniformData,
             outputComponents,
+            workgroupSize: WORKGROUP_SIZE,
+        }
+    );
+}
+
+/**
+ * @param {import("@playwright/test").Page} page
+ * @param {object} params
+ * @param {string} params.shaderCode
+ * @param {number[]} params.input
+ * @param {number[]} params.uniformData
+ * @param {{ format: string, width: number, height: number, bytesPerRow: number, data: number[] }} params.texture
+ * @returns {Promise<number[]>}
+ */
+async function runScaleCodegenRampCompute(
+    page,
+    { shaderCode, input, uniformData, texture }
+) {
+    return page.evaluate(
+        async ({ shaderCode, input, uniformData, texture, workgroupSize }) => {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                throw new Error("WebGPU adapter is not available.");
+            }
+            const device = await adapter.requestDevice();
+
+            const inputData = new Float32Array(input);
+            const packedUniforms = new Float32Array(uniformData);
+            const textureData = new Uint8Array(texture.data);
+
+            const shaderModule = device.createShaderModule({
+                code: shaderCode,
+            });
+            const pipeline = device.createComputePipeline({
+                layout: "auto",
+                compute: { module: shaderModule, entryPoint: "main" },
+            });
+
+            const uniformBuffer = device.createBuffer({
+                size: packedUniforms.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(uniformBuffer, 0, packedUniforms);
+
+            const inputBuffer = device.createBuffer({
+                size: inputData.byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(inputBuffer, 0, inputData);
+
+            const outputBuffer = device.createBuffer({
+                size: inputData.byteLength * 4,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+            });
+            const readBuffer = device.createBuffer({
+                size: inputData.byteLength * 4,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+
+            const rampTexture = device.createTexture({
+                size: {
+                    width: texture.width,
+                    height: texture.height,
+                    depthOrArrayLayers: 1,
+                },
+                format: texture.format,
+                usage:
+                    GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+            });
+            device.queue.writeTexture(
+                { texture: rampTexture },
+                textureData,
+                {
+                    bytesPerRow: texture.bytesPerRow,
+                    rowsPerImage: texture.height,
+                },
+                {
+                    width: texture.width,
+                    height: texture.height,
+                    depthOrArrayLayers: 1,
+                }
+            );
+
+            const sampler = device.createSampler({
+                addressModeU: "clamp-to-edge",
+                addressModeV: "clamp-to-edge",
+                magFilter: "linear",
+                minFilter: "linear",
+            });
+
+            const bindGroup = device.createBindGroup({
+                layout: pipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: uniformBuffer } },
+                    { binding: 1, resource: { buffer: inputBuffer } },
+                    { binding: 2, resource: { buffer: outputBuffer } },
+                    { binding: 3, resource: rampTexture.createView() },
+                    { binding: 4, resource: sampler },
+                ],
+            });
+
+            const encoder = device.createCommandEncoder();
+            const pass = encoder.beginComputePass();
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(
+                Math.ceil(inputData.length / workgroupSize)
+            );
+            pass.end();
+
+            encoder.copyBufferToBuffer(
+                outputBuffer,
+                0,
+                readBuffer,
+                0,
+                inputData.byteLength * 4
+            );
+            device.queue.submit([encoder.finish()]);
+            await device.queue.onSubmittedWorkDone();
+
+            await readBuffer.mapAsync(GPUMapMode.READ);
+            const mapped = readBuffer.getMappedRange();
+            const copy = new Float32Array(mapped.slice(0));
+            readBuffer.unmap();
+
+            return Array.from(copy);
+        },
+        {
+            shaderCode,
+            input,
+            uniformData,
+            texture,
             workgroupSize: WORKGROUP_SIZE,
         }
     );
@@ -397,5 +675,118 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
         for (let i = 0; i < 4; i++) {
             expect(result[base + i]).toBeCloseTo(expected[i], 5);
         }
+    });
+});
+
+test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", async ({
+    page,
+}) => {
+    // Texture sampling can introduce minor differences versus CPU interpolation.
+    await ensureWebGPU(page);
+
+    const input = [0, 0.25, 0.5, 0.75, 1.0];
+    const domain = [0, 1];
+    const unitRange = [0, 1];
+    const colors = ["#ed553b", "#20639b"];
+    const gamma = 2.2;
+    const colorScale = scaleLinear()
+        .domain(domain)
+        .range(colors)
+        .interpolate(interpolateRgb.gamma(gamma));
+    const textureData = createSchemeTexture({
+        scheme: colors,
+        mode: "interpolate",
+        interpolate: { type: "rgb", gamma },
+        count: 256,
+    });
+    if (!textureData) {
+        throw new Error("Failed to create a color ramp texture.");
+    }
+
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: { type: "linear", domain, range: unitRange },
+    });
+    const shaderCode = buildScaleCodegenRampShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+    });
+    const result = await runScaleCodegenRampCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, unitRange),
+        texture: packTextureData(textureData),
+    });
+
+    expect(result).toHaveLength(input.length * 4);
+    input.forEach((value, index) => {
+        const expected = d3color(colorScale(value)).rgb();
+        const base = index * 4;
+        expect(result[base]).toBeCloseTo(expected.r / 255, 2);
+        expect(result[base + 1]).toBeCloseTo(expected.g / 255, 2);
+        expect(result[base + 2]).toBeCloseTo(expected.b / 255, 2);
+        expect(result[base + 3]).toBeCloseTo(1, 5);
+    });
+});
+
+test("scaleCodegen reproduces d3 piecewise color interpolation via ramp texture", async ({
+    page,
+}) => {
+    // Texture sampling can introduce minor differences versus CPU interpolation.
+    await ensureWebGPU(page);
+
+    const input = [0, 2.5, 5, 10, 20, 60, 100];
+    const domain = [0, 5, 20, 100];
+    const unitRange = normalizeRangePositions(domain.length);
+    const colors = ["green", "#0050f8", "#f6f6f6", "#ff3000"];
+    const colorScale = scaleLinear()
+        .domain(domain)
+        .range(colors)
+        .interpolate(interpolateHcl);
+    const textureData = createSchemeTexture({
+        scheme: colors,
+        mode: "interpolate",
+        interpolate: "hcl",
+        count: 1024,
+    });
+    if (!textureData) {
+        throw new Error("Failed to create a piecewise color ramp texture.");
+    }
+
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: { type: "linear", domain, range: unitRange },
+    });
+    const shaderCode = buildScaleCodegenRampShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        domainLength: domain.length,
+        rangeLength: unitRange.length,
+    });
+    const result = await runScaleCodegenRampCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packPiecewiseDomainRange(domain, unitRange),
+        texture: packTextureData(textureData),
+    });
+
+    expect(result).toHaveLength(input.length * 4);
+    input.forEach((value, index) => {
+        const expected = d3color(colorScale(value)).rgb();
+        const base = index * 4;
+        expect(result[base]).toBeCloseTo(expected.r / 255, 2);
+        expect(result[base + 1]).toBeCloseTo(expected.g / 255, 2);
+        expect(result[base + 2]).toBeCloseTo(expected.b / 255, 2);
+        expect(result[base + 3]).toBeCloseTo(1, 5);
     });
 });

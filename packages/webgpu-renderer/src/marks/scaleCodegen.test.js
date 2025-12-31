@@ -11,15 +11,15 @@ describe("scaleCodegen validation", () => {
         expect(error).toBe('Channel "x" uses unsupported scale "mystery".');
     });
 
-    it("rejects vector components on non-identity scales", () => {
+    it("rejects vector components on unsupported scales", () => {
         const error = validateScaleConfig("x", {
-            scale: { type: "linear" },
+            scale: { type: "log" },
             type: "f32",
             components: 4,
         });
 
         expect(error).toBe(
-            'Channel "x" uses vector components but scale "linear" only supports scalars.'
+            'Channel "x" uses vector components but scale "log" only supports scalars.'
         );
     });
 

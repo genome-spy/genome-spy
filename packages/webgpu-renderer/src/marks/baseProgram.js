@@ -1,3 +1,4 @@
+/* global GPUTextureUsage */
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
@@ -12,16 +13,21 @@ import {
     coerceRangeValue,
     getDomainRangeKind,
     getDomainRangeLengths,
+    isColorRange,
     normalizeDomainRange,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
+    normalizeRangePositions,
+    usesRangeTexture,
 } from "./domainRangeUtils.js";
+import { createSchemeTexture } from "../utils/colorUtils.js";
+import { prepareTextureData } from "../utils/webgpuTextureUtils.js";
 
 /**
  * @typedef {{
  *   shaderCode: string,
- *   bufferBindings: GPUBindGroupLayoutEntry[],
- *   bufferLayout: { name: string, role: "series"|"ordinalRange" }[],
+ *   resourceBindings: GPUBindGroupLayoutEntry[],
+ *   resourceLayout: { name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[],
  * }} ShaderBuildResult
  */
 
@@ -52,9 +58,11 @@ export default class BaseProgram {
         this._domainRangeSizes = new Map();
         this._ordinalRangeBuffers = new Map();
         this._ordinalRangeSizes = new Map();
+        /** @type {Map<string, { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} */
+        this._rangeTextures = new Map();
 
-        /** @type {{ name: string, role: "series"|"ordinalRange" }[]} */
-        this._bufferLayout = [];
+        /** @type {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[]} */
+        this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         this._uniformLayout = [];
@@ -68,7 +76,7 @@ export default class BaseProgram {
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
         this._buildUniformLayout();
-        const { shaderCode, bufferBindings } = this._buildShader();
+        const { shaderCode, resourceBindings } = this._buildShader();
         this._uniformBuffer = this.device.createBuffer({
             size: this._uniformBufferState?.byteLength ?? 0,
             // eslint-disable-next-line no-undef
@@ -84,7 +92,7 @@ export default class BaseProgram {
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                     buffer: { type: "uniform" },
                 },
-                ...bufferBindings,
+                ...resourceBindings,
             ],
         });
 
@@ -229,6 +237,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _rebuildBindGroup() {
+        /** @type {GPUBindGroupEntry[]} */
         const entries = [
             {
                 binding: 0,
@@ -236,22 +245,60 @@ export default class BaseProgram {
             },
         ];
 
-        // Build storage buffer bindings in the same order as the shader expects.
+        // Build storage/texture bindings in the same order as the shader expects.
         let bindingIndex = 1;
-        for (const entry of this._bufferLayout) {
-            let buffer = null;
+        for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                buffer = this._buffersByField.get(entry.name) ?? null;
+                const buffer = this._buffersByField.get(entry.name) ?? null;
+                if (!buffer) {
+                    throw new Error(
+                        `Missing buffer binding for "${entry.name}".`
+                    );
+                }
+                entries.push({
+                    binding: bindingIndex++,
+                    resource: { buffer },
+                });
+                continue;
             } else if (entry.role === "ordinalRange") {
-                buffer = this._ordinalRangeBuffers.get(entry.name) ?? null;
+                const buffer =
+                    this._ordinalRangeBuffers.get(entry.name) ?? null;
+                if (!buffer) {
+                    throw new Error(
+                        `Missing buffer binding for "${entry.name}".`
+                    );
+                }
+                entries.push({
+                    binding: bindingIndex++,
+                    resource: { buffer },
+                });
+                continue;
+            } else if (entry.role === "rangeTexture") {
+                const texture = this._rangeTextures.get(entry.name)?.texture;
+                if (!texture) {
+                    throw new Error(
+                        `Missing range texture for "${entry.name}".`
+                    );
+                }
+                entries.push({
+                    binding: bindingIndex++,
+                    resource: texture.createView(),
+                });
+                continue;
+            } else if (entry.role === "rangeSampler") {
+                const sampler = this._rangeTextures.get(entry.name)?.sampler;
+                if (!sampler) {
+                    throw new Error(
+                        `Missing range sampler for "${entry.name}".`
+                    );
+                }
+                entries.push({
+                    binding: bindingIndex++,
+                    resource: sampler,
+                });
+                continue;
             }
-            if (!buffer) {
-                throw new Error(`Missing buffer binding for "${entry.name}".`);
-            }
-            entries.push({
-                binding: bindingIndex++,
-                resource: { buffer },
-            });
+            throw new Error(`Unknown resource binding role "${entry.role}".`);
         }
 
         this._bindGroup = this.device.createBindGroup({
@@ -310,6 +357,32 @@ export default class BaseProgram {
     updateScaleDomains(domains) {
         for (const [name, domain] of Object.entries(domains)) {
             for (const channelName of this._resolveScaleTargets(name)) {
+                const channel = this._channels[channelName];
+                const outputComponents = channel?.components ?? 1;
+                const kind = getDomainRangeKind(channel?.scale);
+                if (
+                    channel &&
+                    kind &&
+                    usesRangeTexture(channel.scale, outputComponents)
+                ) {
+                    this._updateDomainRange(channelName, "domain", domain);
+                    if (kind === "piecewise") {
+                        const sizes = this._domainRangeSizes.get(channelName);
+                        const positions = normalizeRangePositions(
+                            sizes?.rangeLength ?? domain.length
+                        );
+                        if (sizes && positions.length !== sizes.rangeLength) {
+                            throw new Error(
+                                `Piecewise scale on "${channelName}" expects ${sizes.rangeLength} range entries, got ${positions.length}.`
+                            );
+                        }
+                        this._setUniformValue(
+                            `${RANGE_PREFIX}${channelName}`,
+                            positions
+                        );
+                    }
+                    continue;
+                }
                 this._updateDomainRange(channelName, "domain", domain);
             }
         }
@@ -324,8 +397,18 @@ export default class BaseProgram {
         let needsRebind = false;
         for (const [name, range] of Object.entries(ranges)) {
             for (const channelName of this._resolveScaleTargets(name)) {
-                const scaleType =
-                    this._channels[channelName]?.scale?.type ?? "identity";
+                const channel = this._channels[channelName];
+                const outputComponents = channel?.components ?? 1;
+                const scaleType = channel?.scale?.type ?? "identity";
+                if (
+                    channel &&
+                    usesRangeTexture(channel.scale, outputComponents)
+                ) {
+                    if (this._updateRangeTexture(channelName, range)) {
+                        needsRebind = true;
+                    }
+                    continue;
+                }
                 if (scaleType === "ordinal") {
                     if (this._updateOrdinalRange(channelName, range)) {
                         needsRebind = true;
@@ -410,10 +493,16 @@ export default class BaseProgram {
                 channel.scale
             );
             const outputComponents = channel.components ?? 1;
+            const useRangeTexture = usesRangeTexture(
+                channel.scale,
+                outputComponents
+            );
             const outputType =
                 outputComponents === 1
                     ? getScaleOutputType(scaleType, channel.type ?? "f32")
                     : "f32";
+            const rangeComponents = useRangeTexture ? 1 : outputComponents;
+            const rangeType = useRangeTexture ? "f32" : outputType;
             layout.push({
                 name: `${DOMAIN_PREFIX}${name}`,
                 type: "f32",
@@ -422,8 +511,8 @@ export default class BaseProgram {
             });
             layout.push({
                 name: `${RANGE_PREFIX}${name}`,
-                type: outputType,
-                components: outputComponents,
+                type: rangeType,
+                components: rangeComponents,
                 arrayLength: rangeLength,
             });
         }
@@ -446,17 +535,50 @@ export default class BaseProgram {
     _initializeScaleUniforms(name, channel, scale) {
         const kind = getDomainRangeKind(scale);
         if (kind) {
-            const { domain, range, domainLength, rangeLength } =
-                normalizeDomainRange(name, channel, scale, kind, (valueName) =>
-                    this.getDefaultScaleRange(valueName)
+            const outputComponents = channel.components ?? 1;
+            if (usesRangeTexture(scale, outputComponents)) {
+                const { domainLength, rangeLength } = getDomainRangeLengths(
+                    name,
+                    kind,
+                    scale
                 );
-            this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
-            this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
-            this._domainRangeSizes.set(name, {
-                kind,
-                domainLength,
-                rangeLength,
-            });
+                const rawDomain = Array.isArray(scale.domain)
+                    ? scale.domain
+                    : [0, 1];
+                const domain =
+                    kind === "continuous"
+                        ? [rawDomain[0] ?? 0, rawDomain[1] ?? 1]
+                        : rawDomain;
+                // Ramp textures assume uniformly spaced stops for piecewise scales.
+                const range =
+                    kind === "piecewise"
+                        ? normalizeRangePositions(rangeLength)
+                        : [0, 1];
+                this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
+                this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+                this._domainRangeSizes.set(name, {
+                    kind,
+                    domainLength,
+                    rangeLength,
+                });
+                this._initializeRangeTexture(name, scale);
+            } else {
+                const { domain, range, domainLength, rangeLength } =
+                    normalizeDomainRange(
+                        name,
+                        channel,
+                        scale,
+                        kind,
+                        (valueName) => this.getDefaultScaleRange(valueName)
+                    );
+                this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
+                this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+                this._domainRangeSizes.set(name, {
+                    kind,
+                    domainLength,
+                    rangeLength,
+                });
+            }
         }
         if (scale.type === "ordinal") {
             this._initializeOrdinalRange(name, channel, scale);
@@ -589,6 +711,133 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
+     * @param {import("../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializeRangeTexture(name, scale) {
+        const range = scale.range ?? [];
+        if (!isColorRange(range)) {
+            throw new Error(
+                `Interpolated color scale on "${name}" requires a color range.`
+            );
+        }
+        const colorStops = /** @type {Array<string|number[]>} */ (range);
+        const textureData = createSchemeTexture({
+            scheme: colorStops,
+            mode: "interpolate",
+            interpolate: scale.interpolate,
+        });
+        if (!textureData) {
+            throw new Error(`Failed to build range texture for "${name}".`);
+        }
+        this._setRangeTexture(name, textureData);
+    }
+
+    /**
+     * @param {string} name
+     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
+     * @returns {boolean}
+     */
+    _updateRangeTexture(name, value) {
+        const channel = this._channels[name];
+        if (!channel || !channel.scale) {
+            throw new Error(`Channel "${name}" does not use a color scale.`);
+        }
+        const range = Array.isArray(value)
+            ? value
+            : typeof value === "object" && value
+              ? /** @type {{ range?: Array<number|number[]|string> }} */ ((
+                    value
+                ).range ?? [])
+              : [];
+        if (!isColorRange(range)) {
+            throw new Error(
+                `Interpolated color scale on "${name}" requires a color range.`
+            );
+        }
+        const colorStops = /** @type {Array<string|number[]>} */ (range);
+        const sizes = this._domainRangeSizes.get(name);
+        if (sizes && range.length !== sizes.rangeLength) {
+            throw new Error(
+                `Scale on "${name}" expects ${sizes.rangeLength} range entries, got ${range.length}.`
+            );
+        }
+        const textureData = createSchemeTexture({
+            scheme: colorStops,
+            mode: "interpolate",
+            interpolate: channel.scale.interpolate,
+        });
+        if (!textureData) {
+            throw new Error(`Failed to build range texture for "${name}".`);
+        }
+        return this._setRangeTexture(name, textureData);
+    }
+
+    /**
+     * @param {string} name
+     * @param {import("../utils/colorUtils.js").TextureData} textureData
+     * @returns {boolean}
+     */
+    _setRangeTexture(name, textureData) {
+        const prepared = prepareTextureData(textureData);
+        const prev = this._rangeTextures.get(name);
+        const needsNewTexture =
+            !prev ||
+            prev.width !== prepared.width ||
+            prev.height !== prepared.height ||
+            prev.format !== prepared.format;
+        const texture = needsNewTexture
+            ? this.device.createTexture({
+                  size: {
+                      width: prepared.width,
+                      height: prepared.height,
+                      depthOrArrayLayers: 1,
+                  },
+                  format: prepared.format,
+                  // eslint-disable-next-line no-undef
+                  usage:
+                      GPUTextureUsage.TEXTURE_BINDING |
+                      GPUTextureUsage.COPY_DST,
+              })
+            : prev.texture;
+        const sampler = needsNewTexture
+            ? this.device.createSampler({
+                  addressModeU: "clamp-to-edge",
+                  addressModeV: "clamp-to-edge",
+                  magFilter: "linear",
+                  minFilter: "linear",
+              })
+            : prev.sampler;
+
+        this.device.queue.writeTexture(
+            { texture },
+            prepared.data,
+            {
+                bytesPerRow: prepared.bytesPerRow,
+                rowsPerImage: prepared.height,
+            },
+            {
+                width: prepared.width,
+                height: prepared.height,
+                depthOrArrayLayers: 1,
+            }
+        );
+
+        if (needsNewTexture) {
+            this._rangeTextures.set(name, {
+                texture,
+                sampler,
+                width: prepared.width,
+                height: prepared.height,
+                format: prepared.format,
+            });
+        }
+
+        return needsNewTexture;
+    }
+
+    /**
+     * @param {string} name
      * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
      * @returns {boolean}
      */
@@ -605,11 +854,15 @@ export default class BaseProgram {
         const range = Array.isArray(value)
             ? value
             : typeof value === "object" && value
-              ? /** @type {{ range?: Array<number|number[]|string> }} */ ((
-                    value
-                ).range ?? [])
+              ? /** @type {{ range?: Array<number|number[]|string> }} */ (
+                    value.range ?? []
+                )
               : [];
-        const normalized = normalizeOrdinalRange(name, range, outputComponents);
+        const normalized = normalizeOrdinalRange(
+            name,
+            /** @type {Array<number|number[]|string>} */ (range),
+            outputComponents
+        );
         const data = this._buildOrdinalRangeBufferData(
             normalized,
             outputComponents,
@@ -714,7 +967,7 @@ export default class BaseProgram {
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
         });
-        this._bufferLayout = result.bufferLayout;
+        this._resourceLayout = result.resourceLayout;
         return result;
     }
 
@@ -883,6 +1136,31 @@ export default class BaseProgram {
         ) {
             throw new Error(
                 `Channel "${name}" only supports mismatched input/output components with threshold, ordinal, or piecewise scales.`
+            );
+        }
+        const colorRange = isColorRange(channel.scale?.range);
+        const isContinuousScale = [
+            "linear",
+            "log",
+            "pow",
+            "sqrt",
+            "symlog",
+        ].includes(scaleType);
+        if (channel.scale?.interpolate !== undefined) {
+            if (!colorRange) {
+                throw new Error(
+                    `Channel "${name}" requires a color range when interpolate is set.`
+                );
+            }
+            if (!isContinuousScale) {
+                throw new Error(
+                    `Channel "${name}" only supports color interpolation with continuous scales.`
+                );
+            }
+        }
+        if (isContinuousScale && colorRange && outputComponents !== 4) {
+            throw new Error(
+                `Channel "${name}" requires vec4 outputs when using color ranges.`
             );
         }
 

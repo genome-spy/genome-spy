@@ -43,6 +43,7 @@ export default async function runPiecewiseScene(canvas) {
                     type: "linear",
                     domain: [5, 10, 20, 30],
                     range: ["green", "#0050f8", "#f6f6f6", "#ff3000"],
+                    interpolate: "hcl",
                     clamp: true,
                 },
             },
