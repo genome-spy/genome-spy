@@ -548,7 +548,7 @@ export function isPiecewiseScale(scale) {
 }
 
 /**
- * @param {Array<number|number[]|string>|undefined} range
+ * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|undefined} range
  * @returns {boolean}
  */
 function isColorRange(range) {
@@ -575,19 +575,39 @@ export function validateScaleConfig(name, channel) {
 
     const components = channel.components ?? 1;
     const piecewise = isPiecewiseScale(channel.scale);
+    const rangeFn = typeof channel.scale?.range === "function";
     const colorRange = isColorRange(channel.scale?.range);
     const interpolateEnabled =
-        channel.scale?.interpolate !== undefined || colorRange;
+        rangeFn || channel.scale?.interpolate !== undefined || colorRange;
+    const isContinuous = ["linear", "log", "pow", "sqrt", "symlog"].includes(
+        scaleType
+    );
     const allowsVectorOutput =
         ["identity", "threshold", "ordinal", "linear"].includes(scaleType) ||
         piecewise ||
-        (interpolateEnabled &&
-            ["linear", "log", "pow", "sqrt", "symlog"].includes(scaleType));
+        (interpolateEnabled && isContinuous);
     if (components > 1 && !allowsVectorOutput) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
     }
-    if (interpolateEnabled && components !== 4) {
-        return `Channel "${name}" requires vec4 outputs when interpolate is set.`;
+    if (rangeFn && !isContinuous) {
+        return `Channel "${name}" only supports function ranges with continuous scales.`;
+    }
+    if (rangeFn && components !== 4) {
+        return `Channel "${name}" requires vec4 outputs when using function ranges.`;
+    }
+    if (channel.scale?.interpolate !== undefined) {
+        if (!colorRange) {
+            return `Channel "${name}" requires a color range when interpolate is set.`;
+        }
+        if (!isContinuous) {
+            return `Channel "${name}" only supports color interpolation with continuous scales.`;
+        }
+        if (components !== 4) {
+            return `Channel "${name}" requires vec4 outputs when interpolate is set.`;
+        }
+    }
+    if (isContinuous && colorRange && components !== 4) {
+        return `Channel "${name}" requires vec4 outputs when using color ranges.`;
     }
     if (
         (scaleType === "linear" || piecewise) &&

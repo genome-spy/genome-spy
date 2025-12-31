@@ -126,9 +126,15 @@ export function normalizeDomainRange(
     }
 
     const domain = /** @type {number[]} */ (scale.domain ?? []);
+    if (isRangeFunction(scale.range)) {
+        const label = kind === "threshold" ? "Threshold" : "Piecewise";
+        throw new Error(
+            `${label} scale on "${name}" does not support interpolator ranges.`
+        );
+    }
     const range = normalizeDiscreteRange(
         name,
-        scale.range,
+        /** @type {Array<number|number[]|string>|undefined} */ (scale.range),
         outputComponents,
         kind
     );
@@ -237,7 +243,7 @@ export function normalizeOrdinalRange(name, range, outputComponents) {
 }
 
 /**
- * @param {Array<number|number[]|string>|undefined} range
+ * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|undefined} range
  * @returns {boolean}
  */
 export function isColorRange(range) {
@@ -282,6 +288,14 @@ export function normalizeRangePositions(length) {
 }
 
 /**
+ * @param {unknown} range
+ * @returns {range is import("../index.d.ts").ColorInterpolatorFn}
+ */
+export function isRangeFunction(range) {
+    return typeof range === "function";
+}
+
+/**
  * @param {import("../index.d.ts").ChannelScale | undefined} scale
  * @param {number} outputComponents
  * @returns {boolean}
@@ -290,8 +304,10 @@ export function usesRangeTexture(scale, outputComponents) {
     if (!scale) {
         return false;
     }
+    const rangeFn = isRangeFunction(scale.range);
     const colorRange = isColorRange(scale.range);
-    const interpolateEnabled = scale.interpolate !== undefined || colorRange;
+    const interpolateEnabled =
+        rangeFn || scale.interpolate !== undefined || colorRange;
     if (!interpolateEnabled || outputComponents !== 4) {
         return false;
     }
