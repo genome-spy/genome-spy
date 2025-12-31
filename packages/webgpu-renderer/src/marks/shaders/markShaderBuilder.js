@@ -1,18 +1,18 @@
-import SCALES_WGSL from "../wgsl/scales.wgsl.js";
+import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
 import {
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
-} from "../wgsl/prefixes.js";
+} from "../../wgsl/prefixes.js";
 import { buildChannelIRs } from "./channelIR.js";
-import { buildScaledFunction } from "./scaleCodegen.js";
+import { buildScaledFunction } from "../scales/scaleCodegen.js";
 
 /**
- * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
- * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
+ * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  *
  * @typedef {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry

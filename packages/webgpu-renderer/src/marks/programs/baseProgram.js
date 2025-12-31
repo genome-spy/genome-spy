@@ -1,18 +1,18 @@
 /* global GPUTextureUsage */
-import { buildMarkShader } from "./markShaderBuilder.js";
-import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
-import { UniformBuffer } from "../utils/uniformBuffer.js";
+import { buildMarkShader } from "../shaders/markShaderBuilder.js";
+import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
+import { UniformBuffer } from "../../utils/uniformBuffer.js";
 import {
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
-} from "../wgsl/prefixes.js";
-import { buildChannelAnalysis } from "./channelAnalysis.js";
+} from "../../wgsl/prefixes.js";
+import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import {
     getScaleUniformDef,
     getScaleOutputType,
     validateScaleConfig,
-} from "./scaleCodegen.js";
+} from "../scales/scaleCodegen.js";
 import {
     coerceRangeValue,
     getDomainRangeKind,
@@ -24,9 +24,9 @@ import {
     normalizeOrdinalRange,
     normalizeRangePositions,
     usesRangeTexture,
-} from "./domainRangeUtils.js";
-import { createSchemeTexture } from "../utils/colorUtils.js";
-import { prepareTextureData } from "../utils/webgpuTextureUtils.js";
+} from "../scales/domainRangeUtils.js";
+import { createSchemeTexture } from "../../utils/colorUtils.js";
+import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
 
 /**
  * @typedef {{
@@ -42,14 +42,14 @@ import { prepareTextureData } from "../utils/webgpuTextureUtils.js";
  */
 export default class BaseProgram {
     /**
-     * @typedef {import("../index.d.ts").TypedArray} TypedArray
-     * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
-     * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
-     * @typedef {import("./channelSpecUtils.js").ChannelSpec} ChannelSpec
+     * @typedef {import("../../index.d.ts").TypedArray} TypedArray
+     * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+     * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+     * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
      */
 
     /**
-     * @param {import("../renderer.js").Renderer} renderer
+     * @param {import("../../renderer.js").Renderer} renderer
      * @param {{ channels: Record<string, ChannelConfigInput>, count: number }} config
      */
     constructor(renderer, config) {
@@ -69,7 +69,7 @@ export default class BaseProgram {
         /** @type {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[]} */
         this._resourceLayout = [];
 
-        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
+        /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         this._uniformLayout = [];
 
         /** @type {UniformBuffer | null} */
@@ -395,7 +395,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }>} ranges
+     * @param {Record<string, Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }>} ranges
      * @returns {void}
      */
     updateScaleRanges(ranges) {
@@ -449,7 +449,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildUniformLayout() {
-        /** @type {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
+        /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         const layout = [];
 
         // Create uniform slots for per-channel values and scale parameters.
@@ -499,9 +499,9 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Array<{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} layout
+     * @param {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} layout
      * @param {string} name
-     * @param {import("../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../../index.d.ts").ChannelConfigResolved} channel
      * @returns {void}
      */
     _addScaleUniforms(layout, name, channel) {
@@ -552,8 +552,8 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {import("../index.d.ts").ChannelConfigResolved} channel
-     * @param {import("../index.d.ts").ChannelScale} scale
+     * @param {import("../../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../../index.d.ts").ChannelScale} scale
      * @returns {void}
      */
     _initializeScaleUniforms(name, channel, scale) {
@@ -710,8 +710,8 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {import("../index.d.ts").ChannelConfigResolved} channel
-     * @param {import("../index.d.ts").ChannelScale} scale
+     * @param {import("../../index.d.ts").ChannelConfigResolved} channel
+     * @param {import("../../index.d.ts").ChannelScale} scale
      * @returns {void}
      */
     _initializeOrdinalRange(name, channel, scale) {
@@ -742,7 +742,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {import("../index.d.ts").ChannelScale} scale
+     * @param {import("../../index.d.ts").ChannelScale} scale
      * @returns {void}
      */
     _initializeRangeTexture(name, scale) {
@@ -771,7 +771,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} value
+     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} value
      * @returns {boolean}
      */
     _updateRangeTexture(name, value) {
@@ -780,11 +780,11 @@ export default class BaseProgram {
             throw new Error(`Channel "${name}" does not use a color scale.`);
         }
         const range =
-            /** @type {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn} */ (
+            /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
                 Array.isArray(value)
                     ? value
                     : typeof value === "object" && value
-                      ? /** @type {{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} */ (
+                      ? /** @type {{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} */ (
                             value.range ?? []
                         )
                       : value
@@ -819,7 +819,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {import("../utils/colorUtils.js").TextureData} textureData
+     * @param {import("../../utils/colorUtils.js").TextureData} textureData
      * @returns {boolean}
      */
     _setRangeTexture(name, textureData) {
@@ -918,7 +918,7 @@ export default class BaseProgram {
     /**
      * @param {Array<number|number[]>} range
      * @param {1|2|4} outputComponents
-     * @param {import("../types.js").ScalarType} outputType
+     * @param {import("../../types.js").ScalarType} outputType
      * @returns {TypedArray}
      */
     _buildOrdinalRangeBufferData(range, outputComponents, outputType) {

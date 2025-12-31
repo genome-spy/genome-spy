@@ -2,13 +2,16 @@ import {
     isColorRange,
     isRangeFunction,
     usesRangeTexture,
-} from "./domainRangeUtils.js";
-import { getScaleOutputType, isPiecewiseScale } from "./scaleCodegen.js";
+} from "../scales/domainRangeUtils.js";
+import {
+    getScaleOutputType,
+    isPiecewiseScale,
+} from "../scales/scaleCodegen.js";
 
 /**
- * @typedef {import("../index.d.ts").ChannelConfigInput} ChannelConfigInput
- * @typedef {import("../index.d.ts").ChannelScale["type"]} ScaleType
- * @typedef {import("../types.js").ScalarType} ScalarType
+ * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.d.ts").ChannelScale["type"]} ScaleType
+ * @typedef {import("../../types.js").ScalarType} ScalarType
  *
  * @typedef {"series"|"value"|"missing"} ChannelSourceKind
  *

@@ -1,10 +1,10 @@
 import { buildChannelAnalysis } from "./channelAnalysis.js";
-import { formatLiteral } from "./scaleCodegen.js";
+import { formatLiteral } from "../scales/scaleCodegen.js";
 
 /**
- * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../index.d.ts").ChannelScale["type"]} ScaleType
- * @typedef {import("../types.js").ScalarType} ScalarType
+ * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../index.d.ts").ChannelScale["type"]} ScaleType
+ * @typedef {import("../../types.js").ScalarType} ScalarType
  *
  * @typedef {"series"|"uniform"|"literal"} ChannelSourceKind
  *
