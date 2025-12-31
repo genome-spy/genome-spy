@@ -679,6 +679,49 @@ test("scaleCodegen clamps piecewise linear inputs to the domain extent", async (
     });
 });
 
+test("scaleCodegen rounds continuous scale outputs like d3 rangeRound", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    // const x = d3.scaleLinear().rangeRound([0, 960]);
+    const input = [-0.2, 0.1, 0.9, 1.2, 1.8];
+    const domain = [0, 2];
+    const range = [0, 960];
+    const reference = scaleLinear()
+        .domain(domain)
+        .rangeRound(range)
+        .clamp(true);
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 1,
+        outputScalarType: "f32",
+        scaleConfig: {
+            type: "linear",
+            domain,
+            range,
+            clamp: true,
+            round: true,
+        },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, range),
+    });
+
+    const expected = input.map((value) => reference(value));
+
+    expect(result).toEqual(expected);
+});
+
 test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
     page,
 }) => {
