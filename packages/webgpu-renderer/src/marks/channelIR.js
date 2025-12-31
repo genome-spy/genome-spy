@@ -1,0 +1,175 @@
+import { usesRangeTexture } from "./domainRangeUtils.js";
+import {
+    formatLiteral,
+    getScaleOutputType,
+    isPiecewiseScale,
+} from "./scaleCodegen.js";
+
+/**
+ * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../index.d.ts").ChannelScale["type"]} ScaleType
+ * @typedef {import("../types.js").ScalarType} ScalarType
+ *
+ * @typedef {"series"|"uniform"|"literal"} ChannelSourceKind
+ *
+ * @typedef {object} ChannelIR
+ *   Resolved per-channel description used by shader generation and bindings.
+ * @prop {string} name
+ *   Channel name used for function naming and resource bookkeeping.
+ * @prop {ChannelConfigResolved} channel
+ *   Original resolved channel config; used for scale config lookups.
+ * @prop {ChannelSourceKind} sourceKind
+ *   Where the values originate: series buffer, uniform, or literal constant.
+ * @prop {string} rawValueExpr
+ *   WGSL expression that yields the raw (pre-scale) value for this channel.
+ * @prop {"f32"|"u32"|"i32"} scalarType
+ *   Scalar type of the raw input value when inputComponents is 1.
+ * @prop {1|2|4} outputComponents
+ *   Number of components expected by the mark shader (1 for scalars, 4 for colors).
+ * @prop {1|2|4} inputComponents
+ *   Number of components stored in the series buffer (defaults to outputComponents).
+ * @prop {"f32"|"u32"|"i32"} outputScalarType
+ *   Scalar type of the scaled output when outputComponents is 1.
+ * @prop {ScaleType} scaleType
+ *   Scale type name used by codegen (e.g., linear, band, threshold).
+ * @prop {boolean} useRangeTexture
+ *   True when the scale output is sampled from a color ramp texture.
+ * @prop {boolean} needsScaleFunction
+ *   True when a getScaled_* helper is required (non-identity or scalar output).
+ * @prop {boolean} needsOrdinalRange
+ *   True when the ordinal range buffer must be bound for this channel.
+ * @prop {string | null} bufferName
+ *   Storage buffer identifier for series-backed channels, otherwise null.
+ * @prop {string | null} arrayType
+ *   WGSL array type for the series buffer, otherwise null.
+ * @prop {string | null} readFn
+ *   WGSL helper to read from the series buffer, otherwise null.
+ */
+
+/**
+ * @param {ScalarType | undefined} type
+ * @returns {"f32"|"u32"|"i32"}
+ */
+function normalizeScalarType(type) {
+    return type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
+}
+
+/**
+ * @param {string} name
+ * @param {number} inputComponents
+ * @param {"f32"|"u32"|"i32"} scalarType
+ * @returns {{ bufferName: string, arrayType: string, readFn: string }}
+ */
+function buildSeriesAccessors(name, inputComponents, scalarType) {
+    const bufferName = `buf_${name}`;
+    const arrayType =
+        inputComponents === 1 ? `array<${scalarType}>` : "array<f32>";
+    const readFn =
+        inputComponents === 1
+            ? `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`
+            : `fn read_${name}(i: u32) -> vec4<f32> {
+    let base = i * 4u;
+    return vec4<f32>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
+}`;
+    return { bufferName, arrayType, readFn };
+}
+
+/**
+ * @param {string} name
+ * @param {ChannelConfigResolved} channel
+ * @returns {ChannelIR | null}
+ */
+function buildChannelIR(name, channel) {
+    const hasSeries = channel.data != null;
+    const hasValue = channel.value != null || channel.default != null;
+
+    if (!hasSeries && !hasValue) {
+        return null;
+    }
+
+    const outputComponents = channel.components ?? 1;
+    const inputComponents = channel.inputComponents ?? outputComponents;
+    const scalarType = normalizeScalarType(channel.type);
+    /** @type {ScaleType} */
+    const scaleType = channel.scale?.type ?? "identity";
+    const outputScalarType =
+        outputComponents === 1
+            ? getScaleOutputType(scaleType, scalarType)
+            : "f32";
+    const useRangeTexture = usesRangeTexture(channel.scale, outputComponents);
+    const needsScaleFunction =
+        outputComponents === 1 ||
+        scaleType !== "identity" ||
+        isPiecewiseScale(channel.scale) ||
+        useRangeTexture;
+    const needsOrdinalRange = scaleType === "ordinal";
+
+    if (hasSeries) {
+        const { bufferName, arrayType, readFn } = buildSeriesAccessors(
+            name,
+            inputComponents,
+            scalarType
+        );
+        return {
+            name,
+            channel,
+            sourceKind: "series",
+            rawValueExpr: `read_${name}(i)`,
+            scalarType,
+            outputComponents,
+            inputComponents,
+            outputScalarType,
+            scaleType,
+            useRangeTexture,
+            needsScaleFunction,
+            needsOrdinalRange,
+            bufferName,
+            arrayType,
+            readFn,
+        };
+    }
+
+    const isDynamic = "dynamic" in channel && channel.dynamic === true;
+    const resolvedValue =
+        channel.value ?? /** @type {number|number[]} */ (channel.default);
+    const literal = formatLiteral(scalarType, outputComponents, resolvedValue);
+    const uniformName = `u_${name}`;
+    const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
+
+    return {
+        name,
+        channel,
+        sourceKind: isDynamic ? "uniform" : "literal",
+        rawValueExpr,
+        scalarType,
+        outputComponents,
+        inputComponents,
+        outputScalarType,
+        scaleType,
+        useRangeTexture,
+        needsScaleFunction,
+        needsOrdinalRange,
+        bufferName: null,
+        arrayType: null,
+        readFn: null,
+    };
+}
+
+/**
+ * @param {Record<string, ChannelConfigResolved>} channels
+ * @returns {ChannelIR[]}
+ */
+export function buildChannelIRs(channels) {
+    /** @type {ChannelIR[]} */
+    const channelIRs = [];
+
+    for (const [name, channel] of Object.entries(channels)) {
+        const channelIR = buildChannelIR(name, channel);
+        if (!channelIR) {
+            continue;
+        }
+        channelIRs.push(channelIR);
+    }
+
+    return channelIRs;
+}
