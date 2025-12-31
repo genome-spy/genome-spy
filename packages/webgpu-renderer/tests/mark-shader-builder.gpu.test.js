@@ -12,6 +12,7 @@ import { interpolateHcl } from "d3-interpolate";
 import { scaleLinear } from "d3-scale";
 import { buildMarkShader } from "../src/marks/markShaderBuilder.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
+import { UniformBuffer } from "../src/utils/uniformBuffer.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 globalThis.GPUShaderStage ??= {
@@ -67,6 +68,19 @@ function packContinuousDomainRange(domain, range) {
 }
 
 /**
+ * @param {import("../src/utils/uniformBuffer.js").UniformSpec[]} layout
+ * @param {Record<string, number|number[]|Array<number|number[]>>} values
+ * @returns {number[]}
+ */
+function buildUniformData(layout, values) {
+    const buffer = new UniformBuffer(layout);
+    for (const [name, value] of Object.entries(values)) {
+        buffer.setValue(name, value);
+    }
+    return Array.from(new Float32Array(buffer.data));
+}
+
+/**
  * @param {string} format
  * @returns {number}
  */
@@ -87,6 +101,17 @@ function bytesPerPixelForFormat(format) {
  */
 function alignTo(value, alignment) {
     return Math.ceil(value / alignment) * alignment;
+}
+
+/**
+ * @param {Array<number>|ArrayBufferView} data
+ * @returns {number}
+ */
+function getStorageByteLength(data) {
+    if (ArrayBuffer.isView(data)) {
+        return data.byteLength;
+    }
+    return data.length * 4;
 }
 
 /**
@@ -204,6 +229,10 @@ async function runMarkShaderCompute(
         texture,
     }
 ) {
+    const normalizedSeriesBuffers = seriesBuffers.map((buffer) => ({
+        ...buffer,
+        byteLength: getStorageByteLength(buffer.data),
+    }));
     return page.evaluate(
         async ({
             shaderCode,
@@ -248,7 +277,10 @@ async function runMarkShaderCompute(
                 ...seriesBuffers.map((buffer) => ({
                     binding: buffer.binding,
                     visibility: GPUShaderStage.COMPUTE,
-                    buffer: { type: "read-only-storage" },
+                    buffer: {
+                        type: "read-only-storage",
+                        minBindingSize: buffer.byteLength,
+                    },
                 })),
                 texture
                     ? {
@@ -297,11 +329,15 @@ async function runMarkShaderCompute(
             const seriesGpuBuffers = seriesBuffers.map((buffer) => {
                 const data = new Float32Array(buffer.data);
                 const gpuBuffer = device.createBuffer({
-                    size: data.byteLength,
+                    size: buffer.byteLength,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
                 });
                 device.queue.writeBuffer(gpuBuffer, 0, data);
-                return { binding: buffer.binding, buffer: gpuBuffer };
+                return {
+                    binding: buffer.binding,
+                    buffer: gpuBuffer,
+                    size: buffer.byteLength,
+                };
             });
 
             const outputBuffer = device.createBuffer({
@@ -359,7 +395,7 @@ async function runMarkShaderCompute(
                 { binding: 0, resource: { buffer: paramsBuffer } },
                 ...seriesGpuBuffers.map((buffer) => ({
                     binding: buffer.binding,
-                    resource: { buffer: buffer.buffer },
+                    resource: { buffer: buffer.buffer, size: buffer.size },
                 })),
                 texture
                     ? {
@@ -406,7 +442,7 @@ async function runMarkShaderCompute(
         {
             shaderCode,
             uniformData,
-            seriesBuffers,
+            seriesBuffers: normalizedSeriesBuffers,
             outputBinding,
             outputLength,
             outputComponents,
@@ -500,6 +536,112 @@ test("markShaderBuilder reads dynamic value uniforms", async ({ page }) => {
     });
 
     expect(output).toEqual([value]);
+});
+
+test("markShaderBuilder applies threshold scales to value channels", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const channels = {
+        fill: {
+            value: 0.5,
+            type: "f32",
+            components: 4,
+            scale: {
+                type: "threshold",
+                domain: [0],
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 0, 0, 1],
+                ],
+            },
+        },
+    };
+    const uniformLayout = [
+        { name: "uDomain_fill", type: "f32", components: 1, arrayLength: 1 },
+        { name: "uRange_fill", type: "f32", components: 4, arrayLength: 2 },
+    ];
+    const uniformData = buildUniformData(uniformLayout, {
+        uDomain_fill: [0],
+        uRange_fill: [
+            [0, 0, 0, 1],
+            [1, 0, 0, 1],
+        ],
+    });
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        outputType: "vec4<f32>",
+        outputLength: 1,
+        channelName: "fill",
+    });
+
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData,
+        outputBinding: result.outputBinding,
+        outputLength: 1,
+        outputComponents: 4,
+    });
+
+    expect(output).toHaveLength(4);
+    expect(output[0]).toBeCloseTo(1, 5);
+    expect(output[1]).toBeCloseTo(0, 5);
+    expect(output[2]).toBeCloseTo(0, 5);
+    expect(output[3]).toBeCloseTo(1, 5);
+});
+
+test("markShaderBuilder applies ordinal scales to value channels", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const channels = {
+        shape: {
+            value: 0,
+            type: "u32",
+            components: 4,
+            scale: { type: "ordinal", range: [0, 1] },
+        },
+    };
+    const uniformLayout = [
+        { name: "uRangeCount_shape", type: "f32", components: 1 },
+    ];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        outputType: "vec4<f32>",
+        outputLength: 1,
+        channelName: "shape",
+    });
+    const bindings = mapBindings(result);
+    const ordinalBinding = bindings.find(
+        (entry) => entry.role === "ordinalRange" && entry.name === "shape"
+    )?.binding;
+    if (ordinalBinding == null) {
+        throw new Error("Ordinal range binding for shape was not generated.");
+    }
+
+    const rangeData = [0, 0, 1, 1, 1, 0, 0, 1];
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData: buildUniformData(uniformLayout, {
+            uRangeCount_shape: 2,
+        }),
+        seriesBuffers: [{ binding: ordinalBinding, data: rangeData }],
+        outputBinding: result.outputBinding,
+        outputLength: 1,
+        outputComponents: 4,
+    });
+
+    expect(output).toHaveLength(4);
+    expect(output[0]).toBeCloseTo(0, 5);
+    expect(output[1]).toBeCloseTo(0, 5);
+    expect(output[2]).toBeCloseTo(1, 5);
+    expect(output[3]).toBeCloseTo(1, 5);
 });
 
 test("markShaderBuilder samples range textures for vec4 output", async ({

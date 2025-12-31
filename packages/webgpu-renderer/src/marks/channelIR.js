@@ -1,9 +1,5 @@
-import { usesRangeTexture } from "./domainRangeUtils.js";
-import {
-    formatLiteral,
-    getScaleOutputType,
-    isPiecewiseScale,
-} from "./scaleCodegen.js";
+import { buildChannelAnalysis } from "./channelAnalysis.js";
+import { formatLiteral } from "./scaleCodegen.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -47,14 +43,6 @@ import {
  */
 
 /**
- * @param {ScalarType | undefined} type
- * @returns {"f32"|"u32"|"i32"}
- */
-function normalizeScalarType(type) {
-    return type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-}
-
-/**
  * @param {string} name
  * @param {number} inputComponents
  * @param {"f32"|"u32"|"i32"} scalarType
@@ -80,31 +68,22 @@ function buildSeriesAccessors(name, inputComponents, scalarType) {
  * @returns {ChannelIR | null}
  */
 function buildChannelIR(name, channel) {
-    const hasSeries = channel.data != null;
-    const hasValue = channel.value != null || channel.default != null;
-
-    if (!hasSeries && !hasValue) {
+    const analysis = buildChannelAnalysis(name, channel);
+    if (analysis.sourceKind === "missing") {
         return null;
     }
+    const {
+        outputComponents,
+        inputComponents,
+        scalarType,
+        outputScalarType,
+        scaleType,
+        useRangeTexture,
+        needsScaleFunction,
+        needsOrdinalRange,
+    } = analysis;
 
-    const outputComponents = channel.components ?? 1;
-    const inputComponents = channel.inputComponents ?? outputComponents;
-    const scalarType = normalizeScalarType(channel.type);
-    /** @type {ScaleType} */
-    const scaleType = channel.scale?.type ?? "identity";
-    const outputScalarType =
-        outputComponents === 1
-            ? getScaleOutputType(scaleType, scalarType)
-            : "f32";
-    const useRangeTexture = usesRangeTexture(channel.scale, outputComponents);
-    const needsScaleFunction =
-        outputComponents === 1 ||
-        scaleType !== "identity" ||
-        isPiecewiseScale(channel.scale) ||
-        useRangeTexture;
-    const needsOrdinalRange = scaleType === "ordinal";
-
-    if (hasSeries) {
+    if (analysis.sourceKind === "series") {
         const { bufferName, arrayType, readFn } = buildSeriesAccessors(
             name,
             inputComponents,
@@ -132,7 +111,7 @@ function buildChannelIR(name, channel) {
     const isDynamic = "dynamic" in channel && channel.dynamic === true;
     const resolvedValue =
         channel.value ?? /** @type {number|number[]} */ (channel.default);
-    const literal = formatLiteral(scalarType, outputComponents, resolvedValue);
+    const literal = formatLiteral(scalarType, inputComponents, resolvedValue);
     const uniformName = `u_${name}`;
     const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
 
