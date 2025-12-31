@@ -2,11 +2,15 @@
 import { buildMarkShader } from "./markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../types.js";
 import { UniformBuffer } from "../utils/uniformBuffer.js";
-import { DOMAIN_PREFIX, RANGE_PREFIX } from "../wgsl/prefixes.js";
+import {
+    DOMAIN_PREFIX,
+    RANGE_COUNT_PREFIX,
+    RANGE_PREFIX,
+} from "../wgsl/prefixes.js";
+import { buildChannelAnalysis } from "./channelAnalysis.js";
 import {
     getScaleUniformDef,
     getScaleOutputType,
-    isPiecewiseScale,
     validateScaleConfig,
 } from "./scaleCodegen.js";
 import {
@@ -501,7 +505,8 @@ export default class BaseProgram {
      * @returns {void}
      */
     _addScaleUniforms(layout, name, channel) {
-        const scaleType = channel.scale?.type ?? "identity";
+        const analysis = buildChannelAnalysis(name, channel);
+        const scaleType = analysis.scaleType;
         const kind = getDomainRangeKind(channel.scale);
         if (kind) {
             const { domainLength, rangeLength } = getDomainRangeLengths(
@@ -509,15 +514,10 @@ export default class BaseProgram {
                 kind,
                 channel.scale
             );
-            const outputComponents = channel.components ?? 1;
-            const useRangeTexture = usesRangeTexture(
-                channel.scale,
-                outputComponents
-            );
+            const outputComponents = analysis.outputComponents;
+            const useRangeTexture = analysis.useRangeTexture;
             const outputType =
-                outputComponents === 1
-                    ? getScaleOutputType(scaleType, channel.type ?? "f32")
-                    : "f32";
+                outputComponents === 1 ? analysis.outputScalarType : "f32";
             const rangeComponents = useRangeTexture ? 1 : outputComponents;
             const rangeType = useRangeTexture ? "f32" : outputType;
             layout.push({
@@ -537,6 +537,13 @@ export default class BaseProgram {
         for (const param of def.params) {
             layout.push({
                 name: `${param.prefix}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
+        if (analysis.needsOrdinalRange) {
+            layout.push({
+                name: `${RANGE_COUNT_PREFIX}${name}`,
                 type: "f32",
                 components: 1,
             });
@@ -956,6 +963,7 @@ export default class BaseProgram {
 
         this.device.queue.writeBuffer(buffer, 0, data);
         this._ordinalRangeSizes.set(name, { length, byteLength: nextBytes });
+        this._setUniformValue(`${RANGE_COUNT_PREFIX}${name}`, length);
         return needsNewBuffer;
     }
 
@@ -1091,11 +1099,21 @@ export default class BaseProgram {
                 `Channel "${name}" must use ${spec.components} components`
             );
         }
-        const scaleType = channel.scale?.type ?? "identity";
+        const analysis = buildChannelAnalysis(name, channel);
+        const {
+            scaleType,
+            outputComponents,
+            inputComponents,
+            allowsScalarToVector,
+            isContinuousScale,
+            rangeIsFunction,
+            rangeIsColor,
+            isPiecewise,
+        } = analysis;
         const allowsOrdinalTypeOverride =
             scaleType === "ordinal" &&
             spec?.type === "f32" &&
-            (channel.components ?? 1) > 1 &&
+            outputComponents > 1 &&
             channel.type === "u32";
         if (
             spec?.type &&
@@ -1149,12 +1167,6 @@ export default class BaseProgram {
                 `Only f32 vectors are supported for "${name}" input data.`
             );
         }
-        const outputComponents = channel.components ?? 1;
-        const inputComponents = channel.inputComponents ?? outputComponents;
-        const allowsScalarToVector =
-            scaleType === "threshold" ||
-            scaleType === "ordinal" ||
-            isPiecewiseScale(channel.scale);
         if (scaleType === "ordinal" && channel.type !== "u32") {
             throw new Error(
                 `Ordinal scale on "${name}" requires u32 input type.`
@@ -1170,25 +1182,12 @@ export default class BaseProgram {
                 `Only f32 vectors are supported for "${name}" right now.`
             );
         }
-        if (
-            channel.inputComponents &&
-            channel.inputComponents !== outputComponents &&
-            !allowsScalarToVector
-        ) {
+        if (inputComponents !== outputComponents && !allowsScalarToVector) {
             throw new Error(
-                `Channel "${name}" only supports mismatched input/output components with threshold, ordinal, or piecewise scales.`
+                `Channel "${name}" only supports mismatched input/output components when mapping scalars to vectors.`
             );
         }
-        const rangeFn = isRangeFunction(channel.scale?.range);
-        const colorRange = isColorRange(channel.scale?.range);
-        const isContinuousScale = [
-            "linear",
-            "log",
-            "pow",
-            "sqrt",
-            "symlog",
-        ].includes(scaleType);
-        if (rangeFn) {
+        if (rangeIsFunction) {
             if (!isContinuousScale) {
                 throw new Error(
                     `Channel "${name}" only supports function ranges with continuous scales.`
@@ -1201,7 +1200,7 @@ export default class BaseProgram {
             }
         }
         if (channel.scale?.interpolate !== undefined) {
-            if (!colorRange) {
+            if (!rangeIsColor) {
                 throw new Error(
                     `Channel "${name}" requires a color range when interpolate is set.`
                 );
@@ -1219,8 +1218,8 @@ export default class BaseProgram {
         }
         if (
             isContinuousScale &&
-            !rangeFn &&
-            colorRange &&
+            !rangeIsFunction &&
+            rangeIsColor &&
             outputComponents !== 4
         ) {
             throw new Error(
@@ -1248,16 +1247,13 @@ export default class BaseProgram {
                     }, got ${range.length}.`
                 );
             }
-            if (
-                isValueChannelConfig(channel) &&
-                (channel.components ?? 1) > 1
-            ) {
+            if (inputComponents !== 1) {
                 throw new Error(
-                    `Threshold scale on "${name}" requires scalar input values for vector outputs.`
+                    `Threshold scale on "${name}" requires scalar input values.`
                 );
             }
         }
-        if (isPiecewiseScale(channel.scale)) {
+        if (isPiecewise) {
             const domain = channel.scale?.domain;
             const range = channel.scale?.range;
             if (!Array.isArray(domain) || domain.length < 2) {
@@ -1275,20 +1271,9 @@ export default class BaseProgram {
                     `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
                 );
             }
-            if (
-                isSeriesChannelConfig(channel) &&
-                (channel.inputComponents ?? channel.components ?? 1) !== 1
-            ) {
+            if (inputComponents !== 1) {
                 throw new Error(
-                    `Piecewise scale on "${name}" requires scalar input data.`
-                );
-            }
-            if (
-                isValueChannelConfig(channel) &&
-                (channel.components ?? 1) > 1
-            ) {
-                throw new Error(
-                    `Piecewise scale on "${name}" requires scalar input values for vector outputs.`
+                    `Piecewise scale on "${name}" requires scalar input values.`
                 );
             }
         }
@@ -1299,9 +1284,9 @@ export default class BaseProgram {
                     `Ordinal scale on "${name}" requires a non-empty range.`
                 );
             }
-            if (isSeriesChannelConfig(channel) && inputComponents !== 1) {
+            if (inputComponents !== 1) {
                 throw new Error(
-                    `Ordinal scale on "${name}" requires scalar input data.`
+                    `Ordinal scale on "${name}" requires scalar input values.`
                 );
             }
             if (isValueChannelConfig(channel)) {

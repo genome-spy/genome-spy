@@ -14,6 +14,7 @@
 
 import {
     DOMAIN_PREFIX,
+    RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
     SCALED_FUNCTION_PREFIX,
     SCALE_ALIGN_PREFIX,
@@ -303,7 +304,7 @@ function emitOrdinal({
 
     return `${makeFnHeader(name, returnType)} {
     let idx = ${valueExpr};
-    let count = arrayLength(&${rangeName});
+    let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }
     let slot = min(idx, count - 1u);
     return ${rangeName}[slot];
