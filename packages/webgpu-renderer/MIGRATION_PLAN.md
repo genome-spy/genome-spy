@@ -178,19 +178,20 @@ implemented first. Params/selections come last.
    - WebGPU writeTexture requires 256-byte row alignment; helper utilities
      should pad rows and keep width/height metadata.
 
-5) **Port accessor generation (data vs. value)** — IN PROGRESS
+5) **Port accessor generation (data vs. value)** — OK
    - Translate `accessor_` function logic to WGSL.
    - Use WGSL storage buffers for `attr_*` data access (vertex pulling).
    - Support constants for non-dynamic values (inline WGSL literals).
    - Keep piecewise scale segment counts stable per scale instance; the size
      can change only when the scale is redefined (not per-frame).
+   - Param/expr-driven accessors are still pending (see selection/params step).
 
 6) **Port scale function generation** — IN PROGRESS
    - Generate `scale_*` functions that apply domain/range transforms.
    - Ensure `getScaled_*` wraps `accessor_*` + `scale_*` consistently.
    - Keep `getScaled_*` as the only mark-facing entry point.
 
-7) **Handle discrete vs. continuous ranges** — IN PROGRESS
+7) **Handle discrete vs. continuous ranges** — OK
    - Reproduce discrete range mapping logic (`getDiscreteRangeMapper` path):
      - For small discrete ranges, inline literal vectors.
      - For large or dynamic ranges, route through range textures.
@@ -211,20 +212,28 @@ implemented first. Params/selections come last.
      a fixed length after initial setup; changing the length requires
      re-registering the scale (pipeline/bind group rebuild).
 
-10) **Build parity tests for codegen** — IN PROGRESS
-    - Snapshot/substring tests comparing GLSL and WGSL output structure:
-      - `getScaled_*` presence
-      - `uDomain_` / `uRange_` usage
-      - range texture accessors
-    - Keep tests in WebGPU package so codegen stays stable.
+10) **Fill remaining GLSL generator gaps** — IN PROGRESS
+    - Conditional encoders + selection predicates:
+      - `generateConditionalEncoderGlsl` equivalents in WGSL
+      - `checkSelection_*` helpers + selection mask plumbing
+    - Param/expr accessors:
+      - `uParam_*` uniforms and expr-ref driven accessors
+    - High-precision/index/locus scales:
+      - `isHighPrecisionScale`, `splitHighPrecision`, `toHighPrecisionDomainUniform`
+      - `scaleBandHp` / `scaleBandHpU` equivalents and u64 emulation path
+    - Additional scale families + metadata:
+      - quantile/quantize (discretizing), time/utc (temporal), point scale
+      - sequential/diverging family parsing (`splitScaleType`) + `isInterpolating`
+    - Null handling:
+      - `scaleNull` behavior for nulls in numeric/color channels
 
-11) **Port selection + params last**
+12) **Port selection + params last**
     - Implement `checkSelection_*` and `uParam_*` only after scale/texture
       parity is achieved.
     - Core remains responsible for evaluating params; renderer only consumes
       the final values or selection masks.
 
-12) **Deprecate GLSL generator (final step)**
+13) **Deprecate GLSL generator (final step)**
     - Once WGSL parity is achieved and all marks ported, remove GLSL generator
       usage from the WebGPU path while keeping GLSL for the WebGL backend.
 
@@ -239,8 +248,8 @@ surface stays the same; only codegen internals change.
      blocks.
 2) **Route scale codegen through the pipeline** — OK
    - Continuous, piecewise, and threshold scales all go through the pipeline.
-3) **Add tests for `markShaderBuilder` before widening scope** — IN PROGRESS
-   - Current GPU tests cover WGSL helpers + scaleCodegen only.
+3) **Add tests for `markShaderBuilder` before widening scope** — OK
+    - Current GPU tests cover WGSL helpers + scaleCodegen only.
 4) **Unify value source resolution** — PENDING
    - Extract shared logic for constants/uniforms/storage buffers so both
      `scaleCodegen` and `markShaderBuilder` use the same source model.
