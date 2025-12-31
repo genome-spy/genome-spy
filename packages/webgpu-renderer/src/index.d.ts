@@ -3,24 +3,11 @@ export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";
 
-export type ColorInterpolatorType =
-    | "rgb"
-    | "hsl"
-    | "hsl-long"
-    | "lab"
-    | "hcl"
-    | "hcl-long"
-    | "cubehelix"
-    | "cubehelix-long";
-
-export type ColorInterpolator =
-    | ColorInterpolatorType
-    | {
-          type: ColorInterpolatorType;
-          gamma?: number;
-      };
-
 export type ColorInterpolatorFn = (t: number) => string;
+export type ColorInterpolatorFactory = (
+    a: string,
+    b: string
+) => ColorInterpolatorFn;
 
 export type TypedArray =
     | Float32Array
@@ -51,8 +38,12 @@ export type ChannelScale = {
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */
     range?: Array<number | number[] | string> | ColorInterpolatorFn;
 
-    /** Interpolation method for color ranges; only used for vec4 color ranges. */
-    interpolate?: ColorInterpolator;
+    /**
+     * Interpolation factory for color ranges; only used for vec4 color ranges.
+     * Accepts d3-interpolate factories (e.g., interpolateHcl or
+     * interpolateRgb.gamma(2.2)) and other compatible interpolators.
+     */
+    interpolate?: ColorInterpolatorFactory;
 
     /** Base for log scales. */
     base?: number;
