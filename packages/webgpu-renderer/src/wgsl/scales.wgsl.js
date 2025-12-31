@@ -21,6 +21,10 @@ fn clampToRange(value: f32, range: vec2<f32>) -> f32 {
     return clamp(value, min(range.x, range.y), max(range.x, range.y));
 }
 
+fn clampToDomain(value: f32, domain: vec2<f32>) -> f32 {
+    return clamp(value, min(domain.x, domain.y), max(domain.x, domain.y));
+}
+
 // Uniform arrays must use 16-byte elements, so scalar pairs are packed into vec4 slots.
 fn readPacked2(values: array<vec4<f32>, 2>) -> vec2<f32> {
     return vec2<f32>(values[0].x, values[1].x);
