@@ -685,7 +685,7 @@ test("scaleCodegen rounds continuous scale outputs like d3 rangeRound", async ({
     await ensureWebGPU(page);
 
     // const x = d3.scaleLinear().rangeRound([0, 960]);
-    const input = [-0.2, 0.1, 0.9, 1.2, 1.8];
+    const input = [-0.2, 0.1, 0.5, 0.9, 1.2, 1.8];
     const domain = [0, 2];
     const range = [0, 960];
     const reference = scaleLinear()
