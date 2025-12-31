@@ -8,8 +8,8 @@ data, storage buffers + vertex pulling, and a clean separation between core
 
 Create a new package (`@genome-spy/webgpu-renderer`) that contains only:
 
-- Mark implementations (rect/point/rule/link/text) — IN PROGRESS
-- WGSL codegen (scale transforms, conditional encodings, selection tests) — IN PROGRESS
+- Mark implementations (rect/point OK; rule/link/text pending) — IN PROGRESS
+- WGSL codegen (scale transforms OK; conditional encodings/selections pending) — IN PROGRESS
 - GPU resources (buffers, textures, pipelines) — IN PROGRESS
 - Picking pass — IN PROGRESS
 - Viewport/scissor management — IN PROGRESS
@@ -170,7 +170,7 @@ implemented first. Params/selections come last.
      (already in `packages/webgpu-renderer/src/wgsl/scales.wgsl.js`).
    - Ensure scale helpers have identical signatures and edge-case behavior.
 
-4) **Implement range textures (first-class in WGSL)** — IN PROGRESS
+4) **Implement range textures (first-class in WGSL)** — OK
    - Decide texture format/layout for ranges (1D as 2D texture with height 1).
    - Add WGSL helpers for `uRangeTexture_*` lookups (like GLSL).
    - Plumb texture/sampler bindings into mark pipelines.
@@ -228,6 +228,25 @@ implemented first. Params/selections come last.
     - Once WGSL parity is achieved and all marks ported, remove GLSL generator
       usage from the WebGPU path while keeping GLSL for the WebGL backend.
 
+### 14) Scale codegen pipeline (IR-style) — IN PROGRESS
+
+This is a low-level internal refactor to make WGSL generation more composable
+and ready for future features (high precision, conditional encoders). The API
+surface stays the same; only codegen internals change.
+
+1) **Introduce a pipeline model** — OK
+   - `scalePipeline.js` defines steps that mutate an expression and append WGSL
+     blocks.
+2) **Route scale codegen through the pipeline** — OK
+   - Continuous, piecewise, and threshold scales all go through the pipeline.
+3) **Add tests for `markShaderBuilder` before widening scope** — IN PROGRESS
+   - Current GPU tests cover WGSL helpers + scaleCodegen only.
+4) **Unify value source resolution** — PENDING
+   - Extract shared logic for constants/uniforms/storage buffers so both
+     `scaleCodegen` and `markShaderBuilder` use the same source model.
+5) **Add future steps** — PENDING
+   - High precision (index/locus), conditional encoders, selection masks.
+
 ### Scale properties used by the renderer
 
 Only a subset of `packages/core/src/spec/scale.d.ts` feeds the shader pipeline
@@ -246,8 +265,12 @@ Directly consumed by `glslScaleGenerator.js`:
 - `paddingInner()`, `paddingOuter()`, `align()` (band/point/index/locus)
 
 Not consumed directly in the generator (handled upstream in core):
-- `scheme`, `interpolate`, `reverse`, `nice`, `domainMin/Max/Mid`, `bins`,
+- `scheme`, `reverse`, `nice`, `domainMin/Max/Mid`, `bins`,
   `zero`, `round`, etc.
+
+WebGPU-specific notes:
+- `interpolate` is consumed by the WebGPU renderer to build ramp textures for
+  sequential/piecewise color interpolation.
 
 ### Vega scale metadata alignment
 

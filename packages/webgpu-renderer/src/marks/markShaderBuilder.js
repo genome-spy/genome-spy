@@ -4,13 +4,8 @@ import {
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
 } from "../wgsl/prefixes.js";
-import {
-    buildScaledFunction,
-    formatLiteral,
-    getScaleOutputType,
-    isPiecewiseScale,
-} from "./scaleCodegen.js";
-import { usesRangeTexture } from "./domainRangeUtils.js";
+import { buildChannelIRs } from "./channelIR.js";
+import { buildScaledFunction } from "./scaleCodegen.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -56,17 +51,29 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     const channelFns = [];
 
     let bindingIndex = 1;
+    const channelIRs = buildChannelIRs(channels);
+    const seriesChannelIRs = channelIRs.filter(
+        (channelIR) => channelIR.sourceKind === "series"
+    );
+    const valueChannelIRs = channelIRs.filter(
+        (channelIR) =>
+            channelIR.sourceKind === "uniform" ||
+            channelIR.sourceKind === "literal"
+    );
+    const ordinalRangeChannelIRs = channelIRs.filter(
+        (channelIR) => channelIR.needsOrdinalRange
+    );
+    const rangeTextureChannelIRs = channelIRs.filter(
+        (channelIR) => channelIR.useRangeTexture
+    );
 
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
 
     // First pass: series-backed channels become storage buffers, read_* accessors,
     // and getScaled_* wrappers.
-    for (const [name, channel] of Object.entries(channels)) {
-        if (channel.data == null) {
-            continue;
-        }
-
+    for (const channelIR of seriesChannelIRs) {
+        const { name } = channelIR;
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
@@ -76,67 +83,36 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         });
         resourceLayout.push({ name, role: "series" });
 
-        const type = channel.type ?? "f32";
-        const scalarType =
-            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-        const outputComponents = channel.components ?? 1;
-        const inputComponents = channel.inputComponents ?? outputComponents;
-        const bufferName = `buf_${name}`;
-        const arrayType =
-            inputComponents === 1 ? `array<${scalarType}>` : "array<f32>";
-
         bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${bufferName}: ${arrayType};`
+            `@group(1) @binding(${binding}) var<storage, read> ${channelIR.bufferName}: ${channelIR.arrayType};`
         );
 
-        if (inputComponents > 1 && type !== "f32") {
+        if (channelIR.inputComponents > 1 && channelIR.scalarType !== "f32") {
             // TODO: Support vector types with non-f32 data.
         }
 
-        if (inputComponents === 1) {
-            const readFn = `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`;
-            bufferReaders.push(readFn);
-        } else {
-            bufferReaders.push(
-                `fn read_${name}(i: u32) -> vec4<f32> {
-    let base = i * 4u;
-    return vec4<f32>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
-}`
-            );
+        if (channelIR.readFn) {
+            bufferReaders.push(channelIR.readFn);
         }
 
         // getScaled_* is the only function mark shaders call. It hides whether
         // values come from buffers or uniforms and applies scale logic.
-        const scale = channel.scale?.type ?? "identity";
-        const outputScalarType =
-            outputComponents === 1
-                ? getScaleOutputType(scale, scalarType)
-                : "f32";
-        const useRangeTexture = usesRangeTexture(
-            channel.scale,
-            outputComponents
-        );
-        const needsScaleFunction =
-            outputComponents === 1 ||
-            scale !== "identity" ||
-            isPiecewiseScale(channel.scale) ||
-            useRangeTexture;
-        if (needsScaleFunction) {
+        if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
-                    scale,
-                    rawValueExpr: `read_${name}(i)`,
-                    inputScalarType: scalarType,
-                    outputComponents,
-                    outputScalarType,
-                    scaleConfig: channel.scale,
-                    useRangeTexture,
+                    scale: channelIR.scaleType,
+                    rawValueExpr: channelIR.rawValueExpr,
+                    inputScalarType: channelIR.scalarType,
+                    outputComponents: channelIR.outputComponents,
+                    outputScalarType: channelIR.outputScalarType,
+                    scaleConfig: channelIR.channel.scale,
+                    useRangeTexture: channelIR.useRangeTexture,
                 })
             );
         } else {
             channelFns.push(
-                `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return read_${name}(i); }`
+                `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return ${channelIR.rawValueExpr}; }`
             );
         }
     }
@@ -144,11 +120,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     // Ordinal scales pull range values from storage buffers. These bindings are
     // separate from data buffers so ranges can grow/shrink without changing
     // per-instance series data.
-    for (const [name, channel] of Object.entries(channels)) {
-        if (channel.scale?.type !== "ordinal") {
-            continue;
-        }
-
+    for (const channelIR of ordinalRangeChannelIRs) {
+        const { name } = channelIR;
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
@@ -158,16 +131,10 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         });
         resourceLayout.push({ name, role: "ordinalRange" });
 
-        const outputComponents = channel.components ?? 1;
-        const type = channel.type ?? "f32";
-        const scalarType =
-            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-        const outputScalarType =
-            outputComponents === 1
-                ? getScaleOutputType("ordinal", scalarType)
-                : "f32";
         const elementType =
-            outputComponents === 1 ? outputScalarType : "vec4<f32>";
+            channelIR.outputComponents === 1
+                ? channelIR.outputScalarType
+                : "vec4<f32>";
         const rangeBufferName = `range_${name}`;
 
         bufferDecls.push(
@@ -177,11 +144,8 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
     // Color ramps are stored as textures so interpolation matches d3 in
     // non-RGB color spaces when requested.
-    for (const [name, channel] of Object.entries(channels)) {
-        if (!usesRangeTexture(channel.scale, channel.components ?? 1)) {
-            continue;
-        }
-
+    for (const channelIR of rangeTextureChannelIRs) {
+        const { name } = channelIR;
         const textureBinding = bindingIndex++;
         resourceBindings.push({
             binding: textureBinding,
@@ -209,53 +173,24 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
     // Second pass: value-backed channels become either uniforms (dynamic) or
     // inline WGSL constants (static), but still expose getScaled_*.
-    for (const [name, channel] of Object.entries(channels)) {
-        if (channel.value == null && channel.default == null) {
-            continue;
-        }
-        const outputComponents = channel.components ?? 1;
-        const scale = channel.scale?.type ?? "identity";
-        const uniformName = `u_${name}`;
-        const type = channel.type ?? "f32";
-        const scalarType =
-            type === "u32" ? "u32" : type === "i32" ? "i32" : "f32";
-        const isDynamic = "dynamic" in channel && channel.dynamic === true;
-        const literal = formatLiteral(
-            type,
-            outputComponents,
-
-            /** @type {number|number[]} */ (channel.value)
-        );
-        const rawValueExpr = isDynamic ? `params.${uniformName}` : literal;
-        const outputScalarType =
-            outputComponents === 1
-                ? getScaleOutputType(scale, scalarType)
-                : "f32";
-        const useRangeTexture = usesRangeTexture(
-            channel.scale,
-            outputComponents
-        );
-        const needsScaleFunction =
-            outputComponents === 1 ||
-            scale !== "identity" ||
-            isPiecewiseScale(channel.scale) ||
-            useRangeTexture;
-        if (needsScaleFunction) {
+    for (const channelIR of valueChannelIRs) {
+        const { name } = channelIR;
+        if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
-                    scale,
-                    rawValueExpr,
-                    inputScalarType: scalarType,
-                    outputComponents,
-                    outputScalarType,
-                    scaleConfig: channel.scale,
-                    useRangeTexture,
+                    scale: channelIR.scaleType,
+                    rawValueExpr: channelIR.rawValueExpr,
+                    inputScalarType: channelIR.scalarType,
+                    outputComponents: channelIR.outputComponents,
+                    outputScalarType: channelIR.outputScalarType,
+                    scaleConfig: channelIR.channel.scale,
+                    useRangeTexture: channelIR.useRangeTexture,
                 })
             );
         } else {
             channelFns.push(
-                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${rawValueExpr}; }`
+                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${channelIR.rawValueExpr}; }`
             );
         }
     }
