@@ -66,6 +66,9 @@ export type ChannelScale = {
     /** Clamp values to the domain/range for continuous scales. */
     clamp?: boolean;
 
+    /** Round continuous scale outputs to the nearest integer (scalar outputs only). */
+    round?: boolean;
+
     /** Inner padding for band scales. */
     paddingInner?: number;
 

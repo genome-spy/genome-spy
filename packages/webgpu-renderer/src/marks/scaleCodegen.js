@@ -61,6 +61,8 @@ import {
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {boolean} clamp
  *   Whether to clamp input values to the domain extent before scaling.
+ * @prop {boolean} round
+ *   Whether to round scalar outputs of continuous scales.
  * @prop {number} [domainLength]
  *   Domain length for scales that require fixed-size arrays in WGSL.
  * @prop {boolean} [useRangeTexture]
@@ -178,15 +180,16 @@ function emitBand({ name, u32Expr }) {
 }
 
 /** @type {ScaleEmitter} */
-function emitLog({ name, floatExpr, clamp, useRangeTexture }) {
+function emitLog({ name, floatExpr, clamp, round, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
     const valueExpr = `scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`;
+    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
     const returnType = useRangeTexture ? "vec4<f32>" : "f32";
     const returnExpr = useRangeTexture
         ? emitRampSample(name, valueExpr)
-        : `    return ${valueExpr};`;
+        : `    return ${scalarExpr};`;
     return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
 ${clampExpr}${returnExpr}
@@ -194,15 +197,16 @@ ${clampExpr}${returnExpr}
 }
 
 /** @type {ScaleEmitter} */
-function emitPow({ name, floatExpr, clamp, useRangeTexture }) {
+function emitPow({ name, floatExpr, clamp, round, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
     const valueExpr = `scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`;
+    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
     const returnType = useRangeTexture ? "vec4<f32>" : "f32";
     const returnExpr = useRangeTexture
         ? emitRampSample(name, valueExpr)
-        : `    return ${valueExpr};`;
+        : `    return ${scalarExpr};`;
     return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
 ${clampExpr}${returnExpr}
@@ -210,15 +214,16 @@ ${clampExpr}${returnExpr}
 }
 
 /** @type {ScaleEmitter} */
-function emitSymlog({ name, floatExpr, clamp, useRangeTexture }) {
+function emitSymlog({ name, floatExpr, clamp, round, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
     const valueExpr = `scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`;
+    const scalarExpr = round ? `round(${valueExpr})` : valueExpr;
     const returnType = useRangeTexture ? "vec4<f32>" : "f32";
     const returnExpr = useRangeTexture
         ? emitRampSample(name, valueExpr)
-        : `    return ${valueExpr};`;
+        : `    return ${scalarExpr};`;
     return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
 ${clampExpr}${returnExpr}
@@ -295,6 +300,7 @@ function emitPiecewiseLinear({
     outputComponents,
     outputScalarType,
     clamp,
+    round,
     domainLength = 0,
     useRangeTexture,
 }) {
@@ -338,7 +344,7 @@ ${clampInputExpr}
         `params.${RANGE_PREFIX}${name}[slot + 1u]`
     )};
     let unit = mix(r0, r1, t);
-${useRangeTexture ? emitRampSample(name, "unit") : "    return unit;"}
+${useRangeTexture ? emitRampSample(name, "unit") : round ? "    return round(unit);" : "    return unit;"}
 }`;
 }
 
@@ -485,6 +491,11 @@ export function buildScaledFunction({
         );
     }
 
+    const roundOutput =
+        scaleConfig?.round === true &&
+        outputComponents === 1 &&
+        !useRangeTexture;
+
     if (scale === "linear") {
         const resolvedDomainLength = domainLength || 2;
         const resolvedRangeLength = rangeLength || 2;
@@ -505,6 +516,7 @@ export function buildScaledFunction({
             outputComponents,
             outputScalarType: "f32",
             clamp: scaleConfig?.clamp === true,
+            round: roundOutput,
             domainLength: resolvedDomainLength,
             useRangeTexture,
         });
@@ -526,6 +538,7 @@ export function buildScaledFunction({
             outputComponents,
             outputScalarType,
             clamp: scaleConfig?.clamp === true,
+            round: roundOutput,
             domainLength,
             useRangeTexture,
         });
