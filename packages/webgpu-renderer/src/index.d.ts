@@ -3,6 +3,23 @@ export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";
 
+export type ColorInterpolatorType =
+    | "rgb"
+    | "hsl"
+    | "hsl-long"
+    | "lab"
+    | "hcl"
+    | "hcl-long"
+    | "cubehelix"
+    | "cubehelix-long";
+
+export type ColorInterpolator =
+    | ColorInterpolatorType
+    | {
+          type: ColorInterpolatorType;
+          gamma?: number;
+      };
+
 export type TypedArray =
     | Float32Array
     | Float64Array
@@ -31,6 +48,9 @@ export type ChannelScale = {
 
     /** Range for scale mapping, provided by the core module. */
     range?: Array<number | number[] | string>;
+
+    /** Interpolation method for color ranges; only used for vec4 color ranges. */
+    interpolate?: ColorInterpolator;
 
     /** Base for log scales. */
     base?: number;

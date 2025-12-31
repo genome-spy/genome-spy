@@ -1,11 +1,16 @@
 import SCALES_WGSL from "../wgsl/scales.wgsl.js";
-import { SCALED_FUNCTION_PREFIX } from "../wgsl/prefixes.js";
+import {
+    RANGE_SAMPLER_PREFIX,
+    RANGE_TEXTURE_PREFIX,
+    SCALED_FUNCTION_PREFIX,
+} from "../wgsl/prefixes.js";
 import {
     buildScaledFunction,
     formatLiteral,
     getScaleOutputType,
     isPiecewiseScale,
 } from "./scaleCodegen.js";
+import { usesRangeTexture } from "./domainRangeUtils.js";
 
 /**
  * @typedef {import("../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -15,9 +20,9 @@ import {
  * @prop {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange" }} BufferLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
  *
- * @typedef {{ shaderCode: string, bufferBindings: GPUBindGroupLayoutEntry[], bufferLayout: BufferLayoutEntry[] }} ShaderBuildResult
+ * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[] }} ShaderBuildResult
  */
 
 /**
@@ -35,9 +40,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     // Storage buffers are bound after the uniform buffer (binding 0). We keep
     // their order stable so the pipeline layout matches the generated WGSL.
     /** @type {GPUBindGroupLayoutEntry[]} */
-    const bufferBindings = [];
-    /** @type {BufferLayoutEntry[]} */
-    const bufferLayout = [];
+    const resourceBindings = [];
+    /** @type {ResourceLayoutEntry[]} */
+    const resourceLayout = [];
 
     // WGSL snippets are accumulated and stitched together at the end. This
     // keeps generator logic readable and makes it easy to add/remove blocks.
@@ -63,13 +68,13 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
 
         const binding = bindingIndex++;
-        bufferBindings.push({
+        resourceBindings.push({
             binding,
             // eslint-disable-next-line no-undef
             visibility: GPUShaderStage.VERTEX,
             buffer: { type: "read-only-storage" },
         });
-        bufferLayout.push({ name, role: "series" });
+        resourceLayout.push({ name, role: "series" });
 
         const type = channel.type ?? "f32";
         const scalarType =
@@ -107,7 +112,16 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             outputComponents === 1
                 ? getScaleOutputType(scale, scalarType)
                 : "f32";
-        if (outputComponents === 1) {
+        const useRangeTexture = usesRangeTexture(
+            channel.scale,
+            outputComponents
+        );
+        const needsScaleFunction =
+            outputComponents === 1 ||
+            scale !== "identity" ||
+            isPiecewiseScale(channel.scale) ||
+            useRangeTexture;
+        if (needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
@@ -117,22 +131,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     outputComponents,
                     outputScalarType,
                     scaleConfig: channel.scale,
-                })
-            );
-        } else if (
-            scale === "threshold" ||
-            scale === "ordinal" ||
-            isPiecewiseScale(channel.scale)
-        ) {
-            channelFns.push(
-                buildScaledFunction({
-                    name,
-                    scale,
-                    rawValueExpr: `read_${name}(i)`,
-                    inputScalarType: scalarType,
-                    outputComponents,
-                    outputScalarType,
-                    scaleConfig: channel.scale,
+                    useRangeTexture,
                 })
             );
         } else {
@@ -151,13 +150,13 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         }
 
         const binding = bindingIndex++;
-        bufferBindings.push({
+        resourceBindings.push({
             binding,
             // eslint-disable-next-line no-undef
             visibility: GPUShaderStage.VERTEX,
             buffer: { type: "read-only-storage" },
         });
-        bufferLayout.push({ name, role: "ordinalRange" });
+        resourceLayout.push({ name, role: "ordinalRange" });
 
         const outputComponents = channel.components ?? 1;
         const type = channel.type ?? "f32";
@@ -173,6 +172,38 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
         bufferDecls.push(
             `@group(1) @binding(${binding}) var<storage, read> ${rangeBufferName}: array<${elementType}>;`
+        );
+    }
+
+    // Color ramps are stored as textures so interpolation matches d3 in
+    // non-RGB color spaces when requested.
+    for (const [name, channel] of Object.entries(channels)) {
+        if (!usesRangeTexture(channel.scale, channel.components ?? 1)) {
+            continue;
+        }
+
+        const textureBinding = bindingIndex++;
+        resourceBindings.push({
+            binding: textureBinding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            texture: { sampleType: "float" },
+        });
+        resourceLayout.push({ name, role: "rangeTexture" });
+        bufferDecls.push(
+            `@group(1) @binding(${textureBinding}) var ${RANGE_TEXTURE_PREFIX}${name}: texture_2d<f32>;`
+        );
+
+        const samplerBinding = bindingIndex++;
+        resourceBindings.push({
+            binding: samplerBinding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            sampler: { type: "filtering" },
+        });
+        resourceLayout.push({ name, role: "rangeSampler" });
+        bufferDecls.push(
+            `@group(1) @binding(${samplerBinding}) var ${RANGE_SAMPLER_PREFIX}${name}: sampler;`
         );
     }
 
@@ -200,7 +231,16 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
             outputComponents === 1
                 ? getScaleOutputType(scale, scalarType)
                 : "f32";
-        if (outputComponents === 1) {
+        const useRangeTexture = usesRangeTexture(
+            channel.scale,
+            outputComponents
+        );
+        const needsScaleFunction =
+            outputComponents === 1 ||
+            scale !== "identity" ||
+            isPiecewiseScale(channel.scale) ||
+            useRangeTexture;
+        if (needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
@@ -210,22 +250,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     outputComponents,
                     outputScalarType,
                     scaleConfig: channel.scale,
-                })
-            );
-        } else if (
-            scale === "threshold" ||
-            scale === "ordinal" ||
-            isPiecewiseScale(channel.scale)
-        ) {
-            channelFns.push(
-                buildScaledFunction({
-                    name,
-                    scale,
-                    rawValueExpr,
-                    inputScalarType: scalarType,
-                    outputComponents,
-                    outputScalarType,
-                    scaleConfig: channel.scale,
+                    useRangeTexture,
                 })
             );
         } else {
@@ -284,5 +309,5 @@ ${channelFns.join("\n")}
 ${shaderBody}
 `;
 
-    return { shaderCode, bufferBindings, bufferLayout };
+    return { shaderCode, resourceBindings, resourceLayout };
 }

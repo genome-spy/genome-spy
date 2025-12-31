@@ -1,6 +1,8 @@
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
+    RANGE_SAMPLER_PREFIX,
+    RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
     SCALE_ALIGN_PREFIX,
     SCALE_BASE_PREFIX,
@@ -27,6 +29,8 @@ import {
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {import("../index.d.ts").ChannelScale | undefined} scaleConfig
  *   Full scale config for detecting piecewise scales and clamp behavior.
+ * @prop {boolean} [useRangeTexture]
+ *   Whether to map scale output through a color ramp texture.
  */
 
 /**
@@ -45,6 +49,8 @@ import {
  *   Whether to clamp input values to the domain extent before scaling.
  * @prop {number} [domainLength]
  *   Domain length for scales that require fixed-size arrays in WGSL.
+ * @prop {boolean} [useRangeTexture]
+ *   Whether to sample a color ramp texture instead of returning raw range values.
  */
 
 /**
@@ -128,15 +134,17 @@ function rangeVec2(name) {
     return `readPacked2(params.${RANGE_PREFIX}${name})`;
 }
 
-/** @type {ScaleEmitter} */
-function emitLinear({ name, floatExpr, clamp }) {
-    const clampExpr = clamp
-        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
-        : "";
-    return `${makeFnHeader(name, "f32")} {
-    var v = ${floatExpr};
-${clampExpr}    return scaleLinear(v, ${domainVec2(name)}, ${rangeVec2(name)});
-}`;
+/**
+ * @param {string} name
+ * @param {string} unitExpr
+ * @returns {string}
+ */
+function emitRampSample(name, unitExpr) {
+    const textureName = `${RANGE_TEXTURE_PREFIX}${name}`;
+    const samplerName = `${RANGE_SAMPLER_PREFIX}${name}`;
+    return `    let unitValue = clamp(${unitExpr}, 0.0, 1.0);
+    let rgb = getInterpolatedColor(${textureName}, ${samplerName}, unitValue);
+    return vec4<f32>(rgb, 1.0);`;
 }
 
 /** @type {ScaleEmitter} */
@@ -156,35 +164,50 @@ function emitBand({ name, u32Expr }) {
 }
 
 /** @type {ScaleEmitter} */
-function emitLog({ name, floatExpr, clamp }) {
+function emitLog({ name, floatExpr, clamp, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
-    return `${makeFnHeader(name, "f32")} {
+    const valueExpr = `scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`;
+    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
+    const returnExpr = useRangeTexture
+        ? emitRampSample(name, valueExpr)
+        : `    return ${valueExpr};`;
+    return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
-${clampExpr}    return scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name});
+${clampExpr}${returnExpr}
 }`;
 }
 
 /** @type {ScaleEmitter} */
-function emitPow({ name, floatExpr, clamp }) {
+function emitPow({ name, floatExpr, clamp, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
-    return `${makeFnHeader(name, "f32")} {
+    const valueExpr = `scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`;
+    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
+    const returnExpr = useRangeTexture
+        ? emitRampSample(name, valueExpr)
+        : `    return ${valueExpr};`;
+    return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
-${clampExpr}    return scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name});
+${clampExpr}${returnExpr}
 }`;
 }
 
 /** @type {ScaleEmitter} */
-function emitSymlog({ name, floatExpr, clamp }) {
+function emitSymlog({ name, floatExpr, clamp, useRangeTexture }) {
     const clampExpr = clamp
         ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
         : "";
-    return `${makeFnHeader(name, "f32")} {
+    const valueExpr = `scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`;
+    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
+    const returnExpr = useRangeTexture
+        ? emitRampSample(name, valueExpr)
+        : `    return ${valueExpr};`;
+    return `${makeFnHeader(name, returnType)} {
     var v = ${floatExpr};
-${clampExpr}    return scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name});
+${clampExpr}${returnExpr}
 }`;
 }
 
@@ -259,17 +282,23 @@ function emitPiecewiseLinear({
     outputScalarType,
     clamp,
     domainLength = 0,
+    useRangeTexture,
 }) {
-    const returnType =
-        outputComponents === 1
+    const returnType = useRangeTexture
+        ? "vec4<f32>"
+        : outputComponents === 1
+          ? outputScalarType
+          : `vec${outputComponents}<f32>`;
+    const rangeType =
+        useRangeTexture || outputComponents === 1
             ? outputScalarType
-            : `vec${outputComponents}<f32>`;
-    const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
+            : "vec4<f32>";
     /**
      * @param {string} expr
      * @returns {string}
      */
-    const rangeAccess = (expr) => (outputComponents === 1 ? `${expr}.x` : expr);
+    const rangeAccess = (expr) =>
+        useRangeTexture || outputComponents === 1 ? `${expr}.x` : expr;
     const clampInputExpr = clamp
         ? `    v = clampToDomain(v, vec2<f32>(params.${DOMAIN_PREFIX}${name}[0].x, params.${DOMAIN_PREFIX}${name}[DOMAIN_LEN - 1u].x));\n`
         : "";
@@ -294,7 +323,8 @@ ${clampInputExpr}
     let r1: ${rangeType} = ${rangeAccess(
         `params.${RANGE_PREFIX}${name}[slot + 1u]`
     )};
-    return mix(r0, r1, t);
+    let unit = mix(r0, r1, t);
+${useRangeTexture ? emitRampSample(name, "unit") : "    return unit;"}
 }`;
 }
 
@@ -311,7 +341,6 @@ const SCALE_DEFS = {
         output: "f32",
         domainRange: true,
         params: [],
-        emitter: emitLinear,
     },
     log: {
         input: "numeric",
@@ -422,6 +451,7 @@ export function buildScaledFunction({
     outputComponents,
     outputScalarType,
     scaleConfig,
+    useRangeTexture = false,
 }) {
     const floatExpr =
         scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
@@ -435,10 +465,23 @@ export function buildScaledFunction({
         ? scaleConfig.range.length
         : 0;
 
-    if (scale === "linear" && isPiecewiseScale(scaleConfig)) {
-        if (domainLength < 2 || rangeLength !== domainLength) {
+    if (useRangeTexture && outputComponents !== 4) {
+        throw new Error(
+            `Channel "${name}" requires vec4 output when using interpolate textures.`
+        );
+    }
+
+    if (scale === "linear") {
+        const resolvedDomainLength = domainLength || 2;
+        const resolvedRangeLength = rangeLength || 2;
+        if (resolvedDomainLength < 2 || resolvedRangeLength < 2) {
             throw new Error(
-                `Piecewise scale on "${name}" requires matching domain/range arrays.`
+                `Linear scale on "${name}" requires at least two domain and range entries.`
+            );
+        }
+        if (resolvedDomainLength !== resolvedRangeLength) {
+            throw new Error(
+                `Linear scale on "${name}" requires matching domain/range arrays.`
             );
         }
         return emitPiecewiseLinear({
@@ -448,7 +491,8 @@ export function buildScaledFunction({
             outputComponents,
             outputScalarType: "f32",
             clamp: scaleConfig?.clamp === true,
-            domainLength,
+            domainLength: resolvedDomainLength,
+            useRangeTexture,
         });
     }
 
@@ -469,6 +513,7 @@ export function buildScaledFunction({
             outputScalarType,
             clamp: scaleConfig?.clamp === true,
             domainLength,
+            useRangeTexture,
         });
     }
     const returnType = getScaleOutputType(scale, scalarType);
@@ -489,6 +534,21 @@ export function isPiecewiseScale(scale) {
 }
 
 /**
+ * @param {Array<number|number[]|string>|undefined} range
+ * @returns {boolean}
+ */
+function isColorRange(range) {
+    if (!Array.isArray(range) || range.length === 0) {
+        return false;
+    }
+    return range.every(
+        (value) =>
+            typeof value === "string" ||
+            (Array.isArray(value) && (value.length === 3 || value.length === 4))
+    );
+}
+
+/**
  * @param {string} name
  * @param {{ scale?: import("../index.d.ts").ChannelScale, type?: string, components?: number }} channel
  * @returns {string | null}
@@ -501,12 +561,26 @@ export function validateScaleConfig(name, channel) {
 
     const components = channel.components ?? 1;
     const piecewise = isPiecewiseScale(channel.scale);
-    if (
-        components > 1 &&
-        !["identity", "threshold", "ordinal"].includes(scaleType) &&
-        !piecewise
-    ) {
+    const colorRange = isColorRange(channel.scale?.range);
+    const interpolateEnabled =
+        channel.scale?.interpolate !== undefined || colorRange;
+    const allowsVectorOutput =
+        ["identity", "threshold", "ordinal", "linear"].includes(scaleType) ||
+        piecewise ||
+        (interpolateEnabled &&
+            ["linear", "log", "pow", "sqrt", "symlog"].includes(scaleType));
+    if (components > 1 && !allowsVectorOutput) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
+    }
+    if (interpolateEnabled && components !== 4) {
+        return `Channel "${name}" requires vec4 outputs when interpolate is set.`;
+    }
+    if (
+        (scaleType === "linear" || piecewise) &&
+        components !== 1 &&
+        components !== 4
+    ) {
+        return `Channel "${name}" uses ${components} components but linear scales only support scalars or vec4 outputs.`;
     }
     if (scaleType === "threshold" && components !== 1 && components !== 4) {
         return `Channel "${name}" uses ${components} components but threshold scales only support scalars or vec4 outputs.`;

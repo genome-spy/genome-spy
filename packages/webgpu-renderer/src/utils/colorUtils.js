@@ -1,7 +1,19 @@
 import { color as d3color } from "d3-color";
+import {
+    interpolateRgb,
+    interpolateHsl,
+    interpolateHslLong,
+    interpolateLab,
+    interpolateHcl,
+    interpolateHclLong,
+    interpolateCubehelix,
+    interpolateCubehelixLong,
+    piecewise,
+} from "d3-interpolate";
 /**
- * @typedef {(t: number) => string} ColorInterpolator
- * @typedef {string[] | ColorInterpolator} ColorScheme
+ * @typedef {(t: number) => string} ColorInterpolatorFn
+ * @typedef {string | number[]} ColorStop
+ * @typedef {ColorStop[] | ColorInterpolatorFn} ColorScheme
  *
  * @typedef {object} SchemeParams
  * @prop {ColorScheme} scheme
@@ -9,6 +21,7 @@ import { color as d3color } from "d3-color";
  * @prop {boolean} [reverse]
  * @prop {number} [count]
  * @prop {"discrete"|"interpolate"} [mode]
+ * @prop {import("../index.d.ts").ColorInterpolator} [interpolate]
  *
  * @typedef {object} TextureData
  * @prop {GPUTextureFormat} format
@@ -39,7 +52,7 @@ export function createSchemeTexture(schemeParams, count) {
     }
 
     if (Array.isArray(params.scheme)) {
-        if (params.mode === "interpolate") {
+        if (params.mode === "interpolate" || params.interpolate) {
             return createInterpolatedColorTexture(params.scheme, params);
         }
         return createDiscreteColorTexture(params.scheme, params.count);
@@ -51,12 +64,12 @@ export function createSchemeTexture(schemeParams, count) {
 /**
  * Creates an interpolated color texture from color stops.
  *
- * @param {string[]} colors
- * @param {{ extent?: [number, number], reverse?: boolean, count?: number }} [options]
+ * @param {ColorStop[]} colors
+ * @param {{ extent?: [number, number], reverse?: boolean, count?: number, interpolate?: import("../index.d.ts").ColorInterpolator }} [options]
  * @returns {TextureData}
  */
 export function createInterpolatedColorTexture(colors, options = {}) {
-    const interpolator = createRgbInterpolator(colors);
+    const interpolator = createColorInterpolator(colors, options.interpolate);
     return interpolatorToTextureData(interpolator, options);
 }
 
@@ -87,19 +100,20 @@ export function createDiscreteTexture(range, count) {
 /**
  * Creates a texture that maps integer indices to discrete RGB colors.
  *
- * @param {string[]} colors
+ * @param {ColorStop[]} colors
  * @param {number} [count]
  * @returns {TextureData}
  */
 export function createDiscreteColorTexture(colors, count) {
-    return colorArrayToTextureData(colors, count);
+    const normalized = colors.map(normalizeColorStop);
+    return colorArrayToTextureData(normalized, count);
 }
 
 /**
  * Renders an interpolator to a texture, which can be used for mapping
  * quantitative values to colors (sequential scale).
  *
- * @param {ColorInterpolator} interpolator
+ * @param {ColorInterpolatorFn} interpolator
  * @param {object} options
  * @param {[number, number]} [options.extent]
  * @param {boolean} [options.reverse]
@@ -163,31 +177,85 @@ function colorArrayToTextureData(scheme, count) {
 }
 
 /**
- * @param {string[]} colors
- * @returns {ColorInterpolator}
+ * @param {ColorStop} stop
+ * @returns {string}
  */
-function createRgbInterpolator(colors) {
-    const stops = colors.map((colorString) => {
-        const color = d3color(colorString);
-        if (!color) {
-            throw new Error(`Invalid color "${colorString}" in stops`);
-        }
-        const rgb = color.rgb();
-        return { r: rgb.r, g: rgb.g, b: rgb.b };
-    });
+function normalizeColorStop(stop) {
+    if (typeof stop === "string") {
+        return stop;
+    }
+    if (!Array.isArray(stop)) {
+        throw new Error(`Invalid color stop: ${String(stop)}`);
+    }
+    const [rRaw = 0, gRaw = 0, bRaw = 0, aRaw = 1] = stop;
+    const max = Math.max(rRaw, gRaw, bRaw, aRaw);
+    const scale = max <= 1 ? 255 : 1;
+    const alpha = max <= 1 ? aRaw : aRaw / 255;
+    return `rgba(${rRaw * scale}, ${gRaw * scale}, ${bRaw * scale}, ${alpha})`;
+}
 
-    return (t) => {
-        const clamped = Math.min(1, Math.max(0, t));
-        const scaled = clamped * (stops.length - 1);
-        const index = Math.min(stops.length - 2, Math.floor(scaled));
-        const local = scaled - index;
-        const a = stops[index];
-        const b = stops[index + 1];
-        const r = a.r + (b.r - a.r) * local;
-        const g = a.g + (b.g - a.g) * local;
-        const bValue = a.b + (b.b - a.b) * local;
-        return `rgb(${r}, ${g}, ${bValue})`;
-    };
+/**
+ * @param {import("../index.d.ts").ColorInterpolator | undefined} interpolate
+ * @returns {(a: string, b: string) => ColorInterpolatorFn}
+ */
+function getInterpolatorFactory(interpolate) {
+    const type =
+        typeof interpolate === "string"
+            ? interpolate
+            : (interpolate?.type ?? "rgb");
+    const gamma = typeof interpolate === "object" ? interpolate.gamma : null;
+
+    /** @type {((a: string, b: string) => ColorInterpolatorFn) & { gamma?: (g: number) => (a: string, b: string) => ColorInterpolatorFn }} */
+    let factory;
+    switch (type) {
+        case "rgb":
+            factory = interpolateRgb;
+            break;
+        case "hsl":
+            factory = interpolateHsl;
+            break;
+        case "hsl-long":
+            factory = interpolateHslLong;
+            break;
+        case "lab":
+            factory = interpolateLab;
+            break;
+        case "hcl":
+            factory = interpolateHcl;
+            break;
+        case "hcl-long":
+            factory = interpolateHclLong;
+            break;
+        case "cubehelix":
+            factory = interpolateCubehelix;
+            break;
+        case "cubehelix-long":
+            factory = interpolateCubehelixLong;
+            break;
+        default:
+            throw new Error(`Unsupported interpolate type "${type}".`);
+    }
+
+    if (gamma == null) {
+        return factory;
+    }
+    if (typeof factory.gamma !== "function") {
+        throw new Error(
+            `Interpolate gamma is not supported for "${type}" interpolators.`
+        );
+    }
+    return factory.gamma(gamma);
+}
+
+/**
+ * @param {ColorStop[]} colors
+ * @param {import("../index.d.ts").ColorInterpolator | undefined} interpolate
+ * @returns {ColorInterpolatorFn}
+ */
+function createColorInterpolator(colors, interpolate) {
+    const stops = colors.map(normalizeColorStop);
+    const factory = getInterpolatorFactory(interpolate);
+    return piecewise(factory, stops);
 }
 
 /**

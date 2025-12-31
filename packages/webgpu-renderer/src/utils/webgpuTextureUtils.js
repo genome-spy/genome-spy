@@ -1,3 +1,4 @@
+/* global globalThis */
 /**
  * @typedef {object} TextureData
  * @prop {GPUTextureFormat} format
@@ -11,8 +12,8 @@
  */
 
 const DEFAULT_TEXTURE_USAGE =
-    // eslint-disable-next-line no-undef
-    GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST;
+    (globalThis.GPUTextureUsage?.TEXTURE_BINDING ?? 0) |
+    (globalThis.GPUTextureUsage?.COPY_DST ?? 0);
 
 /**
  * Prepare texture data for GPU writes by applying WebGPU row alignment.
