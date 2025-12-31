@@ -777,9 +777,9 @@ export default class BaseProgram {
                 Array.isArray(value)
                     ? value
                     : typeof value === "object" && value
-                      ? /** @type {{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} */ ((
-                            value
-                        ).range ?? [])
+                      ? /** @type {{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} */ (
+                            value.range ?? []
+                        )
                       : value
             );
         const sizes = this._domainRangeSizes.get(name);
@@ -1096,8 +1096,7 @@ export default class BaseProgram {
             scaleType === "ordinal" &&
             spec?.type === "f32" &&
             (channel.components ?? 1) > 1 &&
-            channel.type &&
-            ["u32", "i32"].includes(channel.type);
+            channel.type === "u32";
         if (
             spec?.type &&
             channel.type &&
@@ -1156,6 +1155,11 @@ export default class BaseProgram {
             scaleType === "threshold" ||
             scaleType === "ordinal" ||
             isPiecewiseScale(channel.scale);
+        if (scaleType === "ordinal" && channel.type !== "u32") {
+            throw new Error(
+                `Ordinal scale on "${name}" requires u32 input type.`
+            );
+        }
         if (
             outputComponents > 1 &&
             channel.type &&
@@ -1299,6 +1303,21 @@ export default class BaseProgram {
                 throw new Error(
                     `Ordinal scale on "${name}" requires scalar input data.`
                 );
+            }
+            if (isValueChannelConfig(channel)) {
+                if (Array.isArray(channel.value)) {
+                    throw new Error(
+                        `Ordinal scale on "${name}" requires scalar integer values.`
+                    );
+                }
+                if (
+                    typeof channel.value === "number" &&
+                    !Number.isInteger(channel.value)
+                ) {
+                    throw new Error(
+                        `Ordinal scale on "${name}" requires integer values.`
+                    );
+                }
             }
             if (
                 isValueChannelConfig(channel) &&
