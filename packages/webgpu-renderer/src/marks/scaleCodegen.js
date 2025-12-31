@@ -51,10 +51,10 @@ import {
  * @typedef {object} ScaleEmitParams
  * @prop {string} name
  *   Channel name used for function naming and uniform lookups.
- * @prop {string} floatExpr
- *   Raw value converted to `f32` so continuous scales can share one math path.
- * @prop {string} u32Expr
- *   Raw value coerced to `u32` for band/indexed lookups that operate on slots.
+ * @prop {string} rawValueExpr
+ *   WGSL expression for the raw value (buffer read or literal/uniform).
+ * @prop {"f32"|"u32"|"i32"} inputScalarType
+ *   Scalar type of the raw value; used to choose casting behavior.
  * @prop {1|2|4} outputComponents
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
@@ -166,43 +166,66 @@ function emitRampSample(name, unitExpr) {
 /**
  * @typedef {object} ContinuousEmitParams
  * @prop {string} name
- * @prop {string} floatExpr
+ * @prop {string} rawValueExpr
+ * @prop {"f32"|"u32"|"i32"} inputScalarType
  * @prop {boolean} clamp
  * @prop {boolean} round
  * @prop {boolean} [useRangeTexture]
+ *
+ * @typedef {object} ContinuousValueExprParams
+ * @prop {string} name
  * @prop {string} valueExpr
  */
 
 /**
- * @param {ContinuousEmitParams} params
+ * @param {string} rawValueExpr
+ * @param {"f32"|"u32"|"i32"} inputScalarType
  * @returns {string}
  */
-function emitContinuousScale({
-    name,
-    floatExpr,
-    clamp,
-    round,
-    useRangeTexture,
-    valueExpr,
-}) {
-    const clampExpr = clamp
-        ? `    v = clampToDomain(v, ${domainVec2(name)});\n`
-        : "";
+function toFloatExpr(rawValueExpr, inputScalarType) {
+    return inputScalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
+}
+
+/**
+ * @param {string} rawValueExpr
+ * @param {"f32"|"u32"|"i32"} inputScalarType
+ * @returns {string}
+ */
+function toU32Expr(rawValueExpr, inputScalarType) {
+    return inputScalarType === "u32"
+        ? rawValueExpr
+        : `u32(f32(${rawValueExpr}))`;
+}
+
+/**
+ * @param {ContinuousEmitParams} params
+ * @param {(params: ContinuousValueExprParams) => string} valueExprFn
+ * @returns {string}
+ */
+function emitContinuousScale(
+    { name, rawValueExpr, inputScalarType, clamp, round, useRangeTexture },
+    valueExprFn
+) {
+    const floatExpr = toFloatExpr(rawValueExpr, inputScalarType);
+    const clampedExpr = clamp
+        ? `clampToDomain(${floatExpr}, ${domainVec2(name)})`
+        : floatExpr;
+    const valueExpr = valueExprFn({ name, valueExpr: clampedExpr });
     const scalarExpr = round ? `roundAwayFromZero(${valueExpr})` : valueExpr;
     const returnType = useRangeTexture ? "vec4<f32>" : "f32";
     const returnExpr = useRangeTexture
         ? emitRampSample(name, valueExpr)
         : `    return ${scalarExpr};`;
     return `${makeFnHeader(name, returnType)} {
-    var v = ${floatExpr};
-${clampExpr}${returnExpr}
+${returnExpr}
 }`;
 }
 
 /** @type {ScaleEmitter} */
-function emitBand({ name, u32Expr }) {
+function emitBand({ name, rawValueExpr, inputScalarType }) {
+    const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     return `${makeFnHeader(name, "f32")} {
-    let v = ${u32Expr};
+    let v = ${valueExpr};
     return scaleBand(
         v,
         ${domainVec2(name)},
@@ -216,38 +239,36 @@ function emitBand({ name, u32Expr }) {
 }
 
 /**
- * @param {(params: ScaleEmitParams) => string} valueExprFn
+ * @param {(params: ContinuousValueExprParams) => string} valueExprFn
  * @returns {ScaleEmitter}
  */
 function makeContinuousEmitter(valueExprFn) {
-    return (params) =>
-        emitContinuousScale({
-            name: params.name,
-            floatExpr: params.floatExpr,
-            clamp: params.clamp,
-            round: params.round,
-            useRangeTexture: params.useRangeTexture,
-            valueExpr: valueExprFn(params),
-        });
+    return (params) => emitContinuousScale(params, valueExprFn);
 }
 
 const emitLog = makeContinuousEmitter(
-    ({ name }) =>
-        `scaleLog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`
+    ({ name, valueExpr }) =>
+        `scaleLog(${valueExpr}, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_BASE_PREFIX}${name})`
 );
 
 const emitPow = makeContinuousEmitter(
-    ({ name }) =>
-        `scalePow(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`
+    ({ name, valueExpr }) =>
+        `scalePow(${valueExpr}, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`
 );
 
 const emitSymlog = makeContinuousEmitter(
-    ({ name }) =>
-        `scaleSymlog(v, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`
+    ({ name, valueExpr }) =>
+        `scaleSymlog(${valueExpr}, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`
 );
 
 /** @type {ScaleEmitter} */
-function emitOrdinal({ name, u32Expr, outputComponents, outputScalarType }) {
+function emitOrdinal({
+    name,
+    rawValueExpr,
+    inputScalarType,
+    outputComponents,
+    outputScalarType,
+}) {
     const returnType =
         outputComponents === 1
             ? outputScalarType
@@ -261,9 +282,10 @@ function emitOrdinal({ name, u32Expr, outputComponents, outputScalarType }) {
                   ? "0"
                   : "0.0"
             : "vec4<f32>(0.0)";
+    const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
 
     return `${makeFnHeader(name, returnType)} {
-    let idx = ${u32Expr};
+    let idx = ${valueExpr};
     let count = arrayLength(&${rangeName});
     if (count == 0u) { return ${zero}; }
     let slot = min(idx, count - 1u);
@@ -277,7 +299,8 @@ function emitOrdinal({ name, u32Expr, outputComponents, outputScalarType }) {
  */
 function emitThreshold({
     name,
-    floatExpr,
+    rawValueExpr,
+    inputScalarType,
     outputComponents,
     outputScalarType,
     domainLength = 0,
@@ -293,7 +316,7 @@ function emitThreshold({
             : `params.${RANGE_PREFIX}${name}[slot]`;
 
     return `${makeFnHeader(name, returnType)} {
-    let v = ${floatExpr};
+    let v = ${toFloatExpr(rawValueExpr, inputScalarType)};
     const DOMAIN_LEN: u32 = ${domainLength}u;
     var slot: u32 = 0u;
     for (var i: u32 = 0u; i < DOMAIN_LEN; i = i + 1u) {
@@ -312,7 +335,8 @@ function emitThreshold({
  */
 function emitPiecewiseLinear({
     name,
-    floatExpr,
+    rawValueExpr,
+    inputScalarType,
     outputComponents,
     outputScalarType,
     clamp,
@@ -341,7 +365,7 @@ function emitPiecewiseLinear({
 
     return `${makeFnHeader(name, returnType)} {
     const DOMAIN_LEN: u32 = ${domainLength}u;
-    var v = ${floatExpr};
+    var v = ${toFloatExpr(rawValueExpr, inputScalarType)};
 ${clampInputExpr}
     var slot: u32 = 0u;
     for (var i: u32 = 1u; i + 1u < DOMAIN_LEN; i = i + 1u) {
@@ -489,11 +513,6 @@ export function buildScaledFunction({
     scaleConfig,
     useRangeTexture = false,
 }) {
-    const floatExpr =
-        scalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
-    const u32Expr =
-        scalarType === "u32" ? rawValueExpr : `u32(f32(${rawValueExpr}))`;
-
     const domainLength = Array.isArray(scaleConfig?.domain)
         ? scaleConfig.domain.length
         : 0;
@@ -527,8 +546,8 @@ export function buildScaledFunction({
         }
         return emitPiecewiseLinear({
             name,
-            floatExpr,
-            u32Expr,
+            rawValueExpr,
+            inputScalarType: scalarType,
             outputComponents,
             outputScalarType: "f32",
             clamp: scaleConfig?.clamp === true,
@@ -549,8 +568,8 @@ export function buildScaledFunction({
         }
         return def.emitter({
             name,
-            floatExpr,
-            u32Expr,
+            rawValueExpr,
+            inputScalarType: scalarType,
             outputComponents,
             outputScalarType,
             clamp: scaleConfig?.clamp === true,
