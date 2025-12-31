@@ -17,7 +17,7 @@ fn fs_main() -> @location(0) vec4<f32> {
 
 describe("buildMarkShader", () => {
     it("generates buffer bindings and accessors for series data", () => {
-        const { shaderCode, bufferBindings } = buildMarkShader({
+        const { shaderCode, resourceBindings } = buildMarkShader({
             channels: {
                 x: {
                     data: new Float32Array(4),
@@ -43,14 +43,14 @@ describe("buildMarkShader", () => {
             shaderBody,
         });
 
-        expect(bufferBindings.length).toBe(1);
+        expect(resourceBindings.length).toBe(1);
         expect(shaderCode).toContain("fn read_x");
         expect(shaderCode).toContain("fn getScaled_x");
-        expect(shaderCode).toContain("scaleLinear");
+        expect(shaderCode).toContain("DOMAIN_LEN");
     });
 
     it("generates value accessors for value-based channels", () => {
-        const { shaderCode, bufferBindings } = buildMarkShader({
+        const { shaderCode, resourceBindings } = buildMarkShader({
             channels: {
                 fill: {
                     value: [1, 0, 0, 1],
@@ -62,13 +62,13 @@ describe("buildMarkShader", () => {
             shaderBody,
         });
 
-        expect(bufferBindings.length).toBe(0);
+        expect(resourceBindings.length).toBe(0);
         expect(shaderCode).toContain("fn getScaled_fill");
         expect(shaderCode).toContain("u_fill: vec4<f32>");
     });
 
     it("inlines constants for non-dynamic values", () => {
-        const { shaderCode, bufferBindings } = buildMarkShader({
+        const { shaderCode, resourceBindings } = buildMarkShader({
             channels: {
                 opacity: {
                     value: 0.75,
@@ -79,7 +79,7 @@ describe("buildMarkShader", () => {
             shaderBody,
         });
 
-        expect(bufferBindings.length).toBe(0);
+        expect(resourceBindings.length).toBe(0);
         expect(shaderCode).toContain("fn getScaled_opacity");
         expect(shaderCode).toContain("return 0.75");
         expect(shaderCode).not.toContain("u_opacity");

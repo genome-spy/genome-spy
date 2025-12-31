@@ -235,3 +235,65 @@ export function normalizeOrdinalRange(name, range, outputComponents) {
         normalizeDiscreteRangeValue(name, value, outputComponents, "Ordinal")
     );
 }
+
+/**
+ * @param {Array<number|number[]|string>|undefined} range
+ * @returns {boolean}
+ */
+export function isColorRange(range) {
+    if (!Array.isArray(range) || range.length === 0) {
+        return false;
+    }
+    return range.every(
+        (value) =>
+            typeof value === "string" ||
+            (Array.isArray(value) && (value.length === 3 || value.length === 4))
+    );
+}
+
+/**
+ * @param {number[]} domain
+ * @returns {number[]}
+ */
+export function normalizeDomainPositions(domain) {
+    const start = domain[0] ?? 0;
+    const stop = domain[domain.length - 1] ?? 1;
+    const span = stop - start || 1;
+    return domain.map((value) => (value - start) / span);
+}
+
+/**
+ * @param {number} length
+ * @returns {number[]}
+ */
+export function normalizeRangePositions(length) {
+    if (length <= 0) {
+        return [];
+    }
+    if (length === 1) {
+        return [0];
+    }
+    const denom = length - 1;
+    const positions = new Array(length);
+    for (let i = 0; i < length; i++) {
+        positions[i] = i / denom;
+    }
+    return positions;
+}
+
+/**
+ * @param {import("../index.d.ts").ChannelScale | undefined} scale
+ * @param {number} outputComponents
+ * @returns {boolean}
+ */
+export function usesRangeTexture(scale, outputComponents) {
+    if (!scale) {
+        return false;
+    }
+    const colorRange = isColorRange(scale.range);
+    const interpolateEnabled = scale.interpolate !== undefined || colorRange;
+    if (!interpolateEnabled || outputComponents !== 4) {
+        return false;
+    }
+    return ["linear", "log", "pow", "sqrt", "symlog"].includes(scale.type);
+}

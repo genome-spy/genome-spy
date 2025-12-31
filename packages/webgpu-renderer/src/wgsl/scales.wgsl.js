@@ -14,7 +14,7 @@ fn getDiscreteColor(s: texture_2d<f32>, index: i32) -> vec3<f32> {
 }
 
 fn getInterpolatedColor(s: texture_2d<f32>, samp: sampler, unitValue: f32) -> vec3<f32> {
-    return textureSample(s, samp, vec2<f32>(unitValue, 0.0)).rgb;
+    return textureSampleLevel(s, samp, vec2<f32>(unitValue, 0.0), 0.0).rgb;
 }
 
 fn clampToRange(value: f32, range: vec2<f32>) -> f32 {
