@@ -15,8 +15,6 @@
 import {
     DOMAIN_PREFIX,
     RANGE_PREFIX,
-    RANGE_SAMPLER_PREFIX,
-    RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
     SCALE_ALIGN_PREFIX,
     SCALE_BASE_PREFIX,
@@ -26,6 +24,15 @@ import {
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
 } from "../wgsl/prefixes.js";
+import {
+    applyScaleStep,
+    castToF32Step,
+    clampToDomainStep,
+    emitScalePipeline,
+    piecewiseLinearStep,
+    roundStep,
+    thresholdStep,
+} from "./scalePipeline.js";
 
 /**
  * @typedef {object} ScaleFunctionParams
@@ -151,19 +158,6 @@ function rangeVec2(name) {
 }
 
 /**
- * @param {string} name
- * @param {string} unitExpr
- * @returns {string}
- */
-function emitRampSample(name, unitExpr) {
-    const textureName = `${RANGE_TEXTURE_PREFIX}${name}`;
-    const samplerName = `${RANGE_SAMPLER_PREFIX}${name}`;
-    return `    let unitValue = clamp(${unitExpr}, 0.0, 1.0);
-    let rgb = getInterpolatedColor(${textureName}, ${samplerName}, unitValue);
-    return vec4<f32>(rgb, 1.0);`;
-}
-
-/**
  * @typedef {object} ContinuousEmitParams
  * @prop {string} name
  * @prop {string} rawValueExpr
@@ -176,15 +170,6 @@ function emitRampSample(name, unitExpr) {
  * @prop {string} name
  * @prop {string} valueExpr
  */
-
-/**
- * @param {string} rawValueExpr
- * @param {"f32"|"u32"|"i32"} inputScalarType
- * @returns {string}
- */
-function toFloatExpr(rawValueExpr, inputScalarType) {
-    return inputScalarType === "f32" ? rawValueExpr : `f32(${rawValueExpr})`;
-}
 
 /**
  * @param {string} rawValueExpr
@@ -206,19 +191,46 @@ function emitContinuousScale(
     { name, rawValueExpr, inputScalarType, clamp, round, useRangeTexture },
     valueExprFn
 ) {
-    const floatExpr = toFloatExpr(rawValueExpr, inputScalarType);
-    const clampedExpr = clamp
-        ? `clampToDomain(${floatExpr}, ${domainVec2(name)})`
-        : floatExpr;
-    const valueExpr = valueExprFn({ name, valueExpr: clampedExpr });
-    const scalarExpr = round ? `roundAwayFromZero(${valueExpr})` : valueExpr;
-    const returnType = useRangeTexture ? "vec4<f32>" : "f32";
-    const returnExpr = useRangeTexture
-        ? emitRampSample(name, valueExpr)
-        : `    return ${scalarExpr};`;
-    return `${makeFnHeader(name, returnType)} {
-${returnExpr}
-}`;
+    const pipeline = buildContinuousPipeline(
+        { name, rawValueExpr, inputScalarType, clamp, round, useRangeTexture },
+        valueExprFn
+    );
+    return emitScalePipeline(pipeline);
+}
+
+/**
+ * @param {ContinuousEmitParams} params
+ * @param {(params: ContinuousValueExprParams) => string} valueExprFn
+ * @returns {import("./scalePipeline.js").ScalePipeline}
+ */
+function buildContinuousPipeline(
+    { name, rawValueExpr, inputScalarType, clamp, round, useRangeTexture },
+    valueExprFn
+) {
+    /** @type {import("./scalePipeline.js").ScalePipelineStep[]} */
+    const steps = [];
+
+    if (inputScalarType !== "f32") {
+        steps.push(castToF32Step(inputScalarType));
+    }
+
+    if (clamp) {
+        steps.push(clampToDomainStep(domainVec2(name)));
+    }
+
+    steps.push(applyScaleStep(name, valueExprFn));
+
+    if (round && !useRangeTexture) {
+        steps.push(roundStep());
+    }
+
+    return {
+        name,
+        rawValueExpr,
+        steps,
+        returnType: useRangeTexture ? "vec4<f32>" : "f32",
+        useRangeTexture,
+    };
 }
 
 /** @type {ScaleEmitter} */
@@ -259,6 +271,11 @@ const emitPow = makeContinuousEmitter(
 const emitSymlog = makeContinuousEmitter(
     ({ name, valueExpr }) =>
         `scaleSymlog(${valueExpr}, ${domainVec2(name)}, ${rangeVec2(name)}, params.${SCALE_CONSTANT_PREFIX}${name})`
+);
+
+const emitLinear = makeContinuousEmitter(
+    ({ name, valueExpr }) =>
+        `scaleLinear(${valueExpr}, ${domainVec2(name)}, ${rangeVec2(name)})`
 );
 
 /** @type {ScaleEmitter} */
@@ -309,24 +326,25 @@ function emitThreshold({
         outputComponents === 1
             ? outputScalarType
             : `vec${outputComponents}<f32>`;
-    const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
-    const rangeAccess =
-        outputComponents === 1
-            ? `params.${RANGE_PREFIX}${name}[slot].x`
-            : `params.${RANGE_PREFIX}${name}[slot]`;
-
-    return `${makeFnHeader(name, returnType)} {
-    let v = ${toFloatExpr(rawValueExpr, inputScalarType)};
-    const DOMAIN_LEN: u32 = ${domainLength}u;
-    var slot: u32 = 0u;
-    for (var i: u32 = 0u; i < DOMAIN_LEN; i = i + 1u) {
-        if (v >= params.${DOMAIN_PREFIX}${name}[i].x) {
-            slot = i + 1u;
-        }
+    /** @type {import("./scalePipeline.js").ScalePipelineStep[]} */
+    const steps = [];
+    if (inputScalarType !== "f32") {
+        steps.push(castToF32Step(inputScalarType));
     }
-    let out: ${rangeType} = ${rangeAccess};
-    return out;
-}`;
+    steps.push(
+        thresholdStep({
+            name,
+            domainLength,
+            outputComponents,
+            outputScalarType,
+        })
+    );
+    return emitScalePipeline({
+        name,
+        rawValueExpr,
+        steps,
+        returnType,
+    });
 }
 
 /**
@@ -349,43 +367,34 @@ function emitPiecewiseLinear({
         : outputComponents === 1
           ? outputScalarType
           : `vec${outputComponents}<f32>`;
-    const rangeType =
-        useRangeTexture || outputComponents === 1
-            ? outputScalarType
-            : "vec4<f32>";
-    /**
-     * @param {string} expr
-     * @returns {string}
-     */
-    const rangeAccess = (expr) =>
-        useRangeTexture || outputComponents === 1 ? `${expr}.x` : expr;
-    const clampInputExpr = clamp
-        ? `    v = clampToDomain(v, vec2<f32>(params.${DOMAIN_PREFIX}${name}[0].x, params.${DOMAIN_PREFIX}${name}[DOMAIN_LEN - 1u].x));\n`
-        : "";
-
-    return `${makeFnHeader(name, returnType)} {
-    const DOMAIN_LEN: u32 = ${domainLength}u;
-    var v = ${toFloatExpr(rawValueExpr, inputScalarType)};
-${clampInputExpr}
-    var slot: u32 = 0u;
-    for (var i: u32 = 1u; i + 1u < DOMAIN_LEN; i = i + 1u) {
-        if (v >= params.${DOMAIN_PREFIX}${name}[i].x) {
-            slot = i;
-        }
+    /** @type {import("./scalePipeline.js").ScalePipelineStep[]} */
+    const steps = [];
+    if (inputScalarType !== "f32") {
+        steps.push(castToF32Step(inputScalarType));
     }
-    let d0 = params.${DOMAIN_PREFIX}${name}[slot].x;
-    let d1 = params.${DOMAIN_PREFIX}${name}[slot + 1u].x;
-    let denom = d1 - d0;
-    var t = select(0.0, (v - d0) / denom, denom != 0.0);
-    let r0: ${rangeType} = ${rangeAccess(
-        `params.${RANGE_PREFIX}${name}[slot]`
-    )};
-    let r1: ${rangeType} = ${rangeAccess(
-        `params.${RANGE_PREFIX}${name}[slot + 1u]`
-    )};
-    let unit = mix(r0, r1, t);
-${useRangeTexture ? emitRampSample(name, "unit") : round ? "    return round(unit);" : "    return unit;"}
-}`;
+    if (clamp) {
+        const domainExpr = `vec2<f32>(params.${DOMAIN_PREFIX}${name}[0].x, params.${DOMAIN_PREFIX}${name}[${domainLength}u - 1u].x)`;
+        steps.push(clampToDomainStep(domainExpr));
+    }
+    steps.push(
+        piecewiseLinearStep({
+            name,
+            domainLength,
+            outputComponents,
+            outputScalarType,
+            useRangeTexture,
+        })
+    );
+    if (round && !useRangeTexture) {
+        steps.push(roundStep());
+    }
+    return emitScalePipeline({
+        name,
+        rawValueExpr,
+        steps,
+        returnType,
+        useRangeTexture,
+    });
 }
 
 /** @type {Record<string, { input: "any"|"numeric"|"u32", output: "same"|"f32", domainRange: boolean, params: ScaleUniformParam[], emitter?: ScaleEmitter }>} */
@@ -543,6 +552,22 @@ export function buildScaledFunction({
             throw new Error(
                 `Linear scale on "${name}" requires matching domain/range arrays.`
             );
+        }
+        if (
+            resolvedDomainLength === 2 &&
+            resolvedRangeLength === 2 &&
+            (useRangeTexture || outputComponents === 1)
+        ) {
+            return emitLinear({
+                name,
+                rawValueExpr,
+                inputScalarType: scalarType,
+                outputComponents,
+                outputScalarType,
+                clamp: scaleConfig?.clamp === true,
+                round: roundOutput,
+                useRangeTexture,
+            });
         }
         return emitPiecewiseLinear({
             name,
