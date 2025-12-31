@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { color as d3color } from "d3-color";
 import { interpolateHcl, interpolateRgb } from "d3-interpolate";
-import { scaleLinear, scaleLog, scaleThreshold } from "d3-scale";
+import {
+    scaleLinear,
+    scaleLog,
+    scaleSequential,
+    scaleThreshold,
+} from "d3-scale";
 import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
 import { buildScaledFunction } from "../src/marks/scaleCodegen.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
@@ -110,6 +115,49 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let unitValue = clamp(getScaled_x(i), 0.0, 1.0);
     let rgb = sampleRamp(unitValue);
     output[i] = vec4<f32>(rgb, 1.0);
+}
+`;
+}
+
+/**
+ * @param {object} params
+ * @param {string} params.scaleFn
+ * @param {number} params.inputLength
+ * @param {number} [params.domainLength]
+ * @param {number} [params.rangeLength]
+ * @returns {string}
+ */
+function buildScaleCodegenTextureShader({
+    scaleFn,
+    inputLength,
+    domainLength = 2,
+    rangeLength = 2,
+}) {
+    return `
+${SCALES_WGSL}
+
+struct Params {
+    uDomain_x: array<vec4<f32>, ${domainLength}>,
+    uRange_x: array<vec4<f32>, ${rangeLength}>,
+};
+
+@group(0) @binding(0) var<uniform> params: Params;
+@group(0) @binding(1) var<storage, read> input: array<f32>;
+@group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
+@group(0) @binding(3) var uRangeTexture_x: texture_2d<f32>;
+@group(0) @binding(4) var uRangeSampler_x: sampler;
+
+${scaleFn}
+
+const INPUT_LEN: u32 = ${inputLength}u;
+
+@compute @workgroup_size(${WORKGROUP_SIZE})
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    if (i >= INPUT_LEN) {
+        return;
+    }
+    output[i] = getScaled_x(i);
 }
 `;
 }
@@ -713,6 +761,54 @@ test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", a
         scaleConfig: { type: "linear", domain, range: unitRange },
     });
     const shaderCode = buildScaleCodegenRampShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+    });
+    const result = await runScaleCodegenRampCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, unitRange),
+        texture: packTextureData(textureData),
+    });
+
+    expect(result).toHaveLength(input.length * 4);
+    input.forEach((value, index) => {
+        const expected = d3color(colorScale(value)).rgb();
+        const base = index * 4;
+        expect(result[base]).toBeCloseTo(expected.r / 255, 2);
+        expect(result[base + 1]).toBeCloseTo(expected.g / 255, 2);
+        expect(result[base + 2]).toBeCloseTo(expected.b / 255, 2);
+        expect(result[base + 3]).toBeCloseTo(1, 5);
+    });
+});
+
+test("scaleCodegen accepts interpolator functions in scaleConfig ranges", async ({
+    page,
+}) => {
+    // This mirrors a sequential scale where the range is defined by a function.
+    await ensureWebGPU(page);
+
+    const input = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+    const domain = [0, 1];
+    const unitRange = [0, 1];
+    const interpolator = interpolateHcl("green", "red");
+    const colorScale = scaleSequential(interpolator).domain(domain);
+    const textureData = createSchemeTexture(interpolator);
+    if (!textureData) {
+        throw new Error("Failed to create a sequential color ramp texture.");
+    }
+
+    const codegenFn = buildScaledFunction({
+        name: "x",
+        scale: "linear",
+        rawValueExpr: "input[i]",
+        inputScalarType: "f32",
+        outputComponents: 4,
+        outputScalarType: "f32",
+        scaleConfig: { type: "linear", domain, range: interpolator },
+        useRangeTexture: true,
+    });
+    const shaderCode = buildScaleCodegenTextureShader({
         scaleFn: codegenFn,
         inputLength: input.length,
     });

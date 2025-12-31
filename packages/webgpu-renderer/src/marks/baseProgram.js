@@ -14,6 +14,7 @@ import {
     getDomainRangeKind,
     getDomainRangeLengths,
     isColorRange,
+    isRangeFunction,
     normalizeDomainRange,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
@@ -390,7 +391,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, Array<number|number[]|string>>} ranges
+     * @param {Record<string, Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }>} ranges
      * @returns {void}
      */
     updateScaleRanges(ranges) {
@@ -410,12 +411,28 @@ export default class BaseProgram {
                     continue;
                 }
                 if (scaleType === "ordinal") {
-                    if (this._updateOrdinalRange(channelName, range)) {
+                    if (
+                        this._updateOrdinalRange(
+                            channelName,
+                            /** @type {Array<number|number[]|string>} */ (range)
+                        )
+                    ) {
                         needsRebind = true;
                     }
                     continue;
                 }
-                this._updateDomainRange(channelName, "range", range);
+                if (isRangeFunction(range)) {
+                    throw new Error(
+                        `Scale on "${channelName}" does not support interpolator ranges.`
+                    );
+                }
+                this._updateDomainRange(
+                    channelName,
+                    "range",
+                    /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
+                        range
+                    )
+                );
             }
         }
         this._writeUniforms();
@@ -696,9 +713,16 @@ export default class BaseProgram {
             outputComponents === 1
                 ? getScaleOutputType("ordinal", channel.type ?? "f32")
                 : "f32";
+        if (isRangeFunction(scale.range)) {
+            throw new Error(
+                `Ordinal scale on "${name}" does not support interpolator ranges.`
+            );
+        }
         const normalized = normalizeOrdinalRange(
             name,
-            scale.range,
+            /** @type {Array<number|number[]|string>|undefined} */ (
+                scale.range
+            ),
             outputComponents
         );
         const data = this._buildOrdinalRangeBufferData(
@@ -716,17 +740,22 @@ export default class BaseProgram {
      */
     _initializeRangeTexture(name, scale) {
         const range = scale.range ?? [];
-        if (!isColorRange(range)) {
-            throw new Error(
-                `Interpolated color scale on "${name}" requires a color range.`
-            );
+        let textureData;
+        if (isRangeFunction(range)) {
+            textureData = createSchemeTexture(range);
+        } else {
+            if (!isColorRange(range)) {
+                throw new Error(
+                    `Interpolated color scale on "${name}" requires a color range.`
+                );
+            }
+            const colorStops = /** @type {Array<string|number[]>} */ (range);
+            textureData = createSchemeTexture({
+                scheme: colorStops,
+                mode: "interpolate",
+                interpolate: scale.interpolate,
+            });
         }
-        const colorStops = /** @type {Array<string|number[]>} */ (range);
-        const textureData = createSchemeTexture({
-            scheme: colorStops,
-            mode: "interpolate",
-            interpolate: scale.interpolate,
-        });
         if (!textureData) {
             throw new Error(`Failed to build range texture for "${name}".`);
         }
@@ -735,7 +764,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
+     * @param {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} value
      * @returns {boolean}
      */
     _updateRangeTexture(name, value) {
@@ -743,30 +772,38 @@ export default class BaseProgram {
         if (!channel || !channel.scale) {
             throw new Error(`Channel "${name}" does not use a color scale.`);
         }
-        const range = Array.isArray(value)
-            ? value
-            : typeof value === "object" && value
-              ? /** @type {{ range?: Array<number|number[]|string> }} */ ((
-                    value
-                ).range ?? [])
-              : [];
-        if (!isColorRange(range)) {
-            throw new Error(
-                `Interpolated color scale on "${name}" requires a color range.`
+        const range =
+            /** @type {Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn} */ (
+                Array.isArray(value)
+                    ? value
+                    : typeof value === "object" && value
+                      ? /** @type {{ range?: Array<number|number[]|string>|import("../index.d.ts").ColorInterpolatorFn }} */ ((
+                            value
+                        ).range ?? [])
+                      : value
             );
-        }
-        const colorStops = /** @type {Array<string|number[]>} */ (range);
         const sizes = this._domainRangeSizes.get(name);
-        if (sizes && range.length !== sizes.rangeLength) {
-            throw new Error(
-                `Scale on "${name}" expects ${sizes.rangeLength} range entries, got ${range.length}.`
-            );
+        let textureData;
+        if (isRangeFunction(range)) {
+            textureData = createSchemeTexture(range);
+        } else {
+            if (!isColorRange(range)) {
+                throw new Error(
+                    `Interpolated color scale on "${name}" requires a color range.`
+                );
+            }
+            const colorStops = /** @type {Array<string|number[]>} */ (range);
+            if (sizes && colorStops.length !== sizes.rangeLength) {
+                throw new Error(
+                    `Scale on "${name}" expects ${sizes.rangeLength} range entries, got ${colorStops.length}.`
+                );
+            }
+            textureData = createSchemeTexture({
+                scheme: colorStops,
+                mode: "interpolate",
+                interpolate: channel.scale.interpolate,
+            });
         }
-        const textureData = createSchemeTexture({
-            scheme: colorStops,
-            mode: "interpolate",
-            interpolate: channel.scale.interpolate,
-        });
         if (!textureData) {
             throw new Error(`Failed to build range texture for "${name}".`);
         }
@@ -1138,6 +1175,7 @@ export default class BaseProgram {
                 `Channel "${name}" only supports mismatched input/output components with threshold, ordinal, or piecewise scales.`
             );
         }
+        const rangeFn = isRangeFunction(channel.scale?.range);
         const colorRange = isColorRange(channel.scale?.range);
         const isContinuousScale = [
             "linear",
@@ -1146,6 +1184,18 @@ export default class BaseProgram {
             "sqrt",
             "symlog",
         ].includes(scaleType);
+        if (rangeFn) {
+            if (!isContinuousScale) {
+                throw new Error(
+                    `Channel "${name}" only supports function ranges with continuous scales.`
+                );
+            }
+            if (outputComponents !== 4) {
+                throw new Error(
+                    `Channel "${name}" requires vec4 outputs when using function ranges.`
+                );
+            }
+        }
         if (channel.scale?.interpolate !== undefined) {
             if (!colorRange) {
                 throw new Error(
@@ -1157,8 +1207,18 @@ export default class BaseProgram {
                     `Channel "${name}" only supports color interpolation with continuous scales.`
                 );
             }
+            if (outputComponents !== 4) {
+                throw new Error(
+                    `Channel "${name}" requires vec4 outputs when using color interpolation.`
+                );
+            }
         }
-        if (isContinuousScale && colorRange && outputComponents !== 4) {
+        if (
+            isContinuousScale &&
+            !rangeFn &&
+            colorRange &&
+            outputComponents !== 4
+        ) {
             throw new Error(
                 `Channel "${name}" requires vec4 outputs when using color ranges.`
             );
