@@ -1,3 +1,4 @@
+import { interpolateHcl } from "d3-interpolate";
 import { createRenderer } from "../src/index.js";
 import { setupResize } from "./utils.js";
 
@@ -43,7 +44,7 @@ export default async function runPiecewiseScene(canvas) {
                     type: "linear",
                     domain: [5, 10, 20, 30],
                     range: ["green", "#0050f8", "#f6f6f6", "#ff3000"],
-                    interpolate: "hcl",
+                    interpolate: interpolateHcl,
                     clamp: true,
                 },
             },
