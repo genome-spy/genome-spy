@@ -27,6 +27,12 @@ import {
     SCALE_PADDING_OUTER_PREFIX,
 } from "../../wgsl/prefixes.js";
 import {
+    getScaleInputRule,
+    getScaleOutputType,
+    isContinuousScale,
+    isScaleSupported,
+} from "./scaleDefs.js";
+import {
     applyScaleStep,
     castToF32Step,
     clampToDomainStep,
@@ -91,16 +97,8 @@ import {
  */
 
 /**
- * @typedef {object} ScaleUniformParam
- * @prop {string} prefix
- * @prop {number} defaultValue
- * @prop {"base"|"exponent"|"constant"|"paddingInner"|"paddingOuter"|"align"|"band"} [prop]
- */
-
-/**
- * @typedef {object} ScaleUniformDef
- * @prop {boolean} domainRange
- * @prop {ScaleUniformParam[]} params
+ * @typedef {import("./scaleDefs.js").ScaleUniformParam} ScaleUniformParam
+ * @typedef {import("./scaleDefs.js").ScaleUniformDef} ScaleUniformDef
  */
 
 /**
@@ -486,136 +484,17 @@ function emitPiecewiseLinear({
     });
 }
 
-/** @type {Record<string, { input: "any"|"numeric"|"u32", output: "same"|"f32", domainRange: boolean, params: ScaleUniformParam[], emitter?: ScaleEmitter }>} */
-const SCALE_DEFS = {
-    identity: {
-        input: "any",
-        output: "same",
-        domainRange: false,
-        params: [],
-    },
-    linear: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [],
-    },
-    log: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [{ prefix: SCALE_BASE_PREFIX, defaultValue: 10, prop: "base" }],
-        emitter: emitLog,
-    },
-    pow: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [
-            {
-                prefix: SCALE_EXPONENT_PREFIX,
-                defaultValue: 1,
-                prop: "exponent",
-            },
-        ],
-        emitter: emitPow,
-    },
-    sqrt: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [
-            {
-                prefix: SCALE_EXPONENT_PREFIX,
-                defaultValue: 0.5,
-                prop: "exponent",
-            },
-        ],
-        emitter: emitPow,
-    },
-    symlog: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [
-            {
-                prefix: SCALE_CONSTANT_PREFIX,
-                defaultValue: 1,
-                prop: "constant",
-            },
-        ],
-        emitter: emitSymlog,
-    },
-    band: {
-        input: "numeric",
-        output: "f32",
-        domainRange: true,
-        params: [
-            {
-                prefix: SCALE_PADDING_INNER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingInner",
-            },
-            {
-                prefix: SCALE_PADDING_OUTER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingOuter",
-            },
-            { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
-            { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
-        ],
-        emitter: emitBand,
-    },
-    index: {
-        input: "u32",
-        output: "f32",
-        domainRange: true,
-        params: [
-            {
-                prefix: SCALE_PADDING_INNER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingInner",
-            },
-            {
-                prefix: SCALE_PADDING_OUTER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingOuter",
-            },
-            { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
-            { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
-        ],
-        emitter: emitBandHp,
-    },
-    ordinal: {
-        input: "u32",
-        output: "same",
-        domainRange: false,
-        params: [],
-        emitter: emitOrdinal,
-    },
-    threshold: {
-        input: "numeric",
-        output: "same",
-        domainRange: false,
-        params: [],
-        emitter: emitThreshold,
-    },
+/** @type {Record<string, ScaleEmitter>} */
+const SCALE_EMITTERS = {
+    log: emitLog,
+    pow: emitPow,
+    sqrt: emitPow,
+    symlog: emitSymlog,
+    band: emitBand,
+    index: emitBandHp,
+    ordinal: emitOrdinal,
+    threshold: emitThreshold,
 };
-
-export const SCALE_UNIFORM_DEFS = Object.fromEntries(
-    Object.entries(SCALE_DEFS).map(([key, value]) => [
-        key,
-        { domainRange: value.domainRange, params: value.params },
-    ])
-);
-
-/**
- * @param {string} scaleType
- * @returns {ScaleUniformDef}
- */
-export function getScaleUniformDef(scaleType) {
-    return SCALE_UNIFORM_DEFS[scaleType] ?? SCALE_UNIFORM_DEFS.identity;
-}
 
 /**
  * @param {ScaleFunctionParams} params
@@ -695,8 +574,8 @@ export function buildScaledFunction({
         });
     }
 
-    const def = SCALE_DEFS[scale];
-    if (def?.emitter) {
+    const emitter = SCALE_EMITTERS[scale];
+    if (emitter) {
         if (scale === "threshold") {
             if (domainLength < 1 || rangeLength !== domainLength + 1) {
                 throw new Error(
@@ -704,7 +583,7 @@ export function buildScaledFunction({
                 );
             }
         }
-        return def.emitter({
+        return emitter({
             name,
             rawValueExpr,
             inputScalarType: scalarType,
@@ -757,7 +636,7 @@ function isColorRange(range) {
  */
 export function validateScaleConfig(name, channel) {
     const scaleType = channel.scale?.type ?? "identity";
-    if (scaleType !== "identity" && !(scaleType in SCALE_DEFS)) {
+    if (scaleType !== "identity" && !isScaleSupported(scaleType)) {
         return `Channel "${name}" uses unsupported scale "${scaleType}".`;
     }
 
@@ -767,9 +646,7 @@ export function validateScaleConfig(name, channel) {
     const colorRange = isColorRange(channel.scale?.range);
     const interpolateEnabled =
         rangeFn || channel.scale?.interpolate !== undefined || colorRange;
-    const isContinuous = ["linear", "log", "pow", "sqrt", "symlog"].includes(
-        scaleType
-    );
+    const isContinuous = isContinuousScale(scaleType);
     const allowsVectorOutput =
         ["identity", "threshold", "ordinal", "linear"].includes(scaleType) ||
         piecewise ||
@@ -814,7 +691,7 @@ export function validateScaleConfig(name, channel) {
         return `Channel "${name}" uses ${components} components but piecewise scales only support scalars or vec4 outputs.`;
     }
 
-    const inputRule = SCALE_DEFS[scaleType]?.input ?? "any";
+    const inputRule = getScaleInputRule(scaleType);
     if (inputRule === "any") {
         return null;
     }
@@ -838,7 +715,3 @@ export function validateScaleConfig(name, channel) {
  * @param {"f32"|"u32"|"i32"} scalarType
  * @returns {"f32"|"u32"|"i32"}
  */
-export function getScaleOutputType(scaleType, scalarType) {
-    const output = SCALE_DEFS[scaleType]?.output ?? "same";
-    return output === "same" ? scalarType : "f32";
-}

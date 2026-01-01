@@ -1,9 +1,6 @@
 /* global GPUBufferUsage, GPUTextureUsage */
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import {
-    getScaleUniformDef,
-    getScaleOutputType,
-} from "../scales/scaleCodegen.js";
+import { getScaleOutputType, getScaleUniformDef } from "../scales/scaleDefs.js";
 import {
     coerceRangeValue,
     getDomainRangeKind,
@@ -154,13 +151,13 @@ export class ScaleResourceManager {
             const rangeComponents = useRangeTexture ? 1 : outputComponents;
             const rangeType = useRangeTexture ? "f32" : outputType;
             layout.push({
-                name: `${DOMAIN_PREFIX}${name}`,
+                name: DOMAIN_PREFIX + name,
                 type: "f32",
                 components: 1,
                 arrayLength: domainLength,
             });
             layout.push({
-                name: `${RANGE_PREFIX}${name}`,
+                name: RANGE_PREFIX + name,
                 type: rangeType,
                 components: rangeComponents,
                 arrayLength: rangeLength,
@@ -176,14 +173,14 @@ export class ScaleResourceManager {
         }
         if (analysis.needsOrdinalRange) {
             layout.push({
-                name: `${RANGE_COUNT_PREFIX}${name}`,
+                name: RANGE_COUNT_PREFIX + name,
                 type: "f32",
                 components: 1,
             });
         }
         if (analysis.needsDomainMap) {
             layout.push({
-                name: `${DOMAIN_MAP_COUNT_PREFIX}${name}`,
+                name: DOMAIN_MAP_COUNT_PREFIX + name,
                 type: "f32",
                 components: 1,
             });
@@ -217,8 +214,8 @@ export class ScaleResourceManager {
                     kind === "piecewise"
                         ? normalizeRangePositions(rangeLength)
                         : [0, 1];
-                this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
-                this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+                this._setUniformValue(DOMAIN_PREFIX + name, domain);
+                this._setUniformValue(RANGE_PREFIX + name, range);
                 this._getChannelResources(name).domainRange = {
                     kind,
                     domainLength,
@@ -234,8 +231,8 @@ export class ScaleResourceManager {
                         kind,
                         (valueName) => this._getDefaultScaleRange(valueName)
                     );
-                this._setUniformValue(`${DOMAIN_PREFIX}${name}`, domain);
-                this._setUniformValue(`${RANGE_PREFIX}${name}`, range);
+                this._setUniformValue(DOMAIN_PREFIX + name, domain);
+                this._setUniformValue(RANGE_PREFIX + name, range);
                 this._getChannelResources(name).domainRange = {
                     kind,
                     domainLength,
@@ -309,10 +306,10 @@ export class ScaleResourceManager {
                             needsRebind = true;
                         }
                         if (scaleType === "band") {
-                            this._setUniformValue(
-                                `${DOMAIN_PREFIX}${channelName}`,
-                                [0, ordinalDomain.length]
-                            );
+                            this._setUniformValue(DOMAIN_PREFIX + channelName, [
+                                0,
+                                ordinalDomain.length,
+                            ]);
                         }
                         continue;
                     }
@@ -335,7 +332,7 @@ export class ScaleResourceManager {
                             );
                         }
                         this._setUniformValue(
-                            `${RANGE_PREFIX}${channelName}`,
+                            RANGE_PREFIX + channelName,
                             positions
                         );
                     }
@@ -417,9 +414,7 @@ export class ScaleResourceManager {
             );
         }
         const uniformName =
-            suffix === "domain"
-                ? `${DOMAIN_PREFIX}${name}`
-                : `${RANGE_PREFIX}${name}`;
+            suffix === "domain" ? DOMAIN_PREFIX + name : RANGE_PREFIX + name;
         if (!this._hasUniform(uniformName)) {
             throw new Error(
                 `Uniform "${uniformName}" is not available for updates.`
@@ -711,8 +706,9 @@ export class ScaleResourceManager {
                 : "f32";
         const range = Array.isArray(value)
             ? value
-            : /** @type {{ range?: Array<number|number[]|string> }} */ ((value)
-                  .range ?? []);
+            : /** @type {{ range?: Array<number|number[]|string> }} */ (
+                  value.range ?? []
+              );
         const normalized = normalizeOrdinalRange(
             name,
             /** @type {Array<number|number[]|string>} */ (range),
@@ -776,7 +772,7 @@ export class ScaleResourceManager {
             buffer,
             size: { length, byteLength: nextBytes },
         };
-        this._setUniformValue(`${DOMAIN_MAP_COUNT_PREFIX}${name}`, length);
+        this._setUniformValue(DOMAIN_MAP_COUNT_PREFIX + name, length);
         return needsNewBuffer;
     }
 
@@ -831,7 +827,7 @@ export class ScaleResourceManager {
             buffer,
             size: { length, byteLength: nextBytes },
         };
-        this._setUniformValue(`${RANGE_COUNT_PREFIX}${name}`, length);
+        this._setUniformValue(RANGE_COUNT_PREFIX + name, length);
         return needsNewBuffer;
     }
 }

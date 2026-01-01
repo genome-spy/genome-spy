@@ -3,10 +3,8 @@ import {
     isRangeFunction,
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
-import {
-    getScaleOutputType,
-    isPiecewiseScale,
-} from "../scales/scaleCodegen.js";
+import { isPiecewiseScale } from "../scales/scaleCodegen.js";
+import { getScaleOutputType, isContinuousScale } from "../scales/scaleDefs.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -52,16 +50,6 @@ import {
  * @prop {boolean} rangeIsColor
  *   True when the range is an array of color values.
  */
-
-const CONTINUOUS_SCALES = new Set(["linear", "log", "pow", "sqrt", "symlog"]);
-
-/**
- * @param {ScaleType} scaleType
- * @returns {boolean}
- */
-export function isContinuousScale(scaleType) {
-    return CONTINUOUS_SCALES.has(scaleType);
-}
 
 /**
  * @param {ScalarType | undefined} type
