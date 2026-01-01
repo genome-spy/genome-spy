@@ -62,6 +62,58 @@ export class SeriesBufferManager {
     }
 
     /**
+     * Infer the instance count from series buffers when possible.
+     *
+     * @param {Record<string, TypedArray>} [channels]
+     * @returns {number | null}
+     */
+    inferCount(channels) {
+        let inferred = null;
+        let hasSeries = false;
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            hasSeries = true;
+            const data = channels?.[name] ?? channel.data;
+            if (!data) {
+                throw new Error(`Missing data for channel "${name}"`);
+            }
+            const inputComponents =
+                channel.inputComponents ?? channel.components ?? 1;
+            const scaleType = channel.scale?.type ?? "identity";
+            const divisor =
+                scaleType === "index" &&
+                data instanceof Float64Array &&
+                inputComponents === 2
+                    ? 1
+                    : inputComponents;
+            if (divisor <= 0) {
+                throw new Error(`Invalid input component count for "${name}"`);
+            }
+            if (data.length % divisor !== 0) {
+                throw new Error(
+                    `Channel "${name}" length (${data.length}) must be divisible by ${divisor}.`
+                );
+            }
+            const count = data.length / divisor;
+            if (inferred === null) {
+                inferred = count;
+            } else if (count !== inferred) {
+                throw new Error(
+                    `Channel "${name}" count (${count}) does not match inferred count (${inferred}).`
+                );
+            }
+        }
+
+        if (!hasSeries) {
+            return null;
+        }
+        return inferred ?? 0;
+    }
+
+    /**
      * @returns {void}
      */
     _initializeSeriesAliases() {
