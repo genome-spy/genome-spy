@@ -33,6 +33,7 @@ import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
+import { buildBindGroup } from "./bindGroupBuilder.js";
 
 let debugResourcesEnabled = false;
 
@@ -228,85 +229,15 @@ export default class BaseProgram {
      * @returns {void}
      */
     _rebuildBindGroup() {
-        /** @type {GPUBindGroupEntry[]} */
-        const entries = [
-            {
-                binding: 0,
-                resource: { buffer: this._uniformBuffer },
-            },
-        ];
-
-        // Build storage/texture bindings in the same order as the shader expects.
-        let bindingIndex = 1;
-        for (const entry of this._resourceLayout) {
-            if (entry.role === "series") {
-                const buffer = this._seriesBuffers.getBuffer(entry.name);
-                if (!buffer) {
-                    throw new Error(
-                        `Missing buffer binding for "${entry.name}".`
-                    );
-                }
-                entries.push({
-                    binding: bindingIndex++,
-                    resource: { buffer },
-                });
-                continue;
-            } else if (entry.role === "ordinalRange") {
-                const buffer =
-                    this._ordinalRangeBuffers.get(entry.name) ?? null;
-                if (!buffer) {
-                    throw new Error(
-                        `Missing buffer binding for "${entry.name}".`
-                    );
-                }
-                entries.push({
-                    binding: bindingIndex++,
-                    resource: { buffer },
-                });
-                continue;
-            } else if (entry.role === "domainMap") {
-                const buffer = this._domainMapBuffers.get(entry.name) ?? null;
-                if (!buffer) {
-                    throw new Error(
-                        `Missing domain map buffer for "${entry.name}".`
-                    );
-                }
-                entries.push({
-                    binding: bindingIndex++,
-                    resource: { buffer },
-                });
-                continue;
-            } else if (entry.role === "rangeTexture") {
-                const texture = this._rangeTextures.get(entry.name)?.texture;
-                if (!texture) {
-                    throw new Error(
-                        `Missing range texture for "${entry.name}".`
-                    );
-                }
-                entries.push({
-                    binding: bindingIndex++,
-                    resource: texture.createView(),
-                });
-                continue;
-            } else if (entry.role === "rangeSampler") {
-                const sampler = this._rangeTextures.get(entry.name)?.sampler;
-                if (!sampler) {
-                    throw new Error(
-                        `Missing range sampler for "${entry.name}".`
-                    );
-                }
-                entries.push({
-                    binding: bindingIndex++,
-                    resource: sampler,
-                });
-                continue;
-            }
-            throw new Error(`Unknown resource binding role "${entry.role}".`);
-        }
-
-        this._bindGroup = this.device.createBindGroup({
+        this._bindGroup = buildBindGroup({
+            device: this.device,
             layout: this._bindGroupLayout,
-            entries,
+            uniformBuffer: this._uniformBuffer,
+            resourceLayout: this._resourceLayout,
+            getSeriesBuffer: (name) => this._seriesBuffers.getBuffer(name),
+            ordinalRangeBuffers: this._ordinalRangeBuffers,
+            domainMapBuffers: this._domainMapBuffers,
+            rangeTextures: this._rangeTextures,
         });
     }
 
