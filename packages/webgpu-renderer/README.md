@@ -1,32 +1,89 @@
 # WebGPU Renderer (Prototype)
 
-This package is a minimal, renderer-only prototype for GenomeSpy. It focuses on
-WebGPU execution only: marks, WGSL shaders, GPU buffers, and a basic render loop.
-There is no dataflow, view hierarchy, or param/expr system here.
+This package is a renderer-only prototype for GenomeSpy. It is intentionally
+low-level: WebGPU only, marks + WGSL shaders + GPU resources. There is no
+dataflow engine, view hierarchy, or expr/param system here. The caller is
+responsible for updating uniforms, feeding columnar data, and scheduling renders.
 
-## Goals
+It is designed to be usable outside GenomeSpy: a generic, low-level library
+for GPU-accelerated visualization. It currently lives in the GenomeSpy
+monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 
-- Columnar typed-array inputs
-- Storage buffers + vertex pulling
-- Clean, data-first API
-- No texture handles leaked in public API
+## Purpose
 
-## Status
+- Provide GPU-accelerated scales and rendering for visualization marks.
+- Accept columnar, typed-array inputs (storage buffers + vertex pulling).
+- Keep the public API small and data-first.
 
-Prototype. Expect missing features and TODOs.
+## What This Is (and Is Not)
 
-## Quick Start (Manual)
+- **Is:** a low-level rendering backend you can drive from another system.
+- **Is not:** a full visualization grammar or runtime (no transforms, layout,
+  or declarative spec handling in this package).
 
-Open `examples/basic.html` in a browser that supports WebGPU.
-You may need a local server due to module imports.
+## Core Concepts
 
-## API (Sketch)
+- **Series channels** are columnar buffers (`TypedArray`) uploaded to storage
+  buffers.
+- **Value channels** are uniforms (scalar or vectors). If `dynamic: false`, the
+  value is inlined into WGSL to enable shader optimizations.
+- **Scales** run on the GPU. Domains and ranges are updated per mark.
+
+## API (Public Surface)
 
 - `createRenderer(canvas, options)`
 - `renderer.createMark(type, config)`
-- `renderer.updateSeries(markId, fields, count)`
+- `renderer.updateSeries(markId, channels, count)`
 - `renderer.updateValues(markId, values)`
+- `renderer.updateScaleDomains(markId, domains)`
+- `renderer.updateScaleRanges(markId, ranges)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render()`
+- `renderer.destroyMark(markId)`
 
-See `examples/basic.html` for usage.
+Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
+
+## Quick Example
+
+```js
+import { createRenderer } from "@genome-spy/webgpu-renderer";
+
+const renderer = await createRenderer(canvas);
+const markId = renderer.createMark("rect", {
+    count: 3,
+    channels: {
+        x: { data: new Float32Array([0, 1, 2]), type: "f32", scale: { type: "band" } },
+        y: { value: 0, type: "f32", dynamic: true },
+        fill: { value: [0.2, 0.5, 0.8, 1.0] },
+    },
+});
+
+renderer.updateScaleRanges(markId, { x: [0, canvas.width] });
+renderer.render();
+```
+
+## High-Precision Index Scale
+
+The `index` scale supports large coordinate spaces with fractional domain
+starts for smooth zooming/panning.
+
+- **u32 series:** use `Uint32Array` and `inputComponents: 1`.
+- **Large indices:** pass `Float64Array` series with `inputComponents: 2`.
+  The renderer packs values into `[hi, lo]` u32 pairs internally.
+
+Domain updates accept JS numbers. For advanced usage, you can pre-pack domains
+or series with the helpers exported from `src/index.js`:
+
+- `packHighPrecisionU32`, `packHighPrecisionU32Array`
+- `packHighPrecisionDomain`
+
+## Examples
+
+Open `examples/basic.html` in a WebGPU-capable browser. Use a local server
+because ES modules do not load from `file://` URLs.
+
+## Tests
+
+- GPU tests: `npm -w @genome-spy/webgpu-renderer run test:gpu`
+- Type checks: `npm -w @genome-spy/webgpu-renderer run test:tsc`
+- Unit tests: `npx vitest --run --config vitest.config.js --root packages/webgpu-renderer`
