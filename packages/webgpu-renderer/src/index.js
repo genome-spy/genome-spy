@@ -25,3 +25,8 @@ export {
     LOW_BITS,
     BASE,
 } from "./utils/highPrecision.js";
+export {
+    buildHashTableMap,
+    buildHashTableSet,
+    HASH_EMPTY_KEY,
+} from "./utils/hashTable.js";
