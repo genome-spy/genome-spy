@@ -218,7 +218,7 @@ implemented first. Params/selections come last.
       - `checkSelection_*` helpers + selection mask plumbing
     - Param/expr accessors:
       - `uParam_*` uniforms and expr-ref driven accessors
-    - High-precision/index/locus scales:
+    - High-precision index scales:
       - `isHighPrecisionScale`, `splitHighPrecision`, `toHighPrecisionDomainUniform`
       - `scaleBandHp` / `scaleBandHpU` equivalents and u64 emulation path
     - Additional scale families + metadata:
@@ -237,6 +237,44 @@ implemented first. Params/selections come last.
     - Once WGSL parity is achieved and all marks ported, remove GLSL generator
       usage from the WebGPU path while keeping GLSL for the WebGL backend.
 
+### High-precision band (index) support — IN PROGRESS
+
+Index lives in core as a band-like abstraction. WebGPU should expose the
+required hooks without owning those scale types.
+
+1) **Core packs domains and values**
+   - Core accepts JS numbers for index domains and splits start into hi/lo parts
+     `u64` (Q48.16) and exposes:
+       - domain start (packed u64)
+       - domain extent/count
+       - fractional bits metadata
+   - Series values use:
+       - `u32` when possible (components: 1)
+       - packed `u64` as `vec2<u32>` when needed (components: 2)
+
+2) **Renderer exposes two HP band paths**
+   - `scaleBandHp`: accepts `u32` index + HP domain uniforms.
+   - `scaleBandHpU`: accepts packed `vec2<u32>` index + same HP domain uniforms.
+   - Both paths share the same range math (padding/align/bandwidth) and only
+     differ in how the index delta is computed.
+
+3) **Uniform layout + codegen selection**
+   - Add a dedicated HP domain uniform layout (start split + extent/count).
+   - Select HP variant in codegen based on channel `type` + `components`:
+       - `u32` + components 1 -> `scaleBandHp`
+       - `u32` + components 2 -> `scaleBandHpU`
+
+4) **Precision-preserving arithmetic**
+   - Keep hi/lo subtraction isolated (stableSub) to avoid compiler folding.
+   - Use the existing dot pattern to combine `(start, hi, lo, bandwidth)`.
+
+5) **Tests + examples**
+   - GPU tests for both HP paths, including:
+       - u32 index path (human-scale)
+       - packed u64 path (large genomes)
+   - Example scene in webgpu-renderer demonstrating smooth zooming with
+     packed high-precision domains.
+
 ### 14) Scale codegen pipeline (IR-style) — IN PROGRESS
 
 This is a low-level internal refactor to make WGSL generation more composable
@@ -254,7 +292,7 @@ surface stays the same; only codegen internals change.
    - Extract shared logic for constants/uniforms/storage buffers so both
      `scaleCodegen` and `markShaderBuilder` use the same source model.
 5) **Add future steps** — PENDING
-   - High precision (index/locus), conditional encoders, selection masks.
+   - High precision (index), conditional encoders, selection masks.
 
 ### Scale properties used by the renderer
 
@@ -271,7 +309,7 @@ Directly consumed by `glslScaleGenerator.js`:
 - `base()` (log)
 - `constant()` (symlog)
 - `exponent()` (pow/sqrt)
-- `paddingInner()`, `paddingOuter()`, `align()` (band/point/index/locus)
+- `paddingInner()`, `paddingOuter()`, `align()` (band/point/index)
 
 Not consumed directly in the generator (handled upstream in core):
 - `scheme`, `reverse`, `nice`, `domainMin/Max/Mid`, `bins`,

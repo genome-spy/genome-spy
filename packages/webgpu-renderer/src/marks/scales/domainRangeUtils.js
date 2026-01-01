@@ -1,4 +1,5 @@
 import { cssColorToArray } from "../../utils/colorUtils.js";
+import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { getScaleUniformDef, isPiecewiseScale } from "./scaleCodegen.js";
 
 /**
@@ -41,6 +42,9 @@ export function getDomainRangeKind(scale) {
  */
 export function getDomainRangeLengths(name, kind, scale) {
     if (kind === "continuous") {
+        if (scale.type === "index") {
+            return { domainLength: 3, rangeLength: 2 };
+        }
         return { domainLength: 2, rangeLength: 2 };
     }
 
@@ -117,6 +121,28 @@ export function normalizeDomainRange(
             throw new Error(`Scale range for "${name}" must be numeric.`);
         }
         const numericRange = /** @type {number[]} */ (range);
+        if (scale.type === "index") {
+            if (domain.length === 3) {
+                return {
+                    domain: [domain[0], domain[1], domain[2]],
+                    range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+                    domainLength,
+                    rangeLength,
+                };
+            }
+            if (domain.length !== 2) {
+                throw new Error(
+                    `Scale domain for "${name}" must have 2 or 3 entries for "${scale.type}" scales.`
+                );
+            }
+            const packed = packHighPrecisionDomain(domain[0], domain[1]);
+            return {
+                domain: packed,
+                range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+                domainLength,
+                rangeLength,
+            };
+        }
         return {
             domain: [domain[0] ?? 0, domain[1] ?? 1],
             range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
