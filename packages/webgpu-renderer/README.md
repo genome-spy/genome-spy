@@ -52,7 +52,11 @@ const renderer = await createRenderer(canvas);
 const markId = renderer.createMark("rect", {
     count: 3,
     channels: {
-        x: { data: new Float32Array([0, 1, 2]), type: "f32", scale: { type: "band" } },
+        x: {
+            data: new Uint32Array([0, 1, 2]),
+            type: "u32",
+            scale: { type: "band", domain: [0, 1, 2] },
+        },
         y: { value: 0, type: "f32", dynamic: true },
         fill: { value: [0.2, 0.5, 0.8, 1.0] },
     },

@@ -27,6 +27,8 @@ export default async function runPointScene(canvas) {
         [0.85, 0.25, 0.5, 1.0],
         [0.65, 0.6, 0.2, 1.0],
     ];
+    const xDomain = Array.from({ length: cols }, (_, i) => i);
+    const yDomain = Array.from({ length: rows }, (_, i) => i);
 
     for (let i = 0; i < count; i++) {
         const col = i % cols;
@@ -55,7 +57,7 @@ export default async function runPointScene(canvas) {
                 type: "u32",
                 scale: {
                     type: "band",
-                    domain: [0, cols],
+                    domain: xDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,
@@ -67,7 +69,7 @@ export default async function runPointScene(canvas) {
                 type: "u32",
                 scale: {
                     type: "band",
-                    domain: [0, rows],
+                    domain: yDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,

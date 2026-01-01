@@ -1,6 +1,8 @@
 export const DOMAIN_PREFIX = "uDomain_";
 export const RANGE_PREFIX = "uRange_";
 export const RANGE_COUNT_PREFIX = "uRangeCount_";
+export const DOMAIN_MAP_PREFIX = "domainMap_";
+export const DOMAIN_MAP_COUNT_PREFIX = "uDomainMapCount_";
 export const RANGE_TEXTURE_PREFIX = "uRangeTexture_";
 export const RANGE_SAMPLER_PREFIX = "uRangeSampler_";
 export const SCALED_FUNCTION_PREFIX = "getScaled_";

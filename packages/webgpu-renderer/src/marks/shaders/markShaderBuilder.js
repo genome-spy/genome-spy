@@ -1,5 +1,7 @@
 import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
+import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import {
+    DOMAIN_MAP_PREFIX,
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
@@ -15,7 +17,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
  *
  * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[] }} ShaderBuildResult
  */
@@ -62,6 +64,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     );
     const ordinalRangeChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.needsOrdinalRange
+    );
+    const domainMapChannelIRs = channelIRs.filter(
+        (channelIR) => channelIR.needsDomainMap
     );
     const rangeTextureChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.useRangeTexture
@@ -117,6 +122,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
                     useRangeTexture: channelIR.useRangeTexture,
+                    domainMapName: channelIR.needsDomainMap
+                        ? `${DOMAIN_MAP_PREFIX}${name}`
+                        : null,
                 })
             );
         } else {
@@ -148,6 +156,25 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
         bufferDecls.push(
             `@group(1) @binding(${binding}) var<storage, read> ${rangeBufferName}: array<${elementType}>;`
+        );
+    }
+
+    // Ordinal/band scales can map sparse category IDs to dense indices via a
+    // hash table stored in a read-only storage buffer.
+    for (const channelIR of domainMapChannelIRs) {
+        const { name } = channelIR;
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name, role: "domainMap" });
+
+        const mapBufferName = `${DOMAIN_MAP_PREFIX}${name}`;
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> ${mapBufferName}: array<HashEntry>;`
         );
     }
 
@@ -196,6 +223,9 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
                     useRangeTexture: channelIR.useRangeTexture,
+                    domainMapName: channelIR.needsDomainMap
+                        ? `${DOMAIN_MAP_PREFIX}${name}`
+                        : null,
                 })
             );
         } else {
@@ -239,6 +269,7 @@ struct Globals {
 @group(0) @binding(0) var<uniform> globals: Globals;
 
 ${SCALES_WGSL}
+${domainMapChannelIRs.length > 0 ? HASH_TABLE_WGSL : ""}
 
 struct Params {
 ${uniformFields}
