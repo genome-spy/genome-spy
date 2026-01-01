@@ -96,8 +96,7 @@ export function getDomainRangeLengths(name, kind, scale) {
  * @returns {boolean}
  */
 export function usesOrdinalDomainMap(scale) {
-    const domain = scale?.domain;
-    if (!scale || (!Array.isArray(domain) && !ArrayBuffer.isView(domain))) {
+    if (!scale) {
         return false;
     }
     return scale.type === "band" || scale.type === "ordinal";

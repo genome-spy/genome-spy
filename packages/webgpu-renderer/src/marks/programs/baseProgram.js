@@ -693,7 +693,7 @@ export default class BaseProgram {
                 });
             }
         }
-        if (scale.type === "band" || scale.type === "ordinal") {
+        if (usesOrdinalDomainMap(scale)) {
             this._initializeDomainMap(name, scale);
         }
         if (scale.type === "ordinal") {
@@ -1499,6 +1499,14 @@ export default class BaseProgram {
                     `Ordinal scale on "${name}" requires a non-empty range.`
                 );
             }
+            if (
+                !Array.isArray(channel.scale.domain) &&
+                !ArrayBuffer.isView(channel.scale.domain)
+            ) {
+                throw new Error(
+                    `Ordinal scale on "${name}" requires an explicit domain array.`
+                );
+            }
             if (inputComponents !== 1) {
                 throw new Error(
                     `Ordinal scale on "${name}" requires scalar input values.`
@@ -1528,6 +1536,15 @@ export default class BaseProgram {
                     `Ordinal scale on "${name}" requires scalar input values for vector outputs.`
                 );
             }
+        }
+        if (
+            scaleType === "band" &&
+            !Array.isArray(channel.scale?.domain) &&
+            !ArrayBuffer.isView(channel.scale?.domain)
+        ) {
+            throw new Error(
+                `Band scale on "${name}" requires an explicit domain array.`
+            );
         }
         if (usesOrdinalDomainMap(channel.scale)) {
             if (scaleType === "band" && channel.type !== "u32") {
