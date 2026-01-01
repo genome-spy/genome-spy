@@ -39,6 +39,11 @@ describe("buildMarkShader", () => {
                     components: 1,
                     arrayLength: 2,
                 },
+                {
+                    name: "uDomainMapCount_x",
+                    type: "f32",
+                    components: 1,
+                },
             ],
             shaderBody,
         });
@@ -112,6 +117,11 @@ describe("buildMarkShader", () => {
                     type: "f32",
                     components: 1,
                     arrayLength: 2,
+                },
+                {
+                    name: "uDomainMapCount_x",
+                    type: "f32",
+                    components: 1,
                 },
             ],
             shaderBody,
