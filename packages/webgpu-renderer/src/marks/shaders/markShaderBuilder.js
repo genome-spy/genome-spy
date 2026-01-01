@@ -88,7 +88,15 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
         );
 
         if (channelIR.inputComponents > 1 && channelIR.scalarType !== "f32") {
-            // TODO: Support vector types with non-f32 data.
+            const allowPackedU32 =
+                channelIR.scalarType === "u32" &&
+                channelIR.inputComponents === 2 &&
+                channelIR.scaleType === "index";
+            if (!allowPackedU32) {
+                throw new Error(
+                    `Channel "${name}" does not support non-f32 vector inputs.`
+                );
+            }
         }
 
         if (channelIR.readFn) {
@@ -104,6 +112,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scale: channelIR.scaleType,
                     rawValueExpr: channelIR.rawValueExpr,
                     inputScalarType: channelIR.scalarType,
+                    inputComponents: channelIR.inputComponents,
                     outputComponents: channelIR.outputComponents,
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
@@ -182,6 +191,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
                     scale: channelIR.scaleType,
                     rawValueExpr: channelIR.rawValueExpr,
                     inputScalarType: channelIR.scalarType,
+                    inputComponents: channelIR.inputComponents,
                     outputComponents: channelIR.outputComponents,
                     outputScalarType: channelIR.outputScalarType,
                     scaleConfig: channelIR.channel.scale,
@@ -223,6 +233,7 @@ struct Globals {
     width: f32,
     height: f32,
     dpr: f32,
+    uZero: f32,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;

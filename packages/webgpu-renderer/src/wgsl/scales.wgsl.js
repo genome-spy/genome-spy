@@ -1,5 +1,4 @@
 export default /* wgsl */ `
-const uZero: f32 = 0.0;
 
 // These scale helpers are a WGSL port of the GLSL versions in
 // packages/core/src/gl/includes/scales.glsl. Comments are preserved
@@ -33,6 +32,19 @@ fn roundAwayFromZero(value: f32) -> f32 {
 // Uniform arrays must use 16-byte elements, so scalar pairs are packed into vec4 slots.
 fn readPacked2(values: array<vec4<f32>, 2>) -> vec2<f32> {
     return vec2<f32>(values[0].x, values[1].x);
+}
+
+fn readPacked3(values: array<vec4<f32>, 3>) -> vec3<f32> {
+    return vec3<f32>(values[0].x, values[1].x, values[2].x);
+}
+
+// Using max to prevent the shader compiler from wrecking the precision.
+// Otherwise the compiler could optimize the expression into a form that
+// does premature rounding. globals.uZero is a uniform (always 0.0) to
+// keep the division from constant folding.
+fn stableSub(a: f32, b: f32) -> f32 {
+    let inf = 1.0 / globals.uZero;
+    return max(a - b, -inf);
 }
 
 // Scales ------------
@@ -121,7 +133,7 @@ fn splitUint(value: u32) -> vec2<f32> {
 }
 
 /**
- * High precision variant of scaleBand for index/locus scales
+ * High precision variant of scaleBand for the index scale
  */
 fn scaleBandHp(value: u32, domainExtent: vec3<f32>, range: vec2<f32>,
         paddingInner: f32, paddingOuter: f32,
@@ -145,18 +157,17 @@ fn scaleBandHp(value: u32, domainExtent: vec3<f32>, range: vec2<f32>,
     let splitValue = splitUint(value);
 
     // Using max to prevent the shader compiler from wrecking the precision.
-    // Othwewise the compiler could optimize the sum of the four terms into
+    // Otherwise the compiler could optimize the sum of the four terms into
     // some equivalent form that does premature rounding.
-    // WGSL does not allow generating infinity via division by zero.
-    let hi = splitValue.x - domainStart.x;
-    let lo = splitValue.y - domainStart.y;
+    let hi = stableSub(splitValue.x, domainStart.x);
+    let lo = stableSub(splitValue.y, domainStart.y);
 
     return dot(vec4<f32>(start, hi, lo, bandwidth), vec4<f32>(1.0, step, step, band));
 }
 
 /**
- * High precision variant of scaleBand for index/locus scales for large
- * domains where 32bit uints are not sufficient to represent the domain.
+ * High precision variant of scaleBand for the index scale where 32bit uints
+ * are insufficient to address large indices.
  */
 fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
                 paddingInner: f32, paddingOuter: f32,
@@ -180,11 +191,10 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
     let splitValue = vec2<f32>(f32(value.x) * lowDivisor, f32(value.y));
 
     // Using max to prevent the shader compiler from wrecking the precision.
-    // Othwewise the compiler could optimize the sum of the four terms into
+    // Otherwise the compiler could optimize the sum of the four terms into
     // some equivalent form that does premature rounding.
-    // WGSL does not allow generating infinity via division by zero.
-    let hi = splitValue.x - domainStart.x;
-    let lo = splitValue.y - domainStart.y;
+    let hi = stableSub(splitValue.x, domainStart.x);
+    let lo = stableSub(splitValue.y, domainStart.y);
 
     return dot(vec4<f32>(start, hi, lo, bandwidth), vec4<f32>(1.0, step, step, band));
 }

@@ -4,6 +4,7 @@ import runBarScene from "./barScene.js";
 import runPointScene from "./pointScene.js";
 import runThresholdScene from "./thresholdScene.js";
 import runPiecewiseScene from "./piecewiseScene.js";
+import runIndexScene from "./indexScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -32,6 +33,10 @@ const EXAMPLES = {
     piecewise: {
         label: "Piecewise Colors",
         run: runPiecewiseScene,
+    },
+    index: {
+        label: "Index Scale",
+        run: runIndexScene,
     },
 };
 

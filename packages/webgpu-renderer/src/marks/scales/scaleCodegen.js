@@ -39,12 +39,14 @@ import {
  * @typedef {object} ScaleFunctionParams
  * @prop {string} name
  *   Channel name used for function naming and uniform lookups.
- * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"threshold"|"ordinal"} scale
+ * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"index"|"threshold"|"ordinal"} scale
  *   Scale type that selects which WGSL helper is emitted.
  * @prop {string} rawValueExpr
  *   WGSL expression for the raw value (buffer read or literal/uniform).
  * @prop {"f32"|"u32"|"i32"} inputScalarType
  *   Scalar type of the raw value; used to choose casting behavior.
+ * @prop {1|2|4} inputComponents
+ *   Vector width of the raw input value.
  * @prop {1|2|4} outputComponents
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
@@ -63,6 +65,8 @@ import {
  *   WGSL expression for the raw value (buffer read or literal/uniform).
  * @prop {"f32"|"u32"|"i32"} inputScalarType
  *   Scalar type of the raw value; used to choose casting behavior.
+ * @prop {1|2|4} inputComponents
+ *   Vector width of the raw input value.
  * @prop {1|2|4} outputComponents
  *   Output vector width expected by the mark shader.
  * @prop {"f32"|"u32"|"i32"} outputScalarType
@@ -148,6 +152,14 @@ function makeFnHeader(name, returnType) {
  */
 function domainVec2(name) {
     return `readPacked2(params.${DOMAIN_PREFIX}${name})`;
+}
+
+/**
+ * @param {string} name
+ * @returns {string}
+ */
+function domainVec3(name) {
+    return `readPacked3(params.${DOMAIN_PREFIX}${name})`;
 }
 
 /**
@@ -242,6 +254,27 @@ function emitBand({ name, rawValueExpr, inputScalarType }) {
     return scaleBand(
         v,
         ${domainVec2(name)},
+        ${rangeVec2(name)},
+        params.${SCALE_PADDING_INNER_PREFIX}${name},
+        params.${SCALE_PADDING_OUTER_PREFIX}${name},
+        params.${SCALE_ALIGN_PREFIX}${name},
+        params.${SCALE_BAND_PREFIX}${name}
+    );
+}`;
+}
+
+/** @type {ScaleEmitter} */
+function emitBandHp({ name, rawValueExpr, inputScalarType, inputComponents }) {
+    const valueExpr =
+        inputComponents === 2
+            ? rawValueExpr
+            : toU32Expr(rawValueExpr, inputScalarType);
+    const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
+    return `${makeFnHeader(name, "f32")} {
+    let v = ${valueExpr};
+    return ${fnName}(
+        v,
+        ${domainVec3(name)},
         ${rangeVec2(name)},
         params.${SCALE_PADDING_INNER_PREFIX}${name},
         params.${SCALE_PADDING_OUTER_PREFIX}${name},
@@ -478,6 +511,26 @@ const SCALE_DEFS = {
         ],
         emitter: emitBand,
     },
+    index: {
+        input: "u32",
+        output: "f32",
+        domainRange: true,
+        params: [
+            {
+                prefix: SCALE_PADDING_INNER_PREFIX,
+                defaultValue: 0,
+                prop: "paddingInner",
+            },
+            {
+                prefix: SCALE_PADDING_OUTER_PREFIX,
+                defaultValue: 0,
+                prop: "paddingOuter",
+            },
+            { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
+            { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
+        ],
+        emitter: emitBandHp,
+    },
     ordinal: {
         input: "u32",
         output: "same",
@@ -518,6 +571,7 @@ export function buildScaledFunction({
     scale,
     rawValueExpr,
     inputScalarType: scalarType,
+    inputComponents,
     outputComponents,
     outputScalarType,
     scaleConfig,
@@ -563,6 +617,7 @@ export function buildScaledFunction({
                 name,
                 rawValueExpr,
                 inputScalarType: scalarType,
+                inputComponents,
                 outputComponents,
                 outputScalarType,
                 clamp: scaleConfig?.clamp === true,
@@ -574,6 +629,7 @@ export function buildScaledFunction({
             name,
             rawValueExpr,
             inputScalarType: scalarType,
+            inputComponents,
             outputComponents,
             outputScalarType: "f32",
             clamp: scaleConfig?.clamp === true,
@@ -596,6 +652,7 @@ export function buildScaledFunction({
             name,
             rawValueExpr,
             inputScalarType: scalarType,
+            inputComponents,
             outputComponents,
             outputScalarType,
             clamp: scaleConfig?.clamp === true,

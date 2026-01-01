@@ -56,7 +56,7 @@ export class Renderer {
 
         // Global uniforms are shared by all marks (e.g., viewport size).
         this._globalUniformBuffer = device.createBuffer({
-            size: 3 * 4,
+            size: 4 * 4,
             // eslint-disable-next-line no-undef
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
@@ -97,7 +97,7 @@ export class Renderer {
      */
     updateGlobals(globals) {
         const { width, height, dpr } = globals;
-        const data = new Float32Array([width, height, dpr]);
+        const data = new Float32Array([width, height, dpr, 0]);
         this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
         this._globals = { width, height, dpr };
     }

@@ -25,6 +25,10 @@ import {
     normalizeRangePositions,
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
+import {
+    packHighPrecisionDomain,
+    packHighPrecisionU32Array,
+} from "../../utils/highPrecision.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
 
@@ -205,9 +209,20 @@ export default class BaseProgram {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
-            const array = channels[name] ?? channel.data;
+            let array = channels[name] ?? channel.data;
             if (!array) {
                 throw new Error(`Missing data for channel "${name}"`);
+            }
+            const scaleType = channel.scale?.type ?? "identity";
+            const inputComponents =
+                channel.inputComponents ?? channel.components ?? 1;
+            if (scaleType === "index" && array instanceof Float64Array) {
+                if (inputComponents !== 2) {
+                    throw new Error(
+                        `Channel "${name}" requires inputComponents: 2 when providing Float64Array data.`
+                    );
+                }
+                array = packHighPrecisionU32Array(array);
             }
             const expectedType = channel.type ?? this.channelSpecs[name]?.type;
             if (expectedType === "f32" && !(array instanceof Float32Array)) {
@@ -225,8 +240,6 @@ export default class BaseProgram {
                     `Channel "${name}" expects an Int32Array for i32 data`
                 );
             }
-            const inputComponents =
-                channel.inputComponents ?? channel.components ?? 1;
             if (array.length < count * inputComponents) {
                 throw new Error(
                     `Channel "${name}" length (${array.length}) is less than count (${count})`
@@ -648,6 +661,35 @@ export default class BaseProgram {
         }
 
         if (kind === "continuous") {
+            const isHighPrecision = channel.scale?.type === "index";
+            if (isHighPrecision && suffix === "domain") {
+                /** @type {{ domain?: number[] }} */
+                const domainContainer =
+                    typeof value === "object" && value
+                        ? /** @type {{ domain?: number[] }} */ (value)
+                        : {};
+                const domain = Array.isArray(value)
+                    ? value
+                    : (domainContainer.domain ?? []);
+                if (domain.length === 3) {
+                    this._setUniformValue(uniformName, [
+                        domain[0],
+                        domain[1],
+                        domain[2],
+                    ]);
+                    return;
+                }
+                if (domain.length === 2) {
+                    this._setUniformValue(
+                        uniformName,
+                        packHighPrecisionDomain(domain[0], domain[1])
+                    );
+                    return;
+                }
+                throw new Error(
+                    `Scale domain for "${name}" must have 2 or 3 entries for "${channel.scale.type}" scales.`
+                );
+            }
             const pair = coerceRangeValue(
                 /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
                     value
@@ -1163,9 +1205,15 @@ export default class BaseProgram {
             channel.type &&
             channel.type !== "f32"
         ) {
-            throw new Error(
-                `Only f32 vectors are supported for "${name}" input data.`
-            );
+            const allowPackedU32 =
+                channel.type === "u32" &&
+                channel.inputComponents === 2 &&
+                scaleType === "index";
+            if (!allowPackedU32) {
+                throw new Error(
+                    `Only f32 vectors are supported for "${name}" input data.`
+                );
+            }
         }
         if (scaleType === "ordinal" && channel.type !== "u32") {
             throw new Error(
@@ -1182,7 +1230,16 @@ export default class BaseProgram {
                 `Only f32 vectors are supported for "${name}" right now.`
             );
         }
-        if (inputComponents !== outputComponents && !allowsScalarToVector) {
+        const allowsPackedScalarInput =
+            inputComponents === 2 &&
+            outputComponents === 1 &&
+            channel.type === "u32" &&
+            scaleType === "index";
+        if (
+            inputComponents !== outputComponents &&
+            !allowsScalarToVector &&
+            !allowsPackedScalarInput
+        ) {
             throw new Error(
                 `Channel "${name}" only supports mismatched input/output components when mapping scalars to vectors.`
             );
