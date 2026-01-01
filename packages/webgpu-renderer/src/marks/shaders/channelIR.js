@@ -48,34 +48,35 @@ import { formatLiteral } from "../scales/scaleCodegen.js";
  * @param {string} name
  * @param {number} inputComponents
  * @param {"f32"|"u32"|"i32"} scalarType
+ * @param {string | undefined} bufferName
  * @returns {{ bufferName: string, arrayType: string, readFn: string }}
  */
-function buildSeriesAccessors(name, inputComponents, scalarType) {
-    const bufferName = `buf_${name}`;
+function buildSeriesAccessors(name, inputComponents, scalarType, bufferName) {
+    const resolvedBufferName = bufferName ?? `buf_${name}`;
     const arrayType = `array<${scalarType}>`;
     if (inputComponents === 1) {
         return {
-            bufferName,
+            bufferName: resolvedBufferName,
             arrayType,
-            readFn: `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`,
+            readFn: `fn read_${name}(i: u32) -> ${scalarType} { return ${resolvedBufferName}[i]; }`,
         };
     }
     if (inputComponents === 2) {
         return {
-            bufferName,
+            bufferName: resolvedBufferName,
             arrayType,
             readFn: `fn read_${name}(i: u32) -> vec2<${scalarType}> {
     let base = i * 2u;
-    return vec2<${scalarType}>(${bufferName}[base], ${bufferName}[base + 1u]);
+    return vec2<${scalarType}>(${resolvedBufferName}[base], ${resolvedBufferName}[base + 1u]);
 }`,
         };
     }
     return {
-        bufferName,
+        bufferName: resolvedBufferName,
         arrayType,
         readFn: `fn read_${name}(i: u32) -> vec4<${scalarType}> {
     let base = i * 4u;
-    return vec4<${scalarType}>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
+    return vec4<${scalarType}>(${resolvedBufferName}[base], ${resolvedBufferName}[base + 1u], ${resolvedBufferName}[base + 2u], ${resolvedBufferName}[base + 3u]);
 }`,
     };
 }
@@ -83,9 +84,10 @@ function buildSeriesAccessors(name, inputComponents, scalarType) {
 /**
  * @param {string} name
  * @param {ChannelConfigResolved} channel
+ * @param {Map<string, string>} seriesBufferAliases
  * @returns {ChannelIR | null}
  */
-function buildChannelIR(name, channel) {
+function buildChannelIR(name, channel, seriesBufferAliases) {
     const analysis = buildChannelAnalysis(name, channel);
     if (analysis.sourceKind === "missing") {
         return null;
@@ -103,10 +105,13 @@ function buildChannelIR(name, channel) {
     } = analysis;
 
     if (analysis.sourceKind === "series") {
-        const { bufferName, arrayType, readFn } = buildSeriesAccessors(
+        const aliasKey = seriesBufferAliases.get(name);
+        const bufferName = `buf_${aliasKey ?? name}`;
+        const { arrayType, readFn } = buildSeriesAccessors(
             name,
             inputComponents,
-            scalarType
+            scalarType,
+            bufferName
         );
         return {
             name,
@@ -157,14 +162,15 @@ function buildChannelIR(name, channel) {
 
 /**
  * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {Map<string, string>} [seriesBufferAliases]
  * @returns {ChannelIR[]}
  */
-export function buildChannelIRs(channels) {
+export function buildChannelIRs(channels, seriesBufferAliases = new Map()) {
     /** @type {ChannelIR[]} */
     const channelIRs = [];
 
     for (const [name, channel] of Object.entries(channels)) {
-        const channelIR = buildChannelIR(name, channel);
+        const channelIR = buildChannelIR(name, channel, seriesBufferAliases);
         if (!channelIR) {
             continue;
         }

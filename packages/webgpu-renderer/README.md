@@ -66,6 +66,16 @@ renderer.updateScaleRanges(markId, { x: [0, canvas.width] });
 renderer.render();
 ```
 
+## Series Buffer Sharing
+
+If multiple channels reference the same `TypedArray` at mark creation, the
+renderer treats them as a shared series buffer and reuses a single GPU binding.
+Sharing is determined by `TypedArray` identity and stays fixed for the mark.
+When updating series data, all channels in the group must be updated together
+with the same array instance (you can swap to a new array as long as the group
+stays shared). Array lengths may change. If you need a different sharing
+pattern, recreate the mark.
+
 ## High-Precision Index Scale
 
 The `index` scale supports large coordinate spaces with fractional domain
