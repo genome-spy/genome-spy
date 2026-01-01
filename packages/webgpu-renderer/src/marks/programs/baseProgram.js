@@ -30,12 +30,11 @@ export default class BaseProgram {
 
     /**
      * @param {import("../../renderer.js").Renderer} renderer
-     * @param {{ channels: Record<string, ChannelConfigInput>, count: number }} config
+     * @param {{ channels: Record<string, ChannelConfigInput>, count?: number }} config
      */
     constructor(renderer, config) {
         this.renderer = renderer;
         this.device = renderer.device;
-        this.count = config.count;
 
         this._channels = normalizeChannels({
             channels: config.channels,
@@ -52,6 +51,7 @@ export default class BaseProgram {
             this._channels,
             this.channelSpecs
         );
+        this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
         this._scaleResources = new ScaleResourceManager({
             device: this.device,
             channels: this._channels,
@@ -104,7 +104,7 @@ export default class BaseProgram {
                     .filter(([, v]) => isSeriesChannelConfig(v))
                     .map(([k, v]) => [k, v.data])
             ),
-            config.count
+            this.count
         );
     }
 
@@ -166,12 +166,13 @@ export default class BaseProgram {
 
     /**
      * @param {Record<string, TypedArray>} channels
-     * @param {number} count
+     * @param {number} [count]
      * @returns {void}
      */
     updateSeries(channels, count) {
-        this.count = count;
-        this._seriesBuffers.updateSeries(channels, count);
+        const inferred = count ?? this._seriesBuffers.inferCount(channels);
+        this.count = inferred ?? this.count ?? 1;
+        this._seriesBuffers.updateSeries(channels, this.count);
 
         this._rebuildBindGroup();
     }
