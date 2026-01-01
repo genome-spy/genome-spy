@@ -1,6 +1,6 @@
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import { validateScaleConfig } from "../scales/scaleCodegen.js";
+import { getScaleInputRule, isScaleSupported } from "../scales/scaleDefs.js";
 import { usesOrdinalDomainMap } from "../scales/domainRangeUtils.js";
 
 /**
@@ -137,6 +137,11 @@ export function validateChannel(name, channel, context) {
         rangeIsColor,
         isPiecewise,
     } = analysis;
+    if (!isScaleSupported(scaleType)) {
+        throw new Error(
+            `Channel "${name}" uses unsupported scale "${scaleType}".`
+        );
+    }
     const allowsOrdinalTypeOverride =
         scaleType === "ordinal" &&
         spec?.type === "f32" &&
@@ -205,8 +210,20 @@ export function validateChannel(name, channel, context) {
             );
         }
     }
-    if (scaleType === "ordinal" && channel.type !== "u32") {
-        throw new Error(`Ordinal scale on "${name}" requires u32 input type.`);
+    const inputRule = getScaleInputRule(scaleType);
+    const resolvedType = channel.type ?? "f32";
+    if (
+        inputRule === "numeric" &&
+        !["f32", "u32", "i32"].includes(resolvedType)
+    ) {
+        throw new Error(
+            `Channel "${name}" requires numeric input for "${scaleType}" scale.`
+        );
+    }
+    if (inputRule === "u32" && resolvedType !== "u32") {
+        throw new Error(
+            `Channel "${name}" requires u32 input for "${scaleType}" scale.`
+        );
     }
     if (
         outputComponents > 1 &&
@@ -377,11 +394,6 @@ export function validateChannel(name, channel, context) {
         );
     }
     if (usesOrdinalDomainMap(channel.scale)) {
-        if (scaleType === "band" && channel.type !== "u32") {
-            throw new Error(
-                `Band scale on "${name}" requires u32 inputs when using an ordinal domain.`
-            );
-        }
         if (scaleType === "band" && inputComponents !== 1) {
             throw new Error(
                 `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`
@@ -397,10 +409,5 @@ export function validateChannel(name, channel, context) {
                 `Band scale on "${name}" requires integer values when using an ordinal domain.`
             );
         }
-    }
-
-    const scaleError = validateScaleConfig(name, channel);
-    if (scaleError) {
-        throw new Error(scaleError);
     }
 }
