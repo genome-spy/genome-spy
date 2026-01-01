@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateScaleConfig } from "./scaleCodegen.js";
+import { buildScaledFunction, validateScaleConfig } from "./scaleCodegen.js";
 
 describe("scaleCodegen validation", () => {
     it("rejects unknown scale types", () => {
@@ -69,5 +69,49 @@ describe("scaleCodegen validation", () => {
         });
 
         expect(error).toBeNull();
+    });
+});
+
+describe("scaleCodegen codegen", () => {
+    it("uses domain hash maps for band scales with ordinal domains", () => {
+        const code = buildScaledFunction({
+            name: "x",
+            scale: "band",
+            rawValueExpr: "read_x(i)",
+            inputScalarType: "u32",
+            inputComponents: 1,
+            outputComponents: 1,
+            outputScalarType: "f32",
+            scaleConfig: { type: "band", domain: [10, 20, 30], range: [0, 1] },
+            domainMapName: "domainMap_x",
+        });
+
+        expect(code).toContain("hashLookup");
+        expect(code).toContain("domainMap_x");
+    });
+
+    it("uses domain hash maps for ordinal scales with explicit domains", () => {
+        const code = buildScaledFunction({
+            name: "fill",
+            scale: "ordinal",
+            rawValueExpr: "read_fill(i)",
+            inputScalarType: "u32",
+            inputComponents: 1,
+            outputComponents: 4,
+            outputScalarType: "f32",
+            scaleConfig: {
+                type: "ordinal",
+                domain: [3, 5, 7],
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 0, 0, 1],
+                    [0, 1, 0, 1],
+                ],
+            },
+            domainMapName: "domainMap_fill",
+        });
+
+        expect(code).toContain("hashLookup");
+        expect(code).toContain("domainMap_fill");
     });
 });
