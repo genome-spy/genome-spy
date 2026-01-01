@@ -176,6 +176,21 @@ export class Renderer {
     }
 
     /**
+     * Log the GPU resources reserved by a mark to the console.
+     *
+     * @param {MarkId} markId
+     * @param {string} [label]
+     * @returns {void}
+     */
+    debugResources(markId, label) {
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+        mark.debugResources(label);
+    }
+
+    /**
      * @returns {void}
      */
     render() {

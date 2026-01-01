@@ -1,12 +1,11 @@
-import { createRenderer } from "../src/index.js";
-import { setupResize } from "./utils.js";
+import { createExampleRenderer, setupResize } from "./utils.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
  * @returns {Promise<() => void>}
  */
 export default async function runBasicScene(canvas) {
-    const renderer = await createRenderer(canvas);
+    const renderer = await createExampleRenderer(canvas);
 
     const count = 200;
     const x = new Float32Array(count);
