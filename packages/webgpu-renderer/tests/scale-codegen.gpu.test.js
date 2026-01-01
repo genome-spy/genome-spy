@@ -25,6 +25,7 @@ const WORKGROUP_SIZE = 64;
  * @param {string} [params.name]
  * @param {string} [params.rawValueExpr]
  * @param {"f32"|"u32"|"i32"} [params.inputScalarType]
+ * @param {1|2|4} [params.inputComponents]
  * @param {1|2|4} [params.outputComponents]
  * @param {"f32"|"u32"|"i32"} [params.outputScalarType]
  * @param {boolean} [params.useRangeTexture]
@@ -36,6 +37,7 @@ function buildScaleFn({
     name = "x",
     rawValueExpr = "input[i]",
     inputScalarType = "f32",
+    inputComponents = 1,
     outputComponents = 1,
     outputScalarType,
     useRangeTexture = false,
@@ -51,6 +53,7 @@ function buildScaleFn({
         scale,
         rawValueExpr,
         inputScalarType,
+        inputComponents,
         outputComponents,
         outputScalarType: resolvedOutputScalar,
         scaleConfig,
@@ -77,10 +80,20 @@ function buildScaleCodegenShader({
     extraUniformFields = [],
 }) {
     const outputType = outputComponents === 1 ? "f32" : "vec4<f32>";
+    const guardExpr = outputComponents === 1 ? "guard" : "vec4<f32>(guard)";
     const extraFields = extraUniformFields.length
         ? `\n    ${extraUniformFields.join("\n    ")}`
         : "";
     return `
+struct Globals {
+    width: f32,
+    height: f32,
+    dpr: f32,
+    uZero: f32,
+};
+
+@group(0) @binding(0) var<uniform> globals: Globals;
+
 ${SCALES_WGSL}
 
 struct Params {
@@ -89,9 +102,9 @@ struct Params {
 ${extraFields}
 };
 
-@group(0) @binding(0) var<uniform> params: Params;
-@group(0) @binding(1) var<storage, read> input: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<${outputType}>;
+@group(0) @binding(1) var<uniform> params: Params;
+@group(0) @binding(2) var<storage, read> input: array<f32>;
+@group(0) @binding(3) var<storage, read_write> output: array<${outputType}>;
 
 ${scaleFn}
 
@@ -103,7 +116,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (i >= INPUT_LEN) {
         return;
     }
-    output[i] = getScaled_x(i);
+    let guard = globals.uZero;
+    output[i] = getScaled_x(i) + ${guardExpr};
 }
 `;
 }
@@ -123,6 +137,15 @@ function buildScaleCodegenRampShader({
     rangeLength = 2,
 }) {
     return `
+struct Globals {
+    width: f32,
+    height: f32,
+    dpr: f32,
+    uZero: f32,
+};
+
+@group(0) @binding(0) var<uniform> globals: Globals;
+
 ${SCALES_WGSL}
 
 struct Params {
@@ -130,11 +153,11 @@ struct Params {
     uRange_x: array<vec4<f32>, ${rangeLength}>,
 };
 
-@group(0) @binding(0) var<uniform> params: Params;
-@group(0) @binding(1) var<storage, read> input: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
-@group(0) @binding(3) var rampTexture: texture_2d<f32>;
-@group(0) @binding(4) var rampSampler: sampler;
+@group(0) @binding(1) var<uniform> params: Params;
+@group(0) @binding(2) var<storage, read> input: array<f32>;
+@group(0) @binding(3) var<storage, read_write> output: array<vec4<f32>>;
+@group(0) @binding(4) var rampTexture: texture_2d<f32>;
+@group(0) @binding(5) var rampSampler: sampler;
 
 ${scaleFn}
 
@@ -155,9 +178,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (i >= INPUT_LEN) {
         return;
     }
+    let guard = globals.uZero;
     let unitValue = clamp(getScaled_x(i), 0.0, 1.0);
     let rgb = sampleRamp(unitValue);
-    output[i] = vec4<f32>(rgb, 1.0);
+    output[i] = vec4<f32>(rgb, 1.0) + vec4<f32>(guard);
 }
 `;
 }
@@ -177,6 +201,15 @@ function buildScaleCodegenTextureShader({
     rangeLength = 2,
 }) {
     return `
+struct Globals {
+    width: f32,
+    height: f32,
+    dpr: f32,
+    uZero: f32,
+};
+
+@group(0) @binding(0) var<uniform> globals: Globals;
+
 ${SCALES_WGSL}
 
 struct Params {
@@ -184,11 +217,11 @@ struct Params {
     uRange_x: array<vec4<f32>, ${rangeLength}>,
 };
 
-@group(0) @binding(0) var<uniform> params: Params;
-@group(0) @binding(1) var<storage, read> input: array<f32>;
-@group(0) @binding(2) var<storage, read_write> output: array<vec4<f32>>;
-@group(0) @binding(3) var uRangeTexture_x: texture_2d<f32>;
-@group(0) @binding(4) var uRangeSampler_x: sampler;
+@group(0) @binding(1) var<uniform> params: Params;
+@group(0) @binding(2) var<storage, read> input: array<f32>;
+@group(0) @binding(3) var<storage, read_write> output: array<vec4<f32>>;
+@group(0) @binding(4) var uRangeTexture_x: texture_2d<f32>;
+@group(0) @binding(5) var uRangeSampler_x: sampler;
 
 ${scaleFn}
 
@@ -200,7 +233,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (i >= INPUT_LEN) {
         return;
     }
-    output[i] = getScaled_x(i);
+    let guard = globals.uZero;
+    output[i] = getScaled_x(i) + vec4<f32>(guard);
 }
 `;
 }
@@ -371,6 +405,7 @@ async function runScaleCodegenCompute(
             }
             const device = await adapter.requestDevice();
 
+            const globalsData = new Float32Array([1, 1, 1, 0]);
             const inputData = new Float32Array(input);
             const packedUniforms = new Float32Array(uniformData);
 
@@ -381,6 +416,12 @@ async function runScaleCodegenCompute(
                 layout: "auto",
                 compute: { module: shaderModule, entryPoint: "main" },
             });
+
+            const globalsBuffer = device.createBuffer({
+                size: globalsData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(globalsBuffer, 0, globalsData);
 
             const uniformBuffer = device.createBuffer({
                 size: packedUniforms.byteLength,
@@ -406,9 +447,10 @@ async function runScaleCodegenCompute(
             const bindGroup = device.createBindGroup({
                 layout: pipeline.getBindGroupLayout(0),
                 entries: [
-                    { binding: 0, resource: { buffer: uniformBuffer } },
-                    { binding: 1, resource: { buffer: inputBuffer } },
-                    { binding: 2, resource: { buffer: outputBuffer } },
+                    { binding: 0, resource: { buffer: globalsBuffer } },
+                    { binding: 1, resource: { buffer: uniformBuffer } },
+                    { binding: 2, resource: { buffer: inputBuffer } },
+                    { binding: 3, resource: { buffer: outputBuffer } },
                 ],
             });
 
@@ -469,6 +511,7 @@ async function runScaleCodegenRampCompute(
             }
             const device = await adapter.requestDevice();
 
+            const globalsData = new Float32Array([1, 1, 1, 0]);
             const inputData = new Float32Array(input);
             const packedUniforms = new Float32Array(uniformData);
             const textureData = new Uint8Array(texture.data);
@@ -480,6 +523,12 @@ async function runScaleCodegenRampCompute(
                 layout: "auto",
                 compute: { module: shaderModule, entryPoint: "main" },
             });
+
+            const globalsBuffer = device.createBuffer({
+                size: globalsData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(globalsBuffer, 0, globalsData);
 
             const uniformBuffer = device.createBuffer({
                 size: packedUniforms.byteLength,
@@ -536,11 +585,12 @@ async function runScaleCodegenRampCompute(
             const bindGroup = device.createBindGroup({
                 layout: pipeline.getBindGroupLayout(0),
                 entries: [
-                    { binding: 0, resource: { buffer: uniformBuffer } },
-                    { binding: 1, resource: { buffer: inputBuffer } },
-                    { binding: 2, resource: { buffer: outputBuffer } },
-                    { binding: 3, resource: rampTexture.createView() },
-                    { binding: 4, resource: sampler },
+                    { binding: 0, resource: { buffer: globalsBuffer } },
+                    { binding: 1, resource: { buffer: uniformBuffer } },
+                    { binding: 2, resource: { buffer: inputBuffer } },
+                    { binding: 3, resource: { buffer: outputBuffer } },
+                    { binding: 4, resource: rampTexture.createView() },
+                    { binding: 5, resource: sampler },
                 ],
             });
 

@@ -18,3 +18,10 @@ export {
     prepareTextureData,
     writeTextureData,
 } from "./utils/webgpuTextureUtils.js";
+export {
+    packHighPrecisionU32,
+    packHighPrecisionU32Array,
+    packHighPrecisionDomain,
+    LOW_BITS,
+    BASE,
+} from "./utils/highPrecision.js";

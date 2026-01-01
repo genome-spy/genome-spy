@@ -50,16 +50,32 @@ import { formatLiteral } from "../scales/scaleCodegen.js";
  */
 function buildSeriesAccessors(name, inputComponents, scalarType) {
     const bufferName = `buf_${name}`;
-    const arrayType =
-        inputComponents === 1 ? `array<${scalarType}>` : "array<f32>";
-    const readFn =
-        inputComponents === 1
-            ? `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`
-            : `fn read_${name}(i: u32) -> vec4<f32> {
+    const arrayType = `array<${scalarType}>`;
+    if (inputComponents === 1) {
+        return {
+            bufferName,
+            arrayType,
+            readFn: `fn read_${name}(i: u32) -> ${scalarType} { return ${bufferName}[i]; }`,
+        };
+    }
+    if (inputComponents === 2) {
+        return {
+            bufferName,
+            arrayType,
+            readFn: `fn read_${name}(i: u32) -> vec2<${scalarType}> {
+    let base = i * 2u;
+    return vec2<${scalarType}>(${bufferName}[base], ${bufferName}[base + 1u]);
+}`,
+        };
+    }
+    return {
+        bufferName,
+        arrayType,
+        readFn: `fn read_${name}(i: u32) -> vec4<${scalarType}> {
     let base = i * 4u;
-    return vec4<f32>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
-}`;
-    return { bufferName, arrayType, readFn };
+    return vec4<${scalarType}>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
+}`,
+    };
 }
 
 /**
