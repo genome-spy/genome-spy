@@ -13,6 +13,7 @@
  */
 
 import {
+    DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
@@ -53,6 +54,8 @@ import {
  *   Scalar type of the scaled output when outputComponents is 1.
  * @prop {import("../../index.d.ts").ChannelScale | undefined} scaleConfig
  *   Full scale config for detecting piecewise scales and clamp behavior.
+ * @prop {string | null} [domainMapName]
+ *   Storage buffer identifier for ordinal/band domain lookup (or null if unused).
  * @prop {boolean} [useRangeTexture]
  *   Whether to map scale output through a color ramp texture.
  */
@@ -77,6 +80,8 @@ import {
  *   Whether to round scalar outputs of continuous scales.
  * @prop {number} [domainLength]
  *   Domain length for scales that require fixed-size arrays in WGSL.
+ * @prop {string | null} [domainMapName]
+ *   Storage buffer identifier for ordinal/band domain lookup (or null if unused).
  * @prop {boolean} [useRangeTexture]
  *   Whether to sample a color ramp texture instead of returning raw range values.
  */
@@ -247,8 +252,37 @@ function buildContinuousPipeline(
 }
 
 /** @type {ScaleEmitter} */
-function emitBand({ name, rawValueExpr, inputScalarType }) {
+function emitBand({ name, rawValueExpr, inputScalarType, domainMapName }) {
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
+    const mapCountName = `${DOMAIN_MAP_COUNT_PREFIX}${name}`;
+    if (domainMapName) {
+        return `${makeFnHeader(name, "f32")} {
+    let raw = ${valueExpr};
+    let mapCount = u32(params.${mapCountName});
+    if (mapCount == 0u) {
+        return scaleBand(
+            raw,
+            ${domainVec2(name)},
+            ${rangeVec2(name)},
+            params.${SCALE_PADDING_INNER_PREFIX}${name},
+            params.${SCALE_PADDING_OUTER_PREFIX}${name},
+            params.${SCALE_ALIGN_PREFIX}${name},
+            params.${SCALE_BAND_PREFIX}${name}
+        );
+    }
+    let mapped = hashLookup(&${domainMapName}, raw, arrayLength(&${domainMapName}));
+    if (mapped == HASH_NOT_FOUND) { return ${rangeVec2(name)}.x; }
+    return scaleBand(
+        mapped,
+        ${domainVec2(name)},
+        ${rangeVec2(name)},
+        params.${SCALE_PADDING_INNER_PREFIX}${name},
+        params.${SCALE_PADDING_OUTER_PREFIX}${name},
+        params.${SCALE_ALIGN_PREFIX}${name},
+        params.${SCALE_BAND_PREFIX}${name}
+    );
+}`;
+    }
     return `${makeFnHeader(name, "f32")} {
     let v = ${valueExpr};
     return scaleBand(
@@ -319,6 +353,7 @@ function emitOrdinal({
     inputScalarType,
     outputComponents,
     outputScalarType,
+    domainMapName,
 }) {
     const returnType =
         outputComponents === 1
@@ -334,6 +369,26 @@ function emitOrdinal({
                   : "0.0"
             : "vec4<f32>(0.0)";
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
+
+    const mapCountName = `${DOMAIN_MAP_COUNT_PREFIX}${name}`;
+    if (domainMapName) {
+        return `${makeFnHeader(name, returnType)} {
+    let raw = ${valueExpr};
+    let mapCount = u32(params.${mapCountName});
+    if (mapCount == 0u) {
+        let count = u32(params.${RANGE_COUNT_PREFIX}${name});
+        if (count == 0u) { return ${zero}; }
+        let slot = min(raw, count - 1u);
+        return ${rangeName}[slot];
+    }
+    let idx = hashLookup(&${domainMapName}, raw, arrayLength(&${domainMapName}));
+    if (idx == HASH_NOT_FOUND) { return ${zero}; }
+    let count = u32(params.${RANGE_COUNT_PREFIX}${name});
+    if (count == 0u) { return ${zero}; }
+    let slot = min(idx, count - 1u);
+    return ${rangeName}[slot];
+}`;
+    }
 
     return `${makeFnHeader(name, returnType)} {
     let idx = ${valueExpr};
@@ -575,6 +630,7 @@ export function buildScaledFunction({
     outputComponents,
     outputScalarType,
     scaleConfig,
+    domainMapName = null,
     useRangeTexture = false,
 }) {
     const domainLength = Array.isArray(scaleConfig?.domain)
@@ -658,6 +714,7 @@ export function buildScaledFunction({
             clamp: scaleConfig?.clamp === true,
             round: roundOutput,
             domainLength,
+            domainMapName,
             useRangeTexture,
         });
     }

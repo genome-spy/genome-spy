@@ -3,6 +3,7 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
 import { UniformBuffer } from "../../utils/uniformBuffer.js";
 import {
+    DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
@@ -19,16 +20,19 @@ import {
     getDomainRangeLengths,
     isColorRange,
     isRangeFunction,
+    normalizeOrdinalDomain,
     normalizeDomainRange,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
+    usesOrdinalDomainMap,
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
 import {
     packHighPrecisionDomain,
     packHighPrecisionU32Array,
 } from "../../utils/highPrecision.js";
+import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
 
@@ -36,7 +40,7 @@ import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
  * @typedef {{
  *   shaderCode: string,
  *   resourceBindings: GPUBindGroupLayoutEntry[],
- *   resourceLayout: { name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[],
+ *   resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }[],
  * }} ShaderBuildResult
  */
 
@@ -67,10 +71,12 @@ export default class BaseProgram {
         this._domainRangeSizes = new Map();
         this._ordinalRangeBuffers = new Map();
         this._ordinalRangeSizes = new Map();
+        this._domainMapBuffers = new Map();
+        this._domainMapSizes = new Map();
         /** @type {Map<string, { texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} */
         this._rangeTextures = new Map();
 
-        /** @type {{ name: string, role: "series"|"ordinalRange"|"rangeTexture"|"rangeSampler" }[]} */
+        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -291,6 +297,18 @@ export default class BaseProgram {
                     resource: { buffer },
                 });
                 continue;
+            } else if (entry.role === "domainMap") {
+                const buffer = this._domainMapBuffers.get(entry.name) ?? null;
+                if (!buffer) {
+                    throw new Error(
+                        `Missing domain map buffer for "${entry.name}".`
+                    );
+                }
+                entries.push({
+                    binding: bindingIndex++,
+                    resource: { buffer },
+                });
+                continue;
             } else if (entry.role === "rangeTexture") {
                 const texture = this._rangeTextures.get(entry.name)?.texture;
                 if (!texture) {
@@ -373,10 +391,58 @@ export default class BaseProgram {
      * @returns {void}
      */
     updateScaleDomains(domains) {
+        let needsRebind = false;
         for (const [name, domain] of Object.entries(domains)) {
             for (const channelName of this._resolveScaleTargets(name)) {
                 const channel = this._channels[channelName];
                 const outputComponents = channel?.components ?? 1;
+                const scaleType = channel?.scale?.type ?? "identity";
+                if (
+                    channel &&
+                    (scaleType === "ordinal" || scaleType === "band")
+                ) {
+                    const inputComponents =
+                        channel.inputComponents ?? channel.components ?? 1;
+                    const ordinalDomain = normalizeOrdinalDomain(
+                        channelName,
+                        scaleType,
+                        Array.isArray(domain) || ArrayBuffer.isView(domain)
+                            ? domain
+                            : undefined
+                    );
+                    if (ordinalDomain) {
+                        if (scaleType === "band" && channel.type !== "u32") {
+                            throw new Error(
+                                `Band scale on "${channelName}" requires u32 inputs when using an ordinal domain.`
+                            );
+                        }
+                        if (scaleType === "band" && inputComponents !== 1) {
+                            throw new Error(
+                                `Band scale on "${channelName}" requires scalar inputs when using an ordinal domain.`
+                            );
+                        }
+                        if (
+                            scaleType === "band" &&
+                            isValueChannelConfig(channel) &&
+                            typeof channel.value === "number" &&
+                            !Number.isInteger(channel.value)
+                        ) {
+                            throw new Error(
+                                `Band scale on "${channelName}" requires integer values when using an ordinal domain.`
+                            );
+                        }
+                        if (this._updateDomainMap(channelName, ordinalDomain)) {
+                            needsRebind = true;
+                        }
+                        if (scaleType === "band") {
+                            this._setUniformValue(
+                                `${DOMAIN_PREFIX}${channelName}`,
+                                [0, ordinalDomain.length]
+                            );
+                        }
+                        continue;
+                    }
+                }
                 const kind = getDomainRangeKind(channel?.scale);
                 if (
                     channel &&
@@ -405,6 +471,9 @@ export default class BaseProgram {
             }
         }
         this._writeUniforms();
+        if (needsRebind) {
+            this._rebuildBindGroup();
+        }
     }
 
     /**
@@ -561,6 +630,13 @@ export default class BaseProgram {
                 components: 1,
             });
         }
+        if (analysis.needsDomainMap) {
+            layout.push({
+                name: `${DOMAIN_MAP_COUNT_PREFIX}${name}`,
+                type: "f32",
+                components: 1,
+            });
+        }
     }
 
     /**
@@ -616,6 +692,9 @@ export default class BaseProgram {
                     rangeLength,
                 });
             }
+        }
+        if (scale.type === "band" || scale.type === "ordinal") {
+            this._initializeDomainMap(name, scale);
         }
         if (scale.type === "ordinal") {
             this._initializeOrdinalRange(name, channel, scale);
@@ -780,6 +859,24 @@ export default class BaseProgram {
             outputType
         );
         this._setOrdinalRangeBuffer(name, data, normalized.length);
+    }
+
+    /**
+     * @param {string} name
+     * @param {import("../../index.d.ts").ChannelScale} scale
+     * @returns {void}
+     */
+    _initializeDomainMap(name, scale) {
+        const scaleType =
+            scale.type === "band" || scale.type === "ordinal"
+                ? scale.type
+                : null;
+        if (!scaleType) {
+            return;
+        }
+        const domain = normalizeOrdinalDomain(name, scaleType, scale.domain);
+        const map = this._buildDomainMapBufferData(domain ?? []);
+        this._setDomainMapBuffer(name, map.table, map.length);
     }
 
     /**
@@ -955,6 +1052,57 @@ export default class BaseProgram {
             outputType
         );
         return this._setOrdinalRangeBuffer(name, data, normalized.length);
+    }
+
+    /**
+     * @param {string} name
+     * @param {number[]} domain
+     * @returns {boolean}
+     */
+    _updateDomainMap(name, domain) {
+        const map = this._buildDomainMapBufferData(domain);
+        return this._setDomainMapBuffer(name, map.table, map.length);
+    }
+
+    /**
+     * @param {number[]} domain
+     * @returns {{ table: Uint32Array, length: number }}
+     */
+    _buildDomainMapBufferData(domain) {
+        if (domain.length === 0) {
+            return { table: new Uint32Array([HASH_EMPTY_KEY, 0]), length: 0 };
+        }
+        /** @type {Array<[number, number]>} */
+        const entries = domain.map((value, index) => [value, index]);
+        const { table } = buildHashTableMap(entries);
+        return { table, length: domain.length };
+    }
+
+    /**
+     * @param {string} name
+     * @param {Uint32Array} data
+     * @param {number} length
+     * @returns {boolean}
+     */
+    _setDomainMapBuffer(name, data, length) {
+        const prev = this._domainMapSizes.get(name);
+        const nextBytes = data.byteLength;
+        let buffer = this._domainMapBuffers.get(name);
+        const needsNewBuffer = !buffer || prev?.byteLength !== nextBytes;
+
+        if (needsNewBuffer) {
+            buffer = this.device.createBuffer({
+                size: nextBytes,
+                // eslint-disable-next-line no-undef
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this._domainMapBuffers.set(name, buffer);
+        }
+
+        this.device.queue.writeBuffer(buffer, 0, data);
+        this._domainMapSizes.set(name, { length, byteLength: nextBytes });
+        this._setUniformValue(`${DOMAIN_MAP_COUNT_PREFIX}${name}`, length);
+        return needsNewBuffer;
     }
 
     /**
@@ -1157,11 +1305,21 @@ export default class BaseProgram {
             spec?.type === "f32" &&
             outputComponents > 1 &&
             channel.type === "u32";
+        const allowsBandTypeOverride =
+            scaleType === "band" &&
+            spec?.type === "f32" &&
+            channel.type === "u32";
+        const allowsIndexTypeOverride =
+            scaleType === "index" &&
+            spec?.type === "f32" &&
+            channel.type === "u32";
         if (
             spec?.type &&
             channel.type &&
             channel.type !== spec.type &&
-            !allowsOrdinalTypeOverride
+            !allowsOrdinalTypeOverride &&
+            !allowsBandTypeOverride &&
+            !allowsIndexTypeOverride
         ) {
             throw new Error(`Channel "${name}" must use type "${spec.type}"`);
         }
@@ -1368,6 +1526,28 @@ export default class BaseProgram {
             ) {
                 throw new Error(
                     `Ordinal scale on "${name}" requires scalar input values for vector outputs.`
+                );
+            }
+        }
+        if (usesOrdinalDomainMap(channel.scale)) {
+            if (scaleType === "band" && channel.type !== "u32") {
+                throw new Error(
+                    `Band scale on "${name}" requires u32 inputs when using an ordinal domain.`
+                );
+            }
+            if (scaleType === "band" && inputComponents !== 1) {
+                throw new Error(
+                    `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`
+                );
+            }
+            if (
+                scaleType === "band" &&
+                isValueChannelConfig(channel) &&
+                typeof channel.value === "number" &&
+                !Number.isInteger(channel.value)
+            ) {
+                throw new Error(
+                    `Band scale on "${name}" requires integer values when using an ordinal domain.`
                 );
             }
         }

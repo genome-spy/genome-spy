@@ -12,9 +12,10 @@ export default async function runBarScene(canvas) {
     const count = data.length;
     const padding = 20;
 
-    const x = new Float32Array(count);
-    const x2 = new Float32Array(count);
+    const x = new Uint32Array(count);
+    const x2 = new Uint32Array(count);
     const y = new Float32Array(count);
+    const xDomain = Array.from({ length: count }, (_, i) => i);
 
     for (let i = 0; i < count; i++) {
         x[i] = i;
@@ -27,10 +28,10 @@ export default async function runBarScene(canvas) {
         channels: {
             x: {
                 data: x,
-                type: "f32",
+                type: "u32",
                 scale: {
                     type: "band",
-                    domain: [0, count],
+                    domain: xDomain,
                     paddingInner: 0.3,
                     paddingOuter: 0.3,
                     align: 0.5,
@@ -39,10 +40,10 @@ export default async function runBarScene(canvas) {
             },
             x2: {
                 data: x2,
-                type: "f32",
+                type: "u32",
                 scale: {
                     type: "band",
-                    domain: [0, count],
+                    domain: xDomain,
                     paddingInner: 0.3,
                     paddingOuter: 0.3,
                     align: 0.5,

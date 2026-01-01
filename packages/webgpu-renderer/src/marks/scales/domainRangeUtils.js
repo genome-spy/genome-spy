@@ -1,4 +1,5 @@
 import { cssColorToArray } from "../../utils/colorUtils.js";
+import { HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { getScaleUniformDef, isPiecewiseScale } from "./scaleCodegen.js";
 
@@ -91,6 +92,58 @@ export function getDomainRangeLengths(name, kind, scale) {
 }
 
 /**
+ * @param {import("../../index.d.ts").ChannelScale | undefined} scale
+ * @returns {boolean}
+ */
+export function usesOrdinalDomainMap(scale) {
+    const domain = scale?.domain;
+    if (!scale || (!Array.isArray(domain) && !ArrayBuffer.isView(domain))) {
+        return false;
+    }
+    return scale.type === "band" || scale.type === "ordinal";
+}
+
+/**
+ * @param {string} name
+ * @param {"band"|"ordinal"} scaleType
+ * @param {ArrayLike<number>|undefined} domain
+ * @returns {number[] | null}
+ */
+export function normalizeOrdinalDomain(name, scaleType, domain) {
+    if (!domain) {
+        return null;
+    }
+    const values = Array.from(domain, (value) => {
+        if (!Number.isFinite(value) || !Number.isInteger(value)) {
+            throw new Error(
+                `Ordinal domain on "${name}" requires integer u32 values.`
+            );
+        }
+        if (value < 0 || value > HASH_EMPTY_KEY) {
+            throw new Error(
+                `Ordinal domain on "${name}" must fit in u32 values.`
+            );
+        }
+        if (value === HASH_EMPTY_KEY) {
+            throw new Error(
+                `Ordinal domain on "${name}" must not contain 0xffffffff.`
+            );
+        }
+        return value >>> 0;
+    });
+    const seen = new Set();
+    for (const value of values) {
+        if (seen.has(value)) {
+            throw new Error(
+                `Ordinal domain on "${name}" must not contain duplicates.`
+            );
+        }
+        seen.add(value);
+    }
+    return values;
+}
+
+/**
  * @param {string} name
  * @param {import("../../index.d.ts").ChannelConfigResolved} channel
  * @param {import("../../index.d.ts").ChannelScale} scale
@@ -121,6 +174,23 @@ export function normalizeDomainRange(
             throw new Error(`Scale range for "${name}" must be numeric.`);
         }
         const numericRange = /** @type {number[]} */ (range);
+        if (scale.type === "band") {
+            const ordinalDomain = normalizeOrdinalDomain(
+                name,
+                "band",
+                Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
+                    ? scale.domain
+                    : undefined
+            );
+            if (ordinalDomain) {
+                return {
+                    domain: [0, ordinalDomain.length],
+                    range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+                    domainLength,
+                    rangeLength,
+                };
+            }
+        }
         if (scale.type === "index") {
             if (domain.length === 3) {
                 return {

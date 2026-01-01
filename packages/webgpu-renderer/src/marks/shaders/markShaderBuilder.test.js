@@ -86,6 +86,45 @@ describe("buildMarkShader", () => {
         expect(shaderCode).not.toContain("u_opacity");
     });
 
+    it("binds domain maps for ordinal band domains", () => {
+        const { shaderCode, resourceLayout } = buildMarkShader({
+            channels: {
+                x: {
+                    data: new Uint32Array(3),
+                    type: "u32",
+                    components: 1,
+                    scale: {
+                        type: "band",
+                        domain: [10, 20, 30],
+                        range: [0, 1],
+                    },
+                },
+            },
+            uniformLayout: [
+                {
+                    name: "uDomain_x",
+                    type: "f32",
+                    components: 1,
+                    arrayLength: 2,
+                },
+                {
+                    name: "uRange_x",
+                    type: "f32",
+                    components: 1,
+                    arrayLength: 2,
+                },
+            ],
+            shaderBody,
+        });
+
+        expect(resourceLayout).toEqual([
+            { name: "x", role: "series" },
+            { name: "x", role: "domainMap" },
+        ]);
+        expect(shaderCode).toContain("hashLookup");
+        expect(shaderCode).toContain("domainMap_x");
+    });
+
     it("throws when updating non-dynamic uniforms", () => {
         const renderer = createMockRenderer();
         const program = new RectProgram(renderer, {

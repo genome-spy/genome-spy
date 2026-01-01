@@ -34,6 +34,8 @@ import { formatLiteral } from "../scales/scaleCodegen.js";
  *   True when a getScaled_* helper is required (non-identity or scalar output).
  * @prop {boolean} needsOrdinalRange
  *   True when the ordinal range buffer must be bound for this channel.
+ * @prop {boolean} needsDomainMap
+ *   True when the ordinal domain map buffer must be bound for this channel.
  * @prop {string | null} bufferName
  *   Storage buffer identifier for series-backed channels, otherwise null.
  * @prop {string | null} arrayType
@@ -97,6 +99,7 @@ function buildChannelIR(name, channel) {
         useRangeTexture,
         needsScaleFunction,
         needsOrdinalRange,
+        needsDomainMap,
     } = analysis;
 
     if (analysis.sourceKind === "series") {
@@ -118,6 +121,7 @@ function buildChannelIR(name, channel) {
             useRangeTexture,
             needsScaleFunction,
             needsOrdinalRange,
+            needsDomainMap,
             bufferName,
             arrayType,
             readFn,
@@ -144,6 +148,7 @@ function buildChannelIR(name, channel) {
         useRangeTexture,
         needsScaleFunction,
         needsOrdinalRange,
+        needsDomainMap,
         bufferName: null,
         arrayType: null,
         readFn: null,

@@ -33,7 +33,7 @@ export type ChannelScale = {
         | "threshold"
         | "ordinal";
 
-    /** Domain for scale mapping, provided by the core module. */
+    /** Domain for scale mapping; band/ordinal domains list category IDs. */
     domain?: number[];
 
     /** Range for scale mapping or a sequential interpolator (0..1 -> CSS color). */

@@ -12,9 +12,10 @@ export default async function runThresholdScene(canvas) {
     const count = 60;
     const padding = 20;
 
-    const x = new Float32Array(count);
-    const x2 = new Float32Array(count);
+    const x = new Uint32Array(count);
+    const x2 = new Uint32Array(count);
     const y = new Float32Array(count);
+    const xDomain = [0, count];
 
     let minY = Infinity;
     let maxY = -Infinity;
@@ -38,10 +39,10 @@ export default async function runThresholdScene(canvas) {
         channels: {
             x: {
                 data: x,
-                type: "f32",
+                type: "u32",
                 scale: {
-                    type: "band",
-                    domain: [0, count],
+                    type: "index",
+                    domain: xDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.1,
                     align: 0.5,
@@ -50,10 +51,10 @@ export default async function runThresholdScene(canvas) {
             },
             x2: {
                 data: x2,
-                type: "f32",
+                type: "u32",
                 scale: {
-                    type: "band",
-                    domain: [0, count],
+                    type: "index",
+                    domain: xDomain,
                     paddingInner: 0.1,
                     paddingOuter: 0.1,
                     align: 0.5,
