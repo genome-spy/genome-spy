@@ -36,6 +36,16 @@ import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
 
+let debugResourcesEnabled = false;
+
+/**
+ * @param {boolean} enabled
+ * @returns {void}
+ */
+export function setDebugResourcesEnabled(enabled) {
+    debugResourcesEnabled = enabled;
+}
+
 /**
  * @typedef {{
  *   shaderCode: string,
@@ -384,6 +394,72 @@ export default class BaseProgram {
             );
         }
         this._writeUniforms();
+    }
+
+    /**
+     * Log reserved GPU resources for this mark to the console.
+     *
+     * @param {string} [label]
+     * @returns {void}
+     */
+    debugResources(label = this.constructor.name) {
+        if (!debugResourcesEnabled) {
+            return;
+        }
+        const storage = [];
+        const textures = [];
+        const samplers = [];
+
+        for (const entry of this._resourceLayout) {
+            if (entry.role === "series") {
+                const buffer = this._buffersByField.get(entry.name);
+                storage.push({
+                    name: entry.name,
+                    role: entry.role,
+                    bytes: buffer?.size ?? 0,
+                });
+                continue;
+            }
+            if (entry.role === "ordinalRange") {
+                const buffer = this._ordinalRangeBuffers.get(entry.name);
+                storage.push({
+                    name: entry.name,
+                    role: entry.role,
+                    bytes: buffer?.size ?? 0,
+                });
+                continue;
+            }
+            if (entry.role === "domainMap") {
+                const buffer = this._domainMapBuffers.get(entry.name);
+                storage.push({
+                    name: entry.name,
+                    role: entry.role,
+                    bytes: buffer?.size ?? 0,
+                });
+                continue;
+            }
+            if (entry.role === "rangeTexture") {
+                const texture = this._rangeTextures.get(entry.name);
+                textures.push({
+                    name: entry.name,
+                    role: entry.role,
+                    width: texture?.width ?? 0,
+                    height: texture?.height ?? 0,
+                    format: texture?.format ?? "unknown",
+                });
+                continue;
+            }
+            if (entry.role === "rangeSampler") {
+                samplers.push({ name: entry.name, role: entry.role });
+            }
+        }
+
+        console.debug(`[webgpu-renderer] ${label} resources`, {
+            uniforms: this._uniformBufferState?.byteLength ?? 0,
+            storageBuffers: storage,
+            textures,
+            samplers,
+        });
     }
 
     /**
