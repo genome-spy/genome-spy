@@ -73,7 +73,7 @@ export function packHighPrecisionU32(value) {
  * Pack multiple integers into a Uint32Array in [hi, lo, hi, lo, ...] order.
  * Use for series buffers when feeding large integer indices to the index scale.
  *
- * @param {number[]} values
+ * @param {ArrayLike<number>} values
  * @returns {Uint32Array}
  */
 export function packHighPrecisionU32Array(values) {
