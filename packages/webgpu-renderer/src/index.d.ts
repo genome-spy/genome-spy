@@ -227,7 +227,13 @@ export class Renderer {
     /** Create a new mark program and return its id. */
     createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkId;
 
-    /** Upload columnar series data (storage buffers) for a mark. */
+    /**
+     * Upload columnar series data (storage buffers) for a mark.
+     *
+     * If multiple channels share the same `TypedArray` at mark creation, the
+     * renderer treats them as a shared buffer. Updates must keep those channels
+     * shared by providing the same array instance for the group.
+     */
     updateSeries(
         markId: MarkId,
         channels: Record<string, TypedArray>,

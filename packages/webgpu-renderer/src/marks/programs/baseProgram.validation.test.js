@@ -193,6 +193,7 @@ describe("BaseProgram channel validation", () => {
                     inputComponents: 1,
                     scale: {
                         type: "ordinal",
+                        domain: [0, 1],
                         range: [
                             [0, 0, 0, 1],
                             [1, 1, 1, 1],
