@@ -33,13 +33,13 @@ describe("scaleCodegen validation", () => {
         expect(error).toBeNull();
     });
 
-    it("allows numeric input for band scales", () => {
+    it("rejects non-u32 input for band scales", () => {
         const error = validateScaleConfig("x", {
             scale: { type: "band" },
             type: "f32",
         });
 
-        expect(error).toBeNull();
+        expect(error).toBe('Channel "x" requires u32 input for "band" scale.');
     });
 
     it("allows integer input for band scales", () => {
