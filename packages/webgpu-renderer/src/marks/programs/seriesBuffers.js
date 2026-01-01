@@ -38,17 +38,7 @@ export class SeriesBufferManager {
          */
         this._packedSeriesByArray = new WeakMap();
         /**
-         * Channel name -> alias group key (used for binding reuse).
-         * @type {Map<string, string>}
-         */
-        this._seriesAliasGroups = new Map();
-        /**
-         * Alias group key -> member channel names.
-         * @type {Map<string, string[]>}
-         */
-        this._seriesAliasMembers = new Map();
-        /**
-         * Channel name -> canonical binding name.
+         * Channel name -> alias group key (single source of truth).
          * @type {Map<string, string>}
          */
         this._seriesBufferAliases = new Map();
@@ -75,8 +65,6 @@ export class SeriesBufferManager {
      * @returns {void}
      */
     _initializeSeriesAliases() {
-        this._seriesAliasGroups.clear();
-        this._seriesAliasMembers.clear();
         this._seriesBufferAliases.clear();
 
         const groupByArray = new Map();
@@ -93,11 +81,8 @@ export class SeriesBufferManager {
             if (!group) {
                 group = name;
                 groupByArray.set(array, group);
-                this._seriesAliasMembers.set(group, []);
             }
-            this._seriesAliasGroups.set(name, group);
             this._seriesBufferAliases.set(name, group);
-            this._seriesAliasMembers.get(group).push(name);
         }
     }
 
@@ -121,12 +106,10 @@ export class SeriesBufferManager {
                 throw new Error(`Missing data for channel "${name}"`);
             }
             sourceArrays.set(name, sourceArray);
-            const group = this._seriesAliasGroups.get(name) ?? name;
+            const group = this._seriesBufferAliases.get(name) ?? name;
             const existing = groupArrays.get(group);
             if (existing && existing !== sourceArray) {
-                const members = /** @type {string[]} */ (
-                    this._seriesAliasMembers.get(group) ?? [group]
-                );
+                const members = this._getAliasMembers(group);
                 throw new Error(
                     `Series channels ${members
                         .map((member) => `"${member}"`)
@@ -186,6 +169,20 @@ export class SeriesBufferManager {
             channel.data = sourceArray;
             this._ensureBuffer(name, array);
         }
+    }
+
+    /**
+     * @param {string} group
+     * @returns {string[]}
+     */
+    _getAliasMembers(group) {
+        const members = [];
+        for (const [name, alias] of this._seriesBufferAliases.entries()) {
+            if (alias === group) {
+                members.push(name);
+            }
+        }
+        return members.length > 0 ? members : [group];
     }
 
     /**
