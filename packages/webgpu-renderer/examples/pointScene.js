@@ -15,7 +15,6 @@ export default async function runPointScene(canvas) {
     const x = new Uint32Array(count);
     const y = new Uint32Array(count);
     const size = new Float32Array(count);
-    const strokeWidth = new Float32Array(count);
     const angle = new Float32Array(count);
     const shape = new Uint32Array(count);
     const fill = new Uint32Array(count);
@@ -27,8 +26,7 @@ export default async function runPointScene(canvas) {
         [0.85, 0.25, 0.5, 1.0],
         [0.65, 0.6, 0.2, 1.0],
     ];
-    const xDomain = Array.from({ length: cols }, (_, i) => i);
-    const yDomain = Array.from({ length: rows }, (_, i) => i);
+    const fillDomain = Array.from({ length: palette.length }, (_, i) => i);
 
     for (let i = 0; i < count; i++) {
         const col = i % cols;
@@ -42,7 +40,6 @@ export default async function runPointScene(canvas) {
 
         const t = xField / (cols - 1);
         size[i] = Math.pow(t, 2) * 900;
-        strokeWidth[i] = (yField / Math.max(1, rows - 1)) * 4;
         angle[i] = (yField / Math.max(1, rows - 1)) * 45;
         shape[i] = xField % 12;
 
@@ -56,8 +53,8 @@ export default async function runPointScene(canvas) {
                 data: x,
                 type: "u32",
                 scale: {
-                    type: "band",
-                    domain: xDomain,
+                    type: "index",
+                    domain: [0, cols],
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,
@@ -68,8 +65,8 @@ export default async function runPointScene(canvas) {
                 data: y,
                 type: "u32",
                 scale: {
-                    type: "band",
-                    domain: yDomain,
+                    type: "index",
+                    domain: [0, rows],
                     paddingInner: 0.1,
                     paddingOuter: 0.2,
                     align: 0.5,
@@ -84,11 +81,12 @@ export default async function runPointScene(canvas) {
                 inputComponents: 1,
                 scale: {
                     type: "ordinal",
+                    domain: fillDomain,
                     range: palette,
                 },
             },
             stroke: { value: [0.0, 0.0, 0.0, 1.0] },
-            strokeWidth: { data: strokeWidth, type: "f32" },
+            strokeWidth: { value: 1.0 },
             angle: { data: angle, type: "f32" },
         },
     });
@@ -110,7 +108,6 @@ export default async function runPointScene(canvas) {
             size,
             shape,
             fill,
-            strokeWidth,
             angle,
         },
         count
