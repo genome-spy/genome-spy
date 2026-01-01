@@ -1,10 +1,10 @@
-import { buildMarkShader } from "../shaders/markShaderBuilder.js";
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
 import { UniformBuffer } from "../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 import { buildBindGroup } from "./bindGroupBuilder.js";
 import { ScaleResourceManager } from "./scaleResources.js";
 import { normalizeChannels } from "./channelConfigResolver.js";
+import { buildPipeline } from "./pipelineBuilder.js";
 
 let debugResourcesEnabled = false;
 
@@ -15,14 +15,6 @@ let debugResourcesEnabled = false;
 export function setDebugResourcesEnabled(enabled) {
     debugResourcesEnabled = enabled;
 }
-
-/**
- * @typedef {{
- *   shaderCode: string,
- *   resourceBindings: GPUBindGroupLayoutEntry[],
- *   resourceLayout: { name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }[],
- * }} ShaderBuildResult
- */
 
 /**
  * Base class for marks that build WGSL dynamically based on channel configs.
@@ -85,7 +77,16 @@ export default class BaseProgram {
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
         this._buildUniformLayout();
-        const { shaderCode, resourceBindings } = this._buildShader();
+        const { bindGroupLayout, pipeline, resourceLayout } = buildPipeline({
+            device: this.device,
+            globalBindGroupLayout: renderer._globalBindGroupLayout,
+            format: renderer.format,
+            channels: this._channels,
+            uniformLayout: this._uniformLayout,
+            shaderBody: this.shaderBody,
+            seriesBufferAliases: this._seriesBuffers.seriesBufferAliases,
+        });
+        this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
             size: this._uniformBufferState?.byteLength ?? 0,
             // eslint-disable-next-line no-undef
@@ -93,40 +94,8 @@ export default class BaseProgram {
         });
         this._initializeUniforms();
         this._writeUniforms();
-        this._bindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-                {
-                    binding: 0,
-                    // eslint-disable-next-line no-undef
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: { type: "uniform" },
-                },
-                ...resourceBindings,
-            ],
-        });
-
-        this._pipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({
-                bindGroupLayouts: [
-                    renderer._globalBindGroupLayout,
-                    this._bindGroupLayout,
-                ],
-            }),
-            vertex: {
-                module: this.device.createShaderModule({
-                    code: shaderCode,
-                }),
-                entryPoint: "vs_main",
-            },
-            fragment: {
-                module: this.device.createShaderModule({
-                    code: shaderCode,
-                }),
-                entryPoint: "fs_main",
-                targets: [{ format: renderer.format }],
-            },
-            primitive: { topology: "triangle-list" },
-        });
+        this._bindGroupLayout = bindGroupLayout;
+        this._pipeline = pipeline;
 
         // Initialize any series-backed channels.
         this.updateSeries(
@@ -442,20 +411,6 @@ export default class BaseProgram {
         );
     }
     // Uniform packing lives in utils/uniformBuffer.js.
-
-    /**
-     * @returns {ShaderBuildResult}
-     */
-    _buildShader() {
-        const result = buildMarkShader({
-            channels: this._channels,
-            uniformLayout: this._uniformLayout,
-            shaderBody: this.shaderBody,
-            seriesBufferAliases: this._seriesBuffers.seriesBufferAliases,
-        });
-        this._resourceLayout = result.resourceLayout;
-        return result;
-    }
 
     /**
      * @param {GPURenderPassEncoder} pass
