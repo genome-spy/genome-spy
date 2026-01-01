@@ -28,13 +28,11 @@ import {
     usesOrdinalDomainMap,
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
-import {
-    packHighPrecisionDomain,
-    packHighPrecisionU32ArrayInto,
-} from "../../utils/highPrecision.js";
+import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
+import { SeriesBufferManager } from "./seriesBuffers.js";
 
 let debugResourcesEnabled = false;
 
@@ -76,12 +74,11 @@ export default class BaseProgram {
         this.count = config.count;
 
         this._channels = this._normalizeChannels(config.channels);
-        this._buffersByField = new Map();
-        this._bufferByArray = new Map();
-        this._packedSeriesByArray = new WeakMap();
-        this._seriesAliasGroups = new Map();
-        this._seriesAliasMembers = new Map();
-        this._seriesBufferAliases = new Map();
+        this._seriesBuffers = new SeriesBufferManager(
+            this.device,
+            this._channels,
+            this.channelSpecs
+        );
         this._domainRangeSizes = new Map();
         this._ordinalRangeBuffers = new Map();
         this._ordinalRangeSizes = new Map();
@@ -98,8 +95,6 @@ export default class BaseProgram {
 
         /** @type {UniformBuffer | null} */
         this._uniformBufferState = null;
-
-        this._initializeSeriesAliases();
 
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
@@ -218,124 +213,13 @@ export default class BaseProgram {
     }
 
     /**
-     * @returns {void}
-     */
-    _initializeSeriesAliases() {
-        this._seriesAliasGroups.clear();
-        this._seriesAliasMembers.clear();
-        this._seriesBufferAliases.clear();
-
-        const groupByArray = new Map();
-
-        for (const [name, channel] of Object.entries(this._channels)) {
-            if (!isSeriesChannelConfig(channel)) {
-                continue;
-            }
-            const array = channel.data;
-            if (!array) {
-                continue;
-            }
-            let group = groupByArray.get(array);
-            if (!group) {
-                group = name;
-                groupByArray.set(array, group);
-                this._seriesAliasMembers.set(group, []);
-            }
-            this._seriesAliasGroups.set(name, group);
-            this._seriesBufferAliases.set(name, group);
-            this._seriesAliasMembers.get(group).push(name);
-        }
-    }
-
-    /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} count
      * @returns {void}
      */
     updateSeries(channels, count) {
         this.count = count;
-
-        /** @type {Map<string, TypedArray>} */
-        const groupArrays = new Map();
-        /** @type {Map<string, TypedArray>} */
-        const sourceArrays = new Map();
-
-        for (const [name, channel] of Object.entries(this._channels)) {
-            if (!isSeriesChannelConfig(channel)) {
-                continue;
-            }
-            const sourceArray = channels[name] ?? channel.data;
-            if (!sourceArray) {
-                throw new Error(`Missing data for channel "${name}"`);
-            }
-            sourceArrays.set(name, sourceArray);
-            const group = this._seriesAliasGroups.get(name) ?? name;
-            const existing = groupArrays.get(group);
-            if (existing && existing !== sourceArray) {
-                const members = /** @type {string[]} */ (
-                    this._seriesAliasMembers.get(group) ?? [group]
-                );
-                throw new Error(
-                    `Series channels ${members
-                        .map((member) => `"${member}"`)
-                        .join(", ")} must share the same buffer.`
-                );
-            }
-            groupArrays.set(group, sourceArray);
-        }
-
-        // Upload any columnar buffers to the GPU. Buffer identity is deduplicated
-        // so a single array can feed multiple channels.
-        for (const [name, channel] of Object.entries(this._channels)) {
-            if (!isSeriesChannelConfig(channel)) {
-                continue;
-            }
-            const sourceArray = sourceArrays.get(name);
-            if (!sourceArray) {
-                throw new Error(`Missing data for channel "${name}"`);
-            }
-            let array = sourceArray;
-            const scaleType = channel.scale?.type ?? "identity";
-            const inputComponents =
-                channel.inputComponents ?? channel.components ?? 1;
-            if (scaleType === "index" && array instanceof Float64Array) {
-                if (inputComponents !== 2) {
-                    throw new Error(
-                        `Channel "${name}" requires inputComponents: 2 when providing Float64Array data.`
-                    );
-                }
-                let packed = this._packedSeriesByArray.get(array);
-                if (!packed || packed.length !== array.length * 2) {
-                    packed = new Uint32Array(array.length * 2);
-                    this._packedSeriesByArray.set(array, packed);
-                }
-                packHighPrecisionU32ArrayInto(array, packed);
-                array = packed;
-            }
-            const expectedType = channel.type ?? this.channelSpecs[name]?.type;
-            if (expectedType === "f32" && !(array instanceof Float32Array)) {
-                throw new Error(
-                    `Channel "${name}" expects a Float32Array for f32 data`
-                );
-            }
-            if (expectedType === "u32" && !(array instanceof Uint32Array)) {
-                throw new Error(
-                    `Channel "${name}" expects a Uint32Array for u32 data`
-                );
-            }
-            if (expectedType === "i32" && !(array instanceof Int32Array)) {
-                throw new Error(
-                    `Channel "${name}" expects an Int32Array for i32 data`
-                );
-            }
-            if (array.length < count * inputComponents) {
-                throw new Error(
-                    `Channel "${name}" length (${array.length}) is less than count (${count})`
-                );
-            }
-            channel.data = sourceArray;
-            this._ensureBuffer(name, array);
-        }
+        this._seriesBuffers.updateSeries(channels, count);
 
         this._rebuildBindGroup();
     }
@@ -356,7 +240,7 @@ export default class BaseProgram {
         let bindingIndex = 1;
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                const buffer = this._buffersByField.get(entry.name) ?? null;
+                const buffer = this._seriesBuffers.getBuffer(entry.name);
                 if (!buffer) {
                     throw new Error(
                         `Missing buffer binding for "${entry.name}".`
@@ -427,28 +311,6 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {string} field
-     * @param {TypedArray} array
-     */
-    _ensureBuffer(field, array) {
-        // TODO: Decide whether identity-based deduplication is sufficient long-term.
-        let buffer = this._bufferByArray.get(array);
-
-        if (!buffer) {
-            // Storage buffers are used for per-instance columnar data.
-            buffer = this.device.createBuffer({
-                size: array.byteLength,
-                // eslint-disable-next-line no-undef
-                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            });
-            this._bufferByArray.set(array, buffer);
-        }
-
-        this.device.queue.writeBuffer(buffer, 0, array);
-        this._buffersByField.set(field, buffer);
-    }
-
-    /**
      * @param {Record<string, number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }>} values
      * @returns {void}
      */
@@ -485,7 +347,7 @@ export default class BaseProgram {
 
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
-                const buffer = this._buffersByField.get(entry.name);
+                const buffer = this._seriesBuffers.getBuffer(entry.name);
                 storage.push({
                     name: entry.name,
                     role: entry.role,
@@ -1350,7 +1212,7 @@ export default class BaseProgram {
             channels: this._channels,
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
-            seriesBufferAliases: this._seriesBufferAliases,
+            seriesBufferAliases: this._seriesBuffers.seriesBufferAliases,
         });
         this._resourceLayout = result.resourceLayout;
         return result;
