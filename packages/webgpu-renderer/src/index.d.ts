@@ -257,6 +257,9 @@ export class Renderer {
         ranges: Record<string, Array<number | number[] | string>>
     ): void;
 
+    /** Log the GPU resources reserved by a mark to the console. */
+    debugResources(markId: MarkId, label?: string): void;
+
     /** Draw the current frame. */
     render(): void;
 
@@ -268,6 +271,9 @@ export function createRenderer(
     canvas: HTMLCanvasElement,
     options?: RendererOptions
 ): Promise<Renderer>;
+
+/** Enable or disable renderer resource debug logging. */
+export function setDebugResourcesEnabled(enabled: boolean): void;
 
 export function isChannelConfigWithScale(
     config: ChannelConfigInput

@@ -1,5 +1,6 @@
 export { createRenderer } from "./renderer.js";
 export { RendererError } from "./renderer.js";
+export { setDebugResourcesEnabled } from "./marks/programs/baseProgram.js";
 export {
     isChannelConfigWithScale,
     isChannelConfigWithoutScale,
