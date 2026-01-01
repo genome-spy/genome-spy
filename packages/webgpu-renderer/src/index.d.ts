@@ -29,6 +29,7 @@ export type ChannelScale = {
         | "sqrt"
         | "symlog"
         | "band"
+        | "index"
         | "threshold"
         | "ordinal";
 
