@@ -41,6 +41,8 @@ import {
  *   True when a getScaled_* helper is required.
  * @prop {boolean} needsOrdinalRange
  *   True when the ordinal range buffer must be bound.
+ * @prop {boolean} needsDomainMap
+ *   True when an ordinal domain map buffer must be bound.
  * @prop {boolean} allowsScalarToVector
  *   True when scalar inputs can map to vector outputs for this scale.
  * @prop {boolean} isContinuousScale
@@ -111,6 +113,7 @@ export function buildChannelAnalysis(name, channel) {
         isPiecewise ||
         useRangeTexture;
     const needsOrdinalRange = scaleType === "ordinal";
+    const needsDomainMap = scaleType === "band" || scaleType === "ordinal";
     const continuous = isContinuousScale(scaleType);
     const allowsScalarToVector =
         outputComponents > 1 &&
@@ -137,6 +140,7 @@ export function buildChannelAnalysis(name, channel) {
         isPiecewise,
         needsScaleFunction,
         needsOrdinalRange,
+        needsDomainMap,
         allowsScalarToVector,
         isContinuousScale: continuous,
         rangeIsFunction,
