@@ -608,6 +608,7 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
     };
     const uniformLayout = [
         { name: "uRangeCount_shape", type: "f32", components: 1 },
+        { name: "uDomainMapCount_shape", type: "f32", components: 1 },
     ];
 
     const result = buildComputeShader({
@@ -624,14 +625,24 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
     if (ordinalBinding == null) {
         throw new Error("Ordinal range binding for shape was not generated.");
     }
+    const domainMapBinding = bindings.find(
+        (entry) => entry.role === "domainMap" && entry.name === "shape"
+    )?.binding;
+    if (domainMapBinding == null) {
+        throw new Error("Domain map binding for shape was not generated.");
+    }
 
     const rangeData = [0, 0, 1, 1, 1, 0, 0, 1];
     const output = await runMarkShaderCompute(page, {
         shaderCode: result.shaderCode,
         uniformData: buildUniformData(uniformLayout, {
             uRangeCount_shape: 2,
+            uDomainMapCount_shape: 0,
         }),
-        seriesBuffers: [{ binding: ordinalBinding, data: rangeData }],
+        seriesBuffers: [
+            { binding: ordinalBinding, data: rangeData },
+            { binding: domainMapBinding, data: [0, 0] },
+        ],
         outputBinding: result.outputBinding,
         outputLength: 1,
         outputComponents: 4,

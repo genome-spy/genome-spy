@@ -25,8 +25,9 @@ This plan focuses on the remaining work. Completed items are omitted.
 We already hit the vertex-stage storage buffer cap. Mitigation options are
 listed in recommended order:
 
-1) **Binding dedupe by shared arrays** — re-use one binding when multiple
-   channels reference the same `TypedArray` (x/x2, y/y2).
+1) **Binding dedupe by shared arrays** — DONE. Channels that share a
+   `TypedArray` at mark creation re-use one binding; updates must keep the
+   group shared.
 2) **Stage-specific bindings** — only bind buffers in VERTEX or FRAGMENT
    based on usage.
 3) **Packed series buffer (SoA inside one buffer)** — store all series in
