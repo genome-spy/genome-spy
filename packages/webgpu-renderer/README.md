@@ -33,7 +33,7 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 
 - `createRenderer(canvas, options)`
 - `renderer.createMark(type, config)`
-- `renderer.updateSeries(markId, channels, count)`
+- `renderer.updateSeries(markId, channels, count?)`
 - `renderer.updateValues(markId, values)`
 - `renderer.updateScaleDomains(markId, domains)`
 - `renderer.updateScaleRanges(markId, ranges)`
@@ -50,7 +50,6 @@ import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 const renderer = await createRenderer(canvas);
 const markId = renderer.createMark("rect", {
-    count: 3,
     channels: {
         x: {
             data: new Uint32Array([0, 1, 2]),
@@ -65,6 +64,10 @@ const markId = renderer.createMark("rect", {
 renderer.updateScaleRanges(markId, { x: [0, canvas.width] });
 renderer.render();
 ```
+
+`count` is optional when at least one series channel is provided. The renderer
+infers it from the series buffer lengths. For value-only marks, the count
+defaults to `1`, so pass an explicit value when you want a different count.
 
 ## Series Buffer Sharing
 

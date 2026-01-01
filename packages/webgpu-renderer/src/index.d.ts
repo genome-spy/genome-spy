@@ -203,8 +203,11 @@ export type MarkConfig<T extends MarkType = MarkType> = {
           ? PointChannels
           : Record<string, ChannelConfigInput>;
 
-    /** Number of instances to draw; must match the column lengths. */
-    count: number;
+    /**
+     * Number of instances to draw. If omitted, the count is inferred from
+     * series buffer lengths when possible.
+     */
+    count?: number;
 };
 
 export type RendererOptions = {
@@ -233,11 +236,15 @@ export class Renderer {
      * If multiple channels share the same `TypedArray` at mark creation, the
      * renderer treats them as a shared buffer. Updates must keep those channels
      * shared by providing the same array instance for the group.
+     *
+     * The count defaults to the inferred series length when omitted. If the mark
+     * has no series channels, the count remains unchanged (or defaults to 1 only
+     * when the mark was created without series data and without an explicit count).
      */
     updateSeries(
         markId: MarkId,
         channels: Record<string, TypedArray>,
-        count: number
+        count?: number
     ): void;
 
     /**

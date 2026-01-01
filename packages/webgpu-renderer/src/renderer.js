@@ -125,7 +125,7 @@ export class Renderer {
     /**
      * @param {import("./index.d.ts").MarkId} markId
      * @param {Record<string, TypedArray>} channels
-     * @param {number} count
+     * @param {number} [count]
      * @returns {void}
      */
     updateSeries(markId, channels, count) {
