@@ -1,12 +1,11 @@
-import { createRenderer } from "../src/index.js";
-import { setupResize } from "./utils.js";
+import { createExampleRenderer, setupResize } from "./utils.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
  * @returns {Promise<() => void>}
  */
 export default async function runIndexScene(canvas) {
-    const renderer = await createRenderer(canvas);
+    const renderer = await createExampleRenderer(canvas);
 
     const count = 60;
     const datasets = {

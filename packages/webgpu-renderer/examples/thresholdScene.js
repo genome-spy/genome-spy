@@ -1,13 +1,12 @@
-import { createRenderer } from "../src/index.js";
 import { cssColorToArray } from "../src/utils/colorUtils.js";
-import { setupResize } from "./utils.js";
+import { createExampleRenderer, setupResize } from "./utils.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
  * @returns {Promise<() => void>}
  */
 export default async function runThresholdScene(canvas) {
-    const renderer = await createRenderer(canvas);
+    const renderer = await createExampleRenderer(canvas);
 
     const count = 60;
     const padding = 20;
