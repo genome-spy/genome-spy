@@ -88,6 +88,30 @@ export function packHighPrecisionU32Array(values) {
 }
 
 /**
+ * Pack multiple integers into a preallocated Uint32Array in [hi, lo, ...] order.
+ * Use when reusing buffers to avoid reallocations.
+ *
+ * @param {ArrayLike<number>} values
+ * @param {Uint32Array} target
+ * @returns {Uint32Array}
+ */
+export function packHighPrecisionU32ArrayInto(values, target) {
+    const expectedLength = values.length * 2;
+    if (target.length !== expectedLength) {
+        throw new Error(
+            `Packed target length (${target.length}) does not match ${expectedLength}.`
+        );
+    }
+    for (let i = 0; i < values.length; i += 1) {
+        const [hi, lo] = splitHighPrecision(values[i]);
+        const offset = i * 2;
+        target[offset] = hi;
+        target[offset + 1] = lo;
+    }
+    return target;
+}
+
+/**
  * Pack a high-precision domain into [hi, lo, extent] to match the WGSL split
  * representation. Accepts fractional domain starts for smooth zooming.
  *

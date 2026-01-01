@@ -30,7 +30,7 @@ import {
 } from "../scales/domainRangeUtils.js";
 import {
     packHighPrecisionDomain,
-    packHighPrecisionU32Array,
+    packHighPrecisionU32ArrayInto,
 } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
@@ -78,6 +78,10 @@ export default class BaseProgram {
         this._channels = this._normalizeChannels(config.channels);
         this._buffersByField = new Map();
         this._bufferByArray = new Map();
+        this._packedSeriesByArray = new WeakMap();
+        this._seriesAliasGroups = new Map();
+        this._seriesAliasMembers = new Map();
+        this._seriesBufferAliases = new Map();
         this._domainRangeSizes = new Map();
         this._ordinalRangeBuffers = new Map();
         this._ordinalRangeSizes = new Map();
@@ -94,6 +98,8 @@ export default class BaseProgram {
 
         /** @type {UniformBuffer | null} */
         this._uniformBufferState = null;
+
+        this._initializeSeriesAliases();
 
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
@@ -212,6 +218,36 @@ export default class BaseProgram {
     }
 
     /**
+     * @returns {void}
+     */
+    _initializeSeriesAliases() {
+        this._seriesAliasGroups.clear();
+        this._seriesAliasMembers.clear();
+        this._seriesBufferAliases.clear();
+
+        const groupByArray = new Map();
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            const array = channel.data;
+            if (!array) {
+                continue;
+            }
+            let group = groupByArray.get(array);
+            if (!group) {
+                group = name;
+                groupByArray.set(array, group);
+                this._seriesAliasMembers.set(group, []);
+            }
+            this._seriesAliasGroups.set(name, group);
+            this._seriesBufferAliases.set(name, group);
+            this._seriesAliasMembers.get(group).push(name);
+        }
+    }
+
+    /**
      * @param {Record<string, TypedArray>} channels
      * @param {number} count
      * @returns {void}
@@ -219,16 +255,46 @@ export default class BaseProgram {
     updateSeries(channels, count) {
         this.count = count;
 
+        /** @type {Map<string, TypedArray>} */
+        const groupArrays = new Map();
+        /** @type {Map<string, TypedArray>} */
+        const sourceArrays = new Map();
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            const sourceArray = channels[name] ?? channel.data;
+            if (!sourceArray) {
+                throw new Error(`Missing data for channel "${name}"`);
+            }
+            sourceArrays.set(name, sourceArray);
+            const group = this._seriesAliasGroups.get(name) ?? name;
+            const existing = groupArrays.get(group);
+            if (existing && existing !== sourceArray) {
+                const members = /** @type {string[]} */ (
+                    this._seriesAliasMembers.get(group) ?? [group]
+                );
+                throw new Error(
+                    `Series channels ${members
+                        .map((member) => `"${member}"`)
+                        .join(", ")} must share the same buffer.`
+                );
+            }
+            groupArrays.set(group, sourceArray);
+        }
+
         // Upload any columnar buffers to the GPU. Buffer identity is deduplicated
         // so a single array can feed multiple channels.
         for (const [name, channel] of Object.entries(this._channels)) {
             if (!isSeriesChannelConfig(channel)) {
                 continue;
             }
-            let array = channels[name] ?? channel.data;
-            if (!array) {
+            const sourceArray = sourceArrays.get(name);
+            if (!sourceArray) {
                 throw new Error(`Missing data for channel "${name}"`);
             }
+            let array = sourceArray;
             const scaleType = channel.scale?.type ?? "identity";
             const inputComponents =
                 channel.inputComponents ?? channel.components ?? 1;
@@ -238,7 +304,13 @@ export default class BaseProgram {
                         `Channel "${name}" requires inputComponents: 2 when providing Float64Array data.`
                     );
                 }
-                array = packHighPrecisionU32Array(array);
+                let packed = this._packedSeriesByArray.get(array);
+                if (!packed || packed.length !== array.length * 2) {
+                    packed = new Uint32Array(array.length * 2);
+                    this._packedSeriesByArray.set(array, packed);
+                }
+                packHighPrecisionU32ArrayInto(array, packed);
+                array = packed;
             }
             const expectedType = channel.type ?? this.channelSpecs[name]?.type;
             if (expectedType === "f32" && !(array instanceof Float32Array)) {
@@ -261,6 +333,7 @@ export default class BaseProgram {
                     `Channel "${name}" length (${array.length}) is less than count (${count})`
                 );
             }
+            channel.data = sourceArray;
             this._ensureBuffer(name, array);
         }
 
@@ -1277,6 +1350,7 @@ export default class BaseProgram {
             channels: this._channels,
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
+            seriesBufferAliases: this._seriesBufferAliases,
         });
         this._resourceLayout = result.resourceLayout;
         return result;

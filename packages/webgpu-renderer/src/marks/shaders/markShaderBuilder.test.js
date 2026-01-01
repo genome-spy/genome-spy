@@ -125,6 +125,24 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("domainMap_x");
     });
 
+    it("dedupes shared series buffers", () => {
+        const shared = new Float32Array(4);
+        const { resourceLayout } = buildMarkShader({
+            channels: {
+                x: { data: shared, type: "f32" },
+                x2: { data: shared, type: "f32" },
+            },
+            uniformLayout: [],
+            shaderBody,
+            seriesBufferAliases: new Map([["x2", "x"]]),
+        });
+
+        const seriesEntries = resourceLayout.filter(
+            (entry) => entry.role === "series"
+        );
+        expect(seriesEntries).toEqual([{ name: "x", role: "series" }]);
+    });
+
     it("throws when updating non-dynamic uniforms", () => {
         const renderer = createMockRenderer();
         const program = new RectProgram(renderer, {

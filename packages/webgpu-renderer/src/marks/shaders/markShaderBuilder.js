@@ -16,6 +16,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {Record<string, ChannelConfigResolved>} channels
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
+ * @prop {Map<string, string>} [seriesBufferAliases]
  *
  * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
  *
@@ -29,7 +30,12 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @param {ShaderBuildParams} params
  * @returns {ShaderBuildResult}
  */
-export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
+export function buildMarkShader({
+    channels,
+    uniformLayout,
+    shaderBody,
+    seriesBufferAliases = new Map(),
+}) {
     // Dynamic shader generation: each mark variant emits only the helpers it
     // needs. This keeps WGSL small, avoids unused bindings, and lets us
     // specialize per-mark scale logic without a single "uber" shader.
@@ -53,7 +59,7 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
     const channelFns = [];
 
     let bindingIndex = 1;
-    const channelIRs = buildChannelIRs(channels);
+    const channelIRs = buildChannelIRs(channels, seriesBufferAliases);
     const seriesChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.sourceKind === "series"
     );
@@ -77,20 +83,34 @@ export function buildMarkShader({ channels, uniformLayout, shaderBody }) {
 
     // First pass: series-backed channels become storage buffers, read_* accessors,
     // and getScaled_* wrappers.
+    const seriesBindings = new Map();
+
     for (const channelIR of seriesChannelIRs) {
         const { name } = channelIR;
-        const binding = bindingIndex++;
-        resourceBindings.push({
-            binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
-            buffer: { type: "read-only-storage" },
-        });
-        resourceLayout.push({ name, role: "series" });
-
-        bufferDecls.push(
-            `@group(1) @binding(${binding}) var<storage, read> ${channelIR.bufferName}: ${channelIR.arrayType};`
-        );
+        const aliasKey = seriesBufferAliases.get(name) ?? name;
+        let bindingEntry = seriesBindings.get(aliasKey);
+        if (!bindingEntry) {
+            const binding = bindingIndex++;
+            resourceBindings.push({
+                binding,
+                // eslint-disable-next-line no-undef
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: "read-only-storage" },
+            });
+            resourceLayout.push({ name: aliasKey, role: "series" });
+            bufferDecls.push(
+                `@group(1) @binding(${binding}) var<storage, read> ${channelIR.bufferName}: ${channelIR.arrayType};`
+            );
+            bindingEntry = {
+                bufferName: channelIR.bufferName,
+                arrayType: channelIR.arrayType,
+            };
+            seriesBindings.set(aliasKey, bindingEntry);
+        } else if (bindingEntry.arrayType !== channelIR.arrayType) {
+            throw new Error(
+                `Channel "${name}" cannot share a buffer with a different scalar type.`
+            );
+        }
 
         if (channelIR.inputComponents > 1 && channelIR.scalarType !== "f32") {
             const allowPackedU32 =
