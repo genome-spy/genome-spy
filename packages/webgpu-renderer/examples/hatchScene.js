@@ -13,22 +13,19 @@ export default async function runHatchScene(canvas) {
     const hatchSize = 50;
     const hatchGap = 12;
     const hatchOrigin = { x: 20, y: 20 };
-    const hx = new Float32Array(hatchCount);
-    const hy = new Float32Array(hatchCount);
-    const hx2 = new Float32Array(hatchCount);
-    const hy2 = new Float32Array(hatchCount);
+    const hx = new Uint32Array(hatchCount);
+    const hy = new Uint32Array(hatchCount);
     const hatchPattern = new Uint32Array(hatchCount);
     const hatchStroke = new Float32Array(hatchCount);
+    const xDomain = [0, hatchCols];
+    const yDomain = [0, hatchRows];
+    const paddingInner = hatchGap / (hatchSize + hatchGap);
 
     for (let row = 0; row < hatchRows; row++) {
         for (let col = 0; col < hatchCols; col++) {
             const i = row * hatchCols + col;
-            const px = hatchOrigin.x + col * (hatchSize + hatchGap);
-            const py = hatchOrigin.y + row * (hatchSize + hatchGap);
-            hx[i] = px;
-            hy[i] = py;
-            hx2[i] = px + hatchSize;
-            hy2[i] = py + hatchSize;
+            hx[i] = col;
+            hy[i] = row;
             hatchPattern[i] = (i % 10) + 0;
             hatchStroke[i] = 1 + (i % 4);
         }
@@ -37,10 +34,54 @@ export default async function runHatchScene(canvas) {
     const hatchMarkId = renderer.createMark("rect", {
         count: hatchCount,
         channels: {
-            x: { data: hx, type: "f32", scale: { type: "identity" } },
-            x2: { data: hx2, type: "f32", scale: { type: "identity" } },
-            y: { data: hy, type: "f32", scale: { type: "identity" } },
-            y2: { data: hy2, type: "f32", scale: { type: "identity" } },
+            x: {
+                data: hx,
+                type: "u32",
+                scale: {
+                    type: "index",
+                    domain: xDomain,
+                    paddingInner,
+                    paddingOuter: 0,
+                    align: 0,
+                    band: 0,
+                },
+            },
+            x2: {
+                data: hx,
+                type: "u32",
+                scale: {
+                    type: "index",
+                    domain: xDomain,
+                    paddingInner,
+                    paddingOuter: 0,
+                    align: 0,
+                    band: 1,
+                },
+            },
+            y: {
+                data: hy,
+                type: "u32",
+                scale: {
+                    type: "index",
+                    domain: yDomain,
+                    paddingInner,
+                    paddingOuter: 0,
+                    align: 0,
+                    band: 0,
+                },
+            },
+            y2: {
+                data: hy,
+                type: "u32",
+                scale: {
+                    type: "index",
+                    domain: yDomain,
+                    paddingInner,
+                    paddingOuter: 0,
+                    align: 0,
+                    band: 1,
+                },
+            },
             fill: { value: [0.98, 0.98, 0.98, 1.0] },
             stroke: { value: [0.1, 0.1, 0.1, 1.0] },
             strokeOpacity: { value: 1.0 },
@@ -49,15 +90,28 @@ export default async function runHatchScene(canvas) {
         },
     });
 
-    const cleanupResize = setupResize(canvas, renderer);
+    const updateRanges = () => {
+        const xSpan = hatchCols * hatchSize + (hatchCols - 1) * hatchGap;
+        const ySpan = hatchRows * hatchSize + (hatchRows - 1) * hatchGap;
+        const xRange = [hatchOrigin.x, hatchOrigin.x + xSpan];
+        const yRange = [hatchOrigin.y, hatchOrigin.y + ySpan];
+        renderer.updateScaleRanges(hatchMarkId, {
+            x: xRange,
+            x2: xRange,
+            y: yRange,
+            y2: yRange,
+        });
+    };
+
+    const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
     renderer.updateSeries(
         hatchMarkId,
         {
             x: hx,
-            x2: hx2,
             y: hy,
-            y2: hy2,
+            x2: hx,
+            y2: hy,
             hatchPattern,
             strokeWidth: hatchStroke,
         },
