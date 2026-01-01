@@ -1,7 +1,9 @@
 import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import {
+    DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
+    RANGE_COUNT_PREFIX,
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
@@ -20,7 +22,15 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  *
  * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
  *
- * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[] }} ShaderBuildResult
+ * @typedef {object} ResourceRequirements
+ * @prop {boolean} [ordinalRange]
+ * @prop {boolean} [domainMap]
+ * @prop {boolean} [rangeTexture]
+ * @prop {boolean} [rangeSampler]
+ * @prop {boolean} [rangeCountUniform]
+ * @prop {boolean} [domainMapCountUniform]
+ *
+ * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[], resourceRequirements: Record<string, ResourceRequirements> }} ShaderBuildResult
  */
 
 /**
@@ -46,6 +56,8 @@ export function buildMarkShader({
     const resourceBindings = [];
     /** @type {ResourceLayoutEntry[]} */
     const resourceLayout = [];
+    /** @type {Record<string, ResourceRequirements>} */
+    const resourceRequirements = {};
 
     // WGSL snippets are accumulated and stitched together at the end. This
     // keeps generator logic readable and makes it easy to add/remove blocks.
@@ -77,6 +89,18 @@ export function buildMarkShader({
     const rangeTextureChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.useRangeTexture
     );
+    const uniformNames = new Set(uniformLayout.map(({ name }) => name));
+
+    /**
+     * @param {string} name
+     * @returns {ResourceRequirements}
+     */
+    const ensureRequirements = (name) => {
+        if (!resourceRequirements[name]) {
+            resourceRequirements[name] = {};
+        }
+        return resourceRequirements[name];
+    };
 
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
@@ -159,6 +183,9 @@ export function buildMarkShader({
     // per-instance series data.
     for (const channelIR of ordinalRangeChannelIRs) {
         const { name } = channelIR;
+        const requirements = ensureRequirements(name);
+        requirements.ordinalRange = true;
+        requirements.rangeCountUniform = true;
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
@@ -183,6 +210,9 @@ export function buildMarkShader({
     // hash table stored in a read-only storage buffer.
     for (const channelIR of domainMapChannelIRs) {
         const { name } = channelIR;
+        const requirements = ensureRequirements(name);
+        requirements.domainMap = true;
+        requirements.domainMapCountUniform = true;
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
@@ -202,6 +232,9 @@ export function buildMarkShader({
     // non-RGB color spaces when requested.
     for (const channelIR of rangeTextureChannelIRs) {
         const { name } = channelIR;
+        const requirements = ensureRequirements(name);
+        requirements.rangeTexture = true;
+        requirements.rangeSampler = true;
         const textureBinding = bindingIndex++;
         resourceBindings.push({
             binding: textureBinding,
@@ -251,6 +284,25 @@ export function buildMarkShader({
         } else {
             channelFns.push(
                 `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${channelIR.rawValueExpr}; }`
+            );
+        }
+    }
+
+    for (const [name, requirements] of Object.entries(resourceRequirements)) {
+        if (
+            requirements.rangeCountUniform &&
+            !uniformNames.has(`${RANGE_COUNT_PREFIX}${name}`)
+        ) {
+            throw new Error(
+                `Ordinal scale on "${name}" requires uniform "${RANGE_COUNT_PREFIX}${name}".`
+            );
+        }
+        if (
+            requirements.domainMapCountUniform &&
+            !uniformNames.has(`${DOMAIN_MAP_COUNT_PREFIX}${name}`)
+        ) {
+            throw new Error(
+                `Scale on "${name}" requires uniform "${DOMAIN_MAP_COUNT_PREFIX}${name}".`
             );
         }
     }
@@ -306,5 +358,10 @@ ${channelFns.join("\n")}
 ${shaderBody}
 `;
 
-    return { shaderCode, resourceBindings, resourceLayout };
+    return {
+        shaderCode,
+        resourceBindings,
+        resourceLayout,
+        resourceRequirements,
+    };
 }
