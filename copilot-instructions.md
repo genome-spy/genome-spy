@@ -66,6 +66,11 @@ visualizes the user’s analysis history.
   - Avoid excessive validation and error handling for internal functions.
   - Validate inputs at the application boundary (e.g., user inputs, external data sources).
   - Avoid excessive use of optional chaining (`?.`) and nullish coalescing (`??`).
+- Prefer explicit contracts over implicit behavior (e.g., require domains for ordinal/band).
+- Avoid optional or nullable state unless it has a clear semantic meaning.
+- Use JSDoc blocks to capture intent when logic is non-obvious.
+- Prefer single-source-of-truth data structures; derive secondary views via helpers.
+- Keep WGSL in template strings prefixed with `/* wgsl */` for highlighting.
 - Tests should be placed in the same folder as the code they test, with `.test.` in the filename.
 
 ## Project structure

@@ -57,6 +57,11 @@ aware interactions.
   - Fail fast on unexpected inputs
   - Avoid unnecessary null/undefined checks and optional chaining
   - Validate inputs at application boundaries only
+- Prefer explicit contracts over implicit behavior (e.g., require domains for ordinal/band)
+- Avoid optional or nullable state unless it has a clear semantic meaning
+- Use JSDoc blocks to capture intent when logic is non-obvious
+- Prefer single-source-of-truth data structures; derive secondary views via helpers
+- Keep WGSL in template strings prefixed with `/* wgsl */` for highlighting
 
 ## Architecture and rendering notes (from paper + supplementary)
 
