@@ -4,9 +4,14 @@ import RuleProgram from "./marks/programs/ruleProgram.js";
 import LinkProgram from "./marks/programs/linkProgram.js";
 import TextProgram from "./marks/programs/textProgram.js";
 
+/**
+ * Renderer-level error for unsupported environments or invalid operations.
+ */
 export class RendererError extends Error {}
 
 /**
+ * Create a renderer instance and WebGPU device/context for a canvas.
+ *
  * @param {HTMLCanvasElement} canvas
  * @param {import("./index.d.ts").RendererOptions} [options]
  * @returns {Promise<Renderer>}
@@ -47,6 +52,9 @@ export async function createRenderer(canvas, options = {}) {
     return new Renderer({ device, context, format, canvas });
 }
 
+/**
+ * Owns the WebGPU device, global uniforms, and mark programs.
+ */
 export class Renderer {
     /**
      * @typedef {import("./index.d.ts").MarkId} MarkId

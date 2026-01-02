@@ -4,9 +4,25 @@ import { getScaleInputRule, isScaleSupported } from "../scales/scaleDefs.js";
 import { usesOrdinalDomainMap } from "../scales/domainRangeUtils.js";
 
 /**
+ * Input shape for channel configs as provided by callers.
+ *
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ */
+
+/**
+ * Normalized channel config after defaults/validation are applied.
+ *
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ */
+
+/**
+ * Static channel metadata (types/components/scale rules).
+ *
  * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+ */
+
+/**
+ * Context bundle for channel normalization/validation.
  *
  * @typedef {object} ChannelConfigContext
  * @property {string[]} channelOrder
@@ -44,6 +60,9 @@ export function normalizeChannels({ channels, context }) {
 }
 
 /**
+ * Normalize a single channel config: merge defaults, validate, and resolve
+ * missing values.
+ *
  * @param {object} params
  * @param {string} params.name
  * @param {ChannelConfigInput | undefined} params.configChannel
@@ -111,6 +130,8 @@ export function normalizeChannel({ name, configChannel, context }) {
 }
 
 /**
+ * Validate a channel config against its spec and scale requirements.
+ *
  * @param {string} name
  * @param {ChannelConfigInput} channel
  * @param {Pick<ChannelConfigContext, "channelOrder"|"optionalChannels"|"channelSpecs">} context
