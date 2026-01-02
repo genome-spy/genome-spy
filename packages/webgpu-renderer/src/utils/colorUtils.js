@@ -1,9 +1,26 @@
 import { color as d3color } from "d3-color";
 import { interpolateRgb, piecewise } from "d3-interpolate";
+
 /**
+ * CSS-color interpolator function used to build color ramps.
+ *
  * @typedef {(t: number) => string} ColorInterpolatorFn
+ */
+
+/**
+ * A color stop in the input scheme (CSS string or RGBA array).
+ *
  * @typedef {string | number[]} ColorStop
+ */
+
+/**
+ * Either a discrete set of color stops or a continuous interpolator.
+ *
  * @typedef {ColorStop[] | ColorInterpolatorFn} ColorScheme
+ */
+
+/**
+ * Normalized scheme options for building discrete or interpolated textures.
  *
  * @typedef {object} SchemeParams
  * @prop {ColorScheme} scheme
@@ -12,6 +29,10 @@ import { interpolateRgb, piecewise } from "d3-interpolate";
  * @prop {number} [count]
  * @prop {"discrete"|"interpolate"} [mode]
  * @prop {import("../index.d.ts").ColorInterpolatorFactory} [interpolate]
+ */
+
+/**
+ * Raw texture payload ready for GPU upload.
  *
  * @typedef {object} TextureData
  * @prop {GPUTextureFormat} format

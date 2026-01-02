@@ -4,10 +4,9 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 ### Renderer package: remaining work
 
-- Marks: text (ranged layout, edge fade, gamma, picking).
+- Text: baseline alignment + vertical flip fix, edge fade, gamma, picking.
 - Picking pass (offscreen ID buffer + readback).
 - Viewport/scissor management.
-- SDF text rendering (glyph atlas, shaders, layout helpers).
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
 
@@ -34,60 +33,34 @@ We already hit the vertex-stage storage buffer cap. Mitigation options are
 listed in recommended order:
 
 0. **Temporary limit bump (stopgap)** — request
-   `maxStorageBuffersPerShaderStage=10` if the adapter supports it. This keeps
-   examples running while packing/dedupe work lands. Remove once we fit in 8.
-1. **Binding dedupe by shared arrays** — DONE. Channels that share a
+   `maxStorageBuffersPerShaderStage=10` if the adapter supports it. Remove
+   once packed-series usage keeps us under the default limit.
+1. **Binding dedupe by shared arrays** — OK. Channels that share a
    `TypedArray` at mark creation re-use one binding; updates must keep the
    group shared.
 2. **Stage-specific bindings** — only bind buffers in VERTEX or FRAGMENT
    based on usage.
-3. **Packed series buffer (SoA inside one buffer)** — store all series in
-   a single storage buffer + uniform metadata (offset/type/components).
-   - Consider two packed buffers (u32 + f32) to avoid bitcasts.
+3. **Packed series buffers** — OK. Store all series in two buffers (f32 + u32)
+   with per-channel offset/type metadata; no per-channel bindings.
 4. **Move tables to textures** — ordinal ranges, glyph metrics, or other
-   static tables can be sampled from textures.
+   static tables can be sampled from textures when it saves bindings.
 5. **Diagnostics** — warn when a mark approaches per-stage limits and report
    binding usage in debug output.
 
 Notes for text:
 
-- Text should not allocate multiple per-glyph buffers. Favor a packed series
-  buffer for glyph indices/positions + atlas texture + optional metrics table.
-- Text migration plan (GPU-friendly layout):
-  1. Build per-string instances in a packed series buffer (x/y/x2/y2/size/color/
-     opacity/angle/flags + precomputed width).
-  2. Build a glyph instance buffer with `stringId`, `glyphId`, and
-     `xAdvanceOffset` (per-glyph local x).
-  3. Provide a glyph metrics buffer (UVs + offsets/advance) and bind a single
-     atlas texture (one font per mark).
-  4. Move alignment, range fitting, and rotation into the vertex shader using
-     per-string width + channel values.
-  5. Keep MSDF sampling + AA in fragment; optional later: kerning + multiline.
-- Incremental packed-series adoption:
-  1. Add packed series layout metadata (`offset`, `stride`, `components`,
-     `scalarType`) and two packed buffers (f32 + u32) per mark.
-  2. Teach shader codegen to emit `readSeries_<channel>()` for both packed and
-     legacy paths (opt-in at first).
-  3. Migrate text: use packed series for per-string attributes and keep glyph
-     - metrics buffers separate.
-  4. Migrate a simple mark (rect/rule) to packed series, then flip defaults
-     and remove legacy bindings once stable.
+- Current implementation: packed series buffer for per-string attributes,
+  a glyph instance buffer (`stringId`, `glyphId`, `xAdvanceOffset`), glyph
+  metrics buffer (UVs + offsets/advance), and a single atlas texture per mark.
+- Remaining work: fix baseline alignment + vertical flip, add edge fade/gamma
+  parity, and implement picking + optional kerning/multiline.
 
-Ranged text plan (x2/y2 optional; only apply when defined):
+Ranged text (x2/y2 optional; only apply when defined):
 
-1. **Introduce feature flags** — use `#if defined(x2_DEFINED)` /
-   `#if defined(y2_DEFINED)` in WGSL and run via the WGSL preprocessor.
-   Keep non-ranged path fast and branch-free.
-2. **Add range inputs** — extend channel specs to include `x2`/`y2`
-   (optional). Keep alignment/baseline behavior identical when undefined.
-3. **Port range fitting** — implement `positionInsideRange` + `flush/padding`
-   logic in WGSL, producing `{pos, scale}` for each axis when range is active.
-4. **Rotation-aware alignment** — port `calculateRotatedDimensions` and
-   `fixAlignForAngle` for ranged text so flush and padding account for angle.
-5. **Scale-to-fit behavior** — implement `squeeze` behavior (fade vs. drop)
-   with the same thresholds as WebGL.
-6. **Viewport edge fade** — add uniforms and vertex-side computation of the
-   edge fade opacity so ranged text respects viewport fade settings.
+- **Implemented** — preprocessor-based gating, range fitting, rotation-aware
+  alignment, and squeeze behavior.
+- **Remaining** — verify alignment constants against uniform-based alignment,
+  plus edge-fade parity and baseline fixes.
 
 ### Scale properties used by the renderer
 
