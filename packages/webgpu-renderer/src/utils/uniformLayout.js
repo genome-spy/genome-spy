@@ -1,11 +1,21 @@
 /**
+ * Uniform layout specification input (pre-alignment).
+ *
  * @typedef {object} UniformSpec
  * @prop {string} name
  * @prop {import("../types.js").ScalarType} type
  * @prop {1|2|4} components
  * @prop {number} [arrayLength]
+ */
+
+/**
+ * Resolved uniform entry with computed offset/stride.
  *
  * @typedef {UniformSpec & { offset: number, stride?: number }} UniformEntry
+ */
+
+/**
+ * Final layout map plus total byte length for allocation.
  *
  * @typedef {{ entries: Map<string, UniformEntry>, byteLength: number }} UniformLayout
  */
@@ -47,6 +57,8 @@ export function buildUniformLayout(specs) {
 }
 
 /**
+ * Align a byte offset up to the next multiple of the alignment.
+ *
  * @param {number} value
  * @param {number} alignment
  * @returns {number}

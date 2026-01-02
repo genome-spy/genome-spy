@@ -99,6 +99,16 @@ or series with the helpers exported from `src/index.js`:
 Open `examples/basic.html` in a WebGPU-capable browser. Use a local server
 because ES modules do not load from `file://` URLs.
 
+## Storybook (Dev)
+
+Storybook is set up for interactive examples and knobs.
+
+- Start: `npm -w @genome-spy/webgpu-renderer run storybook`
+- Build: `npm -w @genome-spy/webgpu-renderer run build-storybook`
+
+Note: Storybook is pinned to 8.x for now because the 10.x addon set is not
+fully published yet. The upgrade notice is safe to ignore.
+
 ## Tests
 
 - GPU tests: `npm -w @genome-spy/webgpu-renderer run test:gpu`

@@ -12,12 +12,16 @@ export const DEFAULT_MAX_LOAD_FACTOR = 0.6;
 const MAX_U32 = 0xffff_ffff;
 
 /**
+ * Build-time options for sizing the hash table.
+ *
  * @typedef {object} HashTableBuildOptions
  * @property {number} [capacity] Power-of-two table size override.
  * @property {number} [maxLoadFactor] Maximum load factor before resizing.
  */
 
 /**
+ * Packed table payload ready for GPU upload.
+ *
  * @typedef {object} HashTableBuildResult
  * @property {Uint32Array} table Packed [key, value, ...] entries.
  * @property {number} capacity Table capacity (number of entries).
