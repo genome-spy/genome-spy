@@ -122,21 +122,4 @@ describe("BaseProgram count inference", () => {
 
         expect(program.count).toBe(4);
     });
-
-    it("uses packed series bindings when enabled", () => {
-        const renderer = createMockRenderer();
-        const program = new TestSeriesProgram(renderer, {
-            packedSeries: true,
-            channels: {
-                x: {
-                    data: new Float32Array([0, 1]),
-                    type: "f32",
-                },
-            },
-        });
-
-        expect(program._resourceLayout).toEqual([
-            { name: "seriesF32", role: "series" },
-        ]);
-    });
 });

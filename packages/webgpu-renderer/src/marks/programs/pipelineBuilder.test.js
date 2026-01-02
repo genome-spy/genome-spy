@@ -60,10 +60,25 @@ describe("buildPipeline", () => {
                 },
             ],
             shaderBody: "",
-            seriesBufferAliases: new Map(),
+            packedSeriesLayout: new Map(
+                /** @type {[string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+                    [
+                        "x",
+                        {
+                            name: "x",
+                            scalarType: "f32",
+                            components: 1,
+                            offset: 0,
+                            stride: 1,
+                        },
+                    ],
+                ])
+            ),
         });
 
-        expect(result.resourceLayout).toEqual([{ name: "x", role: "series" }]);
+        expect(result.resourceLayout).toEqual([
+            { name: "seriesF32", role: "series" },
+        ]);
         const pipelineArgs = /** @type {GPURenderPipelineDescriptor} */ (
             renderPipelineArgs
         );

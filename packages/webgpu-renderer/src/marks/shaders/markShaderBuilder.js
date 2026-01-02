@@ -29,7 +29,6 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {Record<string, ChannelConfigResolved>} channels
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
- * @prop {Map<string, string>} [seriesBufferAliases]
  * @prop {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {ExtraResourceDef[]} [extraResources]
  *
@@ -57,7 +56,6 @@ export function buildMarkShader({
     channels,
     uniformLayout,
     shaderBody,
-    seriesBufferAliases = new Map(),
     packedSeriesLayout,
     extraResources = [],
 }) {
@@ -89,8 +87,7 @@ export function buildMarkShader({
     const extraDecls = [];
 
     let bindingIndex = 1;
-    const usePackedSeries = packedSeriesLayout && packedSeriesLayout.size > 0;
-    const channelIRs = buildChannelIRs(channels, seriesBufferAliases);
+    const channelIRs = buildChannelIRs(channels);
     const seriesChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.sourceKind === "series"
     );
@@ -126,95 +123,72 @@ export function buildMarkShader({
 
     // First pass: series-backed channels become storage buffers, read_* accessors,
     // and getScaled_* wrappers.
-    const seriesBindings = new Map();
-
     /** @type {Set<"f32"|"u32"|"i32">} */
     const packedTypes = new Set();
+    const packedSeriesEntries = packedSeriesLayout ?? new Map();
 
-    if (usePackedSeries) {
-        for (const entry of packedSeriesLayout.values()) {
-            if (
-                entry.scalarType === "f32" ||
-                entry.scalarType === "u32" ||
-                entry.scalarType === "i32"
-            ) {
-                packedTypes.add(entry.scalarType);
-            } else {
-                throw new Error(
-                    `Packed series only supports f32/u32/i32. Found "${entry.scalarType}".`
-                );
-            }
-        }
-        if (packedTypes.has("f32")) {
-            const binding = bindingIndex++;
-            resourceBindings.push({
-                binding,
-                // eslint-disable-next-line no-undef
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "read-only-storage" },
-            });
-            resourceLayout.push({ name: "seriesF32", role: "series" });
-            bufferDecls.push(
-                `@group(1) @binding(${binding}) var<storage, read> seriesF32: array<f32>;`
-            );
-        }
-        if (packedTypes.has("u32")) {
-            const binding = bindingIndex++;
-            resourceBindings.push({
-                binding,
-                // eslint-disable-next-line no-undef
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "read-only-storage" },
-            });
-            resourceLayout.push({ name: "seriesU32", role: "series" });
-            bufferDecls.push(
-                `@group(1) @binding(${binding}) var<storage, read> seriesU32: array<u32>;`
-            );
-        }
-        if (packedTypes.has("i32")) {
-            const binding = bindingIndex++;
-            resourceBindings.push({
-                binding,
-                // eslint-disable-next-line no-undef
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "read-only-storage" },
-            });
-            resourceLayout.push({ name: "seriesI32", role: "series" });
-            bufferDecls.push(
-                `@group(1) @binding(${binding}) var<storage, read> seriesI32: array<i32>;`
+    if (seriesChannelIRs.length > 0 && packedSeriesEntries.size === 0) {
+        throw new Error(
+            "Packed series layout is required for series channels."
+        );
+    }
+
+    for (const entry of packedSeriesEntries.values()) {
+        if (
+            entry.scalarType === "f32" ||
+            entry.scalarType === "u32" ||
+            entry.scalarType === "i32"
+        ) {
+            packedTypes.add(entry.scalarType);
+        } else {
+            throw new Error(
+                `Packed series only supports f32/u32/i32. Found "${entry.scalarType}".`
             );
         }
     }
 
+    if (packedTypes.has("f32")) {
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name: "seriesF32", role: "series" });
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> seriesF32: array<f32>;`
+        );
+    }
+    if (packedTypes.has("u32")) {
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name: "seriesU32", role: "series" });
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> seriesU32: array<u32>;`
+        );
+    }
+    if (packedTypes.has("i32")) {
+        const binding = bindingIndex++;
+        resourceBindings.push({
+            binding,
+            // eslint-disable-next-line no-undef
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: "read-only-storage" },
+        });
+        resourceLayout.push({ name: "seriesI32", role: "series" });
+        bufferDecls.push(
+            `@group(1) @binding(${binding}) var<storage, read> seriesI32: array<i32>;`
+        );
+    }
+
     for (const channelIR of seriesChannelIRs) {
         const { name } = channelIR;
-        if (!usePackedSeries) {
-            const aliasKey = seriesBufferAliases.get(name) ?? name;
-            let bindingEntry = seriesBindings.get(aliasKey);
-            if (!bindingEntry) {
-                const binding = bindingIndex++;
-                resourceBindings.push({
-                    binding,
-                    // eslint-disable-next-line no-undef
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: { type: "read-only-storage" },
-                });
-                resourceLayout.push({ name: aliasKey, role: "series" });
-                bufferDecls.push(
-                    `@group(1) @binding(${binding}) var<storage, read> ${channelIR.bufferName}: ${channelIR.arrayType};`
-                );
-                bindingEntry = {
-                    bufferName: channelIR.bufferName,
-                    arrayType: channelIR.arrayType,
-                };
-                seriesBindings.set(aliasKey, bindingEntry);
-            } else if (bindingEntry.arrayType !== channelIR.arrayType) {
-                throw new Error(
-                    `Channel "${name}" cannot share a buffer with a different scalar type.`
-                );
-            }
-        }
-
         if (channelIR.inputComponents > 1 && channelIR.scalarType !== "f32") {
             const allowPackedU32 =
                 channelIR.scalarType === "u32" &&
@@ -227,54 +201,50 @@ export function buildMarkShader({
             }
         }
 
-        if (usePackedSeries) {
-            const layoutEntry = packedSeriesLayout.get(name);
-            if (!layoutEntry) {
-                throw new Error(
-                    `Packed series layout is missing entry for "${name}".`
-                );
-            }
-            if (layoutEntry.scalarType !== channelIR.scalarType) {
-                throw new Error(
-                    `Packed series type mismatch for "${name}". Expected ${channelIR.scalarType}, got ${layoutEntry.scalarType}.`
-                );
-            }
-            if (layoutEntry.components !== channelIR.inputComponents) {
-                throw new Error(
-                    `Packed series component mismatch for "${name}". Expected ${channelIR.inputComponents}, got ${layoutEntry.components}.`
-                );
-            }
-            const bufferName =
-                layoutEntry.scalarType === "f32"
-                    ? "seriesF32"
-                    : layoutEntry.scalarType === "u32"
-                      ? "seriesU32"
-                      : "seriesI32";
-            const offset = layoutEntry.offset;
-            const stride = layoutEntry.stride;
-            if (layoutEntry.components === 1) {
-                bufferReaders.push(
-                    `fn read_${name}(i: u32) -> ${layoutEntry.scalarType} {
+        const layoutEntry = packedSeriesEntries.get(name);
+        if (!layoutEntry) {
+            throw new Error(
+                `Packed series layout is missing entry for "${name}".`
+            );
+        }
+        if (layoutEntry.scalarType !== channelIR.scalarType) {
+            throw new Error(
+                `Packed series type mismatch for "${name}". Expected ${channelIR.scalarType}, got ${layoutEntry.scalarType}.`
+            );
+        }
+        if (layoutEntry.components !== channelIR.inputComponents) {
+            throw new Error(
+                `Packed series component mismatch for "${name}". Expected ${channelIR.inputComponents}, got ${layoutEntry.components}.`
+            );
+        }
+        const bufferName =
+            layoutEntry.scalarType === "f32"
+                ? "seriesF32"
+                : layoutEntry.scalarType === "u32"
+                  ? "seriesU32"
+                  : "seriesI32";
+        const offset = layoutEntry.offset;
+        const stride = layoutEntry.stride;
+        if (layoutEntry.components === 1) {
+            bufferReaders.push(
+                `fn read_${name}(i: u32) -> ${layoutEntry.scalarType} {
     return ${bufferName}[${offset}u + i * ${stride}u];
 }`
-                );
-            } else if (layoutEntry.components === 2) {
-                bufferReaders.push(
-                    `fn read_${name}(i: u32) -> vec2<${layoutEntry.scalarType}> {
+            );
+        } else if (layoutEntry.components === 2) {
+            bufferReaders.push(
+                `fn read_${name}(i: u32) -> vec2<${layoutEntry.scalarType}> {
     let base = ${offset}u + i * ${stride}u;
     return vec2<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u]);
 }`
-                );
-            } else {
-                bufferReaders.push(
-                    `fn read_${name}(i: u32) -> vec4<${layoutEntry.scalarType}> {
+            );
+        } else {
+            bufferReaders.push(
+                `fn read_${name}(i: u32) -> vec4<${layoutEntry.scalarType}> {
     let base = ${offset}u + i * ${stride}u;
     return vec4<${layoutEntry.scalarType}>(${bufferName}[base], ${bufferName}[base + 1u], ${bufferName}[base + 2u], ${bufferName}[base + 3u]);
 }`
-                );
-            }
-        } else if (channelIR.readFn) {
-            bufferReaders.push(channelIR.readFn);
+            );
         }
 
         // getScaled_* is the only function mark shaders call. It hides whether
