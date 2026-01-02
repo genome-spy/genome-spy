@@ -252,12 +252,6 @@ export type MarkConfig<T extends MarkType = MarkType> = {
      * series buffer lengths when possible.
      */
     count?: number;
-
-    /**
-     * Packed series storage (f32/u32/i32 interleaved buffers) to reduce storage
-     * buffer bindings. Defaults to true; set to false to keep per-channel buffers.
-     */
-    packedSeries?: boolean;
 } & (T extends "rule"
     ? {
           /**

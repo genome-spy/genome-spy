@@ -17,6 +17,20 @@ fn fs_main() -> @location(0) vec4<f32> {
 
 describe("buildMarkShader", () => {
     it("generates buffer bindings and accessors for series data", () => {
+        const packedSeriesLayout = new Map(
+            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+                [
+                    "x",
+                    {
+                        name: "x",
+                        scalarType: "f32",
+                        components: 1,
+                        offset: 0,
+                        stride: 1,
+                    },
+                ],
+            ])
+        );
         const { shaderCode, resourceBindings } = buildMarkShader({
             channels: {
                 x: {
@@ -46,6 +60,7 @@ describe("buildMarkShader", () => {
                 },
             ],
             shaderBody,
+            packedSeriesLayout,
         });
 
         expect(resourceBindings.length).toBe(1);
@@ -145,6 +160,20 @@ describe("buildMarkShader", () => {
     });
 
     it("binds domain maps for ordinal band domains", () => {
+        const packedSeriesLayout = new Map(
+            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+                [
+                    "x",
+                    {
+                        name: "x",
+                        scalarType: "u32",
+                        components: 1,
+                        offset: 0,
+                        stride: 1,
+                    },
+                ],
+            ])
+        );
         const { shaderCode, resourceLayout } = buildMarkShader({
             channels: {
                 x: {
@@ -178,32 +207,15 @@ describe("buildMarkShader", () => {
                 },
             ],
             shaderBody,
+            packedSeriesLayout,
         });
 
         expect(resourceLayout).toEqual([
-            { name: "x", role: "series" },
+            { name: "seriesU32", role: "series" },
             { name: "x", role: "domainMap" },
         ]);
         expect(shaderCode).toContain("hashLookup");
         expect(shaderCode).toContain("domainMap_x");
-    });
-
-    it("dedupes shared series buffers", () => {
-        const shared = new Float32Array(4);
-        const { resourceLayout } = buildMarkShader({
-            channels: {
-                x: { data: shared, type: "f32" },
-                x2: { data: shared, type: "f32" },
-            },
-            uniformLayout: [],
-            shaderBody,
-            seriesBufferAliases: new Map([["x2", "x"]]),
-        });
-
-        const seriesEntries = resourceLayout.filter(
-            (entry) => entry.role === "series"
-        );
-        expect(seriesEntries).toEqual([{ name: "x", role: "series" }]);
     });
 
     it("throws when updating non-dynamic uniforms", () => {

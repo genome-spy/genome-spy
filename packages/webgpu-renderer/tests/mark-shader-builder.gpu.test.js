@@ -11,6 +11,7 @@ import { color as d3color } from "d3-color";
 import { interpolateHcl } from "d3-interpolate";
 import { scaleLinear } from "d3-scale";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
+import { buildPackedSeriesLayout } from "../src/marks/programs/packedSeriesLayout.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { UniformBuffer } from "../src/utils/uniformBuffer.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
@@ -174,10 +175,12 @@ function buildComputeShader({
     outputLength,
     channelName,
 }) {
+    const packedSeriesLayout = buildPackedSeriesLayout(channels, {}).entries;
     const initial = buildMarkShader({
         channels,
         uniformLayout,
         shaderBody: "",
+        packedSeriesLayout,
     });
     const outputBinding = initial.resourceBindings.length + 1;
     const shaderBody = buildComputeBody({
@@ -190,6 +193,7 @@ function buildComputeShader({
         channels,
         uniformLayout,
         shaderBody,
+        packedSeriesLayout,
     });
     return { ...result, outputBinding };
 }
@@ -484,7 +488,7 @@ test("markShaderBuilder executes series-backed scales in a compute pass", async 
     });
     const bindings = mapBindings(result);
     const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "x"
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
     )?.binding;
     if (seriesBinding == null) {
         throw new Error("Series binding for x was not generated.");
@@ -696,7 +700,7 @@ test("markShaderBuilder samples range textures for vec4 output", async ({
     });
     const bindings = mapBindings(result);
     const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "fill"
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
     )?.binding;
     const textureBinding = bindings.find(
         (entry) => entry.role === "rangeTexture" && entry.name === "fill"
