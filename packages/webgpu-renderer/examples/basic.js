@@ -6,6 +6,7 @@ import runThresholdScene from "./thresholdScene.js";
 import runPiecewiseScene from "./piecewiseScene.js";
 import runIndexScene from "./indexScene.js";
 import runRuleScene from "./ruleScene.js";
+import runLinkScene from "./linkScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -42,6 +43,10 @@ const EXAMPLES = {
     rules: {
         label: "Rules",
         run: runRuleScene,
+    },
+    links: {
+        label: "Links",
+        run: runLinkScene,
     },
 };
 
