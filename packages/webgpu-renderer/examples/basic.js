@@ -7,6 +7,7 @@ import runPiecewiseScene from "./piecewiseScene.js";
 import runIndexScene from "./indexScene.js";
 import runRuleScene from "./ruleScene.js";
 import runLinkScene from "./linkScene.js";
+import runTextScene from "./textScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -47,6 +48,10 @@ const EXAMPLES = {
     links: {
         label: "Links",
         run: runLinkScene,
+    },
+    text: {
+        label: "Text (Layout)",
+        run: runTextScene,
     },
 };
 

@@ -17,13 +17,15 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  *
  * @typedef {object} ExtraResourceDef
  * @prop {string} name
- * @prop {"texture"|"sampler"} kind
+ * @prop {"texture"|"sampler"|"buffer"} kind
  * @prop {"vertex"|"fragment"|"all"} [visibility]
  * @prop {string} [wgslName]
  * @prop {"float"|"uint"|"sint"} [sampleType]
  * @prop {"2d"|"2d-array"} [dimension]
  * @prop {"filtering"|"non-filtering"} [samplerType]
- * @prop {"extraTexture"|"extraSampler"} role
+ * @prop {"read-only-storage"} [bufferType]
+ * @prop {string} [wgslType]
+ * @prop {"extraTexture"|"extraSampler"|"extraBuffer"} role
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
@@ -32,7 +34,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {ExtraResourceDef[]} [extraResources]
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  *
  * @typedef {object} ResourceRequirements
  * @prop {boolean} [ordinalRange]
@@ -366,6 +368,20 @@ export function buildMarkShader({
                   ? GPUShaderStage.FRAGMENT
                   : GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
         const wgslName = extra.wgslName ?? extra.name;
+
+        if (extra.kind === "buffer") {
+            resourceBindings.push({
+                binding,
+                // eslint-disable-next-line no-undef
+                visibility,
+                buffer: { type: extra.bufferType ?? "read-only-storage" },
+            });
+            resourceLayout.push({ name: extra.name, role: extra.role });
+            extraDecls.push(
+                `@group(1) @binding(${binding}) var<storage, read> ${wgslName}: ${extra.wgslType ?? "array<f32>"};`
+            );
+            continue;
+        }
 
         if (extra.kind === "texture") {
             const dimension = extra.dimension ?? "2d";
