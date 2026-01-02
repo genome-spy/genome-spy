@@ -1,6 +1,7 @@
 import RectProgram from "./marks/programs/rectProgram.js";
 import PointProgram from "./marks/programs/pointProgram.js";
 import RuleProgram from "./marks/programs/ruleProgram.js";
+import LinkProgram from "./marks/programs/linkProgram.js";
 
 export class RendererError extends Error {}
 
@@ -125,6 +126,8 @@ export class Renderer {
             mark = new PointProgram(this, config);
         } else if (type === "rule") {
             mark = new RuleProgram(this, config);
+        } else if (type === "link") {
+            mark = new LinkProgram(this, config);
         } else {
             throw new RendererError(`Unknown mark type: ${type}`);
         }
