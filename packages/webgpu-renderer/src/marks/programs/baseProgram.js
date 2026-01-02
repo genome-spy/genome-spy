@@ -37,6 +37,7 @@ export default class BaseProgram {
         this.device = renderer.device;
         /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
         this._markConfig = config;
+        this._usePackedSeries = config.packedSeries !== false;
 
         this._channels = normalizeChannels({
             channels: config.channels,
@@ -51,7 +52,8 @@ export default class BaseProgram {
         this._seriesBuffers = new SeriesBufferManager(
             this.device,
             this._channels,
-            this.channelSpecs
+            this.channelSpecs,
+            { usePackedSeries: this._usePackedSeries }
         );
         this.count = config.count ?? this._seriesBuffers.inferCount() ?? 1;
         this._scaleResources = new ScaleResourceManager({
@@ -91,6 +93,9 @@ export default class BaseProgram {
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
             seriesBufferAliases: this._seriesBuffers.seriesBufferAliases,
+            packedSeriesLayout: this._usePackedSeries
+                ? (this._seriesBuffers.packedSeriesLayoutEntries ?? undefined)
+                : undefined,
             extraResources: this.getExtraResourceDefs(),
         });
         this._resourceLayout = resourceLayout;

@@ -61,6 +61,7 @@ export default async function runRuleScene(canvas) {
 
     const markId = renderer.createMark("rule", {
         count,
+        packedSeries: true,
         dashPatterns: [
             [1, 0],
             [1, 3],

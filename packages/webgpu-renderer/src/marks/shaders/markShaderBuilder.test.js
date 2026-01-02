@@ -55,6 +55,59 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("uRange_x");
     });
 
+    it("emits packed series accessors when layout metadata is provided", () => {
+        const packedSeriesLayout = new Map(
+            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+                [
+                    "x",
+                    {
+                        name: "x",
+                        scalarType: "f32",
+                        components: 1,
+                        offset: 0,
+                        stride: 3,
+                    },
+                ],
+                [
+                    "y",
+                    {
+                        name: "y",
+                        scalarType: "f32",
+                        components: 2,
+                        offset: 1,
+                        stride: 3,
+                    },
+                ],
+            ])
+        );
+
+        const { shaderCode, resourceLayout } = buildMarkShader({
+            channels: {
+                x: {
+                    data: new Float32Array(2),
+                    type: "f32",
+                    components: 1,
+                    scale: { type: "identity" },
+                },
+                y: {
+                    data: new Float32Array(4),
+                    type: "f32",
+                    components: 2,
+                    scale: { type: "identity" },
+                },
+            },
+            uniformLayout: [],
+            shaderBody,
+            packedSeriesLayout,
+        });
+
+        expect(resourceLayout).toEqual([{ name: "seriesF32", role: "series" }]);
+        expect(shaderCode).toContain("var<storage, read> seriesF32");
+        expect(shaderCode).toContain("fn read_x");
+        expect(shaderCode).toContain("fn read_y");
+        expect(shaderCode).toContain("base = 1u + i * 3u");
+    });
+
     it("generates value accessors for value-based channels", () => {
         const { shaderCode, resourceBindings } = buildMarkShader({
             channels: {
