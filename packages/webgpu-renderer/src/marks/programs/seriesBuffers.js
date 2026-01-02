@@ -1,5 +1,9 @@
 /* global GPUBufferUsage */
 import { isSeriesChannelConfig } from "../../types.js";
+import {
+    buildPackedSeriesLayout,
+    packSeriesArrays,
+} from "./packedSeriesLayout.js";
 import { packHighPrecisionU32ArrayInto } from "../../utils/highPrecision.js";
 
 /**
@@ -18,10 +22,18 @@ export class SeriesBufferManager {
      * @param {Record<string, ChannelConfigResolved>} channels
      * @param {Record<string, ChannelSpec>} channelSpecs
      */
-    constructor(device, channels, channelSpecs) {
+    /**
+     * @param {GPUDevice} device
+     * @param {Record<string, ChannelConfigResolved>} channels
+     * @param {Record<string, ChannelSpec>} channelSpecs
+     * @param {{ usePackedSeries?: boolean }} [options]
+     */
+    constructor(device, channels, channelSpecs, options = {}) {
+        const { usePackedSeries = false } = options;
         this._device = device;
         this._channels = channels;
         this._channelSpecs = channelSpecs;
+        this._usePackedSeries = usePackedSeries;
         /**
          * Channel name -> GPU buffer used for that series.
          * @type {Map<string, GPUBuffer>}
@@ -42,6 +54,16 @@ export class SeriesBufferManager {
          * @type {Map<string, string>}
          */
         this._seriesBufferAliases = new Map();
+        /**
+         * Packed series layout metadata for f32/u32 buffers.
+         * @type {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
+         */
+        this._packedSeriesLayout = null;
+        /**
+         * Packed series buffers keyed by name ("seriesF32"/"seriesU32").
+         * @type {Map<string, { buffer: GPUBuffer, byteLength: number }>}
+         */
+        this._packedBuffers = new Map();
 
         this._initializeSeriesAliases();
     }
@@ -54,10 +76,21 @@ export class SeriesBufferManager {
     }
 
     /**
+     * @returns {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry> | null}
+     */
+    get packedSeriesLayoutEntries() {
+        return this._getPackedLayout()?.entries ?? null;
+    }
+
+    /**
      * @param {string} name
      * @returns {GPUBuffer | null}
      */
     getBuffer(name) {
+        const packed = this._packedBuffers.get(name);
+        if (packed) {
+            return packed.buffer;
+        }
         return this._buffersByField.get(name) ?? null;
     }
 
@@ -144,6 +177,10 @@ export class SeriesBufferManager {
      * @returns {void}
      */
     updateSeries(channels, count) {
+        if (this._usePackedSeries) {
+            this._updatePackedSeries(channels, count);
+            return;
+        }
         /** @type {Map<string, TypedArray>} */
         const groupArrays = new Map();
         /** @type {Map<string, TypedArray>} */
@@ -224,6 +261,78 @@ export class SeriesBufferManager {
     }
 
     /**
+     * @param {Record<string, TypedArray>} channels
+     * @param {number} count
+     * @returns {void}
+     */
+    _updatePackedSeries(channels, count) {
+        const layout = this._getPackedLayout();
+        if (!layout) {
+            return;
+        }
+
+        /** @type {Map<string, TypedArray>} */
+        const groupArrays = new Map();
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (!isSeriesChannelConfig(channel)) {
+                continue;
+            }
+            const sourceArray = channels[name] ?? channel.data;
+            if (!sourceArray) {
+                throw new Error(`Missing data for channel "${name}"`);
+            }
+            const group = this._seriesBufferAliases.get(name) ?? name;
+            const existing = groupArrays.get(group);
+            if (existing && existing !== sourceArray) {
+                const members = this._getAliasMembers(group);
+                throw new Error(
+                    `Series channels ${members
+                        .map((member) => `"${member}"`)
+                        .join(", ")} must share the same buffer.`
+                );
+            }
+            groupArrays.set(group, sourceArray);
+            channel.data = sourceArray;
+        }
+
+        const { f32, u32, i32 } = packSeriesArrays({
+            channels: this._channels,
+            channelSpecs: this._channelSpecs,
+            layout,
+            count,
+        });
+
+        if (f32) {
+            this._ensurePackedBuffer("seriesF32", f32);
+        }
+        if (u32) {
+            this._ensurePackedBuffer("seriesU32", u32);
+        }
+        if (i32) {
+            this._ensurePackedBuffer("seriesI32", i32);
+        }
+    }
+
+    /**
+     * @returns {import("./packedSeriesLayout.js").PackedSeriesLayout | null}
+     */
+    _getPackedLayout() {
+        if (!this._usePackedSeries) {
+            return null;
+        }
+        if (!this._packedSeriesLayout) {
+            const layout = buildPackedSeriesLayout(
+                this._channels,
+                this._channelSpecs,
+                this._seriesBufferAliases
+            );
+            this._packedSeriesLayout = layout;
+        }
+        return this._packedSeriesLayout;
+    }
+
+    /**
      * @param {string} group
      * @returns {string[]}
      */
@@ -256,5 +365,27 @@ export class SeriesBufferManager {
 
         this._device.queue.writeBuffer(buffer, 0, array);
         this._buffersByField.set(field, buffer);
+    }
+
+    /**
+     * @param {string} name
+     * @param {Float32Array | Uint32Array | Int32Array} array
+     * @returns {void}
+     */
+    _ensurePackedBuffer(name, array) {
+        const existing = this._packedBuffers.get(name);
+        let buffer = existing?.buffer ?? null;
+        if (!buffer || existing.byteLength < array.byteLength) {
+            buffer = this._device.createBuffer({
+                size: array.byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            this._packedBuffers.set(name, {
+                buffer,
+                byteLength: array.byteLength,
+            });
+        }
+
+        this._device.queue.writeBuffer(buffer, 0, array);
     }
 }

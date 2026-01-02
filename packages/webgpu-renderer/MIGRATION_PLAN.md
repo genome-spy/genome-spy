@@ -53,6 +53,16 @@ Notes for text:
 
 - Text should not allocate multiple per-glyph buffers. Favor a packed series
   buffer for glyph indices/positions + atlas texture + optional metrics table.
+- Text migration plan (GPU-friendly layout):
+  1. Build per-string instances in a packed series buffer (x/y/x2/y2/size/color/
+     opacity/angle/flags + precomputed width).
+  2. Build a glyph instance buffer with `stringId`, `glyphId`, and
+     `xAdvanceOffset` (per-glyph local x).
+  3. Provide a glyph metrics buffer (UVs + offsets/advance) and bind a single
+     atlas texture (one font per mark).
+  4. Move alignment, range fitting, and rotation into the vertex shader using
+     per-string width + channel values.
+  5. Keep MSDF sampling + AA in fragment; optional later: kerning + multiline.
 - Incremental packed-series adoption:
   1. Add packed series layout metadata (`offset`, `stride`, `components`,
      `scalarType`) and two packed buffers (f32 + u32) per mark.

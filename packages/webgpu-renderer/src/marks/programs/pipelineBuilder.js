@@ -9,6 +9,7 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @property {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
  * @property {Map<string, string>} seriesBufferAliases
+ * @property {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  *
  * @typedef {object} PipelineBuildResult
@@ -31,6 +32,7 @@ export function buildPipeline({
     uniformLayout,
     shaderBody,
     seriesBufferAliases,
+    packedSeriesLayout,
     extraResources,
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
@@ -38,6 +40,7 @@ export function buildPipeline({
         uniformLayout,
         shaderBody,
         seriesBufferAliases,
+        packedSeriesLayout,
         extraResources,
     });
 
