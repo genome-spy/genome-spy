@@ -1,3 +1,4 @@
+/* global GPUShaderStage */
 import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import {
@@ -14,13 +15,24 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  *
+ * @typedef {object} ExtraResourceDef
+ * @prop {string} name
+ * @prop {"texture"|"sampler"} kind
+ * @prop {"vertex"|"fragment"|"all"} [visibility]
+ * @prop {string} [wgslName]
+ * @prop {"float"|"uint"|"sint"} [sampleType]
+ * @prop {"2d"|"2d-array"} [dimension]
+ * @prop {"filtering"|"non-filtering"} [samplerType]
+ * @prop {"extraTexture"|"extraSampler"} role
+ *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  * @prop {Map<string, string>} [seriesBufferAliases]
+ * @prop {ExtraResourceDef[]} [extraResources]
  *
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }} ResourceLayoutEntry
  *
  * @typedef {object} ResourceRequirements
  * @prop {boolean} [ordinalRange]
@@ -45,6 +57,7 @@ export function buildMarkShader({
     uniformLayout,
     shaderBody,
     seriesBufferAliases = new Map(),
+    extraResources = [],
 }) {
     // Dynamic shader generation: each mark variant emits only the helpers it
     // needs. This keeps WGSL small, avoids unused bindings, and lets us
@@ -69,6 +82,9 @@ export function buildMarkShader({
 
     /** @type {string[]} */
     const channelFns = [];
+
+    /** @type {string[]} */
+    const extraDecls = [];
 
     let bindingIndex = 1;
     const channelIRs = buildChannelIRs(channels, seriesBufferAliases);
@@ -260,6 +276,62 @@ export function buildMarkShader({
         );
     }
 
+    for (const extra of extraResources) {
+        const binding = bindingIndex++;
+        // eslint-disable-next-line no-undef
+        // eslint-disable-next-line no-undef
+        const visibility =
+            extra.visibility === "vertex"
+                ? GPUShaderStage.VERTEX
+                : extra.visibility === "fragment"
+                  ? GPUShaderStage.FRAGMENT
+                  : GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT;
+        const wgslName = extra.wgslName ?? extra.name;
+
+        if (extra.kind === "texture") {
+            const dimension = extra.dimension ?? "2d";
+            const sampleType = extra.sampleType ?? "float";
+            const wgslSampleType =
+                sampleType === "uint"
+                    ? "u32"
+                    : sampleType === "sint"
+                      ? "i32"
+                      : "f32";
+            const wgslType =
+                dimension === "2d-array"
+                    ? `texture_2d_array<${wgslSampleType}>`
+                    : `texture_2d<${wgslSampleType}>`;
+
+            resourceBindings.push({
+                binding,
+                // eslint-disable-next-line no-undef
+                visibility,
+                texture: {
+                    sampleType,
+                    viewDimension: dimension === "2d-array" ? "2d-array" : "2d",
+                },
+            });
+            resourceLayout.push({ name: extra.name, role: extra.role });
+            extraDecls.push(
+                `@group(1) @binding(${binding}) var ${wgslName}: ${wgslType};`
+            );
+            continue;
+        }
+
+        if (extra.kind === "sampler") {
+            resourceBindings.push({
+                binding,
+                // eslint-disable-next-line no-undef
+                visibility,
+                sampler: { type: extra.samplerType ?? "filtering" },
+            });
+            resourceLayout.push({ name: extra.name, role: extra.role });
+            extraDecls.push(
+                `@group(1) @binding(${binding}) var ${wgslName}: sampler;`
+            );
+        }
+    }
+
     // Second pass: value-backed channels become either uniforms (dynamic) or
     // inline WGSL constants (static), but still expose getScaled_*.
     for (const channelIR of valueChannelIRs) {
@@ -354,6 +426,8 @@ ${bufferDecls.join("\n")}
 ${bufferReaders.join("\n")}
 
 ${channelFns.join("\n")}
+
+${extraDecls.join("\n")}
 
 ${shaderBody}
 `;

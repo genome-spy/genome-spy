@@ -9,11 +9,12 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @property {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
  * @property {Map<string, string>} seriesBufferAliases
+ * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  *
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
- * @property {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }[]} resourceLayout
+ * @property {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }[]} resourceLayout
  */
 
 /**
@@ -30,12 +31,14 @@ export function buildPipeline({
     uniformLayout,
     shaderBody,
     seriesBufferAliases,
+    extraResources,
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         channels,
         uniformLayout,
         shaderBody,
         seriesBufferAliases,
+        extraResources,
     });
 
     const bindGroupLayout = device.createBindGroupLayout({
@@ -52,6 +55,7 @@ export function buildPipeline({
 
     const module = device.createShaderModule({ code: shaderCode });
     // Match WebGL helper behavior: premultiplied alpha blending.
+    /** @type {GPUBlendState} */
     const blendState = {
         color: {
             srcFactor: "one",

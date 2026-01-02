@@ -1,5 +1,5 @@
 /**
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }} ResourceLayoutEntry
  *
  * @typedef {object} BindGroupBuildParams
  * @prop {GPUDevice} device
@@ -10,6 +10,7 @@
  * @prop {Map<string, GPUBuffer>} ordinalRangeBuffers
  * @prop {Map<string, GPUBuffer>} domainMapBuffers
  * @prop {Map<string, { texture: GPUTexture, sampler: GPUSampler }>} rangeTextures
+ * @prop {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} extraTextures
  */
 
 /**
@@ -27,6 +28,7 @@ export function buildBindGroup({
     ordinalRangeBuffers,
     domainMapBuffers,
     rangeTextures,
+    extraTextures,
 }) {
     /** @type {GPUBindGroupEntry[]} */
     const entries = [
@@ -88,6 +90,28 @@ export function buildBindGroup({
             const sampler = rangeTextures.get(entry.name)?.sampler;
             if (!sampler) {
                 throw new Error(`Missing range sampler for "${entry.name}".`);
+            }
+            entries.push({
+                binding: bindingIndex++,
+                resource: sampler,
+            });
+            continue;
+        }
+        if (entry.role === "extraTexture") {
+            const texture = extraTextures.get(entry.name)?.texture;
+            if (!texture) {
+                throw new Error(`Missing extra texture for "${entry.name}".`);
+            }
+            entries.push({
+                binding: bindingIndex++,
+                resource: texture.createView(),
+            });
+            continue;
+        }
+        if (entry.role === "extraSampler") {
+            const sampler = extraTextures.get(entry.name)?.sampler;
+            if (!sampler) {
+                throw new Error(`Missing extra sampler for "${entry.name}".`);
             }
             entries.push({
                 binding: bindingIndex++,

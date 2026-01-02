@@ -39,6 +39,7 @@ export default async function runRuleScene(canvas) {
     const y2 = new Float32Array(count);
     const size = new Float32Array(count);
     const color = new Uint32Array(count);
+    const dash = new Uint32Array(count);
 
     for (let i = 0; i < count; i += 1) {
         const x0 = Math.random();
@@ -55,10 +56,19 @@ export default async function runRuleScene(canvas) {
             palette.length - 1,
             Math.floor(x[i] * palette.length)
         );
+        dash[i] = color[i] % 6;
     }
 
     const markId = renderer.createMark("rule", {
         count,
+        dashPatterns: [
+            [1, 0],
+            [1, 3],
+            [3, 1],
+            [1, 1],
+            [1, 5],
+            [4, 2, 1, 2],
+        ],
         channels: {
             x: {
                 data: x,
@@ -90,6 +100,7 @@ export default async function runRuleScene(canvas) {
                 type: "u32",
                 scale: { type: "ordinal", domain: colorDomain, range: palette },
             },
+            strokeDash: { data: dash, type: "u32" },
             opacity: { value: 0.9 },
             strokeCap: { value: 2, type: "u32" },
         },
@@ -108,7 +119,7 @@ export default async function runRuleScene(canvas) {
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
 
-    renderer.updateSeries(markId, { x, x2, y, y2, size, color }, count);
+    renderer.updateSeries(markId, { x, x2, y, y2, size, color, dash }, count);
     renderer.render();
 
     return () => {

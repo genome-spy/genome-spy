@@ -115,6 +115,8 @@ export function writeTextureData(device, texture, textureData) {
  */
 function bytesPerPixelForFormat(format) {
     switch (format) {
+        case "r8uint":
+            return 1;
         case "r32float":
             return 4;
         case "rg32float":
