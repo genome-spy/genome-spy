@@ -1,6 +1,7 @@
 /* global GPUShaderStage */
 import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
+import { preprocessShader } from "../../wgsl/preprocess.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
@@ -122,6 +123,13 @@ export function buildMarkShader({
 
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
+
+    /** @type {Record<string, boolean>} */
+    const shaderDefines = {};
+    for (const name of Object.keys(channels)) {
+        shaderDefines[`${name}_DEFINED`] = true;
+    }
+    const processedShaderBody = preprocessShader(shaderBody, shaderDefines);
 
     // First pass: series-backed channels become storage buffers, read_* accessors,
     // and getScaled_* wrappers.
@@ -524,7 +532,7 @@ ${channelFns.join("\n")}
 
 ${extraDecls.join("\n")}
 
-${shaderBody}
+${processedShaderBody}
 `;
 
     return {

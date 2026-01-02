@@ -19,7 +19,6 @@ export default async function runTextScene(canvas) {
     }
 
     const markId = renderer.createMark("text", {
-        count,
         channels: {
             x: {
                 data: x,
@@ -62,15 +61,6 @@ export default async function runTextScene(canvas) {
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
-
-    renderer.updateSeries(
-        markId,
-        {
-            x,
-            y,
-        },
-        count
-    );
 
     renderer.render();
 

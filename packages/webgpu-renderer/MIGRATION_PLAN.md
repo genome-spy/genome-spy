@@ -4,7 +4,7 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 ### Renderer package: remaining work
 
-- Marks: rule/link/text (text needs atlas + layout).
+- Marks: text (ranged layout, edge fade, gamma, picking).
 - Picking pass (offscreen ID buffer + readback).
 - Viewport/scissor management.
 - SDF text rendering (glyph atlas, shaders, layout helpers).
@@ -72,6 +72,22 @@ Notes for text:
      - metrics buffers separate.
   4. Migrate a simple mark (rect/rule) to packed series, then flip defaults
      and remove legacy bindings once stable.
+
+Ranged text plan (x2/y2 optional; only apply when defined):
+
+1. **Introduce feature flags** — use `#if defined(x2_DEFINED)` /
+   `#if defined(y2_DEFINED)` in WGSL and run via the WGSL preprocessor.
+   Keep non-ranged path fast and branch-free.
+2. **Add range inputs** — extend channel specs to include `x2`/`y2`
+   (optional). Keep alignment/baseline behavior identical when undefined.
+3. **Port range fitting** — implement `positionInsideRange` + `flush/padding`
+   logic in WGSL, producing `{pos, scale}` for each axis when range is active.
+4. **Rotation-aware alignment** — port `calculateRotatedDimensions` and
+   `fixAlignForAngle` for ranged text so flush and padding account for angle.
+5. **Scale-to-fit behavior** — implement `squeeze` behavior (fade vs. drop)
+   with the same thresholds as WebGL.
+6. **Viewport edge fade** — add uniforms and vertex-side computation of the
+   edge fade opacity so ranged text respects viewport fade settings.
 
 ### Scale properties used by the renderer
 

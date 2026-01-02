@@ -8,6 +8,7 @@ import runIndexScene from "./indexScene.js";
 import runRuleScene from "./ruleScene.js";
 import runLinkScene from "./linkScene.js";
 import runTextScene from "./textScene.js";
+import runRangedTextScene from "./rangedTextScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -52,6 +53,10 @@ const EXAMPLES = {
     text: {
         label: "Text (Layout)",
         run: runTextScene,
+    },
+    rangedText: {
+        label: "Text (Ranged)",
+        run: runRangedTextScene,
     },
 };
 

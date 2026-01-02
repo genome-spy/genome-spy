@@ -209,7 +209,9 @@ export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 export type TextChannelName =
     | "uniqueId"
     | "x"
+    | "x2"
     | "y"
+    | "y2"
     | "text"
     | "size"
     | "angle"
@@ -256,6 +258,11 @@ export type TextMarkOptions = {
     fontSize?: number;
     lineHeight?: number;
     letterSpacing?: number;
+    paddingX?: number;
+    paddingY?: number;
+    flushX?: boolean;
+    flushY?: boolean;
+    squeeze?: boolean;
 };
 
 export type LinkShape = "arc" | "dome" | "diagonal" | "line";
