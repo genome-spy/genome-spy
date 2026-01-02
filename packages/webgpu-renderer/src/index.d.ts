@@ -196,19 +196,34 @@ export type PointChannels = Partial<
     Record<PointChannelName, ChannelConfigInput>
 >;
 
+export type RuleChannelName =
+    keyof typeof import("./marks/programs/ruleProgram.js").RULE_CHANNEL_SPECS;
+
+export type RuleChannels = Partial<Record<RuleChannelName, ChannelConfigInput>>;
+
 export type MarkConfig<T extends MarkType = MarkType> = {
     channels: T extends "rect"
         ? RectChannels
         : T extends "point"
           ? PointChannels
-          : Record<string, ChannelConfigInput>;
+          : T extends "rule"
+            ? RuleChannels
+            : Record<string, ChannelConfigInput>;
 
     /**
      * Number of instances to draw. If omitted, the count is inferred from
      * series buffer lengths when possible.
      */
     count?: number;
-};
+} & (T extends "rule"
+    ? {
+          /**
+           * Dash patterns for rule marks. Each pattern is an even-length array
+           * of segment lengths expressed in stroke-width units.
+           */
+          dashPatterns?: number[][];
+      }
+    : Record<string, never>);
 
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;

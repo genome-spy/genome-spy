@@ -1,5 +1,8 @@
 import BaseProgram from "./baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
+import DASH_WGSL from "../../wgsl/dash.wgsl.js";
+import { buildDashAtlas } from "../../utils/dashAtlas.js";
+import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -17,6 +20,8 @@ export const RULE_CHANNEL_SPECS = {
     opacity: { type: "f32", components: 1, default: 1.0 },
     minLength: { type: "f32", components: 1, default: 0.0 },
     strokeCap: { type: "u32", components: 1, default: 0 },
+    strokeDash: { type: "u32", components: 1, default: 0 },
+    strokeDashOffset: { components: 1, default: 0.0 },
 };
 
 const {
@@ -27,9 +32,10 @@ const {
 } = buildChannelMaps(RULE_CHANNEL_SPECS);
 
 const RULE_SHADER_BODY = /* wgsl */ `
-// Line caps are supported; dash patterns are intentionally omitted in this draft.
+${DASH_WGSL}
+
+// Line caps and dashes are supported.
 // Keep rule math in pixel coordinates to avoid unit-range indirection.
-// TODO: Port dashed lines and dash textures from the WebGL rule shaders.
 
 // Line caps
 const BUTT: u32 = 0u;
@@ -44,6 +50,8 @@ struct VSOut {
     @location(3) opacity: f32,
     @location(4) posInPixels: vec2<f32>,
     @location(5) @interpolate(flat) strokeCap: u32,
+    @location(6) @interpolate(flat) dashIndex: u32,
+    @location(7) @interpolate(flat) dashOffset: f32,
 };
 
 @vertex
@@ -125,6 +133,8 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         vec2<f32>(select(0.0, width * 0.5, strokeCap != BUTT));
     // TODO: Precision issues can appear at extreme zoom levels.
     out.strokeCap = strokeCap;
+    out.dashIndex = u32(getScaled_strokeDash(i));
+    out.dashOffset = f32(getScaled_strokeDashOffset(i));
     return out;
 }
 
@@ -138,9 +148,18 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     } else {
         distance = abs(in.normalDistance);
     }
+    let pixelSize = 1.0 / globals.dpr;
+    let width = max(0.0, in.halfWidth * 2.0 - pixelSize);
+    let dash = dashMask(
+        dashAtlas,
+        in.dashIndex,
+        in.posInPixels.x,
+        width,
+        in.dashOffset
+    );
     let alpha = clamp(((in.halfWidth - distance) * globals.dpr) + 0.5, 0.0, 1.0);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
-    return color * alpha;
+    return color * alpha * dash;
 }
 `;
 
@@ -167,5 +186,71 @@ export default class RuleProgram extends BaseProgram {
 
     get shaderBody() {
         return RULE_SHADER_BODY;
+    }
+
+    getExtraUniformLayout() {
+        /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4 }[]} */
+        const layout = [
+            { name: "uDashPatternCount", type: "u32", components: 1 },
+        ];
+        return layout;
+    }
+
+    getExtraResourceDefs() {
+        /** @type {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
+        const defs = [
+            {
+                name: "dashAtlas",
+                role: "extraTexture",
+                kind: "texture",
+                sampleType: "uint",
+                dimension: "2d",
+                visibility: "fragment",
+                wgslName: "dashAtlas",
+            },
+        ];
+        return defs;
+    }
+
+    _initializeExtraResources() {
+        const patterns = /** @type {number[][] | null | undefined} */ (
+            this._markConfig?.dashPatterns ?? null
+        );
+        const atlas = buildDashAtlas(patterns);
+        /** @type {number} */
+        this._dashPatternCount = atlas.patternCount;
+
+        const texture = createTextureFromData(this.device, {
+            format: "r8uint",
+            width: atlas.width,
+            height: atlas.height,
+            data: atlas.data,
+        });
+        this._extraTextures.set("dashAtlas", {
+            texture,
+            width: atlas.width,
+            height: atlas.height,
+            format: "r8uint",
+        });
+
+        const dashChannel = this._channels.strokeDash;
+        if (
+            atlas.patternCount > 0 &&
+            dashChannel &&
+            dashChannel.value !== undefined
+        ) {
+            const value = Array.isArray(dashChannel.value)
+                ? dashChannel.value[0]
+                : dashChannel.value;
+            if (typeof value === "number" && value >= atlas.patternCount) {
+                console.warn(
+                    `[webgpu-renderer] strokeDash value ${value} exceeds pattern count ${atlas.patternCount}.`
+                );
+            }
+        }
+    }
+
+    _initializeExtraUniforms() {
+        this._setUniformValue("uDashPatternCount", this._dashPatternCount ?? 0);
     }
 }

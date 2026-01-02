@@ -30,11 +30,13 @@ export default class BaseProgram {
 
     /**
      * @param {import("../../renderer.js").Renderer} renderer
-     * @param {{ channels: Record<string, ChannelConfigInput>, count?: number }} config
+     * @param {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} config
      */
     constructor(renderer, config) {
         this.renderer = renderer;
         this.device = renderer.device;
+        /** @type {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} */
+        this._markConfig = config;
 
         this._channels = normalizeChannels({
             channels: config.channels,
@@ -62,7 +64,7 @@ export default class BaseProgram {
                 this._uniformBufferState?.entries.has(name) ?? false,
         });
 
-        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler" }[]} */
+        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -71,12 +73,16 @@ export default class BaseProgram {
         /** @type {UniformBuffer | null} */
         this._uniformBufferState = null;
 
+        /** @type {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} */
+        this._extraTextures = new Map();
+
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
         // Create a shader that matches the active channels (series vs values)
         // and the selected scale types. This keeps GPU programs minimal but makes
         // shader generation dynamic.
         this._buildUniformLayout();
+        this._initializeExtraResources();
         const { bindGroupLayout, pipeline, resourceLayout } = buildPipeline({
             device: this.device,
             globalBindGroupLayout: renderer._globalBindGroupLayout,
@@ -85,6 +91,7 @@ export default class BaseProgram {
             uniformLayout: this._uniformLayout,
             shaderBody: this.shaderBody,
             seriesBufferAliases: this._seriesBuffers.seriesBufferAliases,
+            extraResources: this.getExtraResourceDefs(),
         });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
@@ -148,6 +155,31 @@ export default class BaseProgram {
     }
 
     /**
+     * Extra per-mark uniform fields (not tied to channels).
+     *
+     * @returns {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]}
+     */
+    getExtraUniformLayout() {
+        return [];
+    }
+
+    /**
+     * Extra bind group resources (not tied to channels).
+     *
+     * @returns {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]}
+     */
+    getExtraResourceDefs() {
+        return [];
+    }
+
+    /**
+     * Allocate extra GPU resources before building bind groups.
+     *
+     * @returns {void}
+     */
+    _initializeExtraResources() {}
+
+    /**
      * @returns {string}
      */
     get shaderBody() {
@@ -190,6 +222,7 @@ export default class BaseProgram {
             ordinalRangeBuffers: this._scaleResources.ordinalRangeBuffers,
             domainMapBuffers: this._scaleResources.domainMapBuffers,
             rangeTextures: this._scaleResources.rangeTextures,
+            extraTextures: this._extraTextures,
         });
     }
 
@@ -275,6 +308,21 @@ export default class BaseProgram {
             }
             if (entry.role === "rangeSampler") {
                 samplers.push({ name: entry.name, role: entry.role });
+                continue;
+            }
+            if (entry.role === "extraTexture") {
+                const texture = this._extraTextures.get(entry.name);
+                textures.push({
+                    name: entry.name,
+                    role: entry.role,
+                    width: texture?.width ?? 0,
+                    height: texture?.height ?? 0,
+                    format: texture?.format ?? "unknown",
+                });
+                continue;
+            }
+            if (entry.role === "extraSampler") {
+                samplers.push({ name: entry.name, role: entry.role });
             }
         }
 
@@ -340,7 +388,7 @@ export default class BaseProgram {
             }
         }
 
-        this._uniformLayout = layout;
+        this._uniformLayout = layout.concat(this.getExtraUniformLayout());
         if (this._uniformLayout.length === 0) {
             // WebGPU does not allow empty uniform buffers; keep a dummy entry.
             this._uniformLayout.push({
@@ -375,7 +423,15 @@ export default class BaseProgram {
                 this._setUniformValue(`u_${name}`, channel.value);
             }
         }
+        this._initializeExtraUniforms();
     }
+
+    /**
+     * Initialize non-channel uniforms after the main uniform buffer is ready.
+     *
+     * @returns {void}
+     */
+    _initializeExtraUniforms() {}
 
     /**
      * @param {string} nameOrScale

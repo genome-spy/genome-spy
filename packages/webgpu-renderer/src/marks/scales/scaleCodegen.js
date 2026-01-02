@@ -715,3 +715,4 @@ export function validateScaleConfig(name, channel) {
  * @param {"f32"|"u32"|"i32"} scalarType
  * @returns {"f32"|"u32"|"i32"}
  */
+export { getScaleOutputType };
