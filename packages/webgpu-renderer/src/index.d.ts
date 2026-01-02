@@ -1,4 +1,4 @@
-export type MarkType = "rect" | "point" | "rule" | "link";
+export type MarkType = "rect" | "point" | "rule" | "link" | "text";
 export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";
@@ -206,6 +206,58 @@ export type LinkChannelName =
 
 export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
 
+export type TextChannelName =
+    | "uniqueId"
+    | "x"
+    | "y"
+    | "text"
+    | "size"
+    | "angle"
+    | "dx"
+    | "dy"
+    | "align"
+    | "baseline"
+    | "fill"
+    | "opacity";
+
+export type TextStringChannelConfigInput =
+    | (Omit<SeriesChannelConfigInput, "data" | "type"> & {
+          data: string[];
+          type?: "u32";
+      })
+    | (Omit<ValueChannelConfigInput, "value" | "type"> & {
+          value: string;
+          type?: "u32";
+      });
+
+export type TextChannels = Omit<
+    Partial<Record<TextChannelName, ChannelConfigInput>>,
+    "text"
+> & { text?: ChannelConfigInput | TextStringChannelConfigInput };
+
+export type TextLayout = {
+    glyphIds: Uint32Array;
+    stringIndex: Uint32Array;
+    xOffset: Float32Array;
+    yOffset?: Float32Array | null;
+    textWidth: Float32Array;
+    textHeight: Float32Array;
+    fontSize: number;
+    lineAdvance: number;
+    ascent: number;
+    descent: number;
+};
+
+export type TextMarkOptions = {
+    textLayout?: TextLayout;
+    font?: string;
+    fontStyle?: "normal" | "italic";
+    fontWeight?: number | string;
+    fontSize?: number;
+    lineHeight?: number;
+    letterSpacing?: number;
+};
+
 export type LinkShape = "arc" | "dome" | "diagonal" | "line";
 
 export type LinkOrient = "vertical" | "horizontal";
@@ -245,7 +297,9 @@ export type MarkConfig<T extends MarkType = MarkType> = {
             ? RuleChannels
             : T extends "link"
               ? LinkChannels
-              : Record<string, ChannelConfigInput>;
+              : T extends "text"
+                ? TextChannels
+                : Record<string, ChannelConfigInput>;
 
     /**
      * Number of instances to draw. If omitted, the count is inferred from
@@ -261,7 +315,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
           dashPatterns?: number[][];
       }
     : Record<string, never>) &
-    (T extends "link" ? LinkMarkOptions : Record<string, never>);
+    (T extends "link" ? LinkMarkOptions : Record<string, never>) &
+    (T extends "text" ? TextMarkOptions : Record<string, never>);
 
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;

@@ -64,7 +64,7 @@ export default class BaseProgram {
                 this._uniformBufferState?.entries.has(name) ?? false,
         });
 
-        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }[]} */
+        /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
         /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
@@ -75,6 +75,9 @@ export default class BaseProgram {
 
         /** @type {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} */
         this._extraTextures = new Map();
+
+        /** @type {Map<string, GPUBuffer>} */
+        this._extraBuffers = new Map();
 
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
@@ -224,6 +227,7 @@ export default class BaseProgram {
             domainMapBuffers: this._scaleResources.domainMapBuffers,
             rangeTextures: this._scaleResources.rangeTextures,
             extraTextures: this._extraTextures,
+            extraBuffers: this._extraBuffers,
         });
     }
 
@@ -324,6 +328,15 @@ export default class BaseProgram {
             }
             if (entry.role === "extraSampler") {
                 samplers.push({ name: entry.name, role: entry.role });
+                continue;
+            }
+            if (entry.role === "extraBuffer") {
+                const buffer = this._extraBuffers.get(entry.name);
+                storage.push({
+                    name: entry.name,
+                    role: entry.role,
+                    bytes: buffer?.size ?? 0,
+                });
             }
         }
 

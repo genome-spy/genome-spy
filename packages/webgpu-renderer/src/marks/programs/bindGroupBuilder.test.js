@@ -55,6 +55,7 @@ describe("buildBindGroup", () => {
                     domainMapBuffers: new Map([["x", domainMapBuffer]]),
                     rangeTextures: new Map([["x", { texture, sampler }]]),
                     extraTextures: new Map(),
+                    extraBuffers: new Map(),
                 })
             )
         );
@@ -108,6 +109,7 @@ describe("buildBindGroup", () => {
                 domainMapBuffers: new Map(),
                 rangeTextures: new Map(),
                 extraTextures: new Map(),
+                extraBuffers: new Map(),
             })
         ).toThrow('Missing buffer binding for "x".');
     });

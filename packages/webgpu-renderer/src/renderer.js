@@ -2,6 +2,7 @@ import RectProgram from "./marks/programs/rectProgram.js";
 import PointProgram from "./marks/programs/pointProgram.js";
 import RuleProgram from "./marks/programs/ruleProgram.js";
 import LinkProgram from "./marks/programs/linkProgram.js";
+import TextProgram from "./marks/programs/textProgram.js";
 
 export class RendererError extends Error {}
 
@@ -61,7 +62,7 @@ export class Renderer {
         this.format = format;
         this.canvas = canvas;
 
-        /** @type {Map<MarkId, import("./marks/programs/rectProgram.js").default | import("./marks/programs/pointProgram.js").default | import("./marks/programs/ruleProgram.js").default>} */
+        /** @type {Map<MarkId, import("./marks/programs/rectProgram.js").default | import("./marks/programs/pointProgram.js").default | import("./marks/programs/ruleProgram.js").default | import("./marks/programs/linkProgram.js").default | import("./marks/programs/textProgram.js").default>} */
         this._marks = new Map();
         this._nextMarkId = 1;
 
@@ -114,20 +115,48 @@ export class Renderer {
     }
 
     /**
-     * @param {import("./index.d.ts").MarkType} type
-     * @param {import("./index.d.ts").MarkConfig} config
+     * @template {import("./index.d.ts").MarkType} T
+     * @param {T} type
+     * @param {import("./index.d.ts").MarkConfig<T>} config
      * @returns {MarkId}
      */
     createMark(type, config) {
         let mark;
         if (type === "rect") {
-            mark = new RectProgram(this, config);
+            mark = new RectProgram(
+                this,
+                /** @type {import("./index.d.ts").MarkConfig<"rect">} */ (
+                    config
+                )
+            );
         } else if (type === "point") {
-            mark = new PointProgram(this, config);
+            mark = new PointProgram(
+                this,
+                /** @type {import("./index.d.ts").MarkConfig<"point">} */ (
+                    config
+                )
+            );
         } else if (type === "rule") {
-            mark = new RuleProgram(this, config);
+            mark = new RuleProgram(
+                this,
+                /** @type {import("./index.d.ts").MarkConfig<"rule">} */ (
+                    config
+                )
+            );
         } else if (type === "link") {
-            mark = new LinkProgram(this, config);
+            mark = new LinkProgram(
+                this,
+                /** @type {import("./index.d.ts").MarkConfig<"link">} */ (
+                    config
+                )
+            );
+        } else if (type === "text") {
+            mark = new TextProgram(
+                this,
+                /** @type {import("./index.d.ts").MarkConfig<"text">} */ (
+                    config
+                )
+            );
         } else {
             throw new RendererError(`Unknown mark type: ${type}`);
         }
