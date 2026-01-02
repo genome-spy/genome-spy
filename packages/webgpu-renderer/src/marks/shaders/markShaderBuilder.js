@@ -2,6 +2,7 @@
 import SCALES_WGSL from "../../wgsl/scales.wgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import { preprocessShader } from "../../wgsl/preprocess.js";
+import { __DEV__ } from "../../utils/dev.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_MAP_PREFIX,
@@ -157,7 +158,12 @@ export function buildMarkShader({
     const packedTypes = new Set();
     const packedSeriesEntries = packedSeriesLayout ?? new Map();
 
-    if (seriesChannelIRs.length > 0 && packedSeriesEntries.size === 0) {
+    // Internal invariant: packed series is required when series channels exist.
+    if (
+        __DEV__ &&
+        seriesChannelIRs.length > 0 &&
+        packedSeriesEntries.size === 0
+    ) {
         throw new Error(
             "Packed series layout is required for series channels."
         );
@@ -170,7 +176,7 @@ export function buildMarkShader({
             entry.scalarType === "i32"
         ) {
             packedTypes.add(entry.scalarType);
-        } else {
+        } else if (__DEV__) {
             throw new Error(
                 `Packed series only supports f32/u32/i32. Found "${entry.scalarType}".`
             );
@@ -232,17 +238,17 @@ export function buildMarkShader({
         }
 
         const layoutEntry = packedSeriesEntries.get(name);
-        if (!layoutEntry) {
+        if (__DEV__ && !layoutEntry) {
             throw new Error(
                 `Packed series layout is missing entry for "${name}".`
             );
         }
-        if (layoutEntry.scalarType !== channelIR.scalarType) {
+        if (__DEV__ && layoutEntry.scalarType !== channelIR.scalarType) {
             throw new Error(
                 `Packed series type mismatch for "${name}". Expected ${channelIR.scalarType}, got ${layoutEntry.scalarType}.`
             );
         }
-        if (layoutEntry.components !== channelIR.inputComponents) {
+        if (__DEV__ && layoutEntry.components !== channelIR.inputComponents) {
             throw new Error(
                 `Packed series component mismatch for "${name}". Expected ${channelIR.inputComponents}, got ${layoutEntry.components}.`
             );
@@ -487,22 +493,26 @@ export function buildMarkShader({
     }
 
     // Validate that required helper uniforms (counts) are present.
-    for (const [name, requirements] of Object.entries(resourceRequirements)) {
-        if (
-            requirements.rangeCountUniform &&
-            !uniformNames.has(`${RANGE_COUNT_PREFIX}${name}`)
-        ) {
-            throw new Error(
-                `Ordinal scale on "${name}" requires uniform "${RANGE_COUNT_PREFIX}${name}".`
-            );
-        }
-        if (
-            requirements.domainMapCountUniform &&
-            !uniformNames.has(`${DOMAIN_MAP_COUNT_PREFIX}${name}`)
-        ) {
-            throw new Error(
-                `Scale on "${name}" requires uniform "${DOMAIN_MAP_COUNT_PREFIX}${name}".`
-            );
+    if (__DEV__) {
+        for (const [name, requirements] of Object.entries(
+            resourceRequirements
+        )) {
+            if (
+                requirements.rangeCountUniform &&
+                !uniformNames.has(`${RANGE_COUNT_PREFIX}${name}`)
+            ) {
+                throw new Error(
+                    `Ordinal scale on "${name}" requires uniform "${RANGE_COUNT_PREFIX}${name}".`
+                );
+            }
+            if (
+                requirements.domainMapCountUniform &&
+                !uniformNames.has(`${DOMAIN_MAP_COUNT_PREFIX}${name}`)
+            ) {
+                throw new Error(
+                    `Scale on "${name}" requires uniform "${DOMAIN_MAP_COUNT_PREFIX}${name}".`
+                );
+            }
         }
     }
 
