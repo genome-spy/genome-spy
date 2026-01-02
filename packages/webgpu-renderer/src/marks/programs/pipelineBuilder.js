@@ -14,7 +14,7 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
  * @property {GPURenderPipeline} pipeline
- * @property {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }[]} resourceLayout
+ * @property {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} resourceLayout
  */
 
 /**

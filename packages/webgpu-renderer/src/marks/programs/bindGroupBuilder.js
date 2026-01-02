@@ -1,5 +1,5 @@
 /**
- * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler" }} ResourceLayoutEntry
+ * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
  *
  * @typedef {object} BindGroupBuildParams
  * @prop {GPUDevice} device
@@ -11,6 +11,7 @@
  * @prop {Map<string, GPUBuffer>} domainMapBuffers
  * @prop {Map<string, { texture: GPUTexture, sampler: GPUSampler }>} rangeTextures
  * @prop {Map<string, { texture: GPUTexture, sampler?: GPUSampler, width: number, height: number, format: GPUTextureFormat }>} extraTextures
+ * @prop {Map<string, GPUBuffer>} extraBuffers
  */
 
 /**
@@ -29,6 +30,7 @@ export function buildBindGroup({
     domainMapBuffers,
     rangeTextures,
     extraTextures,
+    extraBuffers,
 }) {
     /** @type {GPUBindGroupEntry[]} */
     const entries = [
@@ -116,6 +118,17 @@ export function buildBindGroup({
             entries.push({
                 binding: bindingIndex++,
                 resource: sampler,
+            });
+            continue;
+        }
+        if (entry.role === "extraBuffer") {
+            const buffer = extraBuffers.get(entry.name) ?? null;
+            if (!buffer) {
+                throw new Error(`Missing extra buffer for "${entry.name}".`);
+            }
+            entries.push({
+                binding: bindingIndex++,
+                resource: { buffer },
             });
             continue;
         }
