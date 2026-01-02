@@ -77,6 +77,22 @@ describe("BaseProgram count inference", () => {
         expect(program.count).toBe(3);
     });
 
+    it("uses packed series bindings by default", () => {
+        const renderer = createMockRenderer();
+        const program = new TestSeriesProgram(renderer, {
+            channels: {
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                },
+            },
+        });
+
+        expect(program._resourceLayout).toEqual([
+            { name: "seriesF32", role: "series" },
+        ]);
+    });
+
     it("defaults to one for value-only marks when omitted", () => {
         const renderer = createMockRenderer();
         const program = new TestValueProgram(renderer, {
@@ -105,5 +121,22 @@ describe("BaseProgram count inference", () => {
         program.updateSeries({ x: new Float32Array([0, 1, 2, 3]) });
 
         expect(program.count).toBe(4);
+    });
+
+    it("uses packed series bindings when enabled", () => {
+        const renderer = createMockRenderer();
+        const program = new TestSeriesProgram(renderer, {
+            packedSeries: true,
+            channels: {
+                x: {
+                    data: new Float32Array([0, 1]),
+                    type: "f32",
+                },
+            },
+        });
+
+        expect(program._resourceLayout).toEqual([
+            { name: "seriesF32", role: "series" },
+        ]);
     });
 });
