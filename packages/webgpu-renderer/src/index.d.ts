@@ -1,4 +1,4 @@
-export type MarkType = "rect" | "point" | "rule";
+export type MarkType = "rect" | "point" | "rule" | "link";
 export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";
@@ -201,6 +201,41 @@ export type RuleChannelName =
 
 export type RuleChannels = Partial<Record<RuleChannelName, ChannelConfigInput>>;
 
+export type LinkChannelName =
+    keyof typeof import("./marks/programs/linkProgram.js").LINK_CHANNEL_SPECS;
+
+export type LinkChannels = Partial<Record<LinkChannelName, ChannelConfigInput>>;
+
+export type LinkShape = "arc" | "dome" | "diagonal" | "line";
+
+export type LinkOrient = "vertical" | "horizontal";
+
+export type LinkMarkOptions = {
+    /** Number of curve segments used for tessellation. */
+    segments?: number;
+
+    /** Curve shape: arc, dome, diagonal, or straight line. */
+    linkShape?: LinkShape;
+
+    /** Orientation for dome/diagonal shapes. */
+    orient?: LinkOrient;
+
+    /** Height multiplier for arc shape. */
+    arcHeightFactor?: number;
+
+    /** Minimum arc height in pixels. */
+    minArcHeight?: number;
+
+    /** Clamp very long arcs to keep endpoint precision stable when zoomed in (pixels). */
+    maxChordLength?: number;
+
+    /** Clamp arc apex to viewport bounds. */
+    clampApex?: boolean;
+
+    /** Fade arcs by distance from the chord line. */
+    arcFadingDistance?: [number, number];
+};
+
 export type MarkConfig<T extends MarkType = MarkType> = {
     channels: T extends "rect"
         ? RectChannels
@@ -208,7 +243,9 @@ export type MarkConfig<T extends MarkType = MarkType> = {
           ? PointChannels
           : T extends "rule"
             ? RuleChannels
-            : Record<string, ChannelConfigInput>;
+            : T extends "link"
+              ? LinkChannels
+              : Record<string, ChannelConfigInput>;
 
     /**
      * Number of instances to draw. If omitted, the count is inferred from
@@ -223,7 +260,8 @@ export type MarkConfig<T extends MarkType = MarkType> = {
            */
           dashPatterns?: number[][];
       }
-    : Record<string, never>);
+    : Record<string, never>) &
+    (T extends "link" ? LinkMarkOptions : Record<string, never>);
 
 export type RendererOptions = {
     alphaMode?: GPUCanvasAlphaMode;
