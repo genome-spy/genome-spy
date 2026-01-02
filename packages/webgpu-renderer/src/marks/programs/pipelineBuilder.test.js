@@ -74,6 +74,18 @@ describe("buildPipeline", () => {
             );
 
         expect(targets[0]?.format).toBe("rgba8unorm");
+        expect(targets[0]?.blend).toEqual({
+            color: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+            },
+            alpha: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+            },
+        });
         expect(layout.bindGroupLayouts[0]).toBe(globalBindGroupLayout);
     });
 });
