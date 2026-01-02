@@ -8,7 +8,6 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @property {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels
  * @property {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
- * @property {Map<string, string>} seriesBufferAliases
  * @property {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  *
@@ -31,7 +30,6 @@ export function buildPipeline({
     channels,
     uniformLayout,
     shaderBody,
-    seriesBufferAliases,
     packedSeriesLayout,
     extraResources,
 }) {
@@ -39,7 +37,6 @@ export function buildPipeline({
         channels,
         uniformLayout,
         shaderBody,
-        seriesBufferAliases,
         packedSeriesLayout,
         extraResources,
     });
