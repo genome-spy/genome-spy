@@ -4,9 +4,10 @@ import { createExampleRenderer, setupResize } from "./utils.js";
  * Ranged text demo: each string is constrained by x/x2 and y/y2 extents.
  *
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @param {{ size?: number, opacity?: number }} [options]
+ * @returns {Promise<() => void | { cleanup: () => void, update?: (next: { size?: number, opacity?: number }) => void }>}
  */
-export default async function runRangedTextScene(canvas) {
+export default async function runRangedTextScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
 
     const cols = 3;
@@ -21,6 +22,9 @@ export default async function runRangedTextScene(canvas) {
     const xDomain = [0, cols];
     const yDomain = [0, rows];
     const paddingInner = 0.1;
+    const initialSize = typeof options.size === "number" ? options.size : 250;
+    const initialOpacity =
+        typeof options.opacity === "number" ? options.opacity : 0.9;
 
     for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -86,9 +90,9 @@ export default async function runRangedTextScene(canvas) {
             },
             text: { data: strings },
             angle: { data: angles, type: "f32" },
-            size: { value: 250, type: "f32" },
+            size: { value: initialSize, type: "f32", dynamic: true },
             fill: { value: [0.15, 0.2, 0.9, 1.0] },
-            opacity: { value: 0.9 },
+            opacity: { value: initialOpacity, dynamic: true },
         },
         font: "Lato",
         paddingX: 8,
@@ -111,8 +115,23 @@ export default async function runRangedTextScene(canvas) {
 
     renderer.render();
 
-    return () => {
-        cleanupResize();
-        renderer.destroyMark(markId);
+    return {
+        cleanup: () => {
+            cleanupResize();
+            renderer.destroyMark(markId);
+        },
+        update: (next) => {
+            const values = {};
+            if (typeof next.size === "number") {
+                values.size = next.size;
+            }
+            if (typeof next.opacity === "number") {
+                values.opacity = next.opacity;
+            }
+            if (Object.keys(values).length > 0) {
+                renderer.updateValues(markId, values);
+                renderer.render();
+            }
+        },
     };
 }
