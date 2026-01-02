@@ -2,13 +2,17 @@ import { createExampleRenderer, setupResize } from "./utils.js";
 
 /**
  * @param {HTMLCanvasElement} canvas
- * @returns {Promise<() => void>}
+ * @param {{ size?: number, opacity?: number }} [options]
+ * @returns {Promise<() => void | { cleanup: () => void, update?: (next: { size?: number, opacity?: number }) => void }>}
  */
-export default async function runTextScene(canvas) {
+export default async function runTextScene(canvas, options = {}) {
     const renderer = await createExampleRenderer(canvas);
 
     const strings = ["Genome", "Spy", "WebGPU", "Text"];
     const count = strings.length;
+    const initialSize = typeof options.size === "number" ? options.size : 32;
+    const initialOpacity =
+        typeof options.opacity === "number" ? options.opacity : 0.85;
 
     const x = new Uint32Array(count);
     const y = new Uint32Array(count);
@@ -45,9 +49,9 @@ export default async function runTextScene(canvas) {
                 },
             },
             text: { data: strings },
-            size: { value: 32, type: "f32" },
+            size: { value: initialSize, type: "f32", dynamic: true },
             fill: { value: [0.1, 0.2, 0.9, 1.0] },
-            opacity: { value: 0.85 },
+            opacity: { value: initialOpacity, dynamic: true },
         },
         font: "Lato",
         fontSize: 32,
@@ -64,8 +68,23 @@ export default async function runTextScene(canvas) {
 
     renderer.render();
 
-    return () => {
-        cleanupResize();
-        renderer.destroyMark(markId);
+    return {
+        cleanup: () => {
+            cleanupResize();
+            renderer.destroyMark(markId);
+        },
+        update: (next) => {
+            const values = {};
+            if (typeof next.size === "number") {
+                values.size = next.size;
+            }
+            if (typeof next.opacity === "number") {
+                values.opacity = next.opacity;
+            }
+            if (Object.keys(values).length > 0) {
+                renderer.updateValues(markId, values);
+                renderer.render();
+            }
+        },
     };
 }
