@@ -69,7 +69,9 @@ export function normalizeChannel({ name, configChannel, context }) {
         merged.components = 1;
     }
     if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
-        merged.inputComponents = merged.components;
+        const scaleType = merged.scale?.type ?? "identity";
+        merged.inputComponents =
+            scaleType === "identity" ? merged.components : 1;
     }
     if (
         isSeriesChannelConfig(merged) &&

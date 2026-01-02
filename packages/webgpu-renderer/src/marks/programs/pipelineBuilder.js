@@ -51,6 +51,19 @@ export function buildPipeline({
     });
 
     const module = device.createShaderModule({ code: shaderCode });
+    // Match WebGL helper behavior: premultiplied alpha blending.
+    const blendState = {
+        color: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+        },
+        alpha: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+        },
+    };
     const pipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({
             bindGroupLayouts: [globalBindGroupLayout, bindGroupLayout],
@@ -62,7 +75,7 @@ export function buildPipeline({
         fragment: {
             module,
             entryPoint: "fs_main",
-            targets: [{ format }],
+            targets: [{ format, blend: blendState }],
         },
         primitive: { topology: "triangle-list" },
     });
