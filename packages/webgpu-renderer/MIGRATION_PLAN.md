@@ -22,7 +22,6 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 #### Refactor candidates (redundancy cleanup)
 
-- **Consolidate scale metadata** — Scale definitions (continuous list, output types, uniform defs, domain/range rules) are spread across `channelAnalysis.js`, `scaleCodegen.js`, and `domainRangeUtils.js`. Centralize in a single scale-defs module to reduce drift.
 - **Propagate range-texture decisions** — `buildChannelAnalysis` already computes `useRangeTexture`, but `scaleResources` recomputes it. Carry the analysis result through to avoid duplicated logic.
 - **Move WGSL literal helpers** — `formatLiteral` lives in `scaleCodegen.js` but is used by shader IR generation; extract a shared WGSL literal utility module to avoid cross-layer imports.
 - **Hash parity guard** — `hash32` exists in both JS (`hashTable.js`) and WGSL (`hashTable.wgsl.js`). Consider a parity test or codegen to keep them in sync.
@@ -54,6 +53,15 @@ Notes for text:
 
 - Text should not allocate multiple per-glyph buffers. Favor a packed series
   buffer for glyph indices/positions + atlas texture + optional metrics table.
+- Incremental packed-series adoption:
+  1. Add packed series layout metadata (`offset`, `stride`, `components`,
+     `scalarType`) and two packed buffers (f32 + u32) per mark.
+  2. Teach shader codegen to emit `readSeries_<channel>()` for both packed and
+     legacy paths (opt-in at first).
+  3. Migrate text: use packed series for per-string attributes and keep glyph
+     - metrics buffers separate.
+  4. Migrate a simple mark (rect/rule) to packed series, then flip defaults
+     and remove legacy bindings once stable.
 
 ### Scale properties used by the renderer
 
