@@ -15,6 +15,10 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ */
+
+/**
+ * Extra GPU resources (textures/samplers/buffers) required by a mark.
  *
  * @typedef {object} ExtraResourceDef
  * @prop {string} name
@@ -27,6 +31,10 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {"read-only-storage"} [bufferType]
  * @prop {string} [wgslType]
  * @prop {"extraTexture"|"extraSampler"|"extraBuffer"} role
+ */
+
+/**
+ * Inputs needed to generate WGSL and bind group layout for a mark.
  *
  * @typedef {object} ShaderBuildParams
  * @prop {Record<string, ChannelConfigResolved>} channels
@@ -34,8 +42,16 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {string} shaderBody
  * @prop {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {ExtraResourceDef[]} [extraResources]
+ */
+
+/**
+ * Resource list used for debug output and validation.
  *
  * @typedef {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }} ResourceLayoutEntry
+ */
+
+/**
+ * Flags describing which per-channel resources are required.
  *
  * @typedef {object} ResourceRequirements
  * @prop {boolean} [ordinalRange]
@@ -44,6 +60,10 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {boolean} [rangeSampler]
  * @prop {boolean} [rangeCountUniform]
  * @prop {boolean} [domainMapCountUniform]
+ */
+
+/**
+ * Generated WGSL and corresponding binding/layout metadata.
  *
  * @typedef {{ shaderCode: string, resourceBindings: GPUBindGroupLayoutEntry[], resourceLayout: ResourceLayoutEntry[], resourceRequirements: Record<string, ResourceRequirements> }} ShaderBuildResult
  */
@@ -131,8 +151,8 @@ export function buildMarkShader({
     }
     const processedShaderBody = preprocessShader(shaderBody, shaderDefines);
 
-    // First pass: series-backed channels become storage buffers, read_* accessors,
-    // and getScaled_* wrappers.
+    // First pass: series-backed channels must map to packed series buffers and
+    // emit read_* accessors plus getScaled_* wrappers.
     /** @type {Set<"f32"|"u32"|"i32">} */
     const packedTypes = new Set();
     const packedSeriesEntries = packedSeriesLayout ?? new Map();
@@ -284,8 +304,8 @@ export function buildMarkShader({
     }
 
     // Ordinal scales pull range values from storage buffers. These bindings are
-    // separate from data buffers so ranges can grow/shrink without changing
-    // per-instance series data.
+    // separate from series data so ranges can grow/shrink without reallocating
+    // per-instance buffers.
     for (const channelIR of ordinalRangeChannelIRs) {
         const { name } = channelIR;
         const requirements = ensureRequirements(name);
@@ -365,6 +385,9 @@ export function buildMarkShader({
         );
     }
 
+    // Extra resources are mark-specific bindings (e.g., font atlas, glyph
+    // metrics, dash patterns) that sit outside the generic channel/scale
+    // pipeline and must be wired explicitly.
     for (const extra of extraResources) {
         const binding = bindingIndex++;
         // eslint-disable-next-line no-undef
@@ -436,7 +459,7 @@ export function buildMarkShader({
     }
 
     // Second pass: value-backed channels become either uniforms (dynamic) or
-    // inline WGSL constants (static), but still expose getScaled_*.
+    // inline WGSL constants (static), but still expose getScaled_* wrappers.
     for (const channelIR of valueChannelIRs) {
         const { name } = channelIR;
         if (channelIR.needsScaleFunction) {
@@ -463,6 +486,7 @@ export function buildMarkShader({
         }
     }
 
+    // Validate that required helper uniforms (counts) are present.
     for (const [name, requirements] of Object.entries(resourceRequirements)) {
         if (
             requirements.rangeCountUniform &&

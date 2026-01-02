@@ -1,10 +1,21 @@
 /**
+ * Uniform layout specification input (before alignment/offsets).
+ *
  * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, arrayLength?: number }} UniformSpec
+ */
+
+/**
+ * Resolved uniform entry with computed offsets/stride.
+ *
  * @typedef {{ name: string, type: import("../types.js").ScalarType, components: 1|2|4, offset: number, arrayLength?: number, stride?: number }} UniformEntry
  */
 
 import { buildUniformLayout } from "./uniformLayout.js";
 
+/**
+ * Packs uniforms into an ArrayBuffer using the computed layout so marks can
+ * write values and upload them in one call.
+ */
 export class UniformBuffer {
     /**
      * @param {UniformSpec[]} specs
@@ -18,6 +29,8 @@ export class UniformBuffer {
     }
 
     /**
+     * Write a uniform value by name, enforcing component/array expectations.
+     *
      * @param {string} name
      * @param {number|number[]|Array<number|number[]>} value
      */
