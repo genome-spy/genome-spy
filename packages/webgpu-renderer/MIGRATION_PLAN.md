@@ -34,6 +34,9 @@ This plan focuses on the remaining work. Completed items are omitted.
 We already hit the vertex-stage storage buffer cap. Mitigation options are
 listed in recommended order:
 
+0. **Temporary limit bump (stopgap)** — request
+   `maxStorageBuffersPerShaderStage=10` if the adapter supports it. This keeps
+   examples running while packing/dedupe work lands. Remove once we fit in 8.
 1. **Binding dedupe by shared arrays** — DONE. Channels that share a
    `TypedArray` at mark creation re-use one binding; updates must keep the
    group shared.

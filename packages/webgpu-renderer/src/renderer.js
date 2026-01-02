@@ -19,7 +19,16 @@ export async function createRenderer(canvas, options = {}) {
         throw new RendererError("WebGPU adapter not available.");
     }
 
-    const device = await adapter.requestDevice();
+    // Temporary workaround while we reduce storage buffer bindings.
+    const maxStorageBuffersPerShaderStage = Math.min(
+        10,
+        adapter.limits.maxStorageBuffersPerShaderStage
+    );
+    const device = await adapter.requestDevice({
+        requiredLimits: {
+            maxStorageBuffersPerShaderStage,
+        },
+    });
     const context = canvas.getContext("webgpu");
     if (!context) {
         throw new RendererError("Could not create a WebGPU context.");
