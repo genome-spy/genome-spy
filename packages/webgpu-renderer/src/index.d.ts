@@ -1,4 +1,4 @@
-export type MarkType = "rect" | "point";
+export type MarkType = "rect" | "point" | "rule";
 export type MarkId = number & { __brand: "MarkId" };
 
 export type ScalarType = "f32" | "u32" | "i32";

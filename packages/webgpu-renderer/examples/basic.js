@@ -5,6 +5,7 @@ import runPointScene from "./pointScene.js";
 import runThresholdScene from "./thresholdScene.js";
 import runPiecewiseScene from "./piecewiseScene.js";
 import runIndexScene from "./indexScene.js";
+import runRuleScene from "./ruleScene.js";
 
 const canvas = document.querySelector("canvas");
 const picker = document.querySelector("select[data-example]");
@@ -37,6 +38,10 @@ const EXAMPLES = {
     index: {
         label: "Index Scale",
         run: runIndexScene,
+    },
+    rules: {
+        label: "Rules",
+        run: runRuleScene,
     },
 };
 
