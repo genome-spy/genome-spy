@@ -265,6 +265,7 @@ export default class BaseProgram {
         const storage = [];
         const textures = [];
         const samplers = [];
+        const packedSeriesInfo = this._seriesBuffers.getPackedSeriesInfo();
 
         for (const entry of this._resourceLayout) {
             if (entry.role === "series") {
@@ -273,6 +274,10 @@ export default class BaseProgram {
                     name: entry.name,
                     role: entry.role,
                     bytes: buffer?.size ?? 0,
+                    packed: packedSeriesInfo.get(entry.name) ?? {
+                        stride: 0,
+                        channels: [],
+                    },
                 });
                 continue;
             }
