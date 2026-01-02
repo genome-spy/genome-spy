@@ -52,6 +52,40 @@ export class SeriesBufferManager {
     }
 
     /**
+     * @returns {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>}
+     */
+    getPackedSeriesInfo() {
+        const layout = this._getPackedLayout();
+        if (!layout) {
+            return new Map();
+        }
+        /** @type {Map<string, { stride: number, channels: Array<{ name: string, alias: string, offset: number, components: 1|2|4, stride: number }> }>} */
+        const info = new Map();
+        for (const [name, entry] of layout.entries) {
+            const bufferName =
+                entry.scalarType === "f32"
+                    ? "seriesF32"
+                    : entry.scalarType === "u32"
+                      ? "seriesU32"
+                      : "seriesI32";
+            const alias = this._seriesBufferAliases.get(name) ?? name;
+            let bucket = info.get(bufferName);
+            if (!bucket) {
+                bucket = { stride: entry.stride, channels: [] };
+                info.set(bufferName, bucket);
+            }
+            bucket.channels.push({
+                name,
+                alias,
+                offset: entry.offset,
+                components: entry.components,
+                stride: entry.stride,
+            });
+        }
+        return info;
+    }
+
+    /**
      * @param {string} name
      * @returns {GPUBuffer | null}
      */
