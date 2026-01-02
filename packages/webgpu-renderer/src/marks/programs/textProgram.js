@@ -42,7 +42,9 @@ import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
 export const TEXT_CHANNEL_SPECS = {
     uniqueId: { type: "u32", components: 1, optional: true },
     x: { components: 1, scale: "linear", default: 0.5 },
+    x2: { components: 1, scale: "linear", optional: true },
     y: { components: 1, scale: "linear", default: 0.5 },
+    y2: { components: 1, scale: "linear", optional: true },
     text: { type: "u32", components: 1, default: 0 },
     size: { type: "f32", components: 1, default: 12.0 },
     angle: { type: "f32", components: 1, default: 0.0 },
@@ -83,6 +85,10 @@ const ALIGN_LEFT: u32 = 0u;
 const ALIGN_CENTER: u32 = 1u;
 const ALIGN_RIGHT: u32 = 2u;
 
+const ALIGN_AXIS_LEFT: i32 = -1;
+const ALIGN_AXIS_CENTER: i32 = 0;
+const ALIGN_AXIS_RIGHT: i32 = 1;
+
 const BASELINE_ALPHABETIC: u32 = 0u;
 const BASELINE_MIDDLE: u32 = 1u;
 const BASELINE_TOP: u32 = 2u;
@@ -118,6 +124,120 @@ fn baselineOffset(baseline: u32) -> f32 {
     return offset;
 }
 
+// Linear ramp used for squeeze fading (smoothstep is too soft for SDFs).
+fn linearstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+struct RangeResult {
+    pos: f32,
+    scale: f32,
+}
+
+// Range fitting in pixel space: returns the adjusted anchor and scale.
+fn positionInsideRange(
+    a: f32,
+    b: f32,
+    width: f32,
+    padding: f32,
+    align: i32,
+    flush: bool,
+    limit: f32
+) -> RangeResult {
+    let span = b - a;
+    let paddedWidth = width + 2.0 * padding;
+
+    // Text clearly outside the viewport.
+    if (a > limit || b < 0.0) {
+        return RangeResult(0.0, 0.0);
+    }
+
+    // Extra room for keeping text inside the range.
+    let extra = max(0.0, span - paddedWidth);
+    var pos = 0.0;
+
+    if (align == ALIGN_AXIS_CENTER) {
+        // Centered: slide within the range if flush is enabled.
+        var centre = a + b;
+        if (flush) {
+            let leftOver = max(0.0, paddedWidth - centre);
+            centre = centre + min(leftOver, extra);
+
+            let rightOver = max(0.0, paddedWidth + centre - 2.0 * limit);
+            centre = centre - min(rightOver, extra);
+        }
+        pos = centre / 2.0;
+    } else if (align == ALIGN_AXIS_LEFT) {
+        // Left aligned.
+        var edge = a;
+        if (flush) {
+            let over = max(0.0, -edge);
+            edge = edge + min(over, extra);
+        }
+        pos = edge + padding;
+    } else {
+        // Right aligned.
+        var edge = b;
+        if (flush) {
+            let over = max(0.0, edge - limit);
+            edge = edge - min(over, extra);
+        }
+        pos = edge - padding;
+    }
+
+    let scale = clamp((span - padding) / paddedWidth, 0.0, 1.0);
+    return RangeResult(pos, scale);
+}
+
+// Axis-aligned bounding box size after rotation.
+fn calculateRotatedDimensions(size: vec2<f32>, rotationMatrix: mat2x2<f32>) -> vec2<f32> {
+    let half = size * 0.5;
+    let a = abs(rotationMatrix * vec2<f32>(half.x, half.y));
+    let b = abs(rotationMatrix * vec2<f32>(-half.x, half.y));
+    let c = abs(rotationMatrix * vec2<f32>(half.x, -half.y));
+    let d = abs(rotationMatrix * vec2<f32>(-half.x, -half.y));
+    return vec2<f32>(
+        max(max(a.x, b.x), max(c.x, d.x)),
+        max(max(a.y, b.y), max(c.y, d.y))
+    ) * 2.0;
+}
+
+fn alignCodeToAxis(align: u32) -> i32 {
+    if (align == ALIGN_LEFT) {
+        return ALIGN_AXIS_LEFT;
+    }
+    if (align == ALIGN_RIGHT) {
+        return ALIGN_AXIS_RIGHT;
+    }
+    return ALIGN_AXIS_CENTER;
+}
+
+fn baselineCodeToAxis(baseline: u32) -> i32 {
+    if (baseline == BASELINE_TOP) {
+        return ALIGN_AXIS_LEFT;
+    }
+    if (baseline == BASELINE_BOTTOM || baseline == BASELINE_ALPHABETIC) {
+        return ALIGN_AXIS_RIGHT;
+    }
+    return ALIGN_AXIS_CENTER;
+}
+
+// Align adjustment for ranged text when rotated.
+fn fixAlignForAngle(align: vec2<i32>, angleInDegrees: f32) -> vec2<i32> {
+    let a = (angleInDegrees + 45.0) % 360.0;
+    let x = align.x;
+    let y = -align.y;
+
+    if (a < 90.0) {
+        return vec2<i32>(x, y);
+    } else if (a < 180.0) {
+        return vec2<i32>(y, -x);
+    } else if (a < 270.0) {
+        return vec2<i32>(-x, y);
+    }
+    return vec2<i32>(-y, x);
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
     var quad = array<vec2<f32>, 6>(
@@ -133,9 +253,101 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let textMetrics = stringMetrics[glyph.stringIndex];
     let glyphId = u32(getScaled_text(i));
     let metrics = glyphMetrics[glyphId];
-    let size = getScaled_size(i);
+
+    // Base font size before range fitting.
+    var size = getScaled_size(i);
+    var opacity = getScaled_opacity(i);
+
+    // Rotation is applied both to range fitting and glyph placement.
+    let angleDegrees = getScaled_angle(i);
+    let angle = -angleDegrees * 3.14159265 / 180.0;
+    let sinTheta = sin(angle);
+    let cosTheta = cos(angle);
+    let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    // Text dimensions at the layout font size, scaled to the current size.
+    let sizeRatioBase = size / params.uLayoutFontSize;
+    let textSize = vec2<f32>(textMetrics.width, textMetrics.height) * sizeRatioBase;
+    let flushSize = calculateRotatedDimensions(textSize, rot);
+
+    // Resolve alignment axes for ranged fitting.
+    var alignAxis = vec2<i32>(
+        alignCodeToAxis(u32(getScaled_align(i))),
+        baselineCodeToAxis(u32(getScaled_baseline(i)))
+    );
+
+#if defined(x2_DEFINED) || defined(y2_DEFINED)
+    alignAxis = fixAlignForAngle(alignAxis, angleDegrees);
+#endif
+
+    // Anchor in pixel coordinates.
+    var anchor = vec2<f32>(getScaled_x(i), getScaled_y(i));
+    var rangeScale = 1.0;
+
+#if defined(x2_DEFINED)
+    let x2 = getScaled_x2(i);
+    let xRange = positionInsideRange(
+        min(anchor.x, x2),
+        max(anchor.x, x2),
+        flushSize.x * rangeScale,
+        params.uPaddingX,
+        alignAxis.x,
+        params.uFlushX != 0u,
+        globals.width
+    );
+    anchor.x = xRange.pos;
+    rangeScale = rangeScale * xRange.scale;
+#endif
+
+#if defined(y2_DEFINED)
+    let y2 = getScaled_y2(i);
+    let yRange = positionInsideRange(
+        min(anchor.y, y2),
+        max(anchor.y, y2),
+        flushSize.y * rangeScale,
+        params.uPaddingY,
+        alignAxis.y,
+        params.uFlushY != 0u,
+        globals.height
+    );
+    anchor.y = yRange.pos;
+    rangeScale = rangeScale * yRange.scale;
+#endif
+
+    // Optional squeeze: scale down text or drop it if it no longer fits.
+    if (rangeScale < 1.0) {
+        if (params.uSqueeze != 0u) {
+            let scaleFadeExtent = vec2<f32>(3.0, 6.0) / vec2<f32>(size);
+            if (rangeScale < scaleFadeExtent.x) {
+                var out: VSOut;
+                out.pos = vec4<f32>(0.0);
+                out.uv = vec2<f32>(0.0);
+                out.color = vec4<f32>(0.0);
+                out.opacity = 0.0;
+                out.slope = 0.0;
+                return out;
+            }
+            size = size * rangeScale;
+            opacity = opacity * linearstep(
+                scaleFadeExtent.x,
+                scaleFadeExtent.y,
+                rangeScale
+            );
+        } else {
+            var out: VSOut;
+            out.pos = vec4<f32>(0.0);
+            out.uv = vec2<f32>(0.0);
+            out.color = vec4<f32>(0.0);
+            out.opacity = 0.0;
+            out.slope = 0.0;
+            return out;
+        }
+    }
+
+    // Recompute size-dependent scales after range fitting.
     let sizeScale = size / params.uFontBase;
     let sizeRatio = size / params.uLayoutFontSize;
+
     var local = quad[v];
     local.y = 1.0 - local.y;
     let width = metrics.texRect.z * sizeScale;
@@ -147,12 +359,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let y = glyph.yOffset * sizeRatio;
     let localPos = vec2<f32>(x + local.x * width, y + bottom + local.y * height);
     let d = vec2<f32>(getScaled_dx(i), getScaled_dy(i));
-    let angle = -getScaled_angle(i) * 3.14159265 / 180.0;
-    let sinTheta = sin(angle);
-    let cosTheta = cos(angle);
-    let rot = mat2x2<f32>(cosTheta, sinTheta, -sinTheta, cosTheta);
     let rotated = rot * (localPos + d);
-    let anchor = vec2<f32>(getScaled_x(i), getScaled_y(i));
     let pixel = anchor + rotated;
 
     let clip = vec2<f32>(
@@ -164,7 +371,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.pos = vec4<f32>(clip, 0.0, 1.0);
     out.uv = (metrics.texRect.xy + local * metrics.texRect.zw) * params.uAtlasScale;
     out.color = getScaled_fill(i);
-    out.opacity = getScaled_opacity(i);
+    out.opacity = opacity;
     let minSize = min(width, height);
     out.slope = max(1.0, minSize / params.uSdfNumerator * globals.dpr);
     return out;
@@ -483,6 +690,11 @@ export default class TextProgram extends BaseProgram {
             { name: "uDescent", type: "f32", components: 1 },
             { name: "uSdfPadding", type: "f32", components: 1 },
             { name: "uSdfNumerator", type: "f32", components: 1 },
+            { name: "uPaddingX", type: "f32", components: 1 },
+            { name: "uPaddingY", type: "f32", components: 1 },
+            { name: "uFlushX", type: "u32", components: 1 },
+            { name: "uFlushY", type: "u32", components: 1 },
+            { name: "uSqueeze", type: "u32", components: 1 },
         ];
     }
 
@@ -547,6 +759,26 @@ export default class TextProgram extends BaseProgram {
         const metrics = fontEntry.metrics;
         const atlasWidth = metrics.common.scaleW;
         const atlasHeight = metrics.common.scaleH;
+        const paddingX =
+            typeof this._markConfig.paddingX === "number"
+                ? this._markConfig.paddingX
+                : 0;
+        const paddingY =
+            typeof this._markConfig.paddingY === "number"
+                ? this._markConfig.paddingY
+                : 0;
+        const flushX =
+            typeof this._markConfig.flushX === "boolean"
+                ? this._markConfig.flushX
+                : true;
+        const flushY =
+            typeof this._markConfig.flushY === "boolean"
+                ? this._markConfig.flushY
+                : true;
+        const squeeze =
+            typeof this._markConfig.squeeze === "boolean"
+                ? this._markConfig.squeeze
+                : true;
 
         this._setUniformValue("uFontBase", metrics.common.base);
         this._setUniformValue("uLayoutFontSize", layout.fontSize);
@@ -555,6 +787,11 @@ export default class TextProgram extends BaseProgram {
         this._setUniformValue("uDescent", metrics.descent);
         this._setUniformValue("uSdfPadding", SDF_PADDING);
         this._setUniformValue("uSdfNumerator", metrics.common.base * 0.35);
+        this._setUniformValue("uPaddingX", paddingX);
+        this._setUniformValue("uPaddingY", paddingY);
+        this._setUniformValue("uFlushX", flushX ? 1 : 0);
+        this._setUniformValue("uFlushY", flushY ? 1 : 0);
+        this._setUniformValue("uSqueeze", squeeze ? 1 : 0);
 
         const glyphCount = layout.glyphIds.length;
         const glyphData = new ArrayBuffer(glyphCount * 16);
