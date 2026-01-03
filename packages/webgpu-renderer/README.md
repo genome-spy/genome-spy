@@ -43,6 +43,25 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 
 Type definitions live in `packages/webgpu-renderer/src/index.d.ts`.
 
+## Custom Scales (Experimental)
+
+You can register custom scale metadata with:
+
+```js
+import { registerScaleDef } from "@genome-spy/webgpu-renderer";
+
+registerScaleDef("myScale", {
+    input: "numeric",
+    output: "f32",
+    domainRange: true,
+    params: [],
+    continuous: true,
+});
+```
+
+This registers the scale in the validation registry. WGSL emission hooks will
+be added in later phases of the scale-def consolidation.
+
 ## Quick Example
 
 ```js
