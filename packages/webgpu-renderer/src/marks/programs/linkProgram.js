@@ -38,7 +38,9 @@ const ORIENT_HORIZONTAL: u32 = 1u;
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec4<f32>,
+    // Signed distance from the line center along the normal, in pixels.
     @location(1) normalDistance: f32,
+    // Stroke width in pixels (with AA padding baked in).
     @location(2) size: f32,
 };
 
@@ -59,25 +61,16 @@ fn isInsideViewport(p: vec2<f32>, marginFactor: f32) -> bool {
 
 @vertex
 fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VSOut {
-    var quad = array<vec2<f32>, 6>(
-        vec2<f32>(0.0, 0.0),
-        vec2<f32>(1.0, 0.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0),
-        vec2<f32>(1.0, 1.0)
-    );
-
-    let local = quad[v % 6u];
-    let segment = v / 6u;
+    let segment = v / 2u;
+    let side = f32(v % 2u) - 0.5;
     let segmentCount = max(1u, u32(params.uSegmentBreaks));
-    let tRaw = (f32(segment) + local.x) / f32(segmentCount);
+    let tRaw = f32(segment) / f32(segmentCount);
     let t = smoothstep(0.0, 1.0, tRaw);
 
     let pixelSize = 1.0 / globals.dpr;
     var opacity = getScaled_opacity(i);
 
-    // The bezier's control points
+    // The bezier's control points.
     var p1: vec2<f32>;
     var p2: vec2<f32>;
     var p3: vec2<f32>;
@@ -164,12 +157,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         p4 = b;
     }
 
+    // https://stackoverflow.com/a/31317254/1547896
     let c1 = p4 - 3.0 * p3 + 3.0 * p2 - p1;
     let c2 = 3.0 * p3 - 6.0 * p2 + 3.0 * p1;
     let c3 = 3.0 * p2 - 3.0 * p1;
     let c4 = p1;
 
     var p: vec2<f32>;
+    // Skip computation at endpoints to maintain precision.
     if (t == 0.0) {
         p = p1;
     } else if (t == 1.0) {
@@ -182,13 +177,16 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     let normal = vec2<f32>(-tangent.y, tangent.x);
 
     var size = getScaled_size(i);
+    // Avoid artifacts in very thin lines by clamping the size and adjusting
+    // opacity accordingly.
     if (size < pixelSize) {
         opacity *= size / pixelSize;
         size = pixelSize;
     }
 
+    // Add AA padding to the stroke width.
     let paddedSize = size + pixelSize;
-    var normalDistance = (local.y - 0.5) * paddedSize;
+    var normalDistance = side * paddedSize;
 
     if (params.uShape == SHAPE_ARC &&
         params.uArcFadingDistance.x > 0.0 &&
@@ -197,11 +195,13 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
         let d = distanceFromLine(p1, p4, p);
         let distanceOpacity = smoothstep(params.uArcFadingDistance.y, params.uArcFadingDistance.x, d);
         opacity *= distanceOpacity;
+        // Collapse fully transparent triangles to skip fragment processing.
         if (distanceOpacity <= 0.0) {
             normalDistance = 0.0;
         }
     }
 
+    // Extrude along the normal.
     p = p + normal * normalDistance;
 
     let clip = vec2<f32>(
@@ -220,6 +220,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
 
 @fragment
 fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    // Linear AA ramp based on distance from the line center.
     let distance = abs(in.normalDistance);
     let alpha = clamp(((in.size * 0.5 - distance) * globals.dpr), 0.0, 1.0);
     return in.color * alpha;
@@ -249,6 +250,13 @@ export default class LinkProgram extends BaseProgram {
 
     get shaderBody() {
         return LINK_SHADER_BODY;
+    }
+
+    /**
+     * @returns {GPUPrimitiveTopology}
+     */
+    get primitiveTopology() {
+        return "triangle-strip";
     }
 
     getExtraUniformLayout() {
@@ -311,7 +319,8 @@ export default class LinkProgram extends BaseProgram {
      * @param {GPURenderPassEncoder} pass
      */
     draw(pass) {
-        const vertexCount = Math.max(1, this._segmentCount ?? 1) * 6;
+        const segmentCount = Math.max(1, this._segmentCount ?? 1);
+        const vertexCount = (segmentCount + 1) * 2;
         pass.setPipeline(this._pipeline);
         pass.setBindGroup(0, this.renderer._globalBindGroup);
         pass.setBindGroup(1, this._bindGroup);

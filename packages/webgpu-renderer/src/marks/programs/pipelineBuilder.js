@@ -10,6 +10,7 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @property {string} shaderBody
  * @property {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
+ * @property {GPUPrimitiveTopology} [primitiveTopology]
  *
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
@@ -32,6 +33,7 @@ export function buildPipeline({
     shaderBody,
     packedSeriesLayout,
     extraResources,
+    primitiveTopology = "triangle-list",
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         channels,
@@ -81,7 +83,9 @@ export function buildPipeline({
             entryPoint: "fs_main",
             targets: [{ format, blend: blendState }],
         },
-        primitive: { topology: "triangle-list" },
+        primitive: {
+            topology: primitiveTopology,
+        },
     });
 
     return { bindGroupLayout, pipeline, resourceLayout };
