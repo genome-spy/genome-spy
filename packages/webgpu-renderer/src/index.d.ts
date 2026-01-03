@@ -74,6 +74,127 @@ export type ChannelScale = {
     band?: number;
 };
 
+/** Input typing rules used by channel validation and scale metadata. */
+export type ScaleInputRule = "any" | "numeric" | "u32";
+
+/** Output typing rules used by channel validation and scale metadata. */
+export type ScaleOutputRule = "same" | "f32";
+
+/** Domain/range categories used by scale resource planning. */
+export type ScaleDomainRangeKind = "continuous" | "threshold" | "piecewise";
+
+/** Resource rules used by the renderer to allocate scale buffers/textures. */
+export type ScaleResourceRules = {
+    /** Base domain/range kind, or null when the scale has no domain/range. */
+    domainRangeKind: ScaleDomainRangeKind | null;
+
+    /** True when piecewise variants can be produced from this scale. */
+    supportsPiecewise?: boolean;
+
+    /** True when the scale needs a domain-to-index hash map buffer. */
+    needsDomainMap?: boolean;
+
+    /** True when the scale needs an ordinal range buffer. */
+    needsOrdinalRange?: boolean;
+};
+
+/** Resolved resource requirements for a scale + channel pair. */
+export type ScaleResourceRequirements = {
+    domainRangeKind: ScaleDomainRangeKind | null;
+    needsDomainMap: boolean;
+    needsOrdinalRange: boolean;
+};
+
+/** Uniform metadata for scale-specific parameters (base, exponent, padding). */
+export type ScaleUniformParam = {
+    prefix: string;
+    defaultValue: number;
+    prop?:
+        | "base"
+        | "exponent"
+        | "constant"
+        | "paddingInner"
+        | "paddingOuter"
+        | "align"
+        | "band";
+};
+
+/** Uniform definition bundle for a scale. */
+export type ScaleUniformDef = {
+    domainRange: boolean;
+    params: ScaleUniformParam[];
+};
+
+/** Parameters passed to scale-specific WGSL emitter functions. */
+export type ScaleEmitParams = {
+    /** Channel name used for function naming and uniform lookups. */
+    name: string;
+
+    /** Scale config for custom emitters that need direct access. */
+    scaleConfig?: ChannelScale;
+
+    /** WGSL expression for the raw value (buffer read or literal/uniform). */
+    rawValueExpr: string;
+
+    /** Scalar type of the raw input when inputComponents is 1. */
+    inputScalarType: ScalarType;
+
+    /** Vector width of the raw input value. */
+    inputComponents: 1 | 2 | 4;
+
+    /** Vector width expected by the mark shader for the scaled output. */
+    outputComponents: 1 | 2 | 4;
+
+    /** Scalar type of the scaled output when outputComponents is 1. */
+    outputScalarType: ScalarType;
+
+    /** True when inputs should be clamped to the domain extent. */
+    clamp: boolean;
+
+    /** True when scalar outputs should be rounded. */
+    round: boolean;
+
+    /** Domain length for scales that use fixed-size arrays. */
+    domainLength: number;
+
+    /** Range length for scales that use fixed-size arrays. */
+    rangeLength: number;
+
+    /** True when the scale is in piecewise mode. */
+    isPiecewise: boolean;
+
+    /** Name of the domain-map buffer for sparse ordinal domains (if any). */
+    domainMapName?: string | null;
+
+    /** True when the output is read from a ramp texture. */
+    useRangeTexture?: boolean;
+};
+
+/** Scale-specific WGSL emitter for `getScaled_*` helpers. */
+export type ScaleEmitter = (params: ScaleEmitParams) => string;
+
+/**
+ * Scale definition contract. This combines metadata, resource requirements,
+ * and the WGSL emitter used for scale-specific shader code.
+ */
+export type ScaleDef = {
+    input: ScaleInputRule;
+    output: ScaleOutputRule;
+    /** Extra uniforms required by the scale (e.g. base, exponent, padding). */
+    params: ScaleUniformParam[];
+    /**
+     * Continuous scales map numeric inputs to numeric outputs and support clamping
+     * and interpolated ranges (linear/log/pow/sqrt/symlog).
+     */
+    continuous: boolean;
+
+    /** Resource hints used for allocating buffers and textures. */
+    resources: ScaleResourceRules;
+
+    /** WGSL emitter that produces the scale function for this definition. */
+    emit: ScaleEmitter;
+};
+
 export type ChannelConfigCommon = {
     /** Vector width when series data stores packed vectors (e.g., RGBA). */
     components?: 1 | 2 | 4;
@@ -402,6 +523,9 @@ export function createRenderer(
 
 /** Enable or disable renderer resource debug logging. */
 export function setDebugResourcesEnabled(enabled: boolean): void;
+
+/** Register a custom scale definition in the renderer registry. */
+export function registerScaleDef(name: string, def: ScaleDef): void;
 
 export function isChannelConfigWithScale(
     config: ChannelConfigInput

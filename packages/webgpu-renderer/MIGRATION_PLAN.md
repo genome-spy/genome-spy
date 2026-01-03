@@ -16,8 +16,51 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Param/expr-driven accessors (`uParam_*`) and integration with core.
 - Discretizing scales (quantile/quantize) and temporal scales (time/utc).
 - Null handling behavior for numeric/color channels.
-- Shared-field accessor reuse across channels where possible.
-- Keep metadata predicates aligned with Vega scale registry.
+
+### ScaleDef registry consolidation
+
+Phase 1: **Document the ScaleDef contract** — OK. Expand the contract in
+`scaleDefs.js` and centralize helper accessors (no behavior change).
+
+Phase 2: **Use ScaleDef for validation** — OK. `channelAnalysis` now carries
+scale metadata from the registry, and `channelConfigResolver` consumes it with
+fallbacks.
+
+Phase 3: **Move resource requirements into ScaleDef** — OK. Scale resource
+requirements are resolved from the registry and consumed in `scaleResources`.
+
+Phase 4: **Move WGSL emission into ScaleDef** — OK. Scale emitters now live
+alongside the registry; `scaleCodegen` delegates to per-def emitters.
+
+Phase 5: **Consolidate helpers** — merge shared WGSL utilities and remove
+legacy paths once parity tests pass.
+
+Phase 6: **Per-scale modules + centralized validation** — move each scale into
+its own file (e.g., `scales/defs/linear.js`, `log.js`, `band.js`) with a shared
+`scaleValidation.js` toolkit. Keep a thin registry in `scaleDefs.js` that
+imports these definitions.
+
+Phase 7: **ScaleDef-driven validation hooks** — replace scattered checks in
+`channelConfigResolver` and `scaleCodegen` with a single `validateScaleConfig`
+pipeline that uses `ScaleDef` metadata and optional per-scale `validate`
+functions.
+
+Phase 8: **Emitter/toolkit split** — keep emitters in per-scale modules but
+reuse shared helpers (clamp/round/piecewise/ramp sampling) from
+`scalePipeline.js` (or a renamed shared WGSL toolkit) to avoid duplication.
+
+#### Current State / Context (handoff)
+
+- ScaleDef registry now owns resource rules and WGSL emitters; `scaleCodegen`
+  delegates to `ScaleDef.emit`, and `scaleResources` consumes
+  `getScaleResourceRequirements`.
+- Emitters live in `src/marks/scales/scaleEmitters.js`; registry in
+  `src/marks/scales/scaleDefs.js`.
+- Validation is still split between `channelConfigResolver.js` and
+  `scaleCodegen.js` (this is what Phase 6–8 intends to centralize).
+- `domainRangeUtils.js` now consults `getScaleResourceRequirements` for
+  domain/range kinds.
+- Tests updated: `scaleDefs.test.js` now checks resource requirements.
 
 #### Refactor candidates (redundancy cleanup)
 
@@ -61,40 +104,3 @@ Ranged text (x2/y2 optional; only apply when defined):
   alignment, and squeeze behavior.
 - **Remaining** — verify alignment constants against uniform-based alignment,
   plus edge-fade parity and baseline fixes.
-
-### Scale properties used by the renderer
-
-Only a subset of `packages/core/src/spec/scale.d.ts` feeds the shader pipeline
-via `glslScaleGenerator.js`. When porting to WebGPU, focus on these properties
-and treat the rest as preprocessing handled in core.
-
-Directly consumed by `glslScaleGenerator.js`:
-
-- `type`
-- `domain()` (and domain length for piecewise + high precision)
-- `range()`
-- `props.range` (raw range to detect ExprRef-driven dynamic ranges)
-- `clamp()`
-- `base()` (log)
-- `constant()` (symlog)
-- `exponent()` (pow/sqrt)
-- `paddingInner()`, `paddingOuter()`, `align()` (band/point/index)
-
-Not consumed directly in the generator (handled upstream in core):
-
-- `scheme`, `reverse`, `nice`, `domainMin/Max/Mid`, `bins`,
-  `zero`, `round`, etc.
-
-WebGPU-specific notes:
-
-- `interpolate` is consumed by the WebGPU renderer to build ramp textures for
-  sequential/piecewise color interpolation.
-
-### Vega scale metadata alignment
-
-`glslScaleGenerator` relies on category predicates (`isContinuous`,
-`isDiscrete`, `isDiscretizing`, `isInterpolating`, `isLogarithmic`,
-`isTemporal`). Vega derives these from scale metadata in
-`vega-scale/src/scales.js`. When porting to WebGPU, keep the same metadata
-flags in a scale registry so category checks remain consistent across WebGL
-and WebGPU.
