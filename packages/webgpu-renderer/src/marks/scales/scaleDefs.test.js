@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     getScaleInputRule,
     getScaleOutputType,
+    getScaleResourceRequirements,
     getScaleUniformDef,
     isContinuousScale,
     isScaleSupported,
@@ -64,5 +65,19 @@ describe("scaleDefs", () => {
 
     it("treats band scales as u32 input", () => {
         expect(getScaleInputRule("band")).toBe("u32");
+    });
+
+    it("resolves domain/range resource requirements from scale metadata", () => {
+        const linear = getScaleResourceRequirements("linear", false);
+        expect(linear.domainRangeKind).toBe("continuous");
+        expect(linear.needsDomainMap).toBe(false);
+
+        const piecewise = getScaleResourceRequirements("linear", true);
+        expect(piecewise.domainRangeKind).toBe("piecewise");
+
+        const ordinal = getScaleResourceRequirements("ordinal", false);
+        expect(ordinal.domainRangeKind).toBeNull();
+        expect(ordinal.needsDomainMap).toBe(true);
+        expect(ordinal.needsOrdinalRange).toBe(true);
     });
 });

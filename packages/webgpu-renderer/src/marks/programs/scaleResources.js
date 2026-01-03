@@ -1,9 +1,12 @@
 /* global GPUBufferUsage, GPUTextureUsage */
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import { getScaleOutputType, getScaleUniformDef } from "../scales/scaleDefs.js";
+import {
+    getScaleOutputType,
+    getScaleResourceRequirements,
+    getScaleUniformDef,
+} from "../scales/scaleDefs.js";
 import {
     coerceRangeValue,
-    getDomainRangeKind,
     getDomainRangeLengths,
     isColorRange,
     isRangeFunction,
@@ -12,8 +15,6 @@ import {
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
-    usesOrdinalDomainMap,
-    usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
@@ -137,7 +138,11 @@ export class ScaleResourceManager {
     addScaleUniforms(layout, name, channel) {
         const analysis = buildChannelAnalysis(name, channel);
         const scaleType = analysis.scaleType;
-        const kind = getDomainRangeKind(channel.scale);
+        const requirements = getScaleResourceRequirements(
+            scaleType,
+            analysis.isPiecewise
+        );
+        const kind = requirements.domainRangeKind;
         if (kind) {
             const { domainLength, rangeLength } = getDomainRangeLengths(
                 name,
@@ -171,14 +176,14 @@ export class ScaleResourceManager {
                 components: 1,
             });
         }
-        if (analysis.needsOrdinalRange) {
+        if (requirements.needsOrdinalRange) {
             layout.push({
                 name: RANGE_COUNT_PREFIX + name,
                 type: "f32",
                 components: 1,
             });
         }
-        if (analysis.needsDomainMap) {
+        if (requirements.needsDomainMap) {
             layout.push({
                 name: DOMAIN_MAP_COUNT_PREFIX + name,
                 type: "f32",
@@ -194,10 +199,14 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     initializeScale(name, channel, scale) {
-        const kind = getDomainRangeKind(scale);
+        const analysis = buildChannelAnalysis(name, channel);
+        const requirements = getScaleResourceRequirements(
+            analysis.scaleType,
+            analysis.isPiecewise
+        );
+        const kind = requirements.domainRangeKind;
         if (kind) {
-            const outputComponents = channel.components ?? 1;
-            if (usesRangeTexture(scale, outputComponents)) {
+            if (analysis.useRangeTexture) {
                 const { domainLength, rangeLength } = getDomainRangeLengths(
                     name,
                     kind,
@@ -240,10 +249,10 @@ export class ScaleResourceManager {
                 };
             }
         }
-        if (usesOrdinalDomainMap(scale)) {
+        if (requirements.needsDomainMap) {
             this._initializeDomainMap(name, scale);
         }
-        if (scale.type === "ordinal") {
+        if (requirements.needsOrdinalRange) {
             this._initializeOrdinalRange(name, channel, scale);
         }
         const def = getScaleUniformDef(scale.type);
@@ -266,34 +275,43 @@ export class ScaleResourceManager {
         for (const [name, domain] of Object.entries(domains)) {
             for (const channelName of resolveTargets(name)) {
                 const channel = this._channels[channelName];
-                const outputComponents = channel?.components ?? 1;
-                const scaleType = channel?.scale?.type ?? "identity";
-                if (
-                    channel &&
-                    (scaleType === "ordinal" || scaleType === "band")
-                ) {
+                if (!channel) {
+                    continue;
+                }
+                const analysis = buildChannelAnalysis(channelName, channel);
+                const requirements = getScaleResourceRequirements(
+                    analysis.scaleType,
+                    analysis.isPiecewise
+                );
+                if (requirements.needsDomainMap) {
                     const inputComponents =
                         channel.inputComponents ?? channel.components ?? 1;
                     const ordinalDomain = normalizeOrdinalDomain(
                         channelName,
-                        scaleType,
+                        analysis.scaleType === "band" ? "band" : "ordinal",
                         Array.isArray(domain) || ArrayBuffer.isView(domain)
                             ? domain
                             : undefined
                     );
                     if (ordinalDomain) {
-                        if (scaleType === "band" && channel.type !== "u32") {
+                        if (
+                            analysis.scaleType === "band" &&
+                            channel.type !== "u32"
+                        ) {
                             throw new Error(
                                 `Band scale on "${channelName}" requires u32 inputs when using an ordinal domain.`
                             );
                         }
-                        if (scaleType === "band" && inputComponents !== 1) {
+                        if (
+                            analysis.scaleType === "band" &&
+                            inputComponents !== 1
+                        ) {
                             throw new Error(
                                 `Band scale on "${channelName}" requires scalar inputs when using an ordinal domain.`
                             );
                         }
                         if (
-                            scaleType === "band" &&
+                            analysis.scaleType === "band" &&
                             isValueChannelConfig(channel) &&
                             typeof channel.value === "number" &&
                             !Number.isInteger(channel.value)
@@ -305,7 +323,7 @@ export class ScaleResourceManager {
                         if (this._updateDomainMap(channelName, ordinalDomain)) {
                             needsRebind = true;
                         }
-                        if (scaleType === "band") {
+                        if (analysis.scaleType === "band") {
                             this._setUniformValue(DOMAIN_PREFIX + channelName, [
                                 0,
                                 ordinalDomain.length,
@@ -314,12 +332,8 @@ export class ScaleResourceManager {
                         continue;
                     }
                 }
-                const kind = getDomainRangeKind(channel?.scale);
-                if (
-                    channel &&
-                    kind &&
-                    usesRangeTexture(channel.scale, outputComponents)
-                ) {
+                const kind = requirements.domainRangeKind;
+                if (kind && analysis.useRangeTexture) {
                     this._updateDomainRange(channelName, "domain", domain);
                     if (kind === "piecewise") {
                         const sizes = this._getDomainRangeInfo(channelName);
@@ -354,18 +368,17 @@ export class ScaleResourceManager {
         for (const [name, range] of Object.entries(ranges)) {
             for (const channelName of resolveTargets(name)) {
                 const channel = this._channels[channelName];
-                const outputComponents = channel?.components ?? 1;
-                const scaleType = channel?.scale?.type ?? "identity";
-                if (
-                    channel &&
-                    usesRangeTexture(channel.scale, outputComponents)
-                ) {
+                if (!channel) {
+                    continue;
+                }
+                const analysis = buildChannelAnalysis(channelName, channel);
+                if (analysis.useRangeTexture) {
                     if (this._updateRangeTexture(channelName, range)) {
                         needsRebind = true;
                     }
                     continue;
                 }
-                if (scaleType === "ordinal") {
+                if (analysis.scaleType === "ordinal") {
                     if (
                         this._updateOrdinalRange(
                             channelName,
@@ -401,7 +414,13 @@ export class ScaleResourceManager {
      */
     _updateDomainRange(name, suffix, value) {
         const channel = this._channels[name];
-        const kind = getDomainRangeKind(channel?.scale);
+        const analysis = channel ? buildChannelAnalysis(name, channel) : null;
+        const kind = analysis
+            ? getScaleResourceRequirements(
+                  analysis.scaleType,
+                  analysis.isPiecewise
+              ).domainRangeKind
+            : null;
         const label =
             kind === "threshold"
                 ? "Threshold"

@@ -1,7 +1,6 @@
 import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import { getScaleInputRule, isScaleSupported } from "../scales/scaleDefs.js";
-import { usesOrdinalDomainMap } from "../scales/domainRangeUtils.js";
 
 /**
  * Input shape for channel configs as provided by callers.
@@ -233,7 +232,7 @@ export function validateChannel(name, channel, context) {
             );
         }
     }
-    const inputRule = getScaleInputRule(scaleType);
+    const inputRule = analysis.scaleDef?.input ?? getScaleInputRule(scaleType);
     const resolvedType = channel.type ?? "f32";
     if (
         inputRule === "numeric" &&
@@ -416,7 +415,7 @@ export function validateChannel(name, channel, context) {
             `Band scale on "${name}" requires an explicit domain array.`
         );
     }
-    if (usesOrdinalDomainMap(channel.scale)) {
+    if (analysis.needsDomainMap) {
         if (scaleType === "band" && inputComponents !== 1) {
             throw new Error(
                 `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`

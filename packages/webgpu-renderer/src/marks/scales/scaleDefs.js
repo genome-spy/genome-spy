@@ -7,59 +7,68 @@ import {
     SCALE_PADDING_INNER_PREFIX,
     SCALE_PADDING_OUTER_PREFIX,
 } from "../../wgsl/prefixes.js";
+import {
+    emitBandScale,
+    emitIdentity,
+    emitIndexScale,
+    emitLinearScale,
+    emitLogScale,
+    emitOrdinalScale,
+    emitPowScale,
+    emitSymlogScale,
+    emitThresholdScale,
+} from "./scaleEmitters.js";
 
-/**
- * @typedef {"any"|"numeric"|"u32"} ScaleInputRule
- * @typedef {"same"|"f32"} ScaleOutputRule
- *
- * @typedef {object} ScaleUniformParam
- * @prop {string} prefix
- * @prop {number} defaultValue
- * @prop {"base"|"exponent"|"constant"|"paddingInner"|"paddingOuter"|"align"|"band"} [prop]
- *
- * @typedef {object} ScaleUniformDef
- * @prop {boolean} domainRange
- * @prop {ScaleUniformParam[]} params
- *
- * @typedef {object} ScaleDef
- * @prop {ScaleInputRule} input
- * @prop {ScaleOutputRule} output
- * @prop {boolean} domainRange
- *   True when the scale reads domain/range uniforms (as opposed to identity/ordinal).
- * @prop {ScaleUniformParam[]} params
- *   Extra uniforms required by the scale (e.g. base, exponent, padding).
- * @prop {boolean} continuous
- *   Continuous scales map numeric inputs to numeric outputs and support clamping
- *   and interpolated ranges (linear/log/pow/sqrt/symlog).
- */
+/** @typedef {import("../../index.d.ts").ScaleDef} ScaleDef */
+/** @typedef {import("../../index.d.ts").ScaleInputRule} ScaleInputRule */
+/** @typedef {import("../../index.d.ts").ScaleOutputRule} ScaleOutputRule */
+/** @typedef {import("../../index.d.ts").ScaleUniformParam} ScaleUniformParam */
+/** @typedef {import("../../index.d.ts").ScaleUniformDef} ScaleUniformDef */
+/** @typedef {import("../../index.d.ts").ScaleResourceRules} ScaleResourceRules */
+/** @typedef {import("../../index.d.ts").ScaleResourceRequirements} ScaleResourceRequirements */
 
 /** @type {Record<string, ScaleDef>} */
 const SCALE_DEFS = {
     identity: {
         input: "any",
         output: "same",
-        domainRange: false,
         params: [],
         continuous: false,
+        resources: {
+            domainRangeKind: null,
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitIdentity,
     },
     linear: {
         input: "numeric",
         output: "f32",
-        domainRange: true,
         params: [],
         continuous: true,
+        resources: {
+            domainRangeKind: "continuous",
+            supportsPiecewise: true,
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitLinearScale,
     },
     log: {
         input: "numeric",
         output: "f32",
-        domainRange: true,
         params: [{ prefix: SCALE_BASE_PREFIX, defaultValue: 10, prop: "base" }],
         continuous: true,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitLogScale,
     },
     pow: {
         input: "numeric",
         output: "f32",
-        domainRange: true,
         params: [
             {
                 prefix: SCALE_EXPONENT_PREFIX,
@@ -68,11 +77,16 @@ const SCALE_DEFS = {
             },
         ],
         continuous: true,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitPowScale,
     },
     sqrt: {
         input: "numeric",
         output: "f32",
-        domainRange: true,
         params: [
             {
                 prefix: SCALE_EXPONENT_PREFIX,
@@ -81,11 +95,16 @@ const SCALE_DEFS = {
             },
         ],
         continuous: true,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitPowScale,
     },
     symlog: {
         input: "numeric",
         output: "f32",
-        domainRange: true,
         params: [
             {
                 prefix: SCALE_CONSTANT_PREFIX,
@@ -94,11 +113,16 @@ const SCALE_DEFS = {
             },
         ],
         continuous: true,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitSymlogScale,
     },
     band: {
         input: "u32",
         output: "f32",
-        domainRange: true,
         params: [
             {
                 prefix: SCALE_PADDING_INNER_PREFIX,
@@ -114,11 +138,16 @@ const SCALE_DEFS = {
             { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
         ],
         continuous: false,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: true,
+            needsOrdinalRange: false,
+        },
+        emit: emitBandScale,
     },
     index: {
         input: "u32",
         output: "f32",
-        domainRange: true,
         params: [
             {
                 prefix: SCALE_PADDING_INNER_PREFIX,
@@ -134,20 +163,36 @@ const SCALE_DEFS = {
             { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
         ],
         continuous: false,
+        resources: {
+            domainRangeKind: "continuous",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitIndexScale,
     },
     ordinal: {
         input: "u32",
         output: "same",
-        domainRange: false,
         params: [],
         continuous: false,
+        resources: {
+            domainRangeKind: null,
+            needsDomainMap: true,
+            needsOrdinalRange: true,
+        },
+        emit: emitOrdinalScale,
     },
     threshold: {
         input: "numeric",
         output: "same",
-        domainRange: false,
         params: [],
         continuous: false,
+        resources: {
+            domainRangeKind: "threshold",
+            needsDomainMap: false,
+            needsOrdinalRange: false,
+        },
+        emit: emitThresholdScale,
     },
 };
 
@@ -168,12 +213,45 @@ export function isScaleSupported(scaleType) {
 }
 
 /**
+ * Register a custom scale definition.
+ *
+ * @param {string} name
+ * @param {ScaleDef} def
+ * @returns {void}
+ */
+export function registerScaleDef(name, def) {
+    SCALE_DEFS[name] = def;
+}
+
+/**
+ * @param {string} scaleType
+ * @param {boolean} isPiecewise
+ * @returns {ScaleResourceRequirements}
+ */
+export function getScaleResourceRequirements(scaleType, isPiecewise) {
+    const def = getScaleDef(scaleType);
+    const rules = def.resources;
+    const domainRangeKind =
+        rules.domainRangeKind && rules.supportsPiecewise && isPiecewise
+            ? "piecewise"
+            : rules.domainRangeKind;
+    return {
+        domainRangeKind,
+        needsDomainMap: Boolean(rules.needsDomainMap),
+        needsOrdinalRange: Boolean(rules.needsOrdinalRange),
+    };
+}
+
+/**
  * @param {string} scaleType
  * @returns {ScaleUniformDef}
  */
 export function getScaleUniformDef(scaleType) {
     const def = getScaleDef(scaleType);
-    return { domainRange: def.domainRange, params: def.params };
+    return {
+        domainRange: def.resources.domainRangeKind !== null,
+        params: def.params,
+    };
 }
 
 /**

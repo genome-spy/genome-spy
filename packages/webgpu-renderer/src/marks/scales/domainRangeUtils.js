@@ -2,7 +2,7 @@ import { cssColorToArray } from "../../utils/colorUtils.js";
 import { HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { isPiecewiseScale } from "./scaleCodegen.js";
-import { getScaleUniformDef } from "./scaleDefs.js";
+import { getScaleResourceRequirements } from "./scaleDefs.js";
 
 /**
  * @typedef {"continuous"|"threshold"|"piecewise"} DomainRangeKind
@@ -13,7 +13,9 @@ import { getScaleUniformDef } from "./scaleDefs.js";
  * @returns {boolean}
  */
 export function scaleUsesDomainRange(scaleType) {
-    return getScaleUniformDef(scaleType).domainRange;
+    return (
+        getScaleResourceRequirements(scaleType, false).domainRangeKind !== null
+    );
 }
 
 /**
@@ -24,16 +26,10 @@ export function getDomainRangeKind(scale) {
     if (!scale) {
         return null;
     }
-    if (scale.type === "threshold") {
-        return "threshold";
-    }
-    if (isPiecewiseScale(scale)) {
-        return "piecewise";
-    }
-    if (scaleUsesDomainRange(scale.type ?? "identity")) {
-        return "continuous";
-    }
-    return null;
+    return getScaleResourceRequirements(
+        scale.type ?? "identity",
+        isPiecewiseScale(scale)
+    ).domainRangeKind;
 }
 
 /**
