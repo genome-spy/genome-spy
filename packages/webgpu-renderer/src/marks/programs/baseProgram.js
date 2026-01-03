@@ -96,6 +96,7 @@ export default class BaseProgram {
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
             extraResources: this.getExtraResourceDefs(),
+            primitiveTopology: this.primitiveTopology,
         });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
@@ -188,6 +189,15 @@ export default class BaseProgram {
      */
     get shaderBody() {
         return "";
+    }
+
+    /**
+     * Pipeline primitive topology for this mark.
+     *
+     * @returns {GPUPrimitiveTopology}
+     */
+    get primitiveTopology() {
+        return "triangle-list";
     }
 
     /**
