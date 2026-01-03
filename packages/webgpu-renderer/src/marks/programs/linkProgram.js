@@ -285,21 +285,11 @@ export default class LinkProgram extends BaseProgram {
             props.arcFadingDistance.length === 2
                 ? props.arcFadingDistance
                 : [0, 0];
-        const arcHeightFactor =
-            typeof props.arcHeightFactor === "number"
-                ? props.arcHeightFactor
-                : 1.0;
-        const minArcHeight =
-            typeof props.minArcHeight === "number" ? props.minArcHeight : 1.5;
-        const maxChordLength =
-            typeof props.maxChordLength === "number"
-                ? props.maxChordLength
-                : 50000;
+        const arcHeightFactor = props.arcHeightFactor ?? 1.0;
+        const minArcHeight = props.minArcHeight ?? 1.5;
+        const maxChordLength = props.maxChordLength ?? 50000;
         const clampApex = props.clampApex ? 1 : 0;
-        const segments =
-            typeof props.segments === "number" && props.segments > 0
-                ? Math.round(props.segments)
-                : 101;
+        const segments = Math.round(props.segments ?? 101);
         const shapeIndex = LINK_SHAPES.indexOf(props.linkShape ?? "arc");
         const orientIndex = ORIENTS.indexOf(props.orient ?? "vertical");
 
