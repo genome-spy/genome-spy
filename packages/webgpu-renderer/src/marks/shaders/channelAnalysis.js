@@ -4,7 +4,12 @@ import {
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
 import { isPiecewiseScale } from "../scales/scaleCodegen.js";
-import { getScaleOutputType, isContinuousScale } from "../scales/scaleDefs.js";
+import {
+    getScaleDef,
+    getScaleOutputType,
+    getScaleResourceRequirements,
+    isContinuousScale,
+} from "../scales/scaleDefs.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
@@ -23,6 +28,8 @@ import { getScaleOutputType, isContinuousScale } from "../scales/scaleDefs.js";
  *   Whether the channel provides series data, a value, or neither.
  * @prop {ScaleType} scaleType
  *   Scale type to be used for codegen and validation.
+ * @prop {import("../scales/scaleDefs.js").ScaleDef} scaleDef
+ *   Metadata from the scale registry (input/output rules, flags).
  * @prop {1|2|4} outputComponents
  *   Vector width expected by the mark shader for the scaled output.
  * @prop {1|2|4} inputComponents
@@ -41,6 +48,8 @@ import { getScaleOutputType, isContinuousScale } from "../scales/scaleDefs.js";
  *   True when the ordinal range buffer must be bound.
  * @prop {boolean} needsDomainMap
  *   True when an ordinal domain map buffer must be bound.
+ * @prop {import("../../index.d.ts").ScaleDomainRangeKind | null} domainRangeKind
+ *   Domain/range kind used for resource allocation and uniforms.
  * @prop {boolean} allowsScalarToVector
  *   True when scalar inputs can map to vector outputs for this scale.
  * @prop {boolean} isContinuousScale
@@ -82,6 +91,7 @@ export function buildChannelAnalysis(name, channel) {
     const sourceKind = getSourceKind(channel);
     /** @type {ScaleType} */
     const scaleType = channel.scale?.type ?? "identity";
+    const scaleDef = getScaleDef(scaleType);
     const outputComponents = channel.components ?? 1;
     const scalarType = normalizeScalarType(channel.type);
     const outputScalarType =
@@ -95,13 +105,17 @@ export function buildChannelAnalysis(name, channel) {
     const inputComponents = channel.inputComponents ?? defaultInputComponents;
     const useRangeTexture = usesRangeTexture(channel.scale, outputComponents);
     const isPiecewise = isPiecewiseScale(channel.scale);
+    const resourceRequirements = getScaleResourceRequirements(
+        scaleType,
+        isPiecewise
+    );
     const needsScaleFunction =
         outputComponents === 1 ||
         scaleType !== "identity" ||
         isPiecewise ||
         useRangeTexture;
-    const needsOrdinalRange = scaleType === "ordinal";
-    const needsDomainMap = scaleType === "band" || scaleType === "ordinal";
+    const needsOrdinalRange = resourceRequirements.needsOrdinalRange;
+    const needsDomainMap = resourceRequirements.needsDomainMap;
     const continuous = isContinuousScale(scaleType);
     const allowsScalarToVector =
         outputComponents > 1 &&
@@ -120,6 +134,7 @@ export function buildChannelAnalysis(name, channel) {
         channel,
         sourceKind,
         scaleType,
+        scaleDef,
         outputComponents,
         inputComponents,
         scalarType,
@@ -129,6 +144,7 @@ export function buildChannelAnalysis(name, channel) {
         needsScaleFunction,
         needsOrdinalRange,
         needsDomainMap,
+        domainRangeKind: resourceRequirements.domainRangeKind,
         allowsScalarToVector,
         isContinuousScale: continuous,
         rangeIsFunction,
