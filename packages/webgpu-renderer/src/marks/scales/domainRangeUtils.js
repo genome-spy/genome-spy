@@ -1,7 +1,7 @@
 import { cssColorToArray } from "../../utils/colorUtils.js";
 import { HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
-import { isPiecewiseScale } from "./scaleCodegen.js";
+import { isPiecewiseScale } from "./scaleUtils.js";
 import { getScaleResourceRequirements } from "./scaleDefs.js";
 
 /**

@@ -1,23 +1,13 @@
-import {
-    SCALE_ALIGN_PREFIX,
-    SCALE_BAND_PREFIX,
-    SCALE_BASE_PREFIX,
-    SCALE_CONSTANT_PREFIX,
-    SCALE_EXPONENT_PREFIX,
-    SCALE_PADDING_INNER_PREFIX,
-    SCALE_PADDING_OUTER_PREFIX,
-} from "../../wgsl/prefixes.js";
-import {
-    emitBandScale,
-    emitIdentity,
-    emitIndexScale,
-    emitLinearScale,
-    emitLogScale,
-    emitOrdinalScale,
-    emitPowScale,
-    emitSymlogScale,
-    emitThresholdScale,
-} from "./scaleEmitters.js";
+import { bandScaleDef } from "./defs/band.js";
+import { identityScaleDef } from "./defs/identity.js";
+import { indexScaleDef } from "./defs/index.js";
+import { linearScaleDef } from "./defs/linear.js";
+import { logScaleDef } from "./defs/log.js";
+import { ordinalScaleDef } from "./defs/ordinal.js";
+import { powScaleDef } from "./defs/pow.js";
+import { sqrtScaleDef } from "./defs/sqrt.js";
+import { symlogScaleDef } from "./defs/symlog.js";
+import { thresholdScaleDef } from "./defs/threshold.js";
 
 /** @typedef {import("../../index.d.ts").ScaleDef} ScaleDef */
 /** @typedef {import("../../index.d.ts").ScaleInputRule} ScaleInputRule */
@@ -29,171 +19,16 @@ import {
 
 /** @type {Record<string, ScaleDef>} */
 const SCALE_DEFS = {
-    identity: {
-        input: "any",
-        output: "same",
-        params: [],
-        continuous: false,
-        resources: {
-            domainRangeKind: null,
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitIdentity,
-    },
-    linear: {
-        input: "numeric",
-        output: "f32",
-        params: [],
-        continuous: true,
-        resources: {
-            domainRangeKind: "continuous",
-            supportsPiecewise: true,
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitLinearScale,
-    },
-    log: {
-        input: "numeric",
-        output: "f32",
-        params: [{ prefix: SCALE_BASE_PREFIX, defaultValue: 10, prop: "base" }],
-        continuous: true,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitLogScale,
-    },
-    pow: {
-        input: "numeric",
-        output: "f32",
-        params: [
-            {
-                prefix: SCALE_EXPONENT_PREFIX,
-                defaultValue: 1,
-                prop: "exponent",
-            },
-        ],
-        continuous: true,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitPowScale,
-    },
-    sqrt: {
-        input: "numeric",
-        output: "f32",
-        params: [
-            {
-                prefix: SCALE_EXPONENT_PREFIX,
-                defaultValue: 0.5,
-                prop: "exponent",
-            },
-        ],
-        continuous: true,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitPowScale,
-    },
-    symlog: {
-        input: "numeric",
-        output: "f32",
-        params: [
-            {
-                prefix: SCALE_CONSTANT_PREFIX,
-                defaultValue: 1,
-                prop: "constant",
-            },
-        ],
-        continuous: true,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitSymlogScale,
-    },
-    band: {
-        input: "u32",
-        output: "f32",
-        params: [
-            {
-                prefix: SCALE_PADDING_INNER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingInner",
-            },
-            {
-                prefix: SCALE_PADDING_OUTER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingOuter",
-            },
-            { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
-            { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
-        ],
-        continuous: false,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: true,
-            needsOrdinalRange: false,
-        },
-        emit: emitBandScale,
-    },
-    index: {
-        input: "u32",
-        output: "f32",
-        params: [
-            {
-                prefix: SCALE_PADDING_INNER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingInner",
-            },
-            {
-                prefix: SCALE_PADDING_OUTER_PREFIX,
-                defaultValue: 0,
-                prop: "paddingOuter",
-            },
-            { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
-            { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
-        ],
-        continuous: false,
-        resources: {
-            domainRangeKind: "continuous",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitIndexScale,
-    },
-    ordinal: {
-        input: "u32",
-        output: "same",
-        params: [],
-        continuous: false,
-        resources: {
-            domainRangeKind: null,
-            needsDomainMap: true,
-            needsOrdinalRange: true,
-        },
-        emit: emitOrdinalScale,
-    },
-    threshold: {
-        input: "numeric",
-        output: "same",
-        params: [],
-        continuous: false,
-        resources: {
-            domainRangeKind: "threshold",
-            needsDomainMap: false,
-            needsOrdinalRange: false,
-        },
-        emit: emitThresholdScale,
-    },
+    identity: identityScaleDef,
+    linear: linearScaleDef,
+    log: logScaleDef,
+    pow: powScaleDef,
+    sqrt: sqrtScaleDef,
+    symlog: symlogScaleDef,
+    band: bandScaleDef,
+    index: indexScaleDef,
+    ordinal: ordinalScaleDef,
+    threshold: thresholdScaleDef,
 };
 
 /**

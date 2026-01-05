@@ -85,7 +85,11 @@ export type ScaleDomainRangeKind = "continuous" | "threshold" | "piecewise";
 
 /** Resource rules used by the renderer to allocate scale buffers/textures. */
 export type ScaleResourceRules = {
-    /** Base domain/range kind, or null when the scale has no domain/range. */
+    /**
+     * Base domain/range kind for uniform-backed domain/range arrays.
+     * Use null when the scale has no uniform domain/range (e.g., ordinal uses
+     * domain map + range buffers instead).
+     */
     domainRangeKind: ScaleDomainRangeKind | null;
 
     /** True when piecewise variants can be produced from this scale. */
