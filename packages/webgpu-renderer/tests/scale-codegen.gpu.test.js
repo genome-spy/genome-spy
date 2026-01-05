@@ -837,6 +837,34 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
     });
 });
 
+test("scaleCodegen matches d3 threshold at breakpoints", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const input = [0.49, 0.5, 0.51];
+    const domain = [0.5];
+    const range = [1, 2];
+    const reference = scaleThreshold().domain(domain).range(range);
+    const codegenFn = buildScaleFn({
+        scale: "threshold",
+        scaleConfig: { type: "threshold", domain, range },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        domainLength: domain.length,
+        rangeLength: range.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packPiecewiseDomainRange(domain, range),
+    });
+
+    const expected = input.map((value) => reference(value));
+
+    expect(result).toEqual(expected);
+});
+
 test("scaleCodegen matches d3 quantize scale", async ({ page }) => {
     await ensureWebGPU(page);
 
@@ -937,6 +965,58 @@ test("scaleCodegen accepts interpolator functions in scaleConfig ranges", async 
         scale: "linear",
         outputComponents: 4,
         scaleConfig: { type: "linear", domain, range: interpolator },
+        useRangeTexture: true,
+    });
+    const shaderCode = buildScaleCodegenTextureShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+    });
+    const result = await runScaleCodegenRampCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packContinuousDomainRange(domain, unitRange),
+        texture: packTextureData(textureData),
+    });
+
+    expect(result).toHaveLength(input.length * 4);
+    input.forEach((value, index) => {
+        const expected = d3color(colorScale(value)).rgb();
+        const base = index * 4;
+        expect(result[base]).toBeCloseTo(expected.r / 255, 2);
+        expect(result[base + 1]).toBeCloseTo(expected.g / 255, 2);
+        expect(result[base + 2]).toBeCloseTo(expected.b / 255, 2);
+        expect(result[base + 3]).toBeCloseTo(1, 5);
+    });
+});
+
+test("scaleCodegen clamps interpolator ranges to texture edges", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [-0.5, 0, 0.5, 1, 1.5];
+    const domain = [0, 1];
+    const unitRange = [0, 1];
+    const interpolator = interpolateHcl("green", "red");
+    const colorScale = scaleLinear()
+        .domain(domain)
+        .range(["green", "red"])
+        .interpolate(interpolateHcl)
+        .clamp(true);
+    const textureData = createSchemeTexture(interpolator);
+    if (!textureData) {
+        throw new Error("Failed to create a sequential color ramp texture.");
+    }
+
+    const codegenFn = buildScaleFn({
+        scale: "linear",
+        outputComponents: 4,
+        scaleConfig: {
+            type: "linear",
+            domain,
+            range: interpolator,
+            clamp: true,
+        },
         useRangeTexture: true,
     });
     const shaderCode = buildScaleCodegenTextureShader({

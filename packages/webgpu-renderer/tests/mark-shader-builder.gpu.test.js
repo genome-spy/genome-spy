@@ -13,6 +13,7 @@ import { scaleLinear } from "d3-scale";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
 import { buildPackedSeriesLayout } from "../src/marks/programs/packedSeriesLayout.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
+import { buildHashTableMap } from "../src/utils/hashTable.js";
 import { UniformBuffer } from "../src/utils/uniformBuffer.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
@@ -214,7 +215,7 @@ function mapBindings(result) {
  * @param {object} params
  * @param {string} params.shaderCode
  * @param {number[]} params.uniformData
- * @param {Array<{ binding: number, data: number[] }>} [params.seriesBuffers]
+ * @param {Array<{ binding: number, data: number[] | ArrayBufferView }>} [params.seriesBuffers]
  * @param {number} params.outputBinding
  * @param {number} params.outputLength
  * @param {1|4} params.outputComponents
@@ -331,7 +332,9 @@ async function runMarkShaderCompute(
             device.queue.writeBuffer(paramsBuffer, 0, paramsData);
 
             const seriesGpuBuffers = seriesBuffers.map((buffer) => {
-                const data = new Float32Array(buffer.data);
+                const data = ArrayBuffer.isView(buffer.data)
+                    ? buffer.data
+                    : new Float32Array(buffer.data);
                 const gpuBuffer = device.createBuffer({
                     size: buffer.byteLength,
                     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -509,6 +512,53 @@ test("markShaderBuilder executes series-backed scales in a compute pass", async 
     });
 });
 
+test("markShaderBuilder passes through identity values for series data", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [0.1, 0.2, 0.3, 0.4];
+    const channels = {
+        x: {
+            data: new Float32Array(input),
+            type: "f32",
+            components: 1,
+        },
+    };
+    const uniformLayout = [{ name: "dummy", type: "f32", components: 1 }];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        outputType: "f32",
+        outputLength: input.length,
+        channelName: "x",
+    });
+    const bindings = mapBindings(result);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
+    )?.binding;
+    if (seriesBinding == null) {
+        throw new Error("Series binding for x was not generated.");
+    }
+
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData: [0],
+        seriesBuffers: [
+            { binding: seriesBinding, data: new Float32Array(input) },
+        ],
+        outputBinding: result.outputBinding,
+        outputLength: input.length,
+        outputComponents: 1,
+    });
+
+    expect(output).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        expect(output[index]).toBeCloseTo(value, 5);
+    });
+});
+
 test("markShaderBuilder reads dynamic value uniforms", async ({ page }) => {
     await ensureWebGPU(page);
 
@@ -656,6 +706,81 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
     expect(output[0]).toBeCloseTo(0, 5);
     expect(output[1]).toBeCloseTo(0, 5);
     expect(output[2]).toBeCloseTo(1, 5);
+    expect(output[3]).toBeCloseTo(1, 5);
+});
+
+test("markShaderBuilder applies ordinal scales with sparse domain maps", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const channels = {
+        shape: {
+            value: 42,
+            type: "u32",
+            components: 4,
+            scale: {
+                type: "ordinal",
+                domain: [10, 42, 99],
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 0, 0, 1],
+                    [0, 1, 0, 1],
+                ],
+            },
+        },
+    };
+    const uniformLayout = [
+        { name: "uRangeCount_shape", type: "f32", components: 1 },
+        { name: "uDomainMapCount_shape", type: "f32", components: 1 },
+    ];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        outputType: "vec4<f32>",
+        outputLength: 1,
+        channelName: "shape",
+    });
+    const bindings = mapBindings(result);
+    const ordinalBinding = bindings.find(
+        (entry) => entry.role === "ordinalRange" && entry.name === "shape"
+    )?.binding;
+    if (ordinalBinding == null) {
+        throw new Error("Ordinal range binding for shape was not generated.");
+    }
+    const domainMapBinding = bindings.find(
+        (entry) => entry.role === "domainMap" && entry.name === "shape"
+    )?.binding;
+    if (domainMapBinding == null) {
+        throw new Error("Domain map binding for shape was not generated.");
+    }
+
+    const domainMap = buildHashTableMap([
+        [10, 0],
+        [42, 1],
+        [99, 2],
+    ]);
+    const rangeData = [0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1];
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData: buildUniformData(uniformLayout, {
+            uRangeCount_shape: 3,
+            uDomainMapCount_shape: domainMap.size,
+        }),
+        seriesBuffers: [
+            { binding: ordinalBinding, data: rangeData },
+            { binding: domainMapBinding, data: domainMap.table },
+        ],
+        outputBinding: result.outputBinding,
+        outputLength: 1,
+        outputComponents: 4,
+    });
+
+    expect(output).toHaveLength(4);
+    expect(output[0]).toBeCloseTo(1, 5);
+    expect(output[1]).toBeCloseTo(0, 5);
+    expect(output[2]).toBeCloseTo(0, 5);
     expect(output[3]).toBeCloseTo(1, 5);
 });
 

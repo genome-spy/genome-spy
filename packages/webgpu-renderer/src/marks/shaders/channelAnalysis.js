@@ -120,10 +120,10 @@ export function buildChannelAnalysis(name, channel) {
         isPiecewise
     );
     const needsScaleFunction =
-        outputComponents === 1 ||
         scaleType !== "identity" ||
         isPiecewise ||
-        useRangeTexture;
+        useRangeTexture ||
+        outputComponents !== inputComponents;
     const needsOrdinalRange = resourceRequirements.needsOrdinalRange;
     const needsDomainMap = resourceRequirements.needsDomainMap;
     const continuous = isContinuousScale(scaleType);
