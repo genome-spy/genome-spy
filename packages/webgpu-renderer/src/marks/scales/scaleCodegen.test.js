@@ -85,6 +85,35 @@ describe("scaleCodegen validation", () => {
 
         expect(error).toBeNull();
     });
+
+    // Vector output is only valid when a scalar output is later interpolated to a color.
+    it("rejects vector outputs on interpolated-only scales without interpolation", () => {
+        const error = validateScaleConfig("x", {
+            scale: { type: "log", range: [0, 1] },
+            type: "f32",
+            components: 4,
+        });
+
+        expect(error).toBe(
+            'Channel "x" uses vector components but scale "log" only supports scalars.'
+        );
+    });
+
+    it("allows vector outputs on interpolated-only scales with color ranges", () => {
+        const error = validateScaleConfig("fill", {
+            scale: {
+                type: "log",
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 1, 1, 1],
+                ],
+            },
+            type: "f32",
+            components: 4,
+        });
+
+        expect(error).toBeNull();
+    });
 });
 
 describe("scaleCodegen codegen", () => {
