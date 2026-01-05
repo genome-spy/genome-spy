@@ -68,7 +68,7 @@ export const bandScaleDef = {
     vectorOutput: "never",
     wgsl: bandWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: true,
         needsOrdinalRange: false,
     },

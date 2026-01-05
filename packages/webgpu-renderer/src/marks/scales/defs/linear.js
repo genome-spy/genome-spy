@@ -35,7 +35,7 @@ export const linearScaleDef = {
     vectorOutput: "always",
     wgsl: linearWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         supportsPiecewise: true,
         needsDomainMap: false,
         needsOrdinalRange: false,

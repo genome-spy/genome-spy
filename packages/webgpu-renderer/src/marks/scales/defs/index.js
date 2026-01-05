@@ -119,7 +119,7 @@ export const indexScaleDef = {
     vectorOutput: "never",
     wgsl: indexWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },
