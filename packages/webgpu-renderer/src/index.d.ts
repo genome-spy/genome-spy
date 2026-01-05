@@ -437,16 +437,6 @@ export type ChannelConfigInput =
     | ChannelConfigWithScaleInput
     | ChannelConfigWithoutScaleInput;
 
-/** Helper aliases for guards that check input configs by source. */
-export type SeriesChannelConfigWithScaleInput = SeriesChannelConfigInput &
-    ChannelConfigWithScale;
-export type SeriesChannelConfigWithoutScaleInput = SeriesChannelConfigInput &
-    ChannelConfigWithoutScale;
-export type ValueChannelConfigWithScaleInput = ValueChannelConfigInput &
-    ChannelConfigWithScale;
-export type ValueChannelConfigWithoutScaleInput = ValueChannelConfigInput &
-    ChannelConfigWithoutScale;
-
 /** Resolved series config after normalization (data/type required). */
 export type SeriesChannelConfig = RequireKeys<
     SeriesChannelConfigInput,
@@ -766,12 +756,8 @@ export function isChannelConfigWithoutScale(
 
 export function isSeriesChannelConfig(
     config: ChannelConfigInput
-): config is
-    | SeriesChannelConfigWithScaleInput
-    | SeriesChannelConfigWithoutScaleInput;
+): config is SeriesChannelConfigInput;
 
 export function isValueChannelConfig(
     config: ChannelConfigInput
-): config is
-    | ValueChannelConfigWithScaleInput
-    | ValueChannelConfigWithoutScaleInput;
+): config is ValueChannelConfigInput;

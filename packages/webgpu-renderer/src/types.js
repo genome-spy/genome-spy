@@ -2,10 +2,8 @@
  * @typedef {import("./index.d.ts").ChannelConfigInput} ChannelConfigInput
  * @typedef {import("./index.d.ts").ChannelConfigWithScaleInput} ChannelConfigWithScaleInput
  * @typedef {import("./index.d.ts").ChannelConfigWithoutScaleInput} ChannelConfigWithoutScaleInput
- * @typedef {import("./index.d.ts").SeriesChannelConfigWithScaleInput} SeriesChannelConfigWithScaleInput
- * @typedef {import("./index.d.ts").SeriesChannelConfigWithoutScaleInput} SeriesChannelConfigWithoutScaleInput
- * @typedef {import("./index.d.ts").ValueChannelConfigWithScaleInput} ValueChannelConfigWithScaleInput
- * @typedef {import("./index.d.ts").ValueChannelConfigWithoutScaleInput} ValueChannelConfigWithoutScaleInput
+ * @typedef {import("./index.d.ts").SeriesChannelConfigInput} SeriesChannelConfigInput
+ * @typedef {import("./index.d.ts").ValueChannelConfigInput} ValueChannelConfigInput
  * @typedef {import("./index.d.ts").ScalarType} ScalarType
  */
 
@@ -27,7 +25,7 @@ export function isChannelConfigWithoutScale(config) {
 
 /**
  * @param {ChannelConfigInput} config
- * @returns {config is SeriesChannelConfigWithScaleInput | SeriesChannelConfigWithoutScaleInput}
+ * @returns {config is SeriesChannelConfigInput}
  */
 export function isSeriesChannelConfig(config) {
     return !!config && "data" in config && config.data != null;
@@ -35,7 +33,7 @@ export function isSeriesChannelConfig(config) {
 
 /**
  * @param {ChannelConfigInput} config
- * @returns {config is ValueChannelConfigWithScaleInput | ValueChannelConfigWithoutScaleInput}
+ * @returns {config is ValueChannelConfigInput}
  */
 export function isValueChannelConfig(config) {
     return !!config && "value" in config && config.value != null;
