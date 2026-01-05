@@ -1,6 +1,40 @@
-import { isValueChannelConfig } from "../../types.js";
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import { isScaleSupported } from "./scaleDefs.js";
+
+/**
+ * @param {import("../../index.d.ts").ChannelConfigInput} channel
+ * @param {boolean} rangeIsFunction
+ * @param {boolean} rangeIsColor
+ * @returns {boolean}
+ */
+function isInterpolationEnabled(channel, rangeIsFunction, rangeIsColor) {
+    return (
+        rangeIsFunction ||
+        channel.scale?.interpolate !== undefined ||
+        rangeIsColor
+    );
+}
+
+/**
+ * @param {import("../../index.d.ts").ScaleDef | undefined} scaleDef
+ * @param {boolean} interpolateEnabled
+ * @returns {boolean}
+ */
+function allowsVectorOutput(scaleDef, interpolateEnabled) {
+    const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
+    return (
+        vectorOutputMode === "always" ||
+        (vectorOutputMode === "interpolated" && interpolateEnabled)
+    );
+}
+
+/**
+ * @param {import("../../types.js").ScalarType} type
+ * @returns {boolean}
+ */
+function isNumericScalarType(type) {
+    return type === "f32" || type === "u32" || type === "i32";
+}
 
 /**
  * @param {string} name
@@ -20,26 +54,27 @@ export function validateScaleConfig(name, channel, analysis) {
         rangeIsColor,
         isPiecewise,
         needsDomainMap,
+        scalarType,
+        outputScalarType,
+        scaleDef,
     } = resolved;
 
     if (scaleType !== "identity" && !isScaleSupported(scaleType)) {
         return `Channel "${name}" uses unsupported scale "${scaleType}".`;
     }
 
-    const interpolateEnabled =
-        rangeIsFunction ||
-        channel.scale?.interpolate !== undefined ||
-        rangeIsColor;
-    const allowsVectorOutput =
-        scaleType === "identity" ||
-        scaleType === "threshold" ||
-        scaleType === "ordinal" ||
-        scaleType === "linear" ||
-        isPiecewise ||
-        (interpolateEnabled && isContinuousScale);
+    const interpolateEnabled = isInterpolationEnabled(
+        channel,
+        rangeIsFunction,
+        rangeIsColor
+    );
+    const allowsVectorOutputFlag = allowsVectorOutput(
+        scaleDef,
+        interpolateEnabled
+    );
     const allowsScalarToVectorOutput =
-        allowsVectorOutput && allowsScalarToVector;
-    if (outputComponents > 1 && !allowsVectorOutput) {
+        allowsVectorOutputFlag && allowsScalarToVector;
+    if (outputComponents > 1 && !allowsVectorOutputFlag) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
     }
 
@@ -69,53 +104,32 @@ export function validateScaleConfig(name, channel, analysis) {
         return `Channel "${name}" requires vec4 outputs when using color ranges.`;
     }
 
-    if (
-        (scaleType === "linear" || isPiecewise) &&
-        outputComponents !== 1 &&
-        outputComponents !== 4
-    ) {
-        return `Channel "${name}" uses ${outputComponents} components but linear scales only support scalars or vec4 outputs.`;
-    }
-    if (
-        scaleType === "threshold" &&
-        outputComponents !== 1 &&
-        outputComponents !== 4
-    ) {
-        return `Channel "${name}" uses ${outputComponents} components but threshold scales only support scalars or vec4 outputs.`;
-    }
-    if (
-        scaleType === "ordinal" &&
-        outputComponents !== 1 &&
-        outputComponents !== 4
-    ) {
-        return `Channel "${name}" uses ${outputComponents} components but ordinal scales only support scalars or vec4 outputs.`;
-    }
-    if (isPiecewise && outputComponents !== 1 && outputComponents !== 4) {
-        return `Channel "${name}" uses ${outputComponents} components but piecewise scales only support scalars or vec4 outputs.`;
-    }
-
-    const inputRule = resolved.scaleDef?.input ?? "any";
-    const type = channel.type ?? "f32";
-    if (scaleType === "ordinal" && type !== "u32") {
-        return `Channel "${name}" requires u32 input for "ordinal" scale.`;
-    }
-    if (inputRule === "numeric" && !["f32", "u32", "i32"].includes(type)) {
+    const inputRule = scaleDef?.input ?? "any";
+    if (inputRule === "numeric" && !isNumericScalarType(scalarType)) {
         return `Channel "${name}" requires numeric input for "${scaleType}" scale.`;
     }
-    if (inputRule === "u32" && type !== "u32") {
+    if (inputRule === "u32" && scalarType !== "u32") {
         return `Channel "${name}" requires u32 input for "${scaleType}" scale.`;
     }
 
-    if (outputComponents > 1 && type !== "f32" && !allowsScalarToVectorOutput) {
+    if (
+        outputComponents > 1 &&
+        scalarType !== "f32" &&
+        !allowsScalarToVectorOutput
+    ) {
         return `Only f32 vectors are supported for "${name}" right now.`;
     }
 
     const allowsPackedScalarInput =
         inputComponents === 2 &&
         outputComponents === 1 &&
-        type === "u32" &&
+        scalarType === "u32" &&
         scaleType === "index";
-    if (inputComponents > 1 && type !== "f32" && !allowsPackedScalarInput) {
+    if (
+        inputComponents > 1 &&
+        scalarType !== "f32" &&
+        !allowsPackedScalarInput
+    ) {
         return `Only f32 vectors are supported for "${name}" input data.`;
     }
     if (
@@ -126,96 +140,23 @@ export function validateScaleConfig(name, channel, analysis) {
         return `Channel "${name}" only supports mismatched input/output components when mapping scalars to vectors.`;
     }
 
-    if (scaleType === "threshold") {
-        const domain = channel.scale?.domain;
-        const range = channel.scale?.range;
-        if (!Array.isArray(domain) || domain.length === 0) {
-            return `Threshold scale on "${name}" requires a non-empty domain.`;
-        }
-        if (!Array.isArray(range) || range.length < 2) {
-            return `Threshold scale on "${name}" requires at least two range entries.`;
-        }
-        if (range.length !== domain.length + 1) {
-            return `Threshold scale on "${name}" requires range length of ${
-                domain.length + 1
-            }, got ${range.length}.`;
-        }
-        if (inputComponents !== 1) {
-            return `Threshold scale on "${name}" requires scalar input values.`;
-        }
-    }
-
-    if (isPiecewise) {
-        const domain = channel.scale?.domain;
-        const range = channel.scale?.range;
-        if (!Array.isArray(domain) || domain.length < 2) {
-            return `Piecewise scale on "${name}" requires at least two domain entries.`;
-        }
-        if (!Array.isArray(range) || range.length < 2) {
-            return `Piecewise scale on "${name}" requires at least two range entries.`;
-        }
-        if (domain.length !== range.length) {
-            return `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`;
-        }
-        if (inputComponents !== 1) {
-            return `Piecewise scale on "${name}" requires scalar input values.`;
-        }
-    }
-
-    if (scaleType === "ordinal") {
-        const range = channel.scale?.range;
-        if (!Array.isArray(range) || range.length === 0) {
-            return `Ordinal scale on "${name}" requires a non-empty range.`;
-        }
-        if (
-            !Array.isArray(channel.scale?.domain) &&
-            !ArrayBuffer.isView(channel.scale?.domain)
-        ) {
-            return `Ordinal scale on "${name}" requires an explicit domain array.`;
-        }
-        if (inputComponents !== 1) {
-            return `Ordinal scale on "${name}" requires scalar input values.`;
-        }
-        if (isValueChannelConfig(channel)) {
-            if (Array.isArray(channel.value)) {
-                return `Ordinal scale on "${name}" requires scalar integer values.`;
-            }
-            if (
-                typeof channel.value === "number" &&
-                !Number.isInteger(channel.value)
-            ) {
-                return `Ordinal scale on "${name}" requires integer values.`;
-            }
-        }
-        if (
-            isValueChannelConfig(channel) &&
-            outputComponents > 1 &&
-            Array.isArray(channel.value)
-        ) {
-            return `Ordinal scale on "${name}" requires scalar input values for vector outputs.`;
-        }
-    }
-
-    if (
-        scaleType === "band" &&
-        !Array.isArray(channel.scale?.domain) &&
-        !ArrayBuffer.isView(channel.scale?.domain)
-    ) {
-        return `Band scale on "${name}" requires an explicit domain array.`;
-    }
-
-    if (needsDomainMap) {
-        if (scaleType === "band" && inputComponents !== 1) {
-            return `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`;
-        }
-        if (
-            scaleType === "band" &&
-            isValueChannelConfig(channel) &&
-            typeof channel.value === "number" &&
-            !Number.isInteger(channel.value)
-        ) {
-            return `Band scale on "${name}" requires integer values when using an ordinal domain.`;
-        }
+    const customError = scaleDef?.validate?.({
+        name,
+        channel,
+        scaleType,
+        outputComponents,
+        inputComponents,
+        inputScalarType: scalarType,
+        outputScalarType,
+        isPiecewise,
+        needsDomainMap,
+        allowsScalarToVector,
+        isContinuousScale,
+        rangeIsFunction,
+        rangeIsColor,
+    });
+    if (customError) {
+        return customError;
     }
 
     return null;

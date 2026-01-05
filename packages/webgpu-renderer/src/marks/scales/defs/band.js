@@ -11,6 +11,32 @@ import {
     rangeVec2,
     toU32Expr,
 } from "../scaleEmitUtils.js";
+import { isValueChannelConfig } from "../../../types.js";
+
+const bandWgsl = /* wgsl */ `
+// TODO: domainExtent should be uint
+fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
+        paddingInner: f32, paddingOuter: f32,
+        align: f32, band: f32) -> f32 {
+
+    // TODO: reverse
+    var start = range.x;
+    let stop = range.y;
+    let rangeSpan = stop - start;
+
+    let n = domainExtent.y - domainExtent.x;
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    let paddingInnerAdjusted = select(paddingInner, 0.0, i32(n) <= 1);
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    let step = rangeSpan / max(1.0, n - paddingInnerAdjusted + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInnerAdjusted)) * align;
+    let bandwidth = step * (1.0 - paddingInnerAdjusted);
+
+    return start + (f32(value) - domainExtent.x) * step + bandwidth * band;
+}
+`;
 
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
@@ -61,6 +87,32 @@ function emitBandScale({ name, rawValueExpr, inputScalarType, domainMapName }) {
 }`;
 }
 
+/**
+ * @param {import("../../../index.d.ts").ScaleValidationContext} context
+ * @returns {string | null}
+ */
+function validateBandScale({ name, channel, inputComponents, needsDomainMap }) {
+    if (
+        !Array.isArray(channel.scale?.domain) &&
+        !ArrayBuffer.isView(channel.scale?.domain)
+    ) {
+        return `Band scale on "${name}" requires an explicit domain array.`;
+    }
+    if (needsDomainMap) {
+        if (inputComponents !== 1) {
+            return `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`;
+        }
+        if (
+            isValueChannelConfig(channel) &&
+            typeof channel.value === "number" &&
+            !Number.isInteger(channel.value)
+        ) {
+            return `Band scale on "${name}" requires integer values when using an ordinal domain.`;
+        }
+    }
+    return null;
+}
+
 /** @type {import("../../../index.d.ts").ScaleDef} */
 export const bandScaleDef = {
     input: "u32",
@@ -80,10 +132,13 @@ export const bandScaleDef = {
         { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
     ],
     continuous: false,
+    vectorOutput: "never",
+    wgsl: bandWgsl,
     resources: {
         domainRangeKind: "continuous",
         needsDomainMap: true,
         needsOrdinalRange: false,
     },
+    validate: validateBandScale,
     emit: emitBandScale,
 };
