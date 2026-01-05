@@ -20,6 +20,31 @@ fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
 `;
 
 /**
+ * Linear scale: maps numeric domain to numeric range with optional piecewise support.
+ *
+ * Technical notes: uses scalePipeline steps for casting/clamping and emits a
+ * piecewise linear loop when domain/range arrays exceed two elements.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
+ */
+export const linearScaleDef = {
+    input: "numeric",
+    output: "f32",
+    params: [],
+    continuous: true,
+    vectorOutput: "always",
+    wgsl: linearWgsl,
+    resources: {
+        domainRangeKind: "continuous",
+        supportsPiecewise: true,
+        needsDomainMap: false,
+        needsOrdinalRange: false,
+    },
+    validate: validateLinearScale,
+    emit: emitLinearScale,
+};
+
+/**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
  */
@@ -141,19 +166,3 @@ function validateLinearScale({
 }
 
 /** @type {import("../../../index.d.ts").ScaleDef} */
-export const linearScaleDef = {
-    input: "numeric",
-    output: "f32",
-    params: [],
-    continuous: true,
-    vectorOutput: "always",
-    wgsl: linearWgsl,
-    resources: {
-        domainRangeKind: "continuous",
-        supportsPiecewise: true,
-        needsDomainMap: false,
-        needsOrdinalRange: false,
-    },
-    validate: validateLinearScale,
-    emit: emitLinearScale,
-};
