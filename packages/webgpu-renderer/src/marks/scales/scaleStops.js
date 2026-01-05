@@ -1,8 +1,6 @@
 import { cssColorToArray } from "../../utils/colorUtils.js";
-import { HASH_EMPTY_KEY } from "../../utils/hashTable.js";
-import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { isPiecewiseScale } from "./scaleUtils.js";
-import { getScaleResourceRequirements } from "./scaleDefs.js";
+import { getScaleDef, getScaleResourceRequirements } from "./scaleDefs.js";
 
 /**
  * @typedef {import("../../index.d.ts").ScaleStopKind} ScaleStopKind
@@ -37,10 +35,14 @@ export function getScaleStopKind(scale) {
  * @returns {{ domainLength: number, rangeLength: number }}
  */
 export function getScaleStopLengths(name, kind, scale) {
-    if (kind === "continuous") {
-        if (scale.type === "index") {
-            return { domainLength: 3, rangeLength: 2 };
+    const def = getScaleDef(scale.type ?? "identity");
+    if (def.getStopLengths) {
+        const lengths = def.getStopLengths({ name, kind, scale });
+        if (lengths) {
+            return lengths;
         }
+    }
+    if (kind === "continuous") {
         return { domainLength: 2, rangeLength: 2 };
     }
 
@@ -94,47 +96,10 @@ export function usesOrdinalDomainMap(scale) {
     if (!scale) {
         return false;
     }
-    return scale.type === "band" || scale.type === "ordinal";
-}
-
-/**
- * @param {string} name
- * @param {"band"|"ordinal"} scaleType
- * @param {ArrayLike<number>|undefined} domain
- * @returns {number[] | null}
- */
-export function normalizeOrdinalDomain(name, scaleType, domain) {
-    if (!domain) {
-        return null;
-    }
-    const values = Array.from(domain, (value) => {
-        if (!Number.isFinite(value) || !Number.isInteger(value)) {
-            throw new Error(
-                `Ordinal domain on "${name}" requires integer u32 values.`
-            );
-        }
-        if (value < 0 || value > HASH_EMPTY_KEY) {
-            throw new Error(
-                `Ordinal domain on "${name}" must fit in u32 values.`
-            );
-        }
-        if (value === HASH_EMPTY_KEY) {
-            throw new Error(
-                `Ordinal domain on "${name}" must not contain 0xffffffff.`
-            );
-        }
-        return value >>> 0;
-    });
-    const seen = new Set();
-    for (const value of values) {
-        if (seen.has(value)) {
-            throw new Error(
-                `Ordinal domain on "${name}" must not contain duplicates.`
-            );
-        }
-        seen.add(value);
-    }
-    return values;
+    return getScaleResourceRequirements(
+        scale.type ?? "identity",
+        isPiecewiseScale(scale)
+    ).needsDomainMap;
 }
 
 /**
@@ -152,6 +117,19 @@ export function normalizeScaleStops(
     kind,
     getDefaultScaleRange
 ) {
+    const def = getScaleDef(scale.type ?? "identity");
+    if (def.normalizeStops) {
+        const normalized = def.normalizeStops({
+            name,
+            channel,
+            scale,
+            kind,
+            getDefaultScaleRange,
+        });
+        if (normalized) {
+            return normalized;
+        }
+    }
     const outputComponents = channel.components ?? 1;
     const { domainLength, rangeLength } = getScaleStopLengths(
         name,
@@ -168,45 +146,6 @@ export function normalizeScaleStops(
             throw new Error(`Scale range for "${name}" must be numeric.`);
         }
         const numericRange = /** @type {number[]} */ (range);
-        if (scale.type === "band") {
-            const ordinalDomain = normalizeOrdinalDomain(
-                name,
-                "band",
-                Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
-                    ? scale.domain
-                    : undefined
-            );
-            if (ordinalDomain) {
-                return {
-                    domain: [0, ordinalDomain.length],
-                    range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
-                    domainLength,
-                    rangeLength,
-                };
-            }
-        }
-        if (scale.type === "index") {
-            if (domain.length === 3) {
-                return {
-                    domain: [domain[0], domain[1], domain[2]],
-                    range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
-                    domainLength,
-                    rangeLength,
-                };
-            }
-            if (domain.length !== 2) {
-                throw new Error(
-                    `Scale domain for "${name}" must have 2 or 3 entries for "${scale.type}" scales.`
-                );
-            }
-            const packed = packHighPrecisionDomain(domain[0], domain[1]);
-            return {
-                domain: packed,
-                range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
-                domainLength,
-                rangeLength,
-            };
-        }
         return {
             domain: [domain[0] ?? 0, domain[1] ?? 1],
             range: [numericRange[0] ?? 0, numericRange[1] ?? 1],

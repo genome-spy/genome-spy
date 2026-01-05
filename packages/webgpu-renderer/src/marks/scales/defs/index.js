@@ -10,6 +10,7 @@ import {
     rangeVec2,
     toU32Expr,
 } from "../scaleEmitUtils.js";
+import { packHighPrecisionDomain } from "../../../utils/highPrecision.js";
 
 const indexWgsl = /* wgsl */ `
 const lowBits: i32 = 12;
@@ -123,6 +124,9 @@ export const indexScaleDef = {
         needsDomainMap: false,
         needsOrdinalRange: false,
     },
+    // Domain uses vec3<f32>: split start (xy) + span (z).
+    getStopLengths: () => ({ domainLength: 3, rangeLength: 2 }),
+    normalizeStops: normalizeIndexStops,
     emit: emitIndexScale,
 };
 
@@ -153,4 +157,39 @@ function emitIndexScale({
         params.${SCALE_BAND_PREFIX}${name}
     );
 }`;
+}
+
+/**
+ * @param {import("../../../index.d.ts").ScaleStopNormalizeParams} params
+ * @returns {import("../../../index.d.ts").ScaleStopNormalizeResult}
+ */
+function normalizeIndexStops({ name, scale, getDefaultScaleRange }) {
+    const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
+    const range = Array.isArray(scale.range)
+        ? scale.range
+        : (getDefaultScaleRange(name) ?? [0, 1]);
+    if (typeof range[0] !== "number" || typeof range[1] !== "number") {
+        throw new Error(`Scale range for "${name}" must be numeric.`);
+    }
+    const numericRange = /** @type {number[]} */ (range);
+    if (domain.length === 3) {
+        return {
+            domain: [domain[0], domain[1], domain[2]],
+            range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+            domainLength: 3,
+            rangeLength: 2,
+        };
+    }
+    if (domain.length !== 2) {
+        throw new Error(
+            `Scale domain for "${name}" must have 2 or 3 entries for "${scale.type}" scales.`
+        );
+    }
+    const packed = packHighPrecisionDomain(domain[0], domain[1]);
+    return {
+        domain: packed,
+        range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+        domainLength: 3,
+        rangeLength: 2,
+    };
 }
