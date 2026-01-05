@@ -156,7 +156,7 @@ describe("BaseProgram channel validation", () => {
                 },
             })
         ).toThrow(
-            'Channel "vec" only supports mismatched input/output components when mapping scalars to vectors.'
+            'Channel "vec" uses vector components but scale "identity" only supports scalars.'
         );
     });
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { scaleLinear, scaleLog, scalePow, scaleSymlog } from "d3-scale";
-import SCALES_WGSL from "../src/wgsl/scales.wgsl.js";
+import getScaleWgsl from "../src/wgsl/scales.wgsl.js";
 import {
     packHighPrecisionDomain,
     packHighPrecisionU32Array,
@@ -15,6 +15,7 @@ const WORKGROUP_SIZE = 64;
  * @returns {string}
  */
 function buildComputeShader(scaleExpr, inputLength) {
+    const scalesWgsl = getScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -25,7 +26,7 @@ struct Globals {
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 
-${SCALES_WGSL}
+${scalesWgsl}
 
 struct Params {
     domain: vec2<f32>,
@@ -56,6 +57,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpComputeShader(inputLength) {
+    const scalesWgsl = getScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -66,7 +68,7 @@ struct Globals {
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 
-${SCALES_WGSL}
+${scalesWgsl}
 
 struct Params {
     domain: vec4<f32>,
@@ -106,6 +108,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpUComputeShader(inputLength) {
+    const scalesWgsl = getScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -116,7 +119,7 @@ struct Globals {
 
 @group(0) @binding(0) var<uniform> globals: Globals;
 
-${SCALES_WGSL}
+${scalesWgsl}
 
 struct Params {
     domain: vec4<f32>,

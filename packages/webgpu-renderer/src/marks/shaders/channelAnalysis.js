@@ -130,6 +130,8 @@ export function buildChannelAnalysis(name, channel) {
     const vectorOutputMode = scaleDef.vectorOutput ?? "never";
     const allowsScalarToVector =
         outputComponents > 1 &&
+        inputComponents === 1 &&
+        scaleType !== "identity" &&
         (vectorOutputMode === "always" ||
             (vectorOutputMode === "interpolated" && interpolateEnabled));
 
