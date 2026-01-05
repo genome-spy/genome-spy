@@ -110,6 +110,20 @@ export function buildMarkShader({
     /** @type {string[]} */
     const extraDecls = [];
 
+    /**
+     * Emit a pass-through getScaled_* wrapper when no scale logic is needed.
+     *
+     * @param {import("./channelIR.js").ChannelIR} channelIR
+     * @returns {string}
+     */
+    function emitPassthroughFunction(channelIR) {
+        const returnType =
+            channelIR.outputComponents === 1
+                ? channelIR.outputScalarType
+                : `vec${channelIR.outputComponents}<f32>`;
+        return `fn ${SCALED_FUNCTION_PREFIX}${channelIR.name}(i: u32) -> ${returnType} { return ${channelIR.rawValueExpr}; }`;
+    }
+
     let bindingIndex = 1;
     const channelIRs = buildChannelIRs(channels);
     const seriesChannelIRs = channelIRs.filter(
@@ -303,9 +317,7 @@ export function buildMarkShader({
                 })
             );
         } else {
-            channelFns.push(
-                `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> vec4<f32> { return ${channelIR.rawValueExpr}; }`
-            );
+            channelFns.push(emitPassthroughFunction(channelIR));
         }
     }
 
@@ -486,9 +498,7 @@ export function buildMarkShader({
                 })
             );
         } else {
-            channelFns.push(
-                `fn ${SCALED_FUNCTION_PREFIX}${name}(_i: u32) -> vec4<f32> { return ${channelIR.rawValueExpr}; }`
-            );
+            channelFns.push(emitPassthroughFunction(channelIR));
         }
     }
 
