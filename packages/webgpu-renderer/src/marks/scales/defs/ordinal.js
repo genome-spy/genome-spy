@@ -4,6 +4,7 @@ import {
 } from "../../../wgsl/prefixes.js";
 import { isValueChannelConfig } from "../../../types.js";
 import { makeFnHeader, toU32Expr } from "../scaleEmitUtils.js";
+import { normalizeOrdinalDomain } from "../ordinalDomain.js";
 
 /**
  * Ordinal scale: maps categorical ids to discrete range entries.
@@ -24,6 +25,7 @@ export const ordinalScaleDef = {
         needsDomainMap: true,
         needsOrdinalRange: true,
     },
+    normalizeDomainMap: normalizeOrdinalDomainMap,
     validate: validateOrdinalScale,
     emit: emitOrdinalScale,
 };
@@ -122,4 +124,16 @@ function validateOrdinalScale({
         }
     }
     return null;
+}
+
+/**
+ * @param {import("../../../index.d.ts").ScaleDomainMapParams} params
+ * @returns {import("../../../index.d.ts").ScaleDomainMapUpdate | null}
+ */
+function normalizeOrdinalDomainMap({ name, domain }) {
+    const ordinalDomain = normalizeOrdinalDomain(name, "ordinal", domain);
+    if (!ordinalDomain) {
+        return null;
+    }
+    return { domainMap: ordinalDomain };
 }

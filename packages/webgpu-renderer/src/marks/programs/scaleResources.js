@@ -15,7 +15,6 @@ import {
     normalizeOrdinalRange,
     normalizeRangePositions,
 } from "../scales/scaleStops.js";
-import { normalizeOrdinalDomain } from "../scales/ordinalDomain.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
@@ -26,7 +25,6 @@ import {
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
 } from "../../wgsl/prefixes.js";
-import { isValueChannelConfig } from "../../types.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
@@ -250,7 +248,7 @@ export class ScaleResourceManager {
             }
         }
         if (requirements.needsDomainMap) {
-            this._initializeDomainMap(name, scale);
+            this._initializeDomainMap(name, scale, analysis);
         }
         if (requirements.needsOrdinalRange) {
             this._initializeOrdinalRange(name, channel, scale);
@@ -284,50 +282,33 @@ export class ScaleResourceManager {
                     analysis.isPiecewise
                 );
                 if (requirements.needsDomainMap) {
-                    const inputComponents =
-                        channel.inputComponents ?? channel.components ?? 1;
-                    const ordinalDomain = normalizeOrdinalDomain(
-                        channelName,
-                        analysis.scaleType === "band" ? "band" : "ordinal",
+                    if (!analysis.scaleDef.normalizeDomainMap) {
+                        throw new Error(
+                            `Scale "${analysis.scaleType}" does not provide domain map normalization.`
+                        );
+                    }
+                    const domainSource =
                         Array.isArray(domain) || ArrayBuffer.isView(domain)
                             ? domain
-                            : undefined
-                    );
-                    if (ordinalDomain) {
+                            : undefined;
+                    const update = domainSource
+                        ? analysis.scaleDef.normalizeDomainMap({
+                              name: channelName,
+                              scale: channel.scale,
+                              domain: domainSource,
+                          })
+                        : null;
+                    if (update) {
                         if (
-                            analysis.scaleType === "band" &&
-                            channel.type !== "u32"
+                            this._updateDomainMap(channelName, update.domainMap)
                         ) {
-                            throw new Error(
-                                `Band scale on "${channelName}" requires u32 inputs when using an ordinal domain.`
-                            );
-                        }
-                        if (
-                            analysis.scaleType === "band" &&
-                            inputComponents !== 1
-                        ) {
-                            throw new Error(
-                                `Band scale on "${channelName}" requires scalar inputs when using an ordinal domain.`
-                            );
-                        }
-                        if (
-                            analysis.scaleType === "band" &&
-                            isValueChannelConfig(channel) &&
-                            typeof channel.value === "number" &&
-                            !Number.isInteger(channel.value)
-                        ) {
-                            throw new Error(
-                                `Band scale on "${channelName}" requires integer values when using an ordinal domain.`
-                            );
-                        }
-                        if (this._updateDomainMap(channelName, ordinalDomain)) {
                             needsRebind = true;
                         }
-                        if (analysis.scaleType === "band") {
-                            this._setUniformValue(DOMAIN_PREFIX + channelName, [
-                                0,
-                                ordinalDomain.length,
-                            ]);
+                        if (update.domainUniform) {
+                            this._setUniformValue(
+                                DOMAIN_PREFIX + channelName,
+                                update.domainUniform
+                            );
                         }
                         continue;
                     }
@@ -372,13 +353,17 @@ export class ScaleResourceManager {
                     continue;
                 }
                 const analysis = buildChannelAnalysis(channelName, channel);
+                const requirements = getScaleResourceRequirements(
+                    analysis.scaleType,
+                    analysis.isPiecewise
+                );
                 if (analysis.useRangeTexture) {
                     if (this._updateRangeTexture(channelName, range)) {
                         needsRebind = true;
                     }
                     continue;
                 }
-                if (analysis.scaleType === "ordinal") {
+                if (requirements.needsOrdinalRange) {
                     if (
                         this._updateOrdinalRange(
                             channelName,
@@ -566,16 +551,34 @@ export class ScaleResourceManager {
     /**
      * @param {string} name
      * @param {ChannelScale} scale
+     * @param {ReturnType<typeof buildChannelAnalysis>} analysis
      * @returns {void}
      */
-    _initializeDomainMap(name, scale) {
-        const scaleType =
-            scale.type === "band" || scale.type === "ordinal"
-                ? scale.type
-                : "ordinal";
-        const domain = normalizeOrdinalDomain(name, scaleType, scale.domain);
-        const map = this._buildDomainMapBufferData(domain ?? []);
+    _initializeDomainMap(name, scale, analysis) {
+        if (!analysis.scaleDef.normalizeDomainMap) {
+            throw new Error(
+                `Scale "${analysis.scaleType}" does not provide domain map normalization.`
+            );
+        }
+        const domainSource =
+            Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
+                ? scale.domain
+                : null;
+        if (!domainSource) {
+            throw new Error(
+                `Scale on "${name}" requires an explicit domain array.`
+            );
+        }
+        const update = analysis.scaleDef.normalizeDomainMap({
+            name,
+            scale,
+            domain: domainSource,
+        });
+        const map = this._buildDomainMapBufferData(update?.domainMap ?? []);
         this._setDomainMapBuffer(name, map.table, map.length);
+        if (update?.domainUniform) {
+            this._setUniformValue(DOMAIN_PREFIX + name, update.domainUniform);
+        }
     }
 
     /**
