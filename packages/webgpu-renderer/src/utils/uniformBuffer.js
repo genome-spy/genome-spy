@@ -15,6 +15,8 @@ import { buildUniformLayout } from "./uniformLayout.js";
 /**
  * Packs uniforms into an ArrayBuffer using the computed layout so marks can
  * write values and upload them in one call.
+ *
+ * TODO: Provide TWGL.js styled uniform setters for convenience and performance.
  */
 export class UniformBuffer {
     /**

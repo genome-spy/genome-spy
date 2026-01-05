@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { scaleLinear, scaleLog, scalePow, scaleSymlog } from "d3-scale";
+import {
+    scaleBand,
+    scaleLinear,
+    scaleLog,
+    scalePow,
+    scaleSymlog,
+} from "d3-scale";
 import getScaleWgsl from "../src/wgsl/scales.wgsl.js";
 import {
     packHighPrecisionDomain,
@@ -156,6 +162,60 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 /**
+ * @param {number} inputLength
+ * @returns {string}
+ */
+function buildBandComputeShader(inputLength) {
+    const scalesWgsl = getScaleWgsl();
+    return `
+struct Globals {
+    width: f32,
+    height: f32,
+    dpr: f32,
+    uZero: f32,
+};
+
+@group(0) @binding(0) var<uniform> globals: Globals;
+
+${scalesWgsl}
+
+struct Params {
+    domain: vec2<f32>,
+    range: vec2<f32>,
+    paddingInner: f32,
+    paddingOuter: f32,
+    align: f32,
+    band: f32,
+};
+
+@group(0) @binding(1) var<uniform> params: Params;
+@group(0) @binding(2) var<storage, read> input: array<u32>;
+@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+
+const INPUT_LEN: u32 = ${inputLength}u;
+
+@compute @workgroup_size(${WORKGROUP_SIZE})
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    if (i >= INPUT_LEN) {
+        return;
+    }
+    let guard = globals.uZero;
+    let v = input[i];
+    output[i] = scaleBand(
+        v,
+        params.domain,
+        params.range,
+        params.paddingInner,
+        params.paddingOuter,
+        params.align,
+        params.band
+    ) + guard;
+}
+`;
+}
+
+/**
  * @param {import("@playwright/test").Page} page
  * @param {{ shaderCode: string, input: number[], domain: [number, number], range: [number, number] }} params
  * @returns {Promise<number[]>}
@@ -250,6 +310,148 @@ async function runScaleCompute(page, { shaderCode, input, domain, range }) {
             return Array.from(copy);
         },
         { shaderCode, input, domain, range, workgroupSize: WORKGROUP_SIZE }
+    );
+}
+
+/**
+ * @param {import("@playwright/test").Page} page
+ * @param {object} params
+ * @param {string} params.shaderCode
+ * @param {number[]} params.input
+ * @param {[number, number]} params.domain
+ * @param {[number, number]} params.range
+ * @param {number} params.paddingInner
+ * @param {number} params.paddingOuter
+ * @param {number} params.align
+ * @param {number} params.band
+ * @returns {Promise<number[]>}
+ */
+async function runBandScaleCompute(
+    page,
+    {
+        shaderCode,
+        input,
+        domain,
+        range,
+        paddingInner,
+        paddingOuter,
+        align,
+        band,
+    }
+) {
+    return page.evaluate(
+        async ({
+            shaderCode,
+            input,
+            domain,
+            range,
+            paddingInner,
+            paddingOuter,
+            align,
+            band,
+            workgroupSize,
+        }) => {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                throw new Error("WebGPU adapter is not available.");
+            }
+            const device = await adapter.requestDevice();
+
+            const inputData = new Uint32Array(input);
+            const globalsData = new Float32Array([1, 1, 1, 0]);
+            const uniformData = new Float32Array([
+                domain[0],
+                domain[1],
+                range[0],
+                range[1],
+                paddingInner,
+                paddingOuter,
+                align,
+                band,
+            ]);
+
+            const shaderModule = device.createShaderModule({
+                code: shaderCode,
+            });
+            const pipeline = device.createComputePipeline({
+                layout: "auto",
+                compute: { module: shaderModule, entryPoint: "main" },
+            });
+
+            const globalsBuffer = device.createBuffer({
+                size: globalsData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(globalsBuffer, 0, globalsData);
+
+            const uniformBuffer = device.createBuffer({
+                size: uniformData.byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+            const inputBuffer = device.createBuffer({
+                size: inputData.byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            });
+            device.queue.writeBuffer(inputBuffer, 0, inputData);
+
+            const outputBuffer = device.createBuffer({
+                size: inputData.byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+            });
+            const readBuffer = device.createBuffer({
+                size: inputData.byteLength,
+                usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            });
+
+            const bindGroup = device.createBindGroup({
+                layout: pipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: globalsBuffer } },
+                    { binding: 1, resource: { buffer: uniformBuffer } },
+                    { binding: 2, resource: { buffer: inputBuffer } },
+                    { binding: 3, resource: { buffer: outputBuffer } },
+                ],
+            });
+
+            const encoder = device.createCommandEncoder();
+            const pass = encoder.beginComputePass();
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(
+                Math.ceil(inputData.length / workgroupSize)
+            );
+            pass.end();
+
+            encoder.copyBufferToBuffer(
+                outputBuffer,
+                0,
+                readBuffer,
+                0,
+                inputData.byteLength
+            );
+            device.queue.submit([encoder.finish()]);
+            await device.queue.onSubmittedWorkDone();
+
+            await readBuffer.mapAsync(GPUMapMode.READ);
+            const mapped = readBuffer.getMappedRange();
+            const copy = new Float32Array(mapped.slice(0));
+            readBuffer.unmap();
+
+            return Array.from(copy);
+        },
+        {
+            shaderCode,
+            input,
+            domain,
+            range,
+            paddingInner,
+            paddingOuter,
+            align,
+            band,
+            workgroupSize: WORKGROUP_SIZE,
+        }
     );
 }
 
@@ -546,4 +748,79 @@ test("scaleBandHpU matches CPU reference with packed large indices", async ({
             expect(result[index]).toBeCloseTo(expected, 3);
         });
     }
+});
+
+test("scaleBand matches d3 band positions with padding/align", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [0, 1, 2, 3];
+    const domain = [0, 4];
+    const range = [0, 100];
+    const paddingInner = 0.2;
+    const paddingOuter = 0.1;
+    const align = 0.3;
+    const band = 0;
+    const reference = scaleBand()
+        .domain(input.map(String))
+        .range(range)
+        .paddingInner(paddingInner)
+        .paddingOuter(paddingOuter)
+        .align(align);
+
+    const shaderCode = buildBandComputeShader(input.length);
+    const result = await runBandScaleCompute(page, {
+        shaderCode,
+        input,
+        domain,
+        range,
+        paddingInner,
+        paddingOuter,
+        align,
+        band,
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        const expected = reference(String(value));
+        expect(result[index]).toBeCloseTo(expected ?? 0, 5);
+    });
+});
+
+test("scaleBand honors the band offset parameter", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const input = [0, 1, 2];
+    const domain = [0, 3];
+    const range = [0, 90];
+    const paddingInner = 0;
+    const paddingOuter = 0;
+    const align = 0.5;
+    const band = 1;
+    const reference = scaleBand()
+        .domain(input.map(String))
+        .range(range)
+        .paddingInner(paddingInner)
+        .paddingOuter(paddingOuter)
+        .align(align);
+
+    const shaderCode = buildBandComputeShader(input.length);
+    const result = await runBandScaleCompute(page, {
+        shaderCode,
+        input,
+        domain,
+        range,
+        paddingInner,
+        paddingOuter,
+        align,
+        band,
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        const start = reference(String(value)) ?? 0;
+        const expected = start + reference.bandwidth();
+        expect(result[index]).toBeCloseTo(expected, 5);
+    });
 });
