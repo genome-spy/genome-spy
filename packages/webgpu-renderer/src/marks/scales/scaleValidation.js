@@ -74,7 +74,12 @@ export function validateScaleConfig(name, channel, analysis) {
     );
     const allowsScalarToVectorOutput =
         allowsVectorOutputFlag && allowsScalarToVector;
-    if (outputComponents > 1 && !allowsVectorOutputFlag) {
+    const vectorOutputAllowed =
+        outputComponents === 1 ||
+        (scaleType === "identity"
+            ? inputComponents === outputComponents
+            : allowsVectorOutputFlag);
+    if (outputComponents > 1 && !vectorOutputAllowed) {
         return `Channel "${name}" uses vector components but scale "${scaleType}" only supports scalars.`;
     }
 
