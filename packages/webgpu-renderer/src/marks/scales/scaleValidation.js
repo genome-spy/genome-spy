@@ -151,7 +151,7 @@ export function validateScaleConfig(name, channel, analysis) {
         scaleType,
         outputComponents,
         inputComponents,
-        inputScalarType: scalarType,
+        scalarType,
         outputScalarType,
         isPiecewise,
         needsDomainMap,

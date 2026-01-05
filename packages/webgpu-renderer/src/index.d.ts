@@ -210,17 +210,44 @@ export type ScalePipeline = {
 export type ScaleEmitter = (params: ScaleEmitParams) => string;
 
 /**
+ * Shared scale IO contract used by validation, analysis, and codegen.
+ */
+export type ScaleIOContext = {
+    /** Channel name used for diagnostics and uniform lookups. */
+    name: string;
+    /** Vector width of the raw input value before scaling. */
+    inputComponents: 1 | 2 | 4;
+    /** Vector width expected by the mark shader after scaling. */
+    outputComponents: 1 | 2 | 4;
+    /** Scalar type of the raw input when inputComponents is 1. */
+    scalarType: ScalarType;
+    /** Scalar type of the scaled output when outputComponents is 1. */
+    outputScalarType: ScalarType;
+};
+
+/**
+ * Parameters for `getScaled_*` WGSL emission.
+ */
+export type ScaleFunctionParams = ScaleIOContext & {
+    /** Scale type that selects which WGSL helper is emitted. */
+    scale: ChannelScale["type"];
+    /** WGSL expression for the raw value (buffer read or literal/uniform). */
+    rawValueExpr: string;
+    /** Full scale config for detecting piecewise scales and clamp behavior. */
+    scaleConfig?: ChannelScale;
+    /** Storage buffer identifier for ordinal/band domain lookup, if used. */
+    domainMapName?: string | null;
+    /** Whether to map scale output through a color ramp texture. */
+    useRangeTexture?: boolean;
+};
+
+/**
  * Context passed to scale-specific validation helpers.
  * This mirrors the channel analysis used by the shader builder.
  */
-export type ScaleValidationContext = {
-    name: string;
+export type ScaleValidationContext = ScaleIOContext & {
     channel: ChannelConfigInput;
     scaleType: ChannelScale["type"];
-    outputComponents: 1 | 2 | 4;
-    inputComponents: 1 | 2 | 4;
-    inputScalarType: ScalarType;
-    outputScalarType: ScalarType;
     isPiecewise: boolean;
     needsDomainMap: boolean;
     allowsScalarToVector: boolean;

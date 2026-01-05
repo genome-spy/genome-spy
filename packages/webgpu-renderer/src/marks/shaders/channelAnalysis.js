@@ -15,50 +15,33 @@ import {
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
  * @typedef {import("../../index.d.ts").ChannelScale["type"]} ScaleType
  * @typedef {import("../../types.js").ScalarType} ScalarType
- *
- * @typedef {"series"|"value"|"missing"} ChannelSourceKind
- *
- * @typedef {object} ChannelAnalysis
+ */
+
+/** @typedef {import("../../index.d.ts").ScaleIOContext} ScaleIOContext */
+
+/** @typedef {"series"|"value"|"missing"} ChannelSourceKind */
+
+/**
+ * @typedef {ScaleIOContext & {
+ *   name: string,
+ *   channel: ChannelConfigInput,
+ *   sourceKind: ChannelSourceKind,
+ *   scaleType: ScaleType,
+ *   scaleDef: import("../scales/scaleDefs.js").ScaleDef,
+ *   useRangeTexture: boolean,
+ *   isPiecewise: boolean,
+ *   needsScaleFunction: boolean,
+ *   needsOrdinalRange: boolean,
+ *   needsDomainMap: boolean,
+ *   stopKind: import("../../index.d.ts").ScaleStopKind | null,
+ *   allowsScalarToVector: boolean,
+ *   isContinuousScale: boolean,
+ *   rangeIsFunction: boolean,
+ *   rangeIsColor: boolean
+ * }} ChannelAnalysis
  *   Normalized channel metadata shared by validation and code generation.
- * @prop {string} name
- *   Channel name used for diagnostics and resource bookkeeping.
- * @prop {ChannelConfigInput} channel
- *   Original channel config used to derive the analysis.
- * @prop {ChannelSourceKind} sourceKind
- *   Whether the channel provides series data, a value, or neither.
- * @prop {ScaleType} scaleType
- *   Scale type to be used for codegen and validation.
- * @prop {import("../scales/scaleDefs.js").ScaleDef} scaleDef
- *   Metadata from the scale registry (input/output rules, flags).
- * @prop {1|2|4} outputComponents
- *   Vector width expected by the mark shader for the scaled output.
- * @prop {1|2|4} inputComponents
- *   Vector width of the raw input value before scaling.
- * @prop {"f32"|"u32"|"i32"} scalarType
- *   Scalar type of the raw input when inputComponents is 1.
- * @prop {"f32"|"u32"|"i32"} outputScalarType
- *   Scalar type of the scaled output when outputComponents is 1.
- * @prop {boolean} useRangeTexture
- *   True when the scale output is sampled from a ramp texture.
- * @prop {boolean} isPiecewise
- *   True when the scale uses piecewise domain/range arrays.
- * @prop {boolean} needsScaleFunction
- *   True when a getScaled_* helper is required.
- * @prop {boolean} needsOrdinalRange
- *   True when the ordinal range buffer must be bound.
- * @prop {boolean} needsDomainMap
- *   True when an ordinal domain map buffer must be bound.
- * @prop {import("../../index.d.ts").ScaleStopKind | null} stopKind
- *   Stop-array kind used for uniform-backed domain/range allocation; null
- *   means the scale uses buffer/texture resources instead.
- * @prop {boolean} allowsScalarToVector
- *   True when scalar inputs can map to vector outputs for this scale.
- * @prop {boolean} isContinuousScale
- *   True for continuous scales like linear/log/pow/sqrt/symlog.
- * @prop {boolean} rangeIsFunction
- *   True when the range is an interpolator function.
- * @prop {boolean} rangeIsColor
- *   True when the range is an array of color values.
+ *   Includes ScaleIOContext fields (inputComponents, outputComponents,
+ *   scalarType, outputScalarType).
  */
 
 /**
