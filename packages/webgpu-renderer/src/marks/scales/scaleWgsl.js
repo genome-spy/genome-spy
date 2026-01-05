@@ -4,10 +4,14 @@ import { getScaleDefs } from "./scaleDefs.js";
 /**
  * Assemble WGSL snippets from scale definitions, honoring dependencies.
  *
+ * @param {Iterable<string> | null} [requiredScales]
+ *   When omitted or null, all known scales are emitted. Otherwise only the
+ *   provided scale names (and their dependencies) are included.
  * @returns {string}
  */
-export function buildScaleWgsl() {
+export function buildScaleWgsl(requiredScales = null) {
     const defs = getScaleDefs();
+    const requested = requiredScales == null ? null : new Set(requiredScales);
     /** @type {Set<string>} */
     const visiting = new Set();
     /** @type {Set<string>} */
@@ -41,10 +45,16 @@ export function buildScaleWgsl() {
         visited.add(name);
     }
 
-    for (const name of Object.keys(defs)) {
+    if (!requested) {
+        for (const name of Object.keys(defs)) {
+            visit(name);
+        }
+        return `${SCALE_COMMON_WGSL}\n${fragments.join("\n")}`;
+    }
+
+    for (const name of requested) {
         visit(name);
     }
 
-    const scaleBlocks = fragments.length ? `\n${fragments.join("\n")}` : "";
-    return `${SCALE_COMMON_WGSL}${scaleBlocks}`;
+    return `${SCALE_COMMON_WGSL}\n${fragments.join("\n")}`;
 }

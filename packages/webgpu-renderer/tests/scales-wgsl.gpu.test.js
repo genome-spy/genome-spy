@@ -6,7 +6,7 @@ import {
     scalePow,
     scaleSymlog,
 } from "d3-scale";
-import getScaleWgsl from "../src/wgsl/scales.wgsl.js";
+import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
 import {
     BASE,
     packHighPrecisionDomain,
@@ -121,7 +121,7 @@ function computeBandHpUExpected({ value, domainExtent, range, config }) {
  * @returns {string}
  */
 function buildComputeShader(scaleExpr, inputLength) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -163,7 +163,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpComputeShader(inputLength) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -214,7 +214,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandHpUComputeShader(inputLength) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -266,7 +266,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
  * @returns {string}
  */
 function buildBandComputeShader(inputLength) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,
