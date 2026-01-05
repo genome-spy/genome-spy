@@ -32,6 +32,13 @@ const SCALE_DEFS = {
 };
 
 /**
+ * @returns {Record<string, ScaleDef>}
+ */
+export function getScaleDefs() {
+    return SCALE_DEFS;
+}
+
+/**
  * @param {string} scaleType
  * @returns {ScaleDef}
  */

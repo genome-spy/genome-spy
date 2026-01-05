@@ -23,6 +23,7 @@ export const identityScaleDef = {
     output: "same",
     params: [],
     continuous: false,
+    vectorOutput: "always",
     resources: {
         domainRangeKind: null,
         needsDomainMap: false,

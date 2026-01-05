@@ -39,22 +39,22 @@ Phase 6: **Per-scale modules + centralized validation** — OK. Each scale lives
 in `scales/defs/*` and `scaleValidation.js` owns shared config checks; the
 registry in `scaleDefs.js` just imports the per-scale defs.
 
-Phase 7: **ScaleDef-driven validation hooks** — OK. `validateScaleConfig` now
-drives scale-specific checks and is invoked from `channelConfigResolver`.
+Phase 7: **ScaleDef-driven validation hooks** — OK. Each scale exposes a
+`validate` hook and `scaleValidation.js` delegates scale-specific checks to it.
 
-Phase 8: **Emitter/toolkit split** — OK. Emitters live in
-`scales/emitters/*` with shared helpers in `emitters/utils.js` and
+Phase 8: **Emitter/toolkit split** — OK. Emitters live alongside each scale
+definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
 `scalePipeline.js`.
 
 #### Current State / Context (handoff)
 
-- ScaleDef registry now owns resource rules and WGSL emitters; `scaleCodegen`
-  delegates to `ScaleDef.emit`, and `scaleResources` consumes
+- ScaleDef registry now owns resource rules, WGSL snippets, and emitters;
+  `scaleCodegen` delegates to `ScaleDef.emit`, and `scaleResources` consumes
   `getScaleResourceRequirements`.
-- Emitters live in `src/marks/scales/scaleEmitters.js`; registry in
-  `src/marks/scales/scaleDefs.js`.
-- Validation now flows through `scaleValidation.js` and is invoked from
-  `channelConfigResolver` / `scaleCodegen`.
+- WGSL scale helpers are assembled from `wgsl/scaleCommon.wgsl.js` plus
+  per-scale snippets via `scaleWgsl.js`, so custom scales can contribute WGSL.
+- Validation now flows through `scaleValidation.js` (shared checks + per-scale
+  `validate` hooks) and is invoked from `channelConfigResolver` / `scaleCodegen`.
 - `domainRangeUtils.js` now consults `getScaleResourceRequirements` for
   domain/range kinds.
 - Tests updated: `scaleDefs.test.js` now checks resource requirements.
@@ -66,6 +66,9 @@ Phase 8: **Emitter/toolkit split** — OK. Emitters live in
 - **Hash parity guard** — `hash32` exists in both JS (`hashTable.js`) and WGSL (`hashTable.wgsl.js`). Consider a parity test or codegen to keep them in sync.
 - **Merge channel normalization paths** — Defaults and normalization are split between `channelSpecUtils.js` and `channelConfigResolver.js`. Pull defaulting/normalization into one place and keep validation separate.
 - **Unify WGSL string helpers** — Small WGSL string helpers (domain/range accessors) are defined in both `scalePipeline.js` and `scaleCodegen.js`. Consolidate into a single helper module.
+- **Scale module polish** — Each scale now owns emit/validate/WGSL. Consider
+  moving scale-specific validation into the per-scale files exclusively and
+  keeping `scaleValidation.js` limited to shared checks.
 
 ### Binding mitigation (storage buffer limit = 8)
 

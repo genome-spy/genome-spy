@@ -11,6 +11,14 @@ import {
     rangeVec2,
 } from "../scaleEmitUtils.js";
 
+const linearWgsl = /* wgsl */ `
+fn scaleLinear(value: f32, domain: vec2<f32>, range: vec2<f32>) -> f32 {
+    let domainSpan = domain.y - domain.x;
+    let rangeSpan = range.y - range.x;
+    return (value - domain.x) / domainSpan * rangeSpan + range.x;
+}
+`;
+
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
@@ -95,17 +103,57 @@ function emitLinearScale(params) {
     });
 }
 
+/**
+ * @param {import("../../../index.d.ts").ScaleValidationContext} context
+ * @returns {string | null}
+ */
+function validateLinearScale({
+    name,
+    channel,
+    outputComponents,
+    inputComponents,
+    isPiecewise,
+}) {
+    if (outputComponents !== 1 && outputComponents !== 4) {
+        return `Channel "${name}" uses ${outputComponents} components but linear scales only support scalars or vec4 outputs.`;
+    }
+
+    if (!isPiecewise) {
+        return null;
+    }
+
+    const domain = channel.scale?.domain;
+    const range = channel.scale?.range;
+    if (!Array.isArray(domain) || domain.length < 2) {
+        return `Piecewise scale on "${name}" requires at least two domain entries.`;
+    }
+    if (!Array.isArray(range) || range.length < 2) {
+        return `Piecewise scale on "${name}" requires at least two range entries.`;
+    }
+    if (domain.length !== range.length) {
+        return `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`;
+    }
+    if (inputComponents !== 1) {
+        return `Piecewise scale on "${name}" requires scalar input values.`;
+    }
+
+    return null;
+}
+
 /** @type {import("../../../index.d.ts").ScaleDef} */
 export const linearScaleDef = {
     input: "numeric",
     output: "f32",
     params: [],
     continuous: true,
+    vectorOutput: "always",
+    wgsl: linearWgsl,
     resources: {
         domainRangeKind: "continuous",
         supportsPiecewise: true,
         needsDomainMap: false,
         needsOrdinalRange: false,
     },
+    validate: validateLinearScale,
     emit: emitLinearScale,
 };

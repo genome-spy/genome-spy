@@ -2,6 +2,7 @@ import {
     DOMAIN_MAP_COUNT_PREFIX,
     RANGE_COUNT_PREFIX,
 } from "../../../wgsl/prefixes.js";
+import { isValueChannelConfig } from "../../../types.js";
 import { makeFnHeader, toU32Expr } from "../scaleEmitUtils.js";
 
 /**
@@ -60,16 +61,58 @@ function emitOrdinalScale({
 }`;
 }
 
+/**
+ * @param {import("../../../index.d.ts").ScaleValidationContext} context
+ * @returns {string | null}
+ */
+function validateOrdinalScale({
+    name,
+    channel,
+    outputComponents,
+    inputComponents,
+}) {
+    if (outputComponents !== 1 && outputComponents !== 4) {
+        return `Channel "${name}" uses ${outputComponents} components but ordinal scales only support scalars or vec4 outputs.`;
+    }
+    const range = channel.scale?.range;
+    if (!Array.isArray(range) || range.length === 0) {
+        return `Ordinal scale on "${name}" requires a non-empty range.`;
+    }
+    if (
+        !Array.isArray(channel.scale?.domain) &&
+        !ArrayBuffer.isView(channel.scale?.domain)
+    ) {
+        return `Ordinal scale on "${name}" requires an explicit domain array.`;
+    }
+    if (inputComponents !== 1) {
+        return `Ordinal scale on "${name}" requires scalar input values.`;
+    }
+    if (isValueChannelConfig(channel)) {
+        if (Array.isArray(channel.value)) {
+            return `Ordinal scale on "${name}" requires scalar integer values.`;
+        }
+        if (
+            typeof channel.value === "number" &&
+            !Number.isInteger(channel.value)
+        ) {
+            return `Ordinal scale on "${name}" requires integer values.`;
+        }
+    }
+    return null;
+}
+
 /** @type {import("../../../index.d.ts").ScaleDef} */
 export const ordinalScaleDef = {
     input: "u32",
     output: "same",
     params: [],
     continuous: false,
+    vectorOutput: "always",
     resources: {
         domainRangeKind: null,
         needsDomainMap: true,
         needsOrdinalRange: true,
     },
+    validate: validateOrdinalScale,
     emit: emitOrdinalScale,
 };
