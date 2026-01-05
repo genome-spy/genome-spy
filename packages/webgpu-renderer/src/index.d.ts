@@ -28,6 +28,7 @@ export type ChannelScale = {
         | "pow"
         | "sqrt"
         | "symlog"
+        | "quantize"
         | "band"
         | "index"
         | "threshold"
