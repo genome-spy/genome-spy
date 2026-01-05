@@ -80,8 +80,8 @@ export type ScaleInputRule = "any" | "numeric" | "u32";
 /** Output typing rules used by channel validation and scale metadata. */
 export type ScaleOutputRule = "same" | "f32";
 
-/** Domain/range categories used by scale resource planning. */
-export type ScaleDomainRangeKind = "continuous" | "threshold" | "piecewise";
+/** Stop-array categories used by scale resource planning. */
+export type ScaleStopKind = "continuous" | "threshold" | "piecewise";
 
 /** Resource rules used by the renderer to allocate scale buffers/textures. */
 export type ScaleResourceRules = {
@@ -90,7 +90,7 @@ export type ScaleResourceRules = {
      * Use null when the scale has no uniform domain/range (e.g., ordinal uses
      * domain map + range buffers instead).
      */
-    domainRangeKind: ScaleDomainRangeKind | null;
+    stopKind: ScaleStopKind | null;
 
     /** True when piecewise variants can be produced from this scale. */
     supportsPiecewise?: boolean;
@@ -104,7 +104,7 @@ export type ScaleResourceRules = {
 
 /** Resolved resource requirements for a scale + channel pair. */
 export type ScaleResourceRequirements = {
-    domainRangeKind: ScaleDomainRangeKind | null;
+    stopKind: ScaleStopKind | null;
     needsDomainMap: boolean;
     needsOrdinalRange: boolean;
 };
@@ -125,7 +125,7 @@ export type ScaleUniformParam = {
 
 /** Uniform definition bundle for a scale. */
 export type ScaleUniformDef = {
-    domainRange: boolean;
+    stopArrays: boolean;
     params: ScaleUniformParam[];
 };
 

@@ -20,7 +20,7 @@ export const ordinalScaleDef = {
     continuous: false,
     vectorOutput: "always",
     resources: {
-        domainRangeKind: null,
+        stopKind: null,
         needsDomainMap: true,
         needsOrdinalRange: true,
     },

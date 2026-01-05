@@ -7,15 +7,15 @@ import {
 } from "../scales/scaleDefs.js";
 import {
     coerceRangeValue,
-    getDomainRangeLengths,
+    getScaleStopLengths,
     isColorRange,
     isRangeFunction,
     normalizeOrdinalDomain,
-    normalizeDomainRange,
+    normalizeScaleStops,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
-} from "../scales/domainRangeUtils.js";
+} from "../scales/scaleStops.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
@@ -34,7 +34,7 @@ import { isValueChannelConfig } from "../../types.js";
  * @typedef {import("../../index.d.ts").TypedArray} TypedArray
  * @typedef {import("../../types.js").ScalarType} ScalarType
  * @typedef {object} ChannelResources
- * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} domainRange
+ * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} ordinalRange
  * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} domainMap
  * @property {{ texture: GPUTexture, sampler: GPUSampler, width: number, height: number, format: GPUTextureFormat } | undefined} rangeTexture
@@ -123,10 +123,10 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @returns {ChannelResources["domainRange"] | undefined}
+     * @returns {ChannelResources["scaleStops"] | undefined}
      */
-    _getDomainRangeInfo(name) {
-        return this._channelResources.get(name)?.domainRange;
+    _getScaleStopInfo(name) {
+        return this._channelResources.get(name)?.scaleStops;
     }
 
     /**
@@ -142,9 +142,9 @@ export class ScaleResourceManager {
             scaleType,
             analysis.isPiecewise
         );
-        const kind = requirements.domainRangeKind;
+        const kind = requirements.stopKind;
         if (kind) {
-            const { domainLength, rangeLength } = getDomainRangeLengths(
+            const { domainLength, rangeLength } = getScaleStopLengths(
                 name,
                 kind,
                 channel.scale
@@ -204,10 +204,10 @@ export class ScaleResourceManager {
             analysis.scaleType,
             analysis.isPiecewise
         );
-        const kind = requirements.domainRangeKind;
+        const kind = requirements.stopKind;
         if (kind) {
             if (analysis.useRangeTexture) {
-                const { domainLength, rangeLength } = getDomainRangeLengths(
+                const { domainLength, rangeLength } = getScaleStopLengths(
                     name,
                     kind,
                     scale
@@ -225,7 +225,7 @@ export class ScaleResourceManager {
                         : [0, 1];
                 this._setUniformValue(DOMAIN_PREFIX + name, domain);
                 this._setUniformValue(RANGE_PREFIX + name, range);
-                this._getChannelResources(name).domainRange = {
+                this._getChannelResources(name).scaleStops = {
                     kind,
                     domainLength,
                     rangeLength,
@@ -233,7 +233,7 @@ export class ScaleResourceManager {
                 this._initializeRangeTexture(name, scale);
             } else {
                 const { domain, range, domainLength, rangeLength } =
-                    normalizeDomainRange(
+                    normalizeScaleStops(
                         name,
                         channel,
                         scale,
@@ -242,7 +242,7 @@ export class ScaleResourceManager {
                     );
                 this._setUniformValue(DOMAIN_PREFIX + name, domain);
                 this._setUniformValue(RANGE_PREFIX + name, range);
-                this._getChannelResources(name).domainRange = {
+                this._getChannelResources(name).scaleStops = {
                     kind,
                     domainLength,
                     rangeLength,
@@ -332,11 +332,11 @@ export class ScaleResourceManager {
                         continue;
                     }
                 }
-                const kind = requirements.domainRangeKind;
+                const kind = requirements.stopKind;
                 if (kind && analysis.useRangeTexture) {
-                    this._updateDomainRange(channelName, "domain", domain);
+                    this._updateScaleStops(channelName, "domain", domain);
                     if (kind === "piecewise") {
-                        const sizes = this._getDomainRangeInfo(channelName);
+                        const sizes = this._getScaleStopInfo(channelName);
                         const positions = normalizeRangePositions(
                             sizes?.rangeLength ?? domain.length
                         );
@@ -352,7 +352,7 @@ export class ScaleResourceManager {
                     }
                     continue;
                 }
-                this._updateDomainRange(channelName, "domain", domain);
+                this._updateScaleStops(channelName, "domain", domain);
             }
         }
         return needsRebind;
@@ -394,7 +394,7 @@ export class ScaleResourceManager {
                         `Scale on "${channelName}" does not support interpolator ranges.`
                     );
                 }
-                this._updateDomainRange(
+                this._updateScaleStops(
                     channelName,
                     "range",
                     /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
@@ -412,14 +412,14 @@ export class ScaleResourceManager {
      * @param {unknown} value
      * @returns {void}
      */
-    _updateDomainRange(name, suffix, value) {
+    _updateScaleStops(name, suffix, value) {
         const channel = this._channels[name];
         const analysis = channel ? buildChannelAnalysis(name, channel) : null;
         const kind = analysis
             ? getScaleResourceRequirements(
                   analysis.scaleType,
                   analysis.isPiecewise
-              ).domainRangeKind
+              ).stopKind
             : null;
         const label =
             kind === "threshold"
@@ -480,7 +480,7 @@ export class ScaleResourceManager {
             return;
         }
 
-        const sizes = this._getDomainRangeInfo(name);
+        const sizes = this._getScaleStopInfo(name);
         if (!sizes) {
             throw new Error(
                 `${label} scale on "${name}" has no recorded size.`
@@ -634,7 +634,7 @@ export class ScaleResourceManager {
             /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
                 range
             );
-        const sizes = this._getDomainRangeInfo(name);
+        const sizes = this._getScaleStopInfo(name);
         let textureData;
         if (isRangeFunction(normalizedRange)) {
             textureData = createSchemeTexture(normalizedRange);

@@ -2,7 +2,7 @@ import {
     isColorRange,
     isRangeFunction,
     usesRangeTexture,
-} from "../scales/domainRangeUtils.js";
+} from "../scales/scaleStops.js";
 import { isPiecewiseScale } from "../scales/scaleUtils.js";
 import {
     getScaleDef,
@@ -48,8 +48,8 @@ import {
  *   True when the ordinal range buffer must be bound.
  * @prop {boolean} needsDomainMap
  *   True when an ordinal domain map buffer must be bound.
- * @prop {import("../../index.d.ts").ScaleDomainRangeKind | null} domainRangeKind
- *   Domain/range kind used for uniform-backed domain/range allocation; null
+ * @prop {import("../../index.d.ts").ScaleStopKind | null} stopKind
+ *   Stop-array kind used for uniform-backed domain/range allocation; null
  *   means the scale uses buffer/texture resources instead.
  * @prop {boolean} allowsScalarToVector
  *   True when scalar inputs can map to vector outputs for this scale.
@@ -145,7 +145,7 @@ export function buildChannelAnalysis(name, channel) {
         needsScaleFunction,
         needsOrdinalRange,
         needsDomainMap,
-        domainRangeKind: resourceRequirements.domainRangeKind,
+        stopKind: resourceRequirements.stopKind,
         allowsScalarToVector,
         isContinuousScale: continuous,
         rangeIsFunction,

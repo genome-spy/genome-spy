@@ -73,12 +73,12 @@ export function registerScaleDef(name, def) {
 export function getScaleResourceRequirements(scaleType, isPiecewise) {
     const def = getScaleDef(scaleType);
     const rules = def.resources;
-    const domainRangeKind =
-        rules.domainRangeKind && rules.supportsPiecewise && isPiecewise
+    const stopKind =
+        rules.stopKind && rules.supportsPiecewise && isPiecewise
             ? "piecewise"
-            : rules.domainRangeKind;
+            : rules.stopKind;
     return {
-        domainRangeKind,
+        stopKind,
         needsDomainMap: Boolean(rules.needsDomainMap),
         needsOrdinalRange: Boolean(rules.needsOrdinalRange),
     };
@@ -91,7 +91,7 @@ export function getScaleResourceRequirements(scaleType, isPiecewise) {
 export function getScaleUniformDef(scaleType) {
     const def = getScaleDef(scaleType);
     return {
-        domainRange: def.resources.domainRangeKind !== null,
+        stopArrays: def.resources.stopKind !== null,
         params: def.params,
     };
 }
