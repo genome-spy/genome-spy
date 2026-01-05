@@ -327,6 +327,12 @@ export type ScaleDef = {
     vectorOutput?: "never" | "interpolated" | "always";
 
     /**
+     * Whether the scale can accept u32 input even when the channel spec expects
+     * f32 (useful for ordinal/band/index ids).
+     */
+    allowsU32InputOverride?: boolean;
+
+    /**
      * Optional WGSL snippet implementing the scale helpers (scaleLinear, etc).
      * This is stitched into the global shader prelude with dependencies.
      */
