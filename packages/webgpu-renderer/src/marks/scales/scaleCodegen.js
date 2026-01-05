@@ -19,7 +19,7 @@ import { isPiecewiseScale } from "./scaleUtils.js";
  * @typedef {object} ScaleFunctionParams
  * @prop {string} name
  *   Channel name used for function naming and uniform lookups.
- * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"band"|"index"|"threshold"|"ordinal"} scale
+ * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"quantize"|"band"|"index"|"threshold"|"ordinal"} scale
  *   Scale type that selects which WGSL helper is emitted.
  * @prop {string} rawValueExpr
  *   WGSL expression for the raw value (buffer read or literal/uniform).
