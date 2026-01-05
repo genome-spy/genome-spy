@@ -8,7 +8,7 @@ import {
     scaleSequential,
     scaleThreshold,
 } from "d3-scale";
-import getScaleWgsl from "../src/wgsl/scales.wgsl.js";
+import { buildScaleWgsl } from "../src/marks/scales/scaleWgsl.js";
 import {
     buildScaledFunction,
     getScaleOutputType,
@@ -80,7 +80,7 @@ function buildScaleCodegenShader({
     rangeLength = 2,
     extraUniformFields = [],
 }) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     const outputType = outputComponents === 1 ? "f32" : "vec4<f32>";
     const guardExpr = outputComponents === 1 ? "guard" : "vec4<f32>(guard)";
     const extraFields = extraUniformFields.length
@@ -138,7 +138,7 @@ function buildScaleCodegenRampShader({
     domainLength = 2,
     rangeLength = 2,
 }) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,
@@ -203,7 +203,7 @@ function buildScaleCodegenTextureShader({
     domainLength = 2,
     rangeLength = 2,
 }) {
-    const scalesWgsl = getScaleWgsl();
+    const scalesWgsl = buildScaleWgsl();
     return `
 struct Globals {
     width: f32,

@@ -1,5 +1,5 @@
 /* global GPUShaderStage */
-import getScaleWgsl from "../../wgsl/scales.wgsl.js";
+import { buildScaleWgsl } from "../scales/scaleWgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import { preprocessShader } from "../../wgsl/preprocess.js";
 import { __DEV__ } from "../../utils/dev.js";
@@ -547,7 +547,12 @@ export function buildMarkShader({
         })
         .join("\n");
 
-    const scalesWgsl = getScaleWgsl();
+    const requiredScales = new Set(
+        channelIRs
+            .filter((channelIR) => channelIR.needsScaleFunction)
+            .map((channelIR) => channelIR.scaleType)
+    );
+    const scalesWgsl = buildScaleWgsl(requiredScales);
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.
