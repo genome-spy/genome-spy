@@ -122,6 +122,7 @@ export function buildChannelAnalysis(name, channel) {
         outputComponents > 1 &&
         (scaleType === "threshold" ||
             scaleType === "ordinal" ||
+            scaleType === "quantize" ||
             isPiecewise ||
             continuous);
     const range = channel.scale?.range;

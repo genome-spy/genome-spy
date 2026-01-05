@@ -5,6 +5,7 @@ import { linearScaleDef } from "./defs/linear.js";
 import { logScaleDef } from "./defs/log.js";
 import { ordinalScaleDef } from "./defs/ordinal.js";
 import { powScaleDef } from "./defs/pow.js";
+import { quantizeScaleDef } from "./defs/quantize.js";
 import { sqrtScaleDef } from "./defs/sqrt.js";
 import { symlogScaleDef } from "./defs/symlog.js";
 import { thresholdScaleDef } from "./defs/threshold.js";
@@ -23,6 +24,7 @@ const SCALE_DEFS = {
     linear: linearScaleDef,
     log: logScaleDef,
     pow: powScaleDef,
+    quantize: quantizeScaleDef,
     sqrt: sqrtScaleDef,
     symlog: symlogScaleDef,
     band: bandScaleDef,

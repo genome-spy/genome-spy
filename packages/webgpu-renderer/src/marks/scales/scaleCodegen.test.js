@@ -86,6 +86,38 @@ describe("scaleCodegen validation", () => {
         expect(error).toBeNull();
     });
 
+    it("allows quantize scales with vec4 outputs", () => {
+        const error = validateScaleConfig("fill", {
+            scale: {
+                type: "quantize",
+                domain: [0, 1],
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 1, 1, 1],
+                ],
+            },
+            type: "f32",
+            components: 4,
+        });
+
+        expect(error).toBeNull();
+    });
+
+    it("rejects quantize scales with invalid domain length", () => {
+        const error = validateScaleConfig("x", {
+            scale: {
+                type: "quantize",
+                domain: [0, 1, 2],
+                range: [0, 1],
+            },
+            type: "f32",
+        });
+
+        expect(error).toBe(
+            'Quantize scale on "x" requires a domain with exactly two entries.'
+        );
+    });
+
     // Vector output is only valid when a scalar output is later interpolated to a color.
     it("rejects vector outputs on interpolated-only scales without interpolation", () => {
         const error = validateScaleConfig("x", {

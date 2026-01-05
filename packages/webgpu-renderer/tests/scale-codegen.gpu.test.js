@@ -4,6 +4,7 @@ import { interpolateHcl, interpolateRgb } from "d3-interpolate";
 import {
     scaleLinear,
     scaleLog,
+    scaleQuantize,
     scaleSequential,
     scaleThreshold,
 } from "d3-scale";
@@ -831,6 +832,34 @@ test("scaleCodegen maps scalars to vec4 via threshold scale", async ({
             expect(result[base + i]).toBeCloseTo(expected[i], 5);
         }
     });
+});
+
+test("scaleCodegen matches d3 quantize scale", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const input = [-0.1, 0.2, 0.49, 0.5, 0.75, 1.1];
+    const domain = [0, 1];
+    const range = [1, 2, 4, 8];
+    const reference = scaleQuantize().domain(domain).range(range);
+    const codegenFn = buildScaleFn({
+        scale: "quantize",
+        scaleConfig: { type: "quantize", domain, range },
+    });
+    const shaderCode = buildScaleCodegenShader({
+        scaleFn: codegenFn,
+        inputLength: input.length,
+        domainLength: domain.length,
+        rangeLength: range.length,
+    });
+    const result = await runScaleCodegenCompute(page, {
+        shaderCode,
+        input,
+        uniformData: packPiecewiseDomainRange(domain, range),
+    });
+
+    const expected = input.map((value) => reference(value));
+
+    expect(result).toEqual(expected);
 });
 
 test("scaleCodegen reproduces d3 linear color interpolation via ramp texture", async ({
