@@ -5,6 +5,22 @@ import {
     rangeVec2,
 } from "../scaleEmitUtils.js";
 
+const symlogWgsl = /* wgsl */ `
+fn symlog(value: f32, constant: f32) -> f32 {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+fn scaleSymlog(value: f32, domain: vec2<f32>, range: vec2<f32>, constant: f32) -> f32 {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2<f32>(symlog(domain.x, constant), symlog(domain.y, constant)),
+        range
+    );
+}
+`;
+
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
@@ -29,6 +45,9 @@ export const symlogScaleDef = {
         },
     ],
     continuous: true,
+    vectorOutput: "interpolated",
+    wgslDeps: ["linear"],
+    wgsl: symlogWgsl,
     resources: {
         domainRangeKind: "continuous",
         needsDomainMap: false,

@@ -174,8 +174,62 @@ export type ScaleEmitParams = {
     useRangeTexture?: boolean;
 };
 
+/** Common parameter subset for continuous scale emitters. */
+export type ContinuousEmitParams = Pick<
+    ScaleEmitParams,
+    | "name"
+    | "rawValueExpr"
+    | "inputScalarType"
+    | "clamp"
+    | "round"
+    | "useRangeTexture"
+>;
+
+/** Mutable state used by scale pipeline steps. */
+export type ScalePipelineState = {
+    expr: string;
+    body: string;
+};
+
+/** Pipeline step that transforms the current expression and emitted WGSL. */
+export type ScalePipelineStep = (
+    state: ScalePipelineState
+) => ScalePipelineState;
+
+/** Parameters for the pipeline-based WGSL emitter. */
+export type ScalePipeline = {
+    name: string;
+    rawValueExpr: string;
+    steps: ScalePipelineStep[];
+    returnType: string;
+    useRangeTexture?: boolean;
+};
+
 /** Scale-specific WGSL emitter for `getScaled_*` helpers. */
 export type ScaleEmitter = (params: ScaleEmitParams) => string;
+
+/**
+ * Context passed to scale-specific validation helpers.
+ * This mirrors the channel analysis used by the shader builder.
+ */
+export type ScaleValidationContext = {
+    name: string;
+    channel: ChannelConfigInput;
+    scaleType: ChannelScale["type"];
+    outputComponents: 1 | 2 | 4;
+    inputComponents: 1 | 2 | 4;
+    inputScalarType: ScalarType;
+    outputScalarType: ScalarType;
+    isPiecewise: boolean;
+    needsDomainMap: boolean;
+    allowsScalarToVector: boolean;
+    isContinuousScale: boolean;
+    rangeIsFunction: boolean;
+    rangeIsColor: boolean;
+};
+
+/** Scale-specific validation result (null means OK). */
+export type ScaleValidationResult = string | null;
 
 /**
  * Scale definition contract. This combines metadata, resource requirements,
@@ -194,6 +248,26 @@ export type ScaleDef = {
 
     /** Resource hints used for allocating buffers and textures. */
     resources: ScaleResourceRules;
+
+    /**
+     * Vector output policy for the scale. "interpolated" allows vector outputs
+     * only when using interpolated/color ranges.
+     */
+    vectorOutput?: "never" | "interpolated" | "always";
+
+    /**
+     * Optional WGSL snippet implementing the scale helpers (scaleLinear, etc).
+     * This is stitched into the global shader prelude with dependencies.
+     */
+    wgsl?: string;
+
+    /**
+     * Optional list of scale names whose WGSL must be emitted before this scale.
+     */
+    wgslDeps?: string[];
+
+    /** Optional scale-specific validation hook. */
+    validate?: (context: ScaleValidationContext) => ScaleValidationResult;
 
     /** WGSL emitter that produces the scale function for this definition. */
     emit: ScaleEmitter;
@@ -530,6 +604,65 @@ export function setDebugResourcesEnabled(enabled: boolean): void;
 
 /** Register a custom scale definition in the renderer registry. */
 export function registerScaleDef(name: string, def: ScaleDef): void;
+
+/** Build the WGSL function header for a channel's getScaled helper. */
+export function makeFnHeader(name: string, returnType: string): string;
+
+/** Resolve the packed domain uniform to a vec2 expression. */
+export function domainVec2(name: string): string;
+
+/** Resolve the packed domain uniform to a vec3 expression. */
+export function domainVec3(name: string): string;
+
+/** Resolve the packed range uniform to a vec2 expression. */
+export function rangeVec2(name: string): string;
+
+/** Emit a WGSL expression that coerces raw values to u32. */
+export function toU32Expr(
+    rawValueExpr: string,
+    inputScalarType: ScalarType
+): string;
+
+/** Emit WGSL for a continuous scale helper with optional clamp/round logic. */
+export function emitContinuousScale(
+    params: ContinuousEmitParams,
+    valueExprFn: (params: { name: string; valueExpr: string }) => string
+): string;
+
+/** Emit WGSL for a scale pipeline built from reusable steps. */
+export function emitScalePipeline(pipeline: ScalePipeline): string;
+
+/** Pipeline step: cast raw input to f32. */
+export function castToF32Step(inputScalarType: ScalarType): ScalePipelineStep;
+
+/** Pipeline step: clamp to a domain expression. */
+export function clampToDomainStep(domainExpr: string): ScalePipelineStep;
+
+/** Pipeline step: apply a scale function. */
+export function applyScaleStep(
+    name: string,
+    valueExprFn: (params: { name: string; valueExpr: string }) => string
+): ScalePipelineStep;
+
+/** Pipeline step: round away from zero (d3 rangeRound). */
+export function roundStep(): ScalePipelineStep;
+
+/** Pipeline step: apply piecewise linear interpolation. */
+export function piecewiseLinearStep(params: {
+    name: string;
+    domainLength: number;
+    outputComponents: 1 | 2 | 4;
+    outputScalarType: ScalarType;
+    useRangeTexture?: boolean;
+}): ScalePipelineStep;
+
+/** Pipeline step: apply threshold scale mapping. */
+export function thresholdStep(params: {
+    name: string;
+    domainLength: number;
+    outputComponents: 1 | 2 | 4;
+    outputScalarType: ScalarType;
+}): ScalePipelineStep;
 
 export function isChannelConfigWithScale(
     config: ChannelConfigInput
