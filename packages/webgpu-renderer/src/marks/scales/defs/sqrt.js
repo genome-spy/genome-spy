@@ -27,7 +27,7 @@ export const sqrtScaleDef = {
     vectorOutput: "interpolated",
     wgslDeps: ["pow"],
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

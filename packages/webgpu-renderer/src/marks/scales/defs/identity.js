@@ -15,7 +15,7 @@ export const identityScaleDef = {
     continuous: false,
     vectorOutput: "always",
     resources: {
-        domainRangeKind: null,
+        stopKind: null,
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

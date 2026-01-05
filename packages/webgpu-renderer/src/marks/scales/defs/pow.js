@@ -41,7 +41,7 @@ export const powScaleDef = {
     wgslDeps: ["linear"],
     wgsl: powWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

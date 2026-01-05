@@ -55,8 +55,8 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
   per-scale snippets via `scaleWgsl.js`, so custom scales can contribute WGSL.
 - Validation now flows through `scaleValidation.js` (shared checks + per-scale
   `validate` hooks) and is invoked from `channelConfigResolver` / `scaleCodegen`.
-- `domainRangeUtils.js` now consults `getScaleResourceRequirements` for
-  domain/range kinds.
+- `scaleStops.js` now consults `getScaleResourceRequirements` for stop-array
+  kinds.
 - Tests updated: `scaleDefs.test.js` now checks resource requirements.
 
 #### Refactor candidates (redundancy cleanup)
