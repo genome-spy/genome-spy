@@ -39,6 +39,44 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
 `;
 
 /**
+ * Band scale: maps discrete indices to evenly spaced bands in a numeric range.
+ *
+ * Technical notes: implements the d3 band formula in WGSL, including the
+ * paddingInner edge case fix, and optionally routes sparse domains through
+ * a hash map before band lookup.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
+ */
+export const bandScaleDef = {
+    input: "u32",
+    output: "f32",
+    params: [
+        {
+            prefix: SCALE_PADDING_INNER_PREFIX,
+            defaultValue: 0,
+            prop: "paddingInner",
+        },
+        {
+            prefix: SCALE_PADDING_OUTER_PREFIX,
+            defaultValue: 0,
+            prop: "paddingOuter",
+        },
+        { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
+        { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
+    ],
+    continuous: false,
+    vectorOutput: "never",
+    wgsl: bandWgsl,
+    resources: {
+        domainRangeKind: "continuous",
+        needsDomainMap: true,
+        needsOrdinalRange: false,
+    },
+    validate: validateBandScale,
+    emit: emitBandScale,
+};
+
+/**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
  */
@@ -112,33 +150,3 @@ function validateBandScale({ name, channel, inputComponents, needsDomainMap }) {
     }
     return null;
 }
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
-export const bandScaleDef = {
-    input: "u32",
-    output: "f32",
-    params: [
-        {
-            prefix: SCALE_PADDING_INNER_PREFIX,
-            defaultValue: 0,
-            prop: "paddingInner",
-        },
-        {
-            prefix: SCALE_PADDING_OUTER_PREFIX,
-            defaultValue: 0,
-            prop: "paddingOuter",
-        },
-        { prefix: SCALE_ALIGN_PREFIX, defaultValue: 0.5, prop: "align" },
-        { prefix: SCALE_BAND_PREFIX, defaultValue: 0.5, prop: "band" },
-    ],
-    continuous: false,
-    vectorOutput: "never",
-    wgsl: bandWgsl,
-    resources: {
-        domainRangeKind: "continuous",
-        needsDomainMap: true,
-        needsOrdinalRange: false,
-    },
-    validate: validateBandScale,
-    emit: emitBandScale,
-};

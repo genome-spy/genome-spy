@@ -6,6 +6,29 @@ import { isValueChannelConfig } from "../../../types.js";
 import { makeFnHeader, toU32Expr } from "../scaleEmitUtils.js";
 
 /**
+ * Ordinal scale: maps categorical ids to discrete range entries.
+ *
+ * Technical notes: optionally uses a hash map to remap sparse domains to
+ * contiguous indices before indexing the ordinal range buffer.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
+ */
+export const ordinalScaleDef = {
+    input: "u32",
+    output: "same",
+    params: [],
+    continuous: false,
+    vectorOutput: "always",
+    resources: {
+        domainRangeKind: null,
+        needsDomainMap: true,
+        needsOrdinalRange: true,
+    },
+    validate: validateOrdinalScale,
+    emit: emitOrdinalScale,
+};
+
+/**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
  */
@@ -100,19 +123,3 @@ function validateOrdinalScale({
     }
     return null;
 }
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
-export const ordinalScaleDef = {
-    input: "u32",
-    output: "same",
-    params: [],
-    continuous: false,
-    vectorOutput: "always",
-    resources: {
-        domainRangeKind: null,
-        needsDomainMap: true,
-        needsOrdinalRange: true,
-    },
-    validate: validateOrdinalScale,
-    emit: emitOrdinalScale,
-};

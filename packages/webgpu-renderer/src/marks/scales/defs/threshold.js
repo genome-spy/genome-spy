@@ -5,6 +5,29 @@ import {
 } from "../scalePipeline.js";
 
 /**
+ * Threshold scale: maps numeric input to discrete range steps by domain breaks.
+ *
+ * Technical notes: uses the pipeline threshold step to emit a small WGSL loop
+ * that picks the correct slot from the range array.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
+ */
+export const thresholdScaleDef = {
+    input: "numeric",
+    output: "same",
+    params: [],
+    continuous: false,
+    vectorOutput: "always",
+    resources: {
+        domainRangeKind: "threshold",
+        needsDomainMap: false,
+        needsOrdinalRange: false,
+    },
+    validate: validateThresholdScale,
+    emit: emitThresholdScale,
+};
+
+/**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
  */
@@ -78,19 +101,3 @@ function validateThresholdScale({
     }
     return null;
 }
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
-export const thresholdScaleDef = {
-    input: "numeric",
-    output: "same",
-    params: [],
-    continuous: false,
-    vectorOutput: "always",
-    resources: {
-        domainRangeKind: "threshold",
-        needsDomainMap: false,
-        needsOrdinalRange: false,
-    },
-    validate: validateThresholdScale,
-    emit: emitThresholdScale,
-};
