@@ -234,3 +234,38 @@ export function thresholdStep({
         return { ...appendWgslBlock(state, block), expr: "out" };
     };
 }
+
+/**
+ * @param {object} params
+ * @param {string} params.name
+ * @param {number} params.rangeLength
+ * @param {1|2|4} params.outputComponents
+ * @param {"f32"|"u32"|"i32"} params.outputScalarType
+ * @returns {ScalePipelineStep}
+ */
+export function quantizeStep({
+    name,
+    rangeLength,
+    outputComponents,
+    outputScalarType,
+}) {
+    const rangeType = outputComponents === 1 ? outputScalarType : "vec4<f32>";
+    const rangeAccess =
+        outputComponents === 1
+            ? `params.${RANGE_PREFIX}${name}[slot].x`
+            : `params.${RANGE_PREFIX}${name}[slot]`;
+    return (state) => {
+        const block = /* wgsl */ `
+    let value = ${state.expr};
+    let d0 = params.${DOMAIN_PREFIX}${name}[0u].x;
+    let d1 = params.${DOMAIN_PREFIX}${name}[1u].x;
+    let denom = d1 - d0;
+    var t = select(0.0, (value - d0) / denom, denom != 0.0);
+    t = clamp(t, 0.0, 1.0);
+    const RANGE_LEN: u32 = ${rangeLength}u;
+    let slot = min(RANGE_LEN - 1u, u32(floor(t * f32(RANGE_LEN))));
+    let out: ${rangeType} = ${rangeAccess};
+`;
+        return { ...appendWgslBlock(state, block), expr: "out" };
+    };
+}
