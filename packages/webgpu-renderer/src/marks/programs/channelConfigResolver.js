@@ -149,24 +149,18 @@ export function validateChannel(name, channel, context) {
     }
 
     const analysis = buildChannelAnalysis(name, channel);
-    const { scaleType, outputComponents } = analysis;
-    const allowsOrdinalTypeOverride =
-        scaleType === "ordinal" &&
+    const { scaleDef, outputComponents } = analysis;
+    const allowsTypeOverride =
+        scaleDef.allowsU32InputOverride === true &&
         spec?.type === "f32" &&
-        outputComponents > 1 &&
-        channel.type === "u32";
-    const allowsBandTypeOverride =
-        scaleType === "band" && spec?.type === "f32" && channel.type === "u32";
-    const allowsIndexTypeOverride =
-        scaleType === "index" && spec?.type === "f32" && channel.type === "u32";
+        channel.type === "u32" &&
+        (outputComponents === 1 || outputComponents === 4);
 
     if (
         spec?.type &&
         channel.type &&
         channel.type !== spec.type &&
-        !allowsOrdinalTypeOverride &&
-        !allowsBandTypeOverride &&
-        !allowsIndexTypeOverride
+        !allowsTypeOverride
     ) {
         throw new Error(`Channel "${name}" must use type "${spec.type}"`);
     }
