@@ -104,6 +104,15 @@ export function buildChannelAnalysis(name, channel) {
             ? outputComponents
             : 1;
     const inputComponents = channel.inputComponents ?? defaultInputComponents;
+    const range = channel.scale?.range;
+    const rangeIsFunction = isRangeFunction(range);
+    const rangeIsColor = isColorRange(
+        /** @type {Array<number|number[]|string>|undefined} */ (range)
+    );
+    const interpolateEnabled =
+        rangeIsFunction ||
+        channel.scale?.interpolate !== undefined ||
+        rangeIsColor;
     const useRangeTexture = usesRangeTexture(channel.scale, outputComponents);
     const isPiecewise = isPiecewiseScale(channel.scale);
     const resourceRequirements = getScaleResourceRequirements(
@@ -118,18 +127,11 @@ export function buildChannelAnalysis(name, channel) {
     const needsOrdinalRange = resourceRequirements.needsOrdinalRange;
     const needsDomainMap = resourceRequirements.needsDomainMap;
     const continuous = isContinuousScale(scaleType);
+    const vectorOutputMode = scaleDef.vectorOutput ?? "never";
     const allowsScalarToVector =
         outputComponents > 1 &&
-        (scaleType === "threshold" ||
-            scaleType === "ordinal" ||
-            scaleType === "quantize" ||
-            isPiecewise ||
-            continuous);
-    const range = channel.scale?.range;
-    const rangeIsFunction = isRangeFunction(range);
-    const rangeIsColor = isColorRange(
-        /** @type {Array<number|number[]|string>|undefined} */ (range)
-    );
+        (vectorOutputMode === "always" ||
+            (vectorOutputMode === "interpolated" && interpolateEnabled));
 
     return {
         name,
