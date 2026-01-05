@@ -5,6 +5,19 @@ import {
     rangeVec2,
 } from "../scaleEmitUtils.js";
 
+const powWgsl = /* wgsl */ `
+fn scalePow(value: f32, domain: vec2<f32>, range: vec2<f32>, exponent: f32) -> f32 {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2<f32>(exponent)) * sign(domain),
+        range
+    );
+}
+`;
+
 /**
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
@@ -29,6 +42,9 @@ export const powScaleDef = {
         },
     ],
     continuous: true,
+    vectorOutput: "interpolated",
+    wgslDeps: ["linear"],
+    wgsl: powWgsl,
     resources: {
         domainRangeKind: "continuous",
         needsDomainMap: false,
