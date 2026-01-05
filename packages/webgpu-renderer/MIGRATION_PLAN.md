@@ -32,22 +32,19 @@ requirements are resolved from the registry and consumed in `scaleResources`.
 Phase 4: **Move WGSL emission into ScaleDef** — OK. Scale emitters now live
 alongside the registry; `scaleCodegen` delegates to per-def emitters.
 
-Phase 5: **Consolidate helpers** — merge shared WGSL utilities and remove
-legacy paths once parity tests pass.
+Phase 5: **Consolidate helpers** — OK. Shared WGSL literal helpers and piecewise
+utilities live in dedicated modules (`wgsl/literals.js`, `scales/scaleUtils.js`).
 
-Phase 6: **Per-scale modules + centralized validation** — move each scale into
-its own file (e.g., `scales/defs/linear.js`, `log.js`, `band.js`) with a shared
-`scaleValidation.js` toolkit. Keep a thin registry in `scaleDefs.js` that
-imports these definitions.
+Phase 6: **Per-scale modules + centralized validation** — OK. Each scale lives
+in `scales/defs/*` and `scaleValidation.js` owns shared config checks; the
+registry in `scaleDefs.js` just imports the per-scale defs.
 
-Phase 7: **ScaleDef-driven validation hooks** — replace scattered checks in
-`channelConfigResolver` and `scaleCodegen` with a single `validateScaleConfig`
-pipeline that uses `ScaleDef` metadata and optional per-scale `validate`
-functions.
+Phase 7: **ScaleDef-driven validation hooks** — OK. `validateScaleConfig` now
+drives scale-specific checks and is invoked from `channelConfigResolver`.
 
-Phase 8: **Emitter/toolkit split** — keep emitters in per-scale modules but
-reuse shared helpers (clamp/round/piecewise/ramp sampling) from
-`scalePipeline.js` (or a renamed shared WGSL toolkit) to avoid duplication.
+Phase 8: **Emitter/toolkit split** — OK. Emitters live in
+`scales/emitters/*` with shared helpers in `emitters/utils.js` and
+`scalePipeline.js`.
 
 #### Current State / Context (handoff)
 
@@ -56,8 +53,8 @@ reuse shared helpers (clamp/round/piecewise/ramp sampling) from
   `getScaleResourceRequirements`.
 - Emitters live in `src/marks/scales/scaleEmitters.js`; registry in
   `src/marks/scales/scaleDefs.js`.
-- Validation is still split between `channelConfigResolver.js` and
-  `scaleCodegen.js` (this is what Phase 6–8 intends to centralize).
+- Validation now flows through `scaleValidation.js` and is invoked from
+  `channelConfigResolver` / `scaleCodegen`.
 - `domainRangeUtils.js` now consults `getScaleResourceRequirements` for
   domain/range kinds.
 - Tests updated: `scaleDefs.test.js` now checks resource requirements.
@@ -65,7 +62,7 @@ reuse shared helpers (clamp/round/piecewise/ramp sampling) from
 #### Refactor candidates (redundancy cleanup)
 
 - **Propagate range-texture decisions** — `buildChannelAnalysis` already computes `useRangeTexture`, but `scaleResources` recomputes it. Carry the analysis result through to avoid duplicated logic.
-- **Move WGSL literal helpers** — `formatLiteral` lives in `scaleCodegen.js` but is used by shader IR generation; extract a shared WGSL literal utility module to avoid cross-layer imports.
+- **Move WGSL literal helpers** — OK. `formatLiteral` lives in `wgsl/literals.js` and is shared across IR/codegen.
 - **Hash parity guard** — `hash32` exists in both JS (`hashTable.js`) and WGSL (`hashTable.wgsl.js`). Consider a parity test or codegen to keep them in sync.
 - **Merge channel normalization paths** — Defaults and normalization are split between `channelSpecUtils.js` and `channelConfigResolver.js`. Pull defaulting/normalization into one place and keep validation separate.
 - **Unify WGSL string helpers** — Small WGSL string helpers (domain/range accessors) are defined in both `scalePipeline.js` and `scaleCodegen.js`. Consolidate into a single helper module.
