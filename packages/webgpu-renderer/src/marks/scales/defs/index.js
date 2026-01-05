@@ -91,35 +91,13 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
 `;
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
- * @returns {string}
+ * Index scale: band scale optimized for high-precision genomic coordinates.
+ *
+ * Technical notes: uses split u32 math and stable subtraction to mitigate
+ * float32 precision loss, with two WGSL variants for u32 and vec2<u32> inputs.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
  */
-function emitIndexScale({
-    name,
-    rawValueExpr,
-    inputScalarType,
-    inputComponents,
-}) {
-    const valueExpr =
-        inputComponents === 2
-            ? rawValueExpr
-            : toU32Expr(rawValueExpr, inputScalarType);
-    const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
-    return `${makeFnHeader(name, "f32")} {
-    let v = ${valueExpr};
-    return ${fnName}(
-        v,
-        ${domainVec3(name)},
-        ${rangeVec2(name)},
-        params.${SCALE_PADDING_INNER_PREFIX}${name},
-        params.${SCALE_PADDING_OUTER_PREFIX}${name},
-        params.${SCALE_ALIGN_PREFIX}${name},
-        params.${SCALE_BAND_PREFIX}${name}
-    );
-}`;
-}
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
 export const indexScaleDef = {
     input: "u32",
     output: "f32",
@@ -147,3 +125,32 @@ export const indexScaleDef = {
     },
     emit: emitIndexScale,
 };
+
+/**
+ * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @returns {string}
+ */
+function emitIndexScale({
+    name,
+    rawValueExpr,
+    inputScalarType,
+    inputComponents,
+}) {
+    const valueExpr =
+        inputComponents === 2
+            ? rawValueExpr
+            : toU32Expr(rawValueExpr, inputScalarType);
+    const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
+    return `${makeFnHeader(name, "f32")} {
+    let v = ${valueExpr};
+    return ${fnName}(
+        v,
+        ${domainVec3(name)},
+        ${rangeVec2(name)},
+        params.${SCALE_PADDING_INNER_PREFIX}${name},
+        params.${SCALE_PADDING_OUTER_PREFIX}${name},
+        params.${SCALE_ALIGN_PREFIX}${name},
+        params.${SCALE_BAND_PREFIX}${name}
+    );
+}`;
+}

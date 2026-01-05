@@ -6,18 +6,13 @@ import {
 } from "../scaleEmitUtils.js";
 
 /**
- * @param {import("../../../index.d.ts").ScaleEmitParams} params
- * @returns {string}
+ * Sqrt scale: power scale with exponent fixed to 0.5.
+ *
+ * Technical notes: implemented as a pow scale with a fixed exponent and WGSL
+ * dependency on scalePow for shared math.
+ *
+ * @type {import("../../../index.d.ts").ScaleDef}
  */
-function emitSqrtScale(params) {
-    return emitContinuousScale(params, ({ name, valueExpr }) => {
-        return `scalePow(${valueExpr}, ${domainVec2(
-            name
-        )}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`;
-    });
-}
-
-/** @type {import("../../../index.d.ts").ScaleDef} */
 export const sqrtScaleDef = {
     input: "numeric",
     output: "f32",
@@ -38,3 +33,15 @@ export const sqrtScaleDef = {
     },
     emit: emitSqrtScale,
 };
+
+/**
+ * @param {import("../../../index.d.ts").ScaleEmitParams} params
+ * @returns {string}
+ */
+function emitSqrtScale(params) {
+    return emitContinuousScale(params, ({ name, valueExpr }) => {
+        return `scalePow(${valueExpr}, ${domainVec2(
+            name
+        )}, ${rangeVec2(name)}, params.${SCALE_EXPONENT_PREFIX}${name})`;
+    });
+}
