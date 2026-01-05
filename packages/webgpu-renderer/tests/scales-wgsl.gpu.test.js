@@ -8,12 +8,112 @@ import {
 } from "d3-scale";
 import getScaleWgsl from "../src/wgsl/scales.wgsl.js";
 import {
+    BASE,
     packHighPrecisionDomain,
     packHighPrecisionU32Array,
 } from "../src/utils/highPrecision.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
+const LOW_MASK = BASE - 1;
+const f32 = Math.fround;
+
+/**
+ * @param {number} value
+ * @returns {[number, number]}
+ */
+function splitUint(value) {
+    const lo = value & LOW_MASK;
+    const hi = value - lo;
+    return [hi, lo];
+}
+
+/**
+ * @param {object} params
+ * @param {number} params.value
+ * @param {[number, number, number]} params.domainExtent
+ * @param {[number, number]} params.range
+ * @param {[number, number, number, number]} params.config
+ * @returns {number}
+ */
+function computeBandHpExpected({ value, domainExtent, range, config }) {
+    const [paddingInner, paddingOuter, align, band] = config;
+    const reverse = range[1] < range[0];
+    const start = f32(reverse ? range[1] : range[0]);
+    const stop = f32(reverse ? range[0] : range[1]);
+    const rangeSpan = f32(stop - start);
+    const domainStartHi = f32(domainExtent[0]);
+    const domainStartLo = f32(domainExtent[1]);
+    const n = f32(domainExtent[2]);
+    const step = f32(
+        rangeSpan / Math.max(1, n - paddingInner + paddingOuter * 2)
+    );
+    const alignedStart = f32(
+        start + f32((rangeSpan - step * (n - paddingInner)) * align)
+    );
+    const bandwidth = f32(step * (1 - paddingInner));
+    const [hi, lo] = splitUint(value);
+    const deltaHi = f32(f32(hi) - domainStartHi);
+    const deltaLo = f32(f32(lo) - domainStartLo);
+    if (reverse) {
+        const reverseStart = f32(alignedStart + f32((n - 1) * step));
+        return f32(
+            reverseStart -
+                f32(deltaHi * step) -
+                f32(deltaLo * step) +
+                f32(bandwidth * band)
+        );
+    }
+    return f32(
+        alignedStart +
+            f32(deltaHi * step) +
+            f32(deltaLo * step) +
+            f32(bandwidth * band)
+    );
+}
+
+/**
+ * @param {object} params
+ * @param {[number, number]} params.value
+ * @param {[number, number, number]} params.domainExtent
+ * @param {[number, number]} params.range
+ * @param {[number, number, number, number]} params.config
+ * @returns {number}
+ */
+function computeBandHpUExpected({ value, domainExtent, range, config }) {
+    const [paddingInner, paddingOuter, align, band] = config;
+    const reverse = range[1] < range[0];
+    const start = f32(reverse ? range[1] : range[0]);
+    const stop = f32(reverse ? range[0] : range[1]);
+    const rangeSpan = f32(stop - start);
+    const domainStartHi = f32(domainExtent[0]);
+    const domainStartLo = f32(domainExtent[1]);
+    const n = f32(domainExtent[2]);
+    const step = f32(
+        rangeSpan / Math.max(1, n - paddingInner + paddingOuter * 2)
+    );
+    const alignedStart = f32(
+        start + f32((rangeSpan - step * (n - paddingInner)) * align)
+    );
+    const bandwidth = f32(step * (1 - paddingInner));
+    const deltaHi = f32(f32(value[0] * BASE) - domainStartHi);
+    const deltaLo = f32(f32(value[1]) - domainStartLo);
+    if (reverse) {
+        const reverseStart = f32(alignedStart + f32((n - 1) * step));
+        return f32(
+            reverseStart -
+                f32(deltaHi * step) -
+                f32(deltaLo * step) +
+                f32(bandwidth * band)
+        );
+    }
+    return f32(
+        alignedStart +
+            f32(deltaHi * step) +
+            f32(deltaLo * step) +
+            f32(bandwidth * band)
+    );
+}
 
 /**
  * @param {string} scaleExpr
@@ -695,6 +795,7 @@ test("scaleBandHp matches CPU reference for large u32 indices", async ({
     const domains = [
         { start: start - 0.4, span: 1000 },
         { start: start + 0.25, span: 975.5 },
+        { start: start + 0.001, span: 2.5 },
     ];
 
     for (const { start: domainStart, span } of domains) {
@@ -707,10 +808,14 @@ test("scaleBandHp matches CPU reference for large u32 indices", async ({
             config,
         });
 
-        const step = (range[1] - range[0]) / span;
         values.forEach((value, index) => {
-            const expected = range[0] + (value - domainStart) * step;
-            expect(result[index]).toBeCloseTo(expected, 3);
+            const expected = computeBandHpExpected({
+                value,
+                domainExtent: domain,
+                range,
+                config,
+            });
+            expect(result[index]).toBeCloseTo(expected, 1);
         });
     }
 });
@@ -729,6 +834,7 @@ test("scaleBandHpU matches CPU reference with packed large indices", async ({
     const domains = [
         { start: start - 0.65, span: 1200 },
         { start: start + 0.125, span: 950.25 },
+        { start: start + 0.005, span: 3.75 },
     ];
 
     for (const { start: domainStart, span } of domains) {
@@ -742,10 +848,15 @@ test("scaleBandHpU matches CPU reference with packed large indices", async ({
             config,
         });
 
-        const step = (range[1] - range[0]) / span;
-        values.forEach((value, index) => {
-            const expected = range[0] + (value - domainStart) * step;
-            expect(result[index]).toBeCloseTo(expected, 3);
+        values.forEach((_, index) => {
+            const packedIndex = index * 2;
+            const expected = computeBandHpUExpected({
+                value: [packed[packedIndex], packed[packedIndex + 1]],
+                domainExtent: domain,
+                range,
+                config,
+            });
+            expect(result[index]).toBeCloseTo(expected, 1);
         });
     }
 });
@@ -822,5 +933,43 @@ test("scaleBand honors the band offset parameter", async ({ page }) => {
         const start = reference(String(value)) ?? 0;
         const expected = start + reference.bandwidth();
         expect(result[index]).toBeCloseTo(expected, 5);
+    });
+});
+
+test("scaleBand supports reverse ranges with non-zero domain starts", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = [10, 11, 12];
+    const domain = [10, 13];
+    const range = [120, 20];
+    const paddingInner = 0.15;
+    const paddingOuter = 0.05;
+    const align = 0.7;
+    const band = 0;
+    const reference = scaleBand()
+        .domain(input.map(String))
+        .range(range)
+        .paddingInner(paddingInner)
+        .paddingOuter(paddingOuter)
+        .align(align);
+
+    const shaderCode = buildBandComputeShader(input.length);
+    const result = await runBandScaleCompute(page, {
+        shaderCode,
+        input,
+        domain,
+        range,
+        paddingInner,
+        paddingOuter,
+        align,
+        band,
+    });
+
+    expect(result).toHaveLength(input.length);
+    input.forEach((value, index) => {
+        const expected = reference(String(value));
+        expect(result[index]).toBeCloseTo(expected ?? 0, 5);
     });
 });

@@ -170,3 +170,30 @@ test("hash table map lookup returns dense indices", async ({ page }) => {
         }
     });
 });
+
+test("hash table map lookup tolerates high load factors", async ({ page }) => {
+    await ensureWebGPU(page);
+
+    const entries = Array.from({ length: 30 }, (_, i) => [i + 1, i]);
+    const { table, capacity } = buildHashTableMap(entries, {
+        capacity: 64,
+        maxLoadFactor: 0.9,
+    });
+    const queries = [1, 15, 30, 42];
+    const shaderCode = buildHashLookupShader(queries.length, capacity);
+    const result = await runHashCompute(page, {
+        shaderCode,
+        table: Array.from(table),
+        input: queries,
+    });
+
+    const expected = new Map(entries.map(([key, value]) => [key, value]));
+    result.forEach((value, index) => {
+        const query = queries[index];
+        if (expected.has(query)) {
+            expect(value).toBe(expected.get(query));
+        } else {
+            expect(value).toBe(HASH_EMPTY_KEY);
+        }
+    });
+});

@@ -19,6 +19,8 @@ architecture while keeping render-time hot paths minimal and optimized.
 - Use blank lines between adjacent members that each have JSDoc (skip the first).
 - Prefer explicit, readable string concatenation over template literals for
   trivial concatenation.
+- For readability, prefer explicit `else` blocks over early-return branches
+  when both paths are similarly likely.
 - Add intent/rationale comments where logic is non-trivial; skip comments for
   obvious steps. The goal is to let both human readers and LLMs grasp the
   architecture and technical decisions quickly.

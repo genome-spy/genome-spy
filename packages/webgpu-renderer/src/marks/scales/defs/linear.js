@@ -4,6 +4,7 @@ import {
     clampToDomainStep,
     emitScalePipeline,
     piecewiseLinearStep,
+    roundStep,
 } from "../scalePipeline.js";
 import {
     domainVec2,
@@ -119,6 +120,9 @@ function emitLinearScale(params) {
             useRangeTexture,
         })
     );
+    if (round && !useRangeTexture) {
+        steps.push(roundStep());
+    }
     return emitScalePipeline({
         name,
         rawValueExpr,
