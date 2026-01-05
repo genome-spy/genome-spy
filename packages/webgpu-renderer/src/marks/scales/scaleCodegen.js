@@ -16,27 +16,8 @@ import { getScaleDef, getScaleOutputType } from "./scaleDefs.js";
 import { isPiecewiseScale } from "./scaleUtils.js";
 
 /**
- * @typedef {object} ScaleFunctionParams
- * @prop {string} name
- *   Channel name used for function naming and uniform lookups.
- * @prop {"identity"|"linear"|"log"|"pow"|"sqrt"|"symlog"|"quantize"|"band"|"index"|"threshold"|"ordinal"} scale
- *   Scale type that selects which WGSL helper is emitted.
- * @prop {string} rawValueExpr
- *   WGSL expression for the raw value (buffer read or literal/uniform).
- * @prop {"f32"|"u32"|"i32"} inputScalarType
- *   Scalar type of the raw value; used to choose casting behavior.
- * @prop {1|2|4} inputComponents
- *   Vector width of the raw input value.
- * @prop {1|2|4} outputComponents
- *   Output vector width expected by the mark shader.
- * @prop {"f32"|"u32"|"i32"} outputScalarType
- *   Scalar type of the scaled output when outputComponents is 1.
- * @prop {import("../../index.d.ts").ChannelScale | undefined} scaleConfig
- *   Full scale config for detecting piecewise scales and clamp behavior.
- * @prop {string | null} [domainMapName]
- *   Storage buffer identifier for ordinal/band domain lookup (or null if unused).
- * @prop {boolean} [useRangeTexture]
- *   Whether to map scale output through a color ramp texture.
+ * Scale emission params shared with validation and channel analysis.
+ * @typedef {import("../../index.d.ts").ScaleFunctionParams} ScaleFunctionParams
  */
 /** @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams */
 
@@ -48,7 +29,7 @@ export function buildScaledFunction({
     name,
     scale,
     rawValueExpr,
-    inputScalarType: scalarType,
+    scalarType,
     inputComponents,
     outputComponents,
     outputScalarType,
