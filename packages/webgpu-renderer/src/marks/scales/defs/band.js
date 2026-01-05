@@ -77,6 +77,7 @@ export const bandScaleDef = {
         needsDomainMap: true,
         needsOrdinalRange: false,
     },
+    normalizeDomainMap: normalizeBandDomainMap,
     normalizeStops: normalizeBandStops,
     validate: validateBandScale,
     emit: emitBandScale,
@@ -182,5 +183,20 @@ function normalizeBandStops({ name, scale, getDefaultScaleRange }) {
         range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
         domainLength: 2,
         rangeLength: 2,
+    };
+}
+
+/**
+ * @param {import("../../../index.d.ts").ScaleDomainMapParams} params
+ * @returns {import("../../../index.d.ts").ScaleDomainMapUpdate | null}
+ */
+function normalizeBandDomainMap({ name, domain }) {
+    const ordinalDomain = normalizeOrdinalDomain(name, "band", domain);
+    if (!ordinalDomain) {
+        return null;
+    }
+    return {
+        domainMap: ordinalDomain,
+        domainUniform: [0, ordinalDomain.length],
     };
 }
