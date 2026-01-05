@@ -30,9 +30,9 @@ fn scaleBandHp(value: u32, domainExtent: vec3<f32>, range: vec2<f32>,
         paddingInner: f32, paddingOuter: f32,
         align: f32, band: f32) -> f32 {
 
-    // TODO: reverse
-    var start = range.x;
-    let stop = range.y;
+    let reverse = range.y < range.x;
+    var start = select(range.x, range.y, reverse);
+    let stop = select(range.y, range.x, reverse);
     let rangeSpan = stop - start;
 
     let domainStart = domainExtent.xy;
@@ -53,7 +53,18 @@ fn scaleBandHp(value: u32, domainExtent: vec3<f32>, range: vec2<f32>,
     let hi = stableSub(splitValue.x, domainStart.x);
     let lo = stableSub(splitValue.y, domainStart.y);
 
-    return dot(vec4<f32>(start, hi, lo, bandwidth), vec4<f32>(1.0, step, step, band));
+    if (reverse) {
+        let reverseStart = start + (n - 1.0) * step;
+        return dot(
+            vec4<f32>(reverseStart, -hi, -lo, bandwidth),
+            vec4<f32>(1.0, step, step, band)
+        );
+    } else {
+        return dot(
+            vec4<f32>(start, hi, lo, bandwidth),
+            vec4<f32>(1.0, step, step, band)
+        );
+    }
 }
 
 /**
@@ -64,9 +75,9 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
                 paddingInner: f32, paddingOuter: f32,
                 align: f32, band: f32) -> f32 {
 
-    // TODO: reverse
-    var start = range.x;
-    let stop = range.y;
+    let reverse = range.y < range.x;
+    var start = select(range.x, range.y, reverse);
+    let stop = select(range.y, range.x, reverse);
     let rangeSpan = stop - start;
 
     let domainStart = domainExtent.xy;
@@ -87,7 +98,18 @@ fn scaleBandHpU(value: vec2<u32>, domainExtent: vec3<f32>, range: vec2<f32>,
     let hi = stableSub(splitValue.x, domainStart.x);
     let lo = stableSub(splitValue.y, domainStart.y);
 
-    return dot(vec4<f32>(start, hi, lo, bandwidth), vec4<f32>(1.0, step, step, band));
+    if (reverse) {
+        let reverseStart = start + (n - 1.0) * step;
+        return dot(
+            vec4<f32>(reverseStart, -hi, -lo, bandwidth),
+            vec4<f32>(1.0, step, step, band)
+        );
+    } else {
+        return dot(
+            vec4<f32>(start, hi, lo, bandwidth),
+            vec4<f32>(1.0, step, step, band)
+        );
+    }
 }
 `;
 
