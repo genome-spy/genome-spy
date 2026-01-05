@@ -44,7 +44,7 @@ export const symlogScaleDef = {
     wgslDeps: ["linear"],
     wgsl: symlogWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

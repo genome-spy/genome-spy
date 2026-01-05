@@ -13,7 +13,7 @@ import {
     getScaleOutputType,
 } from "../src/marks/scales/scaleCodegen.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
-import { normalizeRangePositions } from "../src/marks/scales/domainRangeUtils.js";
+import { normalizeRangePositions } from "../src/marks/scales/scaleStops.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;

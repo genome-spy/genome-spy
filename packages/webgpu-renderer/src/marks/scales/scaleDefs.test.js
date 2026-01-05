@@ -35,7 +35,7 @@ describe("scaleDefs", () => {
 
     it("exposes uniform params per scale", () => {
         const logDef = getScaleUniformDef("log");
-        expect(logDef.domainRange).toBe(true);
+        expect(logDef.stopArrays).toBe(true);
         expect(logDef.params.map((param) => param.prefix)).toEqual([
             SCALE_BASE_PREFIX,
         ]);
@@ -69,14 +69,14 @@ describe("scaleDefs", () => {
 
     it("resolves domain/range resource requirements from scale metadata", () => {
         const linear = getScaleResourceRequirements("linear", false);
-        expect(linear.domainRangeKind).toBe("continuous");
+        expect(linear.stopKind).toBe("continuous");
         expect(linear.needsDomainMap).toBe(false);
 
         const piecewise = getScaleResourceRequirements("linear", true);
-        expect(piecewise.domainRangeKind).toBe("piecewise");
+        expect(piecewise.stopKind).toBe("piecewise");
 
         const ordinal = getScaleResourceRequirements("ordinal", false);
-        expect(ordinal.domainRangeKind).toBeNull();
+        expect(ordinal.stopKind).toBeNull();
         expect(ordinal.needsDomainMap).toBe(true);
         expect(ordinal.needsOrdinalRange).toBe(true);
     });

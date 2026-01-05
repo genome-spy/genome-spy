@@ -19,7 +19,7 @@ export const thresholdScaleDef = {
     continuous: false,
     vectorOutput: "always",
     resources: {
-        domainRangeKind: "threshold",
+        stopKind: "threshold",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

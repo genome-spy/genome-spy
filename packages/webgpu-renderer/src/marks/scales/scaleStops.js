@@ -5,40 +5,38 @@ import { isPiecewiseScale } from "./scaleUtils.js";
 import { getScaleResourceRequirements } from "./scaleDefs.js";
 
 /**
- * @typedef {"continuous"|"threshold"|"piecewise"} DomainRangeKind
+ * @typedef {import("../../index.d.ts").ScaleStopKind} ScaleStopKind
  */
 
 /**
  * @param {string} scaleType
  * @returns {boolean}
  */
-export function scaleUsesDomainRange(scaleType) {
-    return (
-        getScaleResourceRequirements(scaleType, false).domainRangeKind !== null
-    );
+export function scaleUsesStopArrays(scaleType) {
+    return getScaleResourceRequirements(scaleType, false).stopKind !== null;
 }
 
 /**
  * @param {import("../../index.d.ts").ChannelScale | undefined} scale
- * @returns {DomainRangeKind | null}
+ * @returns {ScaleStopKind | null}
  */
-export function getDomainRangeKind(scale) {
+export function getScaleStopKind(scale) {
     if (!scale) {
         return null;
     }
     return getScaleResourceRequirements(
         scale.type ?? "identity",
         isPiecewiseScale(scale)
-    ).domainRangeKind;
+    ).stopKind;
 }
 
 /**
  * @param {string} name
- * @param {DomainRangeKind} kind
+ * @param {ScaleStopKind} kind
  * @param {import("../../index.d.ts").ChannelScale} scale
  * @returns {{ domainLength: number, rangeLength: number }}
  */
-export function getDomainRangeLengths(name, kind, scale) {
+export function getScaleStopLengths(name, kind, scale) {
     if (kind === "continuous") {
         if (scale.type === "index") {
             return { domainLength: 3, rangeLength: 2 };
@@ -143,11 +141,11 @@ export function normalizeOrdinalDomain(name, scaleType, domain) {
  * @param {string} name
  * @param {import("../../index.d.ts").ChannelConfigResolved} channel
  * @param {import("../../index.d.ts").ChannelScale} scale
- * @param {DomainRangeKind} kind
+ * @param {ScaleStopKind} kind
  * @param {(name: string) => number[] | null | undefined} getDefaultScaleRange
  * @returns {{ domain: number[], range: Array<number|number[]>, domainLength: number, rangeLength: number }}
  */
-export function normalizeDomainRange(
+export function normalizeScaleStops(
     name,
     channel,
     scale,
@@ -155,7 +153,7 @@ export function normalizeDomainRange(
     getDefaultScaleRange
 ) {
     const outputComponents = channel.components ?? 1;
-    const { domainLength, rangeLength } = getDomainRangeLengths(
+    const { domainLength, rangeLength } = getScaleStopLengths(
         name,
         kind,
         scale

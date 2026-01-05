@@ -31,7 +31,7 @@ export const logScaleDef = {
     wgslDeps: ["linear"],
     wgsl: logWgsl,
     resources: {
-        domainRangeKind: "continuous",
+        stopKind: "continuous",
         needsDomainMap: false,
         needsOrdinalRange: false,
     },

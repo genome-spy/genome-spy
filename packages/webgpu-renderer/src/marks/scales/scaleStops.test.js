@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
     coerceRangeValue,
-    getDomainRangeKind,
-    normalizeDomainRange,
+    getScaleStopKind,
+    normalizeScaleStops,
     normalizeOrdinalRange,
-} from "./domainRangeUtils.js";
+} from "./scaleStops.js";
 
-describe("domainRangeUtils", () => {
+describe("scaleStops", () => {
     it("detects piecewise scales from linear configs", () => {
-        const kind = getDomainRangeKind({
+        const kind = getScaleStopKind({
             type: "linear",
             domain: [0, 1, 2],
             range: [0, 1, 2],
@@ -24,7 +24,7 @@ describe("domainRangeUtils", () => {
                 type: "f32",
                 components: 1,
             });
-        const result = normalizeDomainRange(
+        const result = normalizeScaleStops(
             "x",
             channel,
             { type: "linear" },
@@ -45,7 +45,7 @@ describe("domainRangeUtils", () => {
                 type: "f32",
                 components: 4,
             });
-        const result = normalizeDomainRange(
+        const result = normalizeScaleStops(
             "fill",
             channel,
             {
