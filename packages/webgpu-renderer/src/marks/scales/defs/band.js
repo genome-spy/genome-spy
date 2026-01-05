@@ -20,9 +20,9 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
         paddingInner: f32, paddingOuter: f32,
         align: f32, band: f32) -> f32 {
 
-    // TODO: reverse
-    var start = range.x;
-    let stop = range.y;
+    let reverse = range.y < range.x;
+    var start = select(range.x, range.y, reverse);
+    let stop = select(range.y, range.x, reverse);
     let rangeSpan = stop - start;
 
     let n = domainExtent.y - domainExtent.x;
@@ -35,7 +35,11 @@ fn scaleBand(value: u32, domainExtent: vec2<f32>, range: vec2<f32>,
     start += (rangeSpan - step * (n - paddingInnerAdjusted)) * align;
     let bandwidth = step * (1.0 - paddingInnerAdjusted);
 
-    return start + (f32(value) - domainExtent.x) * step + bandwidth * band;
+    var offset = f32(value) - domainExtent.x;
+    if (reverse) {
+        offset = (n - 1.0) - offset;
+    }
+    return start + offset * step + bandwidth * band;
 }
 `;
 
