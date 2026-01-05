@@ -289,6 +289,19 @@ export type ScaleStopNormalizeResult = {
     rangeLength: number;
 };
 
+/** Parameters passed to scale-specific domain-map normalization hooks. */
+export type ScaleDomainMapParams = {
+    name: string;
+    scale: ChannelScale;
+    domain: ArrayLike<number>;
+};
+
+/** Result of a scale-specific domain-map normalization hook. */
+export type ScaleDomainMapUpdate = {
+    domainMap: number[];
+    domainUniform?: number[];
+};
+
 /**
  * Scale definition contract. This combines metadata, resource requirements,
  * and the WGSL emitter used for scale-specific shader code.
@@ -336,6 +349,11 @@ export type ScaleDef = {
     normalizeStops?: (
         params: ScaleStopNormalizeParams
     ) => ScaleStopNormalizeResult | undefined;
+
+    /** Optional hook for normalizing ordinal domain maps and related uniforms. */
+    normalizeDomainMap?: (
+        params: ScaleDomainMapParams
+    ) => ScaleDomainMapUpdate | null;
 
     /** WGSL emitter that produces the scale function for this definition. */
     emit: ScaleEmitter;
