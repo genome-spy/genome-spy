@@ -10,12 +10,12 @@ import {
     getScaleStopLengths,
     isColorRange,
     isRangeFunction,
-    normalizeOrdinalDomain,
     normalizeScaleStops,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
 } from "../scales/scaleStops.js";
+import { normalizeOrdinalDomain } from "../scales/ordinalDomain.js";
 import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
