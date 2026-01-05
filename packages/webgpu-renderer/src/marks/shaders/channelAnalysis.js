@@ -3,7 +3,7 @@ import {
     isRangeFunction,
     usesRangeTexture,
 } from "../scales/domainRangeUtils.js";
-import { isPiecewiseScale } from "../scales/scaleCodegen.js";
+import { isPiecewiseScale } from "../scales/scaleUtils.js";
 import {
     getScaleDef,
     getScaleOutputType,
@@ -49,7 +49,8 @@ import {
  * @prop {boolean} needsDomainMap
  *   True when an ordinal domain map buffer must be bound.
  * @prop {import("../../index.d.ts").ScaleDomainRangeKind | null} domainRangeKind
- *   Domain/range kind used for resource allocation and uniforms.
+ *   Domain/range kind used for uniform-backed domain/range allocation; null
+ *   means the scale uses buffer/texture resources instead.
  * @prop {boolean} allowsScalarToVector
  *   True when scalar inputs can map to vector outputs for this scale.
  * @prop {boolean} isContinuousScale

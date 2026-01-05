@@ -1,5 +1,5 @@
 import { buildChannelAnalysis } from "./channelAnalysis.js";
-import { formatLiteral } from "../scales/scaleCodegen.js";
+import { formatLiteral } from "../../wgsl/literals.js";
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved

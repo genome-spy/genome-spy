@@ -25,7 +25,15 @@ describe("scaleCodegen validation", () => {
 
     it("allows piecewise linear scales with vec4 outputs", () => {
         const error = validateScaleConfig("fill", {
-            scale: { type: "linear", domain: [0, 1, 2] },
+            scale: {
+                type: "linear",
+                domain: [0, 1, 2],
+                range: [
+                    [0, 0, 0, 1],
+                    [0.5, 0.5, 0.5, 1],
+                    [1, 1, 1, 1],
+                ],
+            },
             type: "f32",
             components: 4,
         });
@@ -35,7 +43,7 @@ describe("scaleCodegen validation", () => {
 
     it("rejects non-u32 input for band scales", () => {
         const error = validateScaleConfig("x", {
-            scale: { type: "band" },
+            scale: { type: "band", domain: [0, 1, 2] },
             type: "f32",
         });
 
@@ -44,7 +52,7 @@ describe("scaleCodegen validation", () => {
 
     it("allows integer input for band scales", () => {
         const error = validateScaleConfig("x", {
-            scale: { type: "band" },
+            scale: { type: "band", domain: [0, 1, 2] },
             type: "u32",
         });
 
@@ -63,7 +71,14 @@ describe("scaleCodegen validation", () => {
 
     it("allows threshold scales with vec4 outputs", () => {
         const error = validateScaleConfig("fill", {
-            scale: { type: "threshold" },
+            scale: {
+                type: "threshold",
+                domain: [0],
+                range: [
+                    [0, 0, 0, 1],
+                    [1, 0, 0, 1],
+                ],
+            },
             type: "f32",
             components: 4,
         });
