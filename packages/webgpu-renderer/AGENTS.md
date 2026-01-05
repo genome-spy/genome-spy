@@ -22,6 +22,8 @@ architecture while keeping render-time hot paths minimal and optimized.
 - Add intent/rationale comments where logic is non-trivial; skip comments for
   obvious steps. The goal is to let both human readers and LLMs grasp the
   architecture and technical decisions quickly.
+- Prefer offensive behavior for internal code paths: assume correct usage and
+  fail fast rather than adding defensive checks for unrealistic misuse.
 - Avoid optional/nullable fields unless `undefined` has a clear semantic meaning.
 - Use `Map`/`WeakMap` when identity matters; default to empty maps rather than
   optional maps.
