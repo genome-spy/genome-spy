@@ -140,6 +140,7 @@ export const indexScaleDef = {
     ],
     continuous: false,
     vectorOutput: "never",
+    allowsU32InputOverride: true,
     wgsl: indexWgsl,
     resources: {
         stopKind: "continuous",

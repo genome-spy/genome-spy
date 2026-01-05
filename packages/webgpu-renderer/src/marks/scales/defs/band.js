@@ -71,6 +71,7 @@ export const bandScaleDef = {
     ],
     continuous: false,
     vectorOutput: "never",
+    allowsU32InputOverride: true,
     wgsl: bandWgsl,
     resources: {
         stopKind: "continuous",

@@ -20,6 +20,7 @@ export const ordinalScaleDef = {
     params: [],
     continuous: false,
     vectorOutput: "always",
+    allowsU32InputOverride: true,
     resources: {
         stopKind: null,
         needsDomainMap: true,
