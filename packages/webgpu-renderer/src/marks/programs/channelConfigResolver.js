@@ -171,22 +171,6 @@ export function validateChannel(name, channel, context) {
     ) {
         return;
     }
-    if (isSeriesChannelConfig(channel)) {
-        if (!channel.data) {
-            throw new Error(`Missing data for channel "${name}"`);
-        }
-        if (!channel.type) {
-            throw new Error(`Missing type for channel "${name}"`);
-        }
-    }
-    if (isSeriesChannelConfig(channel) && isValueChannelConfig(channel)) {
-        throw new Error(
-            `Channel "${name}" must not specify both data and value.`
-        );
-    }
-    if (!isSeriesChannelConfig(channel) && !isValueChannelConfig(channel)) {
-        throw new Error(`Channel "${name}" must specify either data or value.`);
-    }
     if (channel.components && ![1, 2, 4].includes(channel.components)) {
         throw new Error(`Invalid component count for "${name}"`);
     }

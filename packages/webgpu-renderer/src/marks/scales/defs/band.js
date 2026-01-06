@@ -138,12 +138,6 @@ function emitBandScale({ name, rawValueExpr, inputScalarType, domainMapName }) {
  * @returns {string | null}
  */
 function validateBandScale({ name, channel, inputComponents, needsDomainMap }) {
-    if (
-        !Array.isArray(channel.scale?.domain) &&
-        !ArrayBuffer.isView(channel.scale?.domain)
-    ) {
-        return `Band scale on "${name}" requires an explicit domain array.`;
-    }
     if (needsDomainMap) {
         if (inputComponents !== 1) {
             return `Band scale on "${name}" requires scalar inputs when using an ordinal domain.`;

@@ -104,12 +104,6 @@ function validateOrdinalScale({
     if (!Array.isArray(range) || range.length === 0) {
         return `Ordinal scale on "${name}" requires a non-empty range.`;
     }
-    if (
-        !Array.isArray(channel.scale?.domain) &&
-        !ArrayBuffer.isView(channel.scale?.domain)
-    ) {
-        return `Ordinal scale on "${name}" requires an explicit domain array.`;
-    }
     if (inputComponents !== 1) {
         return `Ordinal scale on "${name}" requires scalar input values.`;
     }
