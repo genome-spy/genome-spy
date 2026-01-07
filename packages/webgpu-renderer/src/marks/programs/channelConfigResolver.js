@@ -6,6 +6,8 @@ import { validateScaleConfig } from "../scales/scaleValidation.js";
  * Input shape for channel configs as provided by callers.
  *
  * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.d.ts").ConditionalChannelConfigInput} ConditionalChannelConfigInput
+ * @typedef {import("../../index.d.ts").ChannelCondition} ChannelCondition
  */
 
 /**
@@ -55,7 +57,7 @@ export function normalizeChannels({ channels, context }) {
         }
     }
 
-    return normalized;
+    return normalizeChannelConditions(normalized, context);
 }
 
 /**
@@ -129,6 +131,103 @@ export function normalizeChannel({ name, configChannel, context }) {
 }
 
 /**
+ * Normalize conditional channel configs and attach them as synthetic channels.
+ *
+ * @param {Record<string, ChannelConfigResolved>} channels
+ * @param {ChannelConfigContext} context
+ * @returns {Record<string, ChannelConfigResolved>}
+ */
+function normalizeChannelConditions(channels, context) {
+    let conditionIndex = 0;
+    for (const [name, channel] of Object.entries(channels)) {
+        const conditions = channel.conditions ?? [];
+        if (!conditions.length) {
+            continue;
+        }
+        /** @type {ChannelCondition[]} */
+        const resolvedConditions = [];
+        for (const condition of conditions) {
+            if (!("channel" in condition) || !condition.channel) {
+                resolvedConditions.push(condition);
+                continue;
+            }
+            const conditionName = `${name}__cond${conditionIndex++}`;
+            const resolved = normalizeConditionChannel({
+                name,
+                configChannel: condition.channel,
+                context,
+            });
+            channels[conditionName] = resolved;
+            resolvedConditions.push(
+                /** @type {ChannelCondition} */ ({
+                    ...condition,
+                    channelName: conditionName,
+                })
+            );
+        }
+        channel.conditions = resolvedConditions;
+    }
+    return channels;
+}
+
+/**
+ * Normalize and validate a conditional channel config without applying defaults.
+ *
+ * @param {object} params
+ * @param {string} params.name
+ * @param {ConditionalChannelConfigInput} params.configChannel
+ * @param {ChannelConfigContext} params.context
+ * @returns {ChannelConfigResolved}
+ */
+function normalizeConditionChannel({ name, configChannel, context }) {
+    const { channelOrder, channelSpecs } = context;
+    const merged = /** @type {ChannelConfigInput} */ (
+        /** @type {unknown} */ ({
+            ...(configChannel ?? {}),
+        })
+    );
+
+    if (merged.conditions !== undefined) {
+        throw new Error(
+            `Channel "${name}" conditions must not nest other conditions.`
+        );
+    }
+    if (merged.default !== undefined) {
+        throw new Error(
+            `Channel "${name}" conditions must not include defaults.`
+        );
+    }
+    if (!merged.components) {
+        merged.components = 1;
+    }
+    if (isSeriesChannelConfig(merged) && !merged.inputComponents) {
+        const scaleType = merged.scale?.type ?? "identity";
+        merged.inputComponents =
+            scaleType === "identity" ? merged.components : 1;
+    }
+    if (isSeriesChannelConfig(merged) && merged.value !== undefined) {
+        throw new Error(
+            `Channel "${name}" conditions must not specify both data and value.`
+        );
+    }
+    if (!isSeriesChannelConfig(merged) && merged.value === undefined) {
+        throw new Error(
+            `Channel "${name}" conditions must specify either data or value.`
+        );
+    }
+    if (isSeriesChannelConfig(merged)) {
+        delete merged.value;
+        delete merged.default;
+    }
+    validateChannel(name, merged, {
+        channelOrder,
+        optionalChannels: [],
+        channelSpecs,
+    });
+    return /** @type {ChannelConfigResolved} */ (merged);
+}
+
+/**
  * Validate a channel config against its spec and scale requirements.
  *
  * @param {string} name
@@ -165,6 +264,16 @@ export function validateChannel(name, channel, context) {
         throw new Error(`Channel "${name}" must use type "${spec.type}"`);
     }
     if (
+        !optionalChannels.includes(name) &&
+        !isSeriesChannelConfig(channel) &&
+        !isValueChannelConfig(channel)
+    ) {
+        throw new Error(`Channel "${name}" must specify either data or value.`);
+    }
+    if (isSeriesChannelConfig(channel) && !channel.type) {
+        throw new Error(`Channel "${name}" requires a series data type.`);
+    }
+    if (
         optionalChannels.includes(name) &&
         !isSeriesChannelConfig(channel) &&
         !isValueChannelConfig(channel)
@@ -184,5 +293,123 @@ export function validateChannel(name, channel, context) {
     const scaleError = validateScaleConfig(name, channel, analysis);
     if (scaleError) {
         throw new Error(scaleError);
+    }
+
+    if (
+        channel.conditions !== undefined &&
+        !Array.isArray(channel.conditions)
+    ) {
+        throw new Error(`Channel "${name}" conditions must be an array.`);
+    }
+    if (Array.isArray(channel.conditions)) {
+        for (const condition of channel.conditions) {
+            if (!condition || typeof condition !== "object") {
+                throw new Error(
+                    `Channel "${name}" has an invalid condition entry.`
+                );
+            }
+            if (!condition.when || typeof condition.when !== "object") {
+                throw new Error(
+                    `Channel "${name}" conditions require a "when" predicate.`
+                );
+            }
+            const { when, value } = condition;
+            if (
+                typeof when.selection !== "string" ||
+                when.selection.length < 1
+            ) {
+                throw new Error(
+                    `Channel "${name}" conditions require a selection name.`
+                );
+            }
+            if (
+                when.type !== "single" &&
+                when.type !== "multi" &&
+                when.type !== "interval"
+            ) {
+                throw new Error(
+                    `Channel "${name}" has invalid selection type "${when.type}".`
+                );
+            }
+            if (when.type === "interval" && !when.channel) {
+                throw new Error(
+                    `Interval selection "${when.selection}" must specify a channel.`
+                );
+            }
+            if (when.channel && !channelOrder.includes(when.channel)) {
+                throw new Error(
+                    `Channel "${name}" references unknown selection channel "${when.channel}".`
+                );
+            }
+            if (when.empty !== undefined && typeof when.empty !== "boolean") {
+                throw new Error(
+                    `Selection "${when.selection}" empty flag must be boolean.`
+                );
+            }
+            if (condition.channel) {
+                if (value !== undefined) {
+                    throw new Error(
+                        `Channel "${name}" conditions must not specify both channel and value.`
+                    );
+                }
+                const conditional = /** @type {ChannelConfigInput} */ (
+                    condition.channel
+                );
+                if (!conditional || typeof conditional !== "object") {
+                    throw new Error(
+                        `Channel "${name}" conditions must include a channel config.`
+                    );
+                }
+                if (
+                    "conditions" in conditional &&
+                    conditional.conditions !== undefined
+                ) {
+                    throw new Error(
+                        `Channel "${name}" conditions must not nest other conditions.`
+                    );
+                }
+                if (
+                    "default" in conditional &&
+                    conditional.default !== undefined
+                ) {
+                    throw new Error(
+                        `Channel "${name}" conditions must not include defaults.`
+                    );
+                }
+                if (
+                    !isSeriesChannelConfig(conditional) &&
+                    !isValueChannelConfig(conditional)
+                ) {
+                    throw new Error(
+                        `Channel "${name}" conditions must supply data or value.`
+                    );
+                }
+                if (isSeriesChannelConfig(conditional) && !conditional.type) {
+                    throw new Error(
+                        `Channel "${name}" conditions require a series data type.`
+                    );
+                }
+                continue;
+            }
+            if (value === undefined) {
+                throw new Error(
+                    `Channel "${name}" conditions require a value.`
+                );
+            }
+            if (analysis.outputComponents === 1) {
+                if (typeof value !== "number") {
+                    throw new Error(
+                        `Channel "${name}" conditions require scalar values.`
+                    );
+                }
+            } else if (
+                !Array.isArray(value) ||
+                value.length !== analysis.outputComponents
+            ) {
+                throw new Error(
+                    `Channel "${name}" conditions require ${analysis.outputComponents}-component values.`
+                );
+            }
+        }
     }
 }

@@ -28,6 +28,7 @@ export const identityScaleDef = {
  */
 function emitIdentity({
     name,
+    functionName,
     rawValueExpr,
     outputComponents,
     outputScalarType,
@@ -36,5 +37,5 @@ function emitIdentity({
         outputComponents === 1
             ? outputScalarType
             : `vec${outputComponents}<f32>`;
-    return `${makeFnHeader(name, returnType)} { return ${rawValueExpr}; }`;
+    return `${makeFnHeader(name, returnType, functionName)} { return ${rawValueExpr}; }`;
 }

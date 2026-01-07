@@ -88,11 +88,17 @@ export const bandScaleDef = {
  * @param {import("../../../index.d.ts").ScaleEmitParams} params
  * @returns {string}
  */
-function emitBandScale({ name, rawValueExpr, inputScalarType, domainMapName }) {
+function emitBandScale({
+    name,
+    functionName,
+    rawValueExpr,
+    inputScalarType,
+    domainMapName,
+}) {
     const valueExpr = toU32Expr(rawValueExpr, inputScalarType);
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     if (domainMapName) {
-        return `${makeFnHeader(name, "f32")} {
+        return `${makeFnHeader(name, "f32", functionName)} {
     let raw = ${valueExpr};
     let mapCount = u32(params.${mapCountName});
     if (mapCount == 0u) {
@@ -119,7 +125,7 @@ function emitBandScale({ name, rawValueExpr, inputScalarType, domainMapName }) {
     );
 }`;
     }
-    return `${makeFnHeader(name, "f32")} {
+    return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${valueExpr};
     return scaleBand(
         v,

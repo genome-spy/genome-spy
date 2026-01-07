@@ -19,6 +19,57 @@ export type TypedArray =
     | Int8Array
     | Uint8Array;
 
+export type SelectionType = "single" | "multi" | "interval";
+
+export type SelectionPredicate = {
+    /** Selection name declared in channel conditions. */
+    selection: string;
+    /** Fixed selection kind (cannot change after mark creation). */
+    type: SelectionType;
+    /** Data channel used for interval tests (required for interval selections). */
+    channel?: string;
+    /** Treat empty selections as true when set (useful for brushing). */
+    empty?: boolean;
+};
+
+export type ChannelCondition =
+    | {
+          /** Selection predicate that guards the conditional branch. */
+          when: SelectionPredicate;
+          /** Range-space value to use when the predicate passes. */
+          value: number | number[];
+          /** Conditional channel config is not used for literal values. */
+          channel?: never;
+          /**
+           * @internal Resolved conditional channel alias.
+           * Conditional channels are normalized into synthetic channels (e.g.,
+           * `fill__cond0`) used only inside the renderer.
+           */
+          channelName?: string;
+      }
+    | {
+          /** Selection predicate that guards the conditional branch. */
+          when: SelectionPredicate;
+          /**
+           * Channel config to evaluate when the predicate passes. This allows
+           * conditional series + scale evaluation (Vega-Lite-style).
+           */
+          channel: ConditionalChannelConfigInput;
+          /** Literal value is not used when a conditional channel is supplied. */
+          value?: never;
+          /**
+           * @internal Resolved conditional channel alias.
+           * Conditional channels are normalized into synthetic channels (e.g.,
+           * `fill__cond0`) used only inside the renderer.
+           */
+          channelName?: string;
+      };
+
+export type SelectionUpdate =
+    | { type: "single"; id: number }
+    | { type: "multi"; ids: Uint32Array }
+    | { type: "interval"; min: number; max: number };
+
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
     type:
@@ -135,6 +186,9 @@ export type ScaleEmitParams = {
     /** Channel name used for function naming and uniform lookups. */
     name: string;
 
+    /** Override for the generated function name (defaults to name). */
+    functionName?: string;
+
     /** Scale config for custom emitters that need direct access. */
     scaleConfig?: ChannelScale;
 
@@ -179,6 +233,7 @@ export type ScaleEmitParams = {
 export type ContinuousEmitParams = Pick<
     ScaleEmitParams,
     | "name"
+    | "functionName"
     | "rawValueExpr"
     | "inputScalarType"
     | "clamp"
@@ -200,6 +255,7 @@ export type ScalePipelineStep = (
 /** Parameters for the pipeline-based WGSL emitter. */
 export type ScalePipeline = {
     name: string;
+    functionName?: string;
     rawValueExpr: string;
     steps: ScalePipelineStep[];
     returnType: string;
@@ -231,6 +287,8 @@ export type ScaleIOContext = {
 export type ScaleFunctionParams = ScaleIOContext & {
     /** Scale type that selects which WGSL helper is emitted. */
     scale: ChannelScale["type"];
+    /** Override for the generated function name (defaults to name). */
+    functionName?: string;
     /** WGSL expression for the raw value (buffer read or literal/uniform). */
     rawValueExpr: string;
     /** Full scale config for detecting piecewise scales and clamp behavior. */
@@ -374,6 +432,9 @@ export type ChannelConfigCommon = {
 
     /** Default if no series data or value is supplied. */
     default?: number | number[];
+
+    /** Conditional overrides applied when selection predicates match. */
+    conditions?: ChannelCondition[];
 };
 
 /** Scale-capable channel config. Used by both input and resolved variants. */
@@ -436,6 +497,12 @@ export type ChannelConfigWithoutScaleInput = (
 export type ChannelConfigInput =
     | ChannelConfigWithScaleInput
     | ChannelConfigWithoutScaleInput;
+
+/** Channel config allowed inside conditions (no defaults or nested conditions). */
+export type ConditionalChannelConfigInput = Omit<
+    ChannelConfigInput,
+    "conditions" | "default"
+>;
 
 /** Resolved series config after normalization (data/type required). */
 export type SeriesChannelConfig = RequireKeys<
@@ -666,6 +733,12 @@ export class Renderer {
         ranges: Record<string, Array<number | number[] | string>>
     ): void;
 
+    /** Update selection predicates declared in channel conditions. */
+    updateSelections(
+        markId: MarkId,
+        selections: Record<string, SelectionUpdate>
+    ): void;
+
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;
 
@@ -688,7 +761,11 @@ export function setDebugResourcesEnabled(enabled: boolean): void;
 export function registerScaleDef(name: string, def: ScaleDef): void;
 
 /** Build the WGSL function header for a channel's getScaled helper. */
-export function makeFnHeader(name: string, returnType: string): string;
+export function makeFnHeader(
+    name: string,
+    returnType: string,
+    functionName?: string
+): string;
 
 /** Resolve the packed domain uniform to a vec2 expression. */
 export function domainVec2(name: string): string;

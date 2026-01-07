@@ -19,6 +19,7 @@ import {
 /**
  * @typedef {object} ScalePipeline
  * @prop {string} name
+ * @prop {string} [functionName]
  * @prop {string} rawValueExpr
  * @prop {ScalePipelineStep[]} steps
  * @prop {string} returnType
@@ -87,6 +88,7 @@ export function emitScalePipeline(pipeline) {
     }
 
     const body = state.body ? normalizeWgslBlock(state.body) : "";
+    const fnName = pipeline.functionName ?? pipeline.name;
     const returnBlock = pipeline.useRangeTexture
         ? emitRampSampleBlock(pipeline.name, state.expr)
         : /* wgsl */ `
@@ -94,7 +96,7 @@ export function emitScalePipeline(pipeline) {
 `;
     const returnBody = normalizeWgslBlock(returnBlock);
     const combined = body ? `${body}\n${returnBody}` : returnBody;
-    return `fn ${SCALED_FUNCTION_PREFIX}${pipeline.name}(i: u32) -> ${pipeline.returnType} {
+    return `fn ${SCALED_FUNCTION_PREFIX}${fnName}(i: u32) -> ${pipeline.returnType} {
 ${combined}
 }`;
 }

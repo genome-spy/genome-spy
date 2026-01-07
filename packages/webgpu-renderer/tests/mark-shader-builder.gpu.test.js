@@ -13,9 +13,13 @@ import { scaleLinear } from "d3-scale";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
 import { buildPackedSeriesLayout } from "../src/marks/programs/packedSeriesLayout.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
-import { buildHashTableMap } from "../src/utils/hashTable.js";
+import {
+    buildHashTableMap,
+    buildHashTableSet,
+} from "../src/utils/hashTable.js";
 import { UniformBuffer } from "../src/utils/uniformBuffer.js";
 import { ensureWebGPU } from "./gpuTestUtils.js";
+import { SELECTION_BUFFER_PREFIX } from "../src/wgsl/prefixes.js";
 
 globalThis.GPUShaderStage ??= {
     VERTEX: 0x1,
@@ -167,6 +171,8 @@ function packTextureData(textureData) {
  * @param {string} params.outputType
  * @param {number} params.outputLength
  * @param {string} params.channelName
+ * @param {import("../src/marks/shaders/markShaderBuilder.js").SelectionDef[]} [params.selectionDefs]
+ * @param {import("../src/marks/shaders/markShaderBuilder.js").ExtraResourceDef[]} [params.extraResources]
  * @returns {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult & { outputBinding: number }}
  */
 function buildComputeShader({
@@ -175,6 +181,8 @@ function buildComputeShader({
     outputType,
     outputLength,
     channelName,
+    selectionDefs = [],
+    extraResources = [],
 }) {
     const packedSeriesLayout = buildPackedSeriesLayout(channels, {}).entries;
     const initial = buildMarkShader({
@@ -182,6 +190,8 @@ function buildComputeShader({
         uniformLayout,
         shaderBody: "",
         packedSeriesLayout,
+        selectionDefs,
+        extraResources,
     });
     const outputBinding = initial.resourceBindings.length + 1;
     const shaderBody = buildComputeBody({
@@ -195,6 +205,8 @@ function buildComputeShader({
         uniformLayout,
         shaderBody,
         packedSeriesLayout,
+        selectionDefs,
+        extraResources,
     });
     return { ...result, outputBinding };
 }
@@ -1026,4 +1038,159 @@ test("markShaderBuilder clamps range texture sampling to endpoints", async ({
         expect(output[base + 2]).toBeCloseTo(expected.b / 255, 2);
         expect(output[base + 3]).toBeCloseTo(1, 5);
     });
+});
+
+test("markShaderBuilder applies interval selections to conditional values", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const input = new Float32Array([0, 1, 2, 3]);
+    const channels = {
+        x: {
+            data: input,
+            type: "f32",
+            components: 1,
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "brush",
+                        type: "interval",
+                        channel: "x",
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelection_brush", type: "f32", components: 2 },
+    ];
+    const selectionDefs = [
+        {
+            name: "brush",
+            type: "interval",
+            channel: "x",
+            scalarType: "f32",
+        },
+    ];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        selectionDefs,
+        outputType: "f32",
+        outputLength: input.length,
+        channelName: "fill",
+    });
+    const bindings = mapBindings(result);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
+    )?.binding;
+    if (seriesBinding == null) {
+        throw new Error("Series binding for x was not generated.");
+    }
+
+    const uniformData = buildUniformData(uniformLayout, {
+        uSelection_brush: [1, 2],
+    });
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData,
+        seriesBuffers: [{ binding: seriesBinding, data: input }],
+        outputBinding: result.outputBinding,
+        outputLength: input.length,
+        outputComponents: 1,
+    });
+
+    expect(output).toEqual([0, 1, 1, 0]);
+});
+
+test("markShaderBuilder applies multi selections via hash tables", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const ids = new Uint32Array([10, 11, 12, 13]);
+    const channels = {
+        uniqueId: {
+            data: ids,
+            type: "u32",
+            components: 1,
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "picked",
+                        type: "multi",
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelectionCount_picked", type: "u32", components: 1 },
+    ];
+    const selectionDefs = [{ name: "picked", type: "multi" }];
+    const selectionBufferName = SELECTION_BUFFER_PREFIX + "picked";
+    const extraResources = [
+        {
+            name: selectionBufferName,
+            kind: "buffer",
+            role: "extraBuffer",
+            wgslName: selectionBufferName,
+            wgslType: "array<HashEntry>",
+            bufferType: "read-only-storage",
+            visibility: "vertex",
+        },
+    ];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        selectionDefs,
+        extraResources,
+        outputType: "f32",
+        outputLength: ids.length,
+        channelName: "fill",
+    });
+    const bindings = mapBindings(result);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesU32"
+    )?.binding;
+    const selectionBinding = bindings.find(
+        (entry) =>
+            entry.role === "extraBuffer" && entry.name === selectionBufferName
+    )?.binding;
+    if (seriesBinding == null || selectionBinding == null) {
+        throw new Error("Selection bindings were not generated.");
+    }
+
+    const { table, size } = buildHashTableSet([11, 13]);
+    const uniformData = buildUniformData(uniformLayout, {
+        uSelectionCount_picked: size,
+    });
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData,
+        seriesBuffers: [
+            { binding: seriesBinding, data: ids },
+            { binding: selectionBinding, data: table },
+        ],
+        outputBinding: result.outputBinding,
+        outputLength: ids.length,
+        outputComponents: 1,
+    });
+
+    expect(output).toEqual([0, 1, 0, 1]);
 });

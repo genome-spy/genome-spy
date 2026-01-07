@@ -5,6 +5,7 @@ import { buildBindGroup } from "./bindGroupBuilder.js";
 import { ScaleResourceManager } from "./scaleResources.js";
 import { normalizeChannels } from "./channelConfigResolver.js";
 import { buildPipeline } from "./pipelineBuilder.js";
+import { SelectionResourceManager } from "./selectionResources.js";
 
 let debugResourcesEnabled = false;
 
@@ -63,6 +64,12 @@ export default class BaseProgram {
             hasUniform: (name) =>
                 this._uniformBufferState?.entries.has(name) ?? false,
         });
+        this._selectionResources = new SelectionResourceManager({
+            device: this.device,
+            channels: this._channels,
+            setUniformValue: (name, value) =>
+                this._setUniformValue(name, value),
+        });
 
         /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
@@ -86,6 +93,11 @@ export default class BaseProgram {
         // shader generation dynamic.
         this._buildUniformLayout();
         this._initializeExtraResources();
+        this._selectionResources.initializeSelections(this._extraBuffers);
+        const extraResources = [
+            ...this._selectionResources.getExtraResourceDefs(),
+            ...this.getExtraResourceDefs(),
+        ];
         const { bindGroupLayout, pipeline, resourceLayout } = buildPipeline({
             device: this.device,
             globalBindGroupLayout: renderer._globalBindGroupLayout,
@@ -95,7 +107,8 @@ export default class BaseProgram {
             shaderBody: this.shaderBody,
             packedSeriesLayout:
                 this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
-            extraResources: this.getExtraResourceDefs(),
+            selectionDefs: this._selectionResources.selectionDefs,
+            extraResources,
             primitiveTopology: this.primitiveTopology,
         });
         this._resourceLayout = resourceLayout;
@@ -263,6 +276,21 @@ export default class BaseProgram {
     }
 
     /**
+     * @param {Record<string, import("../../index.d.ts").SelectionUpdate>} selections
+     * @returns {void}
+     */
+    updateSelections(selections) {
+        const needsRebind = this._selectionResources.updateSelections(
+            selections,
+            this._extraBuffers
+        );
+        this._writeUniforms();
+        if (needsRebind) {
+            this._rebuildBindGroup();
+        }
+    }
+
+    /**
      * Log reserved GPU resources for this mark to the console.
      *
      * @param {string} [label]
@@ -417,6 +445,7 @@ export default class BaseProgram {
             }
         }
 
+        this._selectionResources.addSelectionUniforms(layout);
         this._uniformLayout = layout.concat(this.getExtraUniformLayout());
         if (this._uniformLayout.length === 0) {
             // WebGPU does not allow empty uniform buffers; keep a dummy entry.

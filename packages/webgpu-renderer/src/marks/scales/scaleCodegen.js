@@ -28,6 +28,7 @@ import { isPiecewiseScale } from "./scaleUtils.js";
 export function buildScaledFunction({
     name,
     scale,
+    functionName,
     rawValueExpr,
     scalarType,
     inputComponents,
@@ -59,6 +60,7 @@ export function buildScaledFunction({
     const def = getScaleDef(scale);
     return def.emit({
         name,
+        functionName,
         scaleConfig,
         rawValueExpr,
         inputScalarType: scalarType,
