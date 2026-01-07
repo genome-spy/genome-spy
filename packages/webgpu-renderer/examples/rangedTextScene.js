@@ -38,7 +38,7 @@ export default async function runRangedTextScene(canvas, options = {}) {
         }
     }
 
-    const markId = renderer.createMark("text", {
+    const { markId, scales, values } = renderer.createMark("text", {
         channels: {
             x: {
                 data: x,
@@ -103,12 +103,10 @@ export default async function runRangedTextScene(canvas, options = {}) {
     });
 
     const updateRanges = ({ width, height }) => {
-        renderer.updateScaleRanges(markId, {
-            x: [0, width],
-            x2: [0, width],
-            y: [0, height],
-            y2: [0, height],
-        });
+        scales.x.setRange([0, width]);
+        scales.x2.setRange([0, width]);
+        scales.y.setRange([0, height]);
+        scales.y2.setRange([0, height]);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
@@ -121,15 +119,16 @@ export default async function runRangedTextScene(canvas, options = {}) {
             renderer.destroyMark(markId);
         },
         update: (next) => {
-            const values = {};
+            let hasUpdate = false;
             if (typeof next.size === "number") {
-                values.size = next.size;
+                values.size.set(next.size);
+                hasUpdate = true;
             }
             if (typeof next.opacity === "number") {
-                values.opacity = next.opacity;
+                values.opacity.set(next.opacity);
+                hasUpdate = true;
             }
-            if (Object.keys(values).length > 0) {
-                renderer.updateValues(markId, values);
+            if (hasUpdate) {
                 renderer.render();
             }
         },

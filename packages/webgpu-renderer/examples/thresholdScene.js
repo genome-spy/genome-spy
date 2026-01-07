@@ -33,7 +33,7 @@ export default async function runThresholdScene(canvas) {
     const belowZero = [...cssColorToArray("#ed553b"), 1];
     const aboveZero = [...cssColorToArray("#20639b"), 1];
 
-    const markId = renderer.createMark("rect", {
+    const { markId, scales } = renderer.createMark("rect", {
         count,
         channels: {
             x: {
@@ -94,12 +94,10 @@ export default async function runThresholdScene(canvas) {
     const updateRanges = ({ width, height }) => {
         const xRange = [padding, Math.max(padding, width - padding)];
         const yRange = [Math.max(padding, height - padding), padding];
-        renderer.updateScaleRanges(markId, {
-            x: xRange,
-            x2: xRange,
-            y: yRange,
-            y2: yRange,
-        });
+        scales.x.setRange(xRange);
+        scales.x2.setRange(xRange);
+        scales.y.setRange(yRange);
+        scales.y2.setRange(yRange);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);

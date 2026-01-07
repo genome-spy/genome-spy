@@ -9,10 +9,10 @@ import {
 
 /**
  * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../../index.d.ts").ChannelCondition} ChannelCondition
- * @typedef {import("../../index.d.ts").SelectionUpdate} SelectionUpdate
  * @typedef {import("../../index.d.ts").SelectionType} SelectionType
  * @typedef {import("../../types.js").ScalarType} ScalarType
+ *
+ * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} SelectionUpdate
  *
  * @typedef {object} SelectionDef
  * @prop {string} name
@@ -144,36 +144,28 @@ export class SelectionResourceManager {
      */
     addSelectionUniforms(layout) {
         for (const def of this._selectionDefs.values()) {
-            switch (def.type) {
-                case "single": {
-                    layout.push({
-                        name: SELECTION_PREFIX + def.name,
-                        type: "u32",
-                        components: 1,
-                    });
-                    break;
-                }
-                case "interval": {
-                    layout.push({
-                        name: SELECTION_PREFIX + def.name,
-                        type: def.scalarType ?? "f32",
-                        components: 2,
-                    });
-                    break;
-                }
-                case "multi": {
-                    layout.push({
-                        name: SELECTION_COUNT_PREFIX + def.name,
-                        type: "u32",
-                        components: 1,
-                    });
-                    break;
-                }
-                default: {
-                    throw new Error(
-                        `Selection "${def.name}" has unsupported type "${def.type}".`
-                    );
-                }
+            if (def.type === "single") {
+                layout.push({
+                    name: SELECTION_PREFIX + def.name,
+                    type: "u32",
+                    components: 1,
+                });
+            } else if (def.type === "interval") {
+                layout.push({
+                    name: SELECTION_PREFIX + def.name,
+                    type: def.scalarType ?? "f32",
+                    components: 2,
+                });
+            } else if (def.type === "multi") {
+                layout.push({
+                    name: SELECTION_COUNT_PREFIX + def.name,
+                    type: "u32",
+                    components: 1,
+                });
+            } else {
+                throw new Error(
+                    `Selection "${def.name}" has unsupported type "${def.type}".`
+                );
             }
         }
     }
@@ -210,104 +202,86 @@ export class SelectionResourceManager {
      */
     initializeSelections(extraBuffers) {
         for (const def of this._selectionDefs.values()) {
-            switch (def.type) {
-                case "single": {
-                    this._setUniformValue(SELECTION_PREFIX + def.name, 0);
-                    break;
-                }
-                case "interval": {
-                    this._setUniformValue(SELECTION_PREFIX + def.name, [1, 0]);
-                    break;
-                }
-                case "multi": {
-                    this._setUniformValue(SELECTION_COUNT_PREFIX + def.name, 0);
-                    const bufferName = SELECTION_BUFFER_PREFIX + def.name;
-                    const { table } = buildHashTableSet([]);
-                    const buffer = this._device.createBuffer({
-                        size: table.byteLength,
-                        usage:
-                            // eslint-disable-next-line no-undef
-                            GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-                    });
-                    this._device.queue.writeBuffer(buffer, 0, table);
-                    extraBuffers.set(bufferName, buffer);
-                    this._selectionBuffers.set(def.name, {
-                        buffer,
-                        byteLength: table.byteLength,
-                    });
-                    break;
-                }
-                default: {
-                    throw new Error(
-                        `Selection "${def.name}" has unsupported type "${def.type}".`
-                    );
-                }
+            if (def.type === "single") {
+                this._setUniformValue(SELECTION_PREFIX + def.name, 0);
+            } else if (def.type === "interval") {
+                this._setUniformValue(SELECTION_PREFIX + def.name, [1, 0]);
+            } else if (def.type === "multi") {
+                this._setUniformValue(SELECTION_COUNT_PREFIX + def.name, 0);
+                const bufferName = SELECTION_BUFFER_PREFIX + def.name;
+                const { table } = buildHashTableSet([]);
+                const buffer = this._device.createBuffer({
+                    size: table.byteLength,
+                    usage:
+                        // eslint-disable-next-line no-undef
+                        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                });
+                this._device.queue.writeBuffer(buffer, 0, table);
+                extraBuffers.set(bufferName, buffer);
+                this._selectionBuffers.set(def.name, {
+                    buffer,
+                    byteLength: table.byteLength,
+                });
+            } else {
+                throw new Error(
+                    `Selection "${def.name}" has unsupported type "${def.type}".`
+                );
             }
         }
     }
 
     /**
-     * @param {Record<string, SelectionUpdate>} selections
+     * @param {string} name
+     * @param {SelectionUpdate} update
      * @param {Map<string, GPUBuffer>} extraBuffers
      * @returns {boolean} Whether a bind group rebuild is required.
      */
-    updateSelections(selections, extraBuffers) {
-        let needsRebind = false;
-        for (const [name, update] of Object.entries(selections)) {
-            const def = this._selectionDefs.get(name);
-            if (!def) {
-                throw new Error(`Unknown selection "${name}".`);
-            }
-            if (update.type !== def.type) {
-                throw new Error(
-                    `Selection "${name}" must remain type "${def.type}".`
-                );
-            }
-            switch (update.type) {
-                case "single": {
-                    this._setUniformValue(SELECTION_PREFIX + name, update.id);
-                    break;
-                }
-                case "interval": {
-                    this._setUniformValue(SELECTION_PREFIX + name, [
-                        update.min,
-                        update.max,
-                    ]);
-                    break;
-                }
-                case "multi": {
-                    const { table, size } = buildHashTableSet(update.ids);
-                    this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
-                    const bufferName = SELECTION_BUFFER_PREFIX + name;
-                    const existing = this._selectionBuffers.get(name);
-                    if (!existing || existing.byteLength < table.byteLength) {
-                        const buffer = this._device.createBuffer({
-                            size: table.byteLength,
-                            usage:
-                                // eslint-disable-next-line no-undef
-                                GPUBufferUsage.STORAGE |
-                                GPUBufferUsage.COPY_DST,
-                        });
-                        extraBuffers.set(bufferName, buffer);
-                        this._selectionBuffers.set(name, {
-                            buffer,
-                            byteLength: table.byteLength,
-                        });
-                        needsRebind = true;
-                    }
-                    const buffer = this._selectionBuffers.get(name)?.buffer;
-                    if (buffer) {
-                        this._device.queue.writeBuffer(buffer, 0, table);
-                    }
-                    break;
-                }
-                default: {
-                    throw new Error(
-                        `Selection "${name}" has unsupported type.`
-                    );
-                }
-            }
+    updateSelection(name, update, extraBuffers) {
+        const def = this._selectionDefs.get(name);
+        if (!def) {
+            throw new Error(`Unknown selection "${name}".`);
         }
+        if (update.type !== def.type) {
+            throw new Error(
+                `Selection "${name}" must remain type "${def.type}".`
+            );
+        }
+
+        let needsRebind = false;
+        if (update.type === "single") {
+            this._setUniformValue(SELECTION_PREFIX + name, update.id);
+        } else if (update.type === "interval") {
+            this._setUniformValue(SELECTION_PREFIX + name, [
+                update.min,
+                update.max,
+            ]);
+        } else if (update.type === "multi") {
+            const { table, size } = buildHashTableSet(update.ids);
+            this._setUniformValue(SELECTION_COUNT_PREFIX + name, size);
+            const bufferName = SELECTION_BUFFER_PREFIX + name;
+            const existing = this._selectionBuffers.get(name);
+            if (!existing || existing.byteLength < table.byteLength) {
+                const buffer = this._device.createBuffer({
+                    size: table.byteLength,
+                    usage:
+                        // eslint-disable-next-line no-undef
+                        GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                });
+                extraBuffers.set(bufferName, buffer);
+                this._selectionBuffers.set(name, {
+                    buffer,
+                    byteLength: table.byteLength,
+                });
+                needsRebind = true;
+            }
+            const buffer = this._selectionBuffers.get(name)?.buffer;
+            if (buffer) {
+                this._device.queue.writeBuffer(buffer, 0, table);
+            }
+        } else {
+            throw new Error(`Selection "${name}" has unsupported type.`);
+        }
+
         return needsRebind;
     }
 }

@@ -42,6 +42,8 @@ export default async function runIndexScene(canvas) {
     }
 
     let markId = null;
+    let scales = null;
+    let values = null;
     let activeKey = "u32";
     let activeValues = datasets.u32.makeArray();
     let baseStart = datasets.u32.start;
@@ -70,7 +72,7 @@ export default async function runIndexScene(canvas) {
             markId = null;
         }
 
-        markId = renderer.createMark("point", {
+        const handle = renderer.createMark("point", {
             count,
             channels: {
                 x: {
@@ -98,6 +100,9 @@ export default async function runIndexScene(canvas) {
                 strokeWidth: { value: 1.5 },
             },
         });
+        markId = handle.markId;
+        scales = handle.scales;
+        values = handle.values;
 
         renderer.updateSeries(markId, { x: activeValues }, count);
         updateRanges({
@@ -114,10 +119,8 @@ export default async function runIndexScene(canvas) {
         if (!markId) {
             return;
         }
-        renderer.updateScaleRanges(markId, {
-            x: [padding, Math.max(padding, width - padding)],
-        });
-        renderer.updateValues(markId, { y: height * 0.5 });
+        scales.x.setRange([padding, Math.max(padding, width - padding)]);
+        values.y.set(height * 0.5);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
@@ -134,9 +137,7 @@ export default async function runIndexScene(canvas) {
         const span = baseSpan * zoom;
         const start = baseStart + pan;
         if (markId) {
-            renderer.updateScaleDomains(markId, {
-                x: [start, start + span],
-            });
+            scales.x.setDomain([start, start + span]);
             renderer.render();
         }
         animationFrame = requestAnimationFrame(tick);
@@ -164,6 +165,8 @@ export default async function runIndexScene(canvas) {
         if (markId) {
             renderer.destroyMark(markId);
             markId = null;
+            scales = null;
+            values = null;
         }
     };
 }

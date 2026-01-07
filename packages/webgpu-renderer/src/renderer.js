@@ -126,7 +126,7 @@ export class Renderer {
      * @template {import("./index.d.ts").MarkType} T
      * @param {T} type
      * @param {import("./index.d.ts").MarkConfig<T>} config
-     * @returns {MarkId}
+     * @returns {import("./index.d.ts").MarkHandle}
      */
     createMark(type, config) {
         let mark;
@@ -171,7 +171,13 @@ export class Renderer {
 
         const markId = /** @type {MarkId} */ (this._nextMarkId++);
         this._marks.set(markId, mark);
-        return markId;
+        const slotHandles = mark.getSlotHandles();
+        return {
+            markId,
+            scales: slotHandles.scales,
+            values: slotHandles.values,
+            selections: slotHandles.selections,
+        };
     }
 
     /**
@@ -199,45 +205,6 @@ export class Renderer {
             throw new RendererError(`No such mark: ${markId}`);
         }
         mark.updateValues(values);
-    }
-
-    /**
-     * @param {MarkId} markId
-     * @param {Record<string, number[]>} domains
-     * @returns {void}
-     */
-    updateScaleDomains(markId, domains) {
-        const mark = this._marks.get(markId);
-        if (!mark) {
-            throw new RendererError(`No such mark: ${markId}`);
-        }
-        mark.updateScaleDomains(domains);
-    }
-
-    /**
-     * @param {MarkId} markId
-     * @param {Record<string, Array<number|number[]|string>>} ranges
-     * @returns {void}
-     */
-    updateScaleRanges(markId, ranges) {
-        const mark = this._marks.get(markId);
-        if (!mark) {
-            throw new RendererError(`No such mark: ${markId}`);
-        }
-        mark.updateScaleRanges(ranges);
-    }
-
-    /**
-     * @param {MarkId} markId
-     * @param {Record<string, import("./index.d.ts").SelectionUpdate>} selections
-     * @returns {void}
-     */
-    updateSelections(markId, selections) {
-        const mark = this._marks.get(markId);
-        if (!mark) {
-            throw new RendererError(`No such mark: ${markId}`);
-        }
-        mark.updateSelections(selections);
     }
 
     /**
