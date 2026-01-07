@@ -9,6 +9,8 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Viewport/scissor management.
 - Worker-friendly update path (transfer buffers, no object reconstruction).
 - Optional vector backend compatibility (stable mark instance schema).
+- Slot handles for values/scales (see detailed plan below).
+- Decide code-first API direction (defs vs. instances), then align public types.
 
 ### Scale + shader codegen: remaining gaps
 
@@ -24,6 +26,58 @@ This plan focuses on the remaining work. Completed items are omitted.
   instances without requiring core-side filtering).
 - Explicit selection docs in public API (uniqueId requirements, predicate
   ordering semantics).
+
+### Slots for values + scales (detailed plan)
+
+Goal: make updates lean and stable even when scales/values are buried in
+conditions. Slots are prevalidated handles created at mark construction;
+updates should avoid name lookups and heavy validation.
+
+1. **Define slot handle contracts** — add internal types for `ScaleSlotHandle`
+   and `ValueSlotHandle` (methods + metadata). Each slot stores:
+   - channel name, condition branch key (default/when/else)
+   - expected scalar type + components
+   - resource target kind (uniform, range texture, domain map, ordinal range)
+   - fixed array lengths (for shape stability checks)
+2. **Build slots at mark creation** — when normalizing channels, enumerate
+   all scale/value occurrences (default + each condition branch) and create
+   a slot per occurrence. Keep them on the mark program instance, and return
+   them from `createMark` alongside `markId` so the caller can hold references.
+3. **Lean update path** — slot setters perform only:
+   - minimal shape/type checks (length, component count)
+   - write to precomputed uniform offsets / texture rows / buffers
+   - set dirty flags for GPU upload
+   Scale/mark revalidation should not be repeated on updates.
+4. **Dynamic vs. static values** — if a value is static, its slot should
+   throw on updates (explicitly require mark recreation). If `dynamic: true`,
+   the slot writes to uniforms and supports updates.
+5. **Conditional branches** — expose nested slot handles with stable branch
+   keys (default + `when:<selection>`). The ordering used in shader code must
+   match the ordering of slot handles.
+6. **Optional signals** — allow `slot.set(signalLike)` as an adapter, but keep
+   subscription and lifetimes explicit and opt-in. Signals should not be the
+   primary update mechanism.
+7. **Docs + tests** — document how to obtain and use slots, and add tests:
+   - slot creation matches condition branches
+   - updating a slot changes rendering without rebuild
+   - updating a static slot throws
+
+### Code-first API direction (classes vs. defs)
+
+Goal: decide whether users pass scale/mark instances (tree-shakeable,
+typed, code-first) or use the current name/registry approach.
+
+- **If instance-based**: scale/mark instances are immutable definitions that
+  expose minimal hooks (`emitWGSL`, `validate`, `resourceRequirements`, and
+  default config). Instances hold no mutable GPU state. Runtime state lives in
+  slots/program instances, so reusing an instance across marks is safe. Any
+  change that alters resource shapes (array lengths, output arity, range kind)
+  requires recreating the mark/pipeline; runtime updates happen via slots.
+- **If def-based**: keep registry for built-ins but provide per-scale entry
+  points to improve tree-shaking. Consider explicit registration to avoid
+  side-effect imports.
+- Avoid supporting both paths unless needed; dual-path support adds surface
+  area and maintenance cost.
 
 ### ScaleDef registry consolidation
 
