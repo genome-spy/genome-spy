@@ -53,7 +53,6 @@ function createManager(channels) {
         setUniformValue: (name, value) => {
             uniforms.set(name, value);
         },
-        hasUniform: (name) => uniforms.has(name),
     });
     return { manager, uniforms };
 }
@@ -111,11 +110,16 @@ describe("ScaleResourceManager", () => {
         uniforms.set(RANGE_COUNT_PREFIX + "fill", 0);
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
 
+        const initialRebind = manager.updateScaleRange(
+            "fill",
+            channels.fill.scale.range
+        );
         const needsRebind = manager.updateScaleRange("fill", [
             [0.1, 0.1, 0.1, 1],
             [0.2, 0.2, 0.2, 1],
         ]);
 
+        expect(initialRebind).toBe(true);
         expect(needsRebind).toBe(false);
         expect(manager.ordinalRangeBuffers.get("fill")?.size).toBeGreaterThan(
             0
