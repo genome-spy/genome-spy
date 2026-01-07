@@ -14,7 +14,7 @@ import {
 /**
  * @typedef {import("../../index.d.ts").ScaleEmitParams} ScaleEmitParams
  * @typedef {import("./scalePipeline.js").ScalePipelineStep} ScalePipelineStep
- * @typedef {Pick<ScaleEmitParams, "name"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture">} ContinuousEmitParams
+ * @typedef {Pick<ScaleEmitParams, "name"|"functionName"|"rawValueExpr"|"inputScalarType"|"clamp"|"round"|"useRangeTexture">} ContinuousEmitParams
  */
 
 /**
@@ -22,8 +22,8 @@ import {
  * @param {string} returnType
  * @returns {string}
  */
-export function makeFnHeader(name, returnType) {
-    return `fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType}`;
+export function makeFnHeader(name, returnType, functionName = name) {
+    return `fn ${SCALED_FUNCTION_PREFIX}${functionName}(i: u32) -> ${returnType}`;
 }
 
 /**
@@ -67,7 +67,15 @@ export function toU32Expr(rawValueExpr, inputScalarType) {
  * @returns {string}
  */
 export function emitContinuousScale(
-    { name, rawValueExpr, inputScalarType, clamp, round, useRangeTexture },
+    {
+        name,
+        functionName,
+        rawValueExpr,
+        inputScalarType,
+        clamp,
+        round,
+        useRangeTexture,
+    },
     valueExprFn
 ) {
     /** @type {ScalePipelineStep[]} */
@@ -89,6 +97,7 @@ export function emitContinuousScale(
 
     return emitScalePipeline({
         name,
+        functionName,
         rawValueExpr,
         steps,
         returnType: useRangeTexture ? "vec4<f32>" : "f32",

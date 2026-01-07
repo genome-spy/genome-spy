@@ -9,6 +9,7 @@ import { buildMarkShader } from "../shaders/markShaderBuilder.js";
  * @property {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
  * @property {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
+ * @property {Array<{ name: string, type: import("../../index.d.ts").SelectionType, channel?: string, secondaryChannel?: string, scalarType?: import("../../types.js").ScalarType }>} [selectionDefs]
  * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  *
@@ -32,6 +33,7 @@ export function buildPipeline({
     uniformLayout,
     shaderBody,
     packedSeriesLayout,
+    selectionDefs,
     extraResources,
     primitiveTopology = "triangle-list",
 }) {
@@ -40,6 +42,7 @@ export function buildPipeline({
         uniformLayout,
         shaderBody,
         packedSeriesLayout,
+        selectionDefs,
         extraResources,
     });
 
