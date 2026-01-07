@@ -5,8 +5,8 @@ designed to be usable outside the monorepo, but it currently lives here so it
 can track GenomeSpy’s requirements.
 
 This package is a work in progress and nothing in the monorepo depends on it
-yet. Large refactors are welcome; do not keep legacy compatibility hacks just
-to preserve earlier APIs.
+yet. Large refactors are welcome; the API can be broken freely and old hooks
+should be removed instead of preserved for compatibility.
 
 The renderer is still exploratory: there are guiding goals but the exact
 implementation is open to iteration. Prioritize a clear, extensible

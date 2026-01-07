@@ -65,10 +65,54 @@ export type ChannelCondition =
           channelName?: string;
       };
 
-export type SelectionUpdate =
-    | { type: "single"; id: number }
-    | { type: "multi"; ids: Uint32Array }
-    | { type: "interval"; min: number; max: number };
+export type ScaleSlotHandle = {
+    /** Update the scale domain; shape changes require mark recreation. */
+    setDomain(domain: number[]): void;
+    /** Update the scale range or interpolator; shape changes require mark recreation. */
+    setRange(
+        range:
+            | Array<number | number[] | string>
+            | ColorInterpolatorFn
+            | {
+                  range?:
+                      | Array<number | number[] | string>
+                      | ColorInterpolatorFn;
+              }
+    ): void;
+};
+
+export type ValueSlotHandle = {
+    /** Update a dynamic value (uniform-backed). */
+    set(value: number | number[]): void;
+};
+
+export type SelectionSlotHandle =
+    | {
+          type: "single";
+          set(id: number): void;
+      }
+    | {
+          type: "multi";
+          set(ids: Uint32Array): void;
+      }
+    | {
+          type: "interval";
+          set(min: number, max: number): void;
+      };
+
+export type ChannelSlotGroup<T> = Partial<T> & {
+    /** Default slot for the channel, when present. */
+    default?: T;
+    /** Conditional slots keyed by selection name. */
+    conditions?: Record<string, T>;
+};
+
+export type MarkHandle = {
+    markId: MarkId;
+    scales: Record<string, ChannelSlotGroup<ScaleSlotHandle>>;
+    values: Record<string, ChannelSlotGroup<ValueSlotHandle>>;
+    selections: Record<string, SelectionSlotHandle>;
+};
 
 export type ChannelScale = {
     /** Which scale function to apply before mapping to range values. */
@@ -502,7 +546,10 @@ export type ChannelConfigInput =
 export type ConditionalChannelConfigInput = Omit<
     ChannelConfigInput,
     "conditions" | "default"
->;
+> & {
+    /** Allow conditional value channels to opt into uniform-backed updates. */
+    dynamic?: boolean;
+};
 
 /** Resolved series config after normalization (data/type required). */
 export type SeriesChannelConfig = RequireKeys<
@@ -691,7 +738,7 @@ export class Renderer {
     updateGlobals(globals: GlobalUniforms): void;
 
     /** Create a new mark program and return its id. */
-    createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkId;
+    createMark<T extends MarkType>(type: T, config: MarkConfig<T>): MarkHandle;
 
     /**
      * Upload columnar series data (storage buffers) for a mark.
@@ -711,32 +758,11 @@ export class Renderer {
     ): void;
 
     /**
-     * Update value-based uniforms for a mark and optional scale domain/range.
-     * Domain/range entries can be provided as `{ domain, range }` or `[min, max]`.
+     * Update value-based uniforms for a mark.
      */
     updateValues(
         markId: MarkId,
-        values: Record<
-            string,
-            | number
-            | number[]
-            | { domain?: number[]; range?: Array<number | number[] | string> }
-        >
-    ): void;
-
-    /** Update scale domain values by channel or scale name. */
-    updateScaleDomains(markId: MarkId, domains: Record<string, number[]>): void;
-
-    /** Update scale range values by channel or scale name. */
-    updateScaleRanges(
-        markId: MarkId,
-        ranges: Record<string, Array<number | number[] | string>>
-    ): void;
-
-    /** Update selection predicates declared in channel conditions. */
-    updateSelections(
-        markId: MarkId,
-        selections: Record<string, SelectionUpdate>
+        values: Record<string, number | number[]>
     ): void;
 
     /** Log the GPU resources reserved by a mark to the console. */

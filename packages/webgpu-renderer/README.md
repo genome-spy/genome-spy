@@ -32,12 +32,9 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 ## API (Public Surface)
 
 - `createRenderer(canvas, options)`
-- `renderer.createMark(type, config)`
+- `renderer.createMark(type, config)` (returns `{ markId, scales, values, selections }`)
 - `renderer.updateSeries(markId, channels, count?)`
 - `renderer.updateValues(markId, values)`
-- `renderer.updateScaleDomains(markId, domains)`
-- `renderer.updateScaleRanges(markId, ranges)`
-- `renderer.updateSelections(markId, selections)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render()`
 - `renderer.destroyMark(markId)`
@@ -69,7 +66,7 @@ be added in later phases of the scale-def consolidation.
 import { createRenderer } from "@genome-spy/webgpu-renderer";
 
 const renderer = await createRenderer(canvas);
-const markId = renderer.createMark("rect", {
+const { markId, scales } = renderer.createMark("rect", {
     channels: {
         x: {
             data: new Uint32Array([0, 1, 2]),
@@ -81,13 +78,38 @@ const markId = renderer.createMark("rect", {
     },
 });
 
-renderer.updateScaleRanges(markId, { x: [0, canvas.width] });
+scales.x.setRange([0, canvas.width]);
 renderer.render();
 ```
 
 `count` is optional when at least one series channel is provided. The renderer
 infers it from the series buffer lengths. For value-only marks, the count
 defaults to `1`, so pass an explicit value when you want a different count.
+
+## Slot Handles for Scales and Values
+
+`createMark` returns slot handles that let you update scales and dynamic values
+without string lookups. Slots are prevalidated at mark creation; updates are
+lean and do not re-run full validation.
+
+```js
+const { scales, values, selections } = renderer.createMark("point", {
+    channels: { ... },
+});
+
+const xScale = scales.x;
+const brushColor = scales.color.conditions.brush;
+const brush = selections.brush;
+
+xScale.setDomain([0, 10]);
+brushColor.setRange(["#000", "#f00"]);
+values.size.set(4);
+brush.set(0, 10);
+```
+
+Slots exist only for dynamic values and channels with scales. `default` refers
+to the unconditional branch of a channel. Conditional slots are keyed by
+selection name (`conditions.brush`, etc.).
 
 ## Series Buffer Sharing
 
@@ -113,6 +135,9 @@ domain space.
 Conditional channel branches are normalized into internal synthetic channels
 (`fill__cond0`, etc.) for shader generation; users only define conditions on
 the original channel.
+
+Update selection state via slot handles (`selections.brush.set(...)`), which
+write the selection uniforms/buffers without rebuilding the mark.
 
 ## High-Precision Index Scale
 

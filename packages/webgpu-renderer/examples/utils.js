@@ -13,9 +13,10 @@ export async function createExampleRenderer(canvas) {
 
     const createMark = renderer.createMark.bind(renderer);
     renderer.createMark = (type, config) => {
-        const markId = createMark(type, config);
+        const handle = createMark(type, config);
+        const { markId } = handle;
         labels.set(markId, type);
-        return markId;
+        return handle;
     };
 
     const updateSeries = renderer.updateSeries.bind(renderer);

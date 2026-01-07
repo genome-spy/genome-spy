@@ -16,7 +16,7 @@ export default async function runPiecewiseScene(canvas) {
         x[i] = i;
     }
 
-    const markId = renderer.createMark("point", {
+    const { markId, scales, values } = renderer.createMark("point", {
         count,
         channels: {
             x: {
@@ -53,10 +53,8 @@ export default async function runPiecewiseScene(canvas) {
     });
 
     const updateRanges = ({ width, height }) => {
-        renderer.updateScaleRanges(markId, {
-            x: [padding, Math.max(padding, width - padding)],
-        });
-        renderer.updateValues(markId, { y: height * 0.5 });
+        scales.x.setRange([padding, Math.max(padding, width - padding)]);
+        values.y.set(height * 0.5);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
