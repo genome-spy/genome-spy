@@ -23,10 +23,7 @@ import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
-<<<<<<< HEAD
 import { showUploadMetadataDialog } from "../../sampleView/uploadMetadataDialog.js";
-=======
->>>>>>> 0f487031 (refactor: adjust folder structure of web components)
 
 export default class Toolbar extends LitElement {
     constructor() {
