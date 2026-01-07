@@ -59,7 +59,7 @@ export default async function runRuleScene(canvas) {
         dash[i] = color[i] % 6;
     }
 
-    const markId = renderer.createMark("rule", {
+    const { markId, scales } = renderer.createMark("rule", {
         count,
         dashPatterns: [
             [1, 0],
@@ -109,12 +109,10 @@ export default async function runRuleScene(canvas) {
     const updateRanges = ({ width, height }) => {
         const xRange = [padding, Math.max(padding, width - padding)];
         const yRange = [Math.max(padding, height - padding), padding];
-        renderer.updateScaleRanges(markId, {
-            x: xRange,
-            x2: xRange,
-            y: yRange,
-            y2: yRange,
-        });
+        scales.x.setRange(xRange);
+        scales.x2.setRange(xRange);
+        scales.y.setRange(yRange);
+        scales.y2.setRange(yRange);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);

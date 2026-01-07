@@ -86,6 +86,9 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
+        /** @type {{ scales: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../index.d.ts").SelectionSlotHandle> }} */
+        this._slotHandles = { scales: {}, values: {}, selections: {} };
+
         // Build a per-mark uniform layout. The layout can differ between marks,
         // but is stable for the lifetime of the mark.
         // Create a shader that matches the active channels (series vs values)
@@ -119,6 +122,7 @@ export default class BaseProgram {
         });
         this._initializeUniforms();
         this._writeUniforms();
+        this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
         this._pipeline = pipeline;
 
@@ -276,21 +280,6 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, import("../../index.d.ts").SelectionUpdate>} selections
-     * @returns {void}
-     */
-    updateSelections(selections) {
-        const needsRebind = this._selectionResources.updateSelections(
-            selections,
-            this._extraBuffers
-        );
-        this._writeUniforms();
-        if (needsRebind) {
-            this._rebuildBindGroup();
-        }
-    }
-
-    /**
      * Log reserved GPU resources for this mark to the console.
      *
      * @param {string} [label]
@@ -392,33 +381,219 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, number[]>} domains
+     * Slot handles for scale/value/selection updates (default + conditional branches).
+     *
+     * @returns {{ scales: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../index.d.ts").SelectionSlotHandle> }}
+     */
+    getSlotHandles() {
+        return this._slotHandles;
+    }
+
+    /**
+     * Build per-channel slot handles for scales and dynamic values.
+     *
      * @returns {void}
      */
-    updateScaleDomains(domains) {
-        const needsRebind = this._scaleResources.updateScaleDomains(
-            domains,
-            (name) => this._resolveScaleTargets(name)
-        );
-        this._writeUniforms();
-        if (needsRebind) {
-            this._rebuildBindGroup();
+    _buildSlotHandles() {
+        const conditionalNames = new Set();
+        for (const channel of Object.values(this._channels)) {
+            for (const condition of channel.conditions ?? []) {
+                if (condition.channelName) {
+                    conditionalNames.add(condition.channelName);
+                }
+            }
+        }
+
+        /**
+         * @param {Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>} map
+         * @param {string} name
+         * @returns {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>}
+         */
+        const ensureScaleGroup = (map, name) => {
+            if (!map[name]) {
+                map[name] = {};
+            }
+            return map[name];
+        };
+
+        /**
+         * @param {Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>} map
+         * @param {string} name
+         * @returns {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>}
+         */
+        const ensureValueGroup = (map, name) => {
+            if (!map[name]) {
+                map[name] = {};
+            }
+            return map[name];
+        };
+
+        /**
+         * @param {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>} group
+         * @param {import("../../index.d.ts").ScaleSlotHandle} slot
+         */
+        const attachScaleSlot = (group, slot) => {
+            group.default = slot;
+            group.setDomain = slot.setDomain;
+            group.setRange = slot.setRange;
+        };
+
+        /**
+         * @param {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>} group
+         * @param {import("../../index.d.ts").ValueSlotHandle} slot
+         */
+        const attachValueSlot = (group, slot) => {
+            group.default = slot;
+            group.set = slot.set;
+        };
+
+        for (const [name, channel] of Object.entries(this._channels)) {
+            if (conditionalNames.has(name)) {
+                continue;
+            }
+            if (channel.scale) {
+                attachScaleSlot(
+                    ensureScaleGroup(this._slotHandles.scales, name),
+                    this._createScaleSlot(name)
+                );
+            }
+            if (isValueChannelConfig(channel) && channel.dynamic) {
+                attachValueSlot(
+                    ensureValueGroup(this._slotHandles.values, name),
+                    this._createValueSlot(name)
+                );
+            }
+
+            const conditions = channel.conditions ?? [];
+            if (!conditions.length) {
+                continue;
+            }
+            for (const condition of conditions) {
+                if (!condition.channelName) {
+                    continue;
+                }
+                const conditionChannel = this._channels[condition.channelName];
+                if (!conditionChannel) {
+                    continue;
+                }
+                if (conditionChannel.scale) {
+                    const group = ensureScaleGroup(
+                        this._slotHandles.scales,
+                        name
+                    );
+                    if (!group.conditions) {
+                        group.conditions = {};
+                    }
+                    group.conditions[condition.when.selection] =
+                        this._createScaleSlot(condition.channelName);
+                }
+                if (
+                    isValueChannelConfig(conditionChannel) &&
+                    conditionChannel.dynamic
+                ) {
+                    const group = ensureValueGroup(
+                        this._slotHandles.values,
+                        name
+                    );
+                    if (!group.conditions) {
+                        group.conditions = {};
+                    }
+                    group.conditions[condition.when.selection] =
+                        this._createValueSlot(condition.channelName);
+                }
+            }
+        }
+
+        for (const def of this._selectionResources.selectionDefs) {
+            this._slotHandles.selections[def.name] =
+                this._createSelectionSlot(def);
         }
     }
 
     /**
-     * @param {Record<string, Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }>} ranges
-     * @returns {void}
+     * @param {string} name
+     * @returns {import("../../index.d.ts").ScaleSlotHandle}
      */
-    updateScaleRanges(ranges) {
-        const needsRebind = this._scaleResources.updateScaleRanges(
-            ranges,
-            (name) => this._resolveScaleTargets(name)
-        );
-        this._writeUniforms();
-        if (needsRebind) {
-            this._rebuildBindGroup();
+    _createScaleSlot(name) {
+        return {
+            setDomain: (domain) => {
+                const needsRebind = this._scaleResources.updateScaleDomain(
+                    name,
+                    domain
+                );
+                this._writeUniforms();
+                if (needsRebind) {
+                    this._rebuildBindGroup();
+                }
+            },
+            setRange: (range) => {
+                const needsRebind = this._scaleResources.updateScaleRange(
+                    name,
+                    range
+                );
+                this._writeUniforms();
+                if (needsRebind) {
+                    this._rebuildBindGroup();
+                }
+            },
+        };
+    }
+
+    /**
+     * @param {string} name
+     * @returns {import("../../index.d.ts").ValueSlotHandle}
+     */
+    _createValueSlot(name) {
+        const uniformName = `u_${name}`;
+        if (!this._uniformBufferState?.entries.has(uniformName)) {
+            throw new Error(
+                `Uniform "${uniformName}" is not available for updates.`
+            );
         }
+        return {
+            set: (value) => {
+                this._setUniformValue(uniformName, value);
+                this._writeUniforms();
+            },
+        };
+    }
+
+    /**
+     * @param {{ name: string, type: import("../../index.d.ts").SelectionType }} def
+     * @returns {import("../../index.d.ts").SelectionSlotHandle}
+     */
+    _createSelectionSlot(def) {
+        /**
+         * @param {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} next
+         */
+        const update = (next) => {
+            const needsRebind = this._selectionResources.updateSelection(
+                def.name,
+                next,
+                this._extraBuffers
+            );
+            this._writeUniforms();
+            if (needsRebind) {
+                this._rebuildBindGroup();
+            }
+        };
+
+        if (def.type === "single") {
+            return {
+                type: "single",
+                set: (id) => update({ type: "single", id }),
+            };
+        }
+        if (def.type === "multi") {
+            return {
+                type: "multi",
+                set: (ids) => update({ type: "multi", ids }),
+            };
+        }
+        return {
+            type: "interval",
+            set: (min, max) => update({ type: "interval", min, max }),
+        };
     }
 
     /**
@@ -490,14 +665,6 @@ export default class BaseProgram {
      * @returns {void}
      */
     _initializeExtraUniforms() {}
-
-    /**
-     * @param {string} nameOrScale
-     * @returns {string[]}
-     */
-    _resolveScaleTargets(nameOrScale) {
-        return [nameOrScale];
-    }
 
     /**
      * @param {string} name

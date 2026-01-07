@@ -31,7 +31,7 @@ export default async function runHatchScene(canvas) {
         }
     }
 
-    const hatchMarkId = renderer.createMark("rect", {
+    const { markId: hatchMarkId, scales } = renderer.createMark("rect", {
         count: hatchCount,
         channels: {
             x: {
@@ -95,12 +95,10 @@ export default async function runHatchScene(canvas) {
         const ySpan = hatchRows * hatchSize + (hatchRows - 1) * hatchGap;
         const xRange = [hatchOrigin.x, hatchOrigin.x + xSpan];
         const yRange = [hatchOrigin.y, hatchOrigin.y + ySpan];
-        renderer.updateScaleRanges(hatchMarkId, {
-            x: xRange,
-            x2: xRange,
-            y: yRange,
-            y2: yRange,
-        });
+        scales.x.setRange(xRange);
+        scales.x2.setRange(xRange);
+        scales.y.setRange(yRange);
+        scales.y2.setRange(yRange);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);

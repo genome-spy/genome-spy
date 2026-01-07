@@ -29,7 +29,7 @@ export default async function runLinkScene(canvas) {
         size[i] = 1.5 + Math.pow(Math.random(), 2) * 2.5;
     }
 
-    const markId = renderer.createMark("link", {
+    const { markId, scales } = renderer.createMark("link", {
         count,
         segments: 64,
         linkShape: "arc",
@@ -67,12 +67,10 @@ export default async function runLinkScene(canvas) {
     const updateRanges = ({ width, height }) => {
         const xRange = [padding, Math.max(padding, width - padding)];
         const yRange = [Math.max(padding, height - padding), padding];
-        renderer.updateScaleRanges(markId, {
-            x: xRange,
-            x2: xRange,
-            y: yRange,
-            y2: yRange,
-        });
+        scales.x.setRange(xRange);
+        scales.x2.setRange(xRange);
+        scales.y.setRange(yRange);
+        scales.y2.setRange(yRange);
     };
 
     const cleanupResize = setupResize(canvas, renderer, updateRanges);
