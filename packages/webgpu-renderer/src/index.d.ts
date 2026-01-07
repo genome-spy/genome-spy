@@ -70,14 +70,7 @@ export type ScaleSlotHandle = {
     setDomain(domain: number[]): void;
     /** Update the scale range or interpolator; shape changes require mark recreation. */
     setRange(
-        range:
-            | Array<number | number[] | string>
-            | ColorInterpolatorFn
-            | {
-                  range?:
-                      | Array<number | number[] | string>
-                      | ColorInterpolatorFn;
-              }
+        range: Array<number | number[] | string> | ColorInterpolatorFn
     ): void;
 };
 
