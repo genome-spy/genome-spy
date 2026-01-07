@@ -14,23 +14,7 @@ architecture while keeping render-time hot paths minimal and optimized.
 
 ## Coding style & conventions
 
-- JavaScript with JSDoc types; prefer explicit types and clear contracts.
-- WGSL in template strings prefixed with `/* wgsl */` and indented with 4 spaces.
-- Use blank lines between adjacent members that each have JSDoc (skip the first).
-- Prefer explicit, readable string concatenation over template literals for
-  trivial concatenation.
-- For readability, prefer explicit `else` blocks over early-return branches
-  when both paths are similarly likely.
-- When branching on enums (e.g., selection types), use explicit `if/else` or
-  `switch` structures that cover all cases and fail loudly on unknown values.
-- Add intent/rationale comments where logic is non-trivial; skip comments for
-  obvious steps. The goal is to let both human readers and LLMs grasp the
-  architecture and technical decisions quickly.
-- Prefer offensive behavior for internal code paths: assume correct usage and
-  fail fast rather than adding defensive checks for unrealistic misuse.
-- Avoid optional/nullable fields unless `undefined` has a clear semantic meaning.
-- Use `Map`/`WeakMap` when identity matters; default to empty maps rather than
-  optional maps.
+Follow the monorepo-wide conventions in `AGENTS.md`.
 
 ## Architecture touchpoints
 
