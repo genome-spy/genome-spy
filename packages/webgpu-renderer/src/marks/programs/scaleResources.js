@@ -228,6 +228,16 @@ export class ScaleResourceManager {
                 domainLength,
                 rangeLength,
             };
+            if (
+                kind === "piecewise" &&
+                analysis.useRangeTexture &&
+                rangeLength
+            ) {
+                this._setUniformValue(
+                    RANGE_PREFIX + name,
+                    normalizeRangePositions(rangeLength)
+                );
+            }
         }
         const def = getScaleUniformDef(scale.type);
         for (const param of def.params) {
@@ -319,10 +329,63 @@ export class ScaleResourceManager {
         const outputType =
             outputComponents === 1 ? analysis.outputScalarType : "f32";
         const isIndexScale = analysis.scaleType === "index";
-        const piecewiseRangePositions =
-            stopKind === "piecewise" && useRangeTexture && stopInfo
-                ? normalizeRangePositions(stopInfo.rangeLength)
-                : null;
+        const updateDomainMap = needsDomainMap
+            ? /**
+               * @param {unknown} value
+               * @returns {{ needsRebind: boolean, domainUniform?: number[] }}
+               */
+              (value) => {
+                  if (!scaleDef.normalizeDomainMap) {
+                      throw new Error(
+                          `Scale "${analysis.scaleType}" does not provide domain map normalization.`
+                      );
+                  }
+                  /** @type {ArrayLike<number> | null} */
+                  let domainSource = null;
+                  if (Array.isArray(value)) {
+                      domainSource = value;
+                  } else if (ArrayBuffer.isView(value)) {
+                      domainSource = /** @type {ArrayLike<number>} */ (
+                          /** @type {unknown} */ (value)
+                      );
+                  } else if (
+                      value &&
+                      typeof value === "object" &&
+                      "domain" in value
+                  ) {
+                      const domainValue = /** @type {{ domain?: unknown }} */ (
+                          value
+                      ).domain;
+                      if (Array.isArray(domainValue)) {
+                          domainSource = domainValue;
+                      } else if (ArrayBuffer.isView(domainValue)) {
+                          domainSource = /** @type {ArrayLike<number>} */ (
+                              /** @type {unknown} */ (domainValue)
+                          );
+                      }
+                  }
+                  if (!domainSource) {
+                      throw new Error(
+                          `Scale on "${name}" requires an explicit domain array.`
+                      );
+                  }
+                  const update = scaleDef.normalizeDomainMap({
+                      name,
+                      scale,
+                      domain: domainSource,
+                  });
+                  if (!update) {
+                      return { needsRebind: false };
+                  }
+                  return {
+                      needsRebind: this._updateDomainMap(
+                          name,
+                          update.domainMap
+                      ),
+                      domainUniform: update.domainUniform,
+                  };
+              }
+            : null;
 
         /** @type {(value: unknown) => void | null} */
         let updateStopDomain = null;
@@ -427,138 +490,94 @@ export class ScaleResourceManager {
             }
         }
 
-        /**
-         * @param {unknown} value
-         * @returns {{ needsRebind: boolean, domainUniform?: number[] }}
-         */
-        const updateDomainMap = (value) => {
-            if (!needsDomainMap) {
-                return { needsRebind: false };
-            }
-            if (!scaleDef.normalizeDomainMap) {
-                throw new Error(
-                    `Scale "${analysis.scaleType}" does not provide domain map normalization.`
-                );
-            }
-            /** @type {ArrayLike<number> | null} */
-            let domainSource = null;
-            if (Array.isArray(value)) {
-                domainSource = value;
-            } else if (ArrayBuffer.isView(value)) {
-                domainSource = /** @type {ArrayLike<number>} */ (
-                    /** @type {unknown} */ (value)
-                );
-            } else if (
-                value &&
-                typeof value === "object" &&
-                "domain" in value
-            ) {
-                const domainValue = /** @type {{ domain?: unknown }} */ (value)
-                    .domain;
-                if (Array.isArray(domainValue)) {
-                    domainSource = domainValue;
-                } else if (ArrayBuffer.isView(domainValue)) {
-                    domainSource = /** @type {ArrayLike<number>} */ (
-                        /** @type {unknown} */ (domainValue)
-                    );
-                }
-            }
-            if (!domainSource) {
-                throw new Error(
-                    `Scale on "${name}" requires an explicit domain array.`
-                );
-            }
-            const update = scaleDef.normalizeDomainMap({
-                name,
-                scale,
-                domain: domainSource,
-            });
-            if (!update) {
-                return { needsRebind: false };
-            }
-            return {
-                needsRebind: this._updateDomainMap(name, update.domainMap),
-                domainUniform: update.domainUniform,
-            };
-        };
+        /** @type {(domain: unknown) => boolean} */
+        const updateDomain =
+            updateStopDomain && updateDomainMap
+                ? (domain) => {
+                      const mapUpdate = updateDomainMap(domain);
+                      updateStopDomain(mapUpdate.domainUniform ?? domain);
+                      return mapUpdate.needsRebind;
+                  }
+                : updateStopDomain
+                  ? (domain) => {
+                        updateStopDomain(domain);
+                        return false;
+                    }
+                  : updateDomainMap
+                    ? (domain) => {
+                          const mapUpdate = updateDomainMap(domain);
+                          if (mapUpdate.domainUniform) {
+                              this._setUniformValue(
+                                  domainUniformName,
+                                  mapUpdate.domainUniform
+                              );
+                          }
+                          return mapUpdate.needsRebind;
+                      }
+                    : () => false;
 
-        /**
-         * @param {unknown} domain
-         * @returns {boolean}
-         */
-        const updateDomain = (domain) => {
-            const mapUpdate = updateDomainMap(domain);
-            if (updateStopDomain) {
-                updateStopDomain(mapUpdate.domainUniform ?? domain);
-                if (piecewiseRangePositions) {
-                    this._setUniformValue(
-                        rangeUniformName,
-                        piecewiseRangePositions
+        /** @type {(range: unknown) => boolean} */
+        const updateRange = useRangeTexture
+            ? (range) => this._updateRangeTexture(name, range)
+            : needsOrdinalRange
+              ? (range) => {
+                    if (isRangeFunction(range)) {
+                        throw new Error(
+                            `Ordinal scale on "${name}" does not support interpolator ranges.`
+                        );
+                    }
+                    /** @type {Array<number|number[]|string>} */
+                    let rangeArray = [];
+                    if (Array.isArray(range)) {
+                        rangeArray = range;
+                    } else if (
+                        range &&
+                        typeof range === "object" &&
+                        "range" in range
+                    ) {
+                        rangeArray =
+                            /** @type {{ range?: Array<number|number[]|string> }} */ (
+                                range
+                            ).range ?? [];
+                    }
+                    const normalized = normalizeOrdinalRange(
+                        name,
+                        /** @type {Array<number|number[]|string>} */ (
+                            rangeArray
+                        ),
+                        outputComponents
+                    );
+                    const data = this._buildOrdinalRangeBufferData(
+                        normalized,
+                        outputComponents,
+                        outputType
+                    );
+                    return this._setOrdinalRangeBuffer(
+                        name,
+                        data,
+                        normalized.length
                     );
                 }
-                return mapUpdate.needsRebind;
-            }
-            if (mapUpdate.domainUniform) {
-                this._setUniformValue(
-                    domainUniformName,
-                    mapUpdate.domainUniform
-                );
-            }
-            return mapUpdate.needsRebind;
-        };
-
-        /**
-         * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} range
-         * @returns {boolean}
-         */
-        const updateRange = (range) => {
-            if (useRangeTexture) {
-                return this._updateRangeTexture(name, range);
-            }
-            if (needsOrdinalRange) {
-                if (isRangeFunction(range)) {
-                    throw new Error(
-                        `Ordinal scale on "${name}" does not support interpolator ranges.`
-                    );
-                }
-                const rangeArray = Array.isArray(range)
-                    ? range
-                    : (range?.range ?? []);
-                const normalized = normalizeOrdinalRange(
-                    name,
-                    /** @type {Array<number|number[]|string>} */ (rangeArray),
-                    outputComponents
-                );
-                const data = this._buildOrdinalRangeBufferData(
-                    normalized,
-                    outputComponents,
-                    outputType
-                );
-                return this._setOrdinalRangeBuffer(
-                    name,
-                    data,
-                    normalized.length
-                );
-            }
-            if (isRangeFunction(range)) {
-                throw new Error(
-                    `Scale on "${name}" does not support interpolator ranges.`
-                );
-            }
-            if (stopKind) {
-                const effectiveRange =
-                    range ??
-                    (stopKind === "continuous"
-                        ? (this._getDefaultScaleRange(name) ?? range)
-                        : range);
-                updateStopRange?.(
-                    /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
-                        effectiveRange
-                    )
-                );
-            }
-            return false;
-        };
+              : stopKind
+                ? (range) => {
+                      if (isRangeFunction(range)) {
+                          throw new Error(
+                              `Scale on "${name}" does not support interpolator ranges.`
+                          );
+                      }
+                      const effectiveRange =
+                          range ??
+                          (stopKind === "continuous"
+                              ? (this._getDefaultScaleRange(name) ?? range)
+                              : range);
+                      updateStopRange(
+                          /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
+                              effectiveRange
+                          )
+                      );
+                      return false;
+                  }
+                : () => false;
 
         return { updateDomain, updateRange };
     }
