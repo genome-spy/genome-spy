@@ -5,7 +5,6 @@ import {
     getScaleUniformDef,
 } from "../scales/scaleDefs.js";
 import {
-    coerceRangeValue,
     getScaleStopLengths,
     isColorRange,
     isRangeFunction,
@@ -272,7 +271,7 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} range
+     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} range
      * @returns {boolean}
      */
     updateScaleRange(name, range) {
@@ -340,35 +339,16 @@ export class ScaleResourceManager {
                           `Scale "${analysis.scaleType}" does not provide domain map normalization.`
                       );
                   }
-                  /** @type {ArrayLike<number> | null} */
-                  let domainSource = null;
-                  if (Array.isArray(value)) {
-                      domainSource = value;
-                  } else if (ArrayBuffer.isView(value)) {
-                      domainSource = /** @type {ArrayLike<number>} */ (
-                          /** @type {unknown} */ (value)
-                      );
-                  } else if (
-                      value &&
-                      typeof value === "object" &&
-                      "domain" in value
-                  ) {
-                      const domainValue = /** @type {{ domain?: unknown }} */ (
-                          value
-                      ).domain;
-                      if (Array.isArray(domainValue)) {
-                          domainSource = domainValue;
-                      } else if (ArrayBuffer.isView(domainValue)) {
-                          domainSource = /** @type {ArrayLike<number>} */ (
-                              /** @type {unknown} */ (domainValue)
-                          );
-                      }
-                  }
-                  if (!domainSource) {
+                  if (!Array.isArray(value) && !ArrayBuffer.isView(value)) {
                       throw new Error(
                           `Scale on "${name}" requires an explicit domain array.`
                       );
                   }
+                  const domainSource = Array.isArray(value)
+                      ? value
+                      : /** @type {ArrayLike<number>} */ (
+                            /** @type {unknown} */ (value)
+                        );
                   const update = scaleDef.normalizeDomainMap({
                       name,
                       scale,
@@ -396,23 +376,20 @@ export class ScaleResourceManager {
             if (stopKind === "continuous") {
                 updateStopDomain = (value) => {
                     if (!isIndexScale) {
-                        const pair = coerceRangeValue(
-                            /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
-                                value
-                            ),
-                            "domain"
-                        );
-                        this._setUniformValue(domainUniformName, pair);
+                        if (!Array.isArray(value)) {
+                            throw new Error(
+                                `Scale on "${name}" expects a domain array.`
+                            );
+                        }
+                        this._setUniformValue(domainUniformName, value);
                         return;
                     }
-                    /** @type {{ domain?: number[] }} */
-                    const domainContainer =
-                        typeof value === "object" && value
-                            ? /** @type {{ domain?: number[] }} */ (value)
-                            : {};
-                    const domain = Array.isArray(value)
-                        ? value
-                        : (domainContainer.domain ?? []);
+                    if (!Array.isArray(value)) {
+                        throw new Error(
+                            `Scale on "${name}" expects a domain array.`
+                        );
+                    }
+                    const domain = value;
                     if (domain.length === 3) {
                         this._setUniformValue(domainUniformName, [
                             domain[0],
@@ -433,13 +410,12 @@ export class ScaleResourceManager {
                     );
                 };
                 updateStopRange = (value) => {
-                    const pair = coerceRangeValue(
-                        /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
-                            value
-                        ),
-                        "range"
-                    );
-                    this._setUniformValue(rangeUniformName, pair);
+                    if (!Array.isArray(value)) {
+                        throw new Error(
+                            `Scale on "${name}" expects a range array.`
+                        );
+                    }
+                    this._setUniformValue(rangeUniformName, value);
                 };
             } else {
                 if (!stopInfo) {
@@ -448,14 +424,18 @@ export class ScaleResourceManager {
                     );
                 }
                 updateStopDomain = (value) => {
-                    /** @type {{ domain?: number[] }} */
-                    const domainContainer =
-                        typeof value === "object" && value
-                            ? /** @type {{ domain?: number[] }} */ (value)
-                            : {};
+                    if (!Array.isArray(value) && !ArrayBuffer.isView(value)) {
+                        throw new Error(
+                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects a domain array.`
+                        );
+                    }
                     const domain = Array.isArray(value)
                         ? value
-                        : (domainContainer.domain ?? []);
+                        : Array.from(
+                              /** @type {ArrayLike<number>} */ (
+                                  /** @type {unknown} */ (value)
+                              )
+                          );
                     if (domain.length !== stopInfo.domainLength) {
                         throw new Error(
                             `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.domainLength} domain entries, got ${domain.length}.`
@@ -464,16 +444,12 @@ export class ScaleResourceManager {
                     this._setUniformValue(domainUniformName, domain);
                 };
                 updateStopRange = (value) => {
-                    /** @type {{ range?: Array<number|number[]|string> }} */
-                    const rangeContainer =
-                        typeof value === "object" && value
-                            ? /** @type {{ range?: Array<number|number[]|string> }} */ (
-                                  value
-                              )
-                            : {};
-                    const range = Array.isArray(value)
-                        ? value
-                        : (rangeContainer.range ?? []);
+                    if (!Array.isArray(value)) {
+                        throw new Error(
+                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects a range array.`
+                        );
+                    }
+                    const range = value;
                     if (range.length !== stopInfo.rangeLength) {
                         throw new Error(
                             `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.rangeLength} range entries, got ${range.length}.`
@@ -518,7 +494,13 @@ export class ScaleResourceManager {
 
         /** @type {(range: unknown) => boolean} */
         const updateRange = useRangeTexture
-            ? (range) => this._updateRangeTexture(name, range)
+            ? (range) =>
+                  this._updateRangeTexture(
+                      name,
+                      /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
+                          range
+                      )
+                  )
             : needsOrdinalRange
               ? (range) => {
                     if (isRangeFunction(range)) {
@@ -526,20 +508,12 @@ export class ScaleResourceManager {
                             `Ordinal scale on "${name}" does not support interpolator ranges.`
                         );
                     }
-                    /** @type {Array<number|number[]|string>} */
-                    let rangeArray = [];
-                    if (Array.isArray(range)) {
-                        rangeArray = range;
-                    } else if (
-                        range &&
-                        typeof range === "object" &&
-                        "range" in range
-                    ) {
-                        rangeArray =
-                            /** @type {{ range?: Array<number|number[]|string> }} */ (
-                                range
-                            ).range ?? [];
+                    if (!Array.isArray(range)) {
+                        throw new Error(
+                            `Ordinal scale on "${name}" expects a range array.`
+                        );
                     }
+                    const rangeArray = range;
                     const normalized = normalizeOrdinalRange(
                         name,
                         /** @type {Array<number|number[]|string>} */ (
@@ -570,8 +544,13 @@ export class ScaleResourceManager {
                           (stopKind === "continuous"
                               ? (this._getDefaultScaleRange(name) ?? range)
                               : range);
+                      if (!Array.isArray(effectiveRange)) {
+                          throw new Error(
+                              `Scale on "${name}" expects a range array.`
+                          );
+                      }
                       updateStopRange(
-                          /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
+                          /** @type {Array<number|number[]|string>} */ (
                               effectiveRange
                           )
                       );
@@ -590,7 +569,7 @@ export class ScaleResourceManager {
      */
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} value
+     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} value
      * @returns {boolean}
      */
     _updateRangeTexture(name, value) {
@@ -598,22 +577,10 @@ export class ScaleResourceManager {
         if (!channel || !channel.scale) {
             throw new Error(`Channel "${name}" does not use a color scale.`);
         }
-        let range = value;
-        if (
-            range &&
-            typeof range === "object" &&
-            !Array.isArray(range) &&
-            "range" in range
-        ) {
-            range =
-                /** @type {{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} */ (
-                    range
-                ).range ?? [];
-        }
         /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */
         const normalizedRange =
             /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
-                range
+                value
             );
         const sizes = this._getScaleStopInfo(name);
         let textureData;
