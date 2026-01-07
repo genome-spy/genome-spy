@@ -61,8 +61,6 @@ export default class BaseProgram {
             getDefaultScaleRange: (name) => this.getDefaultScaleRange(name),
             setUniformValue: (name, value) =>
                 this._setUniformValue(name, value),
-            hasUniform: (name) =>
-                this._uniformBufferState?.entries.has(name) ?? false,
         });
         this._selectionResources = new SelectionResourceManager({
             device: this.device,
@@ -644,6 +642,13 @@ export default class BaseProgram {
                     channel,
                     channel.scale
                 );
+                this._scaleResources.updateScaleDomain(
+                    name,
+                    channel.scale.domain
+                );
+                const rangeValue =
+                    channel.scale.range ?? this.getDefaultScaleRange(name);
+                this._scaleResources.updateScaleRange(name, rangeValue);
             }
             if (isValueChannelConfig(channel) && channel.scale) {
                 this._scaleResources.initializeScale(
@@ -651,6 +656,13 @@ export default class BaseProgram {
                     channel,
                     channel.scale
                 );
+                this._scaleResources.updateScaleDomain(
+                    name,
+                    channel.scale.domain
+                );
+                const rangeValue =
+                    channel.scale.range ?? this.getDefaultScaleRange(name);
+                this._scaleResources.updateScaleRange(name, rangeValue);
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);

@@ -1,7 +1,6 @@
 /* global GPUBufferUsage, GPUTextureUsage */
 import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import {
-    getScaleOutputType,
     getScaleResourceRequirements,
     getScaleUniformDef,
 } from "../scales/scaleDefs.js";
@@ -10,7 +9,6 @@ import {
     getScaleStopLengths,
     isColorRange,
     isRangeFunction,
-    normalizeScaleStops,
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
@@ -48,20 +46,12 @@ export class ScaleResourceManager {
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
      * @param {(name: string, value: number|number[]|Array<number|number[]>) => void} params.setUniformValue
-     * @param {(name: string) => boolean} params.hasUniform
      */
-    constructor({
-        device,
-        channels,
-        getDefaultScaleRange,
-        setUniformValue,
-        hasUniform,
-    }) {
+    constructor({ device, channels, getDefaultScaleRange, setUniformValue }) {
         this._device = device;
         this._channels = channels;
         this._getDefaultScaleRange = getDefaultScaleRange;
         this._setUniformValue = setUniformValue;
-        this._hasUniform = hasUniform;
 
         /** @type {Map<string, ReturnType<typeof buildChannelAnalysis>>} */
         this._analysisByChannel = new Map();
@@ -228,54 +218,16 @@ export class ScaleResourceManager {
         );
         const kind = requirements.stopKind;
         if (kind) {
-            if (analysis.useRangeTexture) {
-                const { domainLength, rangeLength } = getScaleStopLengths(
-                    name,
-                    kind,
-                    scale
-                );
-                const rawDomain = Array.isArray(scale.domain)
-                    ? scale.domain
-                    : [0, 1];
-                const domain =
-                    kind === "continuous"
-                        ? [rawDomain[0] ?? 0, rawDomain[1] ?? 1]
-                        : rawDomain;
-                const range =
-                    kind === "piecewise"
-                        ? normalizeRangePositions(rangeLength)
-                        : [0, 1];
-                this._setUniformValue(DOMAIN_PREFIX + name, domain);
-                this._setUniformValue(RANGE_PREFIX + name, range);
-                this._getChannelResources(name).scaleStops = {
-                    kind,
-                    domainLength,
-                    rangeLength,
-                };
-                this._initializeRangeTexture(name, scale);
-            } else {
-                const { domain, range, domainLength, rangeLength } =
-                    normalizeScaleStops(
-                        name,
-                        channel,
-                        scale,
-                        kind,
-                        (valueName) => this._getDefaultScaleRange(valueName)
-                    );
-                this._setUniformValue(DOMAIN_PREFIX + name, domain);
-                this._setUniformValue(RANGE_PREFIX + name, range);
-                this._getChannelResources(name).scaleStops = {
-                    kind,
-                    domainLength,
-                    rangeLength,
-                };
-            }
-        }
-        if (requirements.needsDomainMap) {
-            this._initializeDomainMap(name, scale, analysis);
-        }
-        if (requirements.needsOrdinalRange) {
-            this._initializeOrdinalRange(name, channel, scale);
+            const { domainLength, rangeLength } = getScaleStopLengths(
+                name,
+                kind,
+                scale
+            );
+            this._getChannelResources(name).scaleStops = {
+                kind,
+                domainLength,
+                rangeLength,
+            };
         }
         const def = getScaleUniformDef(scale.type);
         for (const param of def.params) {
@@ -323,125 +275,6 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @param {"domain"|"range"} suffix
-     * @param {unknown} value
-     * @param {ReturnType<typeof buildChannelAnalysis>} analysis
-     * @param {"continuous"|"threshold"|"piecewise"} kind
-     * @returns {void}
-     */
-    _updateScaleStops(name, suffix, value, analysis, kind) {
-        const channel = this._channels[name];
-        const label =
-            kind === "threshold"
-                ? "Threshold"
-                : kind === "piecewise"
-                  ? "Piecewise"
-                  : "Scale";
-        if (!channel || !analysis || !kind) {
-            throw new Error(
-                `Channel "${name}" does not use a scale with ${suffix} values.`
-            );
-        }
-        const uniformName =
-            suffix === "domain" ? DOMAIN_PREFIX + name : RANGE_PREFIX + name;
-        if (!this._hasUniform(uniformName)) {
-            throw new Error(
-                `Uniform "${uniformName}" is not available for updates.`
-            );
-        }
-
-        if (kind === "continuous") {
-            const isHighPrecision = analysis.scaleType === "index";
-            if (isHighPrecision && suffix === "domain") {
-                /** @type {{ domain?: number[] }} */
-                const domainContainer =
-                    typeof value === "object" && value
-                        ? /** @type {{ domain?: number[] }} */ (value)
-                        : {};
-                const domain = Array.isArray(value)
-                    ? value
-                    : (domainContainer.domain ?? []);
-                if (domain.length === 3) {
-                    this._setUniformValue(uniformName, [
-                        domain[0],
-                        domain[1],
-                        domain[2],
-                    ]);
-                    return;
-                }
-                if (domain.length === 2) {
-                    this._setUniformValue(
-                        uniformName,
-                        packHighPrecisionDomain(domain[0], domain[1])
-                    );
-                    return;
-                }
-                throw new Error(
-                    `Scale domain for "${name}" must have 2 or 3 entries for "${channel.scale.type}" scales.`
-                );
-            }
-            const pair = coerceRangeValue(
-                /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
-                    value
-                ),
-                suffix
-            );
-            this._setUniformValue(uniformName, pair);
-            return;
-        }
-
-        const sizes = this._getScaleStopInfo(name);
-        if (!sizes) {
-            throw new Error(
-                `${label} scale on "${name}" has no recorded size.`
-            );
-        }
-
-        if (suffix === "domain") {
-            /** @type {{ domain?: number[] }} */
-            const domainContainer =
-                typeof value === "object" && value
-                    ? /** @type {{ domain?: number[] }} */ (value)
-                    : {};
-            const domain = Array.isArray(value)
-                ? value
-                : (domainContainer.domain ?? []);
-            if (domain.length !== sizes.domainLength) {
-                throw new Error(
-                    `${label} scale on "${name}" expects ${sizes.domainLength} domain entries, got ${domain.length}.`
-                );
-            }
-            this._setUniformValue(uniformName, domain);
-            return;
-        }
-
-        /** @type {{ range?: Array<number|number[]|string> }} */
-        const rangeContainer =
-            typeof value === "object" && value
-                ? /** @type {{ range?: Array<number|number[]|string> }} */ (
-                      value
-                  )
-                : {};
-        const range = Array.isArray(value)
-            ? value
-            : (rangeContainer.range ?? []);
-        if (range.length !== sizes.rangeLength) {
-            throw new Error(
-                `${label} scale on "${name}" expects ${sizes.rangeLength} range entries, got ${range.length}.`
-            );
-        }
-        const outputComponents = analysis.outputComponents ?? 1;
-        const normalized = normalizeDiscreteRange(
-            name,
-            range,
-            outputComponents,
-            kind
-        );
-        this._setUniformValue(uniformName, normalized);
-    }
-
-    /**
-     * @param {string} name
      * @param {ChannelConfigResolved} channel
      * @param {ChannelScale} scale
      * @param {ReturnType<typeof buildChannelAnalysis>} analysis
@@ -450,85 +283,228 @@ export class ScaleResourceManager {
      * @returns {void}
      */
     _registerScaleUpdaters(name, channel, scale, analysis, requirements, kind) {
+        this._scaleUpdaters.set(
+            name,
+            this._buildScaleUpdater({
+                name,
+                channel,
+                scale,
+                analysis,
+                requirements,
+                kind,
+            })
+        );
+    }
+
+    /**
+     * @param {object} params
+     * @param {string} params.name
+     * @param {ChannelConfigResolved} params.channel
+     * @param {ChannelScale} params.scale
+     * @param {ReturnType<typeof buildChannelAnalysis>} params.analysis
+     * @param {ReturnType<typeof getScaleResourceRequirements>} params.requirements
+     * @param {"continuous"|"threshold"|"piecewise"|null} params.kind
+     * @returns {{ updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }}
+     */
+    _buildScaleUpdater({ name, channel, scale, analysis, requirements, kind }) {
         const useRangeTexture = analysis.useRangeTexture;
         const needsDomainMap = requirements.needsDomainMap;
         const needsOrdinalRange = requirements.needsOrdinalRange;
         const scaleDef = analysis.scaleDef;
         const stopKind = kind;
+        const stopInfo = stopKind ? this._getScaleStopInfo(name) : undefined;
+        const domainUniformName = DOMAIN_PREFIX + name;
+        const rangeUniformName = RANGE_PREFIX + name;
+        const outputComponents = analysis.outputComponents ?? 1;
+        const outputType =
+            outputComponents === 1 ? analysis.outputScalarType : "f32";
+        const isIndexScale = analysis.scaleType === "index";
+        const piecewiseRangePositions =
+            stopKind === "piecewise" && useRangeTexture && stopInfo
+                ? normalizeRangePositions(stopInfo.rangeLength)
+                : null;
+
+        /** @type {(value: unknown) => void | null} */
+        let updateStopDomain = null;
+        /** @type {(value: unknown) => void | null} */
+        let updateStopRange = null;
+
+        if (stopKind) {
+            if (stopKind === "continuous") {
+                updateStopDomain = (value) => {
+                    if (!isIndexScale) {
+                        const pair = coerceRangeValue(
+                            /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
+                                value
+                            ),
+                            "domain"
+                        );
+                        this._setUniformValue(domainUniformName, pair);
+                        return;
+                    }
+                    /** @type {{ domain?: number[] }} */
+                    const domainContainer =
+                        typeof value === "object" && value
+                            ? /** @type {{ domain?: number[] }} */ (value)
+                            : {};
+                    const domain = Array.isArray(value)
+                        ? value
+                        : (domainContainer.domain ?? []);
+                    if (domain.length === 3) {
+                        this._setUniformValue(domainUniformName, [
+                            domain[0],
+                            domain[1],
+                            domain[2],
+                        ]);
+                        return;
+                    }
+                    if (domain.length === 2) {
+                        this._setUniformValue(
+                            domainUniformName,
+                            packHighPrecisionDomain(domain[0], domain[1])
+                        );
+                        return;
+                    }
+                    throw new Error(
+                        `Scale domain for "${name}" must have 2 or 3 entries for "${channel.scale.type}" scales.`
+                    );
+                };
+                updateStopRange = (value) => {
+                    const pair = coerceRangeValue(
+                        /** @type {number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }} */ (
+                            value
+                        ),
+                        "range"
+                    );
+                    this._setUniformValue(rangeUniformName, pair);
+                };
+            } else {
+                if (!stopInfo) {
+                    throw new Error(
+                        `Scale on "${name}" has no recorded stop sizes.`
+                    );
+                }
+                updateStopDomain = (value) => {
+                    /** @type {{ domain?: number[] }} */
+                    const domainContainer =
+                        typeof value === "object" && value
+                            ? /** @type {{ domain?: number[] }} */ (value)
+                            : {};
+                    const domain = Array.isArray(value)
+                        ? value
+                        : (domainContainer.domain ?? []);
+                    if (domain.length !== stopInfo.domainLength) {
+                        throw new Error(
+                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.domainLength} domain entries, got ${domain.length}.`
+                        );
+                    }
+                    this._setUniformValue(domainUniformName, domain);
+                };
+                updateStopRange = (value) => {
+                    /** @type {{ range?: Array<number|number[]|string> }} */
+                    const rangeContainer =
+                        typeof value === "object" && value
+                            ? /** @type {{ range?: Array<number|number[]|string> }} */ (
+                                  value
+                              )
+                            : {};
+                    const range = Array.isArray(value)
+                        ? value
+                        : (rangeContainer.range ?? []);
+                    if (range.length !== stopInfo.rangeLength) {
+                        throw new Error(
+                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.rangeLength} range entries, got ${range.length}.`
+                        );
+                    }
+                    const normalized = normalizeDiscreteRange(
+                        name,
+                        range,
+                        outputComponents,
+                        stopKind
+                    );
+                    this._setUniformValue(rangeUniformName, normalized);
+                };
+            }
+        }
 
         /**
-         * @param {number[]|import("../../index.d.ts").TypedArray} domain
+         * @param {unknown} value
+         * @returns {{ needsRebind: boolean, domainUniform?: number[] }}
+         */
+        const updateDomainMap = (value) => {
+            if (!needsDomainMap) {
+                return { needsRebind: false };
+            }
+            if (!scaleDef.normalizeDomainMap) {
+                throw new Error(
+                    `Scale "${analysis.scaleType}" does not provide domain map normalization.`
+                );
+            }
+            /** @type {ArrayLike<number> | null} */
+            let domainSource = null;
+            if (Array.isArray(value)) {
+                domainSource = value;
+            } else if (ArrayBuffer.isView(value)) {
+                domainSource = /** @type {ArrayLike<number>} */ (
+                    /** @type {unknown} */ (value)
+                );
+            } else if (
+                value &&
+                typeof value === "object" &&
+                "domain" in value
+            ) {
+                const domainValue = /** @type {{ domain?: unknown }} */ (value)
+                    .domain;
+                if (Array.isArray(domainValue)) {
+                    domainSource = domainValue;
+                } else if (ArrayBuffer.isView(domainValue)) {
+                    domainSource = /** @type {ArrayLike<number>} */ (
+                        /** @type {unknown} */ (domainValue)
+                    );
+                }
+            }
+            if (!domainSource) {
+                throw new Error(
+                    `Scale on "${name}" requires an explicit domain array.`
+                );
+            }
+            const update = scaleDef.normalizeDomainMap({
+                name,
+                scale,
+                domain: domainSource,
+            });
+            if (!update) {
+                return { needsRebind: false };
+            }
+            return {
+                needsRebind: this._updateDomainMap(name, update.domainMap),
+                domainUniform: update.domainUniform,
+            };
+        };
+
+        /**
+         * @param {unknown} domain
          * @returns {boolean}
          */
         const updateDomain = (domain) => {
-            let needsRebind = false;
-            let stopDomain = domain;
-            if (needsDomainMap) {
-                if (!scaleDef.normalizeDomainMap) {
-                    throw new Error(
-                        `Scale "${analysis.scaleType}" does not provide domain map normalization.`
+            const mapUpdate = updateDomainMap(domain);
+            if (updateStopDomain) {
+                updateStopDomain(mapUpdate.domainUniform ?? domain);
+                if (piecewiseRangePositions) {
+                    this._setUniformValue(
+                        rangeUniformName,
+                        piecewiseRangePositions
                     );
                 }
-                const domainSource = Array.isArray(domain)
-                    ? domain
-                    : ArrayBuffer.isView(domain)
-                      ? /** @type {ArrayLike<number>} */ (domain)
-                      : undefined;
-                const update = domainSource
-                    ? scaleDef.normalizeDomainMap({
-                          name,
-                          scale,
-                          domain: domainSource,
-                      })
-                    : null;
-                if (update) {
-                    needsRebind = this._updateDomainMap(name, update.domainMap);
-                    if (update.domainUniform) {
-                        this._setUniformValue(
-                            DOMAIN_PREFIX + name,
-                            update.domainUniform
-                        );
-                        stopDomain = update.domainUniform;
-                    }
-                }
+                return mapUpdate.needsRebind;
             }
-
-            if (!stopKind) {
-                return needsRebind;
-            }
-
-            if (useRangeTexture) {
-                this._updateScaleStops(
-                    name,
-                    "domain",
-                    stopDomain,
-                    analysis,
-                    stopKind
+            if (mapUpdate.domainUniform) {
+                this._setUniformValue(
+                    domainUniformName,
+                    mapUpdate.domainUniform
                 );
-                if (stopKind === "piecewise") {
-                    const sizes = this._getScaleStopInfo(name);
-                    const positions = normalizeRangePositions(
-                        sizes?.rangeLength ??
-                            (Array.isArray(stopDomain) ? stopDomain.length : 0)
-                    );
-                    if (sizes && positions.length !== sizes.rangeLength) {
-                        throw new Error(
-                            `Piecewise scale on "${name}" expects ${sizes.rangeLength} range entries, got ${positions.length}.`
-                        );
-                    }
-                    this._setUniformValue(RANGE_PREFIX + name, positions);
-                }
-                return needsRebind;
             }
-
-            this._updateScaleStops(
-                name,
-                "domain",
-                stopDomain,
-                analysis,
-                stopKind
-            );
-            return needsRebind;
+            return mapUpdate.needsRebind;
         };
 
         /**
@@ -540,9 +516,28 @@ export class ScaleResourceManager {
                 return this._updateRangeTexture(name, range);
             }
             if (needsOrdinalRange) {
-                return this._updateOrdinalRange(
+                if (isRangeFunction(range)) {
+                    throw new Error(
+                        `Ordinal scale on "${name}" does not support interpolator ranges.`
+                    );
+                }
+                const rangeArray = Array.isArray(range)
+                    ? range
+                    : (range?.range ?? []);
+                const normalized = normalizeOrdinalRange(
                     name,
-                    /** @type {Array<number|number[]|string>} */ (range)
+                    /** @type {Array<number|number[]|string>} */ (rangeArray),
+                    outputComponents
+                );
+                const data = this._buildOrdinalRangeBufferData(
+                    normalized,
+                    outputComponents,
+                    outputType
+                );
+                return this._setOrdinalRangeBuffer(
+                    name,
+                    data,
+                    normalized.length
                 );
             }
             if (isRangeFunction(range)) {
@@ -551,20 +546,21 @@ export class ScaleResourceManager {
                 );
             }
             if (stopKind) {
-                this._updateScaleStops(
-                    name,
-                    "range",
+                const effectiveRange =
+                    range ??
+                    (stopKind === "continuous"
+                        ? (this._getDefaultScaleRange(name) ?? range)
+                        : range);
+                updateStopRange?.(
                     /** @type {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} */ (
-                        range
-                    ),
-                    analysis,
-                    stopKind
+                        effectiveRange
+                    )
                 );
             }
             return false;
         };
 
-        this._scaleUpdaters.set(name, { updateDomain, updateRange });
+        return { updateDomain, updateRange };
     }
 
     /**
@@ -573,92 +569,6 @@ export class ScaleResourceManager {
      * @param {ChannelScale} scale
      * @returns {void}
      */
-    _initializeOrdinalRange(name, channel, scale) {
-        const outputComponents = channel.components ?? 1;
-        const outputType =
-            outputComponents === 1
-                ? getScaleOutputType("ordinal", channel.type ?? "f32")
-                : "f32";
-        if (isRangeFunction(scale.range)) {
-            throw new Error(
-                `Ordinal scale on "${name}" does not support interpolator ranges.`
-            );
-        }
-        const normalized = normalizeOrdinalRange(
-            name,
-            /** @type {Array<number|number[]|string>} */ (scale.range ?? []),
-            outputComponents
-        );
-        const data = this._buildOrdinalRangeBufferData(
-            normalized,
-            outputComponents,
-            outputType
-        );
-        this._setOrdinalRangeBuffer(name, data, normalized.length);
-    }
-
-    /**
-     * @param {string} name
-     * @param {ChannelScale} scale
-     * @param {ReturnType<typeof buildChannelAnalysis>} analysis
-     * @returns {void}
-     */
-    _initializeDomainMap(name, scale, analysis) {
-        if (!analysis.scaleDef.normalizeDomainMap) {
-            throw new Error(
-                `Scale "${analysis.scaleType}" does not provide domain map normalization.`
-            );
-        }
-        const domainSource =
-            Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
-                ? scale.domain
-                : null;
-        if (!domainSource) {
-            throw new Error(
-                `Scale on "${name}" requires an explicit domain array.`
-            );
-        }
-        const update = analysis.scaleDef.normalizeDomainMap({
-            name,
-            scale,
-            domain: domainSource,
-        });
-        const map = this._buildDomainMapBufferData(update?.domainMap ?? []);
-        this._setDomainMapBuffer(name, map.table, map.length);
-        if (update?.domainUniform) {
-            this._setUniformValue(DOMAIN_PREFIX + name, update.domainUniform);
-        }
-    }
-
-    /**
-     * @param {string} name
-     * @param {ChannelScale} scale
-     * @returns {void}
-     */
-    _initializeRangeTexture(name, scale) {
-        const range = scale.range ?? [];
-        let textureData;
-        if (isRangeFunction(range)) {
-            textureData = createSchemeTexture(range);
-        } else {
-            if (!isColorRange(range)) {
-                throw new Error(
-                    `Interpolated color scale on "${name}" requires a color range.`
-                );
-            }
-            const colorStops = /** @type {Array<string|number[]>} */ (range);
-            textureData = createSchemeTexture({
-                scheme: colorStops,
-                mode: "interpolate",
-                interpolate: scale.interpolate,
-            });
-        }
-        if (!textureData) {
-            throw new Error(`Failed to build range texture for "${name}".`);
-        }
-        this._setRangeTexture(name, textureData);
-    }
-
     /**
      * @param {string} name
      * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn|{ range?: Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn }} value
@@ -765,34 +675,6 @@ export class ScaleResourceManager {
      * @param {Array<number|number[]|string>|{ range?: Array<number|number[]|string> }} value
      * @returns {boolean}
      */
-    _updateOrdinalRange(name, value) {
-        const channel = this._channels[name];
-        if (!channel || channel.scale?.type !== "ordinal") {
-            throw new Error(`Channel "${name}" does not use an ordinal scale.`);
-        }
-        const outputComponents = channel.components ?? 1;
-        const outputType =
-            outputComponents === 1
-                ? getScaleOutputType("ordinal", channel.type ?? "f32")
-                : "f32";
-        const range = Array.isArray(value)
-            ? value
-            : /** @type {{ range?: Array<number|number[]|string> }} */ (
-                  value.range ?? []
-              );
-        const normalized = normalizeOrdinalRange(
-            name,
-            /** @type {Array<number|number[]|string>} */ (range),
-            outputComponents
-        );
-        const data = this._buildOrdinalRangeBufferData(
-            normalized,
-            outputComponents,
-            outputType
-        );
-        return this._setOrdinalRangeBuffer(name, data, normalized.length);
-    }
-
     /**
      * @param {string} name
      * @param {number[]} domain
