@@ -12,55 +12,18 @@ This plan focuses on the remaining work. Completed items are omitted.
 
 ### Scale + shader codegen: remaining gaps
 
-- Conditional encoders + selection predicates (`checkSelection_*`).
 - Param/expr-driven accessors (`uParam_*`) and integration with core.
 - Discretizing scales (quantile/quantize) and temporal scales (time/utc).
 - Null handling behavior for numeric/color channels.
 
-### Conditional encoding + selections (GPU)
+### Selections: remaining gaps
 
-Selections are user-driven subsets or intervals (point sets, multi-point sets,
-or numeric ranges) used to conditionally change encodings at render time.
-
-Goal: keep selection evaluation on the GPU while keeping core GPU-agnostic.
-Core computes selection state; renderer owns resources + WGSL predicates.
-
-Step-by-step plan:
-
-1. **Define selection predicate schema (channel config)**
-   - Allow channel conditions to reference selection predicates:
-     `{ when: { selection: "brush", type: "interval", channel: "x" }, value: ... }`.
-   - Selection type is **declared at mark creation** and is immutable.
-   - Selections are always evaluated in the data domain.
-
-2. **Selection resource model**
-   - `single`: uniform `uSelection_<name>` (u32 uniqueId).
-   - `multi`: hash-table buffer (sorted set or hash; use `hashTable`).
-   - `interval`: uniform `uSelection_<name>_<channel>` (vec2<f32> or vec2<u32>).
-   - No GPU objects exposed to core; renderer builds GPU resources from plain
-     arrays/values.
-
-3. **Renderer API additions**
-   - `updateSelections(markId, selectionPayloads)` where payloads must match the
-     declared types (error if types mismatch).
-   - Payload only updates values/buffers; **type changes disallowed**.
-
-4. **Shader generation**
-   - `markShaderBuilder` emits `checkSelection_<name>` functions based on the
-     declared selection types and channel/space.
-   - Conditional encoders call `checkSelection_<name>` per instance and return
-     either the conditional value (range-space) or the default scaled value.
-
-5. **Integration points**
-   - `channelAnalysis` collects selection predicates and resource requirements.
-   - `scaleResources` (or a new selection-resources manager) allocates buffers
-     and binds them.
-   - Keep selection logic out of core; core only supplies selection payloads.
-
-6. **Tests**
-   - Unit tests for selection config validation and payload shape checks.
-   - GPU tests for conditional encoding (single/multi/interval) that confirm
-     correct branch selection per instance.
+- Provide a stable way to address conditional scale branches (synthetic
+  channel names are currently internal).
+- Optional selection-driven filtering/masking (skip drawing non-selected
+  instances without requiring core-side filtering).
+- Explicit selection docs in public API (uniqueId requirements, predicate
+  ordering semantics).
 
 ### ScaleDef registry consolidation
 

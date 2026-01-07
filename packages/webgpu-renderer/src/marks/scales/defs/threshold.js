@@ -33,6 +33,7 @@ export const thresholdScaleDef = {
  */
 function emitThresholdScale({
     name,
+    functionName,
     rawValueExpr,
     inputScalarType,
     outputComponents,
@@ -64,6 +65,7 @@ function emitThresholdScale({
     );
     return emitScalePipeline({
         name,
+        functionName,
         rawValueExpr,
         steps,
         returnType,

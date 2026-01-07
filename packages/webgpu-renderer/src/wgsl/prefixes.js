@@ -13,3 +13,7 @@ export const SCALE_PADDING_INNER_PREFIX = "uScalePaddingInner_";
 export const SCALE_PADDING_OUTER_PREFIX = "uScalePaddingOuter_";
 export const SCALE_ALIGN_PREFIX = "uScaleAlign_";
 export const SCALE_BAND_PREFIX = "uScaleBand_";
+export const SELECTION_PREFIX = "uSelection_";
+export const SELECTION_COUNT_PREFIX = "uSelectionCount_";
+export const SELECTION_BUFFER_PREFIX = "selection_";
+export const SELECTION_CHECKER_PREFIX = "checkSelection_";

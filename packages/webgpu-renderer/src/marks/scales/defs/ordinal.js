@@ -37,6 +37,7 @@ export const ordinalScaleDef = {
  */
 function emitOrdinalScale({
     name,
+    functionName,
     rawValueExpr,
     inputScalarType,
     outputComponents,
@@ -60,7 +61,7 @@ function emitOrdinalScale({
 
     const mapCountName = DOMAIN_MAP_COUNT_PREFIX + name;
     if (domainMapName) {
-        return `${makeFnHeader(name, returnType)} {
+        return `${makeFnHeader(name, returnType, functionName)} {
     let raw = ${valueExpr};
     let mapCount = u32(params.${mapCountName});
     if (mapCount == 0u) {
@@ -78,7 +79,7 @@ function emitOrdinalScale({
 }`;
     }
 
-    return `${makeFnHeader(name, returnType)} {
+    return `${makeFnHeader(name, returnType, functionName)} {
     let idx = ${valueExpr};
     let count = u32(params.${RANGE_COUNT_PREFIX}${name});
     if (count == 0u) { return ${zero}; }

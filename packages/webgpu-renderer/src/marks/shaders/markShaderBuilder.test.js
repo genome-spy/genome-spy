@@ -218,6 +218,82 @@ describe("buildMarkShader", () => {
         expect(shaderCode).toContain("domainMap_x");
     });
 
+    it("emits conditional encoders with selection predicates", () => {
+        const packedSeriesLayout = new Map(
+            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+                [
+                    "x",
+                    {
+                        name: "x",
+                        scalarType: "f32",
+                        components: 1,
+                        offset: 0,
+                        stride: 1,
+                    },
+                ],
+            ])
+        );
+
+        const { shaderCode } = buildMarkShader({
+            channels: {
+                x: {
+                    data: new Float32Array(4),
+                    type: "f32",
+                    components: 1,
+                    scale: { type: "linear", domain: [0, 1], range: [0, 1] },
+                },
+                fill: {
+                    value: [1, 0, 0, 1],
+                    components: 4,
+                    conditions: [
+                        {
+                            when: {
+                                selection: "brush",
+                                type: "interval",
+                                channel: "x",
+                            },
+                            value: [0, 1, 0, 1],
+                        },
+                    ],
+                },
+            },
+            uniformLayout: [
+                {
+                    name: "uDomain_x",
+                    type: "f32",
+                    components: 1,
+                    arrayLength: 2,
+                },
+                {
+                    name: "uRange_x",
+                    type: "f32",
+                    components: 1,
+                    arrayLength: 2,
+                },
+                {
+                    name: "uSelection_brush",
+                    type: "f32",
+                    components: 2,
+                },
+            ],
+            shaderBody,
+            packedSeriesLayout,
+            selectionDefs: [
+                {
+                    name: "brush",
+                    type: "interval",
+                    channel: "x",
+                    scalarType: "f32",
+                },
+            ],
+        });
+
+        expect(shaderCode).toContain("fn checkSelection_brush");
+        expect(shaderCode).toContain("fn getScaled_fill_base");
+        expect(shaderCode).toContain("fn getScaled_fill");
+        expect(shaderCode).toContain("checkSelection_brush");
+    });
+
     it("throws when updating non-dynamic uniforms", () => {
         const renderer = createMockRenderer();
         const program = new RectProgram(renderer, {

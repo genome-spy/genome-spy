@@ -52,6 +52,7 @@ export const linearScaleDef = {
 function emitLinearScale(params) {
     const {
         name,
+        functionName,
         rawValueExpr,
         inputScalarType,
         outputComponents,
@@ -84,6 +85,7 @@ function emitLinearScale(params) {
         return emitContinuousScale(
             {
                 name,
+                functionName,
                 rawValueExpr,
                 inputScalarType,
                 clamp,
@@ -125,6 +127,7 @@ function emitLinearScale(params) {
     }
     return emitScalePipeline({
         name,
+        functionName,
         rawValueExpr,
         steps,
         returnType,
