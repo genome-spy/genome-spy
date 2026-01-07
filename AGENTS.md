@@ -45,7 +45,9 @@ aware interactions.
 
 - Always use type hints in any language which supports them
 - JavaScript/TypeScript files should use JSDoc for type annotations
+- Use a blank line between adjacent members with JSDoc; skip it for the first member in a block
 - JavaScript is indented with 4 spaces, no tabs
+- WGSL code should be indented with 4 spaces, no tabs
 - JSON files are indented with 2 spaces, no tabs
 - Use modern ESNext syntax (async/await, arrow functions, destructuring, spread)
 - Use Array.from instead of spread when converting NodeList to Array
@@ -55,6 +57,19 @@ aware interactions.
   - Fail fast on unexpected inputs
   - Avoid unnecessary null/undefined checks and optional chaining
   - Validate inputs at application boundaries only
+- Prefer explicit `else` blocks over early-return branches when both paths are
+  similarly likely.
+- Prefer explicit contracts over implicit behavior (e.g., require domains for ordinal/band)
+- Prefer explicit, readable string concatenation over template literals for
+  trivial concatenation.
+- Avoid optional or nullable state unless it has a clear semantic meaning
+- Use JSDoc blocks to capture intent when logic is non-obvious
+- Prefer single-source-of-truth data structures; derive secondary views via helpers
+- Keep WGSL in template strings prefixed with `/* wgsl */` for highlighting
+- When branching on enums (e.g., selection types), use explicit `if/else` or
+  `switch` structures that cover all cases and fail loudly on unknown values.
+- Use `Map`/`WeakMap` when identity matters; default to empty maps rather than
+  optional maps.
 
 ## Architecture and rendering notes (from paper + supplementary)
 
