@@ -20,7 +20,7 @@ export default async function runBasicScene(canvas) {
         y2[i] = y[i] + 20;
     }
 
-    const markId = renderer.createMark("rect", {
+    const { markId } = renderer.createMark("rect", {
         count,
         channels: {
             x: { data: x, type: "f32", scale: { type: "identity" } },
