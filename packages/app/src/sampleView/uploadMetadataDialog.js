@@ -10,6 +10,7 @@ import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
+import "../components/generic/customSelect.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { rowsToColumns } from "../utils/dataLayout.js";
 import { splitPath } from "../utils/escapeSeparator.js";
@@ -259,9 +260,10 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #renderConfiguration() {
-        return html` <div class="gs-form-group">
-            <label for="bookmark-title">Group name</label>
+        return html`<div class="gs-form-group">
+            <label for="group-name">Group name</label>
             <input
+                id="group-name"
                 type="text"
                 .value=${this._addUnderGroup ?? ""}
                 placeholder="(optional) Group name under which to add new metadata"
