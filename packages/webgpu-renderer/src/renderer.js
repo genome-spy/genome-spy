@@ -228,6 +228,19 @@ export class Renderer {
     }
 
     /**
+     * @param {MarkId} markId
+     * @param {Record<string, import("./index.d.ts").SelectionUpdate>} selections
+     * @returns {void}
+     */
+    updateSelections(markId, selections) {
+        const mark = this._marks.get(markId);
+        if (!mark) {
+            throw new RendererError(`No such mark: ${markId}`);
+        }
+        mark.updateSelections(selections);
+    }
+
+    /**
      * Log the GPU resources reserved by a mark to the console.
      *
      * @param {MarkId} markId

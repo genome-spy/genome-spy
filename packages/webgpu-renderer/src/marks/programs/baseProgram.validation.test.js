@@ -123,7 +123,7 @@ describe("BaseProgram channel validation", () => {
                 x: { data: new Float32Array([1]) },
                 vec: { value: [1, 0, 0, 1], type: "f32", components: 4 },
             })
-        ).toThrow('Missing type for channel "x"');
+        ).toThrow('Channel "x" requires a series data type.');
     });
 
     it("rejects type mismatches against channel specs", () => {

@@ -36,6 +36,7 @@ export const quantizeScaleDef = {
  */
 function emitQuantizeScale({
     name,
+    functionName,
     rawValueExpr,
     inputScalarType,
     outputComponents,
@@ -66,6 +67,7 @@ function emitQuantizeScale({
     );
     return emitScalePipeline({
         name,
+        functionName,
         rawValueExpr,
         steps,
         returnType,

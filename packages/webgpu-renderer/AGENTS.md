@@ -21,6 +21,8 @@ architecture while keeping render-time hot paths minimal and optimized.
   trivial concatenation.
 - For readability, prefer explicit `else` blocks over early-return branches
   when both paths are similarly likely.
+- When branching on enums (e.g., selection types), use explicit `if/else` or
+  `switch` structures that cover all cases and fail loudly on unknown values.
 - Add intent/rationale comments where logic is non-trivial; skip comments for
   obvious steps. The goal is to let both human readers and LLMs grasp the
   architecture and technical decisions quickly.

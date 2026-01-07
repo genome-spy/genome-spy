@@ -159,6 +159,7 @@ export const indexScaleDef = {
  */
 function emitIndexScale({
     name,
+    functionName,
     rawValueExpr,
     inputScalarType,
     inputComponents,
@@ -168,7 +169,7 @@ function emitIndexScale({
             ? rawValueExpr
             : toU32Expr(rawValueExpr, inputScalarType);
     const fnName = inputComponents === 2 ? "scaleBandHpU" : "scaleBandHp";
-    return `${makeFnHeader(name, "f32")} {
+    return `${makeFnHeader(name, "f32", functionName)} {
     let v = ${valueExpr};
     return ${fnName}(
         v,

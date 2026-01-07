@@ -2,6 +2,7 @@
 import { buildScaleWgsl } from "../scales/scaleWgsl.js";
 import HASH_TABLE_WGSL from "../../wgsl/hashTable.wgsl.js";
 import { preprocessShader } from "../../wgsl/preprocess.js";
+import { formatLiteral } from "../../wgsl/literals.js";
 import { __DEV__ } from "../../utils/dev.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
@@ -10,6 +11,10 @@ import {
     RANGE_SAMPLER_PREFIX,
     RANGE_TEXTURE_PREFIX,
     SCALED_FUNCTION_PREFIX,
+    SELECTION_BUFFER_PREFIX,
+    SELECTION_CHECKER_PREFIX,
+    SELECTION_COUNT_PREFIX,
+    SELECTION_PREFIX,
 } from "../../wgsl/prefixes.js";
 import { buildChannelIRs } from "./channelIR.js";
 import { buildScaledFunction } from "../scales/scaleCodegen.js";
@@ -35,6 +40,17 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  */
 
 /**
+ * Selection predicate wiring info emitted into WGSL.
+ *
+ * @typedef {object} SelectionDef
+ * @prop {string} name
+ * @prop {"single"|"multi"|"interval"} type
+ * @prop {string} [channel]
+ * @prop {string} [secondaryChannel]
+ * @prop {import("../../types.js").ScalarType} [scalarType]
+ */
+
+/**
  * Inputs needed to generate WGSL and bind group layout for a mark.
  *
  * @typedef {object} ShaderBuildParams
@@ -42,6 +58,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
  * @prop {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
+ * @prop {SelectionDef[]} [selectionDefs]
  * @prop {ExtraResourceDef[]} [extraResources]
  */
 
@@ -81,6 +98,7 @@ export function buildMarkShader({
     uniformLayout,
     shaderBody,
     packedSeriesLayout,
+    selectionDefs = [],
     extraResources = [],
 }) {
     // Dynamic shader generation: each mark variant emits only the helpers it
@@ -108,20 +126,24 @@ export function buildMarkShader({
     const channelFns = [];
 
     /** @type {string[]} */
+    const selectionFns = [];
+
+    /** @type {string[]} */
     const extraDecls = [];
 
     /**
      * Emit a pass-through getScaled_* wrapper when no scale logic is needed.
      *
      * @param {import("./channelIR.js").ChannelIR} channelIR
+     * @param {string} [functionName]
      * @returns {string}
      */
-    function emitPassthroughFunction(channelIR) {
+    function emitPassthroughFunction(channelIR, functionName = channelIR.name) {
         const returnType =
             channelIR.outputComponents === 1
                 ? channelIR.outputScalarType
                 : `vec${channelIR.outputComponents}<f32>`;
-        return `fn ${SCALED_FUNCTION_PREFIX}${channelIR.name}(i: u32) -> ${returnType} { return ${channelIR.rawValueExpr}; }`;
+        return `fn ${SCALED_FUNCTION_PREFIX}${functionName}(i: u32) -> ${returnType} { return ${channelIR.rawValueExpr}; }`;
     }
 
     let bindingIndex = 1;
@@ -144,6 +166,12 @@ export function buildMarkShader({
         (channelIR) => channelIR.useRangeTexture
     );
     const uniformNames = new Set(uniformLayout.map(({ name }) => name));
+    const channelIRByName = new Map(
+        channelIRs.map((channelIR) => [channelIR.name, channelIR])
+    );
+    const selectionDefsByName = new Map(
+        selectionDefs.map((def) => [def.name, def])
+    );
 
     /**
      * @param {string} name
@@ -155,6 +183,131 @@ export function buildMarkShader({
         }
         return resourceRequirements[name];
     };
+
+    /**
+     * @param {SelectionDef} def
+     * @returns {string}
+     */
+    function emitSelectionPredicate(def) {
+        const fnName = `${SELECTION_CHECKER_PREFIX}${def.name}`;
+        const uniqueId = channelIRByName.get("uniqueId");
+        if (
+            __DEV__ &&
+            (def.type === "single" || def.type === "multi") &&
+            !uniqueId
+        ) {
+            throw new Error(
+                `Selection "${def.name}" requires a uniqueId channel.`
+            );
+        }
+        switch (def.type) {
+            case "single": {
+                return /* wgsl */ `
+fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
+    let selected = u32(params.${SELECTION_PREFIX}${def.name});
+    if (allowEmpty && selected == 0u) { return true; }
+    if (selected == 0u) { return false; }
+    let id = ${uniqueId?.rawValueExpr ?? "0u"};
+    return id == selected;
+}
+`;
+            }
+            case "multi": {
+                const bufferName = SELECTION_BUFFER_PREFIX + def.name;
+                return /* wgsl */ `
+fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
+    let count = u32(params.${SELECTION_COUNT_PREFIX}${def.name});
+    if (allowEmpty && count == 0u) { return true; }
+    if (count == 0u) { return false; }
+    let id = ${uniqueId?.rawValueExpr ?? "0u"};
+    return hashContains(&${bufferName}, id, arrayLength(&${bufferName}));
+}
+`;
+            }
+            case "interval": {
+                const channelName = def.channel ?? "";
+                const channelIR = channelIRByName.get(channelName);
+                const secondaryIR = def.secondaryChannel
+                    ? channelIRByName.get(def.secondaryChannel)
+                    : null;
+                if (__DEV__ && !channelIR) {
+                    throw new Error(
+                        `Selection "${def.name}" references missing channel "${channelName}".`
+                    );
+                }
+                const valueExpr = channelIR?.rawValueExpr ?? "0.0";
+                const secondaryExpr = secondaryIR?.rawValueExpr ?? null;
+                const boundsName = `${SELECTION_PREFIX}${def.name}`;
+                const rangeCheck = secondaryExpr
+                    ? /* wgsl */ `
+    let v0 = ${valueExpr};
+    let v1 = ${secondaryExpr};
+    let lo = min(v0, v1);
+    let hi = max(v0, v1);
+    return hi >= minSel && lo <= maxSel;
+`
+                    : /* wgsl */ `
+    let v = ${valueExpr};
+    return v >= minSel && v <= maxSel;
+`;
+
+                return /* wgsl */ `
+fn ${fnName}(i: u32, allowEmpty: bool) -> bool {
+    let bounds = params.${boundsName};
+    let minSel = min(bounds.x, bounds.y);
+    let maxSel = max(bounds.x, bounds.y);
+    if (allowEmpty && minSel > maxSel) { return true; }
+    if (minSel > maxSel) { return false; }
+${rangeCheck}
+}
+`;
+            }
+            default: {
+                throw new Error(
+                    `Selection "${def.name}" has unsupported type "${def.type}".`
+                );
+            }
+        }
+    }
+
+    /**
+     * @param {import("./channelIR.js").ChannelIR} channelIR
+     * @param {string} baseFunctionName
+     * @returns {string}
+     */
+    function emitConditionalWrapper(channelIR, baseFunctionName) {
+        const { name, outputComponents, outputScalarType } = channelIR;
+        const returnType =
+            outputComponents === 1
+                ? outputScalarType
+                : `vec${outputComponents}<f32>`;
+        const conditions = channelIR.channel.conditions ?? [];
+        const clauses = conditions.map((condition) => {
+            const selectionName = condition.when.selection;
+            const def = selectionDefsByName.get(selectionName);
+            if (__DEV__ && !def) {
+                throw new Error(
+                    `Channel "${name}" references unknown selection "${selectionName}".`
+                );
+            }
+            const allowEmpty = condition.when.empty === true ? "true" : "false";
+            if (condition.channelName) {
+                return `    if (${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})) { return ${SCALED_FUNCTION_PREFIX}${condition.channelName}(i); }`;
+            }
+            const literal = formatLiteral(
+                outputComponents === 1 ? outputScalarType : "f32",
+                outputComponents,
+                condition.value
+            );
+            return `    if (${SELECTION_CHECKER_PREFIX}${selectionName}(i, ${allowEmpty})) { return ${literal}; }`;
+        });
+        return /* wgsl */ `
+fn ${SCALED_FUNCTION_PREFIX}${name}(i: u32) -> ${returnType} {
+${clauses.join("\n")}
+    return ${SCALED_FUNCTION_PREFIX}${baseFunctionName}(i);
+}
+`;
+    }
 
     // Literal formatting is centralized so constants always match the expected
     // WGSL types (e.g., float literals use ".0" when appropriate).
@@ -299,10 +452,15 @@ export function buildMarkShader({
 
         // getScaled_* is the only function mark shaders call. It hides whether
         // values come from buffers or uniforms and applies scale logic.
+        const hasConditions =
+            Array.isArray(channelIR.channel.conditions) &&
+            channelIR.channel.conditions.length > 0;
+        const baseFunctionName = hasConditions ? `${name}_base` : name;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
+                    functionName: baseFunctionName,
                     scale: channelIR.scaleType,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
@@ -317,8 +475,19 @@ export function buildMarkShader({
                 })
             );
         } else {
-            channelFns.push(emitPassthroughFunction(channelIR));
+            channelFns.push(
+                emitPassthroughFunction(channelIR, baseFunctionName)
+            );
         }
+        if (hasConditions) {
+            channelFns.push(
+                emitConditionalWrapper(channelIR, baseFunctionName)
+            );
+        }
+    }
+
+    for (const def of selectionDefs) {
+        selectionFns.push(emitSelectionPredicate(def));
     }
 
     // Ordinal scales pull range values from storage buffers. These bindings are
@@ -480,10 +649,15 @@ export function buildMarkShader({
     // inline WGSL constants (static), but still expose getScaled_* wrappers.
     for (const channelIR of valueChannelIRs) {
         const { name } = channelIR;
+        const hasConditions =
+            Array.isArray(channelIR.channel.conditions) &&
+            channelIR.channel.conditions.length > 0;
+        const baseFunctionName = hasConditions ? `${name}_base` : name;
         if (channelIR.needsScaleFunction) {
             channelFns.push(
                 buildScaledFunction({
                     name,
+                    functionName: baseFunctionName,
                     scale: channelIR.scaleType,
                     rawValueExpr: channelIR.rawValueExpr,
                     scalarType: channelIR.scalarType,
@@ -498,7 +672,14 @@ export function buildMarkShader({
                 })
             );
         } else {
-            channelFns.push(emitPassthroughFunction(channelIR));
+            channelFns.push(
+                emitPassthroughFunction(channelIR, baseFunctionName)
+            );
+        }
+        if (hasConditions) {
+            channelFns.push(
+                emitConditionalWrapper(channelIR, baseFunctionName)
+            );
         }
     }
 
@@ -553,6 +734,9 @@ export function buildMarkShader({
             .map((channelIR) => channelIR.scaleType)
     );
     const scalesWgsl = buildScaleWgsl(requiredScales);
+    const needsHashTable =
+        domainMapChannelIRs.length > 0 ||
+        selectionDefs.some((def) => def.type === "multi");
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.
@@ -567,7 +751,7 @@ struct Globals {
 @group(0) @binding(0) var<uniform> globals: Globals;
 
 ${scalesWgsl}
-${domainMapChannelIRs.length > 0 ? HASH_TABLE_WGSL : ""}
+${needsHashTable ? HASH_TABLE_WGSL : ""}
 
 struct Params {
 ${uniformFields}
@@ -578,6 +762,8 @@ ${uniformFields}
 ${bufferDecls.join("\n")}
 
 ${bufferReaders.join("\n")}
+
+${selectionFns.join("\n")}
 
 ${channelFns.join("\n")}
 

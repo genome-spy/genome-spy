@@ -37,6 +37,7 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
 - `renderer.updateValues(markId, values)`
 - `renderer.updateScaleDomains(markId, domains)`
 - `renderer.updateScaleRanges(markId, ranges)`
+- `renderer.updateSelections(markId, selections)`
 - `renderer.updateGlobals({ width, height, dpr })`
 - `renderer.render()`
 - `renderer.destroyMark(markId)`
@@ -97,6 +98,21 @@ When updating series data, all channels in the group must be updated together
 with the same array instance (you can swap to a new array as long as the group
 stays shared). Array lengths may change. If you need a different sharing
 pattern, recreate the mark.
+
+## Selections & Conditional Encoding
+
+The renderer supports selection-driven conditional encoding on the GPU. A
+channel can declare conditions that switch between literal values or full
+channel+scale branches. Selection predicates are always evaluated in data
+domain space.
+
+- `single`: a selected `uniqueId` (u32 uniform).
+- `multi`: a set of selected IDs (hash-table buffer).
+- `interval`: numeric range over a specified channel (vec2 uniform).
+
+Conditional channel branches are normalized into internal synthetic channels
+(`fill__cond0`, etc.) for shader generation; users only define conditions on
+the original channel.
 
 ## High-Precision Index Scale
 
