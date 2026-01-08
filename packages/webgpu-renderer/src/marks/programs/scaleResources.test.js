@@ -77,11 +77,11 @@ describe("ScaleResourceManager", () => {
         uniforms.set(DOMAIN_PREFIX + "x", [0, 3]);
         uniforms.set(DOMAIN_MAP_COUNT_PREFIX + "x", 0);
         manager.initializeScale("x", channels.x, channels.x.scale);
+        const updater = manager.getScaleUpdater("x");
 
-        const needsRebind = manager.updateScaleDomain(
-            "x",
-            [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-        );
+        const needsRebind = updater.updateDomain([
+            10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+        ]);
 
         expect(needsRebind).toBe(true);
         expect(manager.domainMapBuffers.get("x")?.size).toBeGreaterThan(0);
@@ -109,12 +109,10 @@ describe("ScaleResourceManager", () => {
         const { manager, uniforms } = createManager(channels);
         uniforms.set(RANGE_COUNT_PREFIX + "fill", 0);
         manager.initializeScale("fill", channels.fill, channels.fill.scale);
+        const updater = manager.getScaleUpdater("fill");
 
-        const initialRebind = manager.updateScaleRange(
-            "fill",
-            channels.fill.scale.range
-        );
-        const needsRebind = manager.updateScaleRange("fill", [
+        const initialRebind = updater.updateRange(channels.fill.scale.range);
+        const needsRebind = updater.updateRange([
             [0.1, 0.1, 0.1, 1],
             [0.2, 0.2, 0.2, 1],
         ]);
