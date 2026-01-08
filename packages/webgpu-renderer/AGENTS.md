@@ -47,6 +47,12 @@ Follow the monorepo-wide conventions in `AGENTS.md`.
   - Series are packed into f32/u32 storage buffers; dedupe behavior must remain
     consistent across updates.
 
+## Commit messages- Use conventional commits style (see `AGENTS.md`).
+
+- When working in a feature branch (i.e., not "main" or "master"),
+  ignore the scope in commit messages unless the change is large and
+  affects multiple parts of the monorepo.
+
 ## Testing
 
 - Types: `npm -w @genome-spy/webgpu-renderer run test:tsc`
