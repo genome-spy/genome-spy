@@ -257,7 +257,7 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {Record<string, number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }>} values
+     * @param {Record<string, number|number[]>} values
      * @returns {void}
      */
     updateValues(values) {
@@ -513,22 +513,17 @@ export default class BaseProgram {
      * @returns {import("../../index.d.ts").ScaleSlotHandle}
      */
     _createScaleSlot(name) {
+        const updater = this._scaleResources.getScaleUpdater(name);
         return {
             setDomain: (domain) => {
-                const needsRebind = this._scaleResources.updateScaleDomain(
-                    name,
-                    domain
-                );
+                const needsRebind = updater.updateDomain(domain);
                 this._writeUniforms();
                 if (needsRebind) {
                     this._rebuildBindGroup();
                 }
             },
             setRange: (range) => {
-                const needsRebind = this._scaleResources.updateScaleRange(
-                    name,
-                    range
-                );
+                const needsRebind = updater.updateRange(range);
                 this._writeUniforms();
                 if (needsRebind) {
                     this._rebuildBindGroup();
@@ -642,13 +637,11 @@ export default class BaseProgram {
                     channel,
                     channel.scale
                 );
-                this._scaleResources.updateScaleDomain(
-                    name,
-                    channel.scale.domain
-                );
+                const updater = this._scaleResources.getScaleUpdater(name);
+                updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
-                this._scaleResources.updateScaleRange(name, rangeValue);
+                updater.updateRange(rangeValue);
             }
             if (isValueChannelConfig(channel) && channel.scale) {
                 this._scaleResources.initializeScale(
@@ -656,13 +649,11 @@ export default class BaseProgram {
                     channel,
                     channel.scale
                 );
-                this._scaleResources.updateScaleDomain(
-                    name,
-                    channel.scale.domain
-                );
+                const updater = this._scaleResources.getScaleUpdater(name);
+                updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
-                this._scaleResources.updateScaleRange(name, rangeValue);
+                updater.updateRange(rangeValue);
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);
