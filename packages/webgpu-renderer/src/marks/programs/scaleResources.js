@@ -258,28 +258,14 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @param {number[]|unknown} domain
-     * @returns {boolean}
+     * @returns {{ updateDomain: (domain: unknown) => boolean, updateRange: (range: unknown) => boolean }}
      */
-    updateScaleDomain(name, domain) {
+    getScaleUpdater(name) {
         const updater = this._scaleUpdaters.get(name);
         if (!updater) {
-            return false;
+            throw new Error(`Missing scale updater for "${name}".`);
         }
-        return updater.updateDomain(domain);
-    }
-
-    /**
-     * @param {string} name
-     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} range
-     * @returns {boolean}
-     */
-    updateScaleRange(name, range) {
-        const updater = this._scaleUpdaters.get(name);
-        if (!updater) {
-            return false;
-        }
-        return updater.updateRange(range);
+        return updater;
     }
 
     /**

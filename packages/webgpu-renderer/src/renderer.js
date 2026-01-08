@@ -195,19 +195,6 @@ export class Renderer {
     }
 
     /**
-     * @param {MarkId} markId
-     * @param {Record<string, number|number[]|{ domain?: number[], range?: Array<number|number[]|string> }>} values
-     * @returns {void}
-     */
-    updateValues(markId, values) {
-        const mark = this._marks.get(markId);
-        if (!mark) {
-            throw new RendererError(`No such mark: ${markId}`);
-        }
-        mark.updateValues(values);
-    }
-
-    /**
      * Log the GPU resources reserved by a mark to the console.
      *
      * @param {MarkId} markId
