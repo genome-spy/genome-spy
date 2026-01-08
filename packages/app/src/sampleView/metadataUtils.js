@@ -4,6 +4,7 @@ import { joinPathParts, splitPath } from "../utils/escapeSeparator.js";
 /**
  * @typedef {Object} PathTreeNode
  * @property {string} part
+ * @property {string} attribute
  * @property {string} path
  * @property {Map<string, PathTreeNode>} children
  * @property {PathTreeNode | null} parent
@@ -21,13 +22,15 @@ export const METADATA_PATH_SEPARATOR = "/";
 
 /**
  * Build a tree from path-like keys. Each node receives a `parent` pointer.
+ *
  * @param {string[]} items
  * @param {string} [separator]
  * @returns {PathTreeNode}
  */
 export function buildPathTree(items, separator) {
+    const useSeparator = typeof separator === "string" && separator.length > 0;
     /** @type {(s: string) => string[]} */
-    const split = separator
+    const split = useSeparator
         ? (/** @type {string} */ s) => splitPath(s, separator)
         : (/** @type {string} */ s) => [s];
 
@@ -37,6 +40,7 @@ export function buildPathTree(items, separator) {
     /** @type {PathTreeNode} */
     const rootNode = {
         part: "",
+        attribute: "",
         path: "",
         children: rootChildren,
         parent: null,
@@ -50,10 +54,13 @@ export function buildPathTree(items, separator) {
             if (!currentNode.children.has(part)) {
                 const node = {
                     part,
-                    path:
-                        separator != null
-                            ? joinPathParts(parts.slice(0, i + 1), separator)
-                            : part,
+                    path: useSeparator
+                        ? joinPathParts(
+                              parts.slice(0, i + 1),
+                              METADATA_PATH_SEPARATOR
+                          )
+                        : part,
+                    attribute,
                     children: new Map(),
                     parent: currentNode,
                 };
@@ -64,6 +71,76 @@ export function buildPathTree(items, separator) {
     }
 
     return rootNode;
+}
+
+/**
+ * Depth-first traversal of a path tree, yielding each node.
+ * Yields the node itself, then recursively yields all descendants.
+ * @param {PathTreeNode} node the subtree root to traverse
+ * @returns {IterableIterator<PathTreeNode>}
+ */
+export function* pathTreeDfs(node) {
+    if (!node) return;
+    yield node;
+    for (const child of node.children.values()) {
+        yield* pathTreeDfs(child);
+    }
+}
+
+/**
+ * @param {PathTreeNode} node the subtree root to traverse
+ * @returns {IterableIterator<PathTreeNode>}
+ */
+export function* pathTreeParents(node) {
+    for (let n = node.parent; n != null; n = n.parent) {
+        yield n;
+    }
+}
+
+/**
+ * Infer the most likely column separator by checking for recurring path prefixes.
+ * A separator is valid only if multiple columns share the same prefix before it.
+ * For example, "group1.col1" and "group1.col2" share prefix "group1" with separator ".".
+ *
+ * @param {string[]} columns array of column names to analyze
+ * @returns {string | null} the inferred separator (".", "_", "/") or null
+ */
+export function inferColumnSeparator(columns) {
+    const separators = [".", "_", "/"];
+
+    for (const sep of separators) {
+        // Count how many columns contain this separator
+        const withSeparator = [];
+        for (const col of columns || []) {
+            if (col && col.indexOf(sep) >= 0) {
+                withSeparator.push(col);
+            }
+        }
+
+        // Need at least 2 columns with this separator to infer hierarchy
+        if (withSeparator.length < 2) continue;
+
+        // Check if there are recurring prefixes (first path segment)
+        const prefixes = new Map();
+        for (const col of withSeparator) {
+            const parts = col.split(sep);
+            if (parts.length >= 2) {
+                const prefix = parts[0];
+                if (prefix) {
+                    prefixes.set(prefix, (prefixes.get(prefix) || 0) + 1);
+                }
+            }
+        }
+
+        // If at least one prefix appears in 2+ columns, this separator is valid
+        for (const count of prefixes.values()) {
+            if (count >= 2) {
+                return sep;
+            }
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -169,7 +246,7 @@ export function placeMetadataUnderGroup(columnarMetadata, groupPath = []) {
  * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
  * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType}
  */
-function inferMetadataFieldType(values) {
+export function inferMetadataFieldType(values) {
     switch (inferType(values)) {
         case "integer":
         case "number":
@@ -177,6 +254,64 @@ function inferMetadataFieldType(values) {
         default:
             return "nominal";
     }
+}
+
+/**
+ * Infer the metadata type for each node in a path tree using a precomputed column type map.
+ * For group nodes: collects types from all leaf descendants; returns "unset" if mixed, else the uniform type.
+ * For leaf nodes: uses raw type; returns "inherit" if a parent has a non-unset type.
+ *
+ * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | "inherit" | "unset"} MetadataType
+ * @param {Map<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeType>} rawTypes
+ * @param {PathTreeNode} root
+ * @returns {Map<string, MetadataType>} Path to inferred MetadataType
+ */
+export function inferMetadataTypesForNodes(rawTypes, root) {
+    /** @type {Map<string, MetadataType>} */
+    const types = new Map();
+
+    /**
+     * @param {PathTreeNode} node
+     */
+    function infer(node) {
+        // Check if any ancestor already has a concrete type
+        for (const parent of pathTreeParents(node)) {
+            const parentType = types.get(parent.path);
+            if (parentType && parentType !== "unset") {
+                return "inherit";
+            }
+        }
+
+        if (node.children.size > 0) {
+            // Group node: collect types from all leaf descendants
+            const leafTypes = new Set();
+            for (const descendant of pathTreeDfs(node)) {
+                if (descendant === node) continue;
+                // Only look at leaf nodes (descendants with no children)
+                if (descendant.children.size === 0) {
+                    const leafType = rawTypes.get(descendant.attribute);
+                    if (leafType) {
+                        leafTypes.add(leafType);
+                    }
+                }
+            }
+            // If all leaves have the same type, return it; otherwise "unset"
+            if (leafTypes.size === 1) {
+                return leafTypes.values().next().value;
+            } else {
+                return "unset";
+            }
+        } else {
+            // Leaf node: use raw type
+            return rawTypes.get(node.attribute) ?? "unset";
+        }
+    }
+
+    for (const node of pathTreeDfs(root)) {
+        types.set(node.path, infer(node));
+    }
+
+    return types;
 }
 
 /**
@@ -206,6 +341,7 @@ export function computeAttributeDefs(
     // Create a lookup map from full path -> PathTreeNode for quick ancestor lookups
     /** @type {Map<string, PathTreeNode>} */
     const pathMap = new Map();
+
     /**
      * Walk the path tree and populate `pathMap`.
      * @param {PathTreeNode} node

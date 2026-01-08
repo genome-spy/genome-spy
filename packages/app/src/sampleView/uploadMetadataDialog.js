@@ -11,6 +11,7 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import "../components/generic/customSelect.js";
+import "../components/gs-metadata-hierarchy-configurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { rowsToColumns } from "../utils/dataLayout.js";
 import { splitPath } from "../utils/escapeSeparator.js";
@@ -260,20 +261,15 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #renderConfiguration() {
-        return html`<div class="gs-form-group">
-            <label for="group-name">Group name</label>
-            <input
-                id="group-name"
-                type="text"
-                .value=${this._addUnderGroup ?? ""}
-                placeholder="(optional) Group name under which to add new metadata"
-                @input=${(/** @type {InputEvent} */ e) => {
-                    this._addUnderGroup = /** @type {HTMLInputElement} */ (
-                        e.target
-                    ).value;
-                }}
-            />
-        </div>`;
+        return html`<gs-metadata-hierarchy-configurator
+            .metadataRecords=${this._parsedItems}
+            @add-under-group-changed=${this.#onAddUnderGroupChanged}
+        ></gs-metadata-hierarchy-configurator>`;
+    }
+
+    /** @param {CustomEvent<{value:string}>} e */
+    #onAddUnderGroupChanged(e) {
+        this._addUnderGroup = e.detail.value;
     }
 
     renderBody() {

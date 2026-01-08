@@ -6,6 +6,9 @@ import {
     placeMetadataUnderGroup,
     replacePathSeparatorInKeys,
     METADATA_PATH_SEPARATOR,
+    inferColumnSeparator,
+    replacePathSeparator,
+    inferMetadataTypesForNodes,
 } from "./metadataUtils.js";
 
 describe("buildPathTree", () => {
@@ -39,14 +42,14 @@ describe("buildPathTree", () => {
         const bar = foo.children.get("bar");
         expect(bar).toBeDefined();
         // full attribute path is preserved for intermediate node
-        expect(bar.path).toBe("foo.bar");
+        expect(bar.path).toBe(replacePathSeparator("foo.bar", "."));
         // bar should have its own children (baz, qux)
         expect(bar.children.has("baz")).toBe(true);
         expect(bar.children.has("qux")).toBe(true);
 
         const baz = bar.children.get("baz");
         expect(baz).toBeDefined();
-        expect(baz.path).toBe("foo.bar.baz");
+        expect(baz.path).toBe(replacePathSeparator("foo.bar.baz", "."));
         expect(baz.children.size).toBe(0);
 
         // parent pointers
@@ -70,6 +73,54 @@ describe("buildPathTree", () => {
         const ab = root.children.get("a.b");
         expect(ab.path).toBe("a.b");
         expect(ab.children.size).toBe(0);
+    });
+});
+
+describe("inferColumnSeparator", () => {
+    it("detects dot separator with recurring prefixes", () => {
+        const columns = ["group.col1", "group.col2", "other.col"];
+        expect(inferColumnSeparator(columns)).toBe(".");
+    });
+
+    it("detects underscore separator with recurring prefixes", () => {
+        const columns = ["group_col1", "group_col2", "other_col"];
+        expect(inferColumnSeparator(columns)).toBe("_");
+    });
+
+    it("detects slash separator with recurring prefixes", () => {
+        const columns = ["group/col1", "group/col2", "other/col"];
+        expect(inferColumnSeparator(columns)).toBe("/");
+    });
+
+    it("returns null when no recurring prefixes exist", () => {
+        // Each prefix appears only once, so no hierarchy detected
+        const columns = ["a.b", "c.d", "e.f"];
+        expect(inferColumnSeparator(columns)).toBeNull();
+    });
+
+    it("returns null when fewer than 2 columns contain the separator", () => {
+        const columns = ["col1", "col2.single", "col3"];
+        expect(inferColumnSeparator(columns)).toBeNull();
+    });
+
+    it("returns null for empty or all-flat column names", () => {
+        const columns = ["col1", "col2", "col3"];
+        expect(inferColumnSeparator(columns)).toBeNull();
+    });
+
+    it("ignores null/undefined/empty column names", () => {
+        const columns = [null, "group.col1", "", "group.col2", undefined];
+        expect(inferColumnSeparator(columns)).toBe(".");
+    });
+
+    it("returns null for empty array", () => {
+        expect(inferColumnSeparator([])).toBeNull();
+    });
+
+    it("prefers first valid separator when multiple have recurring prefixes", () => {
+        // Both "." and "_" have recurring prefixes; "." comes first in the list
+        const columns = ["group.col1", "group.col2", "other_a", "other_b"];
+        expect(inferColumnSeparator(columns)).toBe(".");
     });
 });
 
@@ -200,6 +251,66 @@ describe("computeAttributeDefs", () => {
         expect(defs["group.sub"].type).toBe("quantitative");
         // Ensure ancestor is not added or modified
         expect(defs.group).toBeUndefined();
+    });
+});
+
+describe("inferMetadataTypesForNodes", () => {
+    it("infers types for hierarchical attributes with uniform and mixed groups", () => {
+        // Helper to convert from "." separator to internal "/" separator
+        const r = (s) => replacePathSeparator(s, ".");
+
+        // Define raw types for attributes
+        const rawTypes = new Map([
+            ["sample", "nominal"],
+            ["cohort", "nominal"],
+            ["clin.PFI", "quantitative"],
+            ["clin.OS", "quantitative"],
+            ["clin.treatment", "nominal"],
+            ["expr.CCNE1", "quantitative"],
+            ["expr.MYC", "quantitative"],
+            ["random.a", "nominal"],
+            ["random.b", "nominal"],
+            ["random.sub.a", "quantitative"],
+            ["random2.sub.sub", "quantitative"],
+        ]);
+
+        // Extract attributes from rawTypes keys
+        const attributes = Array.from(rawTypes.keys());
+
+        // Build path tree with "." separator
+        const root = buildPathTree(attributes, ".");
+
+        // Compute types for all nodes
+        const types = inferMetadataTypesForNodes(rawTypes, root);
+
+        // Root level: sample and cohort are leaves with no parent type
+        expect(types.get(r("sample"))).toBe("nominal");
+        expect(types.get(r("cohort"))).toBe("nominal");
+
+        // clin: mixed children (PFI=quantitative, OS=quantitative, treatment=nominal) → "unset"
+        expect(types.get(r("clin"))).toBe("unset");
+        expect(types.get(r("clin.PFI"))).toBe("quantitative");
+        expect(types.get(r("clin.OS"))).toBe("quantitative");
+        expect(types.get(r("clin.treatment"))).toBe("nominal");
+
+        // expr: all leaves are quantitative (CCNE1, MYC) → "quantitative"
+        expect(types.get(r("expr"))).toBe("quantitative");
+        expect(types.get(r("expr.CCNE1"))).toBe("inherit");
+        expect(types.get(r("expr.MYC"))).toBe("inherit");
+
+        // random: all leaves are nominal (a, b) → "nominal"
+        expect(types.get(r("random"))).toBe("unset");
+        expect(types.get(r("random.a"))).toBe("nominal");
+        expect(types.get(r("random.b"))).toBe("nominal");
+
+        // random.sub: only leaf is a (quantitative) → "quantitative"
+        expect(types.get(r("random.sub"))).toBe("quantitative");
+        expect(types.get(r("random.sub.a"))).toBe("inherit");
+
+        // random2: only leaf is random2.sub.sub (quantitative) → "quantitative"
+        expect(types.get(r("random2"))).toBe("quantitative");
+        expect(types.get(r("random2.sub"))).toBe("inherit");
+        expect(types.get(r("random2.sub.sub"))).toBe("inherit");
     });
 });
 
