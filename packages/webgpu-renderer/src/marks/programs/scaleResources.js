@@ -12,7 +12,6 @@ import {
     normalizeOrdinalRange,
     normalizeRangePositions,
 } from "../scales/scaleStops.js";
-import { packHighPrecisionDomain } from "../../utils/highPrecision.js";
 import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
 import { createSchemeTexture } from "../../utils/colorUtils.js";
 import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
@@ -313,7 +312,6 @@ export class ScaleResourceManager {
         const outputComponents = analysis.outputComponents ?? 1;
         const outputType =
             outputComponents === 1 ? analysis.outputScalarType : "f32";
-        const isIndexScale = analysis.scaleType === "index";
         const updateDomainMap = needsDomainMap
             ? /**
                * @param {unknown} value
@@ -361,44 +359,48 @@ export class ScaleResourceManager {
         if (stopKind) {
             if (stopKind === "continuous") {
                 updateStopDomain = (value) => {
-                    if (!isIndexScale) {
-                        if (!Array.isArray(value)) {
-                            throw new Error(
-                                `Scale on "${name}" expects a domain array.`
-                            );
-                        }
-                        this._setUniformValue(domainUniformName, value);
+                    const domainLength = stopInfo?.domainLength ?? 2;
+                    const normalizeDomain =
+                        scaleDef.normalizeDomain ??
+                        (({ name, domain, domainLength: expectedLength }) => {
+                            if (!Array.isArray(domain)) {
+                                throw new Error(
+                                    `Scale on "${name}" expects a domain array.`
+                                );
+                            }
+                            if (
+                                expectedLength &&
+                                domain.length !== expectedLength
+                            ) {
+                                throw new Error(
+                                    `Scale domain for "${name}" expects ${expectedLength} entries, got ${domain.length}.`
+                                );
+                            }
+                            return domain;
+                        });
+                    const normalized = normalizeDomain({
+                        name,
+                        scale,
+                        domain: value,
+                        domainLength,
+                    });
+                    if (!normalized) {
                         return;
                     }
-                    if (!Array.isArray(value)) {
-                        throw new Error(
-                            `Scale on "${name}" expects a domain array.`
-                        );
-                    }
-                    const domain = value;
-                    if (domain.length === 3) {
-                        this._setUniformValue(domainUniformName, [
-                            domain[0],
-                            domain[1],
-                            domain[2],
-                        ]);
-                        return;
-                    }
-                    if (domain.length === 2) {
-                        this._setUniformValue(
-                            domainUniformName,
-                            packHighPrecisionDomain(domain[0], domain[1])
-                        );
-                        return;
-                    }
-                    throw new Error(
-                        `Scale domain for "${name}" must have 2 or 3 entries for "${channel.scale.type}" scales.`
-                    );
+                    this._setUniformValue(domainUniformName, normalized);
                 };
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
                         throw new Error(
                             `Scale on "${name}" expects a range array.`
+                        );
+                    }
+                    if (
+                        stopInfo?.rangeLength &&
+                        value.length !== stopInfo.rangeLength
+                    ) {
+                        throw new Error(
+                            `Scale range for "${name}" expects ${stopInfo.rangeLength} entries, got ${value.length}.`
                         );
                     }
                     this._setUniformValue(rangeUniformName, value);
