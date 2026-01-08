@@ -127,26 +127,30 @@ defaults to `1`, so pass an explicit value when you want a different count.
 
 `createMark` returns slot handles that let you update scales and dynamic values
 without string lookups. Slots are prevalidated at mark creation; updates are
-lean and do not re-run full validation.
+lean and do not re-run full validation. A slot group exists only when you
+define a scale or dynamic value for that channel, so you can treat it as
+present in your own mark configs.
 
 ```js
 const { scales, values, selections } = renderer.createMark("point", {
     channels: { ... },
 });
 
-const xScale = scales.x;
 const brushColor = scales.color.conditions.brush;
 const brush = selections.brush;
 
-xScale.setDomain([0, 10]);
+scales.x.setDomain([0, 10]);
 brushColor.setRange(["#000", "#f00"]);
 values.size.set(4);
 brush.set(0, 10);
 ```
 
-Slots exist only for dynamic values and channels with scales. `default` refers
-to the unconditional branch of a channel. Conditional slots are keyed by
-selection name (`conditions.brush`, etc.).
+`default` refers to the unconditional branch of a channel. The group also
+exposes `setDomain`/`setRange` (or `set`) convenience methods that forward to
+the default slot, so `scales.x.setDomain(...)` and `scales.x.default.setDomain(...)`
+are equivalent. Conditional slots are keyed by selection name
+(`conditions.brush`, etc.) and always refer to the branch guarded by that
+selection.
 
 ## Series Buffer Sharing
 
