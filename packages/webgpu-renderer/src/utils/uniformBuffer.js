@@ -34,7 +34,7 @@ export class UniformBuffer {
      * Write a uniform value by name, enforcing component/array expectations.
      *
      * @param {string} name
-     * @param {number|number[]|Array<number|number[]>} value
+     * @param {number|ArrayLike<number>|Array<number|number[]>} value
      */
     setValue(name, value) {
         const entry = this.entries.get(name);
@@ -42,31 +42,38 @@ export class UniformBuffer {
             return;
         }
         if (entry.arrayLength != null) {
-            if (!Array.isArray(value)) {
+            const isArrayLike =
+                Array.isArray(value) || ArrayBuffer.isView(value);
+            if (!isArrayLike) {
                 throw new Error(`Uniform "${name}" expects an array value`);
             }
-            if (value.length !== entry.arrayLength) {
+            const arrayValue = /** @type {ArrayLike<number|number[]>} */ (
+                value
+            );
+            if (arrayValue.length !== entry.arrayLength) {
                 throw new Error(
                     `Uniform "${name}" expects ${entry.arrayLength} elements`
                 );
             }
             const stride = entry.stride ?? 16;
             for (let i = 0; i < entry.arrayLength; i++) {
-                const element = value[i];
+                const element = arrayValue[i];
                 const baseOffset = entry.offset + i * stride;
                 this._writeElement(entry, baseOffset, element);
             }
             return;
         }
         const components = entry.components;
-        if (Array.isArray(value)) {
-            if (value.length !== components) {
+        const isArrayLike = Array.isArray(value) || ArrayBuffer.isView(value);
+        if (isArrayLike) {
+            const vectorValue = /** @type {ArrayLike<number>} */ (value);
+            if (vectorValue.length !== components) {
                 throw new Error(
                     `Uniform "${name}" expects ${components} components`
                 );
             }
             for (let i = 0; i < components; i++) {
-                const component = value[i];
+                const component = vectorValue[i];
                 if (typeof component !== "number") {
                     throw new Error(
                         `Uniform "${name}" expects ${components} components`
@@ -80,7 +87,8 @@ export class UniformBuffer {
                     `Uniform "${name}" expects ${components} components`
                 );
             }
-            this._writeScalar(entry, entry.offset, value ?? 0);
+            const scalarValue = /** @type {number} */ (value);
+            this._writeScalar(entry, entry.offset, scalarValue ?? 0);
             for (let i = 1; i < components; i++) {
                 this._writeScalar(entry, entry.offset + i * 4, 0);
             }

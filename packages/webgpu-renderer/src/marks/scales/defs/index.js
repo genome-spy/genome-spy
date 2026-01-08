@@ -190,7 +190,10 @@ function emitIndexScale({
  * @returns {import("../../../index.d.ts").ScaleStopNormalizeResult}
  */
 function normalizeIndexStops({ name, scale, getDefaultScaleRange }) {
-    const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
+    const domain =
+        Array.isArray(scale.domain) || ArrayBuffer.isView(scale.domain)
+            ? /** @type {ArrayLike<number>} */ (scale.domain)
+            : [0, 1];
     const range = Array.isArray(scale.range)
         ? scale.range
         : (getDefaultScaleRange(name) ?? [0, 1]);
@@ -225,14 +228,15 @@ function normalizeIndexStops({ name, scale, getDefaultScaleRange }) {
  * @returns {number[]}
  */
 function normalizeIndexDomain({ name, scale, domain }) {
-    if (!Array.isArray(domain)) {
+    if (!Array.isArray(domain) && !ArrayBuffer.isView(domain)) {
         throw new Error(`Scale on "${name}" expects a domain array.`);
     }
-    if (domain.length === 3) {
-        return [domain[0], domain[1], domain[2]];
+    const domainValues = /** @type {ArrayLike<number>} */ (domain);
+    if (domainValues.length === 3) {
+        return [domainValues[0], domainValues[1], domainValues[2]];
     }
-    if (domain.length === 2) {
-        return packHighPrecisionDomain(domain[0], domain[1]);
+    if (domainValues.length === 2) {
+        return packHighPrecisionDomain(domainValues[0], domainValues[1]);
     }
     throw new Error(
         `Scale domain for "${name}" must have 2 or 3 entries for "${scale.type}" scales.`

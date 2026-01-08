@@ -43,7 +43,7 @@ export class ScaleResourceManager {
      * @param {GPUDevice} params.device
      * @param {Record<string, ChannelConfigResolved>} params.channels
      * @param {(name: string) => [number, number] | undefined} params.getDefaultScaleRange
-     * @param {(name: string, value: number|number[]|Array<number|number[]>) => void} params.setUniformValue
+     * @param {(name: string, value: number|ArrayLike<number>|Array<number|number[]>) => void} params.setUniformValue
      */
     constructor({ device, channels, getDefaultScaleRange, setUniformValue }) {
         this._device = device;
@@ -309,9 +309,42 @@ export class ScaleResourceManager {
         const stopInfo = stopKind ? this._getScaleStopInfo(name) : undefined;
         const domainUniformName = DOMAIN_PREFIX + name;
         const rangeUniformName = RANGE_PREFIX + name;
+        const defaultRange =
+            stopKind === "continuous"
+                ? this._getDefaultScaleRange(name)
+                : undefined;
         const outputComponents = analysis.outputComponents ?? 1;
         const outputType =
             outputComponents === 1 ? analysis.outputScalarType : "f32";
+        const interpolate = channel.scale?.interpolate;
+        /**
+         * @param {unknown} value
+         * @param {string} label
+         * @returns {ArrayLike<number>}
+         */
+        const coerceArrayLike = (value, label) => {
+            if (Array.isArray(value) || ArrayBuffer.isView(value)) {
+                return /** @type {ArrayLike<number>} */ (
+                    /** @type {unknown} */ (value)
+                );
+            }
+            throw new Error(label);
+        };
+        /**
+         * @param {unknown} value
+         * @returns {value is number[]}
+         */
+        const isNumericRange = (value) => {
+            if (!Array.isArray(value)) {
+                return false;
+            }
+            for (let i = 0; i < value.length; i++) {
+                if (typeof value[i] !== "number") {
+                    return false;
+                }
+            }
+            return true;
+        };
         const updateDomainMap = needsDomainMap
             ? /**
                * @param {unknown} value
@@ -358,26 +391,26 @@ export class ScaleResourceManager {
 
         if (stopKind) {
             if (stopKind === "continuous") {
+                const domainLength = stopInfo?.domainLength ?? 2;
+                const normalizeDomain =
+                    scaleDef.normalizeDomain ??
+                    (({ name, domain, domainLength: expectedLength }) => {
+                        const domainValues = coerceArrayLike(
+                            domain,
+                            `Scale on "${name}" expects a domain array.`
+                        );
+                        if (
+                            expectedLength &&
+                            domainValues.length !== expectedLength
+                        ) {
+                            throw new Error(
+                                `Scale domain for "${name}" expects ${expectedLength} entries, got ${domainValues.length}.`
+                            );
+                        }
+                        return domainValues;
+                    });
+                const expectedRangeLength = stopInfo?.rangeLength;
                 updateStopDomain = (value) => {
-                    const domainLength = stopInfo?.domainLength ?? 2;
-                    const normalizeDomain =
-                        scaleDef.normalizeDomain ??
-                        (({ name, domain, domainLength: expectedLength }) => {
-                            if (!Array.isArray(domain)) {
-                                throw new Error(
-                                    `Scale on "${name}" expects a domain array.`
-                                );
-                            }
-                            if (
-                                expectedLength &&
-                                domain.length !== expectedLength
-                            ) {
-                                throw new Error(
-                                    `Scale domain for "${name}" expects ${expectedLength} entries, got ${domain.length}.`
-                                );
-                            }
-                            return domain;
-                        });
                     const normalized = normalizeDomain({
                         name,
                         scale,
@@ -396,11 +429,11 @@ export class ScaleResourceManager {
                         );
                     }
                     if (
-                        stopInfo?.rangeLength &&
-                        value.length !== stopInfo.rangeLength
+                        expectedRangeLength &&
+                        value.length !== expectedRangeLength
                     ) {
                         throw new Error(
-                            `Scale range for "${name}" expects ${stopInfo.rangeLength} entries, got ${value.length}.`
+                            `Scale range for "${name}" expects ${expectedRangeLength} entries, got ${value.length}.`
                         );
                     }
                     this._setUniformValue(rangeUniformName, value);
@@ -411,22 +444,18 @@ export class ScaleResourceManager {
                         `Scale on "${name}" has no recorded stop sizes.`
                     );
                 }
+                const domainLength = stopInfo.domainLength;
+                const rangeLength = stopInfo.rangeLength;
+                const label =
+                    stopKind === "threshold" ? "Threshold" : "Piecewise";
                 updateStopDomain = (value) => {
-                    if (!Array.isArray(value) && !ArrayBuffer.isView(value)) {
+                    const domain = coerceArrayLike(
+                        value,
+                        `${label} scale on "${name}" expects a domain array.`
+                    );
+                    if (domain.length !== domainLength) {
                         throw new Error(
-                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects a domain array.`
-                        );
-                    }
-                    const domain = Array.isArray(value)
-                        ? value
-                        : Array.from(
-                              /** @type {ArrayLike<number>} */ (
-                                  /** @type {unknown} */ (value)
-                              )
-                          );
-                    if (domain.length !== stopInfo.domainLength) {
-                        throw new Error(
-                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.domainLength} domain entries, got ${domain.length}.`
+                            `${label} scale on "${name}" expects ${domainLength} domain entries, got ${domain.length}.`
                         );
                     }
                     this._setUniformValue(domainUniformName, domain);
@@ -434,18 +463,21 @@ export class ScaleResourceManager {
                 updateStopRange = (value) => {
                     if (!Array.isArray(value)) {
                         throw new Error(
-                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects a range array.`
+                            `${label} scale on "${name}" expects a range array.`
                         );
                     }
-                    const range = value;
-                    if (range.length !== stopInfo.rangeLength) {
+                    if (value.length !== rangeLength) {
                         throw new Error(
-                            `${stopKind === "threshold" ? "Threshold" : "Piecewise"} scale on "${name}" expects ${stopInfo.rangeLength} range entries, got ${range.length}.`
+                            `${label} scale on "${name}" expects ${rangeLength} range entries, got ${value.length}.`
                         );
+                    }
+                    if (outputComponents === 1 && isNumericRange(value)) {
+                        this._setUniformValue(rangeUniformName, value);
+                        return;
                     }
                     const normalized = normalizeDiscreteRange(
                         name,
-                        range,
+                        value,
                         outputComponents,
                         stopKind
                     );
@@ -487,7 +519,9 @@ export class ScaleResourceManager {
                       name,
                       /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
                           range
-                      )
+                      ),
+                      stopInfo?.rangeLength,
+                      interpolate
                   )
             : needsOrdinalRange
               ? (range) => {
@@ -502,13 +536,16 @@ export class ScaleResourceManager {
                         );
                     }
                     const rangeArray = range;
-                    const normalized = normalizeOrdinalRange(
-                        name,
-                        /** @type {Array<number|number[]|string>} */ (
-                            rangeArray
-                        ),
-                        outputComponents
-                    );
+                    const normalized =
+                        outputComponents === 1 && isNumericRange(rangeArray)
+                            ? rangeArray
+                            : normalizeOrdinalRange(
+                                  name,
+                                  /** @type {Array<number|number[]|string>} */ (
+                                      rangeArray
+                                  ),
+                                  outputComponents
+                              );
                     const data = this._buildOrdinalRangeBufferData(
                         normalized,
                         outputComponents,
@@ -530,7 +567,7 @@ export class ScaleResourceManager {
                       const effectiveRange =
                           range ??
                           (stopKind === "continuous"
-                              ? (this._getDefaultScaleRange(name) ?? range)
+                              ? (defaultRange ?? range)
                               : range);
                       if (!Array.isArray(effectiveRange)) {
                           throw new Error(
@@ -558,19 +595,16 @@ export class ScaleResourceManager {
     /**
      * @param {string} name
      * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} value
+     * @param {number | undefined} expectedRangeLength
+     * @param {import("../../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
      * @returns {boolean}
      */
-    _updateRangeTexture(name, value) {
-        const channel = this._channels[name];
-        if (!channel || !channel.scale) {
-            throw new Error(`Channel "${name}" does not use a color scale.`);
-        }
+    _updateRangeTexture(name, value, expectedRangeLength, interpolate) {
         /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */
         const normalizedRange =
             /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
                 value
             );
-        const sizes = this._getScaleStopInfo(name);
         let textureData;
         if (isRangeFunction(normalizedRange)) {
             textureData = createSchemeTexture(normalizedRange);
@@ -583,15 +617,18 @@ export class ScaleResourceManager {
             const colorStops = /** @type {Array<string|number[]>} */ (
                 normalizedRange
             );
-            if (sizes && colorStops.length !== sizes.rangeLength) {
+            if (
+                expectedRangeLength !== undefined &&
+                colorStops.length !== expectedRangeLength
+            ) {
                 throw new Error(
-                    `Scale on "${name}" expects ${sizes.rangeLength} range entries, got ${colorStops.length}.`
+                    `Scale on "${name}" expects ${expectedRangeLength} range entries, got ${colorStops.length}.`
                 );
             }
             textureData = createSchemeTexture({
                 scheme: colorStops,
                 mode: "interpolate",
-                interpolate: channel.scale.interpolate,
+                interpolate,
             });
         }
         if (!textureData) {

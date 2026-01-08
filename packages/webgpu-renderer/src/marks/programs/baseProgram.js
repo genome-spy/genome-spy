@@ -675,7 +675,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @param {number|number[]|Array<number|number[]>} value
+     * @param {number|ArrayLike<number>|Array<number|number[]>} value
      * @returns {void}
      */
     _setUniformValue(name, value) {
