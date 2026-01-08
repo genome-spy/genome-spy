@@ -94,7 +94,10 @@ export type SelectionSlotHandle =
       };
 
 export type ChannelSlotGroup<T> = Partial<T> & {
-    /** Default slot for the channel, when present. */
+    /**
+     * Default slot for the channel, when present. Convenience methods like
+     * `setDomain`, `setRange`, or `set` forward to this slot.
+     */
     default?: T;
     /** Conditional slots keyed by selection name. */
     conditions?: Record<string, T>;
