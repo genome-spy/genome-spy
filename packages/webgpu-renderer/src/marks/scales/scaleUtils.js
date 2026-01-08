@@ -1,9 +1,15 @@
+import { getScaleDef } from "./scaleDefs.js";
+
 /**
  * @param {import("../../index.d.ts").ChannelScale | undefined} scale
  * @returns {boolean}
  */
 export function isPiecewiseScale(scale) {
-    if (!scale || scale.type !== "linear") {
+    if (!scale) {
+        return false;
+    }
+    const def = getScaleDef(scale.type ?? "identity");
+    if (!def.resources.supportsPiecewise) {
         return false;
     }
     const domainLength = Array.isArray(scale.domain) ? scale.domain.length : 0;
