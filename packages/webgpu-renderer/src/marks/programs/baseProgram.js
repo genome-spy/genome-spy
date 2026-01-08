@@ -641,7 +641,9 @@ export default class BaseProgram {
                 updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
-                updater.updateRange(rangeValue);
+                if (rangeValue !== undefined) {
+                    updater.updateRange(rangeValue);
+                }
             }
             if (isValueChannelConfig(channel) && channel.scale) {
                 this._scaleResources.initializeScale(
@@ -653,7 +655,9 @@ export default class BaseProgram {
                 updater.updateDomain(channel.scale.domain);
                 const rangeValue =
                     channel.scale.range ?? this.getDefaultScaleRange(name);
-                updater.updateRange(rangeValue);
+                if (rangeValue !== undefined) {
+                    updater.updateRange(rangeValue);
+                }
             }
             if (isValueChannelConfig(channel) && channel.dynamic) {
                 this._setUniformValue(`u_${name}`, channel.value);
