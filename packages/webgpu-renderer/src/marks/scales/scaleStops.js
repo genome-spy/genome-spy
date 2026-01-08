@@ -3,7 +3,16 @@ import { isPiecewiseScale } from "./scaleUtils.js";
 import { getScaleDef, getScaleResourceRequirements } from "./scaleDefs.js";
 
 /**
+ * Scale stops are the per-scale domain/range arrays that shader helpers read
+ * from uniforms. Continuous scales use two-element stops, threshold scales use
+ * N domain breakpoints + N+1 range entries, and piecewise scales use matched
+ * domain/range arrays for segmented interpolation.
+ */
+
+/**
  * @typedef {import("../../index.d.ts").ScaleStopKind} ScaleStopKind
+ * @typedef {import("../../index.d.ts").ScaleStopLengths} ScaleStopLengths
+ * @typedef {import("../../index.d.ts").ScaleStopNormalizeResult} ScaleStopNormalizeResult
  */
 
 /**
@@ -29,6 +38,135 @@ export function getScaleStopKind(scale) {
 }
 
 /**
+ * @typedef {object} StopKindRules
+ * @property {string} label
+ * @property {(params: { name: string, scale: import("../../index.d.ts").ChannelScale }) => ScaleStopLengths} getLengths
+ * @property {(params: { name: string, scale: import("../../index.d.ts").ChannelScale, channel: import("../../index.d.ts").ChannelConfigResolved, getDefaultScaleRange: (name: string) => number[] | null | undefined, domainLength: number, rangeLength: number }) => ScaleStopNormalizeResult} normalizeStops
+ */
+
+/** @type {Record<ScaleStopKind, StopKindRules>} */
+const STOP_KIND_RULES = {
+    continuous: {
+        label: "Continuous",
+        getLengths: () => ({ domainLength: 2, rangeLength: 2 }),
+        normalizeStops: ({
+            name,
+            scale,
+            getDefaultScaleRange,
+            domainLength,
+            rangeLength,
+        }) => {
+            const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
+            const range = Array.isArray(scale.range)
+                ? scale.range
+                : (getDefaultScaleRange(name) ?? [0, 1]);
+            if (typeof range[0] !== "number" || typeof range[1] !== "number") {
+                throw new Error(`Scale range for "${name}" must be numeric.`);
+            }
+            const numericRange = /** @type {number[]} */ (range);
+            return {
+                domain: [domain[0] ?? 0, domain[1] ?? 1],
+                range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
+                domainLength,
+                rangeLength,
+            };
+        },
+    },
+    threshold: {
+        label: "Threshold",
+        getLengths: ({ name, scale }) => {
+            const domain = Array.isArray(scale.domain) ? scale.domain : [];
+            const range = Array.isArray(scale.range) ? scale.range : [];
+            if (domain.length === 0) {
+                throw new Error(
+                    `Threshold scale on "${name}" must define a non-empty domain.`
+                );
+            }
+            if (range.length < 2) {
+                throw new Error(
+                    `Threshold scale on "${name}" must define at least two range entries.`
+                );
+            }
+            if (range.length !== domain.length + 1) {
+                throw new Error(
+                    `Threshold scale on "${name}" requires range length of ${
+                        domain.length + 1
+                    }, got ${range.length}.`
+                );
+            }
+            return { domainLength: domain.length, rangeLength: range.length };
+        },
+        normalizeStops: ({
+            name,
+            scale,
+            channel,
+            domainLength,
+            rangeLength,
+        }) => {
+            const domain = /** @type {number[]} */ (scale.domain ?? []);
+            const range = normalizeDiscreteRange(
+                name,
+                /** @type {Array<number|number[]|string>|undefined} */ (
+                    scale.range
+                ),
+                channel.components ?? 1,
+                "threshold"
+            );
+            return { domain, range, domainLength, rangeLength };
+        },
+    },
+    piecewise: {
+        label: "Piecewise",
+        getLengths: ({ name, scale }) => {
+            const domain = Array.isArray(scale.domain) ? scale.domain : [];
+            const range = Array.isArray(scale.range) ? scale.range : [];
+            if (domain.length < 2) {
+                throw new Error(
+                    `Piecewise scale on "${name}" must define at least two domain entries.`
+                );
+            }
+            if (range.length < 2) {
+                throw new Error(
+                    `Piecewise scale on "${name}" must define at least two range entries.`
+                );
+            }
+            if (range.length !== domain.length) {
+                throw new Error(
+                    `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
+                );
+            }
+            return { domainLength: domain.length, rangeLength: range.length };
+        },
+        normalizeStops: ({
+            name,
+            scale,
+            channel,
+            domainLength,
+            rangeLength,
+        }) => {
+            const domain = /** @type {number[]} */ (scale.domain ?? []);
+            const range = normalizeDiscreteRange(
+                name,
+                /** @type {Array<number|number[]|string>|undefined} */ (
+                    scale.range
+                ),
+                channel.components ?? 1,
+                "piecewise"
+            );
+            return { domain, range, domainLength, rangeLength };
+        },
+    },
+};
+
+/**
+ * @param {ScaleStopKind} kind
+ * @returns {StopKindRules}
+ */
+function getStopKindRules(kind) {
+    return STOP_KIND_RULES[kind];
+}
+
+/**
  * @param {string} name
  * @param {ScaleStopKind} kind
  * @param {import("../../index.d.ts").ChannelScale} scale
@@ -42,50 +180,7 @@ export function getScaleStopLengths(name, kind, scale) {
             return lengths;
         }
     }
-    if (kind === "continuous") {
-        return { domainLength: 2, rangeLength: 2 };
-    }
-
-    const domain = Array.isArray(scale.domain) ? scale.domain : [];
-    const range = Array.isArray(scale.range) ? scale.range : [];
-
-    if (kind === "threshold") {
-        if (domain.length === 0) {
-            throw new Error(
-                `Threshold scale on "${name}" must define a non-empty domain.`
-            );
-        }
-        if (range.length < 2) {
-            throw new Error(
-                `Threshold scale on "${name}" must define at least two range entries.`
-            );
-        }
-        if (range.length !== domain.length + 1) {
-            throw new Error(
-                `Threshold scale on "${name}" requires range length of ${
-                    domain.length + 1
-                }, got ${range.length}.`
-            );
-        }
-        return { domainLength: domain.length, rangeLength: range.length };
-    }
-
-    if (domain.length < 2) {
-        throw new Error(
-            `Piecewise scale on "${name}" must define at least two domain entries.`
-        );
-    }
-    if (range.length < 2) {
-        throw new Error(
-            `Piecewise scale on "${name}" must define at least two range entries.`
-        );
-    }
-    if (range.length !== domain.length) {
-        throw new Error(
-            `Piecewise scale on "${name}" requires range length of ${domain.length}, got ${range.length}.`
-        );
-    }
-    return { domainLength: domain.length, rangeLength: range.length };
+    return getStopKindRules(kind).getLengths({ name, scale });
 }
 
 /**
@@ -131,45 +226,25 @@ export function normalizeScaleStops(
             return normalized;
         }
     }
-    const outputComponents = channel.components ?? 1;
+    if (rangeFn && !def.continuous) {
+        const label = getStopKindRules(kind).label;
+        throw new Error(
+            `${label} scale on "${name}" does not support interpolator ranges.`
+        );
+    }
     const { domainLength, rangeLength } = getScaleStopLengths(
         name,
         kind,
         scale
     );
-
-    if (kind === "continuous") {
-        const domain = Array.isArray(scale.domain) ? scale.domain : [0, 1];
-        const range = Array.isArray(scale.range)
-            ? scale.range
-            : (getDefaultScaleRange(name) ?? [0, 1]);
-        if (typeof range[0] !== "number" || typeof range[1] !== "number") {
-            throw new Error(`Scale range for "${name}" must be numeric.`);
-        }
-        const numericRange = /** @type {number[]} */ (range);
-        return {
-            domain: [domain[0] ?? 0, domain[1] ?? 1],
-            range: [numericRange[0] ?? 0, numericRange[1] ?? 1],
-            domainLength,
-            rangeLength,
-        };
-    }
-
-    const domain = /** @type {number[]} */ (scale.domain ?? []);
-    if (rangeFn && !def.continuous) {
-        const label = kind === "threshold" ? "Threshold" : "Piecewise";
-        throw new Error(
-            `${label} scale on "${name}" does not support interpolator ranges.`
-        );
-    }
-    const range = normalizeDiscreteRange(
+    return getStopKindRules(kind).normalizeStops({
         name,
-        /** @type {Array<number|number[]|string>|undefined} */ (scale.range),
-        outputComponents,
-        kind
-    );
-
-    return { domain, range, domainLength, rangeLength };
+        scale,
+        channel,
+        getDefaultScaleRange,
+        domainLength,
+        rangeLength,
+    });
 }
 
 /**
