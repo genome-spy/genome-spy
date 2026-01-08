@@ -384,6 +384,14 @@ export type ScaleStopNormalizeResult = {
     rangeLength: number;
 };
 
+/** Parameters passed to scale-specific domain normalization hooks. */
+export type ScaleDomainNormalizeParams = {
+    name: string;
+    scale: ChannelScale;
+    domain: unknown;
+    domainLength: number;
+};
+
 /** Parameters passed to scale-specific domain-map normalization hooks. */
 export type ScaleDomainMapParams = {
     name: string;
@@ -428,6 +436,12 @@ export type ScaleDef = {
     allowsU32InputOverride?: boolean;
 
     /**
+     * Whether the scale can accept packed u32 input (two components) while
+     * producing scalar output (used by the high-precision index scale).
+     */
+    allowsPackedScalarInput?: boolean;
+
+    /**
      * Optional WGSL snippet implementing the scale helpers (scaleLinear, etc).
      * This is stitched into the global shader prelude with dependencies.
      */
@@ -450,6 +464,11 @@ export type ScaleDef = {
     normalizeStops?: (
         params: ScaleStopNormalizeParams
     ) => ScaleStopNormalizeResult | undefined;
+
+    /** Optional hook for normalizing continuous domain values. */
+    normalizeDomain?: (
+        params: ScaleDomainNormalizeParams
+    ) => number[] | undefined;
 
     /** Optional hook for normalizing ordinal domain maps and related uniforms. */
     normalizeDomainMap?: (

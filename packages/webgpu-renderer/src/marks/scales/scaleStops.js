@@ -118,6 +118,7 @@ export function normalizeScaleStops(
     getDefaultScaleRange
 ) {
     const def = getScaleDef(scale.type ?? "identity");
+    const rangeFn = isRangeFunction(scale.range);
     if (def.normalizeStops) {
         const normalized = def.normalizeStops({
             name,
@@ -155,7 +156,7 @@ export function normalizeScaleStops(
     }
 
     const domain = /** @type {number[]} */ (scale.domain ?? []);
-    if (isRangeFunction(scale.range)) {
+    if (rangeFn && !def.continuous) {
         const label = kind === "threshold" ? "Threshold" : "Piecewise";
         throw new Error(
             `${label} scale on "${name}" does not support interpolator ranges.`
@@ -333,6 +334,7 @@ export function usesRangeTexture(scale, outputComponents) {
     if (!scale) {
         return false;
     }
+    const def = getScaleDef(scale.type ?? "identity");
     const rangeFn = isRangeFunction(scale.range);
     const colorRange = isColorRange(scale.range);
     const interpolateEnabled =
@@ -340,5 +342,5 @@ export function usesRangeTexture(scale, outputComponents) {
     if (!interpolateEnabled || outputComponents !== 4) {
         return false;
     }
-    return ["linear", "log", "pow", "sqrt", "symlog"].includes(scale.type);
+    return def.continuous;
 }
