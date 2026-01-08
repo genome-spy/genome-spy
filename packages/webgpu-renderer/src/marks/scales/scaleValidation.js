@@ -2,33 +2,6 @@ import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
 import { isScaleSupported } from "./scaleDefs.js";
 
 /**
- * @param {import("../../index.d.ts").ChannelConfigInput} channel
- * @param {boolean} rangeIsFunction
- * @param {boolean} rangeIsColor
- * @returns {boolean}
- */
-function isInterpolationEnabled(channel, rangeIsFunction, rangeIsColor) {
-    return (
-        rangeIsFunction ||
-        channel.scale?.interpolate !== undefined ||
-        rangeIsColor
-    );
-}
-
-/**
- * @param {import("../../index.d.ts").ScaleDef | undefined} scaleDef
- * @param {boolean} interpolateEnabled
- * @returns {boolean}
- */
-function allowsVectorOutput(scaleDef, interpolateEnabled) {
-    const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
-    return (
-        vectorOutputMode === "always" ||
-        (vectorOutputMode === "interpolated" && interpolateEnabled)
-    );
-}
-
-/**
  * @param {import("../../types.js").ScalarType} type
  * @returns {boolean}
  */
@@ -57,21 +30,17 @@ export function validateScaleConfig(name, channel, analysis) {
         scalarType,
         outputScalarType,
         scaleDef,
+        interpolateEnabled,
     } = resolved;
 
     if (scaleType !== "identity" && !isScaleSupported(scaleType)) {
         return `Channel "${name}" uses unsupported scale "${scaleType}".`;
     }
 
-    const interpolateEnabled = isInterpolationEnabled(
-        channel,
-        rangeIsFunction,
-        rangeIsColor
-    );
-    const allowsVectorOutputFlag = allowsVectorOutput(
-        scaleDef,
-        interpolateEnabled
-    );
+    const vectorOutputMode = scaleDef?.vectorOutput ?? "never";
+    const allowsVectorOutputFlag =
+        vectorOutputMode === "always" ||
+        (vectorOutputMode === "interpolated" && interpolateEnabled);
     const allowsScalarToVectorOutput =
         allowsVectorOutputFlag && allowsScalarToVector;
     const vectorOutputAllowed =
@@ -129,7 +98,7 @@ export function validateScaleConfig(name, channel, analysis) {
         inputComponents === 2 &&
         outputComponents === 1 &&
         scalarType === "u32" &&
-        scaleType === "index";
+        Boolean(scaleDef?.allowsPackedScalarInput);
     if (
         inputComponents > 1 &&
         scalarType !== "f32" &&

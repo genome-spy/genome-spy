@@ -132,6 +132,120 @@ definition in `scales/defs/*`, with shared helpers in `scaleEmitUtils.js` and
   moving scale-specific validation into the per-scale files exclusively and
   keeping `scaleValidation.js` limited to shared checks.
 
+### Codebase review: findings & opportunities
+
+Findings (issues to address):
+- **Selections lack GPU/integration tests** — codegen tests exist, but there is
+  no GPU coverage for predicate evaluation + resource updates across the three
+  selection types. Add at least one GPU test per selection type.
+- **Scale rules are spread across multiple files** — `channelAnalysis.js`,
+  `scaleValidation.js`, `scaleStops.js`, and `scaleResources.js` each encode
+  pieces of scale behavior; drift is likely.
+- **Per‑update work still allocates** — range/domain setters still normalize
+  data and (re)compute stop data; for per‑frame updates this risks GC churn.
+- **Text rendering lacks GPU tests** — only layout tests exist; sampling +
+  alignment is unverified at the GPU level.
+- **`ordinalDomain.js` naming is misleading** — it is mostly validation, not
+  normalization; rename or split validation/normalization helpers.
+
+Opportunities (cleanup/structure):
+- **Centralize scale capabilities in `ScaleDef`** — derive output rules,
+  vector output, stop kinds, and resource needs directly from defs to reduce
+  scattered checks.
+- **Make setters minimal** — preallocate typed arrays for stops/range positions
+  and have setters only copy values and flag dirty state.
+- **Add GPU tests for non‑scale marks** — text/rule/point smoke tests that
+  validate basic output colors/coverage to prevent regressions.
+- **Formalize a “scale toolkit” module** — consolidate shared math/validation
+  helpers so per‑scale files stay concise.
+
+#### Plan: consolidate scale rules (detailed)
+
+Goal: make `ScaleDef` the single source of truth for what a scale accepts,
+emits, and requires, so `channelAnalysis.js`, `scaleValidation.js`,
+`scaleStops.js`, and `scaleResources.js` only query metadata and avoid
+scale-type conditionals.
+
+1. **Extend `ScaleDef` metadata**
+   - Add/confirm fields: `input` (numeric/u32/any), `output`
+     (scalar type resolver), `vectorOutput` (never/always/interpolated),
+     `resources` (stopKind, needsDomainMap, needsOrdinalRange), `stopRules`
+     (min/max lengths, piecewise behavior), `rangePolicy`
+     (allowsColor, allowsFunction, requiresVec4).
+   - File: `src/marks/scales/scaleDefs.js` + per-scale defs in
+     `src/marks/scales/defs/*`.
+
+2. **Refactor `channelAnalysis.js`**
+   - Replace local logic (`rangeIsFunction`, `rangeIsColor`,
+     `interpolateEnabled`, `allowsScalarToVector`) with helper accessors that
+     read `ScaleDef`.
+   - Keep only data-shape decisions (inputComponents/outputComponents) and
+     channel source kind.
+
+3. **Refactor `scaleValidation.js`**
+   - Reduce to shared validation that is independent of scale type and then
+     delegate scale-specific checks to `ScaleDef.validate`.
+   - Avoid recomputing interpolate/vec4 logic here; use `ScaleDef` rules.
+
+4. **Refactor `scaleStops.js`**
+   - Remove scale-type checks (e.g., band/index) and derive stop handling from
+     `ScaleDef.resources.stopKind` and `ScaleDef.stopRules`.
+   - Keep only data-shape/length normalization and piecewise packing.
+
+5. **Refactor `scaleResources.js`**
+   - Replace any scale-type or rule checks with `ScaleDef.resources` lookups.
+   - Ensure setters only use precomputed `ScaleDef` metadata and do not
+     recompute range/stop policies.
+
+6. **Update tests**
+   - Add unit tests for `ScaleDef` metadata invariants (e.g., vector output
+     rules for scales with function ranges).
+   - Update `scaleValidation.test.js` (if added) and `scaleStops.test.js` to
+     assert behavior is driven by defs, not type checks.
+
+7. **Cleanup**
+   - Remove duplicated helpers (e.g., `allowsVectorOutput` logic) after
+     consolidation.
+   - Document the final `ScaleDef` contract for custom scales.
+
+#### Plan: minimal work per slot setter (detailed)
+
+Goal: ensure domain/range updates only copy data into preallocated buffers and
+set dirty flags, avoiding normalization/rebuild work on hot paths.
+
+1. **Precompute per-slot handlers**
+   - When a scale slot is created, bind a tiny `set` function that captures:
+     uniform offsets, typed array views, range texture writer, and any fixed
+     lengths.
+   - File: `src/marks/programs/scaleResources.js`.
+
+2. **Preallocate scratch storage**
+   - Allocate reusable typed arrays for stop arrays, range positions, and
+     domain maps per slot (or per scale) rather than per update call.
+   - File: `src/marks/scales/scaleStops.js`, `src/marks/scales/ordinalDomain.js`.
+
+3. **Move normalization to initialization**
+   - Normalize static inputs (e.g., domain length, range color conversion,
+     stop count) during `initializeScale` and store results on the slot.
+   - Keep update-time logic to direct copies into the precomputed layouts.
+
+4. **Split “validate vs. copy” paths**
+   - Move validation into the slot creation phase (and keep minimal
+     shape/length checks on updates).
+   - For dynamic updates, only enforce invariants that prevent buffer
+     corruption (length/stride/type), not semantic validation.
+
+5. **Range texture updates**
+   - Pre-bind the texture writer with the row/offset for each slot so the
+     setter can call a single copy helper without recomputing placement.
+   - File: `src/marks/programs/scaleResources.js`,
+     `src/utils/webgpuTextureUtils.js`.
+
+6. **Tests + perf check**
+   - Add a unit test that asserts setters do not allocate (reuse buffers).
+   - Add a microbenchmark or GPU test that updates ranges in a tight loop and
+     verifies no rebinds are triggered.
+
 ### Binding mitigation (storage buffer limit = 8)
 
 We already hit the vertex-stage storage buffer cap. Mitigation options are

@@ -141,6 +141,7 @@ export const indexScaleDef = {
     continuous: false,
     vectorOutput: "never",
     allowsU32InputOverride: true,
+    allowsPackedScalarInput: true,
     wgsl: indexWgsl,
     resources: {
         stopKind: "continuous",
@@ -150,6 +151,7 @@ export const indexScaleDef = {
     // Domain uses vec3<f32>: split start (xy) + span (z).
     getStopLengths: () => ({ domainLength: 3, rangeLength: 2 }),
     normalizeStops: normalizeIndexStops,
+    normalizeDomain: normalizeIndexDomain,
     emit: emitIndexScale,
 };
 
@@ -216,4 +218,23 @@ function normalizeIndexStops({ name, scale, getDefaultScaleRange }) {
         domainLength: 3,
         rangeLength: 2,
     };
+}
+
+/**
+ * @param {import("../../../index.d.ts").ScaleDomainNormalizeParams} params
+ * @returns {number[]}
+ */
+function normalizeIndexDomain({ name, scale, domain }) {
+    if (!Array.isArray(domain)) {
+        throw new Error(`Scale on "${name}" expects a domain array.`);
+    }
+    if (domain.length === 3) {
+        return [domain[0], domain[1], domain[2]];
+    }
+    if (domain.length === 2) {
+        return packHighPrecisionDomain(domain[0], domain[1]);
+    }
+    throw new Error(
+        `Scale domain for "${name}" must have 2 or 3 entries for "${scale.type}" scales.`
+    );
 }
