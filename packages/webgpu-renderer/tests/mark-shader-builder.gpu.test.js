@@ -11,7 +11,10 @@ import { color as d3color } from "d3-color";
 import { interpolateHcl } from "d3-interpolate";
 import { scaleLinear } from "d3-scale";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
-import { buildPackedSeriesLayout } from "../src/marks/programs/packedSeriesLayout.js";
+import {
+    buildPackedSeriesLayout,
+    packSeriesArrays,
+} from "../src/marks/programs/packedSeriesLayout.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import {
     buildHashTableMap,
@@ -1109,6 +1112,157 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
     });
 
     expect(output).toEqual([0, 1, 1, 0]);
+});
+
+test("markShaderBuilder applies single selections to conditional values", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const ids = new Uint32Array([10, 11, 12, 13]);
+    const channels = {
+        uniqueId: {
+            data: ids,
+            type: "u32",
+            components: 1,
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "picked",
+                        type: "single",
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelection_picked", type: "u32", components: 1 },
+    ];
+    const selectionDefs = [{ name: "picked", type: "single" }];
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        selectionDefs,
+        outputType: "f32",
+        outputLength: ids.length,
+        channelName: "fill",
+    });
+    const bindings = mapBindings(result);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesU32"
+    )?.binding;
+    if (seriesBinding == null) {
+        throw new Error("Series binding for uniqueId was not generated.");
+    }
+
+    const uniformData = buildUniformData(uniformLayout, {
+        uSelection_picked: 12,
+    });
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData,
+        seriesBuffers: [{ binding: seriesBinding, data: ids }],
+        outputBinding: result.outputBinding,
+        outputLength: ids.length,
+        outputComponents: 1,
+    });
+
+    expect(output).toEqual([0, 0, 1, 0]);
+});
+
+test("markShaderBuilder applies interval selections over ranged channels", async ({
+    page,
+}) => {
+    await ensureWebGPU(page);
+
+    const x = new Float32Array([0, 1, 2, 3]);
+    const x2 = new Float32Array([1, 2, 3, 4]);
+    const channels = {
+        x: {
+            data: x,
+            type: "f32",
+            components: 1,
+        },
+        x2: {
+            data: x2,
+            type: "f32",
+            components: 1,
+        },
+        fill: {
+            value: 0,
+            type: "f32",
+            components: 1,
+            conditions: [
+                {
+                    when: {
+                        selection: "span",
+                        type: "interval",
+                        channel: "x",
+                        secondaryChannel: "x2",
+                    },
+                    value: 1,
+                },
+            ],
+        },
+    };
+    const uniformLayout = [
+        { name: "uSelection_span", type: "f32", components: 2 },
+    ];
+    const selectionDefs = [
+        {
+            name: "span",
+            type: "interval",
+            channel: "x",
+            secondaryChannel: "x2",
+            scalarType: "f32",
+        },
+    ];
+    const packed = packSeriesArrays({
+        channels,
+        channelSpecs: {},
+        layout: buildPackedSeriesLayout(channels, {}),
+        count: x.length,
+    });
+    if (!packed.f32) {
+        throw new Error("Packed f32 series buffer was not generated.");
+    }
+
+    const result = buildComputeShader({
+        channels,
+        uniformLayout,
+        selectionDefs,
+        outputType: "f32",
+        outputLength: x.length,
+        channelName: "fill",
+    });
+    const bindings = mapBindings(result);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
+    )?.binding;
+    if (seriesBinding == null) {
+        throw new Error("Series binding for x/x2 was not generated.");
+    }
+
+    const uniformData = buildUniformData(uniformLayout, {
+        uSelection_span: [2.5, 4.5],
+    });
+    const output = await runMarkShaderCompute(page, {
+        shaderCode: result.shaderCode,
+        uniformData,
+        seriesBuffers: [{ binding: seriesBinding, data: packed.f32 }],
+        outputBinding: result.outputBinding,
+        outputLength: x.length,
+        outputComponents: 1,
+    });
+
+    expect(output).toEqual([0, 0, 1, 1]);
 });
 
 test("markShaderBuilder applies multi selections via hash tables", async ({
