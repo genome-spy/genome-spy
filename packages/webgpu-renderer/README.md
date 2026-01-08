@@ -29,6 +29,43 @@ monorepo to satisfy GenomeSpy’s requirements, but it may grow beyond them.
   value is inlined into WGSL to enable shader optimizations.
 - **Scales** run on the GPU. Domains and ranges are updated per mark.
 
+## Scales (d3 Mental Model)
+
+Scales follow d3/Vega-Lite semantics, but they are not d3 objects. The renderer
+compiles scale logic into WGSL and updates GPU resources directly.
+
+Similarities:
+- Same core families: `linear`, `log`, `pow`, `sqrt`, `symlog`, `identity`,
+  `band`, `threshold`, `quantize`, `ordinal`.
+- `domain` and `range` have the same intent as in d3.
+- Clamping and rounding mirror d3 behavior for continuous scales.
+- `scaleSequential` is represented as a continuous scale with an interpolator
+  range (a color ramp texture is generated and sampled in WGSL).
+
+Differences:
+- No runtime scale objects or methods like `ticks`, `nice`, or `invert`; those
+  are outside the renderer’s scope.
+- Categorical domains are explicit `u32` arrays (string categories are
+  preprocessed by the caller); values may be sparse, so ordinal/band use a GPU
+  hash map to remap them.
+- Piecewise/threshold stop counts are fixed at pipeline creation time; changing
+  the number of stops requires a new mark.
+- `index` is a renderer-specific scale for large, ordered integer domains (for
+  example, genomic coordinates). It behaves like a band scale over an integer
+  axis but does not require an explicit categorical domain list, making it
+  suitable for huge index spaces and smooth zoom/pan windows. Domain values are
+  supplied as JS numbers (effectively f64) to preserve precision when updating
+  the window. See [High-Precision Index Scale](#high-precision-index-scale).
+
+### Why GPU Scales?
+
+Running scales on the GPU avoids per‑frame CPU recomputation when domains or
+ranges change and keeps columnar data resident on the device for large, highly
+interactive datasets. It also enables conditional encoding (selections) to run
+directly in shaders without CPU-side filtering, and supports high‑precision
+mapping of very large integer indices (for example, genomic coordinates)
+without expanding vertices on the CPU.
+
 ## API (Public Surface)
 
 - `createRenderer(canvas, options)`
@@ -147,6 +184,10 @@ starts for smooth zooming/panning.
 - **u32 series:** use `Uint32Array` and `inputComponents: 1`.
 - **Large indices:** pass `Float64Array` series with `inputComponents: 2`.
   The renderer packs values into `[hi, lo]` u32 pairs internally.
+
+This is designed for genome-scale coordinates (for example, human-sized
+genomes and much larger ones such as axolotl or wheat), where integer indices
+exceed the precision of f32.
 
 Domain updates accept JS numbers. For advanced usage, you can pre-pack domains
 or series with the helpers exported from `src/index.js`:
