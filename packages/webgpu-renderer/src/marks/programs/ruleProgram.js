@@ -52,6 +52,7 @@ struct VSOut {
     @location(5) @interpolate(flat) strokeCap: u32,
     @location(6) @interpolate(flat) dashIndex: u32,
     @location(7) @interpolate(flat) dashOffset: f32,
+    @location(8) @interpolate(flat) pickId: u32,
 };
 
 @vertex
@@ -135,11 +136,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.strokeCap = strokeCap;
     out.dashIndex = u32(getScaled_strokeDash(i));
     out.dashOffset = f32(getScaled_strokeDashOffset(i));
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
+    out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 
-@fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn shade(in: VSOut) -> vec4<f32> {
     let distanceFromEnd = -min(in.posInPixels.x, in.posInPixels.y);
     var distance: f32;
     if (distanceFromEnd > 0.0 && in.strokeCap == ROUND) {
@@ -160,6 +164,11 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let alpha = clamp(((in.halfWidth - distance) * globals.dpr) + 0.5, 0.0, 1.0);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
     return color * alpha * dash;
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    return shade(in);
 }
 `;
 
