@@ -3,7 +3,7 @@ import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
 import {
     buildPackedSeriesLayout,
     packSeriesArrays,
-} from "../src/marks/programs/packedSeriesLayout.js";
+} from "../src/marks/programs/internal/packedSeriesLayout.js";
 import { buildUniformData } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;

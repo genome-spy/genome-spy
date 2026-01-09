@@ -4,10 +4,10 @@ import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
-} from "../../wgsl/prefixes.js";
+} from "../../../wgsl/prefixes.js";
 
 /**
- * @param {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels
+ * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
  * @returns {{ manager: ScaleResourceManager, uniforms: Map<string, number[] | number> }}
  */
 function createManager(channels) {
@@ -60,7 +60,7 @@ function createManager(channels) {
 describe("ScaleResourceManager", () => {
     it("updates band domains and writes domain map buffers", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 x: {
                     data: new Uint32Array([0, 1]),
                     type: "u32",
@@ -90,7 +90,7 @@ describe("ScaleResourceManager", () => {
 
     it("updates ordinal ranges and writes range buffers", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 fill: {
                     data: new Uint32Array([0]),
                     type: "u32",

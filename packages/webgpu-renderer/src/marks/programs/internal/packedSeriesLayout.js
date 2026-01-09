@@ -1,11 +1,11 @@
-import { isSeriesChannelConfig } from "../../types.js";
-import { packHighPrecisionU32ArrayInto } from "../../utils/highPrecision.js";
+import { isSeriesChannelConfig } from "../../../types.js";
+import { packHighPrecisionU32ArrayInto } from "../../../utils/highPrecision.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../../index.d.ts").TypedArray} TypedArray
- * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
- * @typedef {import("../../types.js").ScalarType} ScalarType
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
+ * @typedef {import("../../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+ * @typedef {import("../../../types.js").ScalarType} ScalarType
  *
  * @typedef {object} PackedSeriesLayoutEntry
  * @prop {string} name

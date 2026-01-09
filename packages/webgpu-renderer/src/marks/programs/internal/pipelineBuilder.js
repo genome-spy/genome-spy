@@ -1,16 +1,16 @@
-import { buildMarkShader } from "../shaders/markShaderBuilder.js";
+import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
 
 /**
  * @typedef {object} PipelineBuildParams
  * @property {GPUDevice} device
  * @property {GPUBindGroupLayout} globalBindGroupLayout
  * @property {GPUTextureFormat} format
- * @property {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels
- * @property {Array<{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
+ * @property {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
+ * @property {Array<{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }>} uniformLayout
  * @property {string} shaderBody
- * @property {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
- * @property {Array<{ name: string, type: import("../../index.d.ts").SelectionType, channel?: string, secondaryChannel?: string, scalarType?: import("../../types.js").ScalarType }>} [selectionDefs]
- * @property {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
+ * @property {Map<string, import("./packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
+ * @property {Array<{ name: string, type: import("../../../index.d.ts").SelectionType, channel?: string, secondaryChannel?: string, scalarType?: import("../../../types.js").ScalarType }>} [selectionDefs]
+ * @property {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  * @property {GPUPrimitiveTopology} [primitiveTopology]
  *
  * @typedef {object} PipelineBuildResult

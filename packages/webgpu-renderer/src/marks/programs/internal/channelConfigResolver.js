@@ -1,25 +1,25 @@
-import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
-import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import { validateScaleConfig } from "../scales/scaleValidation.js";
+import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
+import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
+import { validateScaleConfig } from "../../scales/scaleValidation.js";
 
 /**
  * Input shape for channel configs as provided by callers.
  *
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
- * @typedef {import("../../index.d.ts").ConditionalChannelConfigInput} ConditionalChannelConfigInput
- * @typedef {import("../../index.d.ts").ChannelCondition} ChannelCondition
+ * @typedef {import("../../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../../index.d.ts").ConditionalChannelConfigInput} ConditionalChannelConfigInput
+ * @typedef {import("../../../index.d.ts").ChannelCondition} ChannelCondition
  */
 
 /**
  * Normalized channel config after defaults/validation are applied.
  *
- * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
  */
 
 /**
  * Static channel metadata (types/components/scale rules).
  *
- * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+ * @typedef {import("../../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
  */
 
 /**

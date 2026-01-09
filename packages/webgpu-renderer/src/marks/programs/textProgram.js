@@ -1,4 +1,4 @@
-import BaseProgram from "./baseProgram.js";
+import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import { buildTextLayout } from "../../fonts/layout.js";
 import BmFontManager from "../../fonts/bmFontManager.js";
@@ -30,10 +30,10 @@ import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
  */
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
- * @typedef {import("../../index.d.ts").TextChannels} TextChannels
- * @typedef {import("../../index.d.ts").TextStringChannelConfigInput} TextStringChannelConfigInput
- * @typedef {import("../../index.d.ts").TypedArray} TypedArray
+ * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.js").TextChannels} TextChannels
+ * @typedef {import("../../index.js").TextStringChannelConfigInput} TextStringChannelConfigInput
+ * @typedef {import("../../index.js").TypedArray} TypedArray
  * @typedef {ReturnType<BmFontManager["getFont"]>} FontEntry
  * @typedef {number|"thin"|"light"|"regular"|"normal"|"medium"|"bold"|"black"} FontWeightInput
  */
@@ -626,7 +626,7 @@ function expandTextSeriesArrays(channels, stringIndex, stringCount) {
 export default class TextProgram extends BaseProgram {
     /**
      * @param {import("../../renderer.js").Renderer} renderer
-     * @param {import("../../index.d.ts").MarkConfig<"text">} config
+     * @param {import("../../index.js").MarkConfig<"text">} config
      */
     constructor(renderer, config) {
         const { normalized, textLayout, fontEntry } =
