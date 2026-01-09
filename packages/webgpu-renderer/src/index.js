@@ -1,6 +1,6 @@
 export { createRenderer } from "./renderer.js";
 export { RendererError } from "./renderer.js";
-export { setDebugResourcesEnabled } from "./marks/programs/baseProgram.js";
+export { setDebugResourcesEnabled } from "./marks/programs/internal/baseProgram.js";
 export { registerScaleDef } from "./marks/scales/scaleDefs.js";
 export {
     emitContinuousScale,

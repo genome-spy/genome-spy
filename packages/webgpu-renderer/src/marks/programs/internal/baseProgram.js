@@ -1,5 +1,5 @@
-import { isSeriesChannelConfig, isValueChannelConfig } from "../../types.js";
-import { UniformBuffer } from "../../utils/uniformBuffer.js";
+import { isSeriesChannelConfig, isValueChannelConfig } from "../../../types.js";
+import { UniformBuffer } from "../../../utils/uniformBuffer.js";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 import { buildBindGroup } from "./bindGroupBuilder.js";
 import { ScaleResourceManager } from "./scaleResources.js";
@@ -23,14 +23,14 @@ export function setDebugResourcesEnabled(enabled) {
  */
 export default class BaseProgram {
     /**
-     * @typedef {import("../../index.d.ts").TypedArray} TypedArray
-     * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
-     * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
-     * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+     * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
+     * @typedef {import("../../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+     * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+     * @typedef {import("../../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
      */
 
     /**
-     * @param {import("../../renderer.js").Renderer} renderer
+     * @param {import("../../../renderer.js").Renderer} renderer
      * @param {{ channels: Record<string, ChannelConfigInput>, count?: number, [key: string]: unknown }} config
      */
     constructor(renderer, config) {
@@ -72,7 +72,7 @@ export default class BaseProgram {
         /** @type {{ name: string, role: "series"|"ordinalRange"|"domainMap"|"rangeTexture"|"rangeSampler"|"extraTexture"|"extraSampler"|"extraBuffer" }[]} */
         this._resourceLayout = [];
 
-        /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
+        /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         this._uniformLayout = [];
 
         /** @type {UniformBuffer | null} */
@@ -84,7 +84,7 @@ export default class BaseProgram {
         /** @type {Map<string, GPUBuffer>} */
         this._extraBuffers = new Map();
 
-        /** @type {{ scales: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../index.d.ts").SelectionSlotHandle> }} */
+        /** @type {{ scales: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../../index.d.ts").SelectionSlotHandle> }} */
         this._slotHandles = { scales: {}, values: {}, selections: {} };
 
         // Build a per-mark uniform layout. The layout can differ between marks,
@@ -177,7 +177,7 @@ export default class BaseProgram {
     /**
      * Extra per-mark uniform fields (not tied to channels).
      *
-     * @returns {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]}
+     * @returns {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]}
      */
     getExtraUniformLayout() {
         return [];
@@ -186,7 +186,7 @@ export default class BaseProgram {
     /**
      * Extra bind group resources (not tied to channels).
      *
-     * @returns {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]}
+     * @returns {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]}
      */
     getExtraResourceDefs() {
         return [];
@@ -381,7 +381,7 @@ export default class BaseProgram {
     /**
      * Slot handles for scale/value/selection updates (default + conditional branches).
      *
-     * @returns {{ scales: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../index.d.ts").SelectionSlotHandle> }}
+     * @returns {{ scales: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>, values: Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>, selections: Record<string, import("../../../index.d.ts").SelectionSlotHandle> }}
      */
     getSlotHandles() {
         return this._slotHandles;
@@ -403,9 +403,9 @@ export default class BaseProgram {
         }
 
         /**
-         * @param {Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>>} map
+         * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>>} map
          * @param {string} name
-         * @returns {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>}
+         * @returns {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>}
          */
         const ensureScaleGroup = (map, name) => {
             if (!map[name]) {
@@ -415,9 +415,9 @@ export default class BaseProgram {
         };
 
         /**
-         * @param {Record<string, import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>>} map
+         * @param {Record<string, import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>>} map
          * @param {string} name
-         * @returns {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>}
+         * @returns {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>}
          */
         const ensureValueGroup = (map, name) => {
             if (!map[name]) {
@@ -427,8 +427,8 @@ export default class BaseProgram {
         };
 
         /**
-         * @param {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ScaleSlotHandle>} group
-         * @param {import("../../index.d.ts").ScaleSlotHandle} slot
+         * @param {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ScaleSlotHandle>} group
+         * @param {import("../../../index.d.ts").ScaleSlotHandle} slot
          */
         const attachScaleSlot = (group, slot) => {
             group.default = slot;
@@ -437,8 +437,8 @@ export default class BaseProgram {
         };
 
         /**
-         * @param {import("../../index.d.ts").ChannelSlotGroup<import("../../index.d.ts").ValueSlotHandle>} group
-         * @param {import("../../index.d.ts").ValueSlotHandle} slot
+         * @param {import("../../../index.d.ts").ChannelSlotGroup<import("../../../index.d.ts").ValueSlotHandle>} group
+         * @param {import("../../../index.d.ts").ValueSlotHandle} slot
          */
         const attachValueSlot = (group, slot) => {
             group.default = slot;
@@ -510,7 +510,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @returns {import("../../index.d.ts").ScaleSlotHandle}
+     * @returns {import("../../../index.d.ts").ScaleSlotHandle}
      */
     _createScaleSlot(name) {
         const updater = this._scaleResources.getScaleUpdater(name);
@@ -534,7 +534,7 @@ export default class BaseProgram {
 
     /**
      * @param {string} name
-     * @returns {import("../../index.d.ts").ValueSlotHandle}
+     * @returns {import("../../../index.d.ts").ValueSlotHandle}
      */
     _createValueSlot(name) {
         const uniformName = `u_${name}`;
@@ -552,8 +552,8 @@ export default class BaseProgram {
     }
 
     /**
-     * @param {{ name: string, type: import("../../index.d.ts").SelectionType }} def
-     * @returns {import("../../index.d.ts").SelectionSlotHandle}
+     * @param {{ name: string, type: import("../../../index.d.ts").SelectionType }} def
+     * @returns {import("../../../index.d.ts").SelectionSlotHandle}
      */
     _createSelectionSlot(def) {
         /**
@@ -593,7 +593,7 @@ export default class BaseProgram {
      * @returns {void}
      */
     _buildUniformLayout() {
-        /** @type {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
+        /** @type {{ name: string, type: import("../../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} */
         const layout = [];
 
         // Create uniform slots for per-channel values and scale parameters.

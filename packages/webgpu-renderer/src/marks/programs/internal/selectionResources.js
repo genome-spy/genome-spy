@@ -1,16 +1,16 @@
 /* global GPUBufferUsage */
-import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
-import { buildHashTableSet } from "../../utils/hashTable.js";
+import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
+import { buildHashTableSet } from "../../../utils/hashTable.js";
 import {
     SELECTION_BUFFER_PREFIX,
     SELECTION_COUNT_PREFIX,
     SELECTION_PREFIX,
-} from "../../wgsl/prefixes.js";
+} from "../../../wgsl/prefixes.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../../index.d.ts").SelectionType} SelectionType
- * @typedef {import("../../types.js").ScalarType} ScalarType
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").SelectionType} SelectionType
+ * @typedef {import("../../../types.js").ScalarType} ScalarType
  *
  * @typedef {{ type: "single", id: number } | { type: "multi", ids: Uint32Array } | { type: "interval", min: number, max: number }} SelectionUpdate
  *
@@ -171,10 +171,10 @@ export class SelectionResourceManager {
     }
 
     /**
-     * @returns {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]}
+     * @returns {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]}
      */
     getExtraResourceDefs() {
-        /** @type {import("../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
+        /** @type {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} */
         const extras = [];
         for (const def of this._selectionDefs.values()) {
             if (def.type !== "multi") {

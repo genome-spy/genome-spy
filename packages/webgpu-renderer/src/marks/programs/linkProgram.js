@@ -1,8 +1,8 @@
-import BaseProgram from "./baseProgram.js";
+import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  */
 
 const LINK_SHAPES = ["arc", "dome", "diagonal", "line"];
@@ -275,11 +275,10 @@ export default class LinkProgram extends BaseProgram {
     }
 
     _initializeExtraUniforms() {
-        /** @type {import("../../index.d.ts").LinkMarkOptions} */
-        const props =
-            /** @type {import("../../index.d.ts").LinkMarkOptions} */ (
-                this._markConfig ?? {}
-            );
+        /** @type {import("../../index.js").LinkMarkOptions} */
+        const props = /** @type {import("../../index.js").LinkMarkOptions} */ (
+            this._markConfig ?? {}
+        );
         const arcFading =
             Array.isArray(props.arcFadingDistance) &&
             props.arcFadingDistance.length === 2

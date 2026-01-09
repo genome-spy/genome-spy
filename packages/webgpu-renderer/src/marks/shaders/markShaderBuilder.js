@@ -57,7 +57,7 @@ import { buildScaledFunction } from "../scales/scaleCodegen.js";
  * @prop {Record<string, ChannelConfigResolved>} channels
  * @prop {{ name: string, type: import("../../types.js").ScalarType, components: 1|2|4, arrayLength?: number }[]} uniformLayout
  * @prop {string} shaderBody
- * @prop {Map<string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
+ * @prop {Map<string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} [packedSeriesLayout]
  * @prop {SelectionDef[]} [selectionDefs]
  * @prop {ExtraResourceDef[]} [extraResources]
  */

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SeriesBufferManager } from "./seriesBuffers.js";
 
 /**
- * @param {Record<string, import("../../index.d.ts").ChannelConfigResolved>} channels
+ * @param {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} channels
  * @returns {SeriesBufferManager}
  */
 function createManager(channels) {
@@ -13,7 +13,7 @@ function createManager(channels) {
 describe("SeriesBufferManager.inferCount", () => {
     it("infers count from input components", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 x: {
                     data: new Float32Array(6),
                     type: "f32",
@@ -28,7 +28,7 @@ describe("SeriesBufferManager.inferCount", () => {
 
     it("throws when series counts mismatch", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 x: {
                     data: new Float32Array(2),
                     type: "f32",
@@ -51,7 +51,7 @@ describe("SeriesBufferManager.inferCount", () => {
 
     it("infers count from Float64 index series", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 x: {
                     data: new Float64Array(5),
                     type: "u32",
@@ -67,7 +67,7 @@ describe("SeriesBufferManager.inferCount", () => {
 
     it("returns null when there are no series channels", () => {
         const channels =
-            /** @type {Record<string, import("../../index.d.ts").ChannelConfigResolved>} */ ({
+            /** @type {Record<string, import("../../../index.d.ts").ChannelConfigResolved>} */ ({
                 y: {
                     value: 1,
                     type: "f32",
