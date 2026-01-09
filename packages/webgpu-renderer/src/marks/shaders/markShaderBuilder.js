@@ -740,6 +740,29 @@ ${clauses.join("\n")}
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.
+    // Picking reuses the mark's shading logic; shader bodies must provide
+    // a `shade` function that returns the final premultiplied color.
+    const pickFns = /* wgsl */ `
+fn encodePickId(id: u32) -> vec4<f32> {
+    let r = f32(id & 255u);
+    let g = f32((id >> 8u) & 255u);
+    let b = f32((id >> 16u) & 255u);
+    let a = f32((id >> 24u) & 255u);
+    return vec4<f32>(r, g, b, a) / 255.0;
+}
+
+@fragment
+fn fs_pick(in: VSOut) -> @location(0) vec4<f32> {
+    if (in.pickId == 0u) {
+        discard;
+    }
+    let color = shade(in);
+    if (color.a <= 0.0) {
+        discard;
+    }
+    return encodePickId(in.pickId);
+}
+`;
     const shaderCode = /* wgsl */ `
 struct Globals {
     width: f32,
@@ -770,6 +793,7 @@ ${channelFns.join("\n")}
 ${extraDecls.join("\n")}
 
 ${processedShaderBody}
+${pickFns}
 `;
 
     return {

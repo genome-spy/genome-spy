@@ -100,6 +100,7 @@ struct VSOut {
     @location(1) color: vec4<f32>,
     @location(2) opacity: f32,
     @location(3) slope: f32,
+    @location(4) @interpolate(flat) pickId: u32,
 };
 
 fn alignOffset(align: u32, width: f32) -> f32 {
@@ -325,6 +326,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
                 out.color = vec4<f32>(0.0);
                 out.opacity = 0.0;
                 out.slope = 0.0;
+                out.pickId = 0u;
                 return out;
             }
             size = size * rangeScale;
@@ -340,6 +342,7 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
             out.color = vec4<f32>(0.0);
             out.opacity = 0.0;
             out.slope = 0.0;
+            out.pickId = 0u;
             return out;
         }
     }
@@ -374,6 +377,10 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.opacity = opacity;
     let minSize = min(width, height);
     out.slope = max(1.0, minSize / params.uSdfNumerator * globals.dpr);
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
+    out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 
@@ -386,12 +393,16 @@ fn sampleSdf(uv: vec2<f32>) -> f32 {
     return 1.0 - median(c.r, c.g, c.b);
 }
 
-@fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn shade(in: VSOut) -> vec4<f32> {
     let dist = sampleSdf(in.uv);
     let alpha = clamp((dist - 0.5) * in.slope + 0.5, 0.0, 1.0);
     let color = vec4<f32>(in.color.rgb, in.color.a * in.opacity);
     return color * alpha;
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    return shade(in);
 }
 `;
 

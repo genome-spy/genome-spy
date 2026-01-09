@@ -162,6 +162,7 @@ struct VSOut {
     @location(10) shadowOpacity: f32,
     @location(11) shadowColor: vec4<f32>,
     @location(12) @interpolate(flat) hatchPattern: u32,
+    @location(13) @interpolate(flat) pickId: u32,
 };
 
 @vertex
@@ -216,11 +217,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.shadowOpacity = getScaled_shadowOpacity(i);
     out.shadowColor = getScaled_shadowColor(i);
     out.hatchPattern = getScaled_hatchPattern(i);
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
+    out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 
-@fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn shade(in: VSOut) -> vec4<f32> {
     let halfSize = in.size * 0.5;
     let centered = (in.local - vec2<f32>(0.5)) * in.size;
 
@@ -246,6 +250,11 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     }
 
     return distanceToColor(d, fillColor, strokeColor, background, halfStrokeWidth);
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    return shade(in);
 }
 `;
 
