@@ -124,6 +124,7 @@ struct VSOut {
     @location(11) @interpolate(flat) inwardStroke: u32,
     @location(12) rot0: vec2<f32>,
     @location(13) rot1: vec2<f32>,
+    @location(14) @interpolate(flat) pickId: u32,
 };
 
 @vertex
@@ -201,11 +202,14 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.inwardStroke = getScaled_inwardStroke(i);
     out.rot0 = rot[0];
     out.rot1 = rot[1];
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
+    out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 
-@fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn shade(in: VSOut) -> vec4<f32> {
     let rot = mat2x2<f32>(in.rot0, in.rot1);
     let p = rot * ((in.local * 2.0 - vec2<f32>(1.0)) * in.radiusWithPadding);
     let r = in.radius;
@@ -250,6 +254,11 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
         discard;
     }
     return color;
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    return shade(in);
 }
 `;
 

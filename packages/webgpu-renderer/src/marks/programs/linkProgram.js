@@ -42,6 +42,7 @@ struct VSOut {
     @location(1) normalDistance: f32,
     // Stroke width in pixels (with AA padding baked in).
     @location(2) size: f32,
+    @location(3) @interpolate(flat) pickId: u32,
 };
 
 fn distanceFromLine(a: vec2<f32>, b: vec2<f32>, p: vec2<f32>) -> f32 {
@@ -215,15 +216,23 @@ fn vs_main(@builtin(vertex_index) v: u32, @builtin(instance_index) i: u32) -> VS
     out.color = vec4<f32>(color.rgb * opacity, color.a * opacity);
     out.normalDistance = normalDistance;
     out.size = paddedSize;
+    out.pickId = 0u;
+#if defined(uniqueId_DEFINED)
+    out.pickId = getScaled_uniqueId(i) + 1u;
+#endif
     return out;
 }
 
-@fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn shade(in: VSOut) -> vec4<f32> {
     // Linear AA ramp based on distance from the line center.
     let distance = abs(in.normalDistance);
     let alpha = clamp(((in.size * 0.5 - distance) * globals.dpr), 0.0, 1.0);
     return in.color * alpha;
+}
+
+@fragment
+fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+    return shade(in);
 }
 `;
 

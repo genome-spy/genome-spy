@@ -12,6 +12,8 @@ import { buildMarkShader } from "../../shaders/markShaderBuilder.js";
  * @property {Array<{ name: string, type: import("../../../index.d.ts").SelectionType, channel?: string, secondaryChannel?: string, scalarType?: import("../../../types.js").ScalarType }>} [selectionDefs]
  * @property {import("../../shaders/markShaderBuilder.js").ExtraResourceDef[]} [extraResources]
  * @property {GPUPrimitiveTopology} [primitiveTopology]
+ * @property {string} [fragmentEntry]
+ * @property {boolean} [enableBlend]
  *
  * @typedef {object} PipelineBuildResult
  * @property {GPUBindGroupLayout} bindGroupLayout
@@ -36,6 +38,8 @@ export function buildPipeline({
     selectionDefs,
     extraResources,
     primitiveTopology = "triangle-list",
+    fragmentEntry = "fs_main",
+    enableBlend = true,
 }) {
     const { shaderCode, resourceBindings, resourceLayout } = buildMarkShader({
         channels,
@@ -83,8 +87,13 @@ export function buildPipeline({
         },
         fragment: {
             module,
-            entryPoint: "fs_main",
-            targets: [{ format, blend: blendState }],
+            entryPoint: fragmentEntry,
+            targets: [
+                {
+                    format,
+                    blend: enableBlend ? blendState : undefined,
+                },
+            ],
         },
         primitive: {
             topology: primitiveTopology,

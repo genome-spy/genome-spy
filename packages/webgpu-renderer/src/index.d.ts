@@ -783,6 +783,11 @@ export class Renderer {
     /** Log the GPU resources reserved by a mark to the console. */
     debugResources(markId: MarkId, label?: string): void;
 
+    /**
+     * Render (if needed) and read a pick id at the given canvas coordinate.
+     */
+    pick(x: number, y: number): Promise<number | null>;
+
     /** Draw the current frame. */
     render(): void;
 
