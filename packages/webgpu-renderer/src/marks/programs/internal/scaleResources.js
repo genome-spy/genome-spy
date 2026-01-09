@@ -1,9 +1,9 @@
 /* global GPUBufferUsage, GPUTextureUsage */
-import { buildChannelAnalysis } from "../shaders/channelAnalysis.js";
+import { buildChannelAnalysis } from "../../shaders/channelAnalysis.js";
 import {
     getScaleResourceRequirements,
     getScaleUniformDef,
-} from "../scales/scaleDefs.js";
+} from "../../scales/scaleDefs.js";
 import {
     getScaleStopLengths,
     isColorRange,
@@ -11,22 +11,22 @@ import {
     normalizeDiscreteRange,
     normalizeOrdinalRange,
     normalizeRangePositions,
-} from "../scales/scaleStops.js";
-import { buildHashTableMap, HASH_EMPTY_KEY } from "../../utils/hashTable.js";
-import { createSchemeTexture } from "../../utils/colorUtils.js";
-import { prepareTextureData } from "../../utils/webgpuTextureUtils.js";
+} from "../../scales/scaleStops.js";
+import { buildHashTableMap, HASH_EMPTY_KEY } from "../../../utils/hashTable.js";
+import { createSchemeTexture } from "../../../utils/colorUtils.js";
+import { prepareTextureData } from "../../../utils/webgpuTextureUtils.js";
 import {
     DOMAIN_MAP_COUNT_PREFIX,
     DOMAIN_PREFIX,
     RANGE_COUNT_PREFIX,
     RANGE_PREFIX,
-} from "../../wgsl/prefixes.js";
+} from "../../../wgsl/prefixes.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../../index.d.ts").ChannelScale} ChannelScale
- * @typedef {import("../../index.d.ts").TypedArray} TypedArray
- * @typedef {import("../../types.js").ScalarType} ScalarType
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").ChannelScale} ChannelScale
+ * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
+ * @typedef {import("../../../types.js").ScalarType} ScalarType
  * @typedef {object} ChannelResources
  * @property {{ kind: "continuous"|"threshold"|"piecewise", domainLength: number, rangeLength: number } | undefined} scaleStops
  * @property {{ buffer: GPUBuffer, size: { length: number, byteLength: number } } | undefined} ordinalRange
@@ -517,7 +517,7 @@ export class ScaleResourceManager {
             ? (range) =>
                   this._updateRangeTexture(
                       name,
-                      /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
+                      /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */ (
                           range
                       ),
                       stopInfo?.rangeLength,
@@ -594,15 +594,15 @@ export class ScaleResourceManager {
      */
     /**
      * @param {string} name
-     * @param {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} value
+     * @param {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} value
      * @param {number | undefined} expectedRangeLength
-     * @param {import("../../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
+     * @param {import("../../../index.d.ts").ColorInterpolatorFactory | undefined} interpolate
      * @returns {boolean}
      */
     _updateRangeTexture(name, value, expectedRangeLength, interpolate) {
-        /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */
+        /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */
         const normalizedRange =
-            /** @type {Array<number|number[]|string>|import("../../index.d.ts").ColorInterpolatorFn} */ (
+            /** @type {Array<number|number[]|string>|import("../../../index.d.ts").ColorInterpolatorFn} */ (
                 value
             );
         let textureData;
@@ -639,7 +639,7 @@ export class ScaleResourceManager {
 
     /**
      * @param {string} name
-     * @param {import("../../utils/colorUtils.js").TextureData} textureData
+     * @param {import("../../../utils/colorUtils.js").TextureData} textureData
      * @returns {boolean}
      */
     _setRangeTexture(name, textureData) {

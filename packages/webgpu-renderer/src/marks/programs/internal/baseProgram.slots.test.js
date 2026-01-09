@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import BaseProgram from "./baseProgram.js";
-import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 
 class SlotProgram extends BaseProgram {
     get channelOrder() {
@@ -8,7 +8,7 @@ class SlotProgram extends BaseProgram {
     }
 
     get channelSpecs() {
-        return /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */ ({
+        return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             uniqueId: { type: "u32", components: 1 },
             x: { type: "f32", components: 1 },
             size: { type: "f32", components: 1 },

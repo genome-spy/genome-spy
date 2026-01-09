@@ -1,8 +1,8 @@
-import BaseProgram from "./baseProgram.js";
+import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  */
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */

@@ -18,7 +18,7 @@ fn fs_main() -> @location(0) vec4<f32> {
 describe("buildMarkShader", () => {
     it("generates buffer bindings and accessors for series data", () => {
         const packedSeriesLayout = new Map(
-            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+            /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
                 [
                     "x",
                     {
@@ -72,7 +72,7 @@ describe("buildMarkShader", () => {
 
     it("emits packed series accessors when layout metadata is provided", () => {
         const packedSeriesLayout = new Map(
-            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+            /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
                 [
                     "x",
                     {
@@ -161,7 +161,7 @@ describe("buildMarkShader", () => {
 
     it("binds domain maps for ordinal band domains", () => {
         const packedSeriesLayout = new Map(
-            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+            /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
                 [
                     "x",
                     {
@@ -220,7 +220,7 @@ describe("buildMarkShader", () => {
 
     it("emits conditional encoders with selection predicates", () => {
         const packedSeriesLayout = new Map(
-            /** @type {[string, import("../programs/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
+            /** @type {[string, import("../programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry][]} */ ([
                 [
                     "x",
                     {

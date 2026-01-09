@@ -1,11 +1,11 @@
-import BaseProgram from "./baseProgram.js";
+import BaseProgram from "./internal/baseProgram.js";
 import { buildChannelMaps } from "../utils/channelSpecUtils.js";
 import DASH_WGSL from "../../wgsl/dash.wgsl.js";
 import { buildDashAtlas } from "../../utils/dashAtlas.js";
 import { createTextureFromData } from "../../utils/webgpuTextureUtils.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigInput} ChannelConfigInput
+ * @typedef {import("../../index.js").ChannelConfigInput} ChannelConfigInput
  */
 
 /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */
