@@ -11,6 +11,68 @@ This plan focuses on the remaining work. Completed items are omitted.
 - Optional vector backend compatibility (stable mark instance schema).
 - Decide code-first API direction (defs vs. instances), then align public types.
 
+#### Picking implementation plan (incremental)
+
+Goal: provide a `pick(x, y)` API that returns the globally unique `uniqueId`
+for the topmost mark at a screen pixel, using an offscreen ID pass. Keep the
+main pass untouched and keep per-frame work minimal.
+
+1. **Core data + contracts**
+   - Require `uniqueId` channel (u32) on marks that should be pickable.
+   - When not provided, mark is not pickable (skip in pick pass).
+   - Use an offscreen `rgba8unorm` target (pack u32 into RGBA); add a TODO for
+     `r32uint` once supported across targets.
+
+2. **Renderer-level surface**
+   - Add `pick(x, y)` method that:
+     - Ensures the pick render target exists (size = canvas size * dpr).
+     - Re-renders the picking pass if `pickingDirty` is set.
+     - Reads back one pixel and decodes the u32.
+   - Add `markPickingDirty()` hook; any scale updates and selection updates
+     should set it, alongside data/viewport changes.
+
+3. **Pick render pass**
+   - Add a per-renderer pick pass that:
+     - Uses the same view/layout state but renders into the pick target.
+     - Uses a dedicated fragment shader (`fs_pick`) emitted by `markShaderBuilder`.
+     - Skips blending; just overwrite with the encoded ID.
+
+4. **Per-mark integration**
+   - Emit `pickId` in `VSOut` only when the mark is pickable.
+   - Bind the `uniqueId` channel as series (u32) and add `getScaled_uniqueId`.
+   - For marks without `uniqueId`, either skip the pick pipeline or emit
+     a zero pickId (and treat zero as “no hit”).
+   - Prefer coverage-based picking (reuse the mark’s fragment coverage/alpha
+     logic), but allow mark-specific overrides in WGSL:
+     - Text: pick the whole quad for better usability (ignore SDF discard).
+     - Rule: keep dash gaps pickable by bypassing the dash mask in the pick path.
+
+5. **Resource plumbing**
+   - Add a pick pipeline to each program (likely shared state with the main
+     pipeline; only the fragment entry point differs).
+   - Add an optional pick bind group layout (same buffers, no extra resources).
+   - Ensure pick textures are recreated on resize and invalidated on device loss.
+
+6. **API + docs**
+   - Document that `uniqueId` must be globally unique across all marks.
+   - Clarify that pick uses the last rendered frame’s data; changes to data,
+     scales, or selections invalidate it.
+
+7. **Testing**
+   - **GPU test**: render a single mark into pick target and assert readback
+     equals the expected u32.
+   - **GPU test**: overlapping marks (two IDs) ensures topmost wins.
+   - **GPU test**: update scale/range and ensure pick changes (pickingDirty).
+
+8. **Performance follow-ups**
+   - Add a small readback buffer cache to avoid allocations per pick.
+   - Optional: throttle pick pass to only re-render on dirty state.
+
+9. **Incremental delivery cadence**
+   - Implement in small, testable steps (resource wiring → WGSL path → render
+     pass → readback → API). Run GPU tests after each step to catch regressions
+     early and avoid large, hard-to-debug changes.
+
 ### Scale + shader codegen: remaining gaps
 
 - Param/expr-driven accessors (`uParam_*`) and integration with core.
