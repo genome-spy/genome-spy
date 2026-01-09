@@ -1,3 +1,8 @@
+/*
+ * GPU tests for hash table/set WGSL utilities. These verify lookup behavior
+ * and load-factor handling using compute shaders and GPU-side tables.
+ */
+
 import { expect, test } from "@playwright/test";
 import HASH_TABLE_WGSL from "../src/wgsl/hashTable.wgsl.js";
 import {

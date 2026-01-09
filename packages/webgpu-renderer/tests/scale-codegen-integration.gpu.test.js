@@ -1,3 +1,8 @@
+/*
+ * GPU integration tests for scale codegen. These build WGSL from JS scale
+ * definitions, run compute shaders, and compare GPU results to d3 references.
+ */
+
 import { test, expect } from "@playwright/test";
 import { color as d3color } from "d3-color";
 import { interpolateHcl, interpolateRgb } from "d3-interpolate";
@@ -15,7 +20,7 @@ import {
 } from "../src/marks/scales/scaleCodegen.js";
 import { createSchemeTexture } from "../src/utils/colorUtils.js";
 import { normalizeRangePositions } from "../src/marks/scales/scaleStops.js";
-import { ensureWebGPU } from "./gpuTestUtils.js";
+import { ensureWebGPU, packTextureData } from "./gpuTestUtils.js";
 
 const WORKGROUP_SIZE = 64;
 
@@ -292,94 +297,6 @@ function packPiecewiseDomainRange(domain, range) {
         data[rangeOffset + i * 4] = range[i];
     }
     return Array.from(data);
-}
-
-/**
- * @param {string} format
- * @returns {number}
- */
-function bytesPerPixelForFormat(format) {
-    switch (format) {
-        case "rgba8unorm":
-        case "rgba8unorm-srgb":
-            return 4;
-        default:
-            return 4;
-    }
-}
-
-/**
- * @param {number} value
- * @param {number} alignment
- * @returns {number}
- */
-function alignTo(value, alignment) {
-    return Math.ceil(value / alignment) * alignment;
-}
-
-/**
- * @param {import("../src/utils/colorUtils.js").TextureData} textureData
- * @returns {{ format: string, width: number, height: number, bytesPerRow: number, data: Uint8Array }}
- */
-function prepareTextureData(textureData) {
-    const bytesPerPixel = bytesPerPixelForFormat(textureData.format);
-    const unpaddedBytesPerRow = textureData.width * bytesPerPixel;
-    const bytesPerRow = alignTo(unpaddedBytesPerRow, 256);
-
-    if (bytesPerRow === unpaddedBytesPerRow) {
-        return {
-            ...textureData,
-            bytesPerRow,
-            data: new Uint8Array(
-                textureData.data.buffer,
-                textureData.data.byteOffset,
-                textureData.data.byteLength
-            ),
-        };
-    }
-
-    const rowCount = Math.max(1, textureData.height);
-    const padded = new Uint8Array(bytesPerRow * rowCount);
-    const source = new Uint8Array(
-        textureData.data.buffer,
-        textureData.data.byteOffset,
-        textureData.data.byteLength
-    );
-
-    for (let row = 0; row < rowCount; row++) {
-        const srcOffset = row * unpaddedBytesPerRow;
-        const destOffset = row * bytesPerRow;
-        padded.set(
-            source.subarray(srcOffset, srcOffset + unpaddedBytesPerRow),
-            destOffset
-        );
-    }
-
-    return {
-        ...textureData,
-        bytesPerRow,
-        data: padded,
-    };
-}
-
-/**
- * @param {import("../src/utils/colorUtils.js").TextureData} textureData
- * @returns {{ format: string, width: number, height: number, bytesPerRow: number, data: number[] }}
- */
-function packTextureData(textureData) {
-    const prepared = prepareTextureData(textureData);
-    const bytes = new Uint8Array(
-        prepared.data.buffer,
-        prepared.data.byteOffset,
-        prepared.data.byteLength
-    );
-    return {
-        format: prepared.format,
-        width: prepared.width,
-        height: prepared.height,
-        bytesPerRow: prepared.bytesPerRow,
-        data: Array.from(bytes),
-    };
 }
 
 /**
