@@ -1,3 +1,8 @@
+/*
+ * GPU tests for the low-level WGSL scale functions. These validate the raw
+ * WGSL helpers independent of codegen and higher-level resource wiring.
+ */
+
 import { test, expect } from "@playwright/test";
 import {
     scaleBand,
