@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import BaseProgram from "./baseProgram.js";
-import { createMockRenderer } from "../../testUtils/mockRenderer.js";
+import { createMockRenderer } from "../../../testUtils/mockRenderer.js";
 
 class TestSeriesProgram extends BaseProgram {
     get channelOrder() {
@@ -8,7 +8,7 @@ class TestSeriesProgram extends BaseProgram {
     }
 
     get channelSpecs() {
-        return /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */ ({
+        return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             x: { type: "f32", components: 1 },
         });
     }
@@ -38,7 +38,7 @@ class TestValueProgram extends BaseProgram {
     }
 
     get channelSpecs() {
-        return /** @type {Record<string, import("../utils/channelSpecUtils.js").ChannelSpec>} */ ({
+        return /** @type {Record<string, import("../../utils/channelSpecUtils.js").ChannelSpec>} */ ({
             y: { type: "f32", components: 1 },
         });
     }

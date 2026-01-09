@@ -1,14 +1,14 @@
 /* global GPUBufferUsage */
-import { isSeriesChannelConfig } from "../../types.js";
+import { isSeriesChannelConfig } from "../../../types.js";
 import {
     buildPackedSeriesLayout,
     packSeriesArrays,
 } from "./packedSeriesLayout.js";
 
 /**
- * @typedef {import("../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
- * @typedef {import("../../index.d.ts").TypedArray} TypedArray
- * @typedef {import("../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
+ * @typedef {import("../../../index.d.ts").ChannelConfigResolved} ChannelConfigResolved
+ * @typedef {import("../../../index.d.ts").TypedArray} TypedArray
+ * @typedef {import("../../utils/channelSpecUtils.js").ChannelSpec} ChannelSpec
  */
 
 /**
