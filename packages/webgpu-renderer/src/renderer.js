@@ -69,10 +69,17 @@ export class Renderer {
         this.context = context;
         this.format = format;
         this.canvas = canvas;
+        // TODO: Use r32uint picking when available on all targets.
+        this.pickFormat = /** @type {GPUTextureFormat} */ ("rgba8unorm");
 
         /** @type {Map<MarkId, import("./marks/programs/rectProgram.js").default | import("./marks/programs/pointProgram.js").default | import("./marks/programs/ruleProgram.js").default | import("./marks/programs/linkProgram.js").default | import("./marks/programs/textProgram.js").default>} */
         this._marks = new Map();
         this._nextMarkId = 1;
+        this._pickingDirty = true;
+        this._pickTexture = null;
+        this._pickTextureView = null;
+        this._pickReadbackBuffer = null;
+        this._pickTextureSize = { width: 0, height: 0 };
 
         // Global uniforms are shared by all marks (e.g., viewport size).
         this._globalUniformBuffer = device.createBuffer({
@@ -120,6 +127,7 @@ export class Renderer {
         const data = new Float32Array([width, height, dpr, 0]);
         this.device.queue.writeBuffer(this._globalUniformBuffer, 0, data);
         this._globals = { width, height, dpr };
+        this.markPickingDirty();
     }
 
     /**
@@ -171,6 +179,7 @@ export class Renderer {
 
         const markId = /** @type {MarkId} */ (this._nextMarkId++);
         this._marks.set(markId, mark);
+        this.markPickingDirty();
         const slotHandles = mark.getSlotHandles();
         return {
             markId,
@@ -195,6 +204,128 @@ export class Renderer {
     }
 
     /**
+     * @returns {void}
+     */
+    markPickingDirty() {
+        this._pickingDirty = true;
+    }
+
+    /**
+     * @returns {void}
+     */
+    _ensurePickTarget() {
+        const width = Math.max(1, this._globals?.width ?? 1);
+        const height = Math.max(1, this._globals?.height ?? 1);
+        const needsResize =
+            !this._pickTexture ||
+            this._pickTextureSize.width !== width ||
+            this._pickTextureSize.height !== height;
+
+        if (!needsResize) {
+            return;
+        }
+
+        this._pickTexture?.destroy();
+        this._pickTexture = this.device.createTexture({
+            size: { width, height },
+            format: this.pickFormat,
+            // eslint-disable-next-line no-undef
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+        this._pickTextureView = this._pickTexture.createView();
+        this._pickTextureSize = { width, height };
+        this._pickReadbackBuffer?.destroy();
+        this._pickReadbackBuffer = this.device.createBuffer({
+            size: 256,
+            // eslint-disable-next-line no-undef
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+    }
+
+    /**
+     * @returns {void}
+     */
+    _renderPick() {
+        this._ensurePickTarget();
+        const commandEncoder = this.device.createCommandEncoder();
+        const pass = commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: this._pickTextureView,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                },
+            ],
+        });
+
+        for (const mark of this._marks.values()) {
+            mark.drawPick(pass);
+        }
+
+        pass.end();
+        this.device.queue.submit([commandEncoder.finish()]);
+        this._pickingDirty = false;
+    }
+
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @returns {Promise<number|null>}
+     */
+    async pick(x, y) {
+        if (!this._marks.size) {
+            return null;
+        }
+        this._ensurePickTarget();
+        if (this._pickingDirty) {
+            this._renderPick();
+        }
+
+        const dpr = this._globals?.dpr ?? 1;
+        const px = Math.floor(x * dpr);
+        const py = Math.floor(y * dpr);
+        if (
+            px < 0 ||
+            py < 0 ||
+            px >= this._pickTextureSize.width ||
+            py >= this._pickTextureSize.height
+        ) {
+            return null;
+        }
+
+        const commandEncoder = this.device.createCommandEncoder();
+        commandEncoder.copyTextureToBuffer(
+            {
+                texture: this._pickTexture,
+                origin: { x: px, y: py },
+            },
+            {
+                buffer: this._pickReadbackBuffer,
+                bytesPerRow: 256,
+            },
+            { width: 1, height: 1, depthOrArrayLayers: 1 }
+        );
+        this.device.queue.submit([commandEncoder.finish()]);
+
+        await this._pickReadbackBuffer.mapAsync(
+            // eslint-disable-next-line no-undef
+            GPUMapMode.READ,
+            0,
+            4
+        );
+        const data = new Uint8Array(
+            this._pickReadbackBuffer.getMappedRange(0, 4)
+        );
+        const id = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+        this._pickReadbackBuffer.unmap();
+        if (id === 0) {
+            return null;
+        }
+        return (id - 1) >>> 0;
+    }
+
+    /**
      * Log the GPU resources reserved by a mark to the console.
      *
      * @param {MarkId} markId
@@ -216,7 +347,7 @@ export class Renderer {
         const commandEncoder = this.device.createCommandEncoder();
         const view = this.context.getCurrentTexture().createView();
 
-        // One render pass for now; picking would be a second pass later.
+        // The pick pass is rendered on demand, separate from the main pass.
         const pass = commandEncoder.beginRenderPass({
             colorAttachments: [
                 {
@@ -246,6 +377,7 @@ export class Renderer {
         if (mark) {
             mark.destroy();
             this._marks.delete(markId);
+            this.markPickingDirty();
         }
     }
 }

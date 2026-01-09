@@ -16,9 +16,11 @@ export function createMockRenderer() {
         /** @type {unknown} */ ({
             device,
             format: "rgba8unorm",
+            pickFormat: "rgba8unorm",
             _globalBindGroupLayout: {},
             _globalBindGroup: {},
             _globals: { width: 1, height: 1, dpr: 1 },
+            markPickingDirty: () => {},
         })
     );
 }

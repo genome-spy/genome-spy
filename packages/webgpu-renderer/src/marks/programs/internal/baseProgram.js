@@ -112,6 +112,21 @@ export default class BaseProgram {
             extraResources,
             primitiveTopology: this.primitiveTopology,
         });
+        const { pipeline: pickPipeline } = buildPipeline({
+            device: this.device,
+            globalBindGroupLayout: renderer._globalBindGroupLayout,
+            format: renderer.pickFormat,
+            channels: this._channels,
+            uniformLayout: this._uniformLayout,
+            shaderBody: this.shaderBody,
+            packedSeriesLayout:
+                this._seriesBuffers.packedSeriesLayoutEntries ?? undefined,
+            selectionDefs: this._selectionResources.selectionDefs,
+            extraResources,
+            primitiveTopology: this.primitiveTopology,
+            fragmentEntry: "fs_pick",
+            enableBlend: false,
+        });
         this._resourceLayout = resourceLayout;
         this._uniformBuffer = this.device.createBuffer({
             size: this._uniformBufferState?.byteLength ?? 0,
@@ -123,6 +138,7 @@ export default class BaseProgram {
         this._buildSlotHandles();
         this._bindGroupLayout = bindGroupLayout;
         this._pipeline = pipeline;
+        this._pickPipeline = pickPipeline;
 
         // Initialize any series-backed channels.
         this.updateSeries(
@@ -236,6 +252,7 @@ export default class BaseProgram {
         this._seriesBuffers.updateSeries(channels, this.count);
 
         this._rebuildBindGroup();
+        this.renderer.markPickingDirty();
     }
 
     /**
@@ -275,6 +292,7 @@ export default class BaseProgram {
             );
         }
         this._writeUniforms();
+        this.renderer.markPickingDirty();
     }
 
     /**
@@ -521,6 +539,7 @@ export default class BaseProgram {
                 if (needsRebind) {
                     this._rebuildBindGroup();
                 }
+                this.renderer.markPickingDirty();
             },
             setRange: (range) => {
                 const needsRebind = updater.updateRange(range);
@@ -528,6 +547,7 @@ export default class BaseProgram {
                 if (needsRebind) {
                     this._rebuildBindGroup();
                 }
+                this.renderer.markPickingDirty();
             },
         };
     }
@@ -547,6 +567,7 @@ export default class BaseProgram {
             set: (value) => {
                 this._setUniformValue(uniformName, value);
                 this._writeUniforms();
+                this.renderer.markPickingDirty();
             },
         };
     }
@@ -569,6 +590,7 @@ export default class BaseProgram {
             if (needsRebind) {
                 this._rebuildBindGroup();
             }
+            this.renderer.markPickingDirty();
         };
 
         if (def.type === "single") {
@@ -706,6 +728,17 @@ export default class BaseProgram {
      */
     draw(pass) {
         pass.setPipeline(this._pipeline);
+        pass.setBindGroup(0, this.renderer._globalBindGroup);
+        pass.setBindGroup(1, this._bindGroup);
+        pass.draw(6, this.count, 0, 0);
+    }
+
+    /**
+     * @param {GPURenderPassEncoder} pass
+     * @returns {void}
+     */
+    drawPick(pass) {
+        pass.setPipeline(this._pickPipeline);
         pass.setBindGroup(0, this.renderer._globalBindGroup);
         pass.setBindGroup(1, this._bindGroup);
         pass.draw(6, this.count, 0, 0);
