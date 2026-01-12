@@ -1,4 +1,9 @@
-/* global GPUShaderStage, GPUBufferUsage, GPUTextureUsage, GPUMapMode, process */
+/* global globalThis, GPUShaderStage, GPUBufferUsage, GPUTextureUsage, GPUMapMode, process */
+globalThis.GPUShaderStage ??= {
+    VERTEX: 0x1,
+    FRAGMENT: 0x2,
+    COMPUTE: 0x4,
+};
 import fs from "node:fs";
 import path from "node:path";
 import { buildMarkShader } from "../src/marks/shaders/markShaderBuilder.js";
@@ -72,6 +77,14 @@ function buildComputeBody({
         ? `read_${channelName}(i)`
         : `getScaled_${channelName}(i)`;
     return /* wgsl */ `
+struct VSOut {
+    @location(0) @interpolate(flat) pickId: u32,
+};
+
+fn shade(in: VSOut) -> vec4<f32> {
+    return vec4<f32>(0.0);
+}
+
 @group(1) @binding(${outputBinding}) var<storage, read_write> output: array<${outputType}>;
 
 const OUTPUT_LEN: u32 = ${outputLength}u;
@@ -83,6 +96,38 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     output[i] = ${outputExpr};
+}
+`;
+}
+
+/**
+ * @param {object} params
+ * @param {number} params.outputBinding
+ * @param {string} params.outputType
+ * @param {number} params.outputLength
+ * @returns {string}
+ */
+function buildSeriesCopyBody({ outputBinding, outputType, outputLength }) {
+    return /* wgsl */ `
+struct VSOut {
+    @location(0) @interpolate(flat) pickId: u32,
+};
+
+fn shade(in: VSOut) -> vec4<f32> {
+    return vec4<f32>(0.0);
+}
+
+@group(1) @binding(${outputBinding}) var<storage, read_write> output: array<${outputType}>;
+
+const OUTPUT_LEN: u32 = ${outputLength}u;
+
+@compute @workgroup_size(${WORKGROUP_SIZE})
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let i = gid.x;
+    if (i >= OUTPUT_LEN) {
+        return;
+    }
+    output[i] = seriesF32[i];
 }
 `;
 }
@@ -164,6 +209,47 @@ export function buildScaleComputeShader({
 }
 
 /**
+ * Builds a minimal compute shader that copies raw f32 series data directly to
+ * the output buffer. This helps verify bind-group wiring independently of
+ * scale logic.
+ *
+ * @param {object} params
+ * @param {Record<string, import("../src/marks/shaders/markShaderBuilder.js").ChannelConfigResolved>} params.channels
+ * @param {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildParams["uniformLayout"]} params.uniformLayout
+ * @param {string} params.outputType
+ * @param {number} params.outputLength
+ * @param {Map<string, import("../src/marks/programs/internal/packedSeriesLayout.js").PackedSeriesLayoutEntry>} params.packedSeriesLayout
+ * @returns {import("../src/marks/shaders/markShaderBuilder.js").ShaderBuildResult & { outputBinding: number }}
+ */
+export function buildSeriesCopyComputeShader({
+    channels,
+    uniformLayout,
+    outputType,
+    outputLength,
+    packedSeriesLayout,
+}) {
+    const initial = buildMarkShader({
+        channels,
+        uniformLayout,
+        shaderBody: "",
+        packedSeriesLayout,
+    });
+    const outputBinding = initial.resourceBindings.length + 1;
+    const shaderBody = buildSeriesCopyBody({
+        outputBinding,
+        outputType,
+        outputLength,
+    });
+    const result = buildMarkShader({
+        channels,
+        uniformLayout,
+        shaderBody,
+        packedSeriesLayout,
+    });
+    return { ...result, outputBinding };
+}
+
+/**
  * Maps the markShaderBuilder resource layout to concrete binding numbers so
  * tests can attach buffers/textures without duplicating bind-group logic.
  *
@@ -193,6 +279,7 @@ export function mapScaleBindings(result) {
  * @param {1|4} params.outputComponents
  * @param {{ name?: string, binding?: number, samplerBinding?: number, texture: { format: string, width: number, height: number, bytesPerRow: number, data: number[] } }} [params.texture]
  * @param {boolean} [params.debugCopySeries]
+ * @param {boolean} [params.logSeriesBuffers]
  * @returns {Promise<number[]>}
  */
 export async function runScaleCompute(
@@ -206,6 +293,7 @@ export async function runScaleCompute(
         outputComponents,
         texture,
         debugCopySeries = false,
+        logSeriesBuffers = false,
     }
 ) {
     const normalizedSeriesBuffers = seriesBuffers.map((buffer) => ({
@@ -223,6 +311,7 @@ export async function runScaleCompute(
             texture,
             workgroupSize,
             debugCopySeries,
+            logSeriesBuffers,
         }) => {
             const adapter = await navigator.gpu.requestAdapter();
             if (!adapter) {
@@ -335,6 +424,12 @@ export async function runScaleCompute(
                 if (sum === 0) {
                     throw new Error(
                         "Series buffer payload sums to zero in the GPU test harness."
+                    );
+                }
+                if (logSeriesBuffers) {
+                    console.log(
+                        `series buffer [binding ${buffer.binding}]`,
+                        Array.from(srcData)
                     );
                 }
                 const gpuBuffer = device.createBuffer({
@@ -456,6 +551,7 @@ export async function runScaleCompute(
             texture,
             workgroupSize: WORKGROUP_SIZE,
             debugCopySeries,
+            logSeriesBuffers,
         }
     );
 }
@@ -500,13 +596,21 @@ export async function runScaleCase(
         count = outputLength,
         readSeriesOnly = false,
         dumpLabel,
+        logSeriesBuffers = process.env.SCALE_TEST_LOG_BUFFERS === "1",
     }
 ) {
     const shouldReadSeriesOnly =
         readSeriesOnly || process.env.SCALE_TEST_READ_SERIES === "1";
+    const hasUniforms = uniformLayout.length > 0;
+    const normalizedUniformLayout = hasUniforms
+        ? uniformLayout
+        : [{ name: "__scale_dummy", type: "f32", components: 1 }];
+    const normalizedUniforms = hasUniforms
+        ? uniforms
+        : { ...uniforms, __scale_dummy: 0 };
     const result = buildScaleComputeShader({
         channels,
-        uniformLayout,
+        uniformLayout: normalizedUniformLayout,
         selectionDefs,
         extraResources,
         outputType,
@@ -607,7 +711,10 @@ export async function runScaleCase(
         };
     }
 
-    const uniformData = buildUniformData(uniformLayout, uniforms);
+    const uniformData = buildUniformData(
+        normalizedUniformLayout,
+        normalizedUniforms
+    );
     const output = await runScaleCompute(page, {
         shaderCode: result.shaderCode,
         uniformData,
@@ -617,6 +724,7 @@ export async function runScaleCase(
         outputComponents,
         texture: resolvedTexture,
         debugCopySeries,
+        logSeriesBuffers,
     });
     if (process.env.SCALE_TEST_DUMP_OUTPUT === "1") {
         const outDir = path.join(process.cwd(), "test-results");
@@ -639,4 +747,90 @@ export async function runScaleCase(
         );
     }
     return output;
+}
+
+/**
+ * Executes a compute shader that copies the packed f32 series buffer to the
+ * output buffer, exposing raw data without invoking scale helpers.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {object} params
+ * @param {Record<string, import("../src/marks/shaders/markShaderBuilder.js").ChannelConfigResolved>} params.channels
+ * @param {string} params.channelName
+ * @param {string} params.outputType
+ * @param {number} params.outputLength
+ * @param {1|4} params.outputComponents
+ * @param {{ name?: string, type?: import("../src/types.js").ScalarType, components?: 1|2|4, arrayLength?: number }[]} [params.uniformLayout]
+ * @param {Record<string, number|number[]|Array<number|number[]>>} [params.uniforms]
+ * @param {number} [params.count]
+ * @returns {Promise<number[]>}
+ */
+export async function runSeriesCopyCase(
+    page,
+    {
+        channels,
+        channelName,
+        outputType,
+        outputLength,
+        outputComponents,
+        uniformLayout = [],
+        uniforms = {},
+        count = outputLength,
+        debugCopySeries = process.env.SCALE_TEST_COPY_SERIES === "1",
+        logSeriesBuffers = process.env.SCALE_TEST_LOG_BUFFERS === "1",
+    }
+) {
+    const layout = buildPackedSeriesLayout(channels, {});
+    const packed = packSeriesArrays({
+        channels,
+        channelSpecs: {},
+        layout,
+        count,
+    });
+    if (!packed.f32) {
+        throw new Error("runSeriesCopyCase requires f32 series data.");
+    }
+    const hasUniforms = uniformLayout.length > 0;
+    const normalizedUniformLayout = hasUniforms
+        ? uniformLayout
+        : [{ name: "u_dummy", type: "f32", components: 1 }];
+    const normalizedUniforms = hasUniforms
+        ? uniforms
+        : { ...uniforms, u_dummy: 0 };
+    const shader = buildSeriesCopyComputeShader({
+        channels,
+        uniformLayout: normalizedUniformLayout,
+        outputType,
+        outputLength,
+        packedSeriesLayout: layout.entries,
+    });
+    const bindings = mapScaleBindings(shader);
+    const seriesBinding = bindings.find(
+        (entry) => entry.role === "series" && entry.name === "seriesF32"
+    );
+    if (!seriesBinding) {
+        throw new Error("seriesF32 binding is missing from shader output.");
+    }
+    const toSerializable = (data) =>
+        ArrayBuffer.isView(data) ? Array.from(data) : data;
+    const seriesBuffers = [
+        {
+            binding: seriesBinding.binding,
+            data: toSerializable(packed.f32),
+        },
+    ];
+    const uniformData = buildUniformData(
+        normalizedUniformLayout,
+        normalizedUniforms
+    );
+    return runScaleCompute(page, {
+        shaderCode: shader.shaderCode,
+        uniformData,
+        seriesBuffers,
+        outputBinding: shader.outputBinding,
+        outputLength,
+        outputComponents,
+        debugCopySeries,
+        logSeriesBuffers,
+    });
 }
