@@ -83,11 +83,16 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                 margin-bottom: 12px;
             }
 
+            .table-wrapper {
+                border: 1px solid var(--form-control-border-color, #ccc);
+                border-radius: var(--form-control-border-radius, 4px);
+                overflow: hidden;
+                margin-top: 0.5em;
+            }
+
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 8px;
-                font-size: 90%;
 
                 .btn {
                     padding: 4px 8px;
@@ -99,12 +104,18 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
             th,
             td {
                 text-align: left;
-                padding: 6px 8px;
-                border-bottom: 1px solid var(--gs-border-color, #eee);
+                padding: 0.4em 0.6em;
+                box-sizing: border-box;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.03);
             }
 
             th {
                 font-weight: 600;
+                border-bottom-color: var(--form-control-border-color, #ccc);
+            }
+
+            td {
+                font-size: 90%;
             }
 
             .scheme-preview img {
@@ -272,7 +283,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
         }
     }
 
-    render() {
+    #renderTableRows() {
         /** @param {Event & { target: HTMLSelectElement }} e */
         const onTypeChange = (e) => {
             const el = e.target;
@@ -281,6 +292,85 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
             this._metadataNodeTypes.set(path, type);
         };
 
+        return map(pathTreeDfs(this._pathRoot), (node) => {
+            const getDepth = (
+                /** @type {import("./metadataUtils.js").PathTreeNode} */ node
+            ) => {
+                let depth = 0;
+                let cur = node.parent;
+                while (cur) {
+                    depth++;
+                    cur = cur.parent;
+                }
+                return depth;
+            };
+
+            const path = node.path;
+
+            const scale = this._scales.get(path);
+
+            const scaleLabel = scale?.type ?? "";
+            const domainLabel = scale?.domain
+                ? JSON.stringify(scale.domain)
+                : "";
+            const rangeLabel = scale?.range ? JSON.stringify(scale.range) : "";
+            const schemeName = /** @type {string}*/ (scale?.scheme) ?? null;
+
+            const selectedType =
+                this._metadataNodeTypes.get(node.path) ?? "unset";
+
+            return html`<tr>
+                <td style="padding-left: ${getDepth(node) * 20}px">
+                    ${node.part}
+                </td>
+                <td>
+                    <select data-path="${node.path}" @change=${onTypeChange}>
+                        ${[
+                            "nominal",
+                            "ordinal",
+                            "quantitative",
+                            "unset",
+                            "inherit",
+                        ].map(
+                            (typeOption) =>
+                                html`<option
+                                    value="${typeOption}"
+                                    ?selected=${selectedType === typeOption}
+                                >
+                                    ${typeOption}
+                                </option>`
+                        )}
+                    </select>
+                </td>
+                <td>${scaleLabel}</td>
+                <td>${domainLabel}</td>
+                <td>
+                    ${rangeLabel
+                        ? rangeLabel
+                        : schemeName
+                          ? html`<span class="scheme-preview"
+                                ><img
+                                    src="${schemeToDataUrl(schemeName)}"
+                                    alt="${schemeName}"
+                                    title="${schemeName}"
+                                />${schemeName}</span
+                            >`
+                          : ""}
+                </td>
+                <td style="text-align: right;">
+                    <button
+                        class="btn"
+                        @click=${() => this._configureScaleFor(node)}
+                        title="Configure scale"
+                    >
+                        ${icon(faPenToSquare).node[0]}
+                    </button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    render() {
         return html`
             <div class="gs-form-group">
                 <label for="group-name">Group name</label>
@@ -306,110 +396,23 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
 
             <div>
                 <label>Columns (hierarchy)</label>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Data type</th>
-                            <th>Scale</th>
-                            <th>Domain</th>
-                            <th>Range</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${map(pathTreeDfs(this._pathRoot), (node) => {
-                            const getDepth = (
-                                /** @type {import("./metadataUtils.js").PathTreeNode} */ node
-                            ) => {
-                                let depth = 0;
-                                let cur = node.parent;
-                                while (cur) {
-                                    depth++;
-                                    cur = cur.parent;
-                                }
-                                return depth;
-                            };
-
-                            const path = node.path;
-
-                            const scale = this._scales.get(path);
-
-                            const scaleLabel = scale?.type ?? "";
-                            const domainLabel = scale?.domain
-                                ? JSON.stringify(scale.domain)
-                                : "";
-                            const rangeLabel = scale?.range
-                                ? JSON.stringify(scale.range)
-                                : "";
-                            const schemeName =
-                                /** @type {string}*/ (scale?.scheme) ?? null;
-
-                            const selectedType =
-                                this._metadataNodeTypes.get(node.path) ??
-                                "unset";
-
-                            return html`<tr>
-                                <td
-                                    style="padding-left: ${getDepth(node) *
-                                    20}px"
-                                >
-                                    ${node.part}
-                                </td>
-                                <td>
-                                    <select
-                                        data-path="${node.path}"
-                                        @change=${onTypeChange}
-                                    >
-                                        ${[
-                                            "nominal",
-                                            "ordinal",
-                                            "quantitative",
-                                            "unset",
-                                            "inherit",
-                                        ].map(
-                                            (typeOption) =>
-                                                html`<option
-                                                    value="${typeOption}"
-                                                    ?selected=${selectedType ===
-                                                    typeOption}
-                                                >
-                                                    ${typeOption}
-                                                </option>`
-                                        )}
-                                    </select>
-                                </td>
-                                <td>${scaleLabel}</td>
-                                <td>${domainLabel}</td>
-                                <td>
-                                    ${rangeLabel
-                                        ? rangeLabel
-                                        : schemeName
-                                          ? html`<span class="scheme-preview"
-                                                ><img
-                                                    src="${schemeToDataUrl(
-                                                        schemeName
-                                                    )}"
-                                                    alt="${schemeName}"
-                                                    title="${schemeName}"
-                                                />${schemeName}</span
-                                            >`
-                                          : ""}
-                                </td>
-                                <td style="text-align: right;">
-                                    <button
-                                        class="btn"
-                                        @click=${() =>
-                                            this._configureScaleFor(node)}
-                                        title="Configure scale"
-                                    >
-                                        ${icon(faPenToSquare).node[0]}
-                                    </button>
-                                </td>
-                            </tr>`;
-                        })}
-                    </tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Data type</th>
+                                <th>Scale</th>
+                                <th>Domain</th>
+                                <th>Range</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.#renderTableRows()}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
