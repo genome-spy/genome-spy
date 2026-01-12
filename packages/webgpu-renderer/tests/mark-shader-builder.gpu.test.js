@@ -13,17 +13,8 @@ import {
     buildHashTableMap,
     buildHashTableSet,
 } from "../src/utils/hashTable.js";
-import {
-    buildUniformData,
-    ensureWebGPU,
-    packTextureData,
-} from "./gpuTestUtils.js";
-import {
-    buildScaleComputeShader,
-    mapScaleBindings,
-    runScaleCase,
-    runScaleCompute,
-} from "./scaleShaderTestUtils.js";
+import { ensureWebGPU, packTextureData } from "./gpuTestUtils.js";
+import { runScaleCase } from "./scaleShaderTestUtils.js";
 import { SELECTION_BUFFER_PREFIX } from "../src/wgsl/prefixes.js";
 
 globalThis.GPUShaderStage ??= {
@@ -32,23 +23,11 @@ globalThis.GPUShaderStage ??= {
     COMPUTE: 0x4,
 };
 
-/**
- * @param {number[]} domain
- * @param {number[]} range
- * @returns {number[]}
- */
-function packContinuousDomainRange(domain, range) {
-    const data = new Float32Array(16);
-    data[0] = domain[0];
-    data[4] = domain[1];
-    data[8] = range[0];
-    data[12] = range[1];
-    return Array.from(data);
-}
 test("markShaderBuilder executes series-backed scales in a compute pass", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = [0, 0.5, 1];
     const domain = [0, 1];
@@ -67,29 +46,18 @@ test("markShaderBuilder executes series-backed scales in a compute pass", async 
         { name: "uDomain_x", type: "f32", components: 1, arrayLength: 2 },
         { name: "uRange_x", type: "f32", components: 1, arrayLength: 2 },
     ];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "x",
         outputType: "f32",
         outputLength: input.length,
-        channelName: "x",
-    });
-    const bindings = mapScaleBindings(result);
-    const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
-    )?.binding;
-    if (seriesBinding == null) {
-        throw new Error("Series binding for x was not generated.");
-    }
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: packContinuousDomainRange(domain, range),
-        seriesBuffers: [{ binding: seriesBinding, data: input }],
-        outputBinding: result.outputBinding,
-        outputLength: input.length,
         outputComponents: 1,
+        uniformLayout,
+        uniforms: {
+            uDomain_x: domain,
+            uRange_x: range,
+        },
+        dumpLabel,
     });
 
     expect(output).toHaveLength(input.length);
@@ -102,6 +70,7 @@ test("markShaderBuilder passes through identity values for series data", async (
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = [0.1, 0.2, 0.3, 0.4];
     const channels = {
@@ -111,32 +80,13 @@ test("markShaderBuilder passes through identity values for series data", async (
             components: 1,
         },
     };
-    const uniformLayout = [{ name: "dummy", type: "f32", components: 1 }];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "x",
         outputType: "f32",
         outputLength: input.length,
-        channelName: "x",
-    });
-    const bindings = mapScaleBindings(result);
-    const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
-    )?.binding;
-    if (seriesBinding == null) {
-        throw new Error("Series binding for x was not generated.");
-    }
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: [0],
-        seriesBuffers: [
-            { binding: seriesBinding, data: new Float32Array(input) },
-        ],
-        outputBinding: result.outputBinding,
-        outputLength: input.length,
         outputComponents: 1,
+        dumpLabel,
     });
 
     expect(output).toHaveLength(input.length);
@@ -147,6 +97,7 @@ test("markShaderBuilder passes through identity values for series data", async (
 
 test("markShaderBuilder reads dynamic value uniforms", async ({ page }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const value = 0.75;
     const channels = {
@@ -158,21 +109,15 @@ test("markShaderBuilder reads dynamic value uniforms", async ({ page }) => {
         },
     };
     const uniformLayout = [{ name: "u_opacity", type: "f32", components: 1 }];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "opacity",
         outputType: "f32",
         outputLength: 1,
-        channelName: "opacity",
-    });
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: [value],
-        outputBinding: result.outputBinding,
-        outputLength: 1,
         outputComponents: 1,
+        uniformLayout,
+        uniforms: { u_opacity: value },
+        dumpLabel,
     });
 
     expect(output).toEqual([value]);
@@ -182,6 +127,7 @@ test("markShaderBuilder applies threshold scales to value channels", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const channels = {
         fill: {
@@ -202,28 +148,21 @@ test("markShaderBuilder applies threshold scales to value channels", async ({
         { name: "uDomain_fill", type: "f32", components: 1, arrayLength: 1 },
         { name: "uRange_fill", type: "f32", components: 4, arrayLength: 2 },
     ];
-    const uniformData = buildUniformData(uniformLayout, {
-        uDomain_fill: [0],
-        uRange_fill: [
-            [0, 0, 0, 1],
-            [1, 0, 0, 1],
-        ],
-    });
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "fill",
         outputType: "vec4<f32>",
         outputLength: 1,
-        channelName: "fill",
-    });
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData,
-        outputBinding: result.outputBinding,
-        outputLength: 1,
         outputComponents: 4,
+        uniformLayout,
+        uniforms: {
+            uDomain_fill: [0],
+            uRange_fill: [
+                [0, 0, 0, 1],
+                [1, 0, 0, 1],
+            ],
+        },
+        dumpLabel,
     });
 
     expect(output).toHaveLength(4);
@@ -237,6 +176,7 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const channels = {
         shape: {
@@ -250,42 +190,23 @@ test("markShaderBuilder applies ordinal scales to value channels", async ({
         { name: "uRangeCount_shape", type: "f32", components: 1 },
         { name: "uDomainMapCount_shape", type: "f32", components: 1 },
     ];
-
-    const result = buildScaleComputeShader({
+    const rangeData = [0, 0, 1, 1, 1, 0, 0, 1];
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "shape",
         outputType: "vec4<f32>",
         outputLength: 1,
-        channelName: "shape",
-    });
-    const bindings = mapScaleBindings(result);
-    const ordinalBinding = bindings.find(
-        (entry) => entry.role === "ordinalRange" && entry.name === "shape"
-    )?.binding;
-    if (ordinalBinding == null) {
-        throw new Error("Ordinal range binding for shape was not generated.");
-    }
-    const domainMapBinding = bindings.find(
-        (entry) => entry.role === "domainMap" && entry.name === "shape"
-    )?.binding;
-    if (domainMapBinding == null) {
-        throw new Error("Domain map binding for shape was not generated.");
-    }
-
-    const rangeData = [0, 0, 1, 1, 1, 0, 0, 1];
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: buildUniformData(uniformLayout, {
+        outputComponents: 4,
+        uniformLayout,
+        uniforms: {
             uRangeCount_shape: 2,
             uDomainMapCount_shape: 0,
-        }),
-        seriesBuffers: [
-            { binding: ordinalBinding, data: rangeData },
-            { binding: domainMapBinding, data: [0, 0] },
+        },
+        extraBuffers: [
+            { name: "shape", role: "ordinalRange", data: rangeData },
+            { name: "shape", role: "domainMap", data: [0, 0] },
         ],
-        outputBinding: result.outputBinding,
-        outputLength: 1,
-        outputComponents: 4,
+        dumpLabel,
     });
 
     expect(output).toHaveLength(4);
@@ -299,6 +220,7 @@ test("markShaderBuilder applies ordinal scales with sparse domain maps", async (
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const channels = {
         shape: {
@@ -320,47 +242,28 @@ test("markShaderBuilder applies ordinal scales with sparse domain maps", async (
         { name: "uRangeCount_shape", type: "f32", components: 1 },
         { name: "uDomainMapCount_shape", type: "f32", components: 1 },
     ];
-
-    const result = buildScaleComputeShader({
-        channels,
-        uniformLayout,
-        outputType: "vec4<f32>",
-        outputLength: 1,
-        channelName: "shape",
-    });
-    const bindings = mapScaleBindings(result);
-    const ordinalBinding = bindings.find(
-        (entry) => entry.role === "ordinalRange" && entry.name === "shape"
-    )?.binding;
-    if (ordinalBinding == null) {
-        throw new Error("Ordinal range binding for shape was not generated.");
-    }
-    const domainMapBinding = bindings.find(
-        (entry) => entry.role === "domainMap" && entry.name === "shape"
-    )?.binding;
-    if (domainMapBinding == null) {
-        throw new Error("Domain map binding for shape was not generated.");
-    }
-
     const domainMap = buildHashTableMap([
         [10, 0],
         [42, 1],
         [99, 2],
     ]);
     const rangeData = [0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1];
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: buildUniformData(uniformLayout, {
-            uRangeCount_shape: 3,
-            uDomainMapCount_shape: domainMap.size,
-        }),
-        seriesBuffers: [
-            { binding: ordinalBinding, data: rangeData },
-            { binding: domainMapBinding, data: domainMap.table },
-        ],
-        outputBinding: result.outputBinding,
+    const output = await runScaleCase(page, {
+        channels,
+        channelName: "shape",
+        outputType: "vec4<f32>",
         outputLength: 1,
         outputComponents: 4,
+        uniformLayout,
+        uniforms: {
+            uRangeCount_shape: 3,
+            uDomainMapCount_shape: domainMap.size,
+        },
+        extraBuffers: [
+            { name: "shape", role: "ordinalRange", data: rangeData },
+            { name: "shape", role: "domainMap", data: domainMap.table },
+        ],
+        dumpLabel,
     });
 
     expect(output).toHaveLength(4);
@@ -374,6 +277,7 @@ test("markShaderBuilder returns zero for missing ordinal categories", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = [1, 99];
     const inputData = new Uint32Array(input);
@@ -397,46 +301,22 @@ test("markShaderBuilder returns zero for missing ordinal categories", async ({
         { name: "uRangeCount_fill", type: "f32", components: 1 },
         { name: "uDomainMapCount_fill", type: "f32", components: 1 },
     ];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "fill",
         outputType: "vec4<f32>",
         outputLength: input.length,
-        channelName: "fill",
-    });
-    const bindings = mapScaleBindings(result);
-    const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesU32"
-    )?.binding;
-    const ordinalBinding = bindings.find(
-        (entry) => entry.role === "ordinalRange" && entry.name === "fill"
-    )?.binding;
-    const domainMapBinding = bindings.find(
-        (entry) => entry.role === "domainMap" && entry.name === "fill"
-    )?.binding;
-    if (
-        seriesBinding == null ||
-        ordinalBinding == null ||
-        domainMapBinding == null
-    ) {
-        throw new Error("Ordinal bindings for fill were not generated.");
-    }
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: buildUniformData(uniformLayout, {
+        outputComponents: 4,
+        uniformLayout,
+        uniforms: {
             uRangeCount_fill: 1,
             uDomainMapCount_fill: domainMap.size,
-        }),
-        seriesBuffers: [
-            { binding: seriesBinding, data: inputData },
-            { binding: ordinalBinding, data: rangeData },
-            { binding: domainMapBinding, data: domainMap.table },
+        },
+        extraBuffers: [
+            { name: "fill", role: "ordinalRange", data: rangeData },
+            { name: "fill", role: "domainMap", data: domainMap.table },
         ],
-        outputBinding: result.outputBinding,
-        outputLength: input.length,
-        outputComponents: 4,
+        dumpLabel,
     });
 
     expect(output).toHaveLength(input.length * 4);
@@ -448,6 +328,7 @@ test("markShaderBuilder samples range textures for vec4 output", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = [0, 0.5, 1];
     const domain = [0, 1];
@@ -475,44 +356,19 @@ test("markShaderBuilder samples range textures for vec4 output", async ({
         { name: "uDomain_fill", type: "f32", components: 1, arrayLength: 2 },
         { name: "uRange_fill", type: "f32", components: 1, arrayLength: 2 },
     ];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "fill",
         outputType: "vec4<f32>",
         outputLength: input.length,
-        channelName: "fill",
-    });
-    const bindings = mapScaleBindings(result);
-    const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
-    )?.binding;
-    const textureBinding = bindings.find(
-        (entry) => entry.role === "rangeTexture" && entry.name === "fill"
-    )?.binding;
-    const samplerBinding = bindings.find(
-        (entry) => entry.role === "rangeSampler" && entry.name === "fill"
-    )?.binding;
-    if (
-        seriesBinding == null ||
-        textureBinding == null ||
-        samplerBinding == null
-    ) {
-        throw new Error("Range texture bindings for fill were not generated.");
-    }
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: packContinuousDomainRange(domain, unitRange),
-        seriesBuffers: [{ binding: seriesBinding, data: input }],
-        outputBinding: result.outputBinding,
-        outputLength: input.length,
         outputComponents: 4,
-        texture: {
-            binding: textureBinding,
-            samplerBinding,
-            texture: packTextureData(textureData),
+        uniformLayout,
+        uniforms: {
+            uDomain_fill: domain,
+            uRange_fill: unitRange,
         },
+        texture: { name: "fill", texture: packTextureData(textureData) },
+        dumpLabel,
     });
 
     expect(output).toHaveLength(input.length * 4);
@@ -530,6 +386,7 @@ test("markShaderBuilder clamps range texture sampling to endpoints", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = [-0.2, 0, 1, 1.2];
     const domain = [0, 1];
@@ -557,44 +414,19 @@ test("markShaderBuilder clamps range texture sampling to endpoints", async ({
         { name: "uDomain_fill", type: "f32", components: 1, arrayLength: 2 },
         { name: "uRange_fill", type: "f32", components: 1, arrayLength: 2 },
     ];
-
-    const result = buildScaleComputeShader({
+    const output = await runScaleCase(page, {
         channels,
-        uniformLayout,
+        channelName: "fill",
         outputType: "vec4<f32>",
         outputLength: input.length,
-        channelName: "fill",
-    });
-    const bindings = mapScaleBindings(result);
-    const seriesBinding = bindings.find(
-        (entry) => entry.role === "series" && entry.name === "seriesF32"
-    )?.binding;
-    const textureBinding = bindings.find(
-        (entry) => entry.role === "rangeTexture" && entry.name === "fill"
-    )?.binding;
-    const samplerBinding = bindings.find(
-        (entry) => entry.role === "rangeSampler" && entry.name === "fill"
-    )?.binding;
-    if (
-        seriesBinding == null ||
-        textureBinding == null ||
-        samplerBinding == null
-    ) {
-        throw new Error("Range texture bindings for fill were not generated.");
-    }
-
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData: packContinuousDomainRange(domain, unitRange),
-        seriesBuffers: [{ binding: seriesBinding, data: input }],
-        outputBinding: result.outputBinding,
-        outputLength: input.length,
         outputComponents: 4,
-        texture: {
-            binding: textureBinding,
-            samplerBinding,
-            texture: packTextureData(textureData),
+        uniformLayout,
+        uniforms: {
+            uDomain_fill: domain,
+            uRange_fill: unitRange,
         },
+        texture: { name: "fill", texture: packTextureData(textureData) },
+        dumpLabel,
     });
 
     const expectedColors = [
@@ -618,6 +450,7 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const input = new Float32Array([0, 1, 2, 3]);
     const channels = {
@@ -662,6 +495,7 @@ test("markShaderBuilder applies interval selections to conditional values", asyn
         uniformLayout,
         uniforms: { uSelection_brush: [1, 2] },
         selectionDefs,
+        dumpLabel,
     });
 
     expect(output).toEqual([0, 1, 1, 0]);
@@ -671,6 +505,7 @@ test("markShaderBuilder applies single selections to conditional values", async 
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const ids = new Uint32Array([10, 11, 12, 13]);
     const channels = {
@@ -707,6 +542,7 @@ test("markShaderBuilder applies single selections to conditional values", async 
         uniformLayout,
         uniforms: { uSelection_picked: 12 },
         selectionDefs,
+        dumpLabel,
     });
 
     expect(output).toEqual([0, 0, 1, 0]);
@@ -716,6 +552,7 @@ test("markShaderBuilder applies interval selections over ranged channels", async
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const x = new Float32Array([0, 1, 2, 3]);
     const x2 = new Float32Array([1, 2, 3, 4]);
@@ -768,6 +605,7 @@ test("markShaderBuilder applies interval selections over ranged channels", async
         uniformLayout,
         uniforms: { uSelection_span: [2.5, 4.5] },
         selectionDefs,
+        dumpLabel,
     });
 
     expect(output).toEqual([0, 0, 1, 1]);
@@ -777,6 +615,7 @@ test("markShaderBuilder applies multi selections via hash tables", async ({
     page,
 }) => {
     await ensureWebGPU(page);
+    const dumpLabel = test.info().title;
 
     const ids = new Uint32Array([10, 11, 12, 13]);
     const channels = {
@@ -828,6 +667,7 @@ test("markShaderBuilder applies multi selections via hash tables", async ({
         selectionDefs,
         extraResources,
         extraBuffers: [{ name: selectionBufferName, data: table }],
+        dumpLabel,
     });
 
     expect(output).toEqual([0, 1, 0, 1]);
