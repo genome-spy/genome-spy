@@ -5,6 +5,8 @@ import BaseDialog from "../components/generic/baseDialog.js";
 import "../components/generic/customSelect.js";
 import { SCHEME_NAMES, schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
 
+export const DEFAULT_COLOR = "#808080";
+
 /**
  * @typedef {"nominal" | "ordinal" | "quantitative"} DataType
  * @typedef {"linear" | "log" | "pow" | "sqrt" | "symlog"} QuantScaleType
@@ -14,6 +16,248 @@ import { SCHEME_NAMES, schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
  * @prop {string} domain
  * @prop {string} range
  */
+
+/**
+ * @typedef {object} ScaleDialogState
+ * @prop {DataType} dataType
+ * @prop {ColorMode} colorMode
+ * @prop {"observed" | "explicit"} domainMode
+ * @prop {QuantScaleType} scaleType
+ * @prop {string} scheme
+ * @prop {number[]} quantDomain
+ * @prop {string[]} quantRange
+ * @prop {number | null} domainMid
+ * @prop {DomainRangePair[]} domainPairs
+ */
+
+/**
+ * @param {number | null} domainMid
+ * @returns {number}
+ */
+export function getExpectedQuantRangeLength(domainMid) {
+    return domainMid != null ? 3 : 2;
+}
+
+/**
+ * @param {DataType} dataType
+ * @returns {boolean}
+ */
+export function isDiscreteDataType(dataType) {
+    return dataType === "nominal" || dataType === "ordinal";
+}
+
+/**
+ * @param {DomainRangePair[]} domainPairs
+ * @returns {DomainRangePair[]}
+ */
+export function filterValidDomainPairs(domainPairs) {
+    return domainPairs.filter((pair) => pair.domain.trim() !== "");
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/scale.js").Scale | null | undefined} scale
+ * @param {DataType} dataType
+ * @param {(string | number)[]} observedDomain
+ * @param {{ scheme: string, scaleType: QuantScaleType }} defaults
+ * @returns {ScaleDialogState}
+ */
+export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
+    const isDiscrete = isDiscreteDataType(dataType);
+
+    /** @type {ScaleDialogState} */
+    const state = {
+        dataType,
+        colorMode: "scheme",
+        domainMode: "observed",
+        scaleType: defaults.scaleType,
+        scheme: defaults.scheme,
+        quantDomain: [],
+        quantRange: [],
+        domainMid: null,
+        domainPairs: [],
+    };
+
+    if (!scale) {
+        if (isDiscrete && observedDomain.length > 0) {
+            state.domainPairs = observedDomain.map((value) => ({
+                domain: String(value),
+                range: DEFAULT_COLOR,
+            }));
+        } else if (!isDiscrete && observedDomain.length === 2) {
+            state.quantDomain = /** @type {number[]} */ (observedDomain);
+        }
+        return state;
+    }
+
+    if (!isDiscrete && scale.type) {
+        state.scaleType = /** @type {QuantScaleType} */ (scale.type);
+    }
+
+    if (scale.scheme) {
+        state.scheme = scale.scheme;
+    }
+
+    if (scale.domainMid != null) {
+        state.domainMid = scale.domainMid;
+    }
+
+    if (scale.range) {
+        state.colorMode = "manual";
+    }
+
+    if (scale.domain) {
+        state.domainMode = "explicit";
+    }
+
+    if (isDiscrete) {
+        const domainValues = scale.domain?.map((value) => String(value)) ?? [];
+        if (state.colorMode === "manual") {
+            const rangeValues = scale.range ?? [];
+            state.domainPairs =
+                domainValues.length > 0
+                    ? domainValues.map((domain, index) => ({
+                          domain,
+                          range: rangeValues[index] ?? DEFAULT_COLOR,
+                      }))
+                    : rangeValues.map((range) => ({
+                          domain: "",
+                          range,
+                      }));
+        } else {
+            state.domainPairs = domainValues.map((domain) => ({
+                domain,
+                range: DEFAULT_COLOR,
+            }));
+        }
+        return state;
+    }
+
+    if (scale.domain) {
+        state.quantDomain = /** @type {number[]} */ (scale.domain);
+    } else if (observedDomain.length === 2) {
+        state.quantDomain = /** @type {number[]} */ (observedDomain);
+    }
+
+    if (scale.range) {
+        state.quantRange = /** @type {string[]} */ (scale.range);
+    }
+
+    return state;
+}
+
+/**
+ * @param {number[]} quantDomain
+ * @param {string[]} quantRange
+ * @param {(string | number)[]} observedDomain
+ * @param {number | null} domainMid
+ * @returns {{ quantDomain: number[], quantRange: string[] }}
+ */
+export function normalizeQuantDomainRange(
+    quantDomain,
+    quantRange,
+    observedDomain,
+    domainMid
+) {
+    const hasObserved = observedDomain.length === 2;
+    const defaultMin = hasObserved ? Number(observedDomain[0]) : 0;
+    const defaultMax = hasObserved ? Number(observedDomain[1]) : 1;
+
+    const domain = [...quantDomain];
+    if (domain.length === 0) {
+        domain.push(defaultMin, defaultMax);
+    } else if (domain.length === 1) {
+        domain.push(defaultMax);
+    }
+
+    const min = domain[0] ?? defaultMin;
+    const max = domain[domain.length - 1] ?? defaultMax;
+    const normalizedDomain = [min, max];
+
+    const desiredRangeLength = getExpectedQuantRangeLength(domainMid);
+    let range = [...quantRange];
+    if (range.length < desiredRangeLength) {
+        const last = range[range.length - 1] ?? DEFAULT_COLOR;
+        while (range.length < desiredRangeLength) {
+            range.push(last);
+        }
+    } else if (range.length > desiredRangeLength) {
+        range = range.slice(0, desiredRangeLength);
+    }
+
+    return {
+        quantDomain: normalizedDomain,
+        quantRange: range,
+    };
+}
+
+/**
+ * @param {ScaleDialogState} state
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+ */
+export function buildQuantitativeScaleSpec(state) {
+    /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
+    const scale = {
+        type: state.scaleType,
+    };
+
+    if (state.domainMid != null) {
+        scale.domainMid = state.domainMid;
+    }
+
+    if (state.colorMode === "scheme") {
+        scale.scheme = state.scheme;
+        if (state.domainMode === "explicit") {
+            scale.domain = state.quantDomain;
+        }
+        return scale;
+    }
+
+    const expectedRangeLength = getExpectedQuantRangeLength(state.domainMid);
+    if (state.quantRange.length !== expectedRangeLength) {
+        return null;
+    }
+    if (state.domainMode === "explicit") {
+        if (state.quantDomain.length !== 2) {
+            return null;
+        }
+        scale.domain = state.quantDomain;
+    }
+    scale.range = state.quantRange;
+    return scale;
+}
+
+/**
+ * @param {ScaleDialogState} state
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+ */
+export function buildDiscreteScaleSpec(state) {
+    /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
+    const scale = {
+        type: "ordinal",
+    };
+
+    if (state.colorMode === "scheme") {
+        scale.scheme = state.scheme;
+        if (state.domainMode === "explicit") {
+            const validPairs = filterValidDomainPairs(state.domainPairs);
+            if (validPairs.length > 0) {
+                scale.domain = validPairs.map((pair) => pair.domain);
+            }
+        }
+        return scale;
+    }
+
+    if (state.domainMode !== "explicit") {
+        return null;
+    }
+    const validPairs = filterValidDomainPairs(state.domainPairs);
+    if (validPairs.length === 0) {
+        return null;
+    }
+    scale.domain = validPairs.map((pair) => pair.domain);
+    scale.range = validPairs.map((pair) => pair.range);
+    return scale;
+}
 
 /**
  * A dialog for interactively configuring Vega-Lite scale specifications.
@@ -41,6 +285,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
         ...super.properties,
         dataType: { type: String },
         observedDomain: { type: Array },
+        scale: { type: Object },
         colorMode: { type: String },
         domainMode: { type: String },
         scheme: { type: String },
@@ -58,6 +303,8 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.dataType = "quantitative";
         /** @type {(string | number)[]} */
         this.observedDomain = [];
+        /** @type {import("@genome-spy/core/spec/scale.js").Scale | null} */
+        this.scale = null;
         this.dialogTitle = "Configure Scale";
 
         /** @type {ColorMode} */
@@ -83,25 +330,21 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #initializeFromProps() {
-        // Ensure dataType is set (no-op since property defaults to "quantitative")
-        if (
-            this.dataType === "quantitative" &&
-            this.quantDomain.length === 0 &&
-            this.observedDomain.length === 2
-        ) {
-            this.quantDomain = /** @type {number[]} */ (this.observedDomain);
-        }
+        const parsed = parseScaleSpec(
+            this.scale,
+            this.dataType,
+            this.observedDomain,
+            { scheme: this.scheme, scaleType: this.scaleType }
+        );
 
-        if (
-            this.dataType !== "quantitative" &&
-            this.domainPairs.length === 0 &&
-            this.observedDomain.length > 0
-        ) {
-            this.domainPairs = this.observedDomain.map((d) => ({
-                domain: String(d),
-                range: "#808080",
-            }));
-        }
+        this.colorMode = parsed.colorMode;
+        this.domainMode = parsed.domainMode;
+        this.scheme = parsed.scheme;
+        this.scaleType = parsed.scaleType;
+        this.quantDomain = parsed.quantDomain;
+        this.quantRange = parsed.quantRange;
+        this.domainMid = parsed.domainMid;
+        this.domainPairs = parsed.domainPairs;
     }
 
     static styles = [
@@ -224,7 +467,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
     #addDomainPair() {
         this.domainPairs = [
             ...this.domainPairs,
-            { domain: "", range: "#808080" },
+            { domain: "", range: DEFAULT_COLOR },
         ];
     }
 
@@ -257,48 +500,25 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #ensureQuantDomainRangeLengths() {
-        const hasObserved = this.observedDomain.length === 2;
-        const defaultMin = hasObserved ? Number(this.observedDomain[0]) : 0;
-        const defaultMax = hasObserved ? Number(this.observedDomain[1]) : 1;
-
-        const domain = [...this.quantDomain];
-        if (domain.length === 0) {
-            domain.push(defaultMin, defaultMax);
-        } else if (domain.length === 1) {
-            domain.push(defaultMax);
-        }
-
-        const min = domain[0] ?? defaultMin;
-        const max = domain[domain.length - 1] ?? defaultMax;
-        const normalizedDomain = [min, max];
+        const normalized = normalizeQuantDomainRange(
+            this.quantDomain,
+            this.quantRange,
+            this.observedDomain,
+            this.domainMid
+        );
 
         if (
-            this.quantDomain.length !== normalizedDomain.length ||
-            normalizedDomain.some((v, i) => v !== this.quantDomain[i])
+            this.quantDomain.length !== normalized.quantDomain.length ||
+            normalized.quantDomain.some((v, i) => v !== this.quantDomain[i])
         ) {
-            this.quantDomain = normalizedDomain;
-        }
-
-        const domainStops =
-            this.domainMid != null
-                ? [min, this.domainMid, max]
-                : normalizedDomain;
-        const desiredRangeLength = domainStops.length;
-        let range = [...this.quantRange];
-        if (range.length < desiredRangeLength) {
-            const last = range[range.length - 1] ?? "#808080";
-            while (range.length < desiredRangeLength) {
-                range.push(last);
-            }
-        } else if (range.length > desiredRangeLength) {
-            range = range.slice(0, desiredRangeLength);
+            this.quantDomain = normalized.quantDomain;
         }
 
         if (
-            range.length !== this.quantRange.length ||
-            range.some((v, i) => v !== this.quantRange[i])
+            this.quantRange.length !== normalized.quantRange.length ||
+            normalized.quantRange.some((v, i) => v !== this.quantRange[i])
         ) {
-            this.quantRange = range;
+            this.quantRange = normalized.quantRange;
         }
     }
 
@@ -321,71 +541,34 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     /**
+     * @returns {ScaleDialogState}
+     */
+    #buildState() {
+        return {
+            dataType: this.dataType,
+            colorMode: this.colorMode,
+            domainMode: this.domainMode,
+            scaleType: this.scaleType,
+            scheme: this.scheme,
+            quantDomain: this.quantDomain,
+            quantRange: this.quantRange,
+            domainMid: this.domainMid,
+            domainPairs: this.domainPairs,
+        };
+    }
+
+    /**
      * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
      */
     #buildQuantitativeScale() {
-        /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
-        const scale = {
-            type: this.scaleType,
-        };
-
-        if (this.colorMode === "scheme") {
-            scale.scheme = this.scheme;
-            if (this.domainMid != null) {
-                scale.domainMid = this.domainMid;
-            }
-            if (this.domainMode === "explicit") {
-                scale.domain = this.quantDomain;
-            }
-        } else {
-            // Manual mode
-            if (this.domainMode !== "explicit") {
-                return null;
-            }
-            if (this.quantDomain.length !== this.quantRange.length) {
-                return null;
-            }
-            scale.domain = this.quantDomain;
-            scale.range = this.quantRange;
-        }
-
-        return scale;
+        return buildQuantitativeScaleSpec(this.#buildState());
     }
 
     /**
      * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
      */
     #buildDiscreteScale() {
-        /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
-        const scale = {
-            type: "ordinal",
-        };
-
-        if (this.colorMode === "scheme") {
-            scale.scheme = this.scheme;
-            if (this.domainMode === "explicit") {
-                const validPairs = this.domainPairs.filter(
-                    (p) => p.domain.trim() !== ""
-                );
-                if (validPairs.length > 0) {
-                    scale.domain = validPairs.map((p) => p.domain);
-                }
-            }
-        } else {
-            if (this.domainMode !== "explicit") {
-                return null;
-            }
-            const validPairs = this.domainPairs.filter(
-                (p) => p.domain.trim() !== ""
-            );
-            if (validPairs.length === 0) {
-                return null;
-            }
-            scale.domain = validPairs.map((p) => p.domain);
-            scale.range = validPairs.map((p) => p.range);
-        }
-
-        return scale;
+        return buildDiscreteScaleSpec(this.#buildState());
     }
 
     // Data type selection is managed externally; do not render radio buttons here.
@@ -453,9 +636,6 @@ export default class ConfigureScaleDialog extends BaseDialog {
 
     #onObservedDomainSelected() {
         this.domainMode = "observed";
-        if (this.colorMode === "manual") {
-            this.colorMode = "scheme";
-        }
         if (
             this.dataType === "quantitative" &&
             this.observedDomain.length === 2
@@ -721,7 +901,8 @@ export default class ConfigureScaleDialog extends BaseDialog {
                                 <input
                                     class="btn"
                                     type="color"
-                                    .value=${this.quantRange[i] ?? "#808080"}
+                                    .value=${this.quantRange[i] ??
+                                    DEFAULT_COLOR}
                                     @input=${(/** @type {InputEvent} */ e) =>
                                         this.#updateQuantRange(
                                             i,
@@ -739,7 +920,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #isDiscrete() {
-        return this.dataType === "nominal" || this.dataType === "ordinal";
+        return isDiscreteDataType(this.dataType);
     }
 
     #renderDiscreteColorMode() {

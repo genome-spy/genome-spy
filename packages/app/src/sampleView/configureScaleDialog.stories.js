@@ -74,7 +74,7 @@ if (!customElements.get("gs-configure-scale-demo")) {
                         <button id="nominal">Nominal (A, B, C, D)</button>
                         <button id="ordinal">Ordinal (Low, Medium, High)</button>
                         <button id="many-categories">Ordinal (10 categories)</button>
-                        <button id="reconfigure">Reconfigure Existing</button>
+                        <button id="reconfigure">Edit Existing Scale</button>
                     </div>
                     <div>
                         <h4>Result:</h4>
@@ -216,12 +216,12 @@ if (!customElements.get("gs-configure-scale-demo")) {
                         (/** @type {any} */ el) => {
                             // Pre-populate with an existing scale configuration
                             el.dataType = "quantitative";
-                            el.observedDomain = [-10, 10];
-                            el.scaleType = "sqrt";
-                            el.colorMode = "scheme";
-                            el.domainMode = "explicit";
-                            el.scheme = "viridis";
-                            el.quantDomain = [-10, 10];
+                            el.observedDomain = [-5, 5];
+                            el.scale = {
+                                type: "linear",
+                                domainMid: 0,
+                                range: ["#0000ff", "#d3d3d3", "#ff0000"],
+                            };
                         }
                     );
                     showResult(result);
