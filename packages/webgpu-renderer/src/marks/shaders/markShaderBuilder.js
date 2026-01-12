@@ -486,8 +486,10 @@ ${clauses.join("\n")}
         }
     }
 
-    for (const def of selectionDefs) {
-        selectionFns.push(emitSelectionPredicate(def));
+    if (selectionDefs.length > 0) {
+        for (const def of selectionDefs) {
+            selectionFns.push(emitSelectionPredicate(def));
+        }
     }
 
     // Ordinal scales pull range values from storage buffers. These bindings are
@@ -736,7 +738,8 @@ ${clauses.join("\n")}
     const scalesWgsl = buildScaleWgsl(requiredScales);
     const needsHashTable =
         domainMapChannelIRs.length > 0 ||
-        selectionDefs.some((def) => def.type === "multi");
+        (selectionDefs.length > 0 &&
+            selectionDefs.some((def) => def.type === "multi"));
 
     // Compose the final WGSL with scale helpers, per-channel accessors,
     // and the mark-specific shader body.

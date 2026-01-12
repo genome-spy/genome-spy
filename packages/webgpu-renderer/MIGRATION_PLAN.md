@@ -88,6 +88,62 @@ main pass untouched and keep per-frame work minimal.
 - Explicit selection docs in public API (uniqueId requirements, predicate
   ordering semantics).
 
+### GPU test debugging: mark-shader-builder compute pass returns zeros
+
+Status: **tests fail** for `mark-shader-builder.gpu.test.js` (compute pass for
+series-backed scales). Example scenes render correctly.
+
+**Symptom**
+- Test: `markShaderBuilder executes series-backed scales in a compute pass`
+  writes all zeros instead of scaled values.
+- Even with debug modes that bypass scaling, output remains all zeros.
+
+**Relevant files**
+- Tests: `packages/webgpu-renderer/tests/mark-shader-builder.gpu.test.js`
+- Helpers: `packages/webgpu-renderer/tests/scaleShaderTestUtils.js`
+- Shader builder: `packages/webgpu-renderer/src/marks/shaders/markShaderBuilder.js`
+- Pipeline/bindings: `packages/webgpu-renderer/src/marks/programs/internal/pipelineBuilder.js`
+- Renderer scaffolding: `packages/webgpu-renderer/src/renderer.js`
+
+**Debug flags (already wired)**
+- `SCALE_TEST_READ_SERIES=1` — compute shader writes `read_x(i)` to output.
+- `SCALE_TEST_COPY_SERIES=1` — bypass compute, GPU copies series buffer to
+  readback buffer (also adds `COPY_SRC` usage).
+- `SCALE_TEST_DUMP_OUTPUT=1` — dumps JSON outputs to `test-results/`.
+- `DUMP_MARK_SHADER=1` — dumps WGSL/JSON for the shader under test.
+
+**Commands used**
+```
+DUMP_MARK_SHADER=1 npx playwright test -c packages/webgpu-renderer/playwright.config.js \
+  --grep "executes series-backed scales in a compute pass" --timeout 120000
+
+SCALE_TEST_READ_SERIES=1 SCALE_TEST_COPY_SERIES=1 SCALE_TEST_DUMP_OUTPUT=1 \
+  DUMP_MARK_SHADER=1 npx playwright test -c packages/webgpu-renderer/playwright.config.js \
+  --grep "executes series-backed scales in a compute pass" --timeout 120000
+```
+
+**Observed artifacts**
+- `test-results/mark-shader-<test>-x-f32-linear-*.wgsl` shows bindings:
+  params @group(1) @binding(0), `seriesF32` @binding(1), output @binding(2).
+- Output JSON contains only zeros even when `read_x(i)` is used or when
+  `COPY_SRC` path is enabled.
+
+**Likely culprits**
+- Series buffer not written or not bound as expected.
+- Bind group layout/binding mismatch for compute path.
+- `writeBuffer` or `copyBufferToBuffer` not executed as intended in the test
+  harness.
+
+**Next steps (incremental)**
+1. Add a micro GPU sanity test that does only:
+   `device.queue.writeBuffer` → `copyBufferToBuffer` → `mapAsync`,
+   to confirm GPU writes/reads in the harness.
+2. If that passes, isolate compute wiring:
+   minimal compute shader that copies `seriesF32[i]` to output.
+3. Compare bind group layout entries against the dumped WGSL.
+4. If compute still fails, check `scaleShaderTestUtils` for binding index
+   assumptions or missing `COPY_DST`/`STORAGE` usage flags.
+
 ### Code-first API direction (classes vs. defs)
 
 Goal: decide whether users pass scale/mark instances (tree-shakeable,
@@ -308,3 +364,83 @@ Ranged text (x2/y2 optional; only apply when defined):
   alignment, and squeeze behavior.
 - **Remaining** — verify alignment constants against uniform-based alignment,
   plus edge-fade parity and baseline fixes.
+
+## GPU Test Debugging: mark-shader-builder compute pass returns zeros
+
+This section is a handoff for a fresh chat or a smaller model to continue
+debugging quickly without reading the whole codebase.
+
+### Symptom
+- `packages/webgpu-renderer/tests/mark-shader-builder.gpu.test.js` fails.
+- The test "markShaderBuilder executes series-backed scales in a compute pass"
+  returns all zeros instead of scaled values.
+- Example failing assertion: expected 5, received 0.
+
+### What was verified
+- The generated WGSL looks correct and compiles.
+- `getScaled_x(i)` is correct in shader output.
+- Even when the compute shader is forced to return `read_x(i)` directly,
+  output is still all zeros.
+- Even when bypassing compute output and copying the series buffer directly
+  into the readback buffer, the output is still all zeros.
+
+Conclusion: the issue is **not** in scale logic or shader code. The series
+buffer data is not reaching the GPU buffer or not being copied back correctly.
+
+### Commands used (single-test repro)
+```
+DUMP_MARK_SHADER=1 npx playwright test -c packages/webgpu-renderer/playwright.config.js --grep "executes series-backed scales in a compute pass" --timeout 120000
+```
+
+Debug flags (added in `tests/scaleShaderTestUtils.js`):
+```
+SCALE_TEST_READ_SERIES=1    # compute writes read_x(i) instead of getScaled_x(i)
+SCALE_TEST_COPY_SERIES=1    # copy series buffer directly to readback (bypass output)
+SCALE_TEST_DUMP_OUTPUT=1    # dump output JSON to test-results/
+```
+
+### Relevant files
+- `packages/webgpu-renderer/tests/mark-shader-builder.gpu.test.js`
+- `packages/webgpu-renderer/tests/scaleShaderTestUtils.js`
+- `packages/webgpu-renderer/tests/gpuTestUtils.js`
+- `packages/webgpu-renderer/src/marks/shaders/markShaderBuilder.js`
+- `packages/webgpu-renderer/src/marks/programs/internal/packedSeriesLayout.js`
+
+### Expected vs. actual dump artifacts
+Dumped WGSL/JSON files live in repo-root `test-results/` when `DUMP_MARK_SHADER=1`.
+The debug output file (when `SCALE_TEST_DUMP_OUTPUT=1`) is:
+```
+test-results/markshaderbuilder-executes-series-backed-scales-in-a-compute-pass-output.json
+```
+It shows `output: [0, 0, 0]`.
+
+### Likely culprits to investigate (most to least likely)
+1. **Series buffer upload / visibility**  
+   - `runScaleCompute` creates the series buffers and writes data via
+     `device.queue.writeBuffer`, but the readback remains zero.
+   - The buffers might not be in the right bind group or their bindings could
+     be misaligned with the shader layout.
+2. **Bind group layout mismatch**  
+   - Compute harness uses group(0)/group(1) layouts; the binding order in
+     `markShaderBuilder` may not match the test harness assumptions.
+3. **Resource binding numbering**  
+   - The output binding is `initial.resourceBindings.length + 1`, and the
+     series buffer binding comes from `resourceBindings`. A mismatch could
+     yield a valid pipeline that reads from the wrong buffer.
+4. **ArrayBuffer serialization in Playwright**  
+   - The test harness converts typed arrays to plain arrays for `page.evaluate`.
+     If this serialization is flawed (e.g., wrong type or empty array), the
+     GPU buffer would contain zeros.
+5. **Buffer usage flags**  
+   - Series buffers need `COPY_SRC` when `SCALE_TEST_COPY_SERIES=1`.
+     This was added, but if not applied consistently it can result in zeros.
+
+### Suggested next diagnostic step (low-cost)
+Add a micro GPU test that does **only**:
+`writeBuffer → copyBufferToBuffer → mapAsync`, without any shader.  
+If that fails, the harness is broken. If it passes, the bind group layout or
+shader bindings are the issue.
+
+### Incremental workflow
+Run only one test with grep and a single debug switch at a time. Keep dumps
+enabled only when needed to avoid extra churn.
