@@ -1,6 +1,6 @@
 import { html } from "lit";
 import "./configureScaleDialog.js";
-import { showDialog } from "../components/generic/baseDialog.js";
+import { showDialog } from "../../components/generic/baseDialog.js";
 
 export default {
     title: "Sample View/ConfigureScaleDialog",

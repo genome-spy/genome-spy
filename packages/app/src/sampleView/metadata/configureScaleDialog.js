@@ -1,10 +1,13 @@
 import { html, css } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog from "../components/generic/baseDialog.js";
-import "../components/generic/customSelect.js";
-import { showMessageDialog } from "../components/generic/messageDialog.js";
-import { SCHEME_NAMES, schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
+import BaseDialog from "../../components/generic/baseDialog.js";
+import "../../components/generic/customSelect.js";
+import { showMessageDialog } from "../../components/generic/messageDialog.js";
+import {
+    SCHEME_NAMES,
+    schemeToDataUrl,
+} from "../../utils/ui/schemeToDataUrl.js";
 
 export const DEFAULT_COLOR = "#808080";
 

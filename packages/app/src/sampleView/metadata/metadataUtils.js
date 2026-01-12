@@ -1,5 +1,5 @@
 import { inferType } from "vega-loader";
-import { joinPathParts, splitPath } from "../utils/escapeSeparator.js";
+import { joinPathParts, splitPath } from "../../utils/escapeSeparator.js";
 
 /**
  * @typedef {Object} PathTreeNode
@@ -234,11 +234,11 @@ export function replacePathSeparatorInKeys(
  * Takes columnar metadata where attribute names may represent paths in a hierarchy,
  * and places them under a specified group path.
  *
- * @param {import("./state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
  * @param {string[]} groupPath array of unescaped path segments representing the group path
  */
 export function placeMetadataUnderGroup(columnarMetadata, groupPath = []) {
-    return /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+    return /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
         placeKeysUnderGroup(columnarMetadata, groupPath, ["sample"])
     );
 }
@@ -325,7 +325,7 @@ export function inferMetadataTypesForNodes(rawTypes, root) {
  * to apply to many leaf attributes; this function merges explicit defs with
  * inferred types while avoiding unnecessary duplication of defs for leaves.
  *
- * @param {import("./state/sampleState.js").SampleMetadata} sampleMetadata
+ * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
  * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} existingDefs
  * @param {string} [separator] optional separator used to form attribute hierarchies
  * @returns {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>}
@@ -410,9 +410,9 @@ export function computeAttributeDefs(
  *  combine the metadata from both a and b (if present). Each Metadatum
  * should contain all attributes in attributeNames
  *
- * @param {import("./state/sampleState.js").SampleMetadata} a
- * @param {import("./state/sampleState.js").SampleMetadata} b
- * @returns {import("./state/sampleState.js").SampleMetadata}
+ * @param {import("../state/sampleState.js").SampleMetadata} a
+ * @param {import("../state/sampleState.js").SampleMetadata} b
+ * @returns {import("../state/sampleState.js").SampleMetadata}
  */
 export function combineSampleMetadata(a, b) {
     // a and b are required and expected to be valid SampleMetadata objects
@@ -443,14 +443,14 @@ export function combineSampleMetadata(a, b) {
     const bIds = Object.keys(b.entities);
     const idSet = new Set([...aIds, ...bIds]);
 
-    /** @type {import("./state/sampleState.js").SampleMetadata["entities"]} */
+    /** @type {import("../state/sampleState.js").SampleMetadata["entities"]} */
     const entities = {};
 
     for (const id of idSet) {
         const aEnt = a.entities[id] ?? {};
         const bEnt = b.entities[id] ?? {};
 
-        /** @type {import("./state/sampleState.js").Metadatum} */
+        /** @type {import("../state/sampleState.js").Metadatum} */
         const combined = {};
 
         for (const attr of attributeNames) {
@@ -464,7 +464,7 @@ export function combineSampleMetadata(a, b) {
         entities[id] = combined;
     }
 
-    /** @type {import("./state/sampleState.js").SampleMetadata} */
+    /** @type {import("../state/sampleState.js").SampleMetadata} */
     const result = {
         entities,
         attributeNames,

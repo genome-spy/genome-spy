@@ -23,7 +23,7 @@ import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
-import { showUploadMetadataDialog } from "../../sampleView/uploadMetadataDialog.js";
+import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {

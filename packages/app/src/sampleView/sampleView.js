@@ -9,7 +9,7 @@ import {
     scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
-import { MetadataView } from "./metadataView.js";
+import { MetadataView } from "./metadata/metadataView.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
@@ -48,7 +48,7 @@ import { rowsToColumns } from "../utils/dataLayout.js";
 import {
     METADATA_PATH_SEPARATOR,
     replacePathSeparatorInKeys,
-} from "./metadataUtils.js";
+} from "./metadata/metadataUtils.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 

@@ -3,7 +3,7 @@ import { classMap } from "lit/directives/class-map.js";
 
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
-import generateAttributeContextMenu from "./attributeContextMenu.js";
+import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
 import {
@@ -14,11 +14,11 @@ import {
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
-import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
+import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
-import { subscribeTo } from "../state/subscribeTo.js";
+import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
-import { splitPath } from "../utils/escapeSeparator.js";
+import { splitPath } from "../../utils/escapeSeparator.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -32,12 +32,12 @@ export class MetadataView extends ConcatView {
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      */
 
-    /** @type {import("./sampleView.js").default} */
+    /** @type {import("../sampleView.js").default} */
     #sampleView;
 
     /**
      * TODO: Don't use a local copy. Select from state directly.
-     * @type {import("./state/sampleState.js").Metadata}
+     * @type {import("../state/sampleState.js").Metadata}
      */
     #metadata;
 
@@ -51,7 +51,7 @@ export class MetadataView extends ConcatView {
     #viewToAttribute = new WeakMap();
 
     /**
-     * @param {import("./sampleView.js").default} sampleView
+     * @param {import("../sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
      */
     constructor(sampleView, dataParent) {
@@ -237,7 +237,7 @@ export class MetadataView extends ConcatView {
         const metadatum =
             this.#sampleView.sampleHierarchy.sampleMetadata.entities[sample.id];
 
-        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
 
         const attributeInfo = this.#getAttributeInfoForView(event.target);
@@ -260,7 +260,7 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("./state/sampleState.js").SampleMetadata} sampleMetadata
+     * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
      */
     #setMetadata(sampleMetadata) {
         this.#metadata = sampleMetadata.entities;
@@ -462,7 +462,7 @@ export class MetadataView extends ConcatView {
 
     /**
      * @param {string} attributeName
-     * @returns {import("./types.js").AttributeInfo}
+     * @returns {import("../types.js").AttributeInfo}
      */
     getAttributeInfo(attributeName) {
         const view = this.#attributeViews.get(attributeName);
@@ -681,7 +681,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
  * Returns a Lit TemplateResult representing the attribute name, formatted for display.
  * Path segments are separated by stylized slashes.
  *
- * @param {import("./state/payloadTypes.js").AttributeName} attributeName
+ * @param {import("../state/payloadTypes.js").AttributeName} attributeName
  */
 function formatAttributeName(attributeName) {
     const parts = splitPath(attributeName, METADATA_PATH_SEPARATOR);

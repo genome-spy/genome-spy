@@ -7,14 +7,14 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { html, css } from "lit";
-import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
-import "../components/generic/dataGrid.js";
-import "../components/generic/uploadDropZone.js";
-import "../components/generic/customSelect.js";
-import "./metadataHierarchyConfigurator.js";
+import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import "../../components/generic/dataGrid.js";
+import "../../components/generic/uploadDropZone.js";
+import "../../components/generic/customSelect.js";
+import "../metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { rowsToColumns } from "../utils/dataLayout.js";
-import { splitPath } from "../utils/escapeSeparator.js";
+import { rowsToColumns } from "../../utils/dataLayout.js";
+import { splitPath } from "../../utils/escapeSeparator.js";
 import {
     placeKeysUnderGroup,
     placeMetadataUnderGroup,
@@ -22,7 +22,7 @@ import {
 
 /**
  * @typedef {object} MetadataUploadResult
- * @prop {import("./state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @prop {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
  * @prop {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
  */
 class UploadMetadataDialog extends BaseDialog {
@@ -64,7 +64,7 @@ class UploadMetadataDialog extends BaseDialog {
     constructor() {
         super();
 
-        /** @type {import("./sampleView.js").default} */
+        /** @type {import("../sampleView.js").default} */
         this.sampleView = null;
 
         this.dialogTitle = "Load Custom Metadata";
@@ -103,7 +103,7 @@ class UploadMetadataDialog extends BaseDialog {
             existingIds.has(String(record.sample))
         );
         const columnarMetadata =
-            /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
+            /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
                 rowsToColumns(filteredMetadata)
             );
 
@@ -167,7 +167,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     /**
-     * @param {import("../components/generic/uploadDropZone.js").FilesChosenEvent} e
+     * @param {import("../../components/generic/uploadDropZone.js").FilesChosenEvent} e
      */
     async #onFilesChosen(e) {
         const file = e.detail.files[0];
@@ -190,7 +190,7 @@ class UploadMetadataDialog extends BaseDialog {
             <gs-upload-drop-zone
                 accept=".csv,.tsv,.json"
                 @gs-files-chosen=${(
-                    /** @type {import("../components/generic/uploadDropZone.js").FilesChosenEvent} */ e
+                    /** @type {import("../../components/generic/uploadDropZone.js").FilesChosenEvent} */ e
                 ) => this.#onFilesChosen(e)}
             ></gs-upload-drop-zone>`;
     }
@@ -337,7 +337,7 @@ class UploadMetadataDialog extends BaseDialog {
 customElements.define("gs-upload-metadata-dialog", UploadMetadataDialog);
 
 /**
- * @param {import("./sampleView.js").default} sampleView
+ * @param {import("../sampleView.js").default} sampleView
  */
 export function showUploadMetadataDialog(sampleView) {
     return showDialog(

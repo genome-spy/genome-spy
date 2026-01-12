@@ -8,12 +8,12 @@ import {
     inferMetadataTypesForNodes,
     pathTreeParents,
 } from "./metadataUtils.js";
-import { showDialog } from "../components/generic/baseDialog.js";
+import { showDialog } from "../../components/generic/baseDialog.js";
 import "./configureScaleDialog.js";
-import { schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
+import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
-import { formStyles } from "../components/generic/componentStyles.js";
+import { formStyles } from "../../components/generic/componentStyles.js";
 import { styleMap } from "lit/directives/style-map.js";
 
 // Should be skipped altogether, as it's not a metadata attribute

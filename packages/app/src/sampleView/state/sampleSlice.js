@@ -21,7 +21,7 @@ import {
     combineSampleMetadata,
     computeAttributeDefs,
     METADATA_PATH_SEPARATOR,
-} from "../metadataUtils.js";
+} from "../metadata/metadataUtils.js";
 import { columnsToRows } from "../../utils/dataLayout.js";
 
 /**
