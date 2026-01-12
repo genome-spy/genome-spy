@@ -250,13 +250,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                 scaleDialog.dataType = dataType;
 
                 if (existing) {
-                    scaleDialog.scaleType = existing.type;
-                    if (existing.domain)
-                        scaleDialog.quantDomain = existing.domain;
-                    if (existing.range) scaleDialog.quantRange = existing.range;
-                    if (existing.domainMid != null)
-                        scaleDialog.domainMid = existing.domainMid;
-                    if (existing.scheme) scaleDialog.scheme = existing.scheme;
+                    scaleDialog.scale = existing;
                 }
             }
         );
