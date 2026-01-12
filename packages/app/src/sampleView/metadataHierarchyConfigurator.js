@@ -7,13 +7,13 @@ import {
     pathTreeDfs,
     inferMetadataTypesForNodes,
     pathTreeParents,
-} from "../sampleView/metadataUtils.js";
-import { showDialog } from "./generic/baseDialog.js";
-import "../sampleView/configureScaleDialog.js";
+} from "./metadataUtils.js";
+import { showDialog } from "../components/generic/baseDialog.js";
+import "./configureScaleDialog.js";
 import { schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
-import { formStyles } from "./generic/componentStyles.js";
+import { formStyles } from "../components/generic/componentStyles.js";
 
 /**
  * GsMetadataHierarchyConfigurator
@@ -36,8 +36,8 @@ import { formStyles } from "./generic/componentStyles.js";
  */
 export default class GsMetadataHierarchyConfigurator extends LitElement {
     /***
-     * @typedef {import("../sampleView/metadataUtils.js").MetadataType} MetadataType
-     * @typedef {import("../sampleView/metadataUtils.js").PathTreeNode} PathTreeNode
+     * @typedef {import("./metadataUtils.js").MetadataType} MetadataType
+     * @typedef {import("./metadataUtils.js").PathTreeNode} PathTreeNode
      */
 
     /** */
@@ -244,7 +244,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
         const result = await showDialog(
             "gs-configure-scale-dialog",
             (
-                /** @type {import("../sampleView/configureScaleDialog.js").default} */ scaleDialog
+                /** @type {import("./configureScaleDialog.js").default} */ scaleDialog
             ) => {
                 scaleDialog.observedDomain = observed;
                 scaleDialog.dataType = dataType;
@@ -320,7 +320,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                     <tbody>
                         ${map(pathTreeDfs(this._pathRoot), (node) => {
                             const getDepth = (
-                                /** @type {import("../sampleView/metadataUtils.js").PathTreeNode} */ node
+                                /** @type {import("./metadataUtils.js").PathTreeNode} */ node
                             ) => {
                                 let depth = 0;
                                 let cur = node.parent;

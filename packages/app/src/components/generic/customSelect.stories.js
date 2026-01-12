@@ -5,7 +5,7 @@ import "./customSelect.js";
  * Storybook: Custom select showing Vega-like color schemes.
  */
 export default {
-    title: "Generic/CustomSelect",
+    title: "Components/CustomSelect",
 };
 
 /**

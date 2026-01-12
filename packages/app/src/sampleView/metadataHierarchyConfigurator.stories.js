@@ -1,8 +1,8 @@
 import { html } from "lit";
-import "../gs-metadata-hierarchy-configurator.js";
+import "./metadataHierarchyConfigurator.js";
 
 export default {
-    title: "Components/Metadata Hierarchy Configurator",
+    title: "Sample View/Metadata Hierarchy Configurator",
     tags: ["autodocs"],
 };
 

@@ -11,7 +11,7 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import "../components/generic/dataGrid.js";
 import "../components/generic/uploadDropZone.js";
 import "../components/generic/customSelect.js";
-import "../components/gs-metadata-hierarchy-configurator.js";
+import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { rowsToColumns } from "../utils/dataLayout.js";
 import { splitPath } from "../utils/escapeSeparator.js";
