@@ -444,3 +444,8 @@ shader bindings are the issue.
 ### Incremental workflow
 Run only one test with grep and a single debug switch at a time. Keep dumps
 enabled only when needed to avoid extra churn.
+
+### Debug instrumentation added
+- `tests/harness-queue-copy.gpu.test.js` and `tests/storage-buffer-write.gpu.test.js` verify `writeBuffer → copyBufferToBuffer → mapAsync` works even when buffers are declared as `STORAGE`, covering the exact usage that plagued the compute pass.
+- `scaleShaderTestUtils.js` now normalizes uniforms (injecting `__scale_dummy` when none exist), emits stub `VSOut`/`shade` helpers so compute entry points always compile, logs series payloads when `SCALE_TEST_LOG_BUFFERS=1`, and exposes `runSeriesCopyCase` which copies `seriesF32` straight into the output for binding verification.
+- `tests/series-buffer-binding.gpu.test.js` uses `runSeriesCopyCase` to prove `seriesF32` retains the expected values before any scaling logic runs; these helpers/dumps stay so future GPU failures can be triaged with the documented flags (`SCALE_TEST_LOG_BUFFERS`, `SCALE_TEST_COPY_SERIES`, `SCALE_TEST_READ_SERIES`, `SCALE_TEST_DUMP_OUTPUT`).
