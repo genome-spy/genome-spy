@@ -88,6 +88,12 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                 border-collapse: collapse;
                 margin-top: 8px;
                 font-size: 90%;
+
+                .btn {
+                    padding: 4px 8px;
+                    margin-top: -2px;
+                    margin-bottom: -2px;
+                }
             }
 
             th,
@@ -336,7 +342,8 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                             const rangeLabel = scale?.range
                                 ? JSON.stringify(scale.range)
                                 : "";
-                            const schemeName = scale?.scheme ?? null;
+                            const schemeName =
+                                /** @type {string}*/ (scale?.scheme) ?? null;
 
                             const selectedType =
                                 this._metadataNodeTypes.get(node.path) ??
@@ -389,7 +396,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                                             >`
                                           : ""}
                                 </td>
-                                <td>
+                                <td style="text-align: right;">
                                     <button
                                         class="btn"
                                         @click=${() =>
