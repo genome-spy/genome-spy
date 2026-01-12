@@ -3,13 +3,14 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog from "../components/generic/baseDialog.js";
 import "../components/generic/customSelect.js";
+import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { SCHEME_NAMES, schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
 
 export const DEFAULT_COLOR = "#808080";
 
 /**
  * @typedef {"nominal" | "ordinal" | "quantitative"} DataType
- * @typedef {"linear" | "log" | "pow" | "sqrt" | "symlog"} QuantScaleType
+ * @typedef {"linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} QuantScaleType
  * @typedef {"scheme" | "manual"} ColorMode
  *
  * @typedef {object} DomainRangePair
@@ -28,6 +29,8 @@ export const DEFAULT_COLOR = "#808080";
  * @prop {string[]} quantRange
  * @prop {number | null} domainMid
  * @prop {DomainRangePair[]} domainPairs
+ * @prop {number[]} thresholds
+ * @prop {string[]} thresholdRange
  */
 
 /**
@@ -44,14 +47,6 @@ export function getExpectedQuantRangeLength(domainMid) {
  */
 export function isDiscreteDataType(dataType) {
     return dataType === "nominal" || dataType === "ordinal";
-}
-
-/**
- * @param {DomainRangePair[]} domainPairs
- * @returns {DomainRangePair[]}
- */
-export function filterValidDomainPairs(domainPairs) {
-    return domainPairs.filter((pair) => pair.domain.trim() !== "");
 }
 
 /**
@@ -75,6 +70,8 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
         quantRange: [],
         domainMid: null,
         domainPairs: [],
+        thresholds: [],
+        thresholdRange: [],
     };
 
     if (!scale) {
@@ -94,7 +91,7 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
     }
 
     if (scale.scheme) {
-        state.scheme = scale.scheme;
+        state.scheme = /** @type {string} */ (scale.scheme);
     }
 
     if (scale.domainMid != null) {
@@ -109,10 +106,19 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
         state.domainMode = "explicit";
     }
 
+    if (!isDiscrete && scale.type === "threshold") {
+        state.colorMode = "manual";
+        state.domainMode = "explicit";
+        state.thresholds = /** @type {number[]} */ (scale.domain ?? []);
+        state.thresholdRange = /** @type {string[]} */ (scale.range ?? []);
+        return state;
+    }
+
     if (isDiscrete) {
         const domainValues = scale.domain?.map((value) => String(value)) ?? [];
         if (state.colorMode === "manual") {
-            const rangeValues = scale.range ?? [];
+            // TODO: Handle pre-defined range values. Now this will fail for that case.
+            const rangeValues = /** @type {string[]} */ (scale.range ?? []);
             state.domainPairs =
                 domainValues.length > 0
                     ? domainValues.map((domain, index) => ({
@@ -191,6 +197,83 @@ export function normalizeQuantDomainRange(
 }
 
 /**
+ * @param {number[]} thresholds
+ * @param {string[]} thresholdRange
+ * @returns {{ thresholds: number[], thresholdRange: string[] }}
+ */
+export function normalizeThresholdRange(thresholds, thresholdRange) {
+    const desiredRangeLength = Math.max(0, thresholds.length + 1);
+    let range = [...thresholdRange];
+    if (range.length < desiredRangeLength) {
+        const last = range[range.length - 1] ?? DEFAULT_COLOR;
+        while (range.length < desiredRangeLength) {
+            range.push(last);
+        }
+    } else if (range.length > desiredRangeLength) {
+        range = range.slice(0, desiredRangeLength);
+    }
+
+    return {
+        thresholds: [...thresholds],
+        thresholdRange: range,
+    };
+}
+
+/**
+ * @param {ScaleDialogState} state
+ * @returns {string | null}
+ */
+export function validateScaleState(state) {
+    if (state.dataType === "quantitative") {
+        if (state.scaleType === "threshold") {
+            if (state.colorMode !== "manual") {
+                return "Threshold scales require manual colors.";
+            }
+            if (state.domainMode !== "explicit") {
+                return "Threshold scales require an explicit domain.";
+            }
+            if (state.thresholds.length === 0) {
+                return "Add at least one threshold.";
+            }
+            if (state.thresholdRange.length !== state.thresholds.length + 1) {
+                return "Threshold scales require one more color than thresholds.";
+            }
+            return null;
+        }
+
+        if (state.domainMode === "explicit" && state.quantDomain.length !== 2) {
+            return "Explicit quantitative domains require min and max values.";
+        }
+
+        if (state.colorMode === "manual") {
+            const expectedRangeLength = getExpectedQuantRangeLength(
+                state.domainMid
+            );
+            if (state.quantRange.length !== expectedRangeLength) {
+                return "Manual quantitative ranges must match the domain stops.";
+            }
+        }
+
+        return null;
+    }
+
+    if (state.colorMode === "manual" && state.domainMode !== "explicit") {
+        return "Manual colors require an explicit domain.";
+    }
+
+    if (state.domainMode === "explicit") {
+        if (state.domainPairs.length === 0) {
+            return "Add at least one domain value.";
+        }
+        if (state.domainPairs.some((pair) => pair.domain.trim() === "")) {
+            return "All domain values must be filled.";
+        }
+    }
+
+    return null;
+}
+
+/**
  * @param {ScaleDialogState} state
  * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
  */
@@ -199,6 +282,21 @@ export function buildQuantitativeScaleSpec(state) {
     const scale = {
         type: state.scaleType,
     };
+
+    if (state.scaleType === "threshold") {
+        if (state.colorMode !== "manual" || state.domainMode !== "explicit") {
+            return null;
+        }
+        if (state.thresholds.length === 0) {
+            return null;
+        }
+        if (state.thresholdRange.length !== state.thresholds.length + 1) {
+            return null;
+        }
+        scale.domain = state.thresholds;
+        scale.range = state.thresholdRange;
+        return scale;
+    }
 
     if (state.domainMid != null) {
         scale.domainMid = state.domainMid;
@@ -239,10 +337,7 @@ export function buildDiscreteScaleSpec(state) {
     if (state.colorMode === "scheme") {
         scale.scheme = state.scheme;
         if (state.domainMode === "explicit") {
-            const validPairs = filterValidDomainPairs(state.domainPairs);
-            if (validPairs.length > 0) {
-                scale.domain = validPairs.map((pair) => pair.domain);
-            }
+            scale.domain = state.domainPairs.map((pair) => pair.domain);
         }
         return scale;
     }
@@ -250,12 +345,8 @@ export function buildDiscreteScaleSpec(state) {
     if (state.domainMode !== "explicit") {
         return null;
     }
-    const validPairs = filterValidDomainPairs(state.domainPairs);
-    if (validPairs.length === 0) {
-        return null;
-    }
-    scale.domain = validPairs.map((pair) => pair.domain);
-    scale.range = validPairs.map((pair) => pair.range);
+    scale.domain = state.domainPairs.map((pair) => pair.domain);
+    scale.range = state.domainPairs.map((pair) => pair.range);
     return scale;
 }
 
@@ -286,14 +377,16 @@ export default class ConfigureScaleDialog extends BaseDialog {
         dataType: { type: String },
         observedDomain: { type: Array },
         scale: { type: Object },
-        colorMode: { type: String },
-        domainMode: { type: String },
-        scheme: { type: String },
-        scaleType: { type: String },
-        domainPairs: { type: Array },
-        quantDomain: { type: Array },
-        quantRange: { type: Array },
-        domainMid: { type: Number },
+        colorMode: { type: String, state: true },
+        domainMode: { type: String, state: true },
+        scheme: { type: String, state: true },
+        scaleType: { type: String, state: true },
+        domainPairs: { type: Array, state: true },
+        quantDomain: { type: Array, state: true },
+        quantRange: { type: Array, state: true },
+        domainMid: { type: Number, state: true },
+        thresholds: { type: Array, state: true },
+        thresholdRange: { type: Array, state: true },
     };
 
     constructor() {
@@ -322,6 +415,10 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.quantRange = [];
         /** @type {number | null} */
         this.domainMid = null;
+        /** @type {number[]} */
+        this.thresholds = [];
+        /** @type {string[]} */
+        this.thresholdRange = [];
     }
 
     connectedCallback() {
@@ -345,6 +442,11 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.quantRange = parsed.quantRange;
         this.domainMid = parsed.domainMid;
         this.domainPairs = parsed.domainPairs;
+        this.thresholds = parsed.thresholds;
+        this.thresholdRange = parsed.thresholdRange;
+        if (this.scaleType === "threshold") {
+            this.#ensureThresholdRangeLengths();
+        }
     }
 
     static styles = [
@@ -499,6 +601,40 @@ export default class ConfigureScaleDialog extends BaseDialog {
         );
     }
 
+    /**
+     * @param {number} index
+     * @param {number} value
+     */
+    #updateThreshold(index, value) {
+        this.thresholds = this.thresholds.map((v, i) =>
+            i === index ? value : v
+        );
+    }
+
+    /**
+     * @param {number} index
+     * @param {string} value
+     */
+    #updateThresholdRange(index, value) {
+        this.thresholdRange = this.thresholdRange.map((v, i) =>
+            i === index ? value : v
+        );
+    }
+
+    #addThreshold() {
+        const last = this.thresholds[this.thresholds.length - 1] ?? 0;
+        this.thresholds = [...this.thresholds, last];
+        this.#ensureThresholdRangeLengths();
+    }
+
+    /**
+     * @param {number} index
+     */
+    #removeThreshold(index) {
+        this.thresholds = this.thresholds.filter((_, i) => i !== index);
+        this.#ensureThresholdRangeLengths();
+    }
+
     #ensureQuantDomainRangeLengths() {
         const normalized = normalizeQuantDomainRange(
             this.quantDomain,
@@ -522,11 +658,48 @@ export default class ConfigureScaleDialog extends BaseDialog {
         }
     }
 
-    #validateAndSubmit() {
+    #ensureThresholdRangeLengths() {
+        const normalized = normalizeThresholdRange(
+            this.thresholds,
+            this.thresholdRange
+        );
+
+        if (
+            this.thresholds.length !== normalized.thresholds.length ||
+            normalized.thresholds.some((v, i) => v !== this.thresholds[i])
+        ) {
+            this.thresholds = normalized.thresholds;
+        }
+
+        if (
+            this.thresholdRange.length !== normalized.thresholdRange.length ||
+            normalized.thresholdRange.some(
+                (v, i) => v !== this.thresholdRange[i]
+            )
+        ) {
+            this.thresholdRange = normalized.thresholdRange;
+        }
+    }
+
+    async #validateAndSubmit() {
+        const error = validateScaleState(this.#buildState());
+        if (error) {
+            await showMessageDialog(error, {
+                title: "Warning",
+                type: "warning",
+            });
+            return;
+        }
+
         const scale = this.#buildScale();
         if (scale) {
             this.finish({ ok: true, data: scale });
             this.triggerClose();
+        } else {
+            await showMessageDialog(
+                "Unable to build scale from the current settings.",
+                { title: "Warning", type: "warning" }
+            );
         }
     }
 
@@ -554,6 +727,8 @@ export default class ConfigureScaleDialog extends BaseDialog {
             quantRange: this.quantRange,
             domainMid: this.domainMid,
             domainPairs: this.domainPairs,
+            thresholds: this.thresholds,
+            thresholdRange: this.thresholdRange,
         };
     }
 
@@ -574,6 +749,9 @@ export default class ConfigureScaleDialog extends BaseDialog {
     // Data type selection is managed externally; do not render radio buttons here.
 
     #renderColorModeSelector() {
+        if (this.scaleType === "threshold") {
+            return html``;
+        }
         return html`
             <div class="gs-form-group">
                 <label for="schemeColorModeRadio">Color Mapping</label>
@@ -656,13 +834,18 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #renderObservedDomainPreview() {
+        const maxItems = 5;
+        const previewItems = this.observedDomain.slice(0, maxItems);
+        const hasMore = this.observedDomain.length > maxItems;
         return html`<span>
             Observed (${this.observedDomain.length}):
-            ${this.observedDomain.map((d) => html`<code>${String(d)}</code> `)}
+            ${previewItems.map((d) => html`<code>${String(d)}</code> `)}
+            ${hasMore ? html`...` : ""}
         </span>`;
     }
 
     #renderDomainMode() {
+        const isThreshold = this.scaleType === "threshold";
         return html`
             <div class="gs-form-group">
                 <label for="observedDomainRadio">Domain Source</label>
@@ -674,6 +857,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                             name="domainMode"
                             value="observed"
                             ?checked=${this.domainMode === "observed"}
+                            ?disabled=${isThreshold}
                             @change=${() => this.#onObservedDomainSelected()}
                         />
                         Use observed values (updates with data)
@@ -684,6 +868,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                             name="domainMode"
                             value="explicit"
                             ?checked=${this.domainMode === "explicit"}
+                            ?disabled=${isThreshold}
                             @change=${() => this.#onExplicitDomainSelected()}
                         />
                         Explicit domain (fixed)
@@ -701,6 +886,9 @@ export default class ConfigureScaleDialog extends BaseDialog {
         `;
     }
 
+    /**
+     * @param {boolean} showColorInputs
+     */
     #renderDiscreteDomainInputs(showColorInputs) {
         return html`
             <div class="gs-form-group">
@@ -836,10 +1024,6 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #renderQuantitativeConfig() {
-        if (this.domainMode === "explicit" && this.colorMode !== "scheme") {
-            this.#ensureQuantDomainRangeLengths();
-        }
-
         return html`
             <div class="gs-form-group">
                 <label for="scaleTypeSelect">Scale Type</label>
@@ -851,9 +1035,24 @@ export default class ConfigureScaleDialog extends BaseDialog {
                             e.target
                         ).value;
                         this.scaleType = /** @type {QuantScaleType} */ (value);
+                        if (this.scaleType === "threshold") {
+                            this.colorMode = "manual";
+                            this.domainMode = "explicit";
+                            if (this.thresholds.length === 0) {
+                                this.thresholds = [0];
+                            }
+                            this.#ensureThresholdRangeLengths();
+                        }
                     }}
                 >
-                    ${["linear", "log", "sqrt", "pow", "symlog"].map(
+                    ${[
+                        "linear",
+                        "log",
+                        "sqrt",
+                        "pow",
+                        "symlog",
+                        "threshold",
+                    ].map(
                         (option) => html`
                             <option value=${option}>${option}</option>
                         `
@@ -864,11 +1063,88 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #renderQuantitativeColorMode() {
+        if (this.scaleType === "threshold") {
+            return this.#renderThresholdControls();
+        }
         if (this.colorMode === "scheme") {
             return this.#renderQuantitativeSchemeControls();
         }
         this.#ensureQuantDomainRangeLengths();
         return this.#renderQuantitativeColorPickers();
+    }
+
+    #renderThresholdControls() {
+        return html`
+            <div class="gs-form-group">
+                <label>Thresholds</label>
+                <div class="domain-range-list">
+                    ${this.thresholds.map(
+                        (threshold, i) => html`
+                            <div class="domain-range-row">
+                                <input
+                                    type="number"
+                                    .value=${String(threshold)}
+                                    @input=${(/** @type {InputEvent} */ e) => {
+                                        const value = Number(
+                                            /** @type {HTMLInputElement} */ (
+                                                e.target
+                                            ).value
+                                        );
+                                        this.#updateThreshold(i, value);
+                                    }}
+                                />
+                                <button
+                                    class="icon-btn"
+                                    @click=${() => this.#removeThreshold(i)}
+                                    ?disabled=${this.thresholds.length <= 1}
+                                >
+                                    ${icon(faTrash).node[0]}
+                                </button>
+                            </div>
+                        `
+                    )}
+                    <button
+                        class="icon-btn"
+                        @click=${() => this.#addThreshold()}
+                    >
+                        ${icon(faPlus).node[0]} Add Threshold
+                    </button>
+                </div>
+            </div>
+            <div class="gs-form-group">
+                <label>Range colors</label>
+                <div class="range-color-pickers">
+                    ${this.thresholdRange.map(
+                        (value, i) => html`
+                            <label class="range-color-btn">
+                                <span class="range-color-label">
+                                    <strong>
+                                        ${i === 0
+                                            ? "Below"
+                                            : i ===
+                                                this.thresholdRange.length - 1
+                                              ? "Above"
+                                              : "Between"}
+                                    </strong>
+                                </span>
+                                <input
+                                    class="btn"
+                                    type="color"
+                                    .value=${value}
+                                    @input=${(/** @type {InputEvent} */ e) =>
+                                        this.#updateThresholdRange(
+                                            i,
+                                            /** @type {HTMLInputElement} */ (
+                                                e.target
+                                            ).value
+                                        )}
+                                />
+                            </label>
+                        `
+                    )}
+                </div>
+            </div>
+        `;
     }
 
     #renderQuantitativeColorPickers() {
@@ -946,10 +1222,15 @@ export default class ConfigureScaleDialog extends BaseDialog {
                 ${this.#renderDiscreteColorMode()}
             `;
         } else {
+            const isThreshold = this.scaleType === "threshold";
             return html`
                 ${this.#renderQuantitativeConfig()} ${this.#renderDomainMode()}
-                ${this.#renderQuantDomainInputs(this.domainMode === "observed")}
-                ${this.#renderDomainMidControl()}
+                ${isThreshold
+                    ? ""
+                    : this.#renderQuantDomainInputs(
+                          this.domainMode === "observed"
+                      )}
+                ${isThreshold ? "" : this.#renderDomainMidControl()}
                 ${this.#renderColorModeSelector()}
                 ${this.#renderQuantitativeColorMode()}
             `;

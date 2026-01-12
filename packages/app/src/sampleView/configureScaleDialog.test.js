@@ -5,6 +5,8 @@ import {
     buildQuantitativeScaleSpec,
     parseScaleSpec,
     normalizeQuantDomainRange,
+    normalizeThresholdRange,
+    validateScaleState,
 } from "./configureScaleDialog.js";
 
 /**
@@ -18,6 +20,8 @@ import {
  * @prop {string[]} quantRange
  * @prop {number | null} domainMid
  * @prop {{ domain: string, range: string }[]} domainPairs
+ * @prop {number[]} thresholds
+ * @prop {string[]} thresholdRange
  */
 
 /** @type {ScaleDialogState} */
@@ -31,6 +35,8 @@ const BASE_STATE = {
     quantRange: ["#000000", "#ffffff"],
     domainMid: null,
     domainPairs: [],
+    thresholds: [],
+    thresholdRange: [],
 };
 
 /**
@@ -89,6 +95,38 @@ describe("buildQuantitativeScaleSpec", () => {
             range: ["#123456", "#654321"],
         });
     });
+
+    it("builds threshold scales with explicit domain and range", () => {
+        const scale = buildQuantitativeScaleSpec(
+            makeState({
+                scaleType: "threshold",
+                colorMode: "manual",
+                domainMode: "explicit",
+                thresholds: [-1, 1],
+                thresholdRange: ["#0000ff", "#ffffff", "#ff0000"],
+            })
+        );
+
+        expect(scale).toEqual({
+            type: "threshold",
+            domain: [-1, 1],
+            range: ["#0000ff", "#ffffff", "#ff0000"],
+        });
+    });
+
+    it("rejects threshold scale without matching range length", () => {
+        const scale = buildQuantitativeScaleSpec(
+            makeState({
+                scaleType: "threshold",
+                colorMode: "manual",
+                domainMode: "explicit",
+                thresholds: [0, 10],
+                thresholdRange: ["#0000ff", "#ff0000"],
+            })
+        );
+
+        expect(scale).toBeNull();
+    });
 });
 
 describe("buildDiscreteScaleSpec", () => {
@@ -111,6 +149,48 @@ describe("normalizeQuantDomainRange", () => {
 
         expect(normalized.quantDomain).toEqual([5, 10]);
         expect(normalized.quantRange).toEqual([DEFAULT_COLOR, DEFAULT_COLOR]);
+    });
+});
+
+describe("normalizeThresholdRange", () => {
+    it("pads range to thresholds length + 1", () => {
+        const normalized = normalizeThresholdRange([0, 5], ["#000000"]);
+
+        expect(normalized.thresholdRange).toEqual([
+            "#000000",
+            "#000000",
+            "#000000",
+        ]);
+    });
+});
+
+describe("validateScaleState", () => {
+    it("rejects discrete manual colors without explicit domain", () => {
+        const error = validateScaleState(
+            makeState({
+                dataType: "nominal",
+                colorMode: "manual",
+                domainMode: "observed",
+            })
+        );
+
+        expect(error).toBe("Manual colors require an explicit domain.");
+    });
+
+    it("rejects threshold scales without enough colors", () => {
+        const error = validateScaleState(
+            makeState({
+                scaleType: "threshold",
+                colorMode: "manual",
+                domainMode: "explicit",
+                thresholds: [0, 1],
+                thresholdRange: ["#000000", "#ffffff"],
+            })
+        );
+
+        expect(error).toBe(
+            "Threshold scales require one more color than thresholds."
+        );
     });
 });
 
@@ -152,6 +232,29 @@ describe("parseScaleSpec", () => {
         expect(parsed.domainPairs).toEqual([
             { domain: "A", range: DEFAULT_COLOR },
             { domain: "B", range: DEFAULT_COLOR },
+        ]);
+    });
+
+    it("parses threshold scale", () => {
+        const parsed = parseScaleSpec(
+            {
+                type: "threshold",
+                domain: [0, 10],
+                range: ["#0000ff", "#ffffff", "#ff0000"],
+            },
+            "quantitative",
+            [],
+            { scheme: "viridis", scaleType: "linear" }
+        );
+
+        expect(parsed.scaleType).toBe("threshold");
+        expect(parsed.colorMode).toBe("manual");
+        expect(parsed.domainMode).toBe("explicit");
+        expect(parsed.thresholds).toEqual([0, 10]);
+        expect(parsed.thresholdRange).toEqual([
+            "#0000ff",
+            "#ffffff",
+            "#ff0000",
         ]);
     });
 });
