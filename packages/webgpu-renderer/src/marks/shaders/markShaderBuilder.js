@@ -147,6 +147,9 @@ export function buildMarkShader({
     }
 
     let bindingIndex = 1;
+    const vertexComputeVisibility =
+        // eslint-disable-next-line no-undef
+        GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE;
     const channelIRs = buildChannelIRs(channels);
     const seriesChannelIRs = channelIRs.filter(
         (channelIR) => channelIR.sourceKind === "series"
@@ -354,8 +357,7 @@ ${clauses.join("\n")}
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
+            visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name: "seriesF32", role: "series" });
@@ -367,8 +369,7 @@ ${clauses.join("\n")}
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
+            visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name: "seriesU32", role: "series" });
@@ -380,8 +381,7 @@ ${clauses.join("\n")}
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
+            visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name: "seriesI32", role: "series" });
@@ -503,8 +503,7 @@ ${clauses.join("\n")}
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
+            visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name, role: "ordinalRange" });
@@ -530,8 +529,7 @@ ${clauses.join("\n")}
         const binding = bindingIndex++;
         resourceBindings.push({
             binding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX,
+            visibility: vertexComputeVisibility,
             buffer: { type: "read-only-storage" },
         });
         resourceLayout.push({ name, role: "domainMap" });
@@ -552,8 +550,11 @@ ${clauses.join("\n")}
         const textureBinding = bindingIndex++;
         resourceBindings.push({
             binding: textureBinding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            visibility:
+                // eslint-disable-next-line no-undef
+                GPUShaderStage.VERTEX |
+                GPUShaderStage.FRAGMENT |
+                GPUShaderStage.COMPUTE,
             texture: { sampleType: "float" },
         });
         resourceLayout.push({ name, role: "rangeTexture" });
@@ -564,8 +565,11 @@ ${clauses.join("\n")}
         const samplerBinding = bindingIndex++;
         resourceBindings.push({
             binding: samplerBinding,
-            // eslint-disable-next-line no-undef
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            visibility:
+                // eslint-disable-next-line no-undef
+                GPUShaderStage.VERTEX |
+                GPUShaderStage.FRAGMENT |
+                GPUShaderStage.COMPUTE,
             sampler: { type: "filtering" },
         });
         resourceLayout.push({ name, role: "rangeSampler" });
