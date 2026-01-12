@@ -298,6 +298,8 @@ export async function runScaleCompute(
 ) {
     const normalizedSeriesBuffers = seriesBuffers.map((buffer) => ({
         ...buffer,
+        role: buffer.role ?? "series",
+        type: buffer.type ?? "f32",
         byteLength: getStorageByteLength(buffer.data),
     }));
     return page.evaluate(
@@ -411,7 +413,11 @@ export async function runScaleCompute(
             const buffers = seriesBuffers.map((buffer) => {
                 const srcData = ArrayBuffer.isView(buffer.data)
                     ? buffer.data
-                    : new Float32Array(buffer.data);
+                    : buffer.type === "u32"
+                      ? new Uint32Array(buffer.data)
+                      : buffer.type === "i32"
+                        ? new Int32Array(buffer.data)
+                        : new Float32Array(buffer.data);
                 if (srcData.length === 0) {
                     throw new Error(
                         "Series buffer payload is empty in the GPU test harness."
@@ -421,15 +427,16 @@ export async function runScaleCompute(
                 for (let i = 0; i < srcData.length; i++) {
                     sum += srcData[i];
                 }
-                if (sum === 0) {
-                    throw new Error(
-                        "Series buffer payload sums to zero in the GPU test harness."
-                    );
-                }
+                const role = buffer.role ?? "series";
                 if (logSeriesBuffers) {
                     console.log(
-                        `series buffer [binding ${buffer.binding}]`,
+                        `series buffer [binding ${buffer.binding} role ${role}]`,
                         Array.from(srcData)
+                    );
+                }
+                if (role === "series" && sum === 0) {
+                    throw new Error(
+                        "Series buffer payload sums to zero in the GPU test harness."
                     );
                 }
                 const gpuBuffer = device.createBuffer({
@@ -604,10 +611,10 @@ export async function runScaleCase(
     const hasUniforms = uniformLayout.length > 0;
     const normalizedUniformLayout = hasUniforms
         ? uniformLayout
-        : [{ name: "__scale_dummy", type: "f32", components: 1 }];
+        : [{ name: "_scale_dummy", type: "f32", components: 1 }];
     const normalizedUniforms = hasUniforms
         ? uniforms
-        : { ...uniforms, __scale_dummy: 0 };
+        : { ...uniforms, _scale_dummy: 0 };
     const result = buildScaleComputeShader({
         channels,
         uniformLayout: normalizedUniformLayout,
@@ -642,6 +649,8 @@ export async function runScaleCase(
         seriesBuffers.push({
             binding,
             data: toSerializable(packed.f32),
+            role: "series",
+            type: "f32",
         });
     }
     if (packed.u32) {
@@ -654,6 +663,8 @@ export async function runScaleCase(
         seriesBuffers.push({
             binding,
             data: toSerializable(packed.u32),
+            role: "series",
+            type: "u32",
         });
     }
     if (packed.i32) {
@@ -666,6 +677,8 @@ export async function runScaleCase(
         seriesBuffers.push({
             binding,
             data: toSerializable(packed.i32),
+            role: "series",
+            type: "i32",
         });
     }
 
@@ -679,9 +692,22 @@ export async function runScaleCase(
                 `Extra buffer "${extra.name}" with role "${role}" is not bound.`
             );
         }
+        const extraType =
+            extra.dataType ??
+            (ArrayBuffer.isView(extra.data)
+                ? extra.data instanceof Uint32Array
+                    ? "u32"
+                    : extra.data instanceof Int32Array
+                      ? "i32"
+                      : "f32"
+                : role === "domainMap"
+                  ? "u32"
+                  : "f32");
         seriesBuffers.push({
             binding,
             data: toSerializable(extra.data),
+            role,
+            type: extraType,
         });
     }
 
@@ -715,17 +741,32 @@ export async function runScaleCase(
         normalizedUniformLayout,
         normalizedUniforms
     );
-    const output = await runScaleCompute(page, {
-        shaderCode: result.shaderCode,
-        uniformData,
-        seriesBuffers,
-        outputBinding: result.outputBinding,
-        outputLength,
-        outputComponents,
-        texture: resolvedTexture,
-        debugCopySeries,
-        logSeriesBuffers,
-    });
+    const consoleListener = logSeriesBuffers
+        ? (msg) => {
+              console.log("PAGE:", msg.text());
+          }
+        : null;
+    if (consoleListener) {
+        page.on("console", consoleListener);
+    }
+    let output;
+    try {
+        output = await runScaleCompute(page, {
+            shaderCode: result.shaderCode,
+            uniformData,
+            seriesBuffers,
+            outputBinding: result.outputBinding,
+            outputLength,
+            outputComponents,
+            texture: resolvedTexture,
+            debugCopySeries,
+            logSeriesBuffers,
+        });
+    } finally {
+        if (consoleListener) {
+            page.off("console", consoleListener);
+        }
+    }
     if (process.env.SCALE_TEST_DUMP_OUTPUT === "1") {
         const outDir = path.join(process.cwd(), "test-results");
         fs.mkdirSync(outDir, { recursive: true });
@@ -817,20 +858,35 @@ export async function runSeriesCopyCase(
         {
             binding: seriesBinding.binding,
             data: toSerializable(packed.f32),
+            role: "series",
         },
     ];
     const uniformData = buildUniformData(
         normalizedUniformLayout,
         normalizedUniforms
     );
-    return runScaleCompute(page, {
-        shaderCode: shader.shaderCode,
-        uniformData,
-        seriesBuffers,
-        outputBinding: shader.outputBinding,
-        outputLength,
-        outputComponents,
-        debugCopySeries,
-        logSeriesBuffers,
-    });
+    const consoleListener = logSeriesBuffers
+        ? (msg) => {
+              console.log("PAGE:", msg.text());
+          }
+        : null;
+    if (consoleListener) {
+        page.on("console", consoleListener);
+    }
+    try {
+        return await runScaleCompute(page, {
+            shaderCode: shader.shaderCode,
+            uniformData,
+            seriesBuffers,
+            outputBinding: shader.outputBinding,
+            outputLength,
+            outputComponents,
+            debugCopySeries,
+            logSeriesBuffers,
+        });
+    } finally {
+        if (consoleListener) {
+            page.off("console", consoleListener);
+        }
+    }
 }
