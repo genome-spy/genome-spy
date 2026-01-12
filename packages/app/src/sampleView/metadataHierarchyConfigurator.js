@@ -16,8 +16,11 @@ import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { formStyles } from "../components/generic/componentStyles.js";
 import { styleMap } from "lit/directives/style-map.js";
 
+// Should be skipped altogether, as it's not a metadata attribute
+const SAMPLE_COLUMN = "sample";
+
 /**
- * GsMetadataHierarchyConfigurator
+ * MetadataHierarchyConfigurator
  *
  * Rationale and usage:
  * This component is used in the metadata upload flow to help users
@@ -29,13 +32,8 @@ import { styleMap } from "lit/directives/style-map.js";
  * Intended consumers: the upload/ingest UI and any workflow that needs
  * a compact, editable view of metadata columns before creating the
  * final dataset payload.
- *
- * Public surface:
- * - `.metadataRecords` (Array): array of row objects used to infer types.
- * - `.separator` (string): character used to split column names into a
- *   hierarchy (editable by the user in the UI).
  */
-export default class GsMetadataHierarchyConfigurator extends LitElement {
+export default class MetadataHierarchyConfigurator extends LitElement {
     /***
      * @typedef {import("./metadataUtils.js").MetadataType} MetadataType
      * @typedef {import("./metadataUtils.js").PathTreeNode} PathTreeNode
@@ -46,7 +44,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
         _pathRoot: { state: true },
         metadataRecords: {},
         addUnderGroup: { state: true },
-        separator: {},
+        separator: { type: String },
     };
 
     constructor() {
@@ -138,7 +136,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                 cols.add(k);
             }
         }
-        this._columns = Array.from(cols);
+        this._columns = Array.from(cols).filter((c) => c !== SAMPLE_COLUMN);
     }
 
     #inferRawTypes() {
@@ -291,6 +289,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
             const path = el.dataset.path;
             const type = /** @type {MetadataType} */ (el.value);
             this._metadataNodeTypes.set(path, type);
+            this.requestUpdate();
         };
 
         return map(pathTreeDfs(this._pathRoot), (node) => {
@@ -407,7 +406,7 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                     id="separator"
                     type="text"
                     .value=${this.separator ?? ""}
-                    placeholder="Separator character for possible groups (e.g. .)"
+                    placeholder="Separator character for possible hierarchical groups (e.g. .)"
                     @input=${this._onSeparatorInput}
                 />
             </div>
@@ -438,5 +437,5 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
 
 customElements.define(
     "gs-metadata-hierarchy-configurator",
-    GsMetadataHierarchyConfigurator
+    MetadataHierarchyConfigurator
 );
