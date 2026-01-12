@@ -20,6 +20,8 @@ import { joinPathParts, splitPath } from "../utils/escapeSeparator.js";
  */
 export const METADATA_PATH_SEPARATOR = "/";
 
+export const ROOT_PATH_NODE_PART = "(Root)";
+
 /**
  * Build a tree from path-like keys. Each node receives a `parent` pointer.
  *
@@ -39,7 +41,7 @@ export function buildPathTree(items, separator) {
 
     /** @type {PathTreeNode} */
     const rootNode = {
-        part: "",
+        part: ROOT_PATH_NODE_PART,
         attribute: "",
         path: "",
         children: rootChildren,

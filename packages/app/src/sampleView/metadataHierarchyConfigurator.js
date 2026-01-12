@@ -14,6 +14,7 @@ import { schemeToDataUrl } from "../utils/ui/schemeToDataUrl.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { formStyles } from "../components/generic/componentStyles.js";
+import { styleMap } from "lit/directives/style-map.js";
 
 /**
  * GsMetadataHierarchyConfigurator
@@ -319,9 +320,24 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
             const selectedType =
                 this._metadataNodeTypes.get(node.path) ?? "unset";
 
+            const isRootNode = node.parent === null;
+
+            const displayPart =
+                isRootNode && this.addUnderGroup
+                    ? this.addUnderGroup
+                    : node.part;
+
+            /** @type {Record<string, string>} */
+            const partStyles = {
+                marginLeft: `${getDepth(node) * 20}px`,
+            };
+            if (isRootNode && !this.addUnderGroup) {
+                partStyles.color = "gray";
+            }
+
             return html`<tr>
-                <td style="padding-left: ${getDepth(node) * 20}px">
-                    ${node.part}
+                <td>
+                    <span style=${styleMap(partStyles)}>${displayPart}</span>
                 </td>
                 <td>
                     <select data-path="${node.path}" @change=${onTypeChange}>
@@ -362,6 +378,8 @@ export default class GsMetadataHierarchyConfigurator extends LitElement {
                         class="btn"
                         @click=${() => this._configureScaleFor(node)}
                         title="Configure scale"
+                        ?disabled=${selectedType === "unset" ||
+                        selectedType === "inherit"}
                     >
                         ${icon(faPenToSquare).node[0]}
                     </button>
