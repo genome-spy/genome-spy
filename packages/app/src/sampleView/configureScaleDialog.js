@@ -48,7 +48,6 @@ export default class ConfigureScaleDialog extends BaseDialog {
         domainPairs: { type: Array },
         quantDomain: { type: Array },
         quantRange: { type: Array },
-        useDomainMid: { type: Boolean },
         domainMid: { type: Number },
     };
 
@@ -74,8 +73,8 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.quantDomain = [];
         /** @type {string[]} */
         this.quantRange = [];
-        this.useDomainMid = false;
-        this.domainMid = 0;
+        /** @type {number | null} */
+        this.domainMid = null;
     }
 
     connectedCallback() {
@@ -119,8 +118,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
 
             .radio-group {
                 display: flex;
-                gap: 1em;
-                flex-wrap: wrap;
+                flex-direction: column;
             }
 
             .radio-group label {
@@ -148,6 +146,36 @@ export default class ConfigureScaleDialog extends BaseDialog {
             .domain-range-row input[type="color"] {
                 width: 50px;
                 height: 30px;
+            }
+
+            .range-color-pickers {
+                display: flex;
+                gap: 0.75em;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+
+            .range-color-btn {
+                display: inline-flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 0.35em;
+                padding: 0.35em 0.9em;
+                border-radius: var(--form-control-border-radius);
+                background: #f0f0f0;
+                white-space: nowrap;
+            }
+
+            .range-color-label {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.15em;
+            }
+
+            .range-color-label code {
+                font-size: 0.8em;
+                color: var(--text-muted, #666);
             }
 
             .icon-btn {
@@ -185,6 +213,11 @@ export default class ConfigureScaleDialog extends BaseDialog {
                 font-size: 0.85em;
                 margin-top: 0.25em;
             }
+
+            .form-input {
+                display: block;
+                width: 100%;
+            }
         `,
     ];
 
@@ -213,29 +246,6 @@ export default class ConfigureScaleDialog extends BaseDialog {
         );
     }
 
-    #addQuantDomainValue() {
-        this.quantDomain = [...this.quantDomain, 0];
-        this.quantRange = [...this.quantRange, "#808080"];
-    }
-
-    /**
-     * @param {number} index
-     */
-    #removeQuantDomainValue(index) {
-        this.quantDomain = this.quantDomain.filter((_, i) => i !== index);
-        this.quantRange = this.quantRange.filter((_, i) => i !== index);
-    }
-
-    /**
-     * @param {number} index
-     * @param {number} value
-     */
-    #updateQuantDomain(index, value) {
-        this.quantDomain = this.quantDomain.map((v, i) =>
-            i === index ? value : v
-        );
-    }
-
     /**
      * @param {number} index
      * @param {string} value
@@ -251,27 +261,29 @@ export default class ConfigureScaleDialog extends BaseDialog {
         const defaultMin = hasObserved ? Number(this.observedDomain[0]) : 0;
         const defaultMax = hasObserved ? Number(this.observedDomain[1]) : 1;
 
-        let domain = [...this.quantDomain];
-        if (domain.length < 1) domain = [defaultMin, defaultMax];
-        if (domain.length < 2) domain.push(domain[0]);
-
-        if (this.useDomainMid) {
-            const min = domain[0] ?? defaultMin;
-            const max = domain[domain.length - 1] ?? defaultMax;
-            const mid = this.domainMid ?? (min + max) / 2;
-            domain = [min, mid, max];
-        } else {
-            domain = [domain[0], domain[domain.length - 1]];
+        const domain = [...this.quantDomain];
+        if (domain.length === 0) {
+            domain.push(defaultMin, defaultMax);
+        } else if (domain.length === 1) {
+            domain.push(defaultMax);
         }
+
+        const min = domain[0] ?? defaultMin;
+        const max = domain[domain.length - 1] ?? defaultMax;
+        const normalizedDomain = [min, max];
 
         if (
-            domain.length !== this.quantDomain.length ||
-            domain.some((v, i) => v !== this.quantDomain[i])
+            this.quantDomain.length !== normalizedDomain.length ||
+            normalizedDomain.some((v, i) => v !== this.quantDomain[i])
         ) {
-            this.quantDomain = domain;
+            this.quantDomain = normalizedDomain;
         }
 
-        const desiredRangeLength = domain.length;
+        const domainStops =
+            this.domainMid != null
+                ? [min, this.domainMid, max]
+                : normalizedDomain;
+        const desiredRangeLength = domainStops.length;
         let range = [...this.quantRange];
         if (range.length < desiredRangeLength) {
             const last = range[range.length - 1] ?? "#808080";
@@ -319,7 +331,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
 
         if (this.colorMode === "scheme") {
             scale.scheme = this.scheme;
-            if (this.useDomainMid && this.domainMid != null) {
+            if (this.domainMid != null) {
                 scale.domainMid = this.domainMid;
             }
             if (this.domainMode === "explicit") {
@@ -380,11 +392,19 @@ export default class ConfigureScaleDialog extends BaseDialog {
 
     #renderColorModeSelector() {
         return html`
-            <div class="gs-form-section">
-                <div class="gs-form-section-title">Color Mapping</div>
+            <div class="gs-form-group">
+                <label for="schemeColorModeRadio">Color Mapping</label>
                 <div class="radio-group">
-                    ${this.#renderColorModeRadio("scheme", "Use Color Scheme")}
-                    ${this.#renderColorModeRadio("manual", "Manual Colors")}
+                    ${this.#renderColorModeRadio(
+                        "scheme",
+                        "Use Color Scheme",
+                        "schemeColorModeRadio"
+                    )}
+                    ${this.#renderColorModeRadio(
+                        "manual",
+                        "Manual Colors",
+                        "manualColorModeRadio"
+                    )}
                 </div>
             </div>
         `;
@@ -393,12 +413,14 @@ export default class ConfigureScaleDialog extends BaseDialog {
     /**
      * @param {ColorMode} mode
      * @param {string} label
+     * @param {string} id
      */
-    #renderColorModeRadio(mode, label) {
+    #renderColorModeRadio(mode, label, id) {
         return html`
             <label>
                 <input
                     type="radio"
+                    id=${id}
                     name="colorMode"
                     value=${mode}
                     ?checked=${this.colorMode === mode}
@@ -414,6 +436,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
             <div class="gs-form-group">
                 <label>Color Scheme</label>
                 <gs-custom-select
+                    class="form-input"
                     .options=${SCHEME_NAMES}
                     .value=${this.scheme}
                     .getLabel=${(/** @type {string} */ name) =>
@@ -453,27 +476,20 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #renderObservedDomainPreview() {
-        if (this.dataType === "quantitative") {
-            return html`<span
-                >Observed: [${this.observedDomain[0] ?? "?"},
-                ${this.observedDomain[1] ?? "?"}]</span
-            >`;
-        }
         return html`<span>
             Observed (${this.observedDomain.length}):
-            ${this.observedDomain.map(
-                (d) => html`<code>${String(d)}</code>`
-            )}</span
-        >`;
+            ${this.observedDomain.map((d) => html`<code>${String(d)}</code> `)}
+        </span>`;
     }
 
     #renderDomainMode() {
         return html`
             <div class="gs-form-group">
-                <label>Domain Source</label>
+                <label for="observedDomainRadio">Domain Source</label>
                 <div class="radio-group">
-                    <label>
+                    <label class="checkbox">
                         <input
+                            id="observedDomainRadio"
                             type="radio"
                             name="domainMode"
                             value="observed"
@@ -482,7 +498,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                         />
                         Use observed values (updates with data)
                     </label>
-                    <label>
+                    <label class="checkbox">
                         <input
                             type="radio"
                             name="domainMode"
@@ -493,20 +509,67 @@ export default class ConfigureScaleDialog extends BaseDialog {
                         Explicit domain (fixed)
                     </label>
                 </div>
-                <div style="margin-top: 0.35em; font-size: 0.9em; color: #555;">
-                    ${this.#renderObservedDomainPreview()}
-                </div>
+                ${this.domainMode === "observed" &&
+                this.dataType !== "quantitative"
+                    ? html`<div
+                          style="margin-top: 0.35em; font-size: 0.9em; color: #555;"
+                      >
+                          ${this.#renderObservedDomainPreview()}
+                      </div>`
+                    : ""}
             </div>
         `;
     }
 
-    #renderDiscreteDomainRange() {
+    #renderDiscreteDomainInputs(showColorInputs) {
         return html`
             <div class="gs-form-group">
                 <label>Domain and Range</label>
                 <div class="domain-range-list">
-                    ${this.domainPairs.map((pair, i) =>
-                        this.#renderDiscreteDomainRangeRow(pair, i)
+                    ${this.domainPairs.map(
+                        (pair, i) => html`
+                            <div class="domain-range-row">
+                                <input
+                                    type="text"
+                                    placeholder="Domain value"
+                                    .value=${pair.domain}
+                                    @input=${(/** @type {InputEvent} */ e) =>
+                                        this.#updateDomainPair(
+                                            i,
+                                            "domain",
+                                            /** @type {HTMLInputElement} */ (
+                                                e.target
+                                            ).value
+                                        )}
+                                />
+                                ${showColorInputs
+                                    ? html`
+                                          <input
+                                              class="btn"
+                                              type="color"
+                                              .value=${pair.range}
+                                              @input=${(
+                                                  /** @type {InputEvent} */ e
+                                              ) =>
+                                                  this.#updateDomainPair(
+                                                      i,
+                                                      "range",
+                                                      /** @type {HTMLInputElement} */ (
+                                                          e.target
+                                                      ).value
+                                                  )}
+                                          />
+                                      `
+                                    : ""}
+                                <button
+                                    class="icon-btn"
+                                    @click=${() => this.#removeDomainPair(i)}
+                                    ?disabled=${this.domainPairs.length <= 1}
+                                >
+                                    ${icon(faTrash).node[0]}
+                                </button>
+                            </div>
+                        `
                     )}
                     <button
                         class="icon-btn"
@@ -519,56 +582,11 @@ export default class ConfigureScaleDialog extends BaseDialog {
         `;
     }
 
-    /**
-     * @param {DomainRangePair} pair
-     * @param {number} i
-     */
-    #renderDiscreteDomainRangeRow(pair, i) {
-        return html`
-            <div class="domain-range-row">
-                <input
-                    type="text"
-                    placeholder="Domain value"
-                    .value=${pair.domain}
-                    @input=${(/** @type {InputEvent} */ e) =>
-                        this.#updateDomainPair(
-                            i,
-                            "domain",
-                            /** @type {HTMLInputElement} */ (e.target).value
-                        )}
-                />
-                <input
-                    type="color"
-                    .value=${pair.range}
-                    @input=${(/** @type {InputEvent} */ e) =>
-                        this.#updateDomainPair(
-                            i,
-                            "range",
-                            /** @type {HTMLInputElement} */ (e.target).value
-                        )}
-                />
-                <button
-                    class="icon-btn"
-                    @click=${() => this.#removeDomainPair(i)}
-                    ?disabled=${this.domainPairs.length <= 1}
-                >
-                    ${icon(faTrash).node[0]}
-                </button>
-            </div>
-        `;
-    }
-
     #renderQuantitativeSchemeControls() {
-        return html`
-            ${this.#renderSchemeSelector()}
-            ${this.domainMode === "explicit"
-                ? this.#renderQuantDomainInputs()
-                : ""}
-            ${this.#renderDomainMidControl()}
-        `;
+        return html` ${this.#renderSchemeSelector()} `;
     }
 
-    #renderQuantDomainInputs() {
+    #renderQuantDomainInputs(disabled = false) {
         return html`
             <div class="domain-inputs">
                 <label style="display:flex;align-items:center;gap:0.4em;">
@@ -578,6 +596,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                         .value=${String(
                             this.quantDomain[0] ?? this.observedDomain[0] ?? 0
                         )}
+                        ?disabled=${disabled}
                         @input=${(/** @type {InputEvent} */ e) => {
                             const val = Number(
                                 /** @type {HTMLInputElement} */ (e.target).value
@@ -600,6 +619,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                                 this.observedDomain[0] ??
                                 1
                         )}
+                        ?disabled=${disabled}
                         @input=${(/** @type {InputEvent} */ e) => {
                             const val = Number(
                                 /** @type {HTMLInputElement} */ (e.target).value
@@ -618,35 +638,20 @@ export default class ConfigureScaleDialog extends BaseDialog {
     #renderDomainMidControl() {
         return html`
             <div class="gs-form-group">
-                <label>
-                    <input
-                        type="checkbox"
-                        ?checked=${this.useDomainMid}
-                        @change=${(/** @type {InputEvent} */ e) => {
-                            this.useDomainMid =
-                                /** @type {HTMLInputElement} */ (
-                                    e.target
-                                ).checked;
-                        }}
-                    />
-                    Use domain midpoint (for diverging schemes)
-                </label>
-                ${this.useDomainMid ? this.#renderDomainMidInput() : ""}
+                <label>Domain Midpoint</label>
+                <input
+                    type="number"
+                    placeholder="Optional: midpoint for diverging scales"
+                    .value=${this.domainMid != null
+                        ? String(this.domainMid)
+                        : ""}
+                    @input=${(/** @type {InputEvent} */ e) => {
+                        const value = /** @type {HTMLInputElement} */ (e.target)
+                            .value;
+                        this.domainMid = value === "" ? null : Number(value);
+                    }}
+                />
             </div>
-        `;
-    }
-
-    #renderDomainMidInput() {
-        return html`
-            <input
-                type="number"
-                .value=${String(this.domainMid)}
-                @input=${(/** @type {InputEvent} */ e) => {
-                    this.domainMid = Number(
-                        /** @type {HTMLInputElement} */ (e.target).value
-                    );
-                }}
-            />
         `;
     }
 
@@ -657,17 +662,24 @@ export default class ConfigureScaleDialog extends BaseDialog {
 
         return html`
             <div class="gs-form-group">
-                <label>Scale Type</label>
-                <gs-custom-select
-                    .options=${["linear", "log", "sqrt", "pow", "symlog"]}
+                <label for="scaleTypeSelect">Scale Type</label>
+                <select
+                    id="scaleTypeSelect"
                     .value=${this.scaleType}
-                    @change=${(/** @type {CustomEvent} */ e) => {
-                        this.scaleType = /** @type {any} */ (e.target).value;
+                    @change=${(/** @type {Event} */ e) => {
+                        const value = /** @type {HTMLSelectElement} */ (
+                            e.target
+                        ).value;
+                        this.scaleType = /** @type {QuantScaleType} */ (value);
                     }}
                 >
-                </gs-custom-select>
+                    ${["linear", "log", "sqrt", "pow", "symlog"].map(
+                        (option) => html`
+                            <option value=${option}>${option}</option>
+                        `
+                    )}
+                </select>
             </div>
-            ${this.#renderQuantitativeColorMode()}
         `;
     }
 
@@ -675,68 +687,53 @@ export default class ConfigureScaleDialog extends BaseDialog {
         if (this.colorMode === "scheme") {
             return this.#renderQuantitativeSchemeControls();
         }
-        if (this.domainMode === "explicit") {
-            return this.#renderQuantitativeDomainRange();
-        }
-        return html`<div class="gs-alert info">
-            Manual colors require an explicit domain.
-        </div>`;
+        this.#ensureQuantDomainRangeLengths();
+        return this.#renderQuantitativeColorPickers();
     }
 
-    #renderQuantitativeDomainRange() {
+    #renderQuantitativeColorPickers() {
+        const min = this.quantDomain[0] ?? this.observedDomain[0] ?? 0;
+        const max =
+            this.quantDomain[1] ??
+            this.observedDomain[1] ??
+            this.quantDomain[0] ??
+            1;
+        const hasMidpoint = this.domainMid != null;
+        const domainStops = hasMidpoint
+            ? [min, this.domainMid, max]
+            : [min, max];
+        const stopLabels = hasMidpoint ? ["Min", "Mid", "Max"] : ["Min", "Max"];
         return html`
             <div class="gs-form-group">
-                <label>Domain and Range</label>
-                <div class="domain-range-list">
-                    ${this.quantDomain.map((domainVal, i) =>
-                        this.#renderQuantitativeDomainRangeRow(domainVal, i)
-                    )}
-                    <button
-                        class="icon-btn"
-                        @click=${() => this.#addQuantDomainValue()}
-                    >
-                        ${icon(faPlus).node[0]} Add Value
-                    </button>
+                <label>Range colors</label>
+                <div class="range-color-pickers">
+                    ${domainStops.map((stop, i) => {
+                        const label = stopLabels[i] ?? "";
+                        const valueText = stop != null ? String(stop) : "";
+                        return html`
+                            <label class="range-color-btn">
+                                <span class="range-color-label">
+                                    <strong>${label}</strong>
+                                    ${valueText
+                                        ? html`<code>${valueText}</code>`
+                                        : ""}
+                                </span>
+                                <input
+                                    class="btn"
+                                    type="color"
+                                    .value=${this.quantRange[i] ?? "#808080"}
+                                    @input=${(/** @type {InputEvent} */ e) =>
+                                        this.#updateQuantRange(
+                                            i,
+                                            /** @type {HTMLInputElement} */ (
+                                                e.target
+                                            ).value
+                                        )}
+                                />
+                            </label>
+                        `;
+                    })}
                 </div>
-            </div>
-        `;
-    }
-
-    /**
-     * @param {number} domainVal
-     * @param {number} i
-     */
-    #renderQuantitativeDomainRangeRow(domainVal, i) {
-        return html`
-            <div class="domain-range-row">
-                <input
-                    type="number"
-                    placeholder="Domain value"
-                    .value=${String(domainVal)}
-                    @input=${(/** @type {InputEvent} */ e) =>
-                        this.#updateQuantDomain(
-                            i,
-                            Number(
-                                /** @type {HTMLInputElement} */ (e.target).value
-                            )
-                        )}
-                />
-                <input
-                    type="color"
-                    .value=${this.quantRange[i] ?? "#808080"}
-                    @input=${(/** @type {InputEvent} */ e) =>
-                        this.#updateQuantRange(
-                            i,
-                            /** @type {HTMLInputElement} */ (e.target).value
-                        )}
-                />
-                <button
-                    class="icon-btn"
-                    @click=${() => this.#removeQuantDomainValue(i)}
-                    ?disabled=${this.quantDomain.length <= 2}
-                >
-                    ${icon(faTrash).node[0]}
-                </button>
             </div>
         `;
     }
@@ -746,33 +743,51 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #renderDiscreteColorMode() {
+        const explicitDomain = this.domainMode === "explicit";
         if (this.colorMode === "scheme") {
-            return this.#renderSchemeSelector();
+            return html`
+                ${this.#renderSchemeSelector()}
+                ${explicitDomain ? this.#renderDiscreteDomainInputs(false) : ""}
+            `;
         }
-        return this.#renderDiscreteDomainRange();
+        if (!explicitDomain) {
+            return html`<div class="gs-alert info">
+                Manual colors require an explicit domain.
+            </div>`;
+        }
+        return this.#renderDiscreteDomainInputs(true);
     }
 
     renderBody() {
-        return html`
-            ${this.#renderColorModeSelector()} ${this.#renderDomainMode()}
-            ${this.#isDiscrete() ? this.#renderDiscreteColorMode() : ""}
-            ${this.dataType === "quantitative"
-                ? this.#renderQuantitativeConfig()
-                : ""}
-        `;
+        if (this.#isDiscrete()) {
+            return html`
+                ${this.#renderDomainMode()} ${this.#renderColorModeSelector()}
+                ${this.#renderDiscreteColorMode()}
+            `;
+        } else {
+            return html`
+                ${this.#renderQuantitativeConfig()} ${this.#renderDomainMode()}
+                ${this.#renderQuantDomainInputs(this.domainMode === "observed")}
+                ${this.#renderDomainMidControl()}
+                ${this.#renderColorModeSelector()}
+                ${this.#renderQuantitativeColorMode()}
+            `;
+        }
     }
 
     renderFooter() {
         return html`
-            <button class="btn" @click=${() => this.triggerClose()}>
-                Cancel
-            </button>
-            <button
-                class="btn btn-primary"
-                @click=${() => this.#validateAndSubmit()}
-            >
-                Apply
-            </button>
+            <div>
+                <button class="btn" @click=${() => this.triggerClose()}>
+                    Cancel
+                </button>
+                <button
+                    class="btn btn-primary"
+                    @click=${() => this.#validateAndSubmit()}
+                >
+                    Apply
+                </button>
+            </div>
         `;
     }
 }

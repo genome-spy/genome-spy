@@ -70,6 +70,10 @@ export const formStyles = css`
         }
     }
 
+    .btn[type="color"] {
+        padding: 2px;
+    }
+
     .btn-group {
         display: flex;
 

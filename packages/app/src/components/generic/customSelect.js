@@ -92,7 +92,7 @@ export default class CustomSelect extends LitElement {
 
             .container {
                 position: relative;
-                display: inline-block;
+                display: block;
                 min-width: 12em;
             }
 
