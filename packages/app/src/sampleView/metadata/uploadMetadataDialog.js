@@ -13,6 +13,7 @@ import "../../components/generic/uploadDropZone.js";
 import "../../components/generic/customSelect.js";
 import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
+import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import {
     METADATA_PATH_SEPARATOR,
     replacePathSeparator,
@@ -129,6 +130,15 @@ export function buildSetMetadataPayload(
     return setMetadata;
 }
 
+/**
+ * A multi-step dialog for uploading sample metadata, validating it against
+ * existing samples, previewing parsed rows, and configuring attribute
+ * types/scales before committing to state.
+ *
+ * It wires together the upload drop zone, validation/preview views, and the
+ * metadata hierarchy configurator, then builds the final set-metadata payload
+ * (columnar metadata + attribute definitions) on finish.
+ */
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
@@ -201,6 +211,13 @@ class UploadMetadataDialog extends BaseDialog {
         const metadataConfig = this.#metadataConfig;
         if (!metadataConfig) {
             throw new Error("Metadata configuration is missing");
+        }
+        if (metadataConfig.invalidInheritLeafNodes.length > 0) {
+            showMessageDialog(
+                "Some leaf attributes are set to inherit a type, but no ancestor defines one. Select a concrete type for those leaves or define a type higher in the hierarchy.",
+                { title: "Warning", type: "warning" }
+            );
+            return false;
         }
 
         const columnarMetadata = buildSetMetadataPayload(

@@ -17,6 +17,11 @@ import { formStyles } from "../../components/generic/componentStyles.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { classMap } from "lit/directives/class-map.js";
 
+// TODO: Validate scale configured without an effective type, and warn.
+// TODO: Warn when root type/scale is set but no inherit leaves and no group target.
+// TODO: Warn if addUnderGroup contains the separator (splits into multiple segments).
+// TODO: Warn if separator length is greater than 1.
+
 // Should be skipped altogether, as it's not a metadata attribute
 const SAMPLE_COLUMN = "sample";
 
@@ -26,6 +31,7 @@ const SAMPLE_COLUMN = "sample";
  * @prop {string | null} addUnderGroup
  * @prop {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} scales
  * @prop {Map<string, MetadataType>} metadataNodeTypes
+ * @prop {string[]} invalidInheritLeafNodes
  */
 
 /**
@@ -149,6 +155,11 @@ export default class MetadataHierarchyConfigurator extends LitElement {
 
             span.unset {
                 text-decoration: line-through;
+            }
+
+            select.invalid {
+                color: var(--danger-color, #dc3545);
+                border-color: var(--danger-color, #dc3545);
             }
         `,
     ];
@@ -322,6 +333,8 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             this.#emitConfig();
         };
 
+        const invalidInheritNodes = this.#collectInvalidInheritNodes();
+
         return map(pathTreeDfs(this._pathRoot), (node) => {
             const getDepth = (
                 /** @type {import("./metadataUtils.js").PathTreeNode} */ node
@@ -369,6 +382,10 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                 unset: isLeaf && selectedType === "unset",
             };
 
+            const selectClasses = {
+                invalid: invalidInheritNodes.has(node.path),
+            };
+
             return html`<tr>
                 <td>
                     <span
@@ -378,7 +395,11 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                     >
                 </td>
                 <td>
-                    <select data-path="${node.path}" @change=${onTypeChange}>
+                    <select
+                        data-path="${node.path}"
+                        class=${classMap(selectClasses)}
+                        @change=${onTypeChange}
+                    >
                         ${[
                             "nominal",
                             "ordinal",
@@ -424,6 +445,47 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                 </td>
             </tr>`;
         });
+    }
+
+    /**
+     * @returns {Set<string>}
+     */
+    #collectInvalidInheritNodes() {
+        const invalid = new Set();
+
+        const isConcrete = (/** @type {MetadataType | undefined} */ type) =>
+            type === "nominal" || type === "ordinal" || type === "quantitative";
+
+        const rootType = this._metadataNodeTypes.get("");
+        const rootEffective = isConcrete(rootType) ? rootType : null;
+
+        /**
+         * @param {PathTreeNode} node
+         * @param {MetadataType | null} inherited
+         */
+        const visit = (node, inherited) => {
+            const nodeType = this._metadataNodeTypes.get(node.path);
+            let effective = inherited;
+            if (isConcrete(nodeType)) {
+                effective = nodeType;
+            } else if (
+                nodeType === "inherit" &&
+                !effective &&
+                node.children.size === 0
+            ) {
+                invalid.add(node.path);
+            }
+
+            for (const child of node.children.values()) {
+                visit(child, effective);
+            }
+        };
+
+        if (this._pathRoot) {
+            visit(this._pathRoot, rootEffective);
+        }
+
+        return invalid;
     }
 
     render() {
@@ -477,6 +539,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
      * @returns {MetadataConfig}
      */
     getConfig() {
+        const invalidInheritLeafNodes = [...this.#collectInvalidInheritNodes()];
         return {
             separator: this.separator ? this.separator : null,
             addUnderGroup: this.addUnderGroup ? this.addUnderGroup : null,
@@ -486,6 +549,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                     .map(([path, scale]) => [path, structuredClone(scale)])
             ),
             metadataNodeTypes: new Map(this._metadataNodeTypes),
+            invalidInheritLeafNodes,
         };
     }
 

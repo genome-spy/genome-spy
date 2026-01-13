@@ -74,6 +74,8 @@ export const Basic = {
                         metadataNodeTypes: Object.fromEntries(
                             Array.from(detail.metadataNodeTypes.entries())
                         ),
+                        invalidInheritLeafNodes:
+                            detail.invalidInheritLeafNodes ?? [],
                     };
                     output.textContent = JSON.stringify(payload, null, 2);
                 }}
