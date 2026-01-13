@@ -405,7 +405,7 @@ export default class UnitView extends View {
         this.#scaleResolutionListeners.length = 0;
 
         this.#unresolve();
-        this.mark.deleteGraphicsData();
+        this.mark.dispose();
     }
 
     #unresolve() {

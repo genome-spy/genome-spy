@@ -96,6 +96,11 @@ export default class Mark {
     #callAfterShaderCompilation = [];
 
     /**
+     * @type {{expr: import("../view/paramMediator.js").ExprRefFunction, listener: () => void}[]}
+     */
+    #exprListeners = [];
+
+    /**
      * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
@@ -1034,6 +1039,7 @@ export default class Mark {
 
             // Register a listener ...
             fn.addListener(set);
+            this.#exprListeners.push({ expr: fn, listener: set });
             // ... and set the initial value
             set();
         } else {
@@ -1075,6 +1081,14 @@ export default class Mark {
             }
             this.bufferInfo = undefined;
         }
+    }
+
+    dispose() {
+        for (const { expr, listener } of this.#exprListeners) {
+            expr.removeListener(listener);
+        }
+        this.#exprListeners.length = 0;
+        this.deleteGraphicsData();
     }
 
     /**
