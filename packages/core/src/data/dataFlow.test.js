@@ -17,13 +17,13 @@ describe("DataFlow", () => {
         flow.addCollector(collector);
 
         let called = false;
-        collector.observers.push(() => {
+        collector.observe(() => {
             called = true;
         });
 
         expect(flow.dataSources).toContain(sourceA);
         expect(flow.collectors).toContain(collector);
-        expect(collector.observers.length).toBe(1);
+        expect(collector.observers.size).toBe(1);
 
         flow.removeDataSource(sourceA);
         flow.removeCollector(collector);
@@ -31,7 +31,7 @@ describe("DataFlow", () => {
         expect(flow.dataSources).not.toContain(sourceA);
         expect(flow.collectors).not.toContain(collector);
 
-        expect(collector.observers.length).toBe(0);
+        expect(collector.observers.size).toBe(0);
         expect(called).toBe(false);
         expect(flow.dataSources).toContain(sourceB);
     });

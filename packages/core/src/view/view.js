@@ -87,9 +87,9 @@ export default class View {
     opacityFunction = defaultOpacityFunction;
 
     /**
-     * @type {function(import("../data/collector.js").default):void}
+     * @type {(() => void)[]}
      */
-    collectorObserver = undefined;
+    #disposers = [];
 
     /**
      * Coords of the view for each facet, recorded during the last layout rendering pass.
@@ -522,16 +522,12 @@ export default class View {
      * Release resources owned by this view.
      */
     dispose() {
-        const handle = this.flowHandle;
-        if (this.collectorObserver && handle?.collector) {
-            const index = handle.collector.observers.indexOf(
-                this.collectorObserver
-            );
-            if (index >= 0) {
-                handle.collector.observers.splice(index, 1);
-            }
-            this.collectorObserver = undefined;
+        for (const disposer of this.#disposers) {
+            disposer();
         }
+        this.#disposers.length = 0;
+
+        const handle = this.flowHandle;
 
         if (handle?.collector) {
             this.context.dataFlow.removeCollector(handle.collector);
@@ -546,6 +542,13 @@ export default class View {
         }
 
         this.flowHandle = undefined;
+    }
+
+    /**
+     * @param {() => void} disposer
+     */
+    registerDisposer(disposer) {
+        this.#disposers.push(disposer);
     }
 
     /**

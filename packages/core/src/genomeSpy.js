@@ -606,8 +606,7 @@ export default class GenomeSpy {
                 }
                 context.animator.requestRender();
             };
-            view.flowHandle.collector.observers.push(observer);
-            view.collectorObserver = observer;
+            view.registerDisposer(view.flowHandle.collector.observe(observer));
         }
 
         // Have to wait until asynchronous font loading is complete.

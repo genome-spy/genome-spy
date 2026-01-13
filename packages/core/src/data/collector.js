@@ -61,8 +61,8 @@ export default class Collector extends FlowNode {
 
         this.params = params ?? { type: "collect" };
 
-        /** @type {(function(Collector):void)[]} */
-        this.observers = [];
+        /** @type {Set<function(Collector):void>} */
+        this.observers = new Set();
 
         // TODO: Consider nested maps instead of InternMap
         /** @type {Map<import("../spec/channel.js").Scalar[], Data>} TODO: proper type for key */
@@ -147,6 +147,17 @@ export default class Collector extends FlowNode {
         for (const observer of this.observers) {
             observer(this);
         }
+    }
+
+    /**
+     * @param {function(Collector):void} listener
+     * @returns {() => void}
+     */
+    observe(listener) {
+        this.observers.add(listener);
+        return () => {
+            this.observers.delete(listener);
+        };
     }
 
     #propagateToChildren() {

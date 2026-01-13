@@ -58,7 +58,7 @@ export default class DataFlow {
      * @param {import("./collector.js").default} collector
      */
     removeCollector(collector) {
-        collector.observers.length = 0;
+        collector.observers.clear();
         this.#collectors.delete(collector);
     }
 

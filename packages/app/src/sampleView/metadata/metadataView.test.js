@@ -105,7 +105,7 @@ function assertFlowMatchesSubtree(metadataView, dataFlow) {
             .filter((collector) => collector)
     );
     const observerCount = [...collectors].reduce(
-        (sum, collector) => sum + collector.observers.length,
+        (sum, collector) => sum + collector.observers.size,
         0
     );
 
@@ -190,8 +190,7 @@ describe("MetadataView", () => {
                 collectors: dataFlow.collectors.length,
                 observers: unitViews.reduce(
                     (sum, view) =>
-                        sum +
-                        (view.flowHandle?.collector?.observers.length ?? 0),
+                        sum + (view.flowHandle?.collector?.observers.size ?? 0),
                     0
                 ),
                 unitViews: unitViews.length,

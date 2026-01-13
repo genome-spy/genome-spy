@@ -18,9 +18,9 @@ without requiring a full rebuild or relying on a global registry.
 - Dataflow construction is additive. `buildDataFlow(root, existingFlow)`
   mutates a shared `DataFlow` and never removes the old nodes or observers for
   replaced views; old collectors and data sources remain reachable.
-- Observers are one-way. `flow.addObserver` is used for marks and never
-  unregistered, so any re-build of metadata views stacks new observers on top
-  of old ones.
+- Observer wiring is ad hoc. Mark observers are added in multiple places and
+  cleanup relies on per-view teardown; this needs to stay consistent as global
+  init is replaced by subtree init.
 - Scale and axis resolution are not reversible. `ScaleResolution.addMember`
   only grows the membership; there is no removal or invalidation on view
   deletion, so domains and event listeners can include stale views.
@@ -47,6 +47,10 @@ without requiring a full rebuild or relying on a global registry.
   `finalizeSubtreeGraphics`) to build flow and initialize marks per subtree.
 - Dropped host-based `DataFlow` lookup and replaced it with per-view flow
   handles; `DataFlow` now tracks only data sources and collectors.
+- Removed `DataFlow.addObserver` and flow-handle-stored callbacks; views now
+  track their collector observer and remove it during `dispose`.
+- Added `Collector.observe()` + `View.registerDisposer()` so observer cleanup
+  does not require per-class listener fields.
 - Metadata rebuild now uses subtree init and removes old dataflow hosts before
   rebuilding; title-view data source hacks removed.
 - Metadata view now unsubscribes from Redux, unregisters its attribute info
@@ -184,7 +188,12 @@ Phase 3 checklist (concrete tasks):
   rect updates.
 
 Status: in progress. Host maps removed; flow handles are required for view-owned
-sources/collectors and selection rect has handle coverage.
+sources/collectors and selection rect has handle coverage. Observer wiring now
+lives next to the owner view (not in `DataFlow`).
+
+### Progress estimate
+
+[███████████████░░░░░░░░░░░] 58%
 
 ### Phase 4: Resolution and layout cleanup
 
@@ -209,8 +218,9 @@ sources/collectors and selection rect has handle coverage.
 - `packages/app/src/sampleView/sampleView.js`: now removes its action augmenter
   and store subscription on dispose; dynamic sidebar lifecycle still relies on
   global init.
-- `packages/core/src/genomeSpy.js`: global one-shot init assumes static tree and
-  does not support incremental subtree init/teardown.
+- `packages/core/src/genomeSpy.js`: global one-shot init still owns data
+  loading, scale reconfiguration, and `dataLoaded` broadcast; these should move
+  to subtree-aware initialization.
 - `packages/core/src/view/flowBuilder.js`: builds flow from current view tree
   but has no corresponding teardown/prune for replaced branches.
 - `packages/core/src/data/dataFlow.js`: now a graph/optimizer container; still

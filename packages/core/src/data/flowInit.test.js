@@ -129,7 +129,7 @@ describe("flowInit", () => {
         firstRoot.disposeSubtree();
 
         // This prevents stale observers from firing after a subtree is rebuilt.
-        expect(firstCollector.observers.length).toBe(0);
+        expect(firstCollector.observers.size).toBe(0);
 
         const secondRoot = await context.createOrImportView(
             spec,

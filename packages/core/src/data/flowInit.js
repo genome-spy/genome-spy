@@ -99,8 +99,7 @@ export function initializeSubtree(root, flow) {
                 mark.updateGraphicsData();
             }
         };
-        view.flowHandle.collector.observers.push(observer);
-        view.collectorObserver = observer;
+        view.registerDisposer(view.flowHandle.collector.observe(observer));
     }
 
     return {

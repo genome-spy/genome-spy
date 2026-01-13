@@ -418,7 +418,7 @@ export default class SampleView extends ContainerView {
         // Here's quite a bit of wrangling but the number of samples is so low that
         // performance doesn't really matter.
 
-        collector.observers.push(() => {
+        const stop = collector.observe(() => {
             const result =
                 /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
                     collector.getData()
@@ -464,6 +464,7 @@ export default class SampleView extends ContainerView {
                 );
             }
         });
+        this.registerDisposer(stop);
 
         // Synchronize loading with other data
         this.context.dataFlow.addDataSource(dataSource);
