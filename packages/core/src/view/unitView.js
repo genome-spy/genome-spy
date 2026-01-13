@@ -398,6 +398,7 @@ export default class UnitView extends View {
      * @override
      */
     dispose() {
+        super.dispose();
         for (const { resolution, listener } of this.#scaleResolutionListeners) {
             resolution.removeEventListener("domain", listener);
         }

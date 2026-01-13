@@ -512,7 +512,7 @@ export default class View {
      * Release resources owned by this view.
      */
     dispose() {
-        // override
+        this.context.dataFlow.removeHost(this);
     }
 
     /**
