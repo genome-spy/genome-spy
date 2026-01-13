@@ -466,6 +466,11 @@ export default class UnitView extends View {
      * Returns a collector that is associated with this view.
      */
     getCollector() {
+        const handle = this.flowHandle;
+        if (handle && handle.collector) {
+            return handle.collector;
+        }
+
         return this.context.dataFlow.findCollectorByKey(this);
     }
 

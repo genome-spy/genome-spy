@@ -302,9 +302,12 @@ export class MetadataView extends ConcatView {
 
         const { dataSources, graphicsPromises } = initializeSubtree(this, flow);
 
+        const flowHandle = this.flowHandle;
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                flow.findDataSourceByKey(this)
+                flowHandle && flowHandle.dataSource
+                    ? flowHandle.dataSource
+                    : flow.findDataSourceByKey(this)
             );
 
         if (!dynamicSource) {

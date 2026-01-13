@@ -137,6 +137,11 @@ export default class View {
         };
 
         /**
+         * @type {import("../data/flowHandle.js").FlowHandle | undefined}
+         */
+        this.flowHandle = undefined;
+
+        /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
          * TODO: Use view options for this.
          * @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, boolean>}
@@ -513,6 +518,7 @@ export default class View {
      */
     dispose() {
         this.context.dataFlow.removeHost(this);
+        this.flowHandle = undefined;
     }
 
     /**

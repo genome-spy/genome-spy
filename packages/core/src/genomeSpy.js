@@ -10,6 +10,7 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
+    syncFlowHandles,
 } from "./view/viewUtils.js";
 import UnitView from "./view/unitView.js";
 
@@ -580,6 +581,7 @@ export default class GenomeSpy {
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
         optimizeDataFlow(flow);
+        syncFlowHandles(flow);
         this.broadcast("dataFlowBuilt", flow);
 
         // Create encoders (accessors, scales and related metadata)

@@ -133,6 +133,8 @@ export function buildDataFlow(root, existingFlow) {
             currentNode = dataSource;
             nodeStack.push(dataSource);
             dataFlow.addDataSource(dataSource, view);
+            view.flowHandle ??= {};
+            view.flowHandle.dataSource = dataSource;
         }
 
         if (view.spec.transform) {
@@ -187,6 +189,8 @@ export function buildDataFlow(root, existingFlow) {
 
             appendNode(collector);
             dataFlow.addCollector(collector, view);
+            view.flowHandle ??= {};
+            view.flowHandle.collector = collector;
         }
     };
 

@@ -161,14 +161,30 @@ describe("MetadataView", () => {
                 .SAMPLE_ATTRIBUTE
         ).toBeDefined();
 
-        const getFlowSnapshot = () => ({
-            dataSources: dataFlow._dataSourcesByHost.size,
-            collectors: dataFlow._collectorsByHost.size,
-            observers: dataFlow._observers.size,
-            unitViews: metadataView
+        const getFlowSnapshot = () => {
+            const unitViews = metadataView
                 .getDescendants()
-                .filter((view) => view instanceof UnitView).length,
-        });
+                .filter((view) => view instanceof UnitView);
+            const firstUnitView = unitViews[0];
+
+            const hasCollector =
+                !!firstUnitView &&
+                !!firstUnitView.flowHandle &&
+                !!firstUnitView.flowHandle.collector;
+
+            const hasDataSource =
+                !!metadataView.flowHandle &&
+                !!metadataView.flowHandle.dataSource;
+
+            return {
+                dataSources: dataFlow._dataSourcesByHost.size,
+                collectors: dataFlow._collectorsByHost.size,
+                observers: dataFlow._observers.size,
+                unitViews: unitViews.length,
+                hasCollector,
+                hasDataSource,
+            };
+        };
 
         /**
          * @param {string[]} attributeNames
@@ -204,6 +220,8 @@ describe("MetadataView", () => {
         const initialSnapshot = getFlowSnapshot();
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
         expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
+        expect(initialSnapshot.hasCollector).toBe(true);
+        expect(initialSnapshot.hasDataSource).toBe(true);
 
         updateMetadata(["a"], {
             s1: { a: "x" },
@@ -216,6 +234,8 @@ describe("MetadataView", () => {
         expect(reducedSnapshot.unitViews).toBeLessThan(
             initialSnapshot.unitViews
         );
+        expect(reducedSnapshot.hasCollector).toBe(true);
+        expect(reducedSnapshot.hasDataSource).toBe(true);
 
         updateMetadata(["a"], {
             s1: { a: "z" },

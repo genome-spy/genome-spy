@@ -100,6 +100,7 @@ export function setImplicitScaleNames(root) {
 export async function initializeData(root, existingFlow) {
     const flow = buildDataFlow(root, existingFlow);
     optimizeDataFlow(flow);
+    syncFlowHandles(flow);
     flow.initialize();
 
     /** @type {Promise<void>[]} */
@@ -108,6 +109,27 @@ export async function initializeData(root, existingFlow) {
     await Promise.all(promises);
 
     return flow;
+}
+
+/**
+ * Synchronize flow handles with the current DataFlow host mappings.
+ *
+ * @param {import("../data/dataFlow.js").default<View>} flow
+ */
+export function syncFlowHandles(flow) {
+    for (const [host, dataSource] of flow._dataSourcesByHost.entries()) {
+        if (host && typeof host === "object" && "flowHandle" in host) {
+            host.flowHandle ??= {};
+            host.flowHandle.dataSource = dataSource;
+        }
+    }
+
+    for (const [host, collector] of flow._collectorsByHost.entries()) {
+        if (host && typeof host === "object" && "flowHandle" in host) {
+            host.flowHandle ??= {};
+            host.flowHandle.collector = collector;
+        }
+    }
 }
 
 /**
