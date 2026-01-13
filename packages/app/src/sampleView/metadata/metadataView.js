@@ -266,17 +266,30 @@ export class MetadataView extends ConcatView {
         this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
+        const previousViews = this.getDescendants();
+        this.disposeSubtree();
+        flow.removeHosts(previousViews);
 
         this.#createViews();
 
         buildDataFlow(this, flow);
+
+        const subtreeViews = this.getDescendants();
+        const uniqueDataSources = new Set(
+            flow.getDataSourcesForHosts(subtreeViews)
+        );
+        for (const dataSource of uniqueDataSources) {
+            dataSource.visit((node) => node.initialize());
+        }
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 flow.findDataSourceByKey(this)
             );
 
-        dynamicSource.visit((node) => node.initialize());
+        if (!dynamicSource) {
+            throw new Error("Cannot find metadata data source!");
+        }
 
         /** @type {Promise<import("@genome-spy/core/marks/mark.js").default>[]} */
         const promises = [];
@@ -322,17 +335,13 @@ export class MetadataView extends ConcatView {
             console.warn("Some metadata entries do not match any sample data");
         }
 
-        // A terrible hack to initialize data sources.
-        // TODO: Come up with a clean solution. For example, when building the view
-        // hierarchy, data loading could be initiated when a a complete subtree with
-        // a data source has been created.
-        this.visit((view) => {
-            if (view.name.startsWith("title")) {
-                flow.findDataSourceByKey(view).load();
-            }
-        });
-
         dynamicSource.updateDynamicData(metadataTable);
+
+        for (const dataSource of uniqueDataSources) {
+            if (dataSource !== dynamicSource) {
+                dataSource.load();
+            }
+        }
         reconfigureScales(this); // TODO: Should happen automatically
 
         this.context.requestLayoutReflow();

@@ -61,6 +61,11 @@ export default class UnitView extends View {
     #zoomLevelSetter;
 
     /**
+     * @type {{resolution: ScaleResolution, listener: import("../types/scaleResolutionApi.js").ScaleResolutionListener}[]}
+     */
+    #scaleResolutionListeners = [];
+
+    /**
      *
      * @param {import("../spec/view.js").UnitSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -88,14 +93,23 @@ export default class UnitView extends View {
             "zoomLevel",
             1.0
         );
-        /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
+
+        for (const channel of /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
             "x",
             "y",
-        ]).forEach((channel) =>
-            this.getScaleResolution(channel)?.addEventListener("domain", () =>
-                this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()))
-            )
-        );
+        ])) {
+            const resolution = this.getScaleResolution(channel);
+            if (resolution) {
+                const listener = () => {
+                    this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()));
+                };
+                resolution.addEventListener("domain", listener);
+                this.#scaleResolutionListeners.push({
+                    resolution,
+                    listener,
+                });
+            }
+        }
 
         this.needsAxes = { x: true, y: true };
 
@@ -376,6 +390,47 @@ export default class UnitView extends View {
                     channelDef: channelDefWithScale,
                     dataDomainSource,
                 });
+            }
+        }
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        for (const { resolution, listener } of this.#scaleResolutionListeners) {
+            resolution.removeEventListener("domain", listener);
+        }
+        this.#scaleResolutionListeners.length = 0;
+
+        this.#unresolve();
+        this.mark.deleteGraphicsData();
+    }
+
+    #unresolve() {
+        for (const view of this.getDataAncestors()) {
+            for (const [channel, resolution] of Object.entries(
+                view.resolutions.scale
+            )) {
+                if (
+                    resolution &&
+                    resolution.removeMembersByView(this) &&
+                    resolution.members.length === 0
+                ) {
+                    delete view.resolutions.scale[channel];
+                }
+            }
+
+            for (const [channel, resolution] of Object.entries(
+                view.resolutions.axis
+            )) {
+                if (
+                    resolution &&
+                    resolution.removeMembersByView(this) &&
+                    resolution.members.length === 0
+                ) {
+                    delete view.resolutions.axis[channel];
+                }
             }
         }
     }

@@ -232,6 +232,16 @@ export default class ScaleResolution {
     }
 
     /**
+     * @param {UnitView} view
+     * @returns {boolean}
+     */
+    removeMembersByView(view) {
+        const before = this.members.length;
+        this.members = this.members.filter((member) => member.view !== view);
+        return this.members.length !== before;
+    }
+
+    /**
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     #isExplicitDomain() {

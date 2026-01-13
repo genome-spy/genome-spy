@@ -11,7 +11,7 @@ import { peek } from "../utils/arrayUtils.js";
 import coalesce from "../utils/coalesce.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
-import { getCachedOrCall } from "../utils/propertyCacher.js";
+import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 
 /**
  * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
@@ -68,6 +68,21 @@ export default class AxisResolution {
         }
 
         this.members.push(newMember);
+        invalidate(this, "axisProps");
+    }
+
+    /**
+     * @param {UnitView} view
+     * @returns {boolean}
+     */
+    removeMembersByView(view) {
+        const before = this.members.length;
+        this.members = this.members.filter((member) => member.view !== view);
+        if (this.members.length !== before) {
+            invalidate(this, "axisProps");
+            return true;
+        }
+        return false;
     }
 
     getAxisProps() {

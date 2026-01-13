@@ -130,6 +130,42 @@ export default class DataFlow {
     }
 
     /**
+     * @param {H} key
+     */
+    removeHost(key) {
+        this._dataSourcesByHost.delete(key);
+        this._collectorsByHost.delete(key);
+        this._observers.delete(key);
+    }
+
+    /**
+     * @param {Iterable<H>} keys
+     */
+    removeHosts(keys) {
+        for (const key of keys) {
+            this.removeHost(key);
+        }
+    }
+
+    /**
+     * @param {Iterable<H>} keys
+     * @returns {import("./sources/dataSource.js").default[]}
+     */
+    getDataSourcesForHosts(keys) {
+        /** @type {import("./sources/dataSource.js").default[]} */
+        const dataSources = [];
+
+        for (const key of keys) {
+            const dataSource = this._dataSourcesByHost.get(key);
+            if (dataSource) {
+                dataSources.push(dataSource);
+            }
+        }
+
+        return dataSources;
+    }
+
+    /**
      * Allows the flow nodes to perform final initialization after the flow
      * structure has been built and optimized.
      * Must be called before any data are to be propagated.

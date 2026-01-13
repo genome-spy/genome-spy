@@ -509,6 +509,25 @@ export default class View {
     }
 
     /**
+     * Release resources owned by this view.
+     */
+    dispose() {
+        // override
+    }
+
+    /**
+     * Dispose this view and all descendants in post-order.
+     */
+    disposeSubtree() {
+        /** @type {Visitor} */
+        const visitor = () => undefined;
+        visitor.postOrder = (view) => {
+            view.dispose();
+        };
+        this.visit(visitor);
+    }
+
+    /**
      * Called after all scales in the view hierarchy have been resolved.
      */
     configureViewOpacity() {
