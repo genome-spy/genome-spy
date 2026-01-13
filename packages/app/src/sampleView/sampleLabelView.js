@@ -19,6 +19,14 @@ export class SampleLabelView extends UnitView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;
 
+    /** @type {() => void} */
+    #unsubscribe = () => undefined;
+
+    /**
+     * @type {(identifier: import("./types.js").AttributeIdentifier) => import("./types.js").AttributeInfo}
+     */
+    #attributeInfoSource;
+
     /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
@@ -34,9 +42,10 @@ export class SampleLabelView extends UnitView {
 
         this.#sampleView = sampleView;
 
+        this.#attributeInfoSource = () => SAMPLE_NAME_ATTRIBUTE_INFO;
         sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_NAME,
-            (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
+            this.#attributeInfoSource
         );
 
         this.addInteractionEventListener(
@@ -45,7 +54,7 @@ export class SampleLabelView extends UnitView {
         );
 
         // TODO: Data could be inherited from the parent view
-        subscribeTo(
+        this.#unsubscribe = subscribeTo(
             sampleView.provenance.store,
             (state) => state.provenance.present.sampleView.sampleData,
             (sampleData) => {
@@ -99,6 +108,18 @@ export class SampleLabelView extends UnitView {
         );
 
         contextMenu({ items }, event.mouseEvent);
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.#unsubscribe();
+        this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
+            SAMPLE_NAME,
+            this.#attributeInfoSource
+        );
     }
 }
 
