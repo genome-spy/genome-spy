@@ -42,10 +42,11 @@ without requiring a full rebuild or relying on a global registry.
   wired `UnitView.dispose` to remove scale listeners and dispose marks.
 - Added removal for scale/axis resolution members and invalidation of cached
   scale resolutions.
-- Added dataflow host removal and observer cleanup (`removeHost(s)`), including
-  relay observer removal to avoid collector leaks.
+- Added observer cleanup for collectors and flow-handle-based teardown.
 - Added subtree initialization helpers (`initializeSubtree`,
   `finalizeSubtreeGraphics`) to build flow and initialize marks per subtree.
+- Dropped host-based `DataFlow` lookup and replaced it with per-view flow
+  handles; `DataFlow` now tracks only data sources and collectors.
 - Metadata rebuild now uses subtree init and removes old dataflow hosts before
   rebuilding; title-view data source hacks removed.
 - Metadata view now unsubscribes from Redux, unregisters its attribute info
@@ -93,7 +94,7 @@ without requiring a full rebuild or relying on a global registry.
 - Add minimal lifecycle hooks in tests to verify teardown is invoked.
 
 Status: started. Metadata rebuild test covers observer/collector sizes and
-unsubscribe behavior. Core tests cover disposal and dataflow host removal.
+unsubscribe behavior. Core tests cover disposal and flow-handle wiring.
 
 ### Immediate next steps (metadata-first)
 
@@ -107,8 +108,8 @@ unsubscribe behavior. Core tests cover disposal and dataflow host removal.
 - Add teardown for metadata subtree only (observer removal, flow detachment,
   mark disposal) to prevent leaks during add/remove.
 
-Status: partial. Subtree init helpers exist and metadata rebuild uses them; data
-flow host removal is in place. Flow-handle refactor remains.
+Status: partial. Subtree init helpers exist and metadata rebuild uses them;
+flow handles are in place.
 
 ### Phase 1: Safe teardown without changing architecture
 
@@ -121,6 +122,7 @@ flow host removal is in place. Flow-handle refactor remains.
 
 Status: mostly done. Disposal hooks, mark cleanup, scale/axis membership
 removal, observer cleanup, and app-level unsubscribe paths are implemented.
+DataFlow host registry is removed; handles are the primary access path.
 
 ### Phase 2: Subtree dataflow init
 
@@ -132,8 +134,8 @@ removal, observer cleanup, and app-level unsubscribe paths are implemented.
   - build/init flow for the new subtree
   - reconfigure scales locally
 
-Status: helper exists and metadata rebuild uses it; still relies on global
-`DataFlow` registry for lookup and does not yet expose per-view flow handles.
+Status: helper exists and metadata rebuild uses it; `DataFlow` remains a global
+graph/optimizer, while views access flow via handles.
 
 ## Notes on initialization order (WebGL constraints)
 
@@ -150,6 +152,18 @@ Status: helper exists and metadata rebuild uses it; still relies on global
 - This should replace ad hoc "find title views and load data sources" hacks
   by letting local subtrees initialize their own sources on completion.
 
+## Notes on early data loading
+
+- Goal: trigger data loads as soon as a subtree is ready while still benefiting
+  from global optimization (shared sources).
+- Proposed sequence for subtree init:
+  - build subtree flow
+  - run `optimizeDataFlow` globally
+  - sync flow handles to canonical data sources
+  - load only canonical data sources for the subtree (guarded by load state)
+- Requires a load-state or cached load promise on each data source to avoid
+  duplicate fetches when sources are shared across subtrees.
+
 ### Phase 3: Remove `DataFlow` registry
 
 - Migrate from global host-based lookup to view-local flow handles.
@@ -162,18 +176,15 @@ Phase 3 checklist (concrete tasks):
 
 - Define a minimal flow-handle interface, e.g., `{ dataSource, collector }`,
   stored on views that participate in dataflow.
-- Have `buildDataFlow` return a map of `View -> FlowHandle` for the subtree,
-  and attach handles to participating views after optimization.
-- Update `UnitView.getCollector()` to prefer its local handle, falling back to
-  global lookup during the transition.
-- Replace `flow.findDataSourceByKey(this)` in dynamic views (metadata, labels)
-  with handle access.
-- Update `initializeSubtree` to return and/or attach flow handles so callers
-  can use them without global registry lookups.
-- Remove `DataFlow._dataSourcesByHost`/`_collectorsByHost` usage once all
-  callsites are migrated; keep `DataFlow` as a graph/optimizer container only.
-- Add tests that assert flow-handle availability in subtree init and no host
-  lookups in metadata rebuild.
+- Attach handles during `buildDataFlow` and re-sync after optimization.
+- Use local handles in view code paths (no global lookup fallback).
+- Ensure subtree init syncs flow handles and uses canonical data sources.
+- Remove host-map lookups; keep `DataFlow` as a graph/optimizer container only.
+- Add tests that assert flow-handle availability in subtree init and selection
+  rect updates.
+
+Status: in progress. Host maps removed; flow handles are required for view-owned
+sources/collectors and selection rect has handle coverage.
 
 ### Phase 4: Resolution and layout cleanup
 
@@ -191,10 +202,10 @@ Phase 3 checklist (concrete tasks):
 ## Current pain points by file
 
 - `packages/app/src/sampleView/metadata/metadataView.js`: now uses subtree init
-  and cleans up subscriptions/listeners on dispose, but still uses global
-  `DataFlow` host lookup and relies on manual `reconfigureScales`.
+  and cleans up subscriptions/listeners on dispose, but relies on manual
+  `reconfigureScales`.
 - `packages/app/src/sampleView/sampleLabelView.js`: now unsubscribes and removes
-  its attribute info source on dispose; still uses global dataflow lookup.
+  its attribute info source on dispose.
 - `packages/app/src/sampleView/sampleView.js`: now removes its action augmenter
   and store subscription on dispose; dynamic sidebar lifecycle still relies on
   global init.
@@ -202,8 +213,8 @@ Phase 3 checklist (concrete tasks):
   does not support incremental subtree init/teardown.
 - `packages/core/src/view/flowBuilder.js`: builds flow from current view tree
   but has no corresponding teardown/prune for replaced branches.
-- `packages/core/src/data/dataFlow.js`: global registry with host-based lookup
-  complicates dynamic removal; observers are only added, never removed.
+- `packages/core/src/data/dataFlow.js`: now a graph/optimizer container; still
+  needs load-state tracking for early-loading without duplicate fetches.
 - `packages/core/src/view/scaleResolution.js`: membership grows without removal,
   so domains/listeners can outlive the owning view.
 - `packages/core/src/view/unitView.js`: resolves scale/axis and registers scale
