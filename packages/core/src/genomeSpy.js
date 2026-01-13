@@ -230,7 +230,7 @@ export default class GenomeSpy {
         }
 
         namedSource.dataSource.updateDynamicData(data);
-        reconfigureScales(namedSource.hosts);
+        reconfigureScales(this.viewRoot);
 
         this.animator.requestRender();
     }
@@ -581,7 +581,7 @@ export default class GenomeSpy {
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
         optimizeDataFlow(flow);
-        syncFlowHandles(flow);
+        syncFlowHandles(this.viewRoot, flow);
         this.broadcast("dataFlowBuilt", flow);
 
         // Create encoders (accessors, scales and related metadata)
@@ -593,17 +593,21 @@ export default class GenomeSpy {
         );
 
         for (const view of unitViews) {
-            flow.addObserver((collector) => {
-                view.mark.initializeData();
-                try {
-                    // Update WebGL buffers
-                    view.mark.updateGraphicsData();
-                } catch (e) {
-                    e.view = view;
-                    throw e;
-                }
-                context.animator.requestRender();
-            }, view);
+            flow.addObserver(
+                view.flowHandle.collector,
+                (collector) => {
+                    view.mark.initializeData();
+                    try {
+                        // Update WebGL buffers
+                        view.mark.updateGraphicsData();
+                    } catch (e) {
+                        e.view = view;
+                        throw e;
+                    }
+                    context.animator.requestRender();
+                },
+                view.flowHandle
+            );
         }
 
         // Have to wait until asynchronous font loading is complete.

@@ -122,6 +122,15 @@ export function buildDataFlow(root, existingFlow) {
     /** @param {View} view */
     const processView = (view) => {
         if (view.spec.data) {
+            const previousDataSource = view.flowHandle?.dataSource;
+            if (
+                previousDataSource &&
+                previousDataSource.view === view &&
+                !previousDataSource.identifier
+            ) {
+                dataFlow.removeDataSource(previousDataSource);
+            }
+
             const dataSource = isNamedData(view.spec.data)
                 ? new NamedSource(
                       view.spec.data,
@@ -132,7 +141,7 @@ export function buildDataFlow(root, existingFlow) {
 
             currentNode = dataSource;
             nodeStack.push(dataSource);
-            dataFlow.addDataSource(dataSource, view);
+            dataFlow.addDataSource(dataSource);
             view.flowHandle ??= {};
             view.flowHandle.dataSource = dataSource;
         }
@@ -188,7 +197,11 @@ export function buildDataFlow(root, existingFlow) {
             });
 
             appendNode(collector);
-            dataFlow.addCollector(collector, view);
+            const previousCollector = view.flowHandle?.collector;
+            if (previousCollector) {
+                dataFlow.removeCollector(previousCollector);
+            }
+            dataFlow.addCollector(collector);
             view.flowHandle ??= {};
             view.flowHandle.collector = collector;
         }

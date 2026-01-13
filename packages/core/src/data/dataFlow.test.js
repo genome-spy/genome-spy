@@ -4,49 +4,35 @@ import DataSource from "./sources/dataSource.js";
 import Collector from "./collector.js";
 
 describe("DataFlow", () => {
-    test("removes hosts and ignores observer callbacks", () => {
+    test("removes sources and collectors and clears observers", () => {
         const flow = new DataFlow();
 
         const sourceA = new DataSource(/** @type {any} */ ({}));
         const sourceB = new DataSource(/** @type {any} */ ({}));
 
-        flow.addDataSource(sourceA, "a");
-        flow.addDataSource(sourceB, "b");
+        flow.addDataSource(sourceA);
+        flow.addDataSource(sourceB);
 
         const collector = new Collector();
-        flow.addCollector(collector, "c");
+        flow.addCollector(collector);
 
         let called = false;
-        flow.addObserver(() => {
+        flow.addObserver(collector, () => {
             called = true;
-        }, "c");
+        });
 
-        const dataSourceEntry = flow
-            .getDataSourceEntries()
-            .find(([key]) => key === "a");
-        expect(dataSourceEntry).toBeDefined();
-        expect(dataSourceEntry?.[1]).toBe(sourceA);
-
-        const collectorEntry = flow
-            .getCollectorEntries()
-            .find(([key]) => key === "c");
-        expect(collectorEntry).toBeDefined();
-        expect(collectorEntry?.[1]).toBe(collector);
+        expect(flow.dataSources).toContain(sourceA);
+        expect(flow.collectors).toContain(collector);
         expect(collector.observers.length).toBe(1);
 
-        flow.removeHosts(["a", "c"]);
+        flow.removeDataSource(sourceA);
+        flow.removeCollector(collector);
 
-        expect(
-            flow.getDataSourceEntries().find(([key]) => key === "a")
-        ).toBeUndefined();
-        expect(
-            flow.getCollectorEntries().find(([key]) => key === "c")
-        ).toBeUndefined();
+        expect(flow.dataSources).not.toContain(sourceA);
+        expect(flow.collectors).not.toContain(collector);
 
         expect(collector.observers.length).toBe(0);
         expect(called).toBe(false);
-        expect(flow.getDataSourcesForHosts(["b", "missing"])).toEqual([
-            sourceB,
-        ]);
+        expect(flow.dataSources).toContain(sourceB);
     });
 });

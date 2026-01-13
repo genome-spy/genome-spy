@@ -466,9 +466,7 @@ export default class SampleView extends ContainerView {
         });
 
         // Synchronize loading with other data
-        const key = "samples " + this.getPathString();
-        // @ts-expect-error TODO: Using a string as key is ugly. Try something else.
-        this.context.dataFlow.addDataSource(dataSource, key);
+        this.context.dataFlow.addDataSource(dataSource);
     }
 
     #extractSamplesFromData() {

@@ -1,122 +1,77 @@
 import NamedSource from "./sources/namedSource.js";
 
 /**
- * @template H A key (string, object, whatever) that is used to retrieve
- *      data sources and collectors.
+ * DataFlow holds data sources and collectors for optimization and initialization.
  */
 export default class DataFlow {
-    /** @type {Map<H, import("./sources/dataSource.js").default>} */
-    #dataSourcesByHost;
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    #dataSources;
 
-    /** @type {Map<H, import("./collector.js").default>} */
-    #collectorsByHost;
+    /** @type {Set<import("./collector.js").default>} */
+    #collectors;
 
     constructor() {
-        /** @type {Map<H, import("./sources/dataSource.js").default>} */
-        this.#dataSourcesByHost = new Map();
+        /** @type {Set<import("./sources/dataSource.js").default>} */
+        this.#dataSources = new Set();
 
-        /** @type {Map<H, import("./collector.js").default>} */
-        this.#collectorsByHost = new Map();
-
-        /** @type {Map<H, (function(import("./collector.js").default):void)[]>} */
-        this._observers = new Map();
-
-        /** @type {Map<H, (function(import("./collector.js").default):void)>} */
-        this._collectorObserverByHost = new Map();
+        /** @type {Set<import("./collector.js").default>} */
+        this.#collectors = new Set();
     }
 
     get dataSources() {
-        return [...new Set(this.#dataSourcesByHost.values()).values()];
+        return [...this.#dataSources];
     }
 
     get collectors() {
-        return [...this.#collectorsByHost.values()];
+        return [...this.#collectors];
     }
 
     /**
-     * @returns {[H, import("./sources/dataSource.js").default][]}
+     * @param {Iterable<import("./sources/dataSource.js").default>} dataSources
      */
-    getDataSourceEntries() {
-        return [...this.#dataSourcesByHost.entries()];
+    replaceDataSources(dataSources) {
+        this.#dataSources = new Set(dataSources);
     }
 
     /**
-     * @returns {[H, import("./collector.js").default][]}
-     */
-    getCollectorEntries() {
-        return [...this.#collectorsByHost.entries()];
-    }
-
-    getDataSourceHostCount() {
-        return this.#dataSourcesByHost.size;
-    }
-
-    getCollectorHostCount() {
-        return this.#collectorsByHost.size;
-    }
-
-    /**
-     * @param {Iterable<[H, import("./sources/dataSource.js").default]>} entries
-     */
-    replaceDataSourceEntries(entries) {
-        this.#dataSourcesByHost = new Map(entries);
-    }
-
-    /**
-     * Adds a callback function that will be called when a collector has completed.
-     *
-     * @param {function(import("./collector.js").default):void} callback
-     * @param {H} key
-     */
-    addObserver(callback, key) {
-        let arr = this._observers.get(key);
-        if (!arr) {
-            arr = [];
-            this._observers.set(key, arr);
-        }
-
-        arr.push(callback);
-    }
-
-    /**
-     *
-     * @param {import("./collector.js").default} collector
-     * @param {H} key
-     */
-    _relayObserverCallback(collector, key) {
-        const arr = this._observers.get(key);
-        if (arr) {
-            for (const callback of arr) {
-                // eslint-disable-next-line callback-return
-                callback(collector);
-            }
-        }
-    }
-
-    /**
-     *
      * @param {import("./sources/dataSource.js").default} dataSource
-     * @param {H} key
      */
-    addDataSource(dataSource, key) {
-        this.#dataSourcesByHost.set(key, dataSource);
+    addDataSource(dataSource) {
+        this.#dataSources.add(dataSource);
     }
 
     /**
-     *
+     * @param {import("./sources/dataSource.js").default} dataSource
+     */
+    removeDataSource(dataSource) {
+        this.#dataSources.delete(dataSource);
+    }
+
+    /**
+     * @param {import("./collector.js").default} collector
+     */
+    addCollector(collector) {
+        this.#collectors.add(collector);
+    }
+
+    /**
+     * @param {import("./collector.js").default} collector
+     */
+    removeCollector(collector) {
+        collector.observers.length = 0;
+        this.#collectors.delete(collector);
+    }
+
+    /**
      * @param {string} name
      */
     findNamedDataSource(name) {
         /** @type {NamedSource} */
         let namedSource;
-        /** @type {H[]} */
-        let hosts = [];
 
-        // Note: If a named sources with the same name are present at multiple locations in the
-        // view hierarchy, the should actually be exactly the same instance. It's arranged that
-        // way in the data flow optimization phase.
-
-        for (const [host, dataSource] of this.#dataSourcesByHost.entries()) {
+        // Note: If named sources with the same name are present at multiple locations in the
+        // view hierarchy, they should actually be exactly the same instance.
+        for (const dataSource of this.#dataSources.values()) {
             if (dataSource instanceof NamedSource) {
                 if (name == dataSource.identifier) {
                     if (namedSource && namedSource !== dataSource) {
@@ -126,7 +81,6 @@ export default class DataFlow {
                         );
                     }
                     namedSource = dataSource;
-                    hosts.push(host);
                 }
             }
         }
@@ -134,69 +88,22 @@ export default class DataFlow {
         if (namedSource) {
             return {
                 dataSource: namedSource,
-                hosts,
             };
         }
     }
 
     /**
+     * Adds a callback function that will be called when a collector has completed.
      *
      * @param {import("./collector.js").default} collector
-     * @param {H} key
+     * @param {function(import("./collector.js").default):void} callback
+     * @param {import("./flowHandle.js").FlowHandle} [handle]
      */
-    addCollector(collector, key) {
-        this.#collectorsByHost.set(key, collector);
-        const observer = (/** @type {import("./collector.js").default} */ c) =>
-            this._relayObserverCallback(c, key);
-        this._collectorObserverByHost.set(key, observer);
-        collector.observers.push(observer);
-    }
-
-    /**
-     * @param {H} key
-     */
-    removeHost(key) {
-        this.#dataSourcesByHost.delete(key);
-        const collector = this.#collectorsByHost.get(key);
-        if (collector) {
-            const observer = this._collectorObserverByHost.get(key);
-            if (observer) {
-                const index = collector.observers.indexOf(observer);
-                if (index >= 0) {
-                    collector.observers.splice(index, 1);
-                }
-            }
-            this._collectorObserverByHost.delete(key);
-            this.#collectorsByHost.delete(key);
+    addObserver(collector, callback, handle) {
+        collector.observers.push(callback);
+        if (handle) {
+            handle.collectorObserver = callback;
         }
-        this._observers.delete(key);
-    }
-
-    /**
-     * @param {Iterable<H>} keys
-     */
-    removeHosts(keys) {
-        for (const key of keys) {
-            this.removeHost(key);
-        }
-    }
-
-    /**
-     * @param {Iterable<H>} keys
-     * @returns {import("./sources/dataSource.js").default[]}
-     */
-    getDataSourcesForHosts(keys) {
-        /** @type {import("./sources/dataSource.js").default[]} */
-        const dataSources = [];
-
-        for (const key of keys) {
-            const dataSource = this.#dataSourcesByHost.get(key);
-            if (dataSource) {
-                dataSources.push(dataSource);
-            }
-        }
-
-        return dataSources;
     }
 
     /**

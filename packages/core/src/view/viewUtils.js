@@ -100,7 +100,7 @@ export function setImplicitScaleNames(root) {
 export async function initializeData(root, existingFlow) {
     const flow = buildDataFlow(root, existingFlow);
     optimizeDataFlow(flow);
-    syncFlowHandles(flow);
+    syncFlowHandles(root, flow);
     flow.initialize();
 
     /** @type {Promise<void>[]} */
@@ -112,22 +112,37 @@ export async function initializeData(root, existingFlow) {
 }
 
 /**
- * Synchronize flow handles with the current DataFlow host mappings.
+ * Synchronize flow handles after data flow optimization.
  *
+ * @param {View} root
  * @param {import("../data/dataFlow.js").default<View>} flow
  */
-export function syncFlowHandles(flow) {
-    for (const [host, dataSource] of flow.getDataSourceEntries()) {
-        if (host && typeof host === "object" && "flowHandle" in host) {
-            host.flowHandle ??= {};
-            host.flowHandle.dataSource = dataSource;
+export function syncFlowHandles(root, flow) {
+    /** @type {Map<string, import("../data/sources/dataSource.js").default>} */
+    const dataSourcesByIdentifier = new Map();
+    for (const dataSource of flow.dataSources) {
+        if (
+            dataSource.identifier &&
+            !dataSourcesByIdentifier.has(dataSource.identifier)
+        ) {
+            dataSourcesByIdentifier.set(dataSource.identifier, dataSource);
         }
     }
 
-    for (const [host, collector] of flow.getCollectorEntries()) {
-        if (host && typeof host === "object" && "flowHandle" in host) {
-            host.flowHandle ??= {};
-            host.flowHandle.collector = collector;
+    for (const view of root.getDescendants()) {
+        const handle = view.flowHandle;
+        if (!handle) {
+            continue;
+        }
+
+        const dataSource = handle.dataSource;
+        if (dataSource && dataSource.identifier) {
+            const canonical = dataSourcesByIdentifier.get(
+                dataSource.identifier
+            );
+            if (canonical) {
+                handle.dataSource = canonical;
+            }
         }
     }
 }
@@ -146,9 +161,19 @@ export function syncFlowHandles(flow) {
  */
 export function initializeSubtree(root, flow) {
     const dataFlow = buildDataFlow(root, flow);
-    syncFlowHandles(dataFlow);
+    syncFlowHandles(root, dataFlow);
     const subtreeViews = root.getDescendants();
-    const dataSources = new Set(flow.getDataSourcesForHosts(subtreeViews));
+    /** @type {Set<import("../data/sources/dataSource.js").default>} */
+    const dataSources = new Set();
+    for (const view of subtreeViews) {
+        let current = view;
+        while (current && !current.flowHandle?.dataSource) {
+            current = current.dataParent;
+        }
+        if (current?.flowHandle?.dataSource) {
+            dataSources.add(current.flowHandle.dataSource);
+        }
+    }
 
     for (const dataSource of dataSources) {
         dataSource.visit((node) => node.initialize());
@@ -169,10 +194,14 @@ export function initializeSubtree(root, flow) {
             graphicsPromises.push(mark.initializeGraphics().then(() => mark));
         }
 
-        flow.addObserver((collector) => {
-            mark.initializeData(); // does faceting
-            mark.updateGraphicsData();
-        }, view);
+        flow.addObserver(
+            view.flowHandle.collector,
+            (collector) => {
+                mark.initializeData(); // does faceting
+                mark.updateGraphicsData();
+            },
+            view.flowHandle
+        );
     }
 
     return {

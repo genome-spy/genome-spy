@@ -50,7 +50,7 @@ describe("SelectionRect", () => {
 
         const flow = buildDataFlow(selectionRect, context.dataFlow);
         optimizeDataFlow(flow);
-        syncFlowHandles(flow);
+        syncFlowHandles(selectionRect, flow);
 
         const dataSource = selectionRect.flowHandle?.dataSource;
         expect(dataSource).toBeDefined();

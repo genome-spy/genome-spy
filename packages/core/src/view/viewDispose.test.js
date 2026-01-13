@@ -96,7 +96,7 @@ describe("View disposal", () => {
         const child = new DisposableView("a", context, parent, parent);
 
         const dataSource = new DataSource(child);
-        context.dataFlow.addDataSource(dataSource, child);
+        context.dataFlow.addDataSource(dataSource);
         child.flowHandle = { dataSource };
 
         expect(child.flowHandle.dataSource).toBe(dataSource);

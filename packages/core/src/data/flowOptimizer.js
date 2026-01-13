@@ -85,27 +85,34 @@ export function combineAndPullCollectorsUp() {
  * @param {import("./dataFlow.js").default<any>} dataFlow
  */
 export function combineIdenticalDataSources(dataFlow) {
-    const dataSourceEntries = dataFlow.getDataSourceEntries();
+    const dataSources = dataFlow.dataSources;
 
     /** @type {Map<string, import("./sources/dataSource.js").default>} */
     const sourcesByIdentifiers = new Map();
-    for (const e of dataSourceEntries) {
-        const ds = e[1];
+    for (const ds of dataSources) {
         if (ds.identifier && !sourcesByIdentifiers.has(ds.identifier)) {
             sourcesByIdentifiers.set(ds.identifier, ds);
         }
     }
 
-    dataFlow.replaceDataSourceEntries([]);
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    const mergedSources = new Set();
 
-    for (let [key, dataSource] of dataSourceEntries) {
-        const target = sourcesByIdentifiers.get(dataSource.identifier);
-        if (target) {
-            target.adoptChildrenOf(dataSource);
-            dataSource = target;
+    for (const dataSource of dataSources) {
+        if (dataSource.identifier) {
+            const target = sourcesByIdentifiers.get(dataSource.identifier);
+            if (target) {
+                if (target !== dataSource) {
+                    target.adoptChildrenOf(dataSource);
+                }
+                mergedSources.add(target);
+            }
+        } else {
+            mergedSources.add(dataSource);
         }
-        dataFlow.addDataSource(dataSource, key);
     }
+
+    dataFlow.replaceDataSources(mergedSources);
 }
 
 /**

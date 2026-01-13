@@ -94,11 +94,24 @@ function createSampleView(context, store, sampleHierarchy) {
 function assertFlowMatchesSubtree(metadataView, dataFlow) {
     const descendants = metadataView.getDescendants();
     const unitViews = descendants.filter((view) => view instanceof UnitView);
-    const dataSources = dataFlow.getDataSourcesForHosts(descendants);
+    const dataSources = new Set(
+        descendants
+            .map((view) => view.flowHandle?.dataSource)
+            .filter((dataSource) => dataSource)
+    );
+    const collectors = new Set(
+        unitViews
+            .map((view) => view.flowHandle?.collector)
+            .filter((collector) => collector)
+    );
+    const observerCount = [...collectors].reduce(
+        (sum, collector) => sum + collector.observers.length,
+        0
+    );
 
-    expect(dataFlow.getDataSourceHostCount()).toBe(dataSources.length);
-    expect(dataFlow.getCollectorHostCount()).toBe(unitViews.length);
-    expect(dataFlow._observers.size).toBe(unitViews.length);
+    expect(dataFlow.dataSources.length).toBe(dataSources.size);
+    expect(dataFlow.collectors.length).toBe(collectors.size);
+    expect(observerCount).toBe(unitViews.length);
 }
 
 describe("MetadataView", () => {
@@ -120,8 +133,8 @@ describe("MetadataView", () => {
 
         const dataFlow = context.dataFlow;
         const addObserver = dataFlow.addObserver.bind(dataFlow);
-        dataFlow.addObserver = (callback, key) => {
-            addObserver(() => undefined, key);
+        dataFlow.addObserver = (collector, callback, handle) => {
+            addObserver(collector, () => undefined, handle);
         };
 
         const store = createStore({
@@ -177,9 +190,14 @@ describe("MetadataView", () => {
                 !!metadataView.flowHandle.dataSource;
 
             return {
-                dataSources: dataFlow.getDataSourceHostCount(),
-                collectors: dataFlow.getCollectorHostCount(),
-                observers: dataFlow._observers.size,
+                dataSources: dataFlow.dataSources.length,
+                collectors: dataFlow.collectors.length,
+                observers: unitViews.reduce(
+                    (sum, view) =>
+                        sum +
+                        (view.flowHandle?.collector?.observers.length ?? 0),
+                    0
+                ),
                 unitViews: unitViews.length,
                 hasCollector,
                 hasDataSource,

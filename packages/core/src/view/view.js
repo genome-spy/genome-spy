@@ -517,7 +517,29 @@ export default class View {
      * Release resources owned by this view.
      */
     dispose() {
-        this.context.dataFlow.removeHost(this);
+        const handle = this.flowHandle;
+        if (handle?.collectorObserver && handle.collector) {
+            const index = handle.collector.observers.indexOf(
+                handle.collectorObserver
+            );
+            if (index >= 0) {
+                handle.collector.observers.splice(index, 1);
+            }
+            handle.collectorObserver = undefined;
+        }
+
+        if (handle?.collector) {
+            this.context.dataFlow.removeCollector(handle.collector);
+        }
+
+        if (
+            handle?.dataSource &&
+            handle.dataSource.view === this &&
+            !handle.dataSource.identifier
+        ) {
+            this.context.dataFlow.removeDataSource(handle.dataSource);
+        }
+
         this.flowHandle = undefined;
     }
 

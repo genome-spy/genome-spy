@@ -142,7 +142,7 @@ const viewStub = /** @type {any} */ (
 
 describe("Merge indentical data sources", () => {
     test("Merges correctly", () => {
-        /** @type {DataFlow<string>} */
+        /** @type {DataFlow} */
         const dataFlow = new DataFlow();
 
         const a = new UrlSource({ url: "http://genomespy.app/" }, viewStub);
@@ -157,22 +157,25 @@ describe("Merge indentical data sources", () => {
         const cc = new Collector();
         c.addChild(cc);
 
-        dataFlow.addDataSource(a, "a");
-        dataFlow.addDataSource(b, "b");
-        dataFlow.addDataSource(c, "c");
+        dataFlow.addDataSource(a);
+        dataFlow.addDataSource(b);
+        dataFlow.addDataSource(c);
 
-        dataFlow.addCollector(ac, "a");
-        dataFlow.addCollector(bc, "b");
-        dataFlow.addCollector(cc, "c");
+        dataFlow.addCollector(ac);
+        dataFlow.addCollector(bc);
+        dataFlow.addCollector(cc);
 
         combineIdenticalDataSources(dataFlow);
 
         expect(dataFlow.dataSources.length).toEqual(2);
 
-        const entries = dataFlow.getDataSourceEntries();
-        expect(entries.find(([key]) => key === "a")?.[1]).toBe(a);
-        expect(entries.find(([key]) => key === "b")?.[1]).toBe(a); // Merged!
-        expect(entries.find(([key]) => key === "c")?.[1]).toBe(c);
+        const entries = dataFlow.dataSources;
+        const sharedIdentifier = a.identifier;
+        expect(entries).toContain(a);
+        expect(entries).toContain(c);
+        expect(
+            entries.filter((source) => source.identifier == sharedIdentifier)
+        ).toEqual([a]);
 
         expect(new Set(a.children)).toEqual(new Set([ac, bc]));
         expect(c.children[0]).toBe(cc);
@@ -188,19 +191,19 @@ describe("Merge indentical data sources", () => {
     });
 
     test("Does not merge those with undefined identifier", () => {
-        /** @type {DataFlow<string>} */
+        /** @type {DataFlow} */
         const dataFlow = new DataFlow();
 
         const a = new InlineSource({ values: [1, 2, 3] }, viewStub);
         const b = new InlineSource({ values: [1, 2, 3] }, viewStub);
 
-        dataFlow.addDataSource(a, "a");
-        dataFlow.addDataSource(b, "b");
+        dataFlow.addDataSource(a);
+        dataFlow.addDataSource(b);
 
         combineIdenticalDataSources(dataFlow);
 
-        const entries = dataFlow.getDataSourceEntries();
-        expect(entries.find(([key]) => key === "a")?.[1]).toBe(a);
-        expect(entries.find(([key]) => key === "b")?.[1]).toBe(b);
+        const entries = dataFlow.dataSources;
+        expect(entries).toContain(a);
+        expect(entries).toContain(b);
     });
 });
