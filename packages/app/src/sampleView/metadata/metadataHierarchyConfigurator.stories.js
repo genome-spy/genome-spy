@@ -62,7 +62,7 @@ export const Basic = {
                 ) => {
                     const output = document.getElementById("config-output");
                     const detail =
-                        /** @type {import("./metadataHierarchyConfigurator.js").MetadataConfig} */ (
+                        /** @type {import("./metadataUtils.js").MetadataConfig} */ (
                             event.detail
                         );
                     const payload = {

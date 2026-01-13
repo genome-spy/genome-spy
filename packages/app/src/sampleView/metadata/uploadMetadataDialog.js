@@ -37,7 +37,7 @@ class UploadMetadataDialog extends BaseDialog {
     /** @type {ReturnType<typeof validateMetadata>} */
     #validationResult;
 
-    /** @type {import("./metadataHierarchyConfigurator.js").MetadataConfig} */
+    /** @type {import("./metadataUtils.js").MetadataConfig} */
     #metadataConfig;
 
     /**
