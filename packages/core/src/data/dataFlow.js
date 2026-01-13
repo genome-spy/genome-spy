@@ -14,6 +14,9 @@ export default class DataFlow {
 
         /** @type {Map<H, (function(import("./collector.js").default):void)[]>} */
         this._observers = new Map();
+
+        /** @type {Map<H, (function(import("./collector.js").default):void)>} */
+        this._collectorObserverByHost = new Map();
     }
 
     get dataSources() {
@@ -116,9 +119,10 @@ export default class DataFlow {
      */
     addCollector(collector, key) {
         this._collectorsByHost.set(key, collector);
-        collector.observers.push((collector) =>
-            this._relayObserverCallback(collector, key)
-        );
+        const observer = (/** @type {import("./collector.js").default} */ c) =>
+            this._relayObserverCallback(c, key);
+        this._collectorObserverByHost.set(key, observer);
+        collector.observers.push(observer);
     }
 
     /**
@@ -134,7 +138,18 @@ export default class DataFlow {
      */
     removeHost(key) {
         this._dataSourcesByHost.delete(key);
-        this._collectorsByHost.delete(key);
+        const collector = this._collectorsByHost.get(key);
+        if (collector) {
+            const observer = this._collectorObserverByHost.get(key);
+            if (observer) {
+                const index = collector.observers.indexOf(observer);
+                if (index >= 0) {
+                    collector.observers.splice(index, 1);
+                }
+            }
+            this._collectorObserverByHost.delete(key);
+            this._collectorsByHost.delete(key);
+        }
         this._observers.delete(key);
     }
 
