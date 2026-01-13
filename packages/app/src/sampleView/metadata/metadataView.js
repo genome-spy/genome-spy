@@ -268,8 +268,7 @@ export class MetadataView extends ConcatView {
         this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
-        const previousViews = this.getDescendants();
-        flow.removeHosts(previousViews);
+        flow.removeHost(this);
 
         const metadataGeneration = ++this.#metadataGeneration;
 
