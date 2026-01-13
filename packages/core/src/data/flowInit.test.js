@@ -1,9 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { createTestViewContext } from "../view/testUtils.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
-import { syncFlowHandles } from "./flowInit.js";
+import { initializeSubtree, syncFlowHandles } from "./flowInit.js";
 
 describe("flowInit", () => {
     test("syncs handles to canonical data sources after merge", async () => {
@@ -49,5 +49,111 @@ describe("flowInit", () => {
             (source) => source.identifier === "shared"
         );
         expect(sharedSources).toEqual([left.flowHandle.dataSource]);
+    });
+
+    test("initializeSubtree wires collector updates for subtree loads", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [];
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ x: 1 }, { x: 2 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        const { dataSources } = initializeSubtree(root, context.dataFlow);
+
+        // This guards subtree-only initialization: dynamic view rebuilds should still
+        // trigger mark updates when their local collectors complete.
+        const unitView = /** @type {import("../view/unitView.js").default} */ (
+            root
+        );
+        const updateSpy = vi
+            .spyOn(unitView.mark, "updateGraphicsData")
+            .mockImplementation(() => undefined);
+
+        await Promise.all(
+            Array.from(dataSources).map((dataSource) => dataSource.load())
+        );
+
+        expect(updateSpy).toHaveBeenCalledTimes(1);
+        updateSpy.mockRestore();
+    });
+
+    test("disposeSubtree removes observers before rebuilding subtree", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [{ x: 1 }];
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { name: "shared" },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const firstRoot = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            "first"
+        );
+        const { dataSources: firstSources } = initializeSubtree(
+            firstRoot,
+            context.dataFlow
+        );
+
+        const firstUnit = /** @type {import("../view/unitView.js").default} */ (
+            firstRoot
+        );
+        const firstCollector = firstUnit.flowHandle.collector;
+        const firstUpdateSpy = vi
+            .spyOn(firstUnit.mark, "updateGraphicsData")
+            .mockImplementation(() => undefined);
+
+        await Promise.all(
+            Array.from(firstSources).map((dataSource) => dataSource.load())
+        );
+
+        expect(firstUpdateSpy).toHaveBeenCalledTimes(1);
+        firstUpdateSpy.mockRestore();
+
+        firstRoot.disposeSubtree();
+
+        // This prevents stale observers from firing after a subtree is rebuilt.
+        expect(firstCollector.observers.length).toBe(0);
+
+        const secondRoot = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            "second"
+        );
+        const { dataSources: secondSources } = initializeSubtree(
+            secondRoot,
+            context.dataFlow
+        );
+
+        const secondUnit =
+            /** @type {import("../view/unitView.js").default} */ (secondRoot);
+        const secondUpdateSpy = vi
+            .spyOn(secondUnit.mark, "updateGraphicsData")
+            .mockImplementation(() => undefined);
+
+        await Promise.all(
+            Array.from(secondSources).map((dataSource) => dataSource.load())
+        );
+
+        expect(secondUpdateSpy).toHaveBeenCalledTimes(1);
+        secondUpdateSpy.mockRestore();
     });
 });
