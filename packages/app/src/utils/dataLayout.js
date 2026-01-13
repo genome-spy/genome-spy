@@ -3,15 +3,16 @@
  * All objects must have identical keys.
  *
  * @param {Array<Record<string, any>>} rows - Array of objects with identical shape
+ * @param {Set<string>} [skipColumns] - Set of column names to skip
  * @returns {Record<string, any[]>} Object where each key maps to an array of values
  */
-export function rowsToColumns(rows) {
+export function rowsToColumns(rows, skipColumns = new Set()) {
     if (rows.length === 0) {
         return {};
     }
 
     const firstRow = rows[0];
-    const keys = Object.keys(firstRow);
+    const keys = Object.keys(firstRow).filter((key) => !skipColumns.has(key));
     /** @type {Record<string, any[]>} */
     const columns = {};
 

@@ -11,33 +11,24 @@ import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import "../../components/generic/dataGrid.js";
 import "../../components/generic/uploadDropZone.js";
 import "../../components/generic/customSelect.js";
-import "../metadataHierarchyConfigurator.js";
+import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { rowsToColumns } from "../../utils/dataLayout.js";
-import { splitPath } from "../../utils/escapeSeparator.js";
-import {
-    placeKeysUnderGroup,
-    placeMetadataUnderGroup,
-} from "./metadataUtils.js";
+import { wrangleMetadata } from "./metadataUtils.js";
 
-/**
- * @typedef {object} MetadataUploadResult
- * @prop {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
- * @prop {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
- */
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
-        sampleView: {},
+        existingSampleIds: {},
         _fileName: { state: true },
         _parsedItems: { state: true },
         _page: { state: true },
-
-        _addUnderGroup: { state: true },
     };
 
     /** @type {ReturnType<typeof validateMetadata>} */
     #validationResult;
+
+    /** @type {import("./metadataHierarchyConfigurator.js").MetadataConfig} */
+    #metadataConfig;
 
     /**
      * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onAdvance?: () => boolean}[]}
@@ -64,8 +55,8 @@ class UploadMetadataDialog extends BaseDialog {
     constructor() {
         super();
 
-        /** @type {import("../sampleView.js").default} */
-        this.sampleView = null;
+        /** @type {Set<string>} */
+        this.existingSampleIds = new Set();
 
         this.dialogTitle = "Load Custom Metadata";
 
@@ -74,9 +65,6 @@ class UploadMetadataDialog extends BaseDialog {
 
         /** @type {string} */
         this._fileName = null;
-
-        /** @type {string} Add new metadata under this (optional) group */
-        this._addUnderGroup = null;
 
         this._page = 0;
     }
@@ -96,48 +84,55 @@ class UploadMetadataDialog extends BaseDialog {
     ];
 
     #submit() {
-        const existingIds = new Set(
-            this.sampleView.sampleHierarchy.sampleData.ids
-        );
         const filteredMetadata = this._parsedItems.filter((record) =>
-            existingIds.has(String(record.sample))
+            this.existingSampleIds.has(String(record.sample))
         );
-        const columnarMetadata =
-            /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
-                rowsToColumns(filteredMetadata)
-            );
 
-        // Temporary definition for expression data
+        const metadataConfig = this.#metadataConfig;
+        if (!metadataConfig) {
+            throw new Error("Metadata configuration is missing");
+        }
+
+        const nodeKeys = Array.from(
+            metadataConfig.metadataNodeTypes
+                .entries()
+                .filter(([, type]) =>
+                    ["nominal", "ordinal", "quantitative"].includes(type)
+                )
+                .map(([key]) => key)
+        );
+
+        const skipColumns = new Set(
+            metadataConfig.metadataNodeTypes
+                .entries()
+                .filter(([, type]) => type == "unset")
+                .map(([key]) => key)
+        );
+
         /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
         const attributeDefs = Object.fromEntries(
-            Object.keys(columnarMetadata).map((attribute) => [
-                attribute,
+            nodeKeys.map((key) => [
+                key,
                 {
-                    type: "quantitative",
-                    scale: {
-                        domain: [-5, 0, 5],
-                        range: ["#0050f8", "#f6f6f6", "#ff3000"],
-                    },
+                    type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                        metadataConfig.metadataNodeTypes.get(key)
+                    ),
+                    scale: metadataConfig.scales.get(key),
                 },
             ])
         );
 
-        const prependPath = this._addUnderGroup
-            ? splitPath(this._addUnderGroup)
-            : [];
-
-        /** @type {MetadataUploadResult} */
-        const data = {
-            columnarMetadata: placeMetadataUnderGroup(
-                columnarMetadata,
-                prependPath
-            ),
-            attributeDefs: placeKeysUnderGroup(attributeDefs, prependPath),
-        };
+        const columnarMetadata = wrangleMetadata(
+            filteredMetadata,
+            attributeDefs,
+            metadataConfig.separator,
+            metadataConfig.addUnderGroup,
+            skipColumns
+        );
 
         this.finish({
             ok: true,
-            data,
+            data: columnarMetadata,
         });
         this.triggerClose();
         return false;
@@ -159,7 +154,7 @@ class UploadMetadataDialog extends BaseDialog {
         this._fileName = file.name;
 
         this.#validationResult = validateMetadata(
-            this.sampleView.sampleHierarchy.sampleData.ids,
+            this.existingSampleIds,
             this._parsedItems
         );
 
@@ -263,13 +258,10 @@ class UploadMetadataDialog extends BaseDialog {
     #renderConfiguration() {
         return html`<gs-metadata-hierarchy-configurator
             .metadataRecords=${this._parsedItems}
-            @add-under-group-changed=${this.#onAddUnderGroupChanged}
+            @metadata-config-change=${(/** @type {CustomEvent} */ e) => {
+                this.#metadataConfig = e.detail;
+            }}
         ></gs-metadata-hierarchy-configurator>`;
-    }
-
-    /** @param {CustomEvent<{value:string}>} e */
-    #onAddUnderGroupChanged(e) {
-        this._addUnderGroup = e.detail.value;
     }
 
     renderBody() {
@@ -343,14 +335,19 @@ export function showUploadMetadataDialog(sampleView) {
     return showDialog(
         "gs-upload-metadata-dialog",
         (/** @type {UploadMetadataDialog} */ el) => {
-            el.sampleView = sampleView;
+            el.existingSampleIds = new Set(
+                sampleView.sampleHierarchy.sampleData.ids
+            );
         }
     ).then((result) => {
         if (!result.ok) {
             return false;
         }
 
-        const uploadResult = /** @type {MetadataUploadResult} */ (result.data);
+        const uploadResult =
+            /** @type {import("../state/payloadTypes.js").SetMetadata} */ (
+                result.data
+            );
         sampleView.intentExecutor.dispatch(
             sampleView.actions.addMetadata(uploadResult)
         );

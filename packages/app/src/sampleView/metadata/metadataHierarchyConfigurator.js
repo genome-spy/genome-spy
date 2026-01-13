@@ -15,9 +15,18 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { formStyles } from "../../components/generic/componentStyles.js";
 import { styleMap } from "lit/directives/style-map.js";
+import { classMap } from "lit/directives/class-map.js";
 
 // Should be skipped altogether, as it's not a metadata attribute
 const SAMPLE_COLUMN = "sample";
+
+/**
+ * @typedef {object} MetadataConfig
+ * @prop {string | null} separator
+ * @prop {string} addUnderGroup
+ * @prop {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} scales
+ * @prop {Map<string, MetadataType>} metadataNodeTypes
+ */
 
 /**
  * MetadataHierarchyConfigurator
@@ -26,8 +35,8 @@ const SAMPLE_COLUMN = "sample";
  * This component is used in the metadata upload flow to help users
  * understand and configure how uploaded column names map to a
  * hierarchical attribute model. It shows inferred data types for
- * attributes (or groups of attributes) and lets users open a
- * scale configuration dialog to choose visual encoding defaults.
+ * attributes (or groups of attributes) and lets user do further
+ * configuration for data types and scales.
  *
  * Intended consumers: the upload/ingest UI and any workflow that needs
  * a compact, editable view of metadata columns before creating the
@@ -49,14 +58,18 @@ export default class MetadataHierarchyConfigurator extends LitElement {
 
     constructor() {
         super();
-        /** @type {Record<string, any>[]} */
+
+        /**
+         * Example data records used to extract column names and infer column types.
+         * @type {Record<string, any>[]}
+         */
         this.metadataRecords = [];
+
         this.addUnderGroup = "";
-        // Default separator for hierarchical attribute names (e.g. '.')
+
+        /** Separator for hierarchical attribute names (e.g. '.') */
         this.separator = "";
 
-        /** @type {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} */
-        this._scales = new Map();
         /** @type {PathTreeNode | null} */
         this._pathRoot = null;
         /** @type {boolean} */
@@ -66,6 +79,13 @@ export default class MetadataHierarchyConfigurator extends LitElement {
         this._columns = [];
 
         /**
+         * Map path strings (using the internal separator) to configured scales defs.
+         * @type {Map<string, import("@genome-spy/core/spec/scale.js").Scale>}
+         */
+        this._scales = new Map();
+
+        /**
+         * Map path strings (using the internal separator) to inferred or configured data types.
          * @type {Map<string, MetadataType>}
          */
         this._metadataNodeTypes = new Map();
@@ -126,6 +146,10 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             .btn svg {
                 width: 1em;
             }
+
+            span.unset {
+                text-decoration: line-through;
+            }
         `,
     ];
 
@@ -183,6 +207,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
         this._pathRoot = buildPathTree(cols, this.separator);
         this.#inferRawTypes();
         this.#updateMetadataNodeTypes();
+        this.#emitConfig();
     }
 
     /**
@@ -199,22 +224,23 @@ export default class MetadataHierarchyConfigurator extends LitElement {
         if (changed.has("separator")) {
             this._pathRoot = buildPathTree(this._columns, this.separator);
             this.#updateMetadataNodeTypes();
+            this.#emitConfig();
         }
     }
 
     /** @param {Event & { target: HTMLInputElement }} e */
-    _onGroupInput(e) {
-        this.addUnderGroup = e.target.value;
+    #onGroupInput(e) {
+        this.addUnderGroup = e.target.value.trim();
     }
 
     /** @param {Event & { target: HTMLInputElement }} e */
-    _onSeparatorInput(e) {
+    #onSeparatorInput(e) {
         this.separator = e.target.value;
         this._separatorManuallySet = true;
     }
 
     /** @param {PathTreeNode} node */
-    async _configureScaleFor(node) {
+    async #configureScaleFor(node) {
         const getDataType = (/** @type {PathTreeNode} */ node) => {
             for (const ancestor of [node, ...pathTreeParents(node)]) {
                 const t = this._metadataNodeTypes.get(ancestor.path);
@@ -279,6 +305,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             this._scales.set(node.path, scale);
 
             this.requestUpdate();
+            this.#emitConfig();
         }
     }
 
@@ -290,6 +317,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             const type = /** @type {MetadataType} */ (el.value);
             this._metadataNodeTypes.set(path, type);
             this.requestUpdate();
+            this.#emitConfig();
         };
 
         return map(pathTreeDfs(this._pathRoot), (node) => {
@@ -306,6 +334,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             };
 
             const path = node.path;
+            const isLeaf = node.children.size === 0;
 
             const scale = this._scales.get(path);
 
@@ -334,9 +363,17 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                 partStyles.color = "gray";
             }
 
+            const partClasses = {
+                unset: isLeaf && selectedType === "unset",
+            };
+
             return html`<tr>
                 <td>
-                    <span style=${styleMap(partStyles)}>${displayPart}</span>
+                    <span
+                        style=${styleMap(partStyles)}
+                        class=${classMap(partClasses)}
+                        >${displayPart}</span
+                    >
                 </td>
                 <td>
                     <select data-path="${node.path}" @change=${onTypeChange}>
@@ -375,7 +412,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                 <td style="text-align: right;">
                     <button
                         class="btn"
-                        @click=${() => this._configureScaleFor(node)}
+                        @click=${() => this.#configureScaleFor(node)}
                         title="Configure scale"
                         ?disabled=${selectedType === "unset" ||
                         selectedType === "inherit"}
@@ -396,7 +433,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                     type="text"
                     .value=${this.addUnderGroup ?? ""}
                     placeholder="(optional) Group name under which to add new metadata"
-                    @input=${this._onGroupInput}
+                    @input=${this.#onGroupInput}
                 />
             </div>
 
@@ -407,7 +444,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                     type="text"
                     .value=${this.separator ?? ""}
                     placeholder="Separator character for possible hierarchical groups (e.g. .)"
-                    @input=${this._onSeparatorInput}
+                    @input=${this.#onSeparatorInput}
                 />
             </div>
 
@@ -432,6 +469,32 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * @returns {MetadataConfig}
+     */
+    getConfig() {
+        return {
+            separator: this.separator ?? null,
+            addUnderGroup: this.addUnderGroup ?? null,
+            scales: new Map(
+                this._scales
+                    .entries()
+                    .map(([path, scale]) => [path, structuredClone(scale)])
+            ),
+            metadataNodeTypes: new Map(this._metadataNodeTypes),
+        };
+    }
+
+    #emitConfig() {
+        this.dispatchEvent(
+            new CustomEvent("metadata-config-change", {
+                detail: this.getConfig(),
+                bubbles: true,
+                composed: true,
+            })
+        );
     }
 }
 

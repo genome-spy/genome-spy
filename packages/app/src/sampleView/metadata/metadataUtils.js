@@ -1,5 +1,6 @@
 import { inferType } from "vega-loader";
 import { joinPathParts, splitPath } from "../../utils/escapeSeparator.js";
+import { rowsToColumns } from "../../utils/dataLayout.js";
 
 /**
  * @typedef {Object} PathTreeNode
@@ -227,6 +228,69 @@ export function replacePathSeparatorInKeys(
         const newKey = replacePathSeparator(key, oldSeparator, newSeparator);
         result[newKey] = value;
     }
+    return result;
+}
+
+/**
+ * Wrangle row-based metadata into columnar format, optionally replacing
+ * path separators in attribute names and placing all attributes under a group.
+ *
+ * @param {Record<string, any>[]} rowMetadata
+ * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} [attributeDefs] Attribute definitions with the internal separator
+ * @param {string} [separator]
+ * @param {string} [placeUnderGroup]
+ * @param {Set<string>} [skipColumns]
+ * @returns {import("../state/payloadTypes.js").SetMetadata}
+ */
+export function wrangleMetadata(
+    rowMetadata,
+    attributeDefs = {},
+    separator,
+    placeUnderGroup,
+    skipColumns = new Set()
+) {
+    // Columnar format is used in "addMetadata" action as it is much more
+    // compact in bookmarks and shared urls.
+    // Here, in the initial action, that optimization is just nuisance.
+    let columnarMetadata =
+        /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
+            rowsToColumns(rowMetadata, skipColumns)
+        );
+
+    if (separator != null && typeof separator !== "string") {
+        throw new Error("attributeGroupSeparator must be a string");
+    }
+
+    if (separator) {
+        columnarMetadata =
+            /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
+                replacePathSeparatorInKeys(
+                    columnarMetadata,
+                    separator,
+                    METADATA_PATH_SEPARATOR,
+                    ["sample"]
+                )
+            );
+    }
+
+    if (placeUnderGroup) {
+        columnarMetadata = placeMetadataUnderGroup(
+            columnarMetadata,
+            splitPath(placeUnderGroup, separator)
+        );
+
+        attributeDefs = placeKeysUnderGroup(
+            attributeDefs,
+            splitPath(placeUnderGroup, METADATA_PATH_SEPARATOR)
+        );
+    }
+
+    /** @type {import("../state/payloadTypes.js").SetMetadata} */
+    const result = {
+        columnarMetadata,
+        attributeDefs,
+    };
+
     return result;
 }
 

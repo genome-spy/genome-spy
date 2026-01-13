@@ -50,6 +50,10 @@ export function joinPathParts(parts, separator = "/") {
  * @returns {string[]}
  */
 export function splitPath(s, separator = "/") {
+    if (!separator) {
+        return [s];
+    }
+
     const sep = separator;
     const parts = [];
     let cur = "";

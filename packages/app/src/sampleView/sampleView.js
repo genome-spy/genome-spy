@@ -44,11 +44,7 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
-import { rowsToColumns } from "../utils/dataLayout.js";
-import {
-    METADATA_PATH_SEPARATOR,
-    replacePathSeparatorInKeys,
-} from "./metadata/metadataUtils.js";
+import { wrangleMetadata } from "./metadata/metadataUtils.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -430,7 +426,11 @@ export default class SampleView extends ContainerView {
                     ...r.attributes,
                 }));
 
-                const setMetadata = wrangleRowMetadata(rowMetadata, this.spec);
+                const setMetadata = wrangleMetadata(
+                    rowMetadata,
+                    this.spec.samples.attributes,
+                    this.spec.samples.attributeGroupSeparator
+                );
 
                 // Clear history, since if initial metadata is being set, it
                 // should represent the initial state.
@@ -1059,46 +1059,4 @@ class SampleGridChild extends GridChild {
 
         yield* super.getChildren();
     }
-}
-
-/**
- * @param {Record<string, any>[]} rowMetadata
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} sampleSpec
- */
-function wrangleRowMetadata(rowMetadata, sampleSpec) {
-    // Columnar format is used in "addMetadata" action as it is much more
-    // compact in bookmarks and shared urls.
-    // Here, in the initial action, that optimization is just nuisance.
-    const columnarMetadata =
-        /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
-            rowsToColumns(rowMetadata)
-        );
-
-    const attributeDefs = sampleSpec.samples.attributes ?? {};
-    const separator = sampleSpec.samples.attributeGroupSeparator;
-    if (separator != null && typeof separator !== "string") {
-        throw new Error("attributeGroupSeparator must be a string");
-    }
-
-    /** @type {import("./state/payloadTypes.js").SetMetadata} */
-    return separator
-        ? {
-              columnarMetadata:
-                  /** @type {import("./state/payloadTypes.js").ColumnarMetadata} */ (
-                      replacePathSeparatorInKeys(
-                          columnarMetadata,
-                          separator,
-                          METADATA_PATH_SEPARATOR,
-                          ["sample"]
-                      )
-                  ),
-              attributeDefs: replacePathSeparatorInKeys(
-                  attributeDefs,
-                  separator
-              ),
-          }
-        : {
-              columnarMetadata,
-              attributeDefs,
-          };
 }
