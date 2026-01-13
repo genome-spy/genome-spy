@@ -99,8 +99,8 @@ export function setImplicitScaleNames(root) {
  */
 export async function initializeData(root, existingFlow) {
     const flow = buildDataFlow(root, existingFlow);
-    optimizeDataFlow(flow);
-    syncFlowHandles(root, flow);
+    const canonicalBySource = optimizeDataFlow(flow);
+    syncFlowHandles(root, canonicalBySource);
     flow.initialize();
 
     /** @type {Promise<void>[]} */
@@ -115,20 +115,9 @@ export async function initializeData(root, existingFlow) {
  * Synchronize flow handles after data flow optimization.
  *
  * @param {View} root
- * @param {import("../data/dataFlow.js").default<View>} flow
+ * @param {Map<import("../data/sources/dataSource.js").default, import("../data/sources/dataSource.js").default>} canonicalBySource
  */
-export function syncFlowHandles(root, flow) {
-    /** @type {Map<string, import("../data/sources/dataSource.js").default>} */
-    const dataSourcesByIdentifier = new Map();
-    for (const dataSource of flow.dataSources) {
-        if (
-            dataSource.identifier &&
-            !dataSourcesByIdentifier.has(dataSource.identifier)
-        ) {
-            dataSourcesByIdentifier.set(dataSource.identifier, dataSource);
-        }
-    }
-
+export function syncFlowHandles(root, canonicalBySource) {
     for (const view of root.getDescendants()) {
         const handle = view.flowHandle;
         if (!handle) {
@@ -136,13 +125,8 @@ export function syncFlowHandles(root, flow) {
         }
 
         const dataSource = handle.dataSource;
-        if (dataSource && dataSource.identifier) {
-            const canonical = dataSourcesByIdentifier.get(
-                dataSource.identifier
-            );
-            if (canonical) {
-                handle.dataSource = canonical;
-            }
+        if (dataSource) {
+            handle.dataSource = canonicalBySource.get(dataSource) ?? dataSource;
         }
     }
 }
@@ -161,7 +145,8 @@ export function syncFlowHandles(root, flow) {
  */
 export function initializeSubtree(root, flow) {
     const dataFlow = buildDataFlow(root, flow);
-    syncFlowHandles(root, dataFlow);
+    const canonicalBySource = optimizeDataFlow(dataFlow);
+    syncFlowHandles(root, canonicalBySource);
     const subtreeViews = root.getDescendants();
     /** @type {Set<import("../data/sources/dataSource.js").default>} */
     const dataSources = new Set();

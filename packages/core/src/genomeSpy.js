@@ -580,8 +580,8 @@ export default class GenomeSpy {
 
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-        optimizeDataFlow(flow);
-        syncFlowHandles(this.viewRoot, flow);
+        const canonicalBySource = optimizeDataFlow(flow);
+        syncFlowHandles(this.viewRoot, canonicalBySource);
         this.broadcast("dataFlowBuilt", flow);
 
         // Create encoders (accessors, scales and related metadata)

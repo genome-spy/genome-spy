@@ -49,8 +49,7 @@ describe("SelectionRect", () => {
         const selectionRect = new SelectionRect(gridChild, selectionExpr);
 
         const flow = buildDataFlow(selectionRect, context.dataFlow);
-        optimizeDataFlow(flow);
-        syncFlowHandles(selectionRect, flow);
+        syncFlowHandles(selectionRect, optimizeDataFlow(flow));
 
         const dataSource = selectionRect.flowHandle?.dataSource;
         expect(dataSource).toBeDefined();
