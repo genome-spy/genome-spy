@@ -16,6 +16,7 @@ import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import {
     checkForDuplicateScaleNames,
+    finalizeSubtreeGraphics,
     initializeSubtree,
 } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
@@ -287,21 +288,10 @@ export class MetadataView extends ConcatView {
             throw new Error("Cannot find metadata data source!");
         }
 
-        Promise.allSettled(graphicsPromises).then((results) => {
-            if (metadataGeneration !== this.#metadataGeneration) {
-                return;
-            }
-            for (const result of results) {
-                if ("value" in result) {
-                    result.value.finalizeGraphicsInitialization();
-                } else if ("reason" in result) {
-                    console.error(result.reason);
-                }
-            }
-            // TODO: Ensure that the views are rendered after finalization:
-            // this.context.animator.requestRender();
-            // But also ensure that the cached batch is invalidated
-        });
+        finalizeSubtreeGraphics(
+            graphicsPromises,
+            () => metadataGeneration === this.#metadataGeneration
+        );
 
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;

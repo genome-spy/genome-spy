@@ -137,10 +137,14 @@ export function initializeSubtree(root, flow) {
     /** @type {Promise<import("../marks/mark.js").default>[]} */
     const graphicsPromises = [];
 
+    const canInitializeGraphics = !!root.context.glHelper;
+
     for (const view of unitViews) {
         const mark = view.mark;
         mark.initializeEncoders();
-        graphicsPromises.push(mark.initializeGraphics().then(() => mark));
+        if (canInitializeGraphics) {
+            graphicsPromises.push(mark.initializeGraphics().then(() => mark));
+        }
 
         flow.addObserver((collector) => {
             mark.initializeData(); // does faceting
@@ -154,6 +158,30 @@ export function initializeSubtree(root, flow) {
         dataSources,
         graphicsPromises,
     };
+}
+
+/**
+ * @param {Promise<import("../marks/mark.js").default>[]} graphicsPromises
+ * @param {() => boolean} [shouldFinalize]
+ * @returns {Promise<void>}
+ */
+export function finalizeSubtreeGraphics(
+    graphicsPromises,
+    shouldFinalize = () => true
+) {
+    return Promise.allSettled(graphicsPromises).then((results) => {
+        if (!shouldFinalize()) {
+            return;
+        }
+
+        for (const result of results) {
+            if ("value" in result) {
+                result.value.finalizeGraphicsInitialization();
+            } else if ("reason" in result) {
+                console.error(result.reason);
+            }
+        }
+    });
 }
 
 /**
