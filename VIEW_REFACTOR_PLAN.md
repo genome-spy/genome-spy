@@ -36,6 +36,28 @@ without requiring a full rebuild or relying on a global registry.
   derived from `dataParent` trees built from the view hierarchy, so replacements
   must be coordinated; without teardown, both hierarchies drift out of sync.
 
+## Recent updates (implemented)
+
+- Added view disposal hooks and teardown paths (`dispose`, `disposeSubtree`) and
+  wired `UnitView.dispose` to remove scale listeners and dispose marks.
+- Added removal for scale/axis resolution members and invalidation of cached
+  scale resolutions.
+- Added dataflow host removal and observer cleanup (`removeHost(s)`), including
+  relay observer removal to avoid collector leaks.
+- Added subtree initialization helpers (`initializeSubtree`,
+  `finalizeSubtreeGraphics`) to build flow and initialize marks per subtree.
+- Metadata rebuild now uses subtree init and removes old dataflow hosts before
+  rebuilding; title-view data source hacks removed.
+- Metadata view now unsubscribes from Redux, unregisters its attribute info
+  source, and removes its ancestor mousemove listener on dispose.
+- Sample label view now unsubscribes and unregisters its attribute info source
+  on dispose; sample view now removes its action augmenter and store
+  subscription on dispose.
+- Grid and facet view replacement now dispose old children (including grid
+  decorations), preventing view/mark/resource leaks.
+- Tests added/extended: `viewDispose`, `viewUtils`, `paramMediator`,
+  `dataFlow`, and `metadataView` dynamic rebuild coverage.
+
 ## Proposed fixes (incremental direction)
 
 - Introduce explicit lifecycle hooks for views:
@@ -70,6 +92,9 @@ without requiring a full rebuild or relying on a global registry.
   - scale membership should reflect only current views
 - Add minimal lifecycle hooks in tests to verify teardown is invoked.
 
+Status: started. Metadata rebuild test covers observer/collector sizes and
+unsubscribe behavior. Core tests cover disposal and dataflow host removal.
+
 ### Immediate next steps (metadata-first)
 
 - Focus on `MetadataView` subtree lifecycle first; postpone Redux teardown
@@ -82,6 +107,9 @@ without requiring a full rebuild or relying on a global registry.
 - Add teardown for metadata subtree only (observer removal, flow detachment,
   mark disposal) to prevent leaks during add/remove.
 
+Status: partial. Subtree init helpers exist and metadata rebuild uses them; data
+flow host removal is in place. Flow-handle refactor remains.
+
 ### Phase 1: Safe teardown without changing architecture
 
 - Add `disposeSubtree()` on `View` and implement in `UnitView` to dispose marks.
@@ -90,6 +118,9 @@ without requiring a full rebuild or relying on a global registry.
   it becomes a blocker for metadata removal.
 - Add a way to unregister flow observers and scale listeners associated with
   a view (even if flow stays global for now).
+
+Status: mostly done. Disposal hooks, mark cleanup, scale/axis membership
+removal, observer cleanup, and app-level unsubscribe paths are implemented.
 
 ### Phase 2: Subtree dataflow init
 
@@ -100,6 +131,9 @@ without requiring a full rebuild or relying on a global registry.
   - rebuild views
   - build/init flow for the new subtree
   - reconfigure scales locally
+
+Status: helper exists and metadata rebuild uses it; still relies on global
+`DataFlow` registry for lookup and does not yet expose per-view flow handles.
 
 ## Notes on initialization order (WebGL constraints)
 
@@ -124,6 +158,23 @@ without requiring a full rebuild or relying on a global registry.
 - Simplify dataflow ownership: each view or subtree can own its flow node and
   be responsible for disposal.
 
+Phase 3 checklist (concrete tasks):
+
+- Define a minimal flow-handle interface, e.g., `{ dataSource, collector }`,
+  stored on views that participate in dataflow.
+- Have `buildDataFlow` return a map of `View -> FlowHandle` for the subtree,
+  and attach handles to participating views after optimization.
+- Update `UnitView.getCollector()` to prefer its local handle, falling back to
+  global lookup during the transition.
+- Replace `flow.findDataSourceByKey(this)` in dynamic views (metadata, labels)
+  with handle access.
+- Update `initializeSubtree` to return and/or attach flow handles so callers
+  can use them without global registry lookups.
+- Remove `DataFlow._dataSourcesByHost`/`_collectorsByHost` usage once all
+  callsites are migrated; keep `DataFlow` as a graph/optimizer container only.
+- Add tests that assert flow-handle availability in subtree init and no host
+  lookups in metadata rebuild.
+
 ### Phase 4: Resolution and layout cleanup
 
 - Make scale/axis resolution membership fully dynamic with add/remove.
@@ -139,14 +190,14 @@ without requiring a full rebuild or relying on a global registry.
 
 ## Current pain points by file
 
-- `packages/app/src/sampleView/metadata/metadataView.js`: rebuilds child views
-  on metadata changes without teardown; manually rebuilds flow and observers;
-  lacks explicit unsubscribe or mark disposal.
-- `packages/app/src/sampleView/sampleLabelView.js`: subscribes to store without
-  retaining unsubscribe; uses dynamic data updates without view disposal path.
-- `packages/app/src/sampleView/sampleView.js`: registers action augmenters and
-  global listeners without unregister; constructs sidebar subtree without
-  dynamic lifecycle hooks.
+- `packages/app/src/sampleView/metadata/metadataView.js`: now uses subtree init
+  and cleans up subscriptions/listeners on dispose, but still uses global
+  `DataFlow` host lookup and relies on manual `reconfigureScales`.
+- `packages/app/src/sampleView/sampleLabelView.js`: now unsubscribes and removes
+  its attribute info source on dispose; still uses global dataflow lookup.
+- `packages/app/src/sampleView/sampleView.js`: now removes its action augmenter
+  and store subscription on dispose; dynamic sidebar lifecycle still relies on
+  global init.
 - `packages/core/src/genomeSpy.js`: global one-shot init assumes static tree and
   does not support incremental subtree init/teardown.
 - `packages/core/src/view/flowBuilder.js`: builds flow from current view tree
