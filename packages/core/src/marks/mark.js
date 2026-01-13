@@ -1045,7 +1045,14 @@ export default class Mark {
      * Delete WebGL buffers etc.
      */
     deleteGraphicsData() {
-        const gl = this.gl;
+        const glHelper = this.glHelper;
+        if (!glHelper) {
+            this.vertexArrayInfo = undefined;
+            this.bufferInfo = undefined;
+            return;
+        }
+
+        const gl = glHelper.gl;
 
         if (this.vertexArrayInfo) {
             this.gl.bindVertexArray(null);
