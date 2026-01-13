@@ -61,11 +61,6 @@ export default class UnitView extends View {
     #zoomLevelSetter;
 
     /**
-     * @type {{resolution: ScaleResolution, listener: import("../types/scaleResolutionApi.js").ScaleResolutionListener}[]}
-     */
-    #scaleResolutionListeners = [];
-
-    /**
      *
      * @param {import("../spec/view.js").UnitSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -104,10 +99,9 @@ export default class UnitView extends View {
                     this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()));
                 };
                 resolution.addEventListener("domain", listener);
-                this.#scaleResolutionListeners.push({
-                    resolution,
-                    listener,
-                });
+                this.registerDisposer(() =>
+                    resolution.removeEventListener("domain", listener)
+                );
             }
         }
 
@@ -399,10 +393,6 @@ export default class UnitView extends View {
      */
     dispose() {
         super.dispose();
-        for (const { resolution, listener } of this.#scaleResolutionListeners) {
-            resolution.removeEventListener("domain", listener);
-        }
-        this.#scaleResolutionListeners.length = 0;
 
         this.#unresolve();
         this.mark.dispose();
