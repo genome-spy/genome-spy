@@ -47,6 +47,8 @@ export class MetadataView extends ConcatView {
      */
     #attributeViews = new Map();
 
+    #metadataGeneration = 0;
+
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
 
@@ -270,6 +272,8 @@ export class MetadataView extends ConcatView {
         this.disposeSubtree();
         flow.removeHosts(previousViews);
 
+        const metadataGeneration = ++this.#metadataGeneration;
+
         this.#createViews();
 
         buildDataFlow(this, flow);
@@ -308,6 +312,9 @@ export class MetadataView extends ConcatView {
         });
 
         Promise.allSettled(promises).then((results) => {
+            if (metadataGeneration !== this.#metadataGeneration) {
+                return;
+            }
             for (const result of results) {
                 if ("value" in result) {
                     result.value.finalizeGraphicsInitialization();
