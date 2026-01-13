@@ -9,7 +9,7 @@ import {
     scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
-import { MetadataView } from "./metadataView.js";
+import { MetadataView } from "./metadata/metadataView.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
@@ -44,6 +44,11 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
+import {
+    METADATA_PATH_SEPARATOR,
+    replacePathSeparatorInKeys,
+    wrangleMetadata,
+} from "./metadata/metadataUtils.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -404,23 +409,41 @@ export default class SampleView extends ContainerView {
             new ProcessSample()
         );
 
-        collector.observers.push((collector) => {
+        // Here's quite a bit of wrangling but the number of samples is so low that
+        // performance doesn't really matter.
+
+        collector.observers.push(() => {
             const result =
                 /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
                     collector.getData()
                 );
+
             const samples = result.map((d) => d.sample);
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
 
-            const attributes = result[0]?.attributes;
+            const attributesNames = result[0]?.attributes;
+            if (attributesNames && Object.keys(attributesNames).length > 0) {
+                const rowMetadata = result.map((r) => ({
+                    sample: r.sample.id,
+                    ...r.attributes,
+                }));
 
-            if (attributes && Object.keys(attributes).length > 0) {
-                const metadata = Object.fromEntries(
-                    result.map((d) => {
-                        return [d.sample.id, d.attributes];
-                    })
+                const attributeSeparator =
+                    this.spec.samples.attributeGroupSeparator;
+                const attributeDefs = attributeSeparator
+                    ? replacePathSeparatorInKeys(
+                          this.spec.samples.attributes ?? {},
+                          attributeSeparator,
+                          METADATA_PATH_SEPARATOR
+                      )
+                    : this.spec.samples.attributes;
+
+                const setMetadata = wrangleMetadata(
+                    rowMetadata,
+                    attributeDefs,
+                    attributeSeparator
                 );
 
                 // Clear history, since if initial metadata is being set, it
@@ -428,7 +451,10 @@ export default class SampleView extends ContainerView {
                 this.provenance.store.dispatch(ActionCreators.clearHistory());
 
                 this.provenance.store.dispatch(
-                    this.actions.setMetadata({ metadata })
+                    this.actions.addMetadata({
+                        ...setMetadata,
+                        replace: true,
+                    })
                 );
             }
         });

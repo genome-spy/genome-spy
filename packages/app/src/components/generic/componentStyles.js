@@ -13,7 +13,16 @@ export const formStyles = css`
     }
 
     .btn {
-        display: inline-block;
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2em;
+
+        &.reverse {
+            flex-direction: row-reverse;
+        }
+
         padding: 4px 12px;
         margin: 0;
         font-size: 1em;
@@ -59,6 +68,10 @@ export const formStyles = css`
             font-size: 85%;
             margin-left: 0.3em;
         }
+    }
+
+    .btn[type="color"] {
+        padding: 2px;
     }
 
     .btn-group {
@@ -189,15 +202,21 @@ export const formStyles = css`
         align-items: center;
 
         position: relative;
-        padding: 0.8em;
-        margin-bottom: 1em;
+        padding: var(--basic-spacing);
+        margin-bottom: var(--basic-spacing);
         border: 1px solid transparent;
-        border-radius: 0.25rem;
+        border-radius: var(--form-control-border-radius);
 
         > svg:first-child {
             width: 2em;
             height: 2em;
-            margin-right: 0.8em;
+            margin-right: var(--basic-spacing);
+        }
+
+        &.danger {
+            color: #58151c;
+            background-color: #f8d7da;
+            border-color: #f1aeb5;
         }
 
         &.warning {
@@ -210,6 +229,21 @@ export const formStyles = css`
             color: #055160;
             background-color: #cff4fc;
             border-color: #b6effb;
+        }
+
+        > div {
+            > :first-child {
+                margin-top: 0;
+            }
+
+            > :last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        ul,
+        ol {
+            padding-inline-start: 2em;
         }
     }
 

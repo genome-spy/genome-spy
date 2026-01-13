@@ -75,7 +75,7 @@ class ViewSettingsButton extends LitElement {
      */
     #handleAppInitialized(appInitialized) {
         if (appInitialized) {
-            this.#updateToggles();
+            this.#updateNestedPaths();
             this.requestUpdate();
             this.style.display = this.#nestedPaths.children.length
                 ? "block"
@@ -116,7 +116,7 @@ class ViewSettingsButton extends LitElement {
         this.#showDropdown();
     }
 
-    #updateToggles() {
+    #updateNestedPaths() {
         const viewRoot = this.#app.genomeSpy.viewRoot;
         if (!viewRoot) {
             return;
@@ -230,6 +230,8 @@ class ViewSettingsButton extends LitElement {
     }
 
     #showDropdown() {
+        this.#updateNestedPaths();
+
         const items = this.#makeToggles();
 
         const defaultVis = !Object.keys(this.getVisibilities()).length;

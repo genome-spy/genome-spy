@@ -2,6 +2,8 @@ import { SampleHierarchy } from "./state/sampleState.js";
 
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
+ *
+ * TODO: Stricter typing
  */
 export interface AttributeIdentifier {
     type: string;

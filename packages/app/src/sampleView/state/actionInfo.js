@@ -10,25 +10,9 @@ import {
     faCircle,
     faTrashAlt,
     faCheck,
+    faTable,
 } from "@fortawesome/free-solid-svg-icons";
-
-import {
-    SET_SAMPLES,
-    SORT_BY,
-    RETAIN_FIRST_OF_EACH,
-    RETAIN_FIRST_N_CATEGORIES,
-    FILTER_BY_NOMINAL,
-    FILTER_BY_QUANTITATIVE,
-    REMOVE_UNDEFINED,
-    GROUP_CUSTOM,
-    GROUP_BY_NOMINAL,
-    GROUP_BY_QUARTILES,
-    GROUP_BY_THRESHOLDS,
-    REMOVE_GROUP,
-    RETAIN_MATCHED,
-    SAMPLE_SLICE_NAME,
-    SET_METADATA,
-} from "./sampleSlice.js";
+import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
 
 const attributeNumberFormat = d3format(".4");
 
@@ -65,29 +49,29 @@ export function formatSet(values, braces = true) {
 /**
  * Map of action type to handler function.
  * Each handler receives (payload, template, attributeName, attributeTitle) and returns ActionInfo.
- * @type {Record<string, (context: ActionHandlerContext) => import("../../state/provenance.js").ActionInfo>}
+ * @type {Record<import("./sampleSlice.js").SampleActionType, (context: ActionHandlerContext) => import("../../state/provenance.js").ActionInfo>}
  */
 const actionHandlers = {
-    [SET_SAMPLES]: ({ template }) => ({
+    setSamples: ({ template }) => ({
         ...template,
         title: "Set samples",
         icon: faCheck,
     }),
 
-    [SET_METADATA]: ({ template }) => ({
+    addMetadata: ({ template, payload }) => ({
         ...template,
-        title: "Set metadata",
-        icon: faCheck,
+        title: payload.replace ? "Set metadata" : "Add metadata",
+        icon: faTable,
     }),
 
-    [SORT_BY]: ({ template, attributeTitle }) => ({
+    sortBy: ({ template, attributeTitle }) => ({
         ...template,
         title: "Sort by",
         provenanceTitle: html` Sort by ${attributeTitle} `,
         icon: faSortAmountDown,
     }),
 
-    [RETAIN_FIRST_OF_EACH]: ({ template, attributeName, attributeTitle }) => ({
+    retainFirstOfEach: ({ template, attributeName, attributeTitle }) => ({
         ...template,
         title: html`
             Retain the first sample of each
@@ -99,7 +83,7 @@ const actionHandlers = {
         icon: faMedal,
     }),
 
-    [RETAIN_FIRST_N_CATEGORIES]: ({
+    retainFirstNCategories: ({
         payload,
         template,
         attributeName,
@@ -117,12 +101,7 @@ const actionHandlers = {
         icon: faMedal,
     }),
 
-    [FILTER_BY_NOMINAL]: ({
-        payload,
-        template,
-        attributeName,
-        attributeTitle,
-    }) => {
+    filterByNominal: ({ payload, template, attributeName, attributeTitle }) => {
         const values = /** @type {any[]} */ (payload.values);
 
         /** @param {string | import("lit").TemplateResult} attr */
@@ -145,7 +124,7 @@ const actionHandlers = {
         };
     },
 
-    [FILTER_BY_QUANTITATIVE]: ({
+    filterByQuantitative: ({
         payload,
         template,
         attributeName,
@@ -168,7 +147,7 @@ const actionHandlers = {
         };
     },
 
-    [REMOVE_UNDEFINED]: ({ template, attributeTitle }) => ({
+    removeUndefined: ({ template, attributeTitle }) => ({
         ...template,
         title: "Remove samples having missing attribute",
         provenanceTitle: html`
@@ -177,7 +156,7 @@ const actionHandlers = {
         icon: faTrashAlt,
     }),
 
-    [GROUP_CUSTOM]: ({ payload, template, attributeTitle }) => {
+    groupCustomCategories: ({ payload, template, attributeTitle }) => {
         const groups = /** @type {Record<string, any[]>} */ (payload.groups);
         const provenanceTitle = html`Create custom groups based on
         ${attributeTitle}.
@@ -196,21 +175,21 @@ const actionHandlers = {
         };
     },
 
-    [GROUP_BY_NOMINAL]: ({ template, attributeTitle }) => ({
+    groupByNominal: ({ template, attributeTitle }) => ({
         ...template,
         title: "Group by",
         provenanceTitle: html` Group by ${attributeTitle} `,
         icon: faObjectGroup,
     }),
 
-    [GROUP_BY_QUARTILES]: ({ template, attributeTitle }) => ({
+    groupToQuartiles: ({ template, attributeTitle }) => ({
         ...template,
         title: "Group by quartiles",
         provenanceTitle: html` Group by quartiles on ${attributeTitle} `,
         icon: faObjectGroup,
     }),
 
-    [GROUP_BY_THRESHOLDS]: ({ payload, template, attributeTitle }) => ({
+    groupByThresholds: ({ payload, template, attributeTitle }) => ({
         ...template,
         title: "Group by thresholds",
         provenanceTitle: html`
@@ -226,7 +205,7 @@ const actionHandlers = {
         icon: faObjectGroup,
     }),
 
-    [REMOVE_GROUP]: ({ payload }) => ({
+    removeGroup: ({ payload }) => ({
         title: "Remove group",
         provenanceTitle: html`
             Remove group
@@ -240,7 +219,7 @@ const actionHandlers = {
         icon: faTrashAlt,
     }),
 
-    [RETAIN_MATCHED]: ({ template, attributeName, attributeTitle }) => ({
+    retainMatched: ({ template, attributeName, attributeTitle }) => ({
         ...template,
         title: html`
             Retain group-wise matched samples using
@@ -277,7 +256,10 @@ export function getActionInfo(action, getAttributeInfo) {
         attributeName,
     };
 
-    const actionType = action.type.substring(SAMPLE_SLICE_NAME.length + 1);
+    const actionType =
+        /** @type {import("./sampleSlice.js").SampleActionType} */ (
+            action.type.substring(SAMPLE_SLICE_NAME.length + 1)
+        );
 
     const handler = actionHandlers[actionType];
     if (handler) {

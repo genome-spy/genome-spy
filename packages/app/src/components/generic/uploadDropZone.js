@@ -26,6 +26,12 @@ export default class UploadDropZone extends LitElement {
         formStyles,
         faStyles,
         css`
+            :host {
+                display: block;
+                font-size: inherit;
+                font-family: inherit;
+            }
+
             .drop-zone {
                 border: 2px dashed var(--form-control-border-color);
                 border-radius: 8px;
