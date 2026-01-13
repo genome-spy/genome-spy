@@ -21,6 +21,7 @@ class DisposableView extends View {
     }
 
     dispose() {
+        super.dispose();
         this.disposed = true;
     }
 }
