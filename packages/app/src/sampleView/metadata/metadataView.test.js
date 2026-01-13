@@ -132,10 +132,6 @@ describe("MetadataView", () => {
         context.getNamedDataFromProvider = () => [];
 
         const dataFlow = context.dataFlow;
-        const addObserver = dataFlow.addObserver.bind(dataFlow);
-        dataFlow.addObserver = (collector, callback, handle) => {
-            addObserver(collector, () => undefined, handle);
-        };
 
         const store = createStore({
             provenance: {

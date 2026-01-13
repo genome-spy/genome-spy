@@ -593,23 +593,21 @@ export default class GenomeSpy {
         );
 
         for (const view of unitViews) {
-            flow.addObserver(
-                view.flowHandle.collector,
-                (
-                    /** @type {import("./data/collector.js").default} */ _collector
-                ) => {
-                    view.mark.initializeData();
-                    try {
-                        // Update WebGL buffers
-                        view.mark.updateGraphicsData();
-                    } catch (e) {
-                        e.view = view;
-                        throw e;
-                    }
-                    context.animator.requestRender();
-                },
-                view.flowHandle
-            );
+            const observer = (
+                /** @type {import("./data/collector.js").default} */ _collector
+            ) => {
+                view.mark.initializeData();
+                try {
+                    // Update WebGL buffers
+                    view.mark.updateGraphicsData();
+                } catch (e) {
+                    e.view = view;
+                    throw e;
+                }
+                context.animator.requestRender();
+            };
+            view.flowHandle.collector.observers.push(observer);
+            view.collectorObserver = observer;
         }
 
         // Have to wait until asynchronous font loading is complete.

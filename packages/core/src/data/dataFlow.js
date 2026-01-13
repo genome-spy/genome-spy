@@ -93,20 +93,6 @@ export default class DataFlow {
     }
 
     /**
-     * Adds a callback function that will be called when a collector has completed.
-     *
-     * @param {import("./collector.js").default} collector
-     * @param {function(import("./collector.js").default):void} callback
-     * @param {import("./flowHandle.js").FlowHandle} [handle]
-     */
-    addObserver(collector, callback, handle) {
-        collector.observers.push(callback);
-        if (handle) {
-            handle.collectorObserver = callback;
-        }
-    }
-
-    /**
      * Allows the flow nodes to perform final initialization after the flow
      * structure has been built and optimized.
      * Must be called before any data are to be propagated.

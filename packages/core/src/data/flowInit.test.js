@@ -77,16 +77,14 @@ describe("flowInit", () => {
         const unitView = /** @type {import("../view/unitView.js").default} */ (
             root
         );
-        const updateSpy = vi
-            .spyOn(unitView.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const initializeSpy = vi.spyOn(unitView.mark, "initializeData");
 
         await Promise.all(
             Array.from(dataSources).map((dataSource) => dataSource.load())
         );
 
-        expect(updateSpy).toHaveBeenCalledTimes(1);
-        updateSpy.mockRestore();
+        expect(initializeSpy).toHaveBeenCalledTimes(1);
+        initializeSpy.mockRestore();
     });
 
     test("disposeSubtree removes observers before rebuilding subtree", async () => {
@@ -119,16 +117,14 @@ describe("flowInit", () => {
             firstRoot
         );
         const firstCollector = firstUnit.flowHandle.collector;
-        const firstUpdateSpy = vi
-            .spyOn(firstUnit.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const firstInitializeSpy = vi.spyOn(firstUnit.mark, "initializeData");
 
         await Promise.all(
             Array.from(firstSources).map((dataSource) => dataSource.load())
         );
 
-        expect(firstUpdateSpy).toHaveBeenCalledTimes(1);
-        firstUpdateSpy.mockRestore();
+        expect(firstInitializeSpy).toHaveBeenCalledTimes(1);
+        firstInitializeSpy.mockRestore();
 
         firstRoot.disposeSubtree();
 
@@ -148,15 +144,13 @@ describe("flowInit", () => {
 
         const secondUnit =
             /** @type {import("../view/unitView.js").default} */ (secondRoot);
-        const secondUpdateSpy = vi
-            .spyOn(secondUnit.mark, "updateGraphicsData")
-            .mockImplementation(() => undefined);
+        const secondInitializeSpy = vi.spyOn(secondUnit.mark, "initializeData");
 
         await Promise.all(
             Array.from(secondSources).map((dataSource) => dataSource.load())
         );
 
-        expect(secondUpdateSpy).toHaveBeenCalledTimes(1);
-        secondUpdateSpy.mockRestore();
+        expect(secondInitializeSpy).toHaveBeenCalledTimes(1);
+        secondInitializeSpy.mockRestore();
     });
 });

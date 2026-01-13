@@ -91,14 +91,16 @@ export function initializeSubtree(root, flow) {
             graphicsPromises.push(mark.initializeGraphics().then(() => mark));
         }
 
-        flow.addObserver(
-            view.flowHandle.collector,
-            (/** @type {import("./collector.js").default} */ _collector) => {
-                mark.initializeData(); // does faceting
+        const observer = (
+            /** @type {import("./collector.js").default} */ _collector
+        ) => {
+            mark.initializeData(); // does faceting
+            if (canInitializeGraphics) {
                 mark.updateGraphicsData();
-            },
-            view.flowHandle
-        );
+            }
+        };
+        view.flowHandle.collector.observers.push(observer);
+        view.collectorObserver = observer;
     }
 
     return {

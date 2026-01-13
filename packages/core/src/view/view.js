@@ -87,6 +87,11 @@ export default class View {
     opacityFunction = defaultOpacityFunction;
 
     /**
+     * @type {function(import("../data/collector.js").default):void}
+     */
+    collectorObserver = undefined;
+
+    /**
      * Coords of the view for each facet, recorded during the last layout rendering pass.
      * Most views have only one facet, so the map is usually of size 1.
      *
@@ -518,14 +523,14 @@ export default class View {
      */
     dispose() {
         const handle = this.flowHandle;
-        if (handle?.collectorObserver && handle.collector) {
+        if (this.collectorObserver && handle?.collector) {
             const index = handle.collector.observers.indexOf(
-                handle.collectorObserver
+                this.collectorObserver
             );
             if (index >= 0) {
                 handle.collector.observers.splice(index, 1);
             }
-            handle.collectorObserver = undefined;
+            this.collectorObserver = undefined;
         }
 
         if (handle?.collector) {

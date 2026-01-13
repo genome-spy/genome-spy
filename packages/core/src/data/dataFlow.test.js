@@ -17,7 +17,7 @@ describe("DataFlow", () => {
         flow.addCollector(collector);
 
         let called = false;
-        flow.addObserver(collector, () => {
+        collector.observers.push(() => {
             called = true;
         });
 
