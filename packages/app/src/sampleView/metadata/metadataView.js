@@ -50,10 +50,23 @@ export class MetadataView extends ConcatView {
      */
     #attributeViews = new Map();
 
+    /** @type {() => void} */
+    #unsubscribe = () => undefined;
+
     #metadataGeneration = 0;
 
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
+
+    /**
+     * @type {import("@genome-spy/core/view/view.js").default}
+     */
+    #highlightTarget;
+
+    /**
+     * @type {(coords: import("@genome-spy/core/view/layout/rectangle.js").default, event: import("@genome-spy/core/utils/interactionEvent.js").default) => void}
+     */
+    #highlightTargetListener;
 
     /**
      * @param {import("../sampleView.js").default} sampleView
@@ -96,7 +109,7 @@ export class MetadataView extends ConcatView {
                 )
         );
 
-        subscribeTo(
+        this.#unsubscribe = subscribeTo(
             this.#sampleView.provenance.store,
             (state) => state.provenance.present.sampleView.sampleMetadata,
             (sampleMetadata) => {
@@ -133,9 +146,10 @@ export class MetadataView extends ConcatView {
         });
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
-        peek([
+        this.#highlightTarget = peek([
             ...this.#sampleView.getLayoutAncestors(),
-        ]).addInteractionEventListener("mousemove", (coords, event) => {
+        ]);
+        this.#highlightTargetListener = (coords, event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
@@ -148,7 +162,11 @@ export class MetadataView extends ConcatView {
             }
 
             this.#handleAttributeHighlight(undefined);
-        });
+        };
+        this.#highlightTarget.addInteractionEventListener(
+            "mousemove",
+            this.#highlightTargetListener
+        );
     }
 
     /**
@@ -597,6 +615,19 @@ export class MetadataView extends ConcatView {
 
     isPickingSupported() {
         return false;
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.#unsubscribe();
+        this.#highlightTarget.removeInteractionEventListener(
+            "mousemove",
+            this.#highlightTargetListener
+        );
+        this._attributeHighlighState.abortController.abort();
     }
 }
 

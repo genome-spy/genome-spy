@@ -10,6 +10,7 @@ vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
  * @typedef {object} StoreStub
  * @prop {() => any} getState
  * @prop {(listener: () => void) => () => void} subscribe
+ * @prop {() => number} getListenerCount
  * @prop {(nextState: any) => void} setState
  */
 
@@ -48,6 +49,7 @@ function createStore(initialState) {
             listeners.add(listener);
             return () => listeners.delete(listener);
         },
+        getListenerCount: () => listeners.size,
         setState: (nextState) => {
             state = nextState;
             for (const listener of Array.from(listeners)) {
@@ -154,6 +156,7 @@ describe("MetadataView", () => {
 
         const sampleView = createSampleView(context, store, sampleHierarchy);
         const metadataView = new MetadataView(sampleView, sampleView);
+        expect(store.getListenerCount()).toBe(1);
 
         const getFlowSnapshot = () => ({
             dataSources: dataFlow._dataSourcesByHost.size,
@@ -230,5 +233,8 @@ describe("MetadataView", () => {
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
         expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
         expect(restoredSnapshot).toEqual(initialSnapshot);
+
+        metadataView.dispose();
+        expect(store.getListenerCount()).toBe(0);
     });
 });
