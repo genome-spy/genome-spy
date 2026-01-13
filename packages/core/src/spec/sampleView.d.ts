@@ -1,4 +1,3 @@
-import { Type } from "./channel.js";
 import { Data } from "./data.js";
 import { Align, FontStyle, FontWeight } from "./font.js";
 import { Scale } from "./scale.js";
