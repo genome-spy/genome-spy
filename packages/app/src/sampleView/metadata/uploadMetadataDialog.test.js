@@ -129,4 +129,52 @@ describe("buildSetMetadataPayload", () => {
             "extra/group/clin/age": { type: "quantitative" },
         });
     });
+
+    it("applies root definition to inherit nodes when no group is set", () => {
+        const parsedItems = [
+            { sample: "s1", child: "a" },
+            { sample: "s2", child: "b" },
+        ];
+
+        const metadataConfig = {
+            separator: null,
+            addUnderGroup: null,
+            scales: new Map([["", { type: "ordinal" }]]),
+            metadataNodeTypes: new Map([
+                ["", "nominal"],
+                ["child", "inherit"],
+            ]),
+        };
+
+        const result = buildSetMetadataPayload(
+            parsedItems,
+            new Set(["s1", "s2"]),
+            metadataConfig
+        );
+
+        expect(result.attributeDefs).toEqual({
+            child: { type: "nominal", scale: { type: "ordinal" } },
+        });
+    });
+
+    it("applies root definition to the new group when adding under a group", () => {
+        const parsedItems = [{ sample: "s1", value: 10 }];
+
+        const metadataConfig = {
+            separator: ".",
+            addUnderGroup: "group.sub",
+            scales: new Map([["", { type: "linear" }]]),
+            metadataNodeTypes: new Map([["", "quantitative"]]),
+        };
+
+        const result = buildSetMetadataPayload(
+            parsedItems,
+            new Set(["s1"]),
+            metadataConfig
+        );
+
+        expect(result.attributeDefs).toEqual({
+            "group/sub": { type: "quantitative", scale: { type: "linear" } },
+        });
+    });
 });

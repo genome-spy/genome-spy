@@ -23,7 +23,7 @@ const SAMPLE_COLUMN = "sample";
 /**
  * @typedef {object} MetadataConfig
  * @prop {string | null} separator
- * @prop {string} addUnderGroup
+ * @prop {string | null} addUnderGroup
  * @prop {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} scales
  * @prop {Map<string, MetadataType>} metadataNodeTypes
  */

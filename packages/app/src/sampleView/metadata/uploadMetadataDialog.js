@@ -13,7 +13,11 @@ import "../../components/generic/uploadDropZone.js";
 import "../../components/generic/customSelect.js";
 import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { wrangleMetadata } from "./metadataUtils.js";
+import {
+    METADATA_PATH_SEPARATOR,
+    replacePathSeparator,
+    wrangleMetadata,
+} from "./metadataUtils.js";
 
 /**
  * @param {Record<string, any>[]} parsedItems
@@ -30,12 +34,19 @@ export function buildSetMetadataPayload(
         existingSampleIds.has(String(record.sample))
     );
 
+    const rootKey = "";
+    const rootType = metadataConfig.metadataNodeTypes.get(rootKey) ?? null;
+    const rootScale = metadataConfig.scales.get(rootKey) ?? null;
+    const isConcreteType = (/** @type {unknown} */ type) =>
+        ["nominal", "ordinal", "quantitative"].includes(
+            /** @type {string} */ (type)
+        );
+    const hasRootDef = isConcreteType(rootType);
+
     const nodeKeys = Array.from(
         metadataConfig.metadataNodeTypes
             .entries()
-            .filter(([, type]) =>
-                ["nominal", "ordinal", "quantitative"].includes(type)
-            )
+            .filter(([key, type]) => key !== rootKey && isConcreteType(type))
             .map(([key]) => key)
     );
 
@@ -63,13 +74,59 @@ export function buildSetMetadataPayload(
         })
     );
 
-    return wrangleMetadata(
+    if (!metadataConfig.addUnderGroup && hasRootDef) {
+        for (const [key, type] of metadataConfig.metadataNodeTypes.entries()) {
+            if (type !== "inherit") {
+                continue;
+            }
+            if (attributeDefs[key]) {
+                continue;
+            }
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    rootType
+                ),
+            };
+            const scale = metadataConfig.scales.get(key) ?? rootScale;
+            if (scale) {
+                def.scale = scale;
+            }
+            attributeDefs[key] = def;
+        }
+    }
+
+    const setMetadata = wrangleMetadata(
         filteredMetadata,
         attributeDefs,
         metadataConfig.separator,
         metadataConfig.addUnderGroup,
         skipColumns
     );
+
+    if (metadataConfig.addUnderGroup && hasRootDef) {
+        const groupPath = metadataConfig.separator
+            ? replacePathSeparator(
+                  metadataConfig.addUnderGroup,
+                  metadataConfig.separator,
+                  METADATA_PATH_SEPARATOR
+              )
+            : metadataConfig.addUnderGroup;
+        if (groupPath && !setMetadata.attributeDefs[groupPath]) {
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    rootType
+                ),
+            };
+            if (rootScale) {
+                def.scale = rootScale;
+            }
+            setMetadata.attributeDefs[groupPath] = def;
+        }
+    }
+
+    return setMetadata;
 }
 
 class UploadMetadataDialog extends BaseDialog {
