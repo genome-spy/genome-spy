@@ -50,9 +50,6 @@ export class MetadataView extends ConcatView {
      */
     #attributeViews = new Map();
 
-    /** @type {() => void} */
-    #unsubscribe = () => undefined;
-
     #metadataGeneration = 0;
 
     /** @type {WeakMap<View, string>} */
@@ -67,11 +64,6 @@ export class MetadataView extends ConcatView {
      * @type {import("@genome-spy/core/view/view.js").default}
      */
     #highlightTarget;
-
-    /**
-     * @type {(coords: import("@genome-spy/core/view/layout/rectangle.js").default, event: import("@genome-spy/core/utils/interactionEvent.js").default) => void}
-     */
-    #highlightTargetListener;
 
     /**
      * @param {import("../sampleView.js").default} sampleView
@@ -114,12 +106,14 @@ export class MetadataView extends ConcatView {
             this.#attributeInfoSource
         );
 
-        this.#unsubscribe = subscribeTo(
-            this.#sampleView.provenance.store,
-            (state) => state.provenance.present.sampleView.sampleMetadata,
-            (sampleMetadata) => {
-                this.#setMetadata(sampleMetadata);
-            }
+        this.registerDisposer(
+            subscribeTo(
+                this.#sampleView.provenance.store,
+                (state) => state.provenance.present.sampleView.sampleMetadata,
+                (sampleMetadata) => {
+                    this.#setMetadata(sampleMetadata);
+                }
+            )
         );
 
         this.addInteractionEventListener(
@@ -154,7 +148,7 @@ export class MetadataView extends ConcatView {
         this.#highlightTarget = peek([
             ...this.#sampleView.getLayoutAncestors(),
         ]);
-        this.#highlightTargetListener = (coords, event) => {
+        const highlightTargetListener = (coords, event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
@@ -170,8 +164,14 @@ export class MetadataView extends ConcatView {
         };
         this.#highlightTarget.addInteractionEventListener(
             "mousemove",
-            this.#highlightTargetListener
+            highlightTargetListener
         );
+        this.registerDisposer(() => {
+            this.#highlightTarget.removeInteractionEventListener(
+                "mousemove",
+                highlightTargetListener
+            );
+        });
     }
 
     /**
@@ -626,14 +626,9 @@ export class MetadataView extends ConcatView {
      */
     dispose() {
         super.dispose();
-        this.#unsubscribe();
         this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
             this.#attributeInfoSource
-        );
-        this.#highlightTarget.removeInteractionEventListener(
-            "mousemove",
-            this.#highlightTargetListener
         );
         this._attributeHighlighState.abortController.abort();
     }

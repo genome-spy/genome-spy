@@ -85,9 +85,6 @@ export default class SampleView extends ContainerView {
     /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
     #actionAugmenter;
 
-    /** @type {() => void} */
-    #unsubscribe = () => undefined;
-
     /**
      *
      * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
@@ -267,15 +264,17 @@ export default class SampleView extends ContainerView {
      * Setup subscriptions for provenance-driven updates.
      */
     #setupStoreSubscriptions() {
-        this.#unsubscribe = subscribeTo(
-            this.provenance.store,
-            () => this.sampleHierarchy.rootGroup,
-            withMicrotask(() => {
-                this.locationManager.reset();
-                this.sampleGroupView?.updateGroups();
-                this.context.requestLayoutReflow();
-                this.context.animator.requestRender();
-            })
+        this.registerDisposer(
+            subscribeTo(
+                this.provenance.store,
+                () => this.sampleHierarchy.rootGroup,
+                withMicrotask(() => {
+                    this.locationManager.reset();
+                    this.sampleGroupView?.updateGroups();
+                    this.context.requestLayoutReflow();
+                    this.context.animator.requestRender();
+                })
+            )
         );
     }
 
@@ -981,7 +980,6 @@ export default class SampleView extends ContainerView {
      */
     dispose() {
         super.dispose();
-        this.#unsubscribe();
         this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }
 }

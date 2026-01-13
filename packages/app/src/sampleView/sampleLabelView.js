@@ -19,9 +19,6 @@ export class SampleLabelView extends UnitView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;
 
-    /** @type {() => void} */
-    #unsubscribe = () => undefined;
-
     /**
      * @type {(identifier: import("./types.js").AttributeIdentifier) => import("./types.js").AttributeInfo}
      */
@@ -54,12 +51,14 @@ export class SampleLabelView extends UnitView {
         );
 
         // TODO: Data could be inherited from the parent view
-        this.#unsubscribe = subscribeTo(
-            sampleView.provenance.store,
-            (state) => state.provenance.present.sampleView.sampleData,
-            (sampleData) => {
-                this.#setSamples(Object.values(sampleData.entities));
-            }
+        this.registerDisposer(
+            subscribeTo(
+                sampleView.provenance.store,
+                (state) => state.provenance.present.sampleView.sampleData,
+                (sampleData) => {
+                    this.#setSamples(Object.values(sampleData.entities));
+                }
+            )
         );
     }
 
@@ -119,7 +118,6 @@ export class SampleLabelView extends UnitView {
      */
     dispose() {
         super.dispose();
-        this.#unsubscribe();
         this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
             SAMPLE_NAME,
             this.#attributeInfoSource
