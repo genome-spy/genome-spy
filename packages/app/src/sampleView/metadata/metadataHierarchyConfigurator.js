@@ -21,6 +21,7 @@ import { classMap } from "lit/directives/class-map.js";
 // TODO: Warn when root type/scale is set but no inherit leaves and no group target.
 // TODO: Warn if addUnderGroup contains the separator (splits into multiple segments).
 // TODO: Warn if separator length is greater than 1.
+// TODO: Show manual color ranges as color swatches in the table.
 
 // Should be skipped altogether, as it's not a metadata attribute
 const SAMPLE_COLUMN = "sample";
@@ -507,7 +508,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
                     id="separator"
                     type="text"
                     .value=${this.separator ?? ""}
-                    placeholder="Separator character for possible hierarchical groups (e.g. .)"
+                    placeholder="(optional) Separator character for possible hierarchical groups (e.g. .)"
                     @input=${this.#onSeparatorInput}
                 />
             </div>

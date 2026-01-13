@@ -152,17 +152,7 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     #renderUpload() {
-        return html`<p>
-                This wizard helps you load custom metadata for samples in the
-                current visualization.
-            </p>
-
-            <p>
-                Select a metadata file (CSV, TSV, or JSON). The file must
-                include a header row and a <em>sample</em> column that uniquely
-                identifies each sample. Additional columns will be added as new
-                metadata fields.
-            </p>
+        return html`${INTRO_TEXT}
 
             <gs-upload-drop-zone
                 accept=".csv,.tsv,.json"
@@ -309,6 +299,22 @@ class UploadMetadataDialog extends BaseDialog {
 }
 
 customElements.define("gs-upload-metadata-dialog", UploadMetadataDialog);
+
+const INTRO_TEXT = html`<p>
+        This wizard helps you load custom metadata for samples in the current
+        visualization.
+    </p>
+
+    <p>
+        Select a metadata file (CSV, TSV, or JSON). The file must include a
+        header row and a <em>sample</em> column that uniquely identifies each
+        sample. Additional columns will be added as new metadata fields.
+    </p>
+
+    <p>
+        After upload, you can preview the rows, configure attribute types and
+        scales, and only samples that match existing IDs will be kept.
+    </p>`;
 
 /**
  * @param {import("../sampleView.js").default} sampleView
