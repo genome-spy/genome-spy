@@ -147,6 +147,8 @@ export function inferColumnSeparator(columns) {
 }
 
 /**
+ * Create a joined attribute path prefix for a group path.
+ *
  * @param {string[]} groupPath array of unescaped path segments representing the group path
  * @returns {string} the attribute path prefix for the given group path
  */
@@ -191,6 +193,8 @@ export function placeKeysUnderGroup(obj, groupPath = [], ignoredKeys = []) {
 }
 
 /**
+ * Convert a path string from one separator to another using escaping rules.
+ *
  * @param {string} s
  * @param {string} oldSeparator
  * @param {string} newSeparator
@@ -205,6 +209,8 @@ export function replacePathSeparator(
 }
 
 /**
+ * Convert all object keys from one separator to another using escaping rules.
+ *
  * @template T
  * @param {Record<string, T>} obj
  * @param {string} oldSeparator
@@ -285,6 +291,120 @@ export function wrangleMetadata(
 }
 
 /**
+ * Build a set-metadata payload by applying configured types, scales, and grouping.
+ *
+ * @param {Record<string, any>[]} parsedItems
+ * @param {Set<string>} existingSampleIds
+ * @param {import("./metadataHierarchyConfigurator.js").MetadataConfig} metadataConfig
+ * @returns {import("../state/payloadTypes.js").SetMetadata}
+ */
+export function buildSetMetadataPayload(
+    parsedItems,
+    existingSampleIds,
+    metadataConfig
+) {
+    const filteredMetadata = parsedItems.filter((record) =>
+        existingSampleIds.has(String(record.sample))
+    );
+
+    const rootKey = "";
+    const rootType = metadataConfig.metadataNodeTypes.get(rootKey) ?? null;
+    const rootScale = metadataConfig.scales.get(rootKey) ?? null;
+    const isConcreteType = (/** @type {unknown} */ type) =>
+        ["nominal", "ordinal", "quantitative"].includes(
+            /** @type {string} */ (type)
+        );
+    const hasRootDef = isConcreteType(rootType);
+
+    const nodeKeys = Array.from(
+        metadataConfig.metadataNodeTypes
+            .entries()
+            .filter(([key, type]) => key !== rootKey && isConcreteType(type))
+            .map(([key]) => key)
+    );
+
+    const skipColumns = new Set(
+        metadataConfig.metadataNodeTypes
+            .entries()
+            .filter(([, type]) => type === "unset")
+            .map(([key]) => key)
+    );
+
+    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    const attributeDefs = Object.fromEntries(
+        nodeKeys.map((key) => {
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    metadataConfig.metadataNodeTypes.get(key)
+                ),
+            };
+            const scale = metadataConfig.scales.get(key);
+            if (scale) {
+                def.scale = scale;
+            }
+            return [key, def];
+        })
+    );
+
+    if (!metadataConfig.addUnderGroup && hasRootDef) {
+        for (const [key, type] of metadataConfig.metadataNodeTypes.entries()) {
+            if (type !== "inherit") {
+                continue;
+            }
+            if (attributeDefs[key]) {
+                continue;
+            }
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    rootType
+                ),
+            };
+            const scale = metadataConfig.scales.get(key) ?? rootScale;
+            if (scale) {
+                def.scale = scale;
+            }
+            attributeDefs[key] = def;
+        }
+    }
+
+    const setMetadata = wrangleMetadata(
+        filteredMetadata,
+        attributeDefs,
+        metadataConfig.separator,
+        metadataConfig.addUnderGroup,
+        skipColumns
+    );
+
+    if (metadataConfig.addUnderGroup && hasRootDef) {
+        const groupPath = metadataConfig.separator
+            ? replacePathSeparator(
+                  metadataConfig.addUnderGroup,
+                  metadataConfig.separator,
+                  METADATA_PATH_SEPARATOR
+              )
+            : metadataConfig.addUnderGroup;
+        if (groupPath && !setMetadata.attributeDefs[groupPath]) {
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    rootType
+                ),
+            };
+            if (rootScale) {
+                def.scale = rootScale;
+            }
+            setMetadata.attributeDefs[groupPath] = def;
+        }
+    }
+
+    return setMetadata;
+}
+
+/**
+ * Convert row-based metadata to columnar form while honoring skipped columns.
+ *
  * @param {Record<string, any>[]} rowMetadata
  * @param {Set<string>} [skipColumns]
  * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
@@ -296,6 +416,8 @@ export function toColumnarMetadata(rowMetadata, skipColumns = new Set()) {
 }
 
 /**
+ * Normalize columnar metadata keys to the internal separator.
+ *
  * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
  * @param {string} [separator]
  * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
@@ -316,6 +438,8 @@ export function normalizeColumnarKeys(columnarMetadata, separator) {
 }
 
 /**
+ * Prefix columnar metadata keys under a group path.
+ *
  * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
  * @param {string} placeUnderGroup
  * @param {string} [separator]
@@ -333,8 +457,11 @@ export function applyGroupToColumnarMetadata(
 }
 
 /**
+ * Prefix attribute definition keys under a group path.
+ *
  * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
  * @param {string} placeUnderGroup
+ * @param {string} [separator]
  * @returns {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>}
  */
 export function applyGroupToAttributeDefs(
@@ -362,6 +489,7 @@ export function placeMetadataUnderGroup(columnarMetadata, groupPath = []) {
 }
 
 /**
+ * Infer a basic metadata type using vega-loader's type detection.
  *
  * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
  * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType}
