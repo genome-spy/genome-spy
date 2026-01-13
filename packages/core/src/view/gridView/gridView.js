@@ -118,6 +118,9 @@ export default class GridView extends ContainerView {
      * @param {View[]} views
      */
     setChildren(views) {
+        for (const gridChild of this.#children) {
+            gridChild.view.disposeSubtree();
+        }
         this.#children = [];
         for (const view of views) {
             this.appendChild(view);
