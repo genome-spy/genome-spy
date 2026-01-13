@@ -21,14 +21,27 @@ describe("DataFlow", () => {
             called = true;
         }, "c");
 
-        expect(flow._dataSourcesByHost.get("a")).toBe(sourceA);
-        expect(flow._collectorsByHost.get("c")).toBe(collector);
+        const dataSourceEntry = flow
+            .getDataSourceEntries()
+            .find(([key]) => key === "a");
+        expect(dataSourceEntry).toBeDefined();
+        expect(dataSourceEntry?.[1]).toBe(sourceA);
+
+        const collectorEntry = flow
+            .getCollectorEntries()
+            .find(([key]) => key === "c");
+        expect(collectorEntry).toBeDefined();
+        expect(collectorEntry?.[1]).toBe(collector);
         expect(collector.observers.length).toBe(1);
 
         flow.removeHosts(["a", "c"]);
 
-        expect(flow._dataSourcesByHost.get("a")).toBeUndefined();
-        expect(flow._collectorsByHost.get("c")).toBeUndefined();
+        expect(
+            flow.getDataSourceEntries().find(([key]) => key === "a")
+        ).toBeUndefined();
+        expect(
+            flow.getCollectorEntries().find(([key]) => key === "c")
+        ).toBeUndefined();
 
         expect(collector.observers.length).toBe(0);
         expect(called).toBe(false);

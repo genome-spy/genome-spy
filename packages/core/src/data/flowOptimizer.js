@@ -85,7 +85,7 @@ export function combineAndPullCollectorsUp() {
  * @param {import("./dataFlow.js").default<any>} dataFlow
  */
 export function combineIdenticalDataSources(dataFlow) {
-    const dataSourceEntries = [...dataFlow._dataSourcesByHost.entries()];
+    const dataSourceEntries = dataFlow.getDataSourceEntries();
 
     /** @type {Map<string, import("./sources/dataSource.js").default>} */
     const sourcesByIdentifiers = new Map();
@@ -96,7 +96,7 @@ export function combineIdenticalDataSources(dataFlow) {
         }
     }
 
-    dataFlow._dataSourcesByHost.clear();
+    dataFlow.replaceDataSourceEntries([]);
 
     for (let [key, dataSource] of dataSourceEntries) {
         const target = sourcesByIdentifiers.get(dataSource.identifier);

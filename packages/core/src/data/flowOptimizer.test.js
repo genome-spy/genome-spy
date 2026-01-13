@@ -169,9 +169,10 @@ describe("Merge indentical data sources", () => {
 
         expect(dataFlow.dataSources.length).toEqual(2);
 
-        expect(dataFlow._dataSourcesByHost.get("a")).toBe(a);
-        expect(dataFlow._dataSourcesByHost.get("b")).toBe(a); // Merged!
-        expect(dataFlow._dataSourcesByHost.get("c")).toBe(c);
+        const entries = dataFlow.getDataSourceEntries();
+        expect(entries.find(([key]) => key === "a")?.[1]).toBe(a);
+        expect(entries.find(([key]) => key === "b")?.[1]).toBe(a); // Merged!
+        expect(entries.find(([key]) => key === "c")?.[1]).toBe(c);
 
         expect(new Set(a.children)).toEqual(new Set([ac, bc]));
         expect(c.children[0]).toBe(cc);
@@ -198,7 +199,8 @@ describe("Merge indentical data sources", () => {
 
         combineIdenticalDataSources(dataFlow);
 
-        expect(dataFlow._dataSourcesByHost.get("a")).toBe(a);
-        expect(dataFlow._dataSourcesByHost.get("b")).toBe(b);
+        const entries = dataFlow.getDataSourceEntries();
+        expect(entries.find(([key]) => key === "a")?.[1]).toBe(a);
+        expect(entries.find(([key]) => key === "b")?.[1]).toBe(b);
     });
 });

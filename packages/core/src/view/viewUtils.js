@@ -117,14 +117,14 @@ export async function initializeData(root, existingFlow) {
  * @param {import("../data/dataFlow.js").default<View>} flow
  */
 export function syncFlowHandles(flow) {
-    for (const [host, dataSource] of flow._dataSourcesByHost.entries()) {
+    for (const [host, dataSource] of flow.getDataSourceEntries()) {
         if (host && typeof host === "object" && "flowHandle" in host) {
             host.flowHandle ??= {};
             host.flowHandle.dataSource = dataSource;
         }
     }
 
-    for (const [host, collector] of flow._collectorsByHost.entries()) {
+    for (const [host, collector] of flow.getCollectorEntries()) {
         if (host && typeof host === "object" && "flowHandle" in host) {
             host.flowHandle ??= {};
             host.flowHandle.collector = collector;

@@ -96,8 +96,8 @@ function assertFlowMatchesSubtree(metadataView, dataFlow) {
     const unitViews = descendants.filter((view) => view instanceof UnitView);
     const dataSources = dataFlow.getDataSourcesForHosts(descendants);
 
-    expect(dataFlow._dataSourcesByHost.size).toBe(dataSources.length);
-    expect(dataFlow._collectorsByHost.size).toBe(unitViews.length);
+    expect(dataFlow.getDataSourceHostCount()).toBe(dataSources.length);
+    expect(dataFlow.getCollectorHostCount()).toBe(unitViews.length);
     expect(dataFlow._observers.size).toBe(unitViews.length);
 }
 
@@ -177,8 +177,8 @@ describe("MetadataView", () => {
                 !!metadataView.flowHandle.dataSource;
 
             return {
-                dataSources: dataFlow._dataSourcesByHost.size,
-                collectors: dataFlow._collectorsByHost.size,
+                dataSources: dataFlow.getDataSourceHostCount(),
+                collectors: dataFlow.getCollectorHostCount(),
                 observers: dataFlow._observers.size,
                 unitViews: unitViews.length,
                 hasCollector,

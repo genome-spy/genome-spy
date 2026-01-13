@@ -5,12 +5,18 @@ import NamedSource from "./sources/namedSource.js";
  *      data sources and collectors.
  */
 export default class DataFlow {
+    /** @type {Map<H, import("./sources/dataSource.js").default>} */
+    #dataSourcesByHost;
+
+    /** @type {Map<H, import("./collector.js").default>} */
+    #collectorsByHost;
+
     constructor() {
         /** @type {Map<H, import("./sources/dataSource.js").default>} */
-        this._dataSourcesByHost = new Map();
+        this.#dataSourcesByHost = new Map();
 
         /** @type {Map<H, import("./collector.js").default>} */
-        this._collectorsByHost = new Map();
+        this.#collectorsByHost = new Map();
 
         /** @type {Map<H, (function(import("./collector.js").default):void)[]>} */
         this._observers = new Map();
@@ -20,11 +26,40 @@ export default class DataFlow {
     }
 
     get dataSources() {
-        return [...new Set(this._dataSourcesByHost.values()).values()];
+        return [...new Set(this.#dataSourcesByHost.values()).values()];
     }
 
     get collectors() {
-        return [...this._collectorsByHost.values()];
+        return [...this.#collectorsByHost.values()];
+    }
+
+    /**
+     * @returns {[H, import("./sources/dataSource.js").default][]}
+     */
+    getDataSourceEntries() {
+        return [...this.#dataSourcesByHost.entries()];
+    }
+
+    /**
+     * @returns {[H, import("./collector.js").default][]}
+     */
+    getCollectorEntries() {
+        return [...this.#collectorsByHost.entries()];
+    }
+
+    getDataSourceHostCount() {
+        return this.#dataSourcesByHost.size;
+    }
+
+    getCollectorHostCount() {
+        return this.#collectorsByHost.size;
+    }
+
+    /**
+     * @param {Iterable<[H, import("./sources/dataSource.js").default]>} entries
+     */
+    replaceDataSourceEntries(entries) {
+        this.#dataSourcesByHost = new Map(entries);
     }
 
     /**
@@ -64,7 +99,7 @@ export default class DataFlow {
      * @param {H} key
      */
     addDataSource(dataSource, key) {
-        this._dataSourcesByHost.set(key, dataSource);
+        this.#dataSourcesByHost.set(key, dataSource);
     }
 
     /**
@@ -81,7 +116,7 @@ export default class DataFlow {
         // view hierarchy, the should actually be exactly the same instance. It's arranged that
         // way in the data flow optimization phase.
 
-        for (const [host, dataSource] of this._dataSourcesByHost.entries()) {
+        for (const [host, dataSource] of this.#dataSourcesByHost.entries()) {
             if (dataSource instanceof NamedSource) {
                 if (name == dataSource.identifier) {
                     if (namedSource && namedSource !== dataSource) {
@@ -110,7 +145,7 @@ export default class DataFlow {
      * @param {H} key
      */
     addCollector(collector, key) {
-        this._collectorsByHost.set(key, collector);
+        this.#collectorsByHost.set(key, collector);
         const observer = (/** @type {import("./collector.js").default} */ c) =>
             this._relayObserverCallback(c, key);
         this._collectorObserverByHost.set(key, observer);
@@ -121,8 +156,8 @@ export default class DataFlow {
      * @param {H} key
      */
     removeHost(key) {
-        this._dataSourcesByHost.delete(key);
-        const collector = this._collectorsByHost.get(key);
+        this.#dataSourcesByHost.delete(key);
+        const collector = this.#collectorsByHost.get(key);
         if (collector) {
             const observer = this._collectorObserverByHost.get(key);
             if (observer) {
@@ -132,7 +167,7 @@ export default class DataFlow {
                 }
             }
             this._collectorObserverByHost.delete(key);
-            this._collectorsByHost.delete(key);
+            this.#collectorsByHost.delete(key);
         }
         this._observers.delete(key);
     }
@@ -155,7 +190,7 @@ export default class DataFlow {
         const dataSources = [];
 
         for (const key of keys) {
-            const dataSource = this._dataSourcesByHost.get(key);
+            const dataSource = this.#dataSourcesByHost.get(key);
             if (dataSource) {
                 dataSources.push(dataSource);
             }
