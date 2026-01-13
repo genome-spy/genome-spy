@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import ConcatView from "./concatView.js";
+import DataSource from "../data/sources/dataSource.js";
 import UnitView from "./unitView.js";
 import View from "./view.js";
 import { create, createTestViewContext } from "./testUtils.js";
@@ -80,5 +81,26 @@ describe("View disposal", () => {
 
         expect(childC.disposed).toBe(true);
         expect(childD.disposed).toBe(false);
+    });
+
+    test("removes dataflow hosts on dispose", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "c"
+        );
+        const child = new DisposableView("a", context, parent, parent);
+
+        const dataSource = new DataSource(child);
+        context.dataFlow.addDataSource(dataSource, child);
+
+        expect(context.dataFlow.findDataSourceByKey(child)).toBe(dataSource);
+
+        child.disposeSubtree();
+
+        expect(context.dataFlow.findDataSourceByKey(child)).toBeUndefined();
     });
 });
