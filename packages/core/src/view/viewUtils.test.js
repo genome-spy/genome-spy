@@ -44,10 +44,8 @@ describe("initializeSubtree", () => {
         expect(unitViews.length).toBe(1);
         expect(graphicsPromises.length).toBe(0);
 
-        expect(context.dataFlow.findDataSourceByKey(child)).toBeDefined();
-        expect(
-            context.dataFlow.findDataSourceByKey(otherChild)
-        ).toBeUndefined();
+        expect(child.flowHandle?.dataSource).toBeDefined();
+        expect(otherChild.flowHandle?.dataSource).toBeUndefined();
     });
 });
 

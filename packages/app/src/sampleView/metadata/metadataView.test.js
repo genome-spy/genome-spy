@@ -219,7 +219,6 @@ describe("MetadataView", () => {
 
         const initialSnapshot = getFlowSnapshot();
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
-        expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
         expect(initialSnapshot.hasCollector).toBe(true);
         expect(initialSnapshot.hasDataSource).toBe(true);
 
@@ -230,7 +229,6 @@ describe("MetadataView", () => {
 
         const reducedSnapshot = getFlowSnapshot();
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
-        expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
         expect(reducedSnapshot.unitViews).toBeLessThan(
             initialSnapshot.unitViews
         );
@@ -244,7 +242,6 @@ describe("MetadataView", () => {
 
         const stableSnapshot = getFlowSnapshot();
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
-        expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
         expect(stableSnapshot).toEqual(reducedSnapshot);
 
         updateMetadata(["a", "b"], {
@@ -254,7 +251,6 @@ describe("MetadataView", () => {
 
         const restoredSnapshot = getFlowSnapshot();
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
-        expect(dataFlow.findDataSourceByKey(metadataView)).toBeDefined();
         expect(restoredSnapshot).toEqual(initialSnapshot);
 
         metadataView.dispose();

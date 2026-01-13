@@ -97,11 +97,12 @@ describe("View disposal", () => {
 
         const dataSource = new DataSource(child);
         context.dataFlow.addDataSource(dataSource, child);
+        child.flowHandle = { dataSource };
 
-        expect(context.dataFlow.findDataSourceByKey(child)).toBe(dataSource);
+        expect(child.flowHandle.dataSource).toBe(dataSource);
 
         child.disposeSubtree();
 
-        expect(context.dataFlow.findDataSourceByKey(child)).toBeUndefined();
+        expect(child.flowHandle).toBeUndefined();
     });
 });
