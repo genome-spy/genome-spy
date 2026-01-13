@@ -146,6 +146,7 @@ export function syncFlowHandles(flow) {
  */
 export function initializeSubtree(root, flow) {
     const dataFlow = buildDataFlow(root, flow);
+    syncFlowHandles(dataFlow);
     const subtreeViews = root.getDescendants();
     const dataSources = new Set(flow.getDataSourcesForHosts(subtreeViews));
 
