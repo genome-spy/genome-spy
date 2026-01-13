@@ -155,6 +155,11 @@ graph/optimizer, while views access flow via handles.
     graphics are ready; request render.
 - This should replace ad hoc "find title views and load data sources" hacks
   by letting local subtrees initialize their own sources on completion.
+- Lifecycle ordering for dynamic insertion:
+  - build the subtree completely (pre/post-order creation, no side effects)
+  - run subtree init (`initializeSubtree`) in post-order
+  - attach/replace into the live hierarchy
+  - dispose old subtree via `disposeSubtree` when replacing
 
 ## Notes on early data loading
 
@@ -167,6 +172,10 @@ graph/optimizer, while views access flow via handles.
   - load only canonical data sources for the subtree (guarded by load state)
 - Requires a load-state or cached load promise on each data source to avoid
   duplicate fetches when sources are shared across subtrees.
+ - Data-ready boundaries: when collecting sources for a subtree, stop
+   descending once a view owns a data source (nearest-source wins). Likewise,
+   readiness propagation should not bubble past the nearest ancestor that also
+   owns a data source.
 
 ### Phase 3: Remove `DataFlow` registry
 
@@ -229,3 +238,6 @@ lives next to the owner view (not in `DataFlow`).
   so domains/listeners can outlive the owning view.
 - `packages/core/src/view/unitView.js`: resolves scale/axis and registers scale
   listeners at construction; lacks a remove/unresolve path.
+- `packages/app`: several views are still instantiated via `new` instead of
+  `createOrImportView`; these should follow the same subtree lifecycle
+  (build fully, initializeSubtree, then attach) and dispose old subtrees.
