@@ -27,15 +27,6 @@ import { classMap } from "lit/directives/class-map.js";
 const SAMPLE_COLUMN = "sample";
 
 /**
- * @typedef {object} MetadataConfig
- * @prop {string | null} separator
- * @prop {string | null} addUnderGroup
- * @prop {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} scales
- * @prop {Map<string, MetadataType>} metadataNodeTypes
- * @prop {string[]} invalidInheritLeafNodes
- */
-
-/**
  * MetadataHierarchyConfigurator
  *
  * Rationale and usage:
@@ -537,7 +528,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
     }
 
     /**
-     * @returns {MetadataConfig}
+     * @returns {import("./metadataUtils.js").MetadataConfig}
      */
     getConfig() {
         const invalidInheritLeafNodes = [...this.#collectInvalidInheritNodes()];

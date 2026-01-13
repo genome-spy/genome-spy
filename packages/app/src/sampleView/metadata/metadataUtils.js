@@ -12,6 +12,19 @@ import { rowsToColumns } from "../../utils/dataLayout.js";
  */
 
 /**
+ * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | "inherit" | "unset"} MetadataType
+ */
+
+/**
+ * @typedef {object} MetadataConfig
+ * @prop {string | null} separator
+ * @prop {string | null} addUnderGroup
+ * @prop {Map<string, import("@genome-spy/core/spec/scale.js").Scale>} scales
+ * @prop {Map<string, MetadataType>} metadataNodeTypes
+ * @prop {string[]} invalidInheritLeafNodes
+ */
+
+/**
  * A separator used to denote hierarchy levels in metadata attribute names.
  * For example, "demographics/age" uses "/" as a separator.
  *
@@ -295,7 +308,7 @@ export function wrangleMetadata(
  *
  * @param {Record<string, any>[]} parsedItems
  * @param {Set<string>} existingSampleIds
- * @param {import("./metadataHierarchyConfigurator.js").MetadataConfig} metadataConfig
+ * @param {MetadataConfig} metadataConfig
  * @returns {import("../state/payloadTypes.js").SetMetadata}
  */
 export function buildSetMetadataPayload(
@@ -509,7 +522,6 @@ export function inferMetadataFieldType(values) {
  * For group nodes: collects types from all leaf descendants; returns "unset" if mixed, else the uniform type.
  * For leaf nodes: uses raw type; returns "inherit" if a parent has a non-unset type.
  *
- * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | "inherit" | "unset"} MetadataType
  * @param {Map<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeType>} rawTypes
  * @param {PathTreeNode} root
  * @returns {Map<string, MetadataType>} Path to inferred MetadataType
