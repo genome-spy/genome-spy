@@ -152,10 +152,14 @@ export default class SelectionRect extends LayerView {
 
             const datasource =
                 /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                    this.flowHandle && this.flowHandle.dataSource
-                        ? this.flowHandle.dataSource
-                        : this.context.dataFlow.findDataSourceByKey(this)
+                    this.flowHandle?.dataSource
                 );
+
+            if (!datasource) {
+                throw new Error(
+                    "Cannot find selection rect data source handle!"
+                );
+            }
 
             datasource.updateDynamicData(selectionToData(selection));
         };

@@ -203,14 +203,11 @@ export default class SampleGroupView extends LayerView {
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                this.flowHandle && this.flowHandle.dataSource
-                    ? this.flowHandle.dataSource
-                    : this.context.dataFlow.findDataSourceByKey(this)
+                this.flowHandle?.dataSource
             );
 
         if (!dynamicSource) {
-            // Why this happens? TODO: Investigate
-            return;
+            throw new Error("Cannot find sample group data source handle!");
         }
 
         const attributeTitles = this.#getAttributeTitles();

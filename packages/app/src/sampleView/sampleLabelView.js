@@ -70,10 +70,12 @@ export class SampleLabelView extends UnitView {
     #setSamples(samples) {
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                this.flowHandle && this.flowHandle.dataSource
-                    ? this.flowHandle.dataSource
-                    : this.context.dataFlow.findDataSourceByKey(this)
+                this.flowHandle?.dataSource
             );
+
+        if (!dynamicSource) {
+            throw new Error("Cannot find sample label data source handle!");
+        }
 
         dynamicSource.updateDynamicData(
             // Make a copy because the state-derived data is immutable
