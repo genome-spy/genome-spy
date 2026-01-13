@@ -9,6 +9,7 @@ import {
     inferColumnSeparator,
     replacePathSeparator,
     inferMetadataTypesForNodes,
+    wrangleMetadata,
 } from "./metadataUtils.js";
 
 describe("buildPathTree", () => {
@@ -560,6 +561,94 @@ describe("replacePathSeparatorInKeys", () => {
         expect(result).toEqual({
             sample: ["s1", "s2"],
             "clinical/age": [30, 25],
+        });
+    });
+});
+
+describe("wrangleMetadata", () => {
+    it("replaces separators and applies group prefixes", () => {
+        const rows = [
+            { sample: "s1", "group.a": 1, "group.b": 2 },
+            { sample: "s2", "group.a": 3, "group.b": 4 },
+        ];
+
+        const attributeDefs = {
+            "group/a": { type: "quantitative" },
+            "group/b": { type: "quantitative" },
+        };
+
+        const result = wrangleMetadata(rows, attributeDefs, ".", "clinical");
+
+        expect(result.columnarMetadata).toEqual({
+            sample: ["s1", "s2"],
+            "clinical/group/a": [1, 3],
+            "clinical/group/b": [2, 4],
+        });
+
+        expect(result.attributeDefs).toEqual({
+            "clinical/group/a": { type: "quantitative" },
+            "clinical/group/b": { type: "quantitative" },
+        });
+    });
+
+    it("replaces separators without grouping", () => {
+        const rows = [
+            { sample: "s1", "clin.age": 30 },
+            { sample: "s2", "clin.age": 25 },
+        ];
+
+        const result = wrangleMetadata(rows, {}, ".");
+
+        expect(result.columnarMetadata).toEqual({
+            sample: ["s1", "s2"],
+            "clin/age": [30, 25],
+        });
+        expect(result.attributeDefs).toEqual({});
+    });
+
+    it("applies group prefixes without separator conversion", () => {
+        const rows = [
+            { sample: "s1", age: 30 },
+            { sample: "s2", age: 25 },
+        ];
+
+        const result = wrangleMetadata(
+            rows,
+            { age: { type: "quantitative" } },
+            null,
+            "clinical"
+        );
+
+        expect(result.columnarMetadata).toEqual({
+            sample: ["s1", "s2"],
+            "clinical/age": [30, 25],
+        });
+        expect(result.attributeDefs).toEqual({
+            "clinical/age": { type: "quantitative" },
+        });
+    });
+
+    it("skips columns marked for exclusion", () => {
+        const rows = [
+            { sample: "s1", a: 1, b: 2 },
+            { sample: "s2", a: 3, b: 4 },
+        ];
+
+        const result = wrangleMetadata(
+            rows,
+            { a: { type: "quantitative" }, b: { type: "quantitative" } },
+            null,
+            null,
+            new Set(["b"])
+        );
+
+        expect(result.columnarMetadata).toEqual({
+            sample: ["s1", "s2"],
+            a: [1, 3],
+        });
+        expect(result.attributeDefs).toEqual({
+            a: { type: "quantitative" },
+            b: { type: "quantitative" },
         });
     });
 });

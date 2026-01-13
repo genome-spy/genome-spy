@@ -15,6 +15,63 @@ import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { wrangleMetadata } from "./metadataUtils.js";
 
+/**
+ * @param {Record<string, any>[]} parsedItems
+ * @param {Set<string>} existingSampleIds
+ * @param {import("./metadataHierarchyConfigurator.js").MetadataConfig} metadataConfig
+ * @returns {import("../state/payloadTypes.js").SetMetadata}
+ */
+export function buildSetMetadataPayload(
+    parsedItems,
+    existingSampleIds,
+    metadataConfig
+) {
+    const filteredMetadata = parsedItems.filter((record) =>
+        existingSampleIds.has(String(record.sample))
+    );
+
+    const nodeKeys = Array.from(
+        metadataConfig.metadataNodeTypes
+            .entries()
+            .filter(([, type]) =>
+                ["nominal", "ordinal", "quantitative"].includes(type)
+            )
+            .map(([key]) => key)
+    );
+
+    const skipColumns = new Set(
+        metadataConfig.metadataNodeTypes
+            .entries()
+            .filter(([, type]) => type === "unset")
+            .map(([key]) => key)
+    );
+
+    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    const attributeDefs = Object.fromEntries(
+        nodeKeys.map((key) => {
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            const def = {
+                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                    metadataConfig.metadataNodeTypes.get(key)
+                ),
+            };
+            const scale = metadataConfig.scales.get(key);
+            if (scale) {
+                def.scale = scale;
+            }
+            return [key, def];
+        })
+    );
+
+    return wrangleMetadata(
+        filteredMetadata,
+        attributeDefs,
+        metadataConfig.separator,
+        metadataConfig.addUnderGroup,
+        skipColumns
+    );
+}
+
 class UploadMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
@@ -84,50 +141,15 @@ class UploadMetadataDialog extends BaseDialog {
     ];
 
     #submit() {
-        const filteredMetadata = this._parsedItems.filter((record) =>
-            this.existingSampleIds.has(String(record.sample))
-        );
-
         const metadataConfig = this.#metadataConfig;
         if (!metadataConfig) {
             throw new Error("Metadata configuration is missing");
         }
 
-        const nodeKeys = Array.from(
-            metadataConfig.metadataNodeTypes
-                .entries()
-                .filter(([, type]) =>
-                    ["nominal", "ordinal", "quantitative"].includes(type)
-                )
-                .map(([key]) => key)
-        );
-
-        const skipColumns = new Set(
-            metadataConfig.metadataNodeTypes
-                .entries()
-                .filter(([, type]) => type == "unset")
-                .map(([key]) => key)
-        );
-
-        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
-        const attributeDefs = Object.fromEntries(
-            nodeKeys.map((key) => [
-                key,
-                {
-                    type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
-                        metadataConfig.metadataNodeTypes.get(key)
-                    ),
-                    scale: metadataConfig.scales.get(key),
-                },
-            ])
-        );
-
-        const columnarMetadata = wrangleMetadata(
-            filteredMetadata,
-            attributeDefs,
-            metadataConfig.separator,
-            metadataConfig.addUnderGroup,
-            skipColumns
+        const columnarMetadata = buildSetMetadataPayload(
+            this._parsedItems,
+            this.existingSampleIds,
+            metadataConfig
         );
 
         this.finish({

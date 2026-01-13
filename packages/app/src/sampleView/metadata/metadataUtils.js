@@ -234,6 +234,8 @@ export function replacePathSeparatorInKeys(
 /**
  * Wrangle row-based metadata into columnar format, optionally replacing
  * path separators in attribute names and placing all attributes under a group.
+ * Also includes attribute definitions (possibly adjusted for new paths).
+ * Returns a payload suitable for the "setMetadata" redux action.
  *
  * @param {Record<string, any>[]} rowMetadata
  * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} [attributeDefs] Attribute definitions with the internal separator
@@ -252,36 +254,24 @@ export function wrangleMetadata(
     // Columnar format is used in "addMetadata" action as it is much more
     // compact in bookmarks and shared urls.
     // Here, in the initial action, that optimization is just nuisance.
-    let columnarMetadata =
-        /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
-            rowsToColumns(rowMetadata, skipColumns)
-        );
+    let columnarMetadata = toColumnarMetadata(rowMetadata, skipColumns);
 
     if (separator != null && typeof separator !== "string") {
         throw new Error("attributeGroupSeparator must be a string");
     }
 
-    if (separator) {
-        columnarMetadata =
-            /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
-                replacePathSeparatorInKeys(
-                    columnarMetadata,
-                    separator,
-                    METADATA_PATH_SEPARATOR,
-                    ["sample"]
-                )
-            );
-    }
+    columnarMetadata = normalizeColumnarKeys(columnarMetadata, separator);
 
     if (placeUnderGroup) {
-        columnarMetadata = placeMetadataUnderGroup(
+        columnarMetadata = applyGroupToColumnarMetadata(
             columnarMetadata,
-            splitPath(placeUnderGroup, separator)
+            placeUnderGroup,
+            separator
         );
-
-        attributeDefs = placeKeysUnderGroup(
+        attributeDefs = applyGroupToAttributeDefs(
             attributeDefs,
-            splitPath(placeUnderGroup, METADATA_PATH_SEPARATOR)
+            placeUnderGroup,
+            separator
         );
     }
 
@@ -292,6 +282,70 @@ export function wrangleMetadata(
     };
 
     return result;
+}
+
+/**
+ * @param {Record<string, any>[]} rowMetadata
+ * @param {Set<string>} [skipColumns]
+ * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
+ */
+export function toColumnarMetadata(rowMetadata, skipColumns = new Set()) {
+    return /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
+        rowsToColumns(rowMetadata, skipColumns)
+    );
+}
+
+/**
+ * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @param {string} [separator]
+ * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
+ */
+export function normalizeColumnarKeys(columnarMetadata, separator) {
+    if (!separator) {
+        return columnarMetadata;
+    }
+
+    return /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
+        replacePathSeparatorInKeys(
+            columnarMetadata,
+            separator,
+            METADATA_PATH_SEPARATOR,
+            ["sample"]
+        )
+    );
+}
+
+/**
+ * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
+ * @param {string} placeUnderGroup
+ * @param {string} [separator]
+ * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
+ */
+export function applyGroupToColumnarMetadata(
+    columnarMetadata,
+    placeUnderGroup,
+    separator
+) {
+    return placeMetadataUnderGroup(
+        columnarMetadata,
+        splitPath(placeUnderGroup, separator)
+    );
+}
+
+/**
+ * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
+ * @param {string} placeUnderGroup
+ * @returns {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>}
+ */
+export function applyGroupToAttributeDefs(
+    attributeDefs,
+    placeUnderGroup,
+    separator
+) {
+    return placeKeysUnderGroup(
+        attributeDefs,
+        splitPath(placeUnderGroup, separator)
+    );
 }
 
 /**
@@ -430,7 +484,12 @@ export function computeAttributeDefs(
         let ancestorType = null;
 
         if (separator != null) {
-            const node = pathMap.get(attributeName);
+            const internalPath = replacePathSeparator(
+                attributeName,
+                separator,
+                METADATA_PATH_SEPARATOR
+            );
+            const node = pathMap.get(internalPath);
             let ancestor = node?.parent;
             while (ancestor) {
                 ancestorType = attributeDefs[ancestor.path]?.type;

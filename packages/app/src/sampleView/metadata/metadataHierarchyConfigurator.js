@@ -231,12 +231,14 @@ export default class MetadataHierarchyConfigurator extends LitElement {
     /** @param {Event & { target: HTMLInputElement }} e */
     #onGroupInput(e) {
         this.addUnderGroup = e.target.value.trim();
+        this.#emitConfig();
     }
 
     /** @param {Event & { target: HTMLInputElement }} e */
     #onSeparatorInput(e) {
         this.separator = e.target.value;
         this._separatorManuallySet = true;
+        this.#emitConfig();
     }
 
     /** @param {PathTreeNode} node */
@@ -476,8 +478,8 @@ export default class MetadataHierarchyConfigurator extends LitElement {
      */
     getConfig() {
         return {
-            separator: this.separator ?? null,
-            addUnderGroup: this.addUnderGroup ?? null,
+            separator: this.separator ? this.separator : null,
+            addUnderGroup: this.addUnderGroup ? this.addUnderGroup : null,
             scales: new Map(
                 this._scales
                     .entries()

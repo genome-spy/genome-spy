@@ -44,7 +44,11 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
-import { wrangleMetadata } from "./metadata/metadataUtils.js";
+import {
+    METADATA_PATH_SEPARATOR,
+    replacePathSeparatorInKeys,
+    wrangleMetadata,
+} from "./metadata/metadataUtils.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -426,10 +430,20 @@ export default class SampleView extends ContainerView {
                     ...r.attributes,
                 }));
 
+                const attributeSeparator =
+                    this.spec.samples.attributeGroupSeparator;
+                const attributeDefs = attributeSeparator
+                    ? replacePathSeparatorInKeys(
+                          this.spec.samples.attributes ?? {},
+                          attributeSeparator,
+                          METADATA_PATH_SEPARATOR
+                      )
+                    : this.spec.samples.attributes;
+
                 const setMetadata = wrangleMetadata(
                     rowMetadata,
-                    this.spec.samples.attributes,
-                    this.spec.samples.attributeGroupSeparator
+                    attributeDefs,
+                    attributeSeparator
                 );
 
                 // Clear history, since if initial metadata is being set, it

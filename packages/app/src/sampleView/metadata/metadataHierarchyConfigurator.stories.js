@@ -54,10 +54,37 @@ const records = parseCsv(csv);
 
 export const Basic = {
     render: () => html`
-        <div style="max-width:700px">
+        <div style="max-width:900px">
             <gs-metadata-hierarchy-configurator
                 .metadataRecords=${records}
+                @metadata-config-change=${(
+                    /** @type {CustomEvent} */ event
+                ) => {
+                    const output = document.getElementById("config-output");
+                    const detail =
+                        /** @type {import("./metadataHierarchyConfigurator.js").MetadataConfig} */ (
+                            event.detail
+                        );
+                    const payload = {
+                        separator: detail.separator,
+                        addUnderGroup: detail.addUnderGroup,
+                        scales: Object.fromEntries(
+                            Array.from(detail.scales.entries())
+                        ),
+                        metadataNodeTypes: Object.fromEntries(
+                            Array.from(detail.metadataNodeTypes.entries())
+                        ),
+                    };
+                    output.textContent = JSON.stringify(payload, null, 2);
+                }}
             ></gs-metadata-hierarchy-configurator>
+            <div style="margin-top:1em;">
+                <label>Emitted payload</label>
+                <pre
+                    id="config-output"
+                    style="padding:0.75em;border:1px solid #ddd;background:#f8f8f8;border-radius:6px;white-space:pre-wrap;"
+                ></pre>
+            </div>
         </div>
     `,
 };
