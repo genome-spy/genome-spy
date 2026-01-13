@@ -59,6 +59,11 @@ export class MetadataView extends ConcatView {
     #viewToAttribute = new WeakMap();
 
     /**
+     * @type {(identifier: import("../types.js").AttributeIdentifier) => import("../types.js").AttributeInfo}
+     */
+    #attributeInfoSource;
+
+    /**
      * @type {import("@genome-spy/core/view/view.js").default}
      */
     #highlightTarget;
@@ -101,12 +106,12 @@ export class MetadataView extends ConcatView {
             abortController: new AbortController(),
         };
 
+        this.#attributeInfoSource = (attribute) =>
+            this.getAttributeInfo(/** @type {string} */ (attribute.specifier));
+
         this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
-            (attribute) =>
-                this.getAttributeInfo(
-                    /** @type {string} */ (attribute.specifier)
-                )
+            this.#attributeInfoSource
         );
 
         this.#unsubscribe = subscribeTo(
@@ -623,6 +628,10 @@ export class MetadataView extends ConcatView {
     dispose() {
         super.dispose();
         this.#unsubscribe();
+        this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
+            SAMPLE_ATTRIBUTE,
+            this.#attributeInfoSource
+        );
         this.#highlightTarget.removeInteractionEventListener(
             "mousemove",
             this.#highlightTargetListener

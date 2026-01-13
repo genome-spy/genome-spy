@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
+import CompositeAttributeInfoSource from "../compositeAttributeInfoSource.js";
 
 vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
 
@@ -24,7 +25,7 @@ vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
  * @typedef {import("@genome-spy/core/view/concatView.js").default & {
  *   spec: { samples: import("@genome-spy/core/spec/sampleView.js").SampleDef },
  *   sampleHierarchy: SampleHierarchyStub,
- *   compositeAttributeInfoSource: { addAttributeInfoSource: (name: string, resolver: (attribute: any) => any) => void },
+ *   compositeAttributeInfoSource: { addAttributeInfoSource: (name: string, resolver: (attribute: any) => any) => void, removeAttributeInfoSource: (name: string, resolver?: (attribute: any) => any) => void, attributeInfoSourcesByType: Record<string, any> },
  *   provenance: { store: StoreStub, getPresentState: () => any },
  *   locationManager: { clipBySummary: (coords: import("@genome-spy/core/view/layout/rectangle.js").default) => import("@genome-spy/core/view/layout/rectangle.js").default },
  *   findSampleForMouseEvent: (coords: import("@genome-spy/core/view/layout/rectangle.js").default, event: any) => any,
@@ -70,9 +71,7 @@ function createSampleView(context, store, sampleHierarchy) {
 
     view.spec = { samples: {} };
     view.sampleHierarchy = sampleHierarchy;
-    view.compositeAttributeInfoSource = {
-        addAttributeInfoSource: () => undefined,
-    };
+    view.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
     view.provenance = {
         store,
         getPresentState: () => ({}),
@@ -157,6 +156,10 @@ describe("MetadataView", () => {
         const sampleView = createSampleView(context, store, sampleHierarchy);
         const metadataView = new MetadataView(sampleView, sampleView);
         expect(store.getListenerCount()).toBe(1);
+        expect(
+            sampleView.compositeAttributeInfoSource.attributeInfoSourcesByType
+                .SAMPLE_ATTRIBUTE
+        ).toBeDefined();
 
         const getFlowSnapshot = () => ({
             dataSources: dataFlow._dataSourcesByHost.size,
@@ -236,5 +239,9 @@ describe("MetadataView", () => {
 
         metadataView.dispose();
         expect(store.getListenerCount()).toBe(0);
+        expect(
+            sampleView.compositeAttributeInfoSource.attributeInfoSourcesByType
+                .SAMPLE_ATTRIBUTE
+        ).toBeUndefined();
     });
 });

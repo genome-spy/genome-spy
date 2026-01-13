@@ -24,6 +24,21 @@ export default class CompositeAttributeInfoSource {
     }
 
     /**
+     * @param {string} type
+     * @param {AttributeInfoSource} [attributeInfoSource]
+     */
+    removeAttributeInfoSource(type, attributeInfoSource) {
+        if (
+            attributeInfoSource &&
+            this.attributeInfoSourcesByType[type] !== attributeInfoSource
+        ) {
+            return;
+        }
+
+        delete this.attributeInfoSourcesByType[type];
+    }
+
+    /**
      *
      * @param {AttributeIdentifier} attribute
      */
