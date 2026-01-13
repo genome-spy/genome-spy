@@ -119,7 +119,7 @@ export default class GridView extends ContainerView {
      */
     setChildren(views) {
         for (const gridChild of this.#children) {
-            gridChild.view.disposeSubtree();
+            this.#disposeGridChild(gridChild);
         }
         this.#children = [];
         for (const view of views) {
@@ -136,7 +136,7 @@ export default class GridView extends ContainerView {
             (gridChild) => gridChild.view == child
         );
         if (i >= 0) {
-            child.disposeSubtree();
+            this.#disposeGridChild(this.#children[i]);
             this.#children[i] = new GridChild(
                 replacement,
                 this,
@@ -144,6 +144,15 @@ export default class GridView extends ContainerView {
             );
         } else {
             throw new Error("Not my child view!");
+        }
+    }
+
+    /**
+     * @param {GridChild} gridChild
+     */
+    #disposeGridChild(gridChild) {
+        for (const view of gridChild.getChildren()) {
+            view.disposeSubtree();
         }
     }
 
