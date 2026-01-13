@@ -82,6 +82,12 @@ export default class SampleView extends ContainerView {
     /** @type {(param: any) => void} */
     #sampleHeightParam;
 
+    /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
+    #actionAugmenter;
+
+    /** @type {() => void} */
+    #unsubscribe = () => undefined;
+
     /**
      *
      * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
@@ -243,8 +249,7 @@ export default class SampleView extends ContainerView {
         this.intentExecutor = intentExecutor;
 
         // Attach an augmenter that enriches actions with attribute info when applicable
-        // TODO: Should be unregistered when the view is disposed
-        intentExecutor.addActionAugmenter((action) => {
+        this.#actionAugmenter = (action) => {
             const getAttributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo.bind(
                     this.compositeAttributeInfoSource
@@ -254,14 +259,15 @@ export default class SampleView extends ContainerView {
                 this.sampleHierarchy,
                 getAttributeInfo
             );
-        });
+        };
+        intentExecutor.addActionAugmenter(this.#actionAugmenter);
     }
 
     /**
      * Setup subscriptions for provenance-driven updates.
      */
     #setupStoreSubscriptions() {
-        subscribeTo(
+        this.#unsubscribe = subscribeTo(
             this.provenance.store,
             () => this.sampleHierarchy.rootGroup,
             withMicrotask(() => {
@@ -969,6 +975,15 @@ export default class SampleView extends ContainerView {
      */
     dispatchAttributeAction(action) {
         this.intentExecutor.dispatch(action);
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.#unsubscribe();
+        this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }
 }
 
