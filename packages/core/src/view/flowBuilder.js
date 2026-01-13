@@ -24,7 +24,7 @@ import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
 
 /**
  * @param {View} root
- * @param {DataFlow<View>} [existingFlow] Add data flow
+ * @param {DataFlow} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
  */
 export function buildDataFlow(root, existingFlow) {
@@ -41,7 +41,7 @@ export function buildDataFlow(root, existingFlow) {
     /** @type {FlowNode} */
     let currentNode;
 
-    /** @type {DataFlow<View>} */
+    /** @type {DataFlow} */
     const dataFlow = existingFlow ?? new DataFlow();
 
     /** @type {(function():void)[]} */

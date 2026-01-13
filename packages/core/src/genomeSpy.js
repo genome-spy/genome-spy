@@ -595,7 +595,9 @@ export default class GenomeSpy {
         for (const view of unitViews) {
             flow.addObserver(
                 view.flowHandle.collector,
-                (collector) => {
+                (
+                    /** @type {import("./data/collector.js").default} */ _collector
+                ) => {
                     view.mark.initializeData();
                     try {
                         // Update WebGL buffers
@@ -619,7 +621,11 @@ export default class GenomeSpy {
         // Find all data sources and initiate loading
         flow.initialize();
         await Promise.all(
-            flow.dataSources.map((dataSource) => dataSource.load())
+            flow.dataSources.map(
+                (
+                    /** @type {import("./data/sources/dataSource.js").default} */ dataSource
+                ) => dataSource.load()
+            )
         );
 
         // Now that all data have been loaded, the domains may need adjusting

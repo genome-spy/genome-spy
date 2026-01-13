@@ -4,7 +4,7 @@ import { optimizeDataFlow } from "./flowOptimizer.js";
 
 /**
  * @param {import("../view/view.js").default} root
- * @param {import("./dataFlow.js").default<import("../view/view.js").default>} [existingFlow]
+ * @param {import("./dataFlow.js").default} [existingFlow]
  */
 export async function initializeData(root, existingFlow) {
     const flow = buildDataFlow(root, existingFlow);
@@ -13,7 +13,10 @@ export async function initializeData(root, existingFlow) {
     flow.initialize();
 
     /** @type {Promise<void>[]} */
-    const promises = flow.dataSources.map((dataSource) => dataSource.load());
+    const promises = flow.dataSources.map(
+        (/** @type {import("./sources/dataSource.js").default} */ dataSource) =>
+            dataSource.load()
+    );
 
     await Promise.all(promises);
 
@@ -44,9 +47,9 @@ export function syncFlowHandles(root, canonicalBySource) {
  * Initializes data flow and marks for a subtree without reinitializing the whole view tree.
  *
  * @param {import("../view/view.js").default} root
- * @param {import("./dataFlow.js").default<import("../view/view.js").default>} flow
+ * @param {import("./dataFlow.js").default} flow
  * @returns {{
- *     dataFlow: import("./dataFlow.js").default<import("../view/view.js").default>,
+ *     dataFlow: import("./dataFlow.js").default,
  *     unitViews: UnitView[],
  *     dataSources: Set<import("./sources/dataSource.js").default>,
  *     graphicsPromises: Promise<import("../marks/mark.js").default>[]
@@ -90,7 +93,7 @@ export function initializeSubtree(root, flow) {
 
         flow.addObserver(
             view.flowHandle.collector,
-            (collector) => {
+            (/** @type {import("./collector.js").default} */ _collector) => {
                 mark.initializeData(); // does faceting
                 mark.updateGraphicsData();
             },

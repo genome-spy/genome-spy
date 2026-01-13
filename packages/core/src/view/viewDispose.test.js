@@ -17,7 +17,9 @@ class DisposableView extends View {
      * @param {import("./view.js").default} dataParent
      */
     constructor(name, context, layoutParent, dataParent) {
-        super({ name }, context, layoutParent, dataParent, name);
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = { name, layer: [] };
+        super(spec, context, layoutParent, dataParent, name);
     }
 
     dispose() {

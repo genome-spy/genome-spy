@@ -468,6 +468,7 @@ export function validateParameterName(name) {
 export function makeConstantExprRef(value) {
     return Object.assign(() => value, {
         addListener: () => /** @type {void} */ (undefined),
+        removeListener: () => /** @type {void} */ (undefined),
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",
         fields: [],

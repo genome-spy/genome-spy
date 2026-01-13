@@ -64,7 +64,7 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
-     * @typedef {import("@genome-spy/core/data/dataFlow.js").default<View>} DataFlow
+     * @typedef {import("@genome-spy/core/data/dataFlow.js").default} DataFlow
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
      */
 

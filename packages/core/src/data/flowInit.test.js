@@ -12,7 +12,7 @@ describe("flowInit", () => {
         context.addBroadcastListener = () => undefined;
         context.removeBroadcastListener = () => undefined;
 
-        /** @type {import("../spec/view.js").ConcatSpec} */
+        /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
             hconcat: [
                 {
@@ -38,15 +38,18 @@ describe("flowInit", () => {
         const canonicalBySource = optimizeDataFlow(flow);
         syncFlowHandles(root, canonicalBySource);
 
-        const left = root.children[0];
-        const right = root.children[1];
+        const concatRoot =
+            /** @type {import("../view/concatView.js").default} */ (root);
+        const left = concatRoot.children[0];
+        const right = concatRoot.children[1];
 
         expect(left.flowHandle.dataSource).toBeDefined();
         expect(right.flowHandle.dataSource).toBeDefined();
         expect(left.flowHandle.dataSource).toBe(right.flowHandle.dataSource);
 
         const sharedSources = flow.dataSources.filter(
-            (source) => source.identifier === "shared"
+            (/** @type {import("./sources/dataSource.js").default} */ source) =>
+                source.identifier === "shared"
         );
         expect(sharedSources).toEqual([left.flowHandle.dataSource]);
     });

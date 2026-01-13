@@ -82,7 +82,7 @@ export function combineAndPullCollectorsUp() {
 //      --F--G
 
 /**
- * @param {import("./dataFlow.js").default<any>} dataFlow
+ * @param {import("./dataFlow.js").default} dataFlow
  * @returns {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>}
  */
 export function combineIdenticalDataSources(dataFlow) {
@@ -135,7 +135,7 @@ export function optimizeFlowGraph(root) {
 }
 
 /**
- * @param {import("./dataFlow.js").default<any>} dataFlow
+ * @param {import("./dataFlow.js").default} dataFlow
  * @returns {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>}
  */
 export function optimizeDataFlow(dataFlow) {

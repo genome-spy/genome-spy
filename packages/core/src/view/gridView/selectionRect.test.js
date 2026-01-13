@@ -35,25 +35,43 @@ describe("SelectionRect", () => {
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
+        /** @type {(listener: () => void) => void} */
+        const addListener = () => undefined;
+        /** @type {(listener: () => void) => void} */
+        const removeListener = () => undefined;
+        /** @type {() => void} */
+        const invalidate = () => undefined;
+
         /** @type {import("../paramMediator.js").ExprRefFunction} */
         const selectionExpr = Object.assign(() => selection, {
-            addListener: () => undefined,
-            removeListener: () => undefined,
+            addListener,
+            removeListener,
+            invalidate,
+            identifier: () => "selection",
+            fields: [],
+            globals: [],
+            code: "selection",
         });
 
-        const gridChild = {
-            layoutParent: parent,
-            view: unitView,
-        };
+        const gridChild = /** @type {import("./gridChild.js").default} */ (
+            /** @type {unknown} */ ({
+                layoutParent: parent,
+                view: unitView,
+            })
+        );
 
         const selectionRect = new SelectionRect(gridChild, selectionExpr);
 
         const flow = buildDataFlow(selectionRect, context.dataFlow);
         syncFlowHandles(selectionRect, optimizeDataFlow(flow));
 
-        const dataSource = selectionRect.flowHandle?.dataSource;
+        const dataSource =
+            /** @type {import("../../data/sources/inlineSource.js").default} */ (
+                selectionRect.flowHandle?.dataSource
+            );
         expect(dataSource).toBeDefined();
 
+        // Selection updates should push new interval data to the inline source.
         const updateSpy = vi.spyOn(dataSource, "updateDynamicData");
         selection = {
             intervals: { x: [5, 6], y: [7, 8] },

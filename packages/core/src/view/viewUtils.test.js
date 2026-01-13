@@ -8,7 +8,7 @@ describe("initializeSubtree", () => {
     test("initializes data flow for a subtree only", async () => {
         const context = createTestViewContext();
 
-        /** @type {import("../spec/view.js").ConcatSpec} */
+        /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
             hconcat: [
                 {
@@ -33,8 +33,11 @@ describe("initializeSubtree", () => {
         };
 
         const root = await context.createOrImportView(spec, null, null, "root");
-        const child = root.children[0];
-        const otherChild = root.children[1];
+        const concatRoot = /** @type {import("./concatView.js").default} */ (
+            root
+        );
+        const child = concatRoot.children[0];
+        const otherChild = concatRoot.children[1];
 
         const { dataSources, graphicsPromises, unitViews } = initializeSubtree(
             child,
@@ -52,8 +55,16 @@ describe("initializeSubtree", () => {
 
 describe("finalizeSubtreeGraphics", () => {
     test("finalizes marks when allowed", async () => {
-        const markA = { finalizeGraphicsInitialization: vi.fn() };
-        const markB = { finalizeGraphicsInitialization: vi.fn() };
+        const markA = /** @type {import("../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                finalizeGraphicsInitialization: vi.fn(),
+            })
+        );
+        const markB = /** @type {import("../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                finalizeGraphicsInitialization: vi.fn(),
+            })
+        );
 
         await finalizeSubtreeGraphics([
             Promise.resolve(markA),
@@ -65,7 +76,11 @@ describe("finalizeSubtreeGraphics", () => {
     });
 
     test("skips finalization when predicate is false", async () => {
-        const mark = { finalizeGraphicsInitialization: vi.fn() };
+        const mark = /** @type {import("../marks/mark.js").default} */ (
+            /** @type {unknown} */ ({
+                finalizeGraphicsInitialization: vi.fn(),
+            })
+        );
 
         await finalizeSubtreeGraphics([Promise.resolve(mark)], () => false);
 
