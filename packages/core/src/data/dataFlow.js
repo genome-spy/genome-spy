@@ -69,14 +69,6 @@ export default class DataFlow {
 
     /**
      *
-     * @param {H} key
-     */
-    findDataSourceByKey(key) {
-        return this._dataSourcesByHost.get(key);
-    }
-
-    /**
-     *
      * @param {string} name
      */
     findNamedDataSource(name) {
@@ -123,14 +115,6 @@ export default class DataFlow {
             this._relayObserverCallback(c, key);
         this._collectorObserverByHost.set(key, observer);
         collector.observers.push(observer);
-    }
-
-    /**
-     *
-     * @param {H} key
-     */
-    findCollectorByKey(key) {
-        return this._collectorsByHost.get(key);
     }
 
     /**

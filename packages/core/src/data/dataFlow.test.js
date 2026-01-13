@@ -21,14 +21,14 @@ describe("DataFlow", () => {
             called = true;
         }, "c");
 
-        expect(flow.findDataSourceByKey("a")).toBe(sourceA);
-        expect(flow.findCollectorByKey("c")).toBe(collector);
+        expect(flow._dataSourcesByHost.get("a")).toBe(sourceA);
+        expect(flow._collectorsByHost.get("c")).toBe(collector);
         expect(collector.observers.length).toBe(1);
 
         flow.removeHosts(["a", "c"]);
 
-        expect(flow.findDataSourceByKey("a")).toBeUndefined();
-        expect(flow.findCollectorByKey("c")).toBeUndefined();
+        expect(flow._dataSourcesByHost.get("a")).toBeUndefined();
+        expect(flow._collectorsByHost.get("c")).toBeUndefined();
 
         expect(collector.observers.length).toBe(0);
         expect(called).toBe(false);
