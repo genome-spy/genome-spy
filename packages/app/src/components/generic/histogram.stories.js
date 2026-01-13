@@ -36,7 +36,7 @@ function normalDataset(n = 100, mean = 0, sd = 1) {
 }
 
 export const Basic = {
-    render: (args) => html`
+    render: (/** @type {any} */ args) => html`
         <gs-histogram
             .values=${normalDataset(args.count, args.mean, args.sd)}
             .binCount=${args.binCount}
@@ -47,7 +47,7 @@ export const Basic = {
 };
 
 export const WithThresholds = {
-    render: (args) => html`
+    render: (/** @type {any} */ args) => html`
         <gs-histogram
             .values=${normalDataset(args.count, args.mean, args.sd)}
             .thresholds=${[-1, 1]}

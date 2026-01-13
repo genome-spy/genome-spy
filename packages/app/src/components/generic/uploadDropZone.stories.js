@@ -61,7 +61,10 @@ if (!customElements.get("gs-upload-drop-zone-demo")) {
                 </div>
             `;
 
-            const dropZone = this._root.querySelector("gs-upload-drop-zone");
+            const dropZone =
+                /** @type {import("./uploadDropZone.js").default} */ (
+                    this._root.querySelector("gs-upload-drop-zone")
+                );
             const out = this._root.querySelector("#files");
 
             dropZone.dropText = dropText;
@@ -73,7 +76,7 @@ if (!customElements.get("gs-upload-drop-zone-demo")) {
                 "gs-files-chosen",
                 this._onFilesChosen
             );
-            this._onFilesChosen = (e) => {
+            this._onFilesChosen = (/** @type {CustomEvent} */ e) => {
                 const files = e.detail.files;
                 const names = [];
                 for (let i = 0; i < files.length; i++)
@@ -88,7 +91,7 @@ if (!customElements.get("gs-upload-drop-zone-demo")) {
 }
 
 export const Basic = {
-    render: (args) => html`
+    render: (/** @type {any} */ args) => html`
         <gs-upload-drop-zone-demo
             accept=${args.accept}
             ?multiple=${args.multiple}
@@ -100,7 +103,7 @@ export const Basic = {
 };
 
 export const AcceptCsv = {
-    render: (args) => html`
+    render: (/** @type {any} */ args) => html`
         <gs-upload-drop-zone-demo
             accept=".csv,text/csv"
             ?multiple=${false}

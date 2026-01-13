@@ -22,7 +22,7 @@ export default {
 };
 
 export const Inline = {
-    render: (args) => html`
+    render: (/** @type {any} */ args) => html`
         <gs-message-dialog
             .dialogTitle=${args.title}
             .message=${args.message}
