@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { createTestViewContext } from "./testUtils.js";
-import { finalizeSubtreeGraphics, initializeSubtree } from "./viewUtils.js";
+import { finalizeSubtreeGraphics } from "./viewUtils.js";
+import { initializeSubtree } from "../data/flowInit.js";
 
 describe("initializeSubtree", () => {
     test("initializes data flow for a subtree only", async () => {

@@ -10,8 +10,8 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
-    syncFlowHandles,
 } from "./view/viewUtils.js";
+import { syncFlowHandles } from "./data/flowInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, {

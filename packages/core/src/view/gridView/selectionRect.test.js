@@ -6,7 +6,7 @@ import SelectionRect from "./selectionRect.js";
 import { createTestViewContext } from "../testUtils.js";
 import { buildDataFlow } from "../flowBuilder.js";
 import { optimizeDataFlow } from "../../data/flowOptimizer.js";
-import { syncFlowHandles } from "../viewUtils.js";
+import { syncFlowHandles } from "../../data/flowInit.js";
 
 describe("SelectionRect", () => {
     it("uses flow handles for dynamic data updates", () => {

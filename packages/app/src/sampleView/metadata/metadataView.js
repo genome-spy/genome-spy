@@ -17,8 +17,8 @@ import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
-    initializeSubtree,
 } from "@genome-spy/core/view/viewUtils.js";
+import { initializeSubtree } from "@genome-spy/core/data/flowInit.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
