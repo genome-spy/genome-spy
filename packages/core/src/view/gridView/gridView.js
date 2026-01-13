@@ -133,6 +133,7 @@ export default class GridView extends ContainerView {
             (gridChild) => gridChild.view == child
         );
         if (i >= 0) {
+            child.disposeSubtree();
             this.#children[i] = new GridChild(
                 replacement,
                 this,

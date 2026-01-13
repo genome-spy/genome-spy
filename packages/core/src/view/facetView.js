@@ -129,6 +129,7 @@ export default class FacetView extends ContainerView {
             throw new Error("Not my child!");
         }
 
+        child.disposeSubtree();
         this.child = /** @type {UnitView | LayerView | DecoratorView} */ (
             replacement
         );
