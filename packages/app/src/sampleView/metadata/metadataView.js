@@ -5,7 +5,6 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
-import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
 import {
     NOMINAL,
     ORDINAL,
@@ -15,7 +14,10 @@ import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
-import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import {
+    checkForDuplicateScaleNames,
+    initializeSubtree,
+} from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
@@ -274,15 +276,7 @@ export class MetadataView extends ConcatView {
 
         this.#createViews();
 
-        buildDataFlow(this, flow);
-
-        const subtreeViews = this.getDescendants();
-        const uniqueDataSources = new Set(
-            flow.getDataSourcesForHosts(subtreeViews)
-        );
-        for (const dataSource of uniqueDataSources) {
-            dataSource.visit((node) => node.initialize());
-        }
+        const { dataSources, graphicsPromises } = initializeSubtree(this, flow);
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
@@ -293,23 +287,7 @@ export class MetadataView extends ConcatView {
             throw new Error("Cannot find metadata data source!");
         }
 
-        /** @type {Promise<import("@genome-spy/core/marks/mark.js").default>[]} */
-        const promises = [];
-
-        this.visit((view) => {
-            if (view instanceof UnitView) {
-                const mark = view.mark;
-                mark.initializeEncoders();
-                promises.push(mark.initializeGraphics().then((result) => mark));
-
-                flow.addObserver((collector) => {
-                    mark.initializeData(); // does faceting
-                    mark.updateGraphicsData();
-                }, view);
-            }
-        });
-
-        Promise.allSettled(promises).then((results) => {
+        Promise.allSettled(graphicsPromises).then((results) => {
             if (metadataGeneration !== this.#metadataGeneration) {
                 return;
             }
@@ -342,7 +320,7 @@ export class MetadataView extends ConcatView {
 
         dynamicSource.updateDynamicData(metadataTable);
 
-        for (const dataSource of uniqueDataSources) {
+        for (const dataSource of dataSources) {
             if (dataSource !== dynamicSource) {
                 dataSource.load();
             }

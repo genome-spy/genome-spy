@@ -111,6 +111,52 @@ export async function initializeData(root, existingFlow) {
 }
 
 /**
+ * Initializes data flow and marks for a subtree without reinitializing the whole view tree.
+ *
+ * @param {View} root
+ * @param {import("../data/dataFlow.js").default<View>} flow
+ * @returns {{
+ *     dataFlow: import("../data/dataFlow.js").default<View>,
+ *     unitViews: UnitView[],
+ *     dataSources: Set<import("../data/sources/dataSource.js").default>,
+ *     graphicsPromises: Promise<import("../marks/mark.js").default>[]
+ * }}
+ */
+export function initializeSubtree(root, flow) {
+    const dataFlow = buildDataFlow(root, flow);
+    const subtreeViews = root.getDescendants();
+    const dataSources = new Set(flow.getDataSourcesForHosts(subtreeViews));
+
+    for (const dataSource of dataSources) {
+        dataSource.visit((node) => node.initialize());
+    }
+
+    /** @type {UnitView[]} */
+    const unitViews = subtreeViews.filter((view) => view instanceof UnitView);
+
+    /** @type {Promise<import("../marks/mark.js").default>[]} */
+    const graphicsPromises = [];
+
+    for (const view of unitViews) {
+        const mark = view.mark;
+        mark.initializeEncoders();
+        graphicsPromises.push(mark.initializeGraphics().then(() => mark));
+
+        flow.addObserver((collector) => {
+            mark.initializeData(); // does faceting
+            mark.updateGraphicsData();
+        }, view);
+    }
+
+    return {
+        dataFlow,
+        unitViews,
+        dataSources,
+        graphicsPromises,
+    };
+}
+
+/**
  *
  * @param {View} view
  */
