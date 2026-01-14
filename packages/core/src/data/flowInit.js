@@ -4,6 +4,36 @@ import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
 import { reconfigureScales } from "../view/scaleResolution.js";
 
+/** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
+const inFlightLoads = new WeakMap();
+
+/**
+ * Deduplicate concurrent loads for shared sources without changing propagation.
+ *
+ * Data sources still propagate rows immediately during `load()`/`loadSynchronously`
+ * and do not retain data. This helper only prevents overlapping `load()` calls
+ * from running twice; collectors remain the sole in-memory cache. Once the load
+ * promise settles, the source may be loaded again later as usual.
+ *
+ * @param {import("./sources/dataSource.js").default} dataSource
+ * @returns {Promise<void>}
+ */
+function loadDataSourceOnce(dataSource) {
+    const existing = inFlightLoads.get(dataSource);
+    if (existing) {
+        return existing;
+    }
+
+    const loadPromise = Promise.resolve()
+        .then(() => dataSource.load())
+        .finally(() => {
+            inFlightLoads.delete(dataSource);
+        });
+
+    inFlightLoads.set(dataSource, loadPromise);
+    return loadPromise;
+}
+
 /**
  * @param {import("../view/view.js").default} root
  * @param {import("./dataFlow.js").default} [existingFlow]
@@ -76,7 +106,7 @@ export function syncFlowHandles(root, canonicalBySource) {
  * - loadViewSubtreeData emits a subtree-scoped "subtreeDataReady" broadcast
  *
  * TODO:
- * - add a load-state/cache so shared canonical sources load once
+ * - promote in-flight load caching to a persistent load-state per source
  * - replace global dataLoaded usage with subtree-scoped readiness
  * - integrate with async font readiness for text marks
  * - unify observer wiring via a disposable registry across view types
@@ -202,7 +232,9 @@ export function loadViewSubtreeData(
     dataSources = collectNearestViewSubtreeDataSources(subtreeRoot)
 ) {
     return Promise.all(
-        Array.from(dataSources).map((dataSource) => dataSource.load())
+        Array.from(dataSources).map((dataSource) =>
+            loadDataSourceOnce(dataSource)
+        )
     ).then((results) => {
         reconfigureScales(subtreeRoot);
         broadcastSubtreeDataReady(subtreeRoot);
