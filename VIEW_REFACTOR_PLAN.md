@@ -43,6 +43,11 @@ without requiring a full rebuild or relying on a global registry.
 - Follow the same lifecycle: build subtree -> initializeViewSubtree -> attach ->
   dispose old subtree.
 - Keep metadata/sidebar out of sample-extraction readiness checks.
+- Add incremental child management for concat/grid layouts:
+  - `appendChildView` / `removeChildView` on `GridView`.
+  - `addChildSpec` (or similar) on `ConcatView` that does create-or-import +
+    append + axes/decoration wiring.
+  - Ensure late-added children get axis/title decorations without full rebuild.
 
 3) Scale reconfiguration wiring
 - Decide whether `updateNamedData` should trigger subtree-level reconfigure.

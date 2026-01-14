@@ -433,7 +433,11 @@ export default class UnitView extends View {
      * @param {Channel} channel
      */
     getDataAccessor(channel) {
-        return this.mark.encoders[channel]?.dataAccessor;
+        const encoders = this.mark.encoders;
+        if (!encoders) {
+            return undefined;
+        }
+        return encoders[channel]?.dataAccessor;
     }
 
     /**

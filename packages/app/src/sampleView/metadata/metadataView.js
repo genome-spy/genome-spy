@@ -111,7 +111,7 @@ export class MetadataView extends ConcatView {
                 this.#sampleView.provenance.store,
                 (state) => state.provenance.present.sampleView.sampleMetadata,
                 (sampleMetadata) => {
-                    this.#setMetadata(sampleMetadata);
+                    void this.#setMetadata(sampleMetadata);
                 }
             )
         );
@@ -294,7 +294,7 @@ export class MetadataView extends ConcatView {
     /**
      * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
      */
-    #setMetadata(sampleMetadata) {
+    async #setMetadata(sampleMetadata) {
         this.#metadata = sampleMetadata.entities;
 
         const flow = this.context.dataFlow;
@@ -302,6 +302,7 @@ export class MetadataView extends ConcatView {
         const metadataGeneration = ++this.#metadataGeneration;
 
         this.#createViews();
+        await this.createAxes();
 
         const { graphicsPromises } = initializeViewSubtree(this, flow);
         const dynamicSource =
@@ -338,7 +339,7 @@ export class MetadataView extends ConcatView {
         // Load all subtree sources so that decorations (titles, axes) are ready.
         const dataSources = collectViewSubtreeDataSources(this);
         dataSources.delete(dynamicSource);
-        loadViewSubtreeData(this, dataSources);
+        await loadViewSubtreeData(this, dataSources);
 
         this.context.requestLayoutReflow();
     }
