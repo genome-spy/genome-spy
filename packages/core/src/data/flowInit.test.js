@@ -308,4 +308,32 @@ describe("flowInit", () => {
             true
         );
     });
+
+    test("loadViewSubtreeData emits subtree data ready broadcast", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        let calls = 0;
+        root._addBroadcastHandler("subtreeDataReady", (message) => {
+            calls += 1;
+            expect(message.payload.subtreeRoot).toBe(root);
+        });
+
+        await loadViewSubtreeData(root);
+
+        expect(calls).toBe(1);
+    });
 });

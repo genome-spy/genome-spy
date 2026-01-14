@@ -43,7 +43,7 @@ import { createFramebufferInfo } from "twgl.js";
 
 /**
  * Events that are broadcasted to all views.
- * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed"} BroadcastEventType
+ * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
  */
 
 vegaFormats("fasta", fasta);

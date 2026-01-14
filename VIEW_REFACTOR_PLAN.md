@@ -53,6 +53,8 @@ without requiring a full rebuild or relying on a global registry.
   does not require per-class listener fields.
 - Added subtree data-ready helpers (`collectNearestViewSubtreeDataSources`,
   `loadViewSubtreeData`) and tests for nested source boundaries.
+- `loadViewSubtreeData` now emits a subtree-scoped "subtreeDataReady" broadcast;
+  sample view listens to it for sample extraction.
 - Metadata rebuild uses subtree source collection to ensure decorations such as
   titles/axes are loaded along with primary data sources.
 - Metadata rebuild now uses subtree init and removes old dataflow hosts before

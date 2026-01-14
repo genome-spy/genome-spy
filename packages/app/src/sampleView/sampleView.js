@@ -160,6 +160,18 @@ export default class SampleView extends ContainerView {
         this._addBroadcastHandler("dataLoaded", () =>
             this.#extractSamplesFromData()
         );
+        this._addBroadcastHandler("subtreeDataReady", (message) => {
+            if (!message.payload || !("subtreeRoot" in message.payload)) {
+                return;
+            }
+            const subtreeRoot = message.payload.subtreeRoot;
+            if (
+                subtreeRoot === this ||
+                subtreeRoot.getDataAncestors().includes(this)
+            ) {
+                this.#extractSamplesFromData();
+            }
+        });
         this._addBroadcastHandler("layout", () => {
             this.locationManager.resetLocations();
         });

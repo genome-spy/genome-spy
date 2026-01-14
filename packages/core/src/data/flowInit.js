@@ -72,11 +72,11 @@ export function syncFlowHandles(root, canonicalBySource) {
  *   sources should be treated as boundaries (do not walk past them)
  * - only call updateGraphicsData when graphics are initialized or a GL context
  *   is available; headless/test contexts must avoid WebGL usage
+ * - loadViewSubtreeData emits a subtree-scoped "subtreeDataReady" broadcast
  *
  * TODO:
  * - add a load-state/cache so shared canonical sources load once
- * - emit subtree-level "data ready" events that respect nearest-source
- *   boundaries, rather than relying on global dataLoaded broadcasts
+ * - replace global dataLoaded usage with subtree-scoped readiness
  * - reconfigure scales automatically after subtree data load
  * - integrate with async font readiness for text marks
  * - unify observer wiring via a disposable registry across view types
@@ -197,5 +197,21 @@ export function loadViewSubtreeData(
 ) {
     return Promise.all(
         Array.from(dataSources).map((dataSource) => dataSource.load())
-    );
+    ).then((results) => {
+        broadcastSubtreeDataReady(subtreeRoot);
+        return results;
+    });
+}
+
+/**
+ * Broadcasts a subtree-scoped data-ready event to views within the subtree.
+ *
+ * @param {import("../view/view.js").default} subtreeRoot
+ */
+function broadcastSubtreeDataReady(subtreeRoot) {
+    const message = {
+        type: "subtreeDataReady",
+        payload: { subtreeRoot },
+    };
+    subtreeRoot.visit((view) => view.handleBroadcast(message));
 }
