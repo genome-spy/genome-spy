@@ -3,6 +3,7 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
+    getMatchedValues,
     retainFirstNCategories,
     retainFirstOfEachCategory,
     sort,
@@ -113,5 +114,13 @@ describe("sampleOperations", () => {
         const filtered = filterUndefined(samples, (x) => x);
 
         expect(filtered).toEqual([1, 2, 3]);
+    });
+
+    it("returns matched values across non-empty groups", () => {
+        const groups = [[1, 2, 3], [2, 3, 4], []];
+
+        const matched = getMatchedValues(groups, (x) => x);
+
+        expect(matched).toEqual([2, 3]);
     });
 });

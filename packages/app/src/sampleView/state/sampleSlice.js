@@ -11,6 +11,7 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
+    getMatchedValues,
     retainFirstNCategories,
     retainFirstOfEachCategory,
     sort,
@@ -64,6 +65,7 @@ function createInitialState() {
  * @returns {function(string):any}
  */
 function createObjectAccessor(action) {
+    // Attribute-related reducers require accessed values from the augmenter.
     const obj = action.payload[AUGMENTED_KEY]?.values;
     if (!obj) {
         throw new Error(
@@ -332,35 +334,10 @@ export const sampleSlice = createSlice({
             action
         ) => {
             const accessor = createObjectAccessor(action);
-
-            /** @type {Set<any>[]} Attribute values in each group */
-            const valueSets = [];
-
-            for (const sampleGroup of getSampleGroups(state)) {
-                // Skip empty groups because they always cause empty intersections
-                if (sampleGroup.samples.length > 0) {
-                    /** @type {Set<any>} */
-                    const values = new Set();
-                    for (const sample of sampleGroup.samples) {
-                        values.add(accessor(sample));
-                    }
-                    valueSets.push(values);
-                }
-            }
-
-            /** @type {any[]} Values that are present in all groups */
-            const intersectedValues = [];
-
-            for (const value of valueSets[0]) {
-                let found = true;
-                for (let i = 1; i < valueSets.length && found; i++) {
-                    found = valueSets[i].has(value);
-                }
-
-                if (found) {
-                    intersectedValues.push(value);
-                }
-            }
+            const intersectedValues = getMatchedValues(
+                getSampleGroups(state).map((group) => group.samples),
+                accessor
+            );
 
             applyToSamples(state, (samples) =>
                 filterNominal(samples, accessor, "retain", intersectedValues)
@@ -407,6 +384,7 @@ function getSampleGroups(sampleHierarchy) {
  * Returns a flattened group hierarchy. The result is an array of
  * flat hierarchies, i.e. each element is an array of groups and the
  * last group of each array is a SampleGroup which contains the samples.
+ * This is the shared source of truth for group traversal in reducers.
  *
  * @param {SampleHierarchy} [sampleHierarchy] State to use, defaults to the current state.
  *      Use for mutations!
