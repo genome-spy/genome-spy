@@ -28,30 +28,28 @@ without requiring a full rebuild or relying on a global registry.
 - Flow branches are pruned on subtree dispose, removing empty ancestors and
   detaching orphaned data sources.
 - Concurrent loads for shared sources are deduplicated with an in-flight cache.
+- Test helpers now use subtree init + subtree load; global `initializeData` is
+  removed.
 
 ## Remaining work (resume checklist)
 
-1) Replace global init path in `genomeSpy.js`
-- Ensure flow optimization + handle sync still run when subtrees are added.
+1) Subtree init consistency (root and dynamic)
+- Ensure flow optimization + handle sync still run for all subtree insertions.
 - Promote in-flight load caching to a persistent load-state per source if
   repeated loads should be skipped across time, not just concurrently.
 
-2) Dataflow lifecycle for subtree replacement
-- Ensure collectors and observers are removed when a subtree is disposed.
-- Confirm pruning behavior for named sources shared across subtrees.
-
-3) View creation consistency (app-side)
+2) View creation consistency (app-side)
 - Replace direct `new` usage with `createOrImportView` where practical.
 - Follow the same lifecycle: build subtree -> initializeViewSubtree -> attach ->
   dispose old subtree.
 - Keep metadata/sidebar out of sample-extraction readiness checks.
 
-4) Scale reconfiguration wiring
+3) Scale reconfiguration wiring
 - Decide whether `updateNamedData` should trigger subtree-level reconfigure.
 
-5) Tests to make resumption safe
+4) Tests to make resumption safe
 - SubtreeDataReady boundaries (metadata vs. sample data) and ancestry checks.
-- Shared data source caching (one load, many subtrees).
+- Shared data source caching across time (not just in-flight).
 - Flow branch cleanup on metadata rebuild (no orphaned nodes/collectors).
 
 ## Notes for later
@@ -64,4 +62,4 @@ without requiring a full rebuild or relying on a global registry.
 
 ## Progress estimate
 
-[█████████████████░░░░░░░░░] 63%
+[█████████████████████░░░░░] 72%
