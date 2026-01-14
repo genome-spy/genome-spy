@@ -201,3 +201,46 @@ The detailed plan now lives in
 - View hierarchy: `packages/core/src/view/*`
 - Dataflow: `packages/core/src/data/*`
 - Marks and shaders: `packages/core/src/marks/*`, `packages/core/src/gl/*`
+
+## App State and Provenance (packages/app)
+
+This section summarizes the Redux/provenance architecture in the app package.
+
+### Store setup and slices
+
+- The Redux store is created in `packages/app/src/state/setupStore.js`.
+- Slices are split into:
+  - `provenance`: an undoable slice that wraps the sample view state only
+    (see `packages/app/src/state/provenanceReducerBuilder.js`).
+  - `viewSettings` and `lifecycle`: non-undoable app state.
+- This separation is intentional so users can keep a stable "scene" (view
+  visibility and zoom) while undoing or redoing sample-set operations.
+
+### Intent dispatching and action augmentation
+
+- `IntentExecutor` (`packages/app/src/state/intentExecutor.js`) wraps store
+  dispatch and allows registering action augmenters.
+- `SampleView` registers an augmenter that enriches attribute-related actions
+  with precomputed attribute values before dispatch.
+- Augmented data is stored under `_augmented` and stripped from provenance
+  history to keep the recorded actions serializable and intent-only.
+
+### Action info and provenance UI
+
+- `Provenance` (`packages/app/src/state/provenance.js`) is a thin helper over
+  redux-undo (undo/redo, history, bookmark replay).
+- `ActionInfo` sources map actions to titles/icons for provenance UI and
+  context menus (see `packages/app/src/sampleView/state/actionInfo.js`).
+- `ProvenanceToolbar` renders the history using these `ActionInfo` entries.
+
+### Bookmarks and URL state
+
+- Bookmarks capture:
+  - Provenance actions (sample operations)
+  - Scale domains (zoom/pan state)
+  - View settings (visibility overrides)
+- Restoring a bookmark resets provenance to the initial state and replays the
+  actions through `IntentExecutor`, then applies scale domains and view
+  settings.
+- The same data structure is used for shareable URL hashes to keep bookmark
+  and sharing workflows consistent.
