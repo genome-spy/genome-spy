@@ -94,7 +94,7 @@ export function initializeViewSubtree(subtreeRoot, flow) {
     const dataFlow = buildDataFlow(subtreeRoot, flow);
     const canonicalBySource = optimizeDataFlow(dataFlow);
     syncFlowHandles(subtreeRoot, canonicalBySource);
-    const subtreeViews = subtreeRoot.getDescendants();
+    const subtreeViews = [subtreeRoot, ...subtreeRoot.getDescendants()];
     const dataSources = collectViewSubtreeDataSources(subtreeViews);
 
     // Initialize flow nodes for the sources that belong to this subtree.
@@ -124,8 +124,14 @@ export function initializeViewSubtree(subtreeRoot, flow) {
         ) => {
             mark.initializeData(); // does faceting
             if (canInitializeGraphics) {
-                mark.updateGraphicsData();
+                try {
+                    mark.updateGraphicsData();
+                } catch (e) {
+                    e.view = view;
+                    throw e;
+                }
             }
+            view.context.animator.requestRender();
         };
         view.registerDisposer(view.flowHandle.collector.observe(observer));
     }
@@ -148,7 +154,7 @@ export function initializeViewSubtree(subtreeRoot, flow) {
 export function collectViewSubtreeDataSources(subtreeRoot) {
     const subtreeViews = Array.isArray(subtreeRoot)
         ? subtreeRoot
-        : subtreeRoot.getDescendants();
+        : [subtreeRoot, ...subtreeRoot.getDescendants()];
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     for (const view of subtreeViews) {

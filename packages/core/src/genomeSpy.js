@@ -10,8 +10,9 @@ import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
     calculateCanvasSize,
+    finalizeSubtreeGraphics,
 } from "./view/viewUtils.js";
-import { loadViewSubtreeData, syncFlowHandles } from "./data/flowInit.js";
+import { initializeViewSubtree, loadViewSubtreeData } from "./data/flowInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, {
@@ -25,8 +26,6 @@ import InteractionEvent from "./utils/interactionEvent.js";
 import Point from "./view/layout/point.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
-import { buildDataFlow } from "./view/flowBuilder.js";
-import { optimizeDataFlow } from "./data/flowOptimizer.js";
 import GenomeStore from "./genome/genomeStore.js";
 import BmFontManager from "./fonts/bmFontManager.js";
 import fasta from "./data/formats/fasta.js";
@@ -576,41 +575,11 @@ export default class GenomeSpy {
         this._glHelper.invalidateSize();
         this.#setupDpr();
 
-        // Collect all unit views to a list because they need plenty of initialization
-        const unitViews = /** @type {UnitView[]} */ (
-            views.filter((view) => view instanceof UnitView)
+        const { dataFlow, graphicsPromises } = initializeViewSubtree(
+            this.viewRoot,
+            context.dataFlow
         );
-
-        // Build the data flow based on the view hierarchy
-        const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-        const canonicalBySource = optimizeDataFlow(flow);
-        syncFlowHandles(this.viewRoot, canonicalBySource);
-        this.broadcast("dataFlowBuilt", flow);
-
-        // Create encoders (accessors, scales and related metadata)
-        unitViews.forEach((view) => view.mark.initializeEncoders());
-
-        // Compile shaders, create or load textures, etc.
-        const graphicsInitialized = Promise.all(
-            unitViews.map((view) => view.mark.initializeGraphics())
-        );
-
-        for (const view of unitViews) {
-            const observer = (
-                /** @type {import("./data/collector.js").default} */ _collector
-            ) => {
-                view.mark.initializeData();
-                try {
-                    // Update WebGL buffers
-                    view.mark.updateGraphicsData();
-                } catch (e) {
-                    e.view = view;
-                    throw e;
-                }
-                context.animator.requestRender();
-            };
-            view.registerDisposer(view.flowHandle.collector.observe(observer));
-        }
+        this.broadcast("dataFlowBuilt", dataFlow);
 
         // Have to wait until asynchronous font loading is complete.
         // Text mark's geometry builder needs font metrics before data can be
@@ -619,18 +588,13 @@ export default class GenomeSpy {
         await context.fontManager.waitUntilReady();
 
         // Find all data sources and initiate loading.
-        flow.initialize();
-        await loadViewSubtreeData(this.viewRoot, new Set(flow.dataSources));
+        await loadViewSubtreeData(this.viewRoot, new Set(dataFlow.dataSources));
 
         // Now that all data have been loaded, the domains may need adjusting
         // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
         reconfigureScales(this.viewRoot);
 
-        await graphicsInitialized;
-
-        for (const view of unitViews) {
-            view.mark.finalizeGraphicsInitialization();
-        }
+        await finalizeSubtreeGraphics(graphicsPromises);
 
         // Allow layout computation
         // eslint-disable-next-line require-atomic-updates
