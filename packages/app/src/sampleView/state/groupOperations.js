@@ -61,6 +61,7 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
         `Group ${groupIndex + 1}`;
 
     // TODO: Group ids should indicate if multiple identical thresholds were merged
+    // Groups are ordered from highest to lowest to keep the largest values first.
     const groupIds = range(thresholds.length - 1).reverse();
 
     const ta = createThresholdGroupAccessor(
