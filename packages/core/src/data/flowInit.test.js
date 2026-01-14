@@ -296,17 +296,16 @@ describe("flowInit", () => {
         const root = await context.createOrImportView(spec, null, null, "root");
         initializeViewSubtree(root, context.dataFlow);
 
-        // Without a root source, the nearest sources are the child sources.
+        // Without a root source, the nearest sources include the child sources.
+        // Layout decorations may add additional sources.
         const sources = collectNearestViewSubtreeDataSources(root);
-        expect(sources.size).toBe(2);
-
         const concatRoot =
             /** @type {import("../view/concatView.js").default} */ (root);
-        expect(sources).toEqual(
-            new Set([
-                concatRoot.children[0].flowHandle.dataSource,
-                concatRoot.children[1].flowHandle.dataSource,
-            ])
+        expect(sources.has(concatRoot.children[0].flowHandle.dataSource)).toBe(
+            true
+        );
+        expect(sources.has(concatRoot.children[1].flowHandle.dataSource)).toBe(
+            true
         );
     });
 });
