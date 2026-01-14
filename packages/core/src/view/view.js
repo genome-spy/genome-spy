@@ -507,7 +507,7 @@ export default class View {
     }
 
     /**
-     * Get all descendants of this view in depth-first order.
+     * Get this view and all descendants in depth-first order.
      */
     getDescendants() {
         /** @type {View[]} */
