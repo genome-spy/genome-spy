@@ -42,10 +42,15 @@ export function createAppTestContext(options = {}) {
     const intentExecutor = new IntentExecutor(store);
     const provenance = new Provenance(store, intentExecutor);
 
-    context.animator = {
-        transition: () => Promise.resolve(),
-        requestRender: () => undefined,
-    };
+    context.animator =
+        /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+            /** @type {any} */ ({
+                transition: /** @type {() => Promise<void>} */ (
+                    () => Promise.resolve()
+                ),
+                requestRender: /** @type {() => void} */ (() => undefined),
+            })
+        );
     context.requestLayoutReflow = () => undefined;
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
@@ -105,22 +110,30 @@ export function createSampleViewStub(options) {
         "sample"
     );
 
-    view.spec = { samples: {} };
-    view.sampleHierarchy = options.sampleHierarchy;
-    view.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
-    view.provenance = {
+    const sampleView = /** @type {SampleViewStub} */ (view);
+
+    sampleView.spec = {
+        ...view.spec,
+        samples:
+            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleDef} */ ({}),
+    };
+    sampleView.sampleHierarchy = options.sampleHierarchy;
+    sampleView.compositeAttributeInfoSource =
+        new CompositeAttributeInfoSource();
+    sampleView.provenance = {
         store: options.store,
         getPresentState: () => ({}),
     };
-    view.locationManager = {
+    sampleView.locationManager = {
+        /** @type {(coords: import("@genome-spy/core/view/layout/rectangle.js").default) => import("@genome-spy/core/view/layout/rectangle.js").default} */
         clipBySummary: (coords) => coords,
     };
-    view.findSampleForMouseEvent = () => undefined;
-    view.makePeekMenuItem = () => ({});
-    view.actions = { filterByNominal: () => ({}) };
-    view.dispatchAttributeAction = () => undefined;
+    sampleView.findSampleForMouseEvent = () => undefined;
+    sampleView.makePeekMenuItem = () => ({});
+    sampleView.actions = { filterByNominal: () => ({}) };
+    sampleView.dispatchAttributeAction = () => undefined;
 
-    return /** @type {SampleViewStub} */ (view);
+    return sampleView;
 }
 
 /**

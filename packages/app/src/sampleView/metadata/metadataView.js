@@ -125,7 +125,8 @@ export class MetadataView extends ConcatView {
             this.handleContextMenu.bind(this)
         );
 
-        this.addInteractionEventListener("mousemove", (coords, event) => {
+        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
+        const mouseMoveListener = (coords, event) => {
             const view = event.target;
             const sample = this.#sampleView.findSampleForMouseEvent(
                 coords,
@@ -146,12 +147,15 @@ export class MetadataView extends ConcatView {
             }
 
             this.#handleAttributeHighlight(attributeName);
-        });
+        };
+
+        this.addInteractionEventListener("mousemove", mouseMoveListener);
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
         this.#highlightTarget = peek([
             ...this.#sampleView.getLayoutAncestors(),
         ]);
+        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
         const highlightTargetListener = (coords, event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;

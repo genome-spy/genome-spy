@@ -209,8 +209,11 @@ export function loadViewSubtreeData(
  * @param {import("../view/view.js").default} subtreeRoot
  */
 function broadcastSubtreeDataReady(subtreeRoot) {
+    /** @type {import("../view/view.js").BroadcastMessage} */
     const message = {
-        type: "subtreeDataReady",
+        type: /** @type {import("../genomeSpy.js").BroadcastEventType} */ (
+            "subtreeDataReady"
+        ),
         payload: { subtreeRoot },
     };
     subtreeRoot.visit((view) => view.handleBroadcast(message));
