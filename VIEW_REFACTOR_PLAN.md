@@ -51,6 +51,10 @@ without requiring a full rebuild or relying on a global registry.
   track their collector observer and remove it during `dispose`.
 - Added `Collector.observe()` + `View.registerDisposer()` so observer cleanup
   does not require per-class listener fields.
+- Added subtree data-ready helpers (`collectNearestViewSubtreeDataSources`,
+  `loadViewSubtreeData`) and tests for nested source boundaries.
+- Metadata rebuild uses subtree source collection to ensure decorations such as
+  titles/axes are loaded along with primary data sources.
 - Metadata rebuild now uses subtree init and removes old dataflow hosts before
   rebuilding; title-view data source hacks removed.
 - Metadata view now unsubscribes from Redux, unregisters its attribute info

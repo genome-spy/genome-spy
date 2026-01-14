@@ -18,7 +18,11 @@ import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
 } from "@genome-spy/core/view/viewUtils.js";
-import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
+import {
+    collectViewSubtreeDataSources,
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "@genome-spy/core/data/flowInit.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
@@ -299,11 +303,7 @@ export class MetadataView extends ConcatView {
 
         this.#createViews();
 
-        const { dataSources, graphicsPromises } = initializeViewSubtree(
-            this,
-            flow
-        );
-
+        const { graphicsPromises } = initializeViewSubtree(this, flow);
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.flowHandle?.dataSource
@@ -335,11 +335,10 @@ export class MetadataView extends ConcatView {
 
         dynamicSource.updateDynamicData(metadataTable);
 
-        for (const dataSource of dataSources) {
-            if (dataSource !== dynamicSource) {
-                dataSource.load();
-            }
-        }
+        // Load all subtree sources so that decorations (titles, axes) are ready.
+        const dataSources = collectViewSubtreeDataSources(this);
+        dataSources.delete(dynamicSource);
+        loadViewSubtreeData(this, dataSources);
         reconfigureScales(this); // TODO: Should happen automatically
 
         this.context.requestLayoutReflow();
