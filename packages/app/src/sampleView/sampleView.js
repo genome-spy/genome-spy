@@ -162,10 +162,18 @@ export default class SampleView extends ContainerView {
                 return;
             }
             const subtreeRoot = message.payload.subtreeRoot;
+            if (!this.#gridChild?.view) {
+                return;
+            }
             if (
-                subtreeRoot === this ||
-                subtreeRoot.getDataAncestors().includes(this)
+                subtreeRoot === this.#gridChild.view ||
+                this.#gridChild.view.getDataAncestors().includes(subtreeRoot)
             ) {
+                // Extract samples only from the main data subtree, not metadata/sidebar.
+                // TODO: Add a test that asserts subtreeDataReady from metadata does not
+                // trigger sample extraction.
+                // TODO: This assumes the main data subtree is fully loaded for all
+                // child views; if visibility gating changes, revisit this logic.
                 this.#extractSamplesFromData();
             }
         });

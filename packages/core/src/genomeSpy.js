@@ -11,7 +11,7 @@ import {
     setImplicitScaleNames,
     calculateCanvasSize,
 } from "./view/viewUtils.js";
-import { syncFlowHandles } from "./data/flowInit.js";
+import { loadViewSubtreeData, syncFlowHandles } from "./data/flowInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, {
@@ -615,15 +615,9 @@ export default class GenomeSpy {
         // TODO: Make updateGraphicsData async and await font loading there.
         await context.fontManager.waitUntilReady();
 
-        // Find all data sources and initiate loading
+        // Find all data sources and initiate loading.
         flow.initialize();
-        await Promise.all(
-            flow.dataSources.map(
-                (
-                    /** @type {import("./data/sources/dataSource.js").default} */ dataSource
-                ) => dataSource.load()
-            )
-        );
+        await loadViewSubtreeData(this.viewRoot, new Set(flow.dataSources));
 
         // Now that all data have been loaded, the domains may need adjusting
         // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
