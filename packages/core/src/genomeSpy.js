@@ -11,6 +11,7 @@ import {
     setImplicitScaleNames,
     calculateCanvasSize,
 } from "./view/viewUtils.js";
+import { loadViewSubtreeData, syncFlowHandles } from "./data/flowInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, {
@@ -42,7 +43,7 @@ import { createFramebufferInfo } from "twgl.js";
 
 /**
  * Events that are broadcasted to all views.
- * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed"} BroadcastEventType
+ * @typedef {"dataFlowBuilt" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
  */
 
 vegaFormats("fasta", fasta);
@@ -229,7 +230,7 @@ export default class GenomeSpy {
         }
 
         namedSource.dataSource.updateDynamicData(data);
-        reconfigureScales(namedSource.hosts);
+        reconfigureScales(this.viewRoot);
 
         this.animator.requestRender();
     }
@@ -579,7 +580,8 @@ export default class GenomeSpy {
 
         // Build the data flow based on the view hierarchy
         const flow = buildDataFlow(this.viewRoot, context.dataFlow);
-        optimizeDataFlow(flow);
+        const canonicalBySource = optimizeDataFlow(flow);
+        syncFlowHandles(this.viewRoot, canonicalBySource);
         this.broadcast("dataFlowBuilt", flow);
 
         // Create encoders (accessors, scales and related metadata)
@@ -591,7 +593,9 @@ export default class GenomeSpy {
         );
 
         for (const view of unitViews) {
-            flow.addObserver((collector) => {
+            const observer = (
+                /** @type {import("./data/collector.js").default} */ _collector
+            ) => {
                 view.mark.initializeData();
                 try {
                     // Update WebGL buffers
@@ -601,7 +605,8 @@ export default class GenomeSpy {
                     throw e;
                 }
                 context.animator.requestRender();
-            }, view);
+            };
+            view.registerDisposer(view.flowHandle.collector.observe(observer));
         }
 
         // Have to wait until asynchronous font loading is complete.
@@ -610,22 +615,13 @@ export default class GenomeSpy {
         // TODO: Make updateGraphicsData async and await font loading there.
         await context.fontManager.waitUntilReady();
 
-        // Find all data sources and initiate loading
+        // Find all data sources and initiate loading.
         flow.initialize();
-        await Promise.all(
-            flow.dataSources.map((dataSource) => dataSource.load())
-        );
+        await loadViewSubtreeData(this.viewRoot, new Set(flow.dataSources));
 
         // Now that all data have been loaded, the domains may need adjusting
         // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
         reconfigureScales(this.viewRoot);
-
-        // This event is needed by SampleView so that it can extract the sample ids
-        // from the data once they are loaded.
-        // TODO: It would be great if this could be attached to the data flow,
-        // because now this is somewhat a hack and is incompatible with dynamic data
-        // loading in the future.
-        this.broadcast("dataLoaded");
 
         await graphicsInitialized;
 

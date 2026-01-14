@@ -24,7 +24,7 @@ import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
 
 /**
  * @param {View} root
- * @param {DataFlow<View>} [existingFlow] Add data flow
+ * @param {DataFlow} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
  */
 export function buildDataFlow(root, existingFlow) {
@@ -41,7 +41,7 @@ export function buildDataFlow(root, existingFlow) {
     /** @type {FlowNode} */
     let currentNode;
 
-    /** @type {DataFlow<View>} */
+    /** @type {DataFlow} */
     const dataFlow = existingFlow ?? new DataFlow();
 
     /** @type {(function():void)[]} */
@@ -122,6 +122,15 @@ export function buildDataFlow(root, existingFlow) {
     /** @param {View} view */
     const processView = (view) => {
         if (view.spec.data) {
+            const previousDataSource = view.flowHandle?.dataSource;
+            if (
+                previousDataSource &&
+                previousDataSource.view === view &&
+                !previousDataSource.identifier
+            ) {
+                dataFlow.removeDataSource(previousDataSource);
+            }
+
             const dataSource = isNamedData(view.spec.data)
                 ? new NamedSource(
                       view.spec.data,
@@ -132,7 +141,9 @@ export function buildDataFlow(root, existingFlow) {
 
             currentNode = dataSource;
             nodeStack.push(dataSource);
-            dataFlow.addDataSource(dataSource, view);
+            dataFlow.addDataSource(dataSource);
+            view.flowHandle ??= {};
+            view.flowHandle.dataSource = dataSource;
         }
 
         if (view.spec.transform) {
@@ -186,7 +197,13 @@ export function buildDataFlow(root, existingFlow) {
             });
 
             appendNode(collector);
-            dataFlow.addCollector(collector, view);
+            const previousCollector = view.flowHandle?.collector;
+            if (previousCollector) {
+                dataFlow.removeCollector(previousCollector);
+            }
+            dataFlow.addCollector(collector);
+            view.flowHandle ??= {};
+            view.flowHandle.collector = collector;
         }
     };
 

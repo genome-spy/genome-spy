@@ -6,7 +6,8 @@
  * @typedef {import("../types/viewContext.js").default} ViewContext
  */
 
-import { checkForDuplicateScaleNames, initializeData } from "./viewUtils.js";
+import { checkForDuplicateScaleNames } from "./viewUtils.js";
+import { initializeData } from "../data/flowInit.js";
 import DataFlow from "../data/dataFlow.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";

@@ -1,0 +1,208 @@
+import { describe, expect, it, vi } from "vitest";
+
+import UnitView from "@genome-spy/core/view/unitView.js";
+import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
+import {
+    createSampleViewStub,
+    createStoreStub,
+} from "../../testUtils/appTestUtils.js";
+
+vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
+
+/**
+ * @typedef {object} SampleHierarchyStub
+ * @prop {{ attributeNames: string[], attributeDefs: Record<string, any>, entities: Record<string, any> }} sampleMetadata
+ * @prop {{ entities: Record<string, { indexNumber: number }> }} sampleData
+ */
+
+/**
+ * @param {import("./metadataView.js").MetadataView} metadataView
+ * @param {import("@genome-spy/core/data/dataFlow.js").default} dataFlow
+ */
+function assertFlowMatchesSubtree(metadataView, dataFlow) {
+    const descendants = metadataView.getDescendants();
+    const unitViews = descendants.filter((view) => view instanceof UnitView);
+    const dataSources = new Set(
+        descendants
+            .map((view) => view.flowHandle?.dataSource)
+            .filter((dataSource) => dataSource)
+    );
+    const collectors = new Set(
+        unitViews
+            .map((view) => view.flowHandle?.collector)
+            .filter((collector) => collector)
+    );
+    const observerCount = [...collectors].reduce(
+        (sum, collector) => sum + collector.observers.size,
+        0
+    );
+
+    expect(dataFlow.dataSources.length).toBe(dataSources.size);
+    expect(dataFlow.collectors.length).toBe(collectors.size);
+    expect(observerCount).toBe(unitViews.length);
+}
+
+describe("MetadataView", () => {
+    it("removes dataflow hosts when metadata is rebuilt", async () => {
+        const { MetadataView } = await import("./metadataView.js");
+        const context = createTestViewContext();
+        context.animator = {
+            transition: () => Promise.resolve(),
+            requestRender: () => undefined,
+        };
+        context.requestLayoutReflow = () => undefined;
+        context.updateTooltip = () => undefined;
+        context.getCurrentHover = () => undefined;
+        context.addKeyboardListener = () => undefined;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+        context.setDataLoadingStatus = () => undefined;
+        context.getNamedDataFromProvider = () => [];
+
+        const dataFlow = context.dataFlow;
+
+        const store = createStoreStub({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata: {
+                            attributeNames: [],
+                            attributeDefs: {},
+                            entities: {},
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {SampleHierarchyStub} */
+        const sampleHierarchy = {
+            sampleMetadata: {
+                attributeNames: [],
+                attributeDefs: {},
+                entities: {},
+            },
+            sampleData: {
+                entities: {
+                    s1: { indexNumber: 0 },
+                    s2: { indexNumber: 1 },
+                },
+            },
+        };
+
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
+        const metadataView = new MetadataView(sampleView, sampleView);
+        expect(store.getListenerCount()).toBe(1);
+        expect(
+            sampleView.compositeAttributeInfoSource.attributeInfoSourcesByType
+                .SAMPLE_ATTRIBUTE
+        ).toBeDefined();
+
+        const getFlowSnapshot = () => {
+            const unitViews = metadataView
+                .getDescendants()
+                .filter((view) => view instanceof UnitView);
+            const firstUnitView = unitViews[0];
+
+            const hasCollector =
+                !!firstUnitView &&
+                !!firstUnitView.flowHandle &&
+                !!firstUnitView.flowHandle.collector;
+
+            const hasDataSource =
+                !!metadataView.flowHandle &&
+                !!metadataView.flowHandle.dataSource;
+
+            return {
+                dataSources: dataFlow.dataSources.length,
+                collectors: dataFlow.collectors.length,
+                observers: unitViews.reduce(
+                    (sum, view) =>
+                        sum + (view.flowHandle?.collector?.observers.size ?? 0),
+                    0
+                ),
+                unitViews: unitViews.length,
+                hasCollector,
+                hasDataSource,
+            };
+        };
+
+        /**
+         * @param {string[]} attributeNames
+         * @param {Record<string, any>} entities
+         */
+        const updateMetadata = (attributeNames, entities) => {
+            const attributeDefs = Object.fromEntries(
+                attributeNames.map((name) => [name, { type: "nominal" }])
+            );
+            const sampleMetadata = {
+                attributeNames,
+                attributeDefs,
+                entities,
+            };
+
+            sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+            store.setState({
+                provenance: {
+                    present: {
+                        sampleView: {
+                            sampleMetadata,
+                        },
+                    },
+                },
+            });
+        };
+
+        updateMetadata(["a", "b"], {
+            s1: { a: "x", b: 1 },
+            s2: { a: "y", b: 2 },
+        });
+
+        const initialSnapshot = getFlowSnapshot();
+        assertFlowMatchesSubtree(metadataView, context.dataFlow);
+        expect(initialSnapshot.hasCollector).toBe(true);
+        expect(initialSnapshot.hasDataSource).toBe(true);
+
+        updateMetadata(["a"], {
+            s1: { a: "x" },
+            s2: { a: "y" },
+        });
+
+        const reducedSnapshot = getFlowSnapshot();
+        assertFlowMatchesSubtree(metadataView, context.dataFlow);
+        expect(reducedSnapshot.unitViews).toBeLessThan(
+            initialSnapshot.unitViews
+        );
+        expect(reducedSnapshot.hasCollector).toBe(true);
+        expect(reducedSnapshot.hasDataSource).toBe(true);
+
+        updateMetadata(["a"], {
+            s1: { a: "z" },
+            s2: { a: "w" },
+        });
+
+        const stableSnapshot = getFlowSnapshot();
+        assertFlowMatchesSubtree(metadataView, context.dataFlow);
+        expect(stableSnapshot).toEqual(reducedSnapshot);
+
+        updateMetadata(["a", "b"], {
+            s1: { a: "x", b: 3 },
+            s2: { a: "y", b: 4 },
+        });
+
+        const restoredSnapshot = getFlowSnapshot();
+        assertFlowMatchesSubtree(metadataView, context.dataFlow);
+        expect(restoredSnapshot).toEqual(initialSnapshot);
+
+        metadataView.dispose();
+        expect(store.getListenerCount()).toBe(0);
+        expect(
+            sampleView.compositeAttributeInfoSource.attributeInfoSourcesByType
+                .SAMPLE_ATTRIBUTE
+        ).toBeUndefined();
+    });
+});

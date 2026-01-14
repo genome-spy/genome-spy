@@ -22,7 +22,7 @@ export type DataLoadingStatus = "loading" | "complete" | "error";
  * ViewContext provides essential data and interfaces to View classes.
  */
 export default interface ViewContext {
-    dataFlow: DataFlow<View>;
+    dataFlow: DataFlow;
     glHelper: WebGLHelper;
     animator: Animator;
     genomeStore?: GenomeStore;

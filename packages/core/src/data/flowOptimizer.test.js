@@ -142,7 +142,7 @@ const viewStub = /** @type {any} */ (
 
 describe("Merge indentical data sources", () => {
     test("Merges correctly", () => {
-        /** @type {DataFlow<string>} */
+        /** @type {DataFlow} */
         const dataFlow = new DataFlow();
 
         const a = new UrlSource({ url: "http://genomespy.app/" }, viewStub);
@@ -157,21 +157,25 @@ describe("Merge indentical data sources", () => {
         const cc = new Collector();
         c.addChild(cc);
 
-        dataFlow.addDataSource(a, "a");
-        dataFlow.addDataSource(b, "b");
-        dataFlow.addDataSource(c, "c");
+        dataFlow.addDataSource(a);
+        dataFlow.addDataSource(b);
+        dataFlow.addDataSource(c);
 
-        dataFlow.addCollector(ac, "a");
-        dataFlow.addCollector(bc, "b");
-        dataFlow.addCollector(cc, "c");
+        dataFlow.addCollector(ac);
+        dataFlow.addCollector(bc);
+        dataFlow.addCollector(cc);
 
         combineIdenticalDataSources(dataFlow);
 
         expect(dataFlow.dataSources.length).toEqual(2);
 
-        expect(dataFlow.findDataSourceByKey("a")).toBe(a);
-        expect(dataFlow.findDataSourceByKey("b")).toBe(a); // Merged!
-        expect(dataFlow.findDataSourceByKey("c")).toBe(c);
+        const entries = dataFlow.dataSources;
+        const sharedIdentifier = a.identifier;
+        expect(entries).toContain(a);
+        expect(entries).toContain(c);
+        expect(
+            entries.filter((source) => source.identifier == sharedIdentifier)
+        ).toEqual([a]);
 
         expect(new Set(a.children)).toEqual(new Set([ac, bc]));
         expect(c.children[0]).toBe(cc);
@@ -187,18 +191,19 @@ describe("Merge indentical data sources", () => {
     });
 
     test("Does not merge those with undefined identifier", () => {
-        /** @type {DataFlow<string>} */
+        /** @type {DataFlow} */
         const dataFlow = new DataFlow();
 
         const a = new InlineSource({ values: [1, 2, 3] }, viewStub);
         const b = new InlineSource({ values: [1, 2, 3] }, viewStub);
 
-        dataFlow.addDataSource(a, "a");
-        dataFlow.addDataSource(b, "b");
+        dataFlow.addDataSource(a);
+        dataFlow.addDataSource(b);
 
         combineIdenticalDataSources(dataFlow);
 
-        expect(dataFlow.findDataSourceByKey("a")).toBe(a);
-        expect(dataFlow.findDataSourceByKey("b")).toBe(b);
+        const entries = dataFlow.dataSources;
+        expect(entries).toContain(a);
+        expect(entries).toContain(b);
     });
 });

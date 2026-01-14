@@ -64,7 +64,7 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
-     * @typedef {import("@genome-spy/core/data/dataFlow.js").default<View>} DataFlow
+     * @typedef {import("@genome-spy/core/data/dataFlow.js").default} DataFlow
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
      */
 
@@ -81,6 +81,9 @@ export default class SampleView extends ContainerView {
 
     /** @type {(param: any) => void} */
     #sampleHeightParam;
+
+    /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
+    #actionAugmenter;
 
     /**
      *
@@ -154,9 +157,26 @@ export default class SampleView extends ContainerView {
      * Setup broadcast handlers for lifecycle events
      */
     #setupBroadcastHandlers() {
-        this._addBroadcastHandler("dataLoaded", () =>
-            this.#extractSamplesFromData()
-        );
+        this._addBroadcastHandler("subtreeDataReady", (message) => {
+            if (!message.payload || !("subtreeRoot" in message.payload)) {
+                return;
+            }
+            const subtreeRoot = message.payload.subtreeRoot;
+            if (!this.#gridChild?.view) {
+                return;
+            }
+            if (
+                subtreeRoot === this.#gridChild.view ||
+                this.#gridChild.view.getDataAncestors().includes(subtreeRoot)
+            ) {
+                // Extract samples only from the main data subtree, not metadata/sidebar.
+                // TODO: Add a test that asserts subtreeDataReady from metadata does not
+                // trigger sample extraction.
+                // TODO: This assumes the main data subtree is fully loaded for all
+                // child views; if visibility gating changes, revisit this logic.
+                this.#extractSamplesFromData();
+            }
+        });
         this._addBroadcastHandler("layout", () => {
             this.locationManager.resetLocations();
         });
@@ -243,8 +263,7 @@ export default class SampleView extends ContainerView {
         this.intentExecutor = intentExecutor;
 
         // Attach an augmenter that enriches actions with attribute info when applicable
-        // TODO: Should be unregistered when the view is disposed
-        intentExecutor.addActionAugmenter((action) => {
+        this.#actionAugmenter = (action) => {
             const getAttributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo.bind(
                     this.compositeAttributeInfoSource
@@ -254,22 +273,25 @@ export default class SampleView extends ContainerView {
                 this.sampleHierarchy,
                 getAttributeInfo
             );
-        });
+        };
+        intentExecutor.addActionAugmenter(this.#actionAugmenter);
     }
 
     /**
      * Setup subscriptions for provenance-driven updates.
      */
     #setupStoreSubscriptions() {
-        subscribeTo(
-            this.provenance.store,
-            () => this.sampleHierarchy.rootGroup,
-            withMicrotask(() => {
-                this.locationManager.reset();
-                this.sampleGroupView?.updateGroups();
-                this.context.requestLayoutReflow();
-                this.context.animator.requestRender();
-            })
+        this.registerDisposer(
+            subscribeTo(
+                this.provenance.store,
+                () => this.sampleHierarchy.rootGroup,
+                withMicrotask(() => {
+                    this.locationManager.reset();
+                    this.sampleGroupView?.updateGroups();
+                    this.context.requestLayoutReflow();
+                    this.context.animator.requestRender();
+                })
+            )
         );
     }
 
@@ -412,7 +434,7 @@ export default class SampleView extends ContainerView {
         // Here's quite a bit of wrangling but the number of samples is so low that
         // performance doesn't really matter.
 
-        collector.observers.push(() => {
+        const stop = collector.observe(() => {
             const result =
                 /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
                     collector.getData()
@@ -458,11 +480,10 @@ export default class SampleView extends ContainerView {
                 );
             }
         });
+        this.registerDisposer(stop);
 
         // Synchronize loading with other data
-        const key = "samples " + this.getPathString();
-        // @ts-expect-error TODO: Using a string as key is ugly. Try something else.
-        this.context.dataFlow.addDataSource(dataSource, key);
+        this.context.dataFlow.addDataSource(dataSource);
     }
 
     #extractSamplesFromData() {
@@ -969,6 +990,14 @@ export default class SampleView extends ContainerView {
      */
     dispatchAttributeAction(action) {
         this.intentExecutor.dispatch(action);
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
     }
 }
 

@@ -20,6 +20,11 @@ export class SampleLabelView extends UnitView {
     #sampleView;
 
     /**
+     * @type {(identifier: import("./types.js").AttributeIdentifier) => import("./types.js").AttributeInfo}
+     */
+    #attributeInfoSource;
+
+    /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
      */
@@ -34,9 +39,10 @@ export class SampleLabelView extends UnitView {
 
         this.#sampleView = sampleView;
 
+        this.#attributeInfoSource = () => SAMPLE_NAME_ATTRIBUTE_INFO;
         sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_NAME,
-            (attribute) => SAMPLE_NAME_ATTRIBUTE_INFO
+            this.#attributeInfoSource
         );
 
         this.addInteractionEventListener(
@@ -45,12 +51,14 @@ export class SampleLabelView extends UnitView {
         );
 
         // TODO: Data could be inherited from the parent view
-        subscribeTo(
-            sampleView.provenance.store,
-            (state) => state.provenance.present.sampleView.sampleData,
-            (sampleData) => {
-                this.#setSamples(Object.values(sampleData.entities));
-            }
+        this.registerDisposer(
+            subscribeTo(
+                sampleView.provenance.store,
+                (state) => state.provenance.present.sampleView.sampleData,
+                (sampleData) => {
+                    this.#setSamples(Object.values(sampleData.entities));
+                }
+            )
         );
     }
 
@@ -61,8 +69,12 @@ export class SampleLabelView extends UnitView {
     #setSamples(samples) {
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                this.context.dataFlow.findDataSourceByKey(this)
+                this.flowHandle?.dataSource
             );
+
+        if (!dynamicSource) {
+            throw new Error("Cannot find sample label data source handle!");
+        }
 
         dynamicSource.updateDynamicData(
             // Make a copy because the state-derived data is immutable
@@ -99,6 +111,17 @@ export class SampleLabelView extends UnitView {
         );
 
         contextMenu({ items }, event.mouseEvent);
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
+            SAMPLE_NAME,
+            this.#attributeInfoSource
+        );
     }
 }
 

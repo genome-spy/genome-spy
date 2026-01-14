@@ -1,92 +1,77 @@
 import NamedSource from "./sources/namedSource.js";
 
 /**
- * @template H A key (string, object, whatever) that is used to retrieve
- *      data sources and collectors.
+ * DataFlow holds data sources and collectors for optimization and initialization.
  */
 export default class DataFlow {
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    #dataSources;
+
+    /** @type {Set<import("./collector.js").default>} */
+    #collectors;
+
     constructor() {
-        /** @type {Map<H, import("./sources/dataSource.js").default>} */
-        this._dataSourcesByHost = new Map();
+        /** @type {Set<import("./sources/dataSource.js").default>} */
+        this.#dataSources = new Set();
 
-        /** @type {Map<H, import("./collector.js").default>} */
-        this._collectorsByHost = new Map();
-
-        /** @type {Map<H, (function(import("./collector.js").default):void)[]>} */
-        this._observers = new Map();
+        /** @type {Set<import("./collector.js").default>} */
+        this.#collectors = new Set();
     }
 
     get dataSources() {
-        return [...new Set(this._dataSourcesByHost.values()).values()];
+        return [...this.#dataSources];
     }
 
     get collectors() {
-        return [...this._collectorsByHost.values()];
+        return [...this.#collectors];
     }
 
     /**
-     * Adds a callback function that will be called when a collector has completed.
-     *
-     * @param {function(import("./collector.js").default):void} callback
-     * @param {H} key
+     * @param {Iterable<import("./sources/dataSource.js").default>} dataSources
      */
-    addObserver(callback, key) {
-        let arr = this._observers.get(key);
-        if (!arr) {
-            arr = [];
-            this._observers.set(key, arr);
-        }
-
-        arr.push(callback);
+    replaceDataSources(dataSources) {
+        this.#dataSources = new Set(dataSources);
     }
 
     /**
-     *
-     * @param {import("./collector.js").default} collector
-     * @param {H} key
-     */
-    _relayObserverCallback(collector, key) {
-        const arr = this._observers.get(key);
-        if (arr) {
-            for (const callback of arr) {
-                // eslint-disable-next-line callback-return
-                callback(collector);
-            }
-        }
-    }
-
-    /**
-     *
      * @param {import("./sources/dataSource.js").default} dataSource
-     * @param {H} key
      */
-    addDataSource(dataSource, key) {
-        this._dataSourcesByHost.set(key, dataSource);
+    addDataSource(dataSource) {
+        this.#dataSources.add(dataSource);
     }
 
     /**
-     *
-     * @param {H} key
+     * @param {import("./sources/dataSource.js").default} dataSource
      */
-    findDataSourceByKey(key) {
-        return this._dataSourcesByHost.get(key);
+    removeDataSource(dataSource) {
+        this.#dataSources.delete(dataSource);
     }
 
     /**
-     *
+     * @param {import("./collector.js").default} collector
+     */
+    addCollector(collector) {
+        this.#collectors.add(collector);
+    }
+
+    /**
+     * @param {import("./collector.js").default} collector
+     */
+    removeCollector(collector) {
+        collector.observers.clear();
+        this.#collectors.delete(collector);
+    }
+
+    /**
      * @param {string} name
      */
     findNamedDataSource(name) {
         /** @type {NamedSource} */
         let namedSource;
-        /** @type {H[]} */
-        let hosts = [];
 
-        // Note: If a named sources with the same name are present at multiple locations in the
-        // view hierarchy, the should actually be exactly the same instance. It's arranged that
-        // way in the data flow optimization phase.
-
-        for (const [host, dataSource] of this._dataSourcesByHost.entries()) {
+        // Note: If named sources with the same name are present at multiple locations in the
+        // view hierarchy, they should actually be exactly the same instance.
+        for (const dataSource of this.#dataSources.values()) {
             if (dataSource instanceof NamedSource) {
                 if (name == dataSource.identifier) {
                     if (namedSource && namedSource !== dataSource) {
@@ -96,7 +81,6 @@ export default class DataFlow {
                         );
                     }
                     namedSource = dataSource;
-                    hosts.push(host);
                 }
             }
         }
@@ -104,29 +88,8 @@ export default class DataFlow {
         if (namedSource) {
             return {
                 dataSource: namedSource,
-                hosts,
             };
         }
-    }
-
-    /**
-     *
-     * @param {import("./collector.js").default} collector
-     * @param {H} key
-     */
-    addCollector(collector, key) {
-        this._collectorsByHost.set(key, collector);
-        collector.observers.push((collector) =>
-            this._relayObserverCallback(collector, key)
-        );
-    }
-
-    /**
-     *
-     * @param {H} key
-     */
-    findCollectorByKey(key) {
-        return this._collectorsByHost.get(key);
     }
 
     /**

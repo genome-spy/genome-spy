@@ -16,7 +16,7 @@ import {
  * TODO: The proposed JavaScript signals may provide a better way to implement this.
  * https://github.com/proposal-signals/proposal-signals
  *
- * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
+ * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, removeListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
 export default class ParamMediator {
     /**
@@ -281,6 +281,16 @@ export default class ParamMediator {
         };
 
         /**
+         * @param {() => void} listener
+         */
+        fn.removeListener = (listener) => {
+            for (const [param, mediator] of mediatorsForParams) {
+                mediator.paramListeners.get(param)?.delete(listener);
+            }
+            myListeners.delete(listener);
+        };
+
+        /**
          * Detach listeners. This must be called if the expression is no longer used.
          * TODO: What if the expression is used in multiple places?
          */
@@ -290,6 +300,7 @@ export default class ParamMediator {
                     mediator.paramListeners.get(param)?.delete(listener);
                 }
             }
+            myListeners.clear();
         };
 
         // TODO: This should contain unique identifier for each parameter.
@@ -457,6 +468,7 @@ export function validateParameterName(name) {
 export function makeConstantExprRef(value) {
     return Object.assign(() => value, {
         addListener: () => /** @type {void} */ (undefined),
+        removeListener: () => /** @type {void} */ (undefined),
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",
         fields: [],

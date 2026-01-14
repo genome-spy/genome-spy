@@ -7,6 +7,12 @@ export default class SelectionRect extends LayerView {
      * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
      */
 
+    /** @type {import("../paramMediator.js").ExprRefFunction} */
+    _selectionExpr;
+
+    /** @type {() => void} */
+    _selectionListener;
+
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
@@ -135,7 +141,10 @@ export default class SelectionRect extends LayerView {
             }
         );
 
-        selectionExpr.addListener(() => {
+        /** @type {import("../paramMediator.js").ExprRefFunction} */
+        this._selectionExpr = selectionExpr;
+
+        this._selectionListener = () => {
             const selection =
                 /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
                     selectionExpr()
@@ -143,11 +152,27 @@ export default class SelectionRect extends LayerView {
 
             const datasource =
                 /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                    this.context.dataFlow.findDataSourceByKey(this)
+                    this.flowHandle?.dataSource
                 );
 
+            if (!datasource) {
+                throw new Error(
+                    "Cannot find selection rect data source handle!"
+                );
+            }
+
             datasource.updateDynamicData(selectionToData(selection));
-        });
+        };
+
+        selectionExpr.addListener(this._selectionListener);
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        this._selectionExpr.removeListener(this._selectionListener);
+        super.dispose();
     }
 }
 

@@ -82,30 +82,43 @@ export function combineAndPullCollectorsUp() {
 //      --F--G
 
 /**
- * @param {import("./dataFlow.js").default<any>} dataFlow
+ * @param {import("./dataFlow.js").default} dataFlow
+ * @returns {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>}
  */
 export function combineIdenticalDataSources(dataFlow) {
-    const dataSourceEntries = [...dataFlow._dataSourcesByHost.entries()];
+    const dataSources = dataFlow.dataSources;
 
     /** @type {Map<string, import("./sources/dataSource.js").default>} */
     const sourcesByIdentifiers = new Map();
-    for (const e of dataSourceEntries) {
-        const ds = e[1];
+    for (const ds of dataSources) {
         if (ds.identifier && !sourcesByIdentifiers.has(ds.identifier)) {
             sourcesByIdentifiers.set(ds.identifier, ds);
         }
     }
 
-    dataFlow._dataSourcesByHost.clear();
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    const mergedSources = new Set();
+    /** @type {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>} */
+    const canonicalBySource = new Map();
 
-    for (let [key, dataSource] of dataSourceEntries) {
-        const target = sourcesByIdentifiers.get(dataSource.identifier);
-        if (target) {
-            target.adoptChildrenOf(dataSource);
-            dataSource = target;
+    for (const dataSource of dataSources) {
+        if (dataSource.identifier) {
+            const target = sourcesByIdentifiers.get(dataSource.identifier);
+            if (target) {
+                if (target !== dataSource) {
+                    target.adoptChildrenOf(dataSource);
+                }
+                mergedSources.add(target);
+                canonicalBySource.set(dataSource, target);
+            }
+        } else {
+            mergedSources.add(dataSource);
+            canonicalBySource.set(dataSource, dataSource);
         }
-        dataFlow.addDataSource(dataSource, key);
     }
+
+    dataFlow.replaceDataSources(mergedSources);
+    return canonicalBySource;
 }
 
 /**
@@ -122,11 +135,13 @@ export function optimizeFlowGraph(root) {
 }
 
 /**
- * @param {import("./dataFlow.js").default<any>} dataFlow
+ * @param {import("./dataFlow.js").default} dataFlow
+ * @returns {Map<import("./sources/dataSource.js").default, import("./sources/dataSource.js").default>}
  */
 export function optimizeDataFlow(dataFlow) {
-    combineIdenticalDataSources(dataFlow);
+    const canonicalBySource = combineIdenticalDataSources(dataFlow);
     for (const dataSource of dataFlow.dataSources) {
         optimizeFlowGraph(dataSource);
     }
+    return canonicalBySource;
 }

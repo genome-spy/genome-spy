@@ -88,14 +88,22 @@ export default class UnitView extends View {
             "zoomLevel",
             1.0
         );
-        /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
+
+        for (const channel of /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
             "x",
             "y",
-        ]).forEach((channel) =>
-            this.getScaleResolution(channel)?.addEventListener("domain", () =>
-                this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()))
-            )
-        );
+        ])) {
+            const resolution = this.getScaleResolution(channel);
+            if (resolution) {
+                const listener = () => {
+                    this.#zoomLevelSetter(Math.sqrt(this.getZoomLevel()));
+                };
+                resolution.addEventListener("domain", listener);
+                this.registerDisposer(() =>
+                    resolution.removeEventListener("domain", listener)
+                );
+            }
+        }
 
         this.needsAxes = { x: true, y: true };
 
@@ -381,6 +389,44 @@ export default class UnitView extends View {
     }
 
     /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+
+        this.#unresolve();
+        this.mark.dispose();
+    }
+
+    #unresolve() {
+        for (const view of this.getDataAncestors()) {
+            for (const [channel, resolution] of Object.entries(
+                view.resolutions.scale
+            )) {
+                if (
+                    resolution &&
+                    resolution.removeMembersByView(this) &&
+                    resolution.members.length === 0
+                ) {
+                    delete view.resolutions.scale[channel];
+                }
+            }
+
+            for (const [channel, resolution] of Object.entries(
+                view.resolutions.axis
+            )) {
+                if (
+                    resolution &&
+                    resolution.removeMembersByView(this) &&
+                    resolution.members.length === 0
+                ) {
+                    delete view.resolutions.axis[channel];
+                }
+            }
+        }
+    }
+
+    /**
      * Returns an accessor that accesses a field or an evaluated expression,
      * if there is one.
      *
@@ -410,7 +456,7 @@ export default class UnitView extends View {
      * Returns a collector that is associated with this view.
      */
     getCollector() {
-        return this.context.dataFlow.findCollectorByKey(this);
+        return this.flowHandle?.collector;
     }
 
     /**

@@ -87,6 +87,11 @@ export default class View {
     opacityFunction = defaultOpacityFunction;
 
     /**
+     * @type {(() => void)[]}
+     */
+    #disposers = [];
+
+    /**
      * Coords of the view for each facet, recorded during the last layout rendering pass.
      * Most views have only one facet, so the map is usually of size 1.
      *
@@ -135,6 +140,11 @@ export default class View {
             contributesToScaleDomain: true,
             ...options,
         };
+
+        /**
+         * @type {import("../data/flowHandle.js").FlowHandle | undefined}
+         */
+        this.flowHandle = undefined;
 
         /**
          * Whether GridView or equivalent should draw axis and grid lines for this view.
@@ -506,6 +516,51 @@ export default class View {
             descendants.push(view);
         });
         return descendants;
+    }
+
+    /**
+     * Release resources owned by this view.
+     */
+    dispose() {
+        for (const disposer of this.#disposers) {
+            disposer();
+        }
+        this.#disposers.length = 0;
+
+        const handle = this.flowHandle;
+
+        if (handle?.collector) {
+            this.context.dataFlow.removeCollector(handle.collector);
+        }
+
+        if (
+            handle?.dataSource &&
+            handle.dataSource.view === this &&
+            !handle.dataSource.identifier
+        ) {
+            this.context.dataFlow.removeDataSource(handle.dataSource);
+        }
+
+        this.flowHandle = undefined;
+    }
+
+    /**
+     * @param {() => void} disposer
+     */
+    registerDisposer(disposer) {
+        this.#disposers.push(disposer);
+    }
+
+    /**
+     * Dispose this view and all descendants in post-order.
+     */
+    disposeSubtree() {
+        /** @type {Visitor} */
+        const visitor = () => undefined;
+        visitor.postOrder = (view) => {
+            view.dispose();
+        };
+        this.visit(visitor);
     }
 
     /**

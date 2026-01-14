@@ -3,8 +3,6 @@ import { isObject, isString } from "vega-util";
 import UnitView from "./unitView.js";
 // eslint-disable-next-line no-unused-vars
 import View, { VISIT_SKIP, VISIT_STOP } from "./view.js";
-import { buildDataFlow } from "./flowBuilder.js";
-import { optimizeDataFlow } from "../data/flowOptimizer.js";
 import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder.js";
 import { rollup } from "d3-array";
 import { concatUrl, getDirectory } from "../utils/url.js";
@@ -93,21 +91,27 @@ export function setImplicitScaleNames(root) {
 }
 
 /**
- * @param {View} root
- * @param {import("../data/dataFlow.js").default<View>} [existingFlow] Add data flow
- *      graphs to an existing DataFlow object.
+ * @param {Promise<import("../marks/mark.js").default>[]} graphicsPromises
+ * @param {() => boolean} [shouldFinalize]
+ * @returns {Promise<void>}
  */
-export async function initializeData(root, existingFlow) {
-    const flow = buildDataFlow(root, existingFlow);
-    optimizeDataFlow(flow);
-    flow.initialize();
+export function finalizeSubtreeGraphics(
+    graphicsPromises,
+    shouldFinalize = () => true
+) {
+    return Promise.allSettled(graphicsPromises).then((results) => {
+        if (!shouldFinalize()) {
+            return;
+        }
 
-    /** @type {Promise<void>[]} */
-    const promises = flow.dataSources.map((dataSource) => dataSource.load());
-
-    await Promise.all(promises);
-
-    return flow;
+        for (const result of results) {
+            if ("value" in result) {
+                result.value.finalizeGraphicsInitialization();
+            } else if ("reason" in result) {
+                console.error(result.reason);
+            }
+        }
+    });
 }
 
 /**

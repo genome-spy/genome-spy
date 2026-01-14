@@ -238,7 +238,7 @@ customElements.define("gs-dataflow-inspector", DataFlowInspectorDialog);
 /**
  * Show the dataflow inspector dialog
  *
- * @param {import("@genome-spy/core/data/dataFlow.js").default<any>} dataFlow
+ * @param {import("@genome-spy/core/data/dataFlow.js").default} dataFlow
  * @param {DataFlowInspectorOptions} [options]
  * @returns {Promise<import("../generic/baseDialog.js").DialogFinishDetail>}
  */

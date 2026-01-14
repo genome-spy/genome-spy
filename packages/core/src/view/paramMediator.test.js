@@ -87,6 +87,28 @@ describe("Single-level ParamMediator", () => {
         expect(result).toBe(51);
     });
 
+    test("Expression removeListener detaches a listener", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 42);
+        const expr = pm.createExpression("foo + 1");
+
+        let calls = 0;
+
+        const listener = () => {
+            calls++;
+        };
+
+        expr.addListener(listener);
+
+        setter(50);
+        expect(calls).toBe(1);
+
+        expr.removeListener(listener);
+
+        setter(60);
+        expect(calls).toBe(1);
+    });
+
     test("Expression parameter handles dependencies", () => {
         const pm = new ParamMediator();
         const setter = pm.registerParam({ name: "foo", value: 42 });

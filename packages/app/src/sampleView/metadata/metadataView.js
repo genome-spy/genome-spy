@@ -5,7 +5,6 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
-import { buildDataFlow } from "@genome-spy/core/view/flowBuilder.js";
 import {
     NOMINAL,
     ORDINAL,
@@ -15,7 +14,15 @@ import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
-import { checkForDuplicateScaleNames } from "@genome-spy/core/view/viewUtils.js";
+import {
+    checkForDuplicateScaleNames,
+    finalizeSubtreeGraphics,
+} from "@genome-spy/core/view/viewUtils.js";
+import {
+    collectViewSubtreeDataSources,
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "@genome-spy/core/data/flowInit.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
@@ -47,8 +54,20 @@ export class MetadataView extends ConcatView {
      */
     #attributeViews = new Map();
 
+    #metadataGeneration = 0;
+
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
+
+    /**
+     * @type {(identifier: import("../types.js").AttributeIdentifier) => import("../types.js").AttributeInfo}
+     */
+    #attributeInfoSource;
+
+    /**
+     * @type {import("@genome-spy/core/view/view.js").default}
+     */
+    #highlightTarget;
 
     /**
      * @param {import("../sampleView.js").default} sampleView
@@ -83,20 +102,22 @@ export class MetadataView extends ConcatView {
             abortController: new AbortController(),
         };
 
+        this.#attributeInfoSource = (attribute) =>
+            this.getAttributeInfo(/** @type {string} */ (attribute.specifier));
+
         this.#sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
             SAMPLE_ATTRIBUTE,
-            (attribute) =>
-                this.getAttributeInfo(
-                    /** @type {string} */ (attribute.specifier)
-                )
+            this.#attributeInfoSource
         );
 
-        subscribeTo(
-            this.#sampleView.provenance.store,
-            (state) => state.provenance.present.sampleView.sampleMetadata,
-            (sampleMetadata) => {
-                this.#setMetadata(sampleMetadata);
-            }
+        this.registerDisposer(
+            subscribeTo(
+                this.#sampleView.provenance.store,
+                (state) => state.provenance.present.sampleView.sampleMetadata,
+                (sampleMetadata) => {
+                    this.#setMetadata(sampleMetadata);
+                }
+            )
         );
 
         this.addInteractionEventListener(
@@ -104,7 +125,8 @@ export class MetadataView extends ConcatView {
             this.handleContextMenu.bind(this)
         );
 
-        this.addInteractionEventListener("mousemove", (coords, event) => {
+        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
+        const mouseMoveListener = (coords, event) => {
             const view = event.target;
             const sample = this.#sampleView.findSampleForMouseEvent(
                 coords,
@@ -125,12 +147,16 @@ export class MetadataView extends ConcatView {
             }
 
             this.#handleAttributeHighlight(attributeName);
-        });
+        };
+
+        this.addInteractionEventListener("mousemove", mouseMoveListener);
 
         // TODO: Implement "mouseleave" event. Let's hack for now...
-        peek([
+        this.#highlightTarget = peek([
             ...this.#sampleView.getLayoutAncestors(),
-        ]).addInteractionEventListener("mousemove", (coords, event) => {
+        ]);
+        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
+        const highlightTargetListener = (coords, event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
@@ -143,6 +169,16 @@ export class MetadataView extends ConcatView {
             }
 
             this.#handleAttributeHighlight(undefined);
+        };
+        this.#highlightTarget.addInteractionEventListener(
+            "mousemove",
+            highlightTargetListener
+        );
+        this.registerDisposer(() => {
+            this.#highlightTarget.removeInteractionEventListener(
+                "mousemove",
+                highlightTargetListener
+            );
         });
     }
 
@@ -267,45 +303,24 @@ export class MetadataView extends ConcatView {
 
         const flow = this.context.dataFlow;
 
+        const metadataGeneration = ++this.#metadataGeneration;
+
         this.#createViews();
 
-        buildDataFlow(this, flow);
-
+        const { graphicsPromises } = initializeViewSubtree(this, flow);
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                flow.findDataSourceByKey(this)
+                this.flowHandle?.dataSource
             );
 
-        dynamicSource.visit((node) => node.initialize());
+        if (!dynamicSource) {
+            throw new Error("Cannot find metadata data source handle!");
+        }
 
-        /** @type {Promise<import("@genome-spy/core/marks/mark.js").default>[]} */
-        const promises = [];
-
-        this.visit((view) => {
-            if (view instanceof UnitView) {
-                const mark = view.mark;
-                mark.initializeEncoders();
-                promises.push(mark.initializeGraphics().then((result) => mark));
-
-                flow.addObserver((collector) => {
-                    mark.initializeData(); // does faceting
-                    mark.updateGraphicsData();
-                }, view);
-            }
-        });
-
-        Promise.allSettled(promises).then((results) => {
-            for (const result of results) {
-                if ("value" in result) {
-                    result.value.finalizeGraphicsInitialization();
-                } else if ("reason" in result) {
-                    console.error(result.reason);
-                }
-            }
-            // TODO: Ensure that the views are rendered after finalization:
-            // this.context.animator.requestRender();
-            // But also ensure that the cached batch is invalidated
-        });
+        finalizeSubtreeGraphics(
+            graphicsPromises,
+            () => metadataGeneration === this.#metadataGeneration
+        );
 
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;
@@ -322,17 +337,12 @@ export class MetadataView extends ConcatView {
             console.warn("Some metadata entries do not match any sample data");
         }
 
-        // A terrible hack to initialize data sources.
-        // TODO: Come up with a clean solution. For example, when building the view
-        // hierarchy, data loading could be initiated when a a complete subtree with
-        // a data source has been created.
-        this.visit((view) => {
-            if (view.name.startsWith("title")) {
-                flow.findDataSourceByKey(view).load();
-            }
-        });
-
         dynamicSource.updateDynamicData(metadataTable);
+
+        // Load all subtree sources so that decorations (titles, axes) are ready.
+        const dataSources = collectViewSubtreeDataSources(this);
+        dataSources.delete(dynamicSource);
+        loadViewSubtreeData(this, dataSources);
         reconfigureScales(this); // TODO: Should happen automatically
 
         this.context.requestLayoutReflow();
@@ -615,6 +625,18 @@ export class MetadataView extends ConcatView {
 
     isPickingSupported() {
         return false;
+    }
+
+    /**
+     * @override
+     */
+    dispose() {
+        super.dispose();
+        this.#sampleView.compositeAttributeInfoSource.removeAttributeInfoSource(
+            SAMPLE_ATTRIBUTE,
+            this.#attributeInfoSource
+        );
+        this._attributeHighlighState.abortController.abort();
     }
 }
 
