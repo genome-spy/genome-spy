@@ -1,6 +1,7 @@
 import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
+import { VISIT_SKIP } from "../view/view.js";
 
 /**
  * @param {import("../view/view.js").default} root
@@ -94,18 +95,7 @@ export function initializeViewSubtree(subtreeRoot, flow) {
     const canonicalBySource = optimizeDataFlow(dataFlow);
     syncFlowHandles(subtreeRoot, canonicalBySource);
     const subtreeViews = subtreeRoot.getDescendants();
-    /** @type {Set<import("./sources/dataSource.js").default>} */
-    const dataSources = new Set();
-    for (const view of subtreeViews) {
-        // Walk up to the nearest view that owns a data source.
-        let current = view;
-        while (current && !current.flowHandle?.dataSource) {
-            current = current.dataParent;
-        }
-        if (current?.flowHandle?.dataSource) {
-            dataSources.add(current.flowHandle.dataSource);
-        }
-    }
+    const dataSources = collectViewSubtreeDataSources(subtreeViews);
 
     // Initialize flow nodes for the sources that belong to this subtree.
     for (const dataSource of dataSources) {
@@ -146,4 +136,66 @@ export function initializeViewSubtree(subtreeRoot, flow) {
         dataSources,
         graphicsPromises,
     };
+}
+
+/**
+ * Collects data sources needed to initialize all views in the subtree.
+ * This includes sources that are overridden deeper in the hierarchy.
+ *
+ * @param {import("../view/view.js").default | import("../view/view.js").default[]} subtreeRoot
+ * @returns {Set<import("./sources/dataSource.js").default>}
+ */
+export function collectViewSubtreeDataSources(subtreeRoot) {
+    const subtreeViews = Array.isArray(subtreeRoot)
+        ? subtreeRoot
+        : subtreeRoot.getDescendants();
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    const dataSources = new Set();
+    for (const view of subtreeViews) {
+        // Walk up to the nearest view that owns a data source.
+        let current = view;
+        while (current && !current.flowHandle?.dataSource) {
+            current = current.dataParent;
+        }
+        if (current?.flowHandle?.dataSource) {
+            dataSources.add(current.flowHandle.dataSource);
+        }
+    }
+    return dataSources;
+}
+
+/**
+ * Collects the nearest data sources under a subtree root.
+ * These sources define data-ready boundaries for subtree-level loading.
+ *
+ * @param {import("../view/view.js").default} subtreeRoot
+ * @returns {Set<import("./sources/dataSource.js").default>}
+ */
+export function collectNearestViewSubtreeDataSources(subtreeRoot) {
+    /** @type {Set<import("./sources/dataSource.js").default>} */
+    const dataSources = new Set();
+    subtreeRoot.visit((view) => {
+        if (view.flowHandle?.dataSource) {
+            dataSources.add(view.flowHandle.dataSource);
+            return VISIT_SKIP;
+        }
+    });
+    return dataSources;
+}
+
+/**
+ * Loads the nearest data sources for a subtree.
+ * Use the returned promise as a subtree-level "data ready" signal.
+ *
+ * @param {import("../view/view.js").default} subtreeRoot
+ * @param {Set<import("./sources/dataSource.js").default>} [dataSources]
+ * @returns {Promise<void[]>}
+ */
+export function loadViewSubtreeData(
+    subtreeRoot,
+    dataSources = collectNearestViewSubtreeDataSources(subtreeRoot)
+) {
+    return Promise.all(
+        Array.from(dataSources).map((dataSource) => dataSource.load())
+    );
 }

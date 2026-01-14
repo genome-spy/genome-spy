@@ -3,7 +3,13 @@ import { describe, expect, test, vi } from "vitest";
 import { createTestViewContext } from "../view/testUtils.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
-import { initializeViewSubtree, syncFlowHandles } from "./flowInit.js";
+import {
+    collectNearestViewSubtreeDataSources,
+    collectViewSubtreeDataSources,
+    initializeViewSubtree,
+    loadViewSubtreeData,
+    syncFlowHandles,
+} from "./flowInit.js";
 
 describe("flowInit", () => {
     test("syncs handles to canonical data sources after merge", async () => {
@@ -152,5 +158,155 @@ describe("flowInit", () => {
 
         expect(secondInitializeSpy).toHaveBeenCalledTimes(1);
         secondInitializeSpy.mockRestore();
+    });
+
+    test("collectNearestViewSubtreeDataSources stops at nested sources", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ x: 0 }] },
+            layer: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        // Nearest-source semantics: a top-level source hides deeper sources.
+        const sources = collectNearestViewSubtreeDataSources(root);
+        expect(sources.size).toBe(1);
+
+        const [rootSource] = Array.from(sources);
+        const layerRoot =
+            /** @type {import("../view/layerView.js").default} */ (root);
+        const childWithSource = layerRoot.children[0];
+
+        expect(rootSource).toBe(layerRoot.flowHandle.dataSource);
+        expect(childWithSource.flowHandle.dataSource).not.toBe(rootSource);
+    });
+
+    test("loadViewSubtreeData only loads nearest sources", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ x: 0 }] },
+            layer: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        const layerRoot =
+            /** @type {import("../view/layerView.js").default} */ (root);
+        const rootSource = layerRoot.flowHandle.dataSource;
+        const childSource = layerRoot.children[0].flowHandle.dataSource;
+
+        const rootLoadSpy = vi.spyOn(rootSource, "load");
+        const childLoadSpy = vi.spyOn(childSource, "load");
+
+        // Data-ready should ignore nested sources.
+        await loadViewSubtreeData(root);
+
+        expect(rootLoadSpy).toHaveBeenCalledTimes(1);
+        expect(childLoadSpy).toHaveBeenCalledTimes(0);
+
+        rootLoadSpy.mockRestore();
+        childLoadSpy.mockRestore();
+    });
+
+    test("collectViewSubtreeDataSources includes nested sources", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ x: 0 }] },
+            layer: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        // Initialization needs the full set of sources, including nested ones.
+        const sources = collectViewSubtreeDataSources(root);
+        expect(sources.size).toBe(2);
+    });
+
+    test("collectNearestViewSubtreeDataSources returns child sources when root has none", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").HConcatSpec} */
+        const spec = {
+            hconcat: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+                {
+                    data: { values: [{ x: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        // Without a root source, the nearest sources are the child sources.
+        const sources = collectNearestViewSubtreeDataSources(root);
+        expect(sources.size).toBe(2);
+
+        const concatRoot =
+            /** @type {import("../view/concatView.js").default} */ (root);
+        expect(sources).toEqual(
+            new Set([
+                concatRoot.children[0].flowHandle.dataSource,
+                concatRoot.children[1].flowHandle.dataSource,
+            ])
+        );
     });
 });
