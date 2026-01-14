@@ -23,20 +23,22 @@ without requiring a full rebuild or relying on a global registry.
   subscriptions/listeners on dispose.
 - Scale/axis resolution membership can be removed during disposal, and unit
   views dispose marks and listener wiring.
+- Root init now uses subtree init helpers and subtree data loading, with scale
+  reconfiguration handled by `loadViewSubtreeData`.
+- Flow branches are pruned on subtree dispose, removing empty ancestors and
+  detaching orphaned data sources.
+- Concurrent loads for shared sources are deduplicated with an in-flight cache.
 
 ## Remaining work (resume checklist)
 
 1) Replace global init path in `genomeSpy.js`
-- Move flow initialization/loading and `reconfigureScales` into subtree-aware
-  helpers, driven by view creation or subtree insertion.
 - Ensure flow optimization + handle sync still run when subtrees are added.
-- Add per-data-source load-state (cached load promise) to avoid duplicate loads
-  when sources are shared across subtrees.
+- Promote in-flight load caching to a persistent load-state per source if
+  repeated loads should be skipped across time, not just concurrently.
 
 2) Dataflow lifecycle for subtree replacement
-- Define how subtree flow branches are attached to the global graph and how
-  replaced branches are pruned or detached (flowBuilder or flowInit cleanup).
 - Ensure collectors and observers are removed when a subtree is disposed.
+- Confirm pruning behavior for named sources shared across subtrees.
 
 3) View creation consistency (app-side)
 - Replace direct `new` usage with `createOrImportView` where practical.
@@ -45,8 +47,7 @@ without requiring a full rebuild or relying on a global registry.
 - Keep metadata/sidebar out of sample-extraction readiness checks.
 
 4) Scale reconfiguration wiring
-- Decide where scale reconfiguration belongs for subtree data loads.
-- Wire `reconfigureScales` to subtree init or subtree data-ready as appropriate.
+- Decide whether `updateNamedData` should trigger subtree-level reconfigure.
 
 5) Tests to make resumption safe
 - SubtreeDataReady boundaries (metadata vs. sample data) and ancestry checks.
