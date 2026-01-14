@@ -43,7 +43,7 @@ import { createFramebufferInfo } from "twgl.js";
 
 /**
  * Events that are broadcasted to all views.
- * @typedef {"dataFlowBuilt" | "dataLoaded" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
+ * @typedef {"dataFlowBuilt" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
  */
 
 vegaFormats("fasta", fasta);
@@ -628,13 +628,6 @@ export default class GenomeSpy {
         // Now that all data have been loaded, the domains may need adjusting
         // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
         reconfigureScales(this.viewRoot);
-
-        // This event is needed by SampleView so that it can extract the sample ids
-        // from the data once they are loaded.
-        // TODO: It would be great if this could be attached to the data flow,
-        // because now this is somewhat a hack and is incompatible with dynamic data
-        // loading in the future.
-        this.broadcast("dataLoaded");
 
         await graphicsInitialized;
 

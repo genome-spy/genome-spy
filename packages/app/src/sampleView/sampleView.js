@@ -157,9 +157,6 @@ export default class SampleView extends ContainerView {
      * Setup broadcast handlers for lifecycle events
      */
     #setupBroadcastHandlers() {
-        this._addBroadcastHandler("dataLoaded", () =>
-            this.#extractSamplesFromData()
-        );
         this._addBroadcastHandler("subtreeDataReady", (message) => {
             if (!message.payload || !("subtreeRoot" in message.payload)) {
                 return;
