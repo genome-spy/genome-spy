@@ -59,8 +59,11 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         fontManager: new BmFontManager(),
         animator: /** @type {import("../utils/animator.js").default} */ (
             /** @type {any} */ ({
-                requestRender: () => undefined,
-                requestTransition: (callback) => callback(),
+                requestRender: /** @type {() => void} */ (() => undefined),
+                requestTransition:
+                    /** @type {(callback: () => void) => void} */ (
+                        (callback) => callback()
+                    ),
             })
         ),
 

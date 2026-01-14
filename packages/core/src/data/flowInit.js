@@ -2,6 +2,7 @@ import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
+import { reconfigureScales } from "../view/scaleResolution.js";
 
 /**
  * @param {import("../view/view.js").default} root
@@ -77,7 +78,6 @@ export function syncFlowHandles(root, canonicalBySource) {
  * TODO:
  * - add a load-state/cache so shared canonical sources load once
  * - replace global dataLoaded usage with subtree-scoped readiness
- * - reconfigure scales automatically after subtree data load
  * - integrate with async font readiness for text marks
  * - unify observer wiring via a disposable registry across view types
  *
@@ -204,6 +204,7 @@ export function loadViewSubtreeData(
     return Promise.all(
         Array.from(dataSources).map((dataSource) => dataSource.load())
     ).then((results) => {
+        reconfigureScales(subtreeRoot);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });

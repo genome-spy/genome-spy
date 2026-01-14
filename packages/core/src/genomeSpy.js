@@ -35,7 +35,6 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
-import { reconfigureScales } from "./view/scaleResolution.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { isStillZooming } from "./view/zoom.js";
 import { createFramebufferInfo } from "twgl.js";
@@ -229,7 +228,6 @@ export default class GenomeSpy {
         }
 
         namedSource.dataSource.updateDynamicData(data);
-        reconfigureScales(this.viewRoot);
 
         this.animator.requestRender();
     }
@@ -589,10 +587,6 @@ export default class GenomeSpy {
 
         // Find all data sources and initiate loading.
         await loadViewSubtreeData(this.viewRoot, new Set(dataFlow.dataSources));
-
-        // Now that all data have been loaded, the domains may need adjusting
-        // IMPORTANT TODO: Check that discrete domains and indexers match!!!!!!!!!
-        reconfigureScales(this.viewRoot);
 
         await finalizeSubtreeGraphics(graphicsPromises);
 
