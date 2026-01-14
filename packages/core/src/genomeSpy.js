@@ -518,6 +518,9 @@ export default class GenomeSpy {
             highlightView: (view) => {
                 this.container.querySelector(".view-highlight")?.remove();
                 if (view) {
+                    if (!view.isConfiguredVisible()) {
+                        return;
+                    }
                     const coords = view.coords;
                     if (coords) {
                         const div = document.createElement("div");

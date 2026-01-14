@@ -213,8 +213,14 @@ class ViewSettingsButton extends LitElement {
             }
 
             if (depth >= 0) {
-                const template = html` <label class="checkbox"
-                    ><input
+                const template = html` <label
+                    class="checkbox"
+                    @mouseover=${(/** @type {MouseEvent} */ event) =>
+                        this.#handleViewHover(event, view)}
+                    @mouseout=${(/** @type {MouseEvent} */ event) =>
+                        this.#handleViewHover(event, view)}
+                >
+                    <input
                         style=${`margin-left: ${depth * 1.5}em;`}
                         type="checkbox"
                         ?disabled=${!uniqueNames.has(view.name) ||
@@ -290,6 +296,18 @@ class ViewSettingsButton extends LitElement {
 
     getVisibilities() {
         return this.#app.store.getState().viewSettings.visibilities;
+    }
+
+    /**
+     * @param {MouseEvent} event
+     * @param {View} view
+     */
+    #handleViewHover(event, view) {
+        if (event.type == "mouseover") {
+            this.#app.genomeSpy.viewRoot.context.highlightView(view);
+        } else {
+            this.#app.genomeSpy.viewRoot.context.highlightView(null);
+        }
     }
 
     #showUploadMetadataDialog() {
