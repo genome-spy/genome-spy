@@ -8,6 +8,7 @@ import {
     faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../../utils/ui/dropdown.js";
+import SubscriptionController from "../generic/subscriptionController.js";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {
@@ -15,18 +16,16 @@ export default class ProvenanceButtons extends LitElement {
 
         /** @type {import("../../state/provenance.js").default} */
         this.provenance = undefined;
+        this._subscriptions = new SubscriptionController(this);
     }
 
     connectedCallback() {
         super.connectedCallback();
-        this.provenance.store.subscribe(() => {
+
+        const unsubscribe = this.provenance.store.subscribe(() => {
             this.requestUpdate();
         });
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        // TODO: remove listener
+        this._subscriptions.addUnsubscribeCallback(unsubscribe);
     }
 
     createRenderRoot() {

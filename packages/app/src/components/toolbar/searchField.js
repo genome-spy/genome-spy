@@ -7,6 +7,7 @@ import { MetadataView } from "../../sampleView/metadata/metadataView.js";
 import { sampleIterable } from "@genome-spy/core/data/transforms/sample.js";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
+import SubscriptionController from "../generic/subscriptionController.js";
 
 export default class SearchField extends LitElement {
     constructor() {
@@ -17,18 +18,10 @@ export default class SearchField extends LitElement {
         /** @type {import("../../app.js").default} */
         this.app = undefined;
 
+        this._focused = false;
+        this._subscriptions = new SubscriptionController(this);
         /** @type {function():string} */
         this.getDefaultValue = () => "";
-
-        this._keyListener = this._onKeyDown.bind(this);
-
-        this._documentClickListener = (/** @type {InputEvent} */ event) => {
-            if (event.target !== this._inputField) {
-                this._inputField?.blur();
-            }
-        };
-
-        this._focused = false;
     }
 
     get genomeSpy() {
@@ -49,17 +42,28 @@ export default class SearchField extends LitElement {
         super.connectedCallback();
         this._initializeGenome();
 
-        document.addEventListener("keydown", this._keyListener);
-        document.addEventListener("click", this._documentClickListener);
+        const keyListener = (/** @type {KeyboardEvent} */ event) => {
+            this._onKeyDown(event);
+        };
+        const documentClickListener = (/** @type {InputEvent} */ event) => {
+            if (event.target !== this._inputField) {
+                this._inputField?.blur();
+            }
+        };
+
+        document.addEventListener("keydown", keyListener);
+        document.addEventListener("click", documentClickListener);
+
+        this._subscriptions.addUnsubscribeCallback(() =>
+            document.removeEventListener("keydown", keyListener)
+        );
+        this._subscriptions.addUnsubscribeCallback(() =>
+            document.removeEventListener("click", documentClickListener)
+        );
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-
-        document.removeEventListener("keydown", this._keyListener);
-        document.removeEventListener("click", this._documentClickListener);
-
-        // TODO: remove listener from resolutions
     }
 
     createRenderRoot() {
@@ -101,9 +105,14 @@ export default class SearchField extends LitElement {
             this.getDefaultValue = () =>
                 this._genome.formatInterval(genomeResolution.getDomain());
 
-            genomeResolution.addEventListener(
-                "domain",
-                debounce(() => this.requestUpdate(), 60, false)
+            const domainListener = debounce(
+                () => this.requestUpdate(),
+                60,
+                false
+            );
+            genomeResolution.addEventListener("domain", domainListener);
+            this._subscriptions.addUnsubscribeCallback(() =>
+                genomeResolution.removeEventListener("domain", domainListener)
             );
         }
     }
