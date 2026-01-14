@@ -580,17 +580,20 @@ export default class SampleView extends ContainerView {
 
         const locations = this.locationManager.getLocations();
 
-        const sampleOptions = locations.samples.map((sampleLocation) => ({
-            ...options,
-            sampleFacetRenderingOptions: {
-                locSize: scaleLocSize(
-                    sampleLocation.locSize,
-                    heightFactorSource
-                ),
-            },
-            facetId: [sampleLocation.key],
-            clipRect,
-        }));
+        const sampleOptions = locations.samples.map(
+            (sampleLocation, index) => ({
+                ...options,
+                sampleFacetRenderingOptions: {
+                    locSize: scaleLocSize(
+                        sampleLocation.locSize,
+                        heightFactorSource
+                    ),
+                },
+                facetId: [sampleLocation.key],
+                firstFacet: index == 0,
+                clipRect,
+            })
+        );
 
         // Render the view for each sample, pass location and facet id as options
         // TODO: Support facet texture as an alternative to multiple draw calls
