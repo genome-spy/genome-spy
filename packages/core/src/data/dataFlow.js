@@ -1,3 +1,4 @@
+import DataSource from "./sources/dataSource.js";
 import NamedSource from "./sources/namedSource.js";
 
 /**
@@ -60,6 +61,28 @@ export default class DataFlow {
     removeCollector(collector) {
         collector.observers.clear();
         this.#collectors.delete(collector);
+    }
+
+    /**
+     * Prune a collector branch from the flow graph, removing empty ancestors.
+     *
+     * @param {import("./collector.js").default} collector
+     */
+    pruneCollectorBranch(collector) {
+        let parent = collector.parent;
+        if (parent) {
+            parent.removeChild(collector);
+        }
+
+        while (parent && parent.children.length === 0) {
+            const current = parent;
+            parent = current.parent;
+            if (parent) {
+                parent.removeChild(current);
+            } else if (current instanceof DataSource) {
+                this.removeDataSource(current);
+            }
+        }
     }
 
     /**

@@ -530,6 +530,7 @@ export default class View {
         const handle = this.flowHandle;
 
         if (handle?.collector) {
+            this.context.dataFlow.pruneCollectorBranch(handle.collector);
             this.context.dataFlow.removeCollector(handle.collector);
         }
 
