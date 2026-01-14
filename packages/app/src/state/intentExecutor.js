@@ -1,5 +1,10 @@
 /**
  * @template {import("@reduxjs/toolkit").EnhancedStore<any, any, any>} S
+ *
+ * IntentExecutor dispatches intent actions through optional augmenters so
+ * reducers receive enriched, still-serializable payloads for provenance/bookmarks.
+ * This is a bit unconventional (thunks are more typical) but keeps actions
+ * replayable and easily describable in provenance and bookmarks.
  */
 export default class IntentExecutor {
     /**
