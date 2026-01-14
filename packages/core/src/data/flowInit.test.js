@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { createTestViewContext } from "../view/testUtils.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
-import { initializeSubtree, syncFlowHandles } from "./flowInit.js";
+import { initializeViewSubtree, syncFlowHandles } from "./flowInit.js";
 
 describe("flowInit", () => {
     test("syncs handles to canonical data sources after merge", async () => {
@@ -54,7 +54,7 @@ describe("flowInit", () => {
         expect(sharedSources).toEqual([left.flowHandle.dataSource]);
     });
 
-    test("initializeSubtree wires collector updates for subtree loads", async () => {
+    test("initializeViewSubtree wires collector updates for subtree loads", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [];
         context.addBroadcastListener = () => undefined;
@@ -70,7 +70,7 @@ describe("flowInit", () => {
         };
 
         const root = await context.createOrImportView(spec, null, null, "root");
-        const { dataSources } = initializeSubtree(root, context.dataFlow);
+        const { dataSources } = initializeViewSubtree(root, context.dataFlow);
 
         // This guards subtree-only initialization: dynamic view rebuilds should still
         // trigger mark updates when their local collectors complete.
@@ -108,7 +108,7 @@ describe("flowInit", () => {
             null,
             "first"
         );
-        const { dataSources: firstSources } = initializeSubtree(
+        const { dataSources: firstSources } = initializeViewSubtree(
             firstRoot,
             context.dataFlow
         );
@@ -137,7 +137,7 @@ describe("flowInit", () => {
             null,
             "second"
         );
-        const { dataSources: secondSources } = initializeSubtree(
+        const { dataSources: secondSources } = initializeViewSubtree(
             secondRoot,
             context.dataFlow
         );

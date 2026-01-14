@@ -2,9 +2,9 @@ import { describe, expect, test, vi } from "vitest";
 
 import { createTestViewContext } from "./testUtils.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
-import { initializeSubtree } from "../data/flowInit.js";
+import { initializeViewSubtree } from "../data/flowInit.js";
 
-describe("initializeSubtree", () => {
+describe("initializeViewSubtree", () => {
     test("initializes data flow for a subtree only", async () => {
         const context = createTestViewContext();
 
@@ -39,10 +39,8 @@ describe("initializeSubtree", () => {
         const child = concatRoot.children[0];
         const otherChild = concatRoot.children[1];
 
-        const { dataSources, graphicsPromises, unitViews } = initializeSubtree(
-            child,
-            context.dataFlow
-        );
+        const { dataSources, graphicsPromises, unitViews } =
+            initializeViewSubtree(child, context.dataFlow);
 
         expect(dataSources.size).toBe(1);
         expect(unitViews.length).toBe(1);

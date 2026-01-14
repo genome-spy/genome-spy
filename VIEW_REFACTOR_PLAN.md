@@ -43,7 +43,7 @@ without requiring a full rebuild or relying on a global registry.
 - Added removal for scale/axis resolution members and invalidation of cached
   scale resolutions.
 - Added observer cleanup for collectors and flow-handle-based teardown.
-- Added subtree initialization helpers (`initializeSubtree`,
+- Added subtree initialization helpers (`initializeViewSubtree`,
   `finalizeSubtreeGraphics`) to build flow and initialize marks per subtree.
 - Dropped host-based `DataFlow` lookup and replaced it with per-view flow
   handles; `DataFlow` now tracks only data sources and collectors.
@@ -66,7 +66,7 @@ without requiring a full rebuild or relying on a global registry.
 ## Proposed fixes (incremental direction)
 
 - Introduce explicit lifecycle hooks for views:
-  - `initializeSubtree()` for post-order setup (axes, scale resolution, mark
+  - `initializeViewSubtree()` for post-order setup (axes, scale resolution, mark
     encoders, flow build/init, and initial data propagation).
   - `disposeSubtree()` for pre-order teardown (unsubscribe, remove listeners,
     release mark resources, detach flow nodes).
@@ -157,7 +157,7 @@ graph/optimizer, while views access flow via handles.
   by letting local subtrees initialize their own sources on completion.
 - Lifecycle ordering for dynamic insertion:
   - build the subtree completely (pre/post-order creation, no side effects)
-  - run subtree init (`initializeSubtree`) in post-order
+  - run subtree init (`initializeViewSubtree`) in post-order
   - attach/replace into the live hierarchy
   - dispose old subtree via `disposeSubtree` when replacing
 
@@ -240,4 +240,4 @@ lives next to the owner view (not in `DataFlow`).
   listeners at construction; lacks a remove/unresolve path.
 - `packages/app`: several views are still instantiated via `new` instead of
   `createOrImportView`; these should follow the same subtree lifecycle
-  (build fully, initializeSubtree, then attach) and dispose old subtrees.
+  (build fully, initializeViewSubtree, then attach) and dispose old subtrees.

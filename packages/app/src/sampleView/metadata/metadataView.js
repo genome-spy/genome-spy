@@ -18,7 +18,7 @@ import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
 } from "@genome-spy/core/view/viewUtils.js";
-import { initializeSubtree } from "@genome-spy/core/data/flowInit.js";
+import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
@@ -299,7 +299,10 @@ export class MetadataView extends ConcatView {
 
         this.#createViews();
 
-        const { dataSources, graphicsPromises } = initializeSubtree(this, flow);
+        const { dataSources, graphicsPromises } = initializeViewSubtree(
+            this,
+            flow
+        );
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
