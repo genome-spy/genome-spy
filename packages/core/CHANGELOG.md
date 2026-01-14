@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
+
+### Bug Fixes
+
+* stabilize metadata titles and search init ([f4c0a8c](https://github.com/genome-spy/genome-spy/commit/f4c0a8c1687a4989a990996f103ee13c332162fd)) by @tuner
+
+### Features
+
+* **app:** enable "upload" of custom metadata ([#299](https://github.com/genome-spy/genome-spy/issues/299)) ([3089f97](https://github.com/genome-spy/genome-spy/commit/3089f97bea8ce100551b53ea46191baec6d9f3c2)) by @tuner
+* **app:** highlight views when navigating view-visibility menu ([2a2c9b5](https://github.com/genome-spy/genome-spy/commit/2a2c9b516aba74f2277d25cd66fa18f671d7df30)) by @tuner
+
 # [0.64.0](https://github.com/genome-spy/genome-spy/compare/v0.63.0...v0.64.0) (2025-11-27)
 
 ### Bug Fixes
