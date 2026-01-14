@@ -263,6 +263,10 @@ export default class SampleView extends ContainerView {
         this.intentExecutor = intentExecutor;
 
         // Attach an augmenter that enriches actions with attribute info when applicable
+        /**
+         * Augments attribute-related actions with accessed values so reducers can
+         * stay pure and provenance remains based on serializable intent actions.
+         */
         this.#actionAugmenter = (action) => {
             const getAttributeInfo =
                 this.compositeAttributeInfoSource.getAttributeInfo.bind(

@@ -164,3 +164,47 @@ export function filterUndefined(samples, accessor) {
     const isValid = (x) => x !== undefined && x !== null;
     return samples.filter((sample) => isValid(accessor(sample)));
 }
+
+/**
+ * Returns values that are present in all non-empty sample groups.
+ *
+ * @param {Iterable<Iterable<T>>} groups
+ * @param {function(T):any} accessor
+ * @returns {any[]}
+ * @template T
+ */
+export function getMatchedValues(groups, accessor) {
+    /** @type {Set<any>[]} */
+    const valueSets = [];
+
+    for (const group of groups) {
+        /** @type {Set<any>} */
+        const values = new Set();
+        for (const sample of group) {
+            values.add(accessor(sample));
+        }
+        if (values.size > 0) {
+            valueSets.push(values);
+        }
+    }
+
+    if (!valueSets.length) {
+        return [];
+    }
+
+    /** @type {any[]} */
+    const intersectedValues = [];
+
+    for (const value of valueSets[0]) {
+        let found = true;
+        for (let i = 1; i < valueSets.length && found; i++) {
+            found = valueSets[i].has(value);
+        }
+
+        if (found) {
+            intersectedValues.push(value);
+        }
+    }
+
+    return intersectedValues;
+}

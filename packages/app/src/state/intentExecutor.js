@@ -1,5 +1,10 @@
 /**
  * @template {import("@reduxjs/toolkit").EnhancedStore<any, any, any>} S
+ *
+ * IntentExecutor dispatches intent actions through optional augmenters so
+ * reducers receive enriched, still-serializable payloads for provenance/bookmarks.
+ * This is a bit unconventional (thunks are more typical) but keeps actions
+ * replayable and easily describable in provenance and bookmarks.
  */
 export default class IntentExecutor {
     /**
@@ -21,6 +26,7 @@ export default class IntentExecutor {
 
     /**
      * @param {import("@reduxjs/toolkit").Action} action
+     * @returns {import("@reduxjs/toolkit").Action}
      */
     dispatch(action) {
         if ("payload" in action) {
@@ -33,7 +39,7 @@ export default class IntentExecutor {
             }
             action = payloadAction;
         }
-        this.#store.dispatch(action);
+        return this.#store.dispatch(action);
     }
 
     /**
