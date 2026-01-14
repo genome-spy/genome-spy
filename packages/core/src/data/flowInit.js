@@ -2,26 +2,36 @@ import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
+import { reconfigureScales } from "../view/scaleResolution.js";
+
+/** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
+const inFlightLoads = new WeakMap();
 
 /**
- * @param {import("../view/view.js").default} root
- * @param {import("./dataFlow.js").default} [existingFlow]
+ * Deduplicate concurrent loads for shared sources without changing propagation.
+ *
+ * Data sources still propagate rows immediately during `load()`/`loadSynchronously`
+ * and do not retain data. This helper only prevents overlapping `load()` calls
+ * from running twice; collectors remain the sole in-memory cache. Once the load
+ * promise settles, the source may be loaded again later as usual.
+ *
+ * @param {import("./sources/dataSource.js").default} dataSource
+ * @returns {Promise<void>}
  */
-export async function initializeData(root, existingFlow) {
-    const flow = buildDataFlow(root, existingFlow);
-    const canonicalBySource = optimizeDataFlow(flow);
-    syncFlowHandles(root, canonicalBySource);
-    flow.initialize();
+function loadDataSourceOnce(dataSource) {
+    const existing = inFlightLoads.get(dataSource);
+    if (existing) {
+        return existing;
+    }
 
-    /** @type {Promise<void>[]} */
-    const promises = flow.dataSources.map(
-        (/** @type {import("./sources/dataSource.js").default} */ dataSource) =>
-            dataSource.load()
-    );
+    const loadPromise = Promise.resolve()
+        .then(() => dataSource.load())
+        .finally(() => {
+            inFlightLoads.delete(dataSource);
+        });
 
-    await Promise.all(promises);
-
-    return flow;
+    inFlightLoads.set(dataSource, loadPromise);
+    return loadPromise;
 }
 
 /**
@@ -75,9 +85,8 @@ export function syncFlowHandles(root, canonicalBySource) {
  * - loadViewSubtreeData emits a subtree-scoped "subtreeDataReady" broadcast
  *
  * TODO:
- * - add a load-state/cache so shared canonical sources load once
+ * - promote in-flight load caching to a persistent load-state per source
  * - replace global dataLoaded usage with subtree-scoped readiness
- * - reconfigure scales automatically after subtree data load
  * - integrate with async font readiness for text marks
  * - unify observer wiring via a disposable registry across view types
  *
@@ -124,8 +133,14 @@ export function initializeViewSubtree(subtreeRoot, flow) {
         ) => {
             mark.initializeData(); // does faceting
             if (canInitializeGraphics) {
-                mark.updateGraphicsData();
+                try {
+                    mark.updateGraphicsData();
+                } catch (e) {
+                    e.view = view;
+                    throw e;
+                }
             }
+            view.context.animator.requestRender();
         };
         view.registerDisposer(view.flowHandle.collector.observe(observer));
     }
@@ -196,8 +211,11 @@ export function loadViewSubtreeData(
     dataSources = collectNearestViewSubtreeDataSources(subtreeRoot)
 ) {
     return Promise.all(
-        Array.from(dataSources).map((dataSource) => dataSource.load())
+        Array.from(dataSources).map((dataSource) =>
+            loadDataSourceOnce(dataSource)
+        )
     ).then((results) => {
+        reconfigureScales(subtreeRoot);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });

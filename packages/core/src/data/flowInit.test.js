@@ -160,6 +160,39 @@ describe("flowInit", () => {
         secondInitializeSpy.mockRestore();
     });
 
+    test("disposeSubtree prunes named source branches", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [{ x: 1 }];
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { name: "shared" },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        const unitView = /** @type {import("../view/unitView.js").default} */ (
+            root
+        );
+        const dataSource = unitView.flowHandle.dataSource;
+
+        // This guards against stale flow branches when a subtree is disposed.
+        expect(context.dataFlow.dataSources).toContain(dataSource);
+        expect(dataSource.children.length).toBeGreaterThan(0);
+
+        root.disposeSubtree();
+
+        expect(dataSource.children.length).toBe(0);
+        expect(context.dataFlow.dataSources).not.toContain(dataSource);
+    });
+
     test("collectNearestViewSubtreeDataSources stops at nested sources", async () => {
         const context = createTestViewContext();
         context.addBroadcastListener = () => undefined;
@@ -335,5 +368,46 @@ describe("flowInit", () => {
         await loadViewSubtreeData(root);
 
         expect(calls).toBe(1);
+    });
+
+    test("loadViewSubtreeData deduplicates concurrent loads", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [{ x: 1 }];
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").HConcatSpec} */
+        const spec = {
+            data: { name: "shared" },
+            hconcat: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        const dataSource = root.flowHandle.dataSource;
+        const loadSpy = vi.spyOn(dataSource, "load");
+
+        // Prevent duplicate fetches when concurrent subtrees share a source.
+        await Promise.all([
+            loadViewSubtreeData(root, new Set([dataSource])),
+            loadViewSubtreeData(root, new Set([dataSource])),
+        ]);
+
+        expect(loadSpy).toHaveBeenCalledTimes(1);
+        loadSpy.mockRestore();
     });
 });

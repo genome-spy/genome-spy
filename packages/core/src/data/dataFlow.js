@@ -1,3 +1,4 @@
+import DataSource from "./sources/dataSource.js";
 import NamedSource from "./sources/namedSource.js";
 
 /**
@@ -63,6 +64,28 @@ export default class DataFlow {
     }
 
     /**
+     * Prune a collector branch from the flow graph, removing empty ancestors.
+     *
+     * @param {import("./collector.js").default} collector
+     */
+    pruneCollectorBranch(collector) {
+        let parent = collector.parent;
+        if (parent) {
+            parent.removeChild(collector);
+        }
+
+        while (parent && parent.children.length === 0) {
+            const current = parent;
+            parent = current.parent;
+            if (parent) {
+                parent.removeChild(current);
+            } else if (current instanceof DataSource) {
+                this.removeDataSource(current);
+            }
+        }
+    }
+
+    /**
      * @param {string} name
      */
     findNamedDataSource(name) {
@@ -92,14 +115,5 @@ export default class DataFlow {
         }
     }
 
-    /**
-     * Allows the flow nodes to perform final initialization after the flow
-     * structure has been built and optimized.
-     * Must be called before any data are to be propagated.
-     */
-    initialize() {
-        for (const ds of this.dataSources) {
-            ds.visit((node) => node.initialize());
-        }
-    }
+    // Initialization is handled by subtree helpers to avoid global init order.
 }

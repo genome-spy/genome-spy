@@ -16,7 +16,6 @@ import clamp from "@genome-spy/core/utils/clamp.js";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
 import FlowNode from "@genome-spy/core/data/flowNode.js";
 import { createChain } from "@genome-spy/core/view/flowBuilder.js";
-import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import SampleGroupView from "./sampleGroupView.js";
 import {
@@ -59,12 +58,11 @@ const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
  */
 export default class SampleView extends ContainerView {
     /**
-     * @typedef {import("./state/sampleState.js").Group} Group
      * @typedef {import("./state/sampleState.js").Sample} Sample
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
      * @typedef {import("@genome-spy/core/view/view.js").default} View
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
-     * @typedef {import("@genome-spy/core/data/dataFlow.js").default} DataFlow
+     * @typedef {import("@genome-spy/core/view/concatView.js").default} ConcatView
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
      */
 
@@ -307,6 +305,23 @@ export default class SampleView extends ContainerView {
             value: 0,
         });
 
+        const summaryViews = /** @type {ConcatView} */ (
+            await this.context.createOrImportView(
+                {
+                    configurableVisibility: false,
+                    resolve: {
+                        axis: { x: "shared" },
+                        scale: { x: "shared" },
+                    },
+                    spacing: 0, // Let the children use padding to configure spacing
+                    vconcat: [],
+                },
+                this,
+                this,
+                "sampleSummaries"
+            )
+        );
+
         this.#gridChild = new SampleGridChild(
             await this.context.createOrImportView(
                 childSpec,
@@ -316,6 +331,7 @@ export default class SampleView extends ContainerView {
             ),
             this,
             0,
+            summaryViews,
             this.spec.view
         );
 
@@ -328,24 +344,25 @@ export default class SampleView extends ContainerView {
          * Container for group markers and metadata.
          * @type {ConcatView}
          */
-        this.#sidebarView = new ConcatView(
-            {
-                title: "Sidebar",
-                resolve: {
-                    scale: { default: "independent" },
-                    axis: { default: "independent" },
+        this.#sidebarView = /** @type {ConcatView} */ (
+            await this.context.createOrImportView(
+                {
+                    title: "Sidebar",
+                    resolve: {
+                        scale: { default: "independent" },
+                        axis: { default: "independent" },
+                    },
+                    encoding: {
+                        y: null,
+                        facetIndex: null,
+                    },
+                    hconcat: [],
+                    spacing: 0,
                 },
-                encoding: {
-                    y: null,
-                    facetIndex: null,
-                },
-                hconcat: [],
-                spacing: 0,
-            },
-            this.context,
-            this,
-            this,
-            "sample-sidebar"
+                this,
+                this,
+                "sample-sidebar"
+            )
         );
 
         this.sampleGroupView = new SampleGroupView(this, this.#sidebarView);
@@ -1043,9 +1060,10 @@ class SampleGridChild extends GridChild {
      * @param {View} view
      * @param {ContainerView} layoutParent
      * @param {number} serial
+     * @param {ConcatView} summaryViews
      * @param {import("@genome-spy/core/spec/view.js").ViewBackground} [viewBackgroundSpec]
      */
-    constructor(view, layoutParent, serial, viewBackgroundSpec) {
+    constructor(view, layoutParent, serial, summaryViews, viewBackgroundSpec) {
         super(view, layoutParent, serial);
 
         /** @type {UnitView} */
@@ -1081,21 +1099,7 @@ class SampleGridChild extends GridChild {
             );
         }
 
-        this.summaryViews = new ConcatView(
-            {
-                configurableVisibility: false,
-                resolve: {
-                    axis: { x: "shared" },
-                    scale: { x: "shared" },
-                },
-                spacing: 0, // Let the children use padding to configure spacing
-                vconcat: [],
-            },
-            layoutParent.context,
-            layoutParent,
-            layoutParent,
-            "sampleSummaries"
-        );
+        this.summaryViews = summaryViews;
     }
 
     *getChildren() {
