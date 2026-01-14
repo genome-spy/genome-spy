@@ -66,6 +66,8 @@ export default shader;\n`;
     }
 }
 
+const shouldSkip = (file) => /\.test\.js$|\.stories\.js$/.test(file);
+
 // Copy files, directories, and preprocess JavaScript files
 function copyAndPreprocess(src, dest) {
     if (!fs.existsSync(dest)) {
@@ -80,6 +82,9 @@ function copyAndPreprocess(src, dest) {
             if (!fs.existsSync(destPath)) {
                 fs.mkdirSync(destPath);
             }
+        } else if (shouldSkip(file)) {
+            // Tests and stories are not published to npm
+            return;
         } else if (file.endsWith(".glsl")) {
             // Rename .glsl to .glsl.js
             const newDestPath = destPath.replace(/\.glsl$/, ".glsl.js");
