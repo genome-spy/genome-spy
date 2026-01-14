@@ -1,91 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
-import CompositeAttributeInfoSource from "../compositeAttributeInfoSource.js";
+import {
+    createSampleViewStub,
+    createStoreStub,
+} from "../../testUtils/appTestUtils.js";
 
 vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
-
-/**
- * @typedef {object} StoreStub
- * @prop {() => any} getState
- * @prop {(listener: () => void) => () => void} subscribe
- * @prop {() => number} getListenerCount
- * @prop {(nextState: any) => void} setState
- */
 
 /**
  * @typedef {object} SampleHierarchyStub
  * @prop {{ attributeNames: string[], attributeDefs: Record<string, any>, entities: Record<string, any> }} sampleMetadata
  * @prop {{ entities: Record<string, { indexNumber: number }> }} sampleData
  */
-
-/**
- * @typedef {import("@genome-spy/core/view/concatView.js").default & {
- *   spec: { samples: import("@genome-spy/core/spec/sampleView.js").SampleDef },
- *   sampleHierarchy: SampleHierarchyStub,
- *   compositeAttributeInfoSource: { addAttributeInfoSource: (name: string, resolver: (attribute: any) => any) => void, removeAttributeInfoSource: (name: string, resolver?: (attribute: any) => any) => void, attributeInfoSourcesByType: Record<string, any> },
- *   provenance: { store: StoreStub, getPresentState: () => any },
- *   locationManager: { clipBySummary: (coords: import("@genome-spy/core/view/layout/rectangle.js").default) => import("@genome-spy/core/view/layout/rectangle.js").default },
- *   findSampleForMouseEvent: (coords: import("@genome-spy/core/view/layout/rectangle.js").default, event: any) => any,
- *   makePeekMenuItem: () => any,
- *   actions: { filterByNominal: any },
- *   dispatchAttributeAction: (action: any) => void,
- * }} SampleViewStub
- */
-
-/**
- * @param {any} initialState
- * @returns {StoreStub}
- */
-function createStore(initialState) {
-    let state = initialState;
-    /** @type {Set<() => void>} */
-    const listeners = new Set();
-
-    return {
-        getState: () => state,
-        subscribe: (listener) => {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-        },
-        getListenerCount: () => listeners.size,
-        setState: (nextState) => {
-            state = nextState;
-            for (const listener of Array.from(listeners)) {
-                listener();
-            }
-        },
-    };
-}
-
-/**
- * @param {import("@genome-spy/core/types/viewContext.js").default} context
- * @param {StoreStub} store
- * @param {SampleHierarchyStub} sampleHierarchy
- * @returns {SampleViewStub}
- */
-function createSampleView(context, store, sampleHierarchy) {
-    const view = new ConcatView({ hconcat: [] }, context, null, null, "sample");
-
-    view.spec = { samples: {} };
-    view.sampleHierarchy = sampleHierarchy;
-    view.compositeAttributeInfoSource = new CompositeAttributeInfoSource();
-    view.provenance = {
-        store,
-        getPresentState: () => ({}),
-    };
-    view.locationManager = {
-        clipBySummary: (coords) => coords,
-    };
-    view.findSampleForMouseEvent = () => undefined;
-    view.makePeekMenuItem = () => ({});
-    view.actions = { filterByNominal: () => ({}) };
-    view.dispatchAttributeAction = () => undefined;
-
-    return /** @type {SampleViewStub} */ (view);
-}
 
 /**
  * @param {import("./metadataView.js").MetadataView} metadataView
@@ -133,7 +61,7 @@ describe("MetadataView", () => {
 
         const dataFlow = context.dataFlow;
 
-        const store = createStore({
+        const store = createStoreStub({
             provenance: {
                 present: {
                     sampleView: {
@@ -162,7 +90,11 @@ describe("MetadataView", () => {
             },
         };
 
-        const sampleView = createSampleView(context, store, sampleHierarchy);
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
         const metadataView = new MetadataView(sampleView, sampleView);
         expect(store.getListenerCount()).toBe(1);
         expect(
