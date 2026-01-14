@@ -135,7 +135,7 @@ describe("MetadataView", () => {
          * @param {string[]} attributeNames
          * @param {Record<string, any>} entities
          */
-        const updateMetadata = (attributeNames, entities) => {
+        const updateMetadata = async (attributeNames, entities) => {
             const attributeDefs = Object.fromEntries(
                 attributeNames.map((name) => [name, { type: "nominal" }])
             );
@@ -146,7 +146,7 @@ describe("MetadataView", () => {
             };
 
             sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
-            store.setState({
+            await store.setState({
                 provenance: {
                     present: {
                         sampleView: {
@@ -155,9 +155,10 @@ describe("MetadataView", () => {
                     },
                 },
             });
+            await Promise.resolve();
         };
 
-        updateMetadata(["a", "b"], {
+        await updateMetadata(["a", "b"], {
             s1: { a: "x", b: 1 },
             s2: { a: "y", b: 2 },
         });
@@ -167,7 +168,7 @@ describe("MetadataView", () => {
         expect(initialSnapshot.hasCollector).toBe(true);
         expect(initialSnapshot.hasDataSource).toBe(true);
 
-        updateMetadata(["a"], {
+        await updateMetadata(["a"], {
             s1: { a: "x" },
             s2: { a: "y" },
         });
@@ -180,7 +181,7 @@ describe("MetadataView", () => {
         expect(reducedSnapshot.hasCollector).toBe(true);
         expect(reducedSnapshot.hasDataSource).toBe(true);
 
-        updateMetadata(["a"], {
+        await updateMetadata(["a"], {
             s1: { a: "z" },
             s2: { a: "w" },
         });
@@ -189,7 +190,7 @@ describe("MetadataView", () => {
         assertFlowMatchesSubtree(metadataView, context.dataFlow);
         expect(stableSnapshot).toEqual(reducedSnapshot);
 
-        updateMetadata(["a", "b"], {
+        await updateMetadata(["a", "b"], {
             s1: { a: "x", b: 3 },
             s2: { a: "y", b: 4 },
         });
