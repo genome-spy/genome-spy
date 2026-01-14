@@ -35,27 +35,6 @@ function loadDataSourceOnce(dataSource) {
 }
 
 /**
- * @param {import("../view/view.js").default} root
- * @param {import("./dataFlow.js").default} [existingFlow]
- */
-export async function initializeData(root, existingFlow) {
-    const flow = buildDataFlow(root, existingFlow);
-    const canonicalBySource = optimizeDataFlow(flow);
-    syncFlowHandles(root, canonicalBySource);
-    flow.initialize();
-
-    /** @type {Promise<void>[]} */
-    const promises = flow.dataSources.map(
-        (/** @type {import("./sources/dataSource.js").default} */ dataSource) =>
-            dataSource.load()
-    );
-
-    await Promise.all(promises);
-
-    return flow;
-}
-
-/**
  * Synchronize flow handles after data flow optimization.
  *
  * @param {import("../view/view.js").default} root

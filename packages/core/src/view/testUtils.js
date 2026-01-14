@@ -7,12 +7,14 @@
  */
 
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
-import { initializeData } from "../data/flowInit.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
 import DataFlow from "../data/dataFlow.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
 import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
-import { reconfigureScales } from "./scaleResolution.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
 
@@ -109,7 +111,7 @@ export async function createAndInitialize(spec, viewClass) {
         });
     }
 
-    await initializeData(view, view.context.dataFlow);
-    reconfigureScales(view);
+    const { dataSources } = initializeViewSubtree(view, view.context.dataFlow);
+    await loadViewSubtreeData(view, dataSources);
     return view;
 }
