@@ -24,7 +24,6 @@ import {
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
-import { createSelector } from "@reduxjs/toolkit";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
@@ -158,11 +157,11 @@ export default class App {
     }
 
     #setupViewVisibilityHandling() {
-        const visibilitiesSelector = createSelector(
-            (/** @type {ReturnType<typeof this.store.getState>} */ state) =>
-                state.viewSettings?.visibilities,
-            (visibilities) => visibilities ?? {}
-        );
+        /** @type {Record<string, boolean>} */
+        const EMPTY_VISIBILITIES = {};
+        const visibilitiesSelector = (
+            /** @type {ReturnType<typeof this.store.getState>} */ state
+        ) => state.viewSettings?.visibilities ?? EMPTY_VISIBILITIES;
 
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
         this.genomeSpy.viewVisibilityPredicate = (view) =>
