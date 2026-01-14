@@ -7,7 +7,6 @@ import {
     faBug,
     faFileImage,
     faEllipsisVertical,
-    faFileUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
@@ -23,7 +22,6 @@ import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
-import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -65,17 +63,6 @@ export default class Toolbar extends LitElement {
                     class="btn-group"
                     .provenance=${provenance}
                 ></genome-spy-provenance-buttons>
-            `);
-
-            elements.push(html`
-                <button
-                    class="tool-btn"
-                    title="Upload metadata"
-                    @click=${() =>
-                        showUploadMetadataDialog(this.app.getSampleView())}
-                >
-                    ${icon(faFileUpload).node[0]}
-                </button>
             `);
         }
 

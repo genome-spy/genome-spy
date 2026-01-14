@@ -1,5 +1,5 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faSlidersH } from "@fortawesome/free-solid-svg-icons";
+import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
@@ -18,6 +18,8 @@ import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/view/paramMediator.js";
 import SubscriptionController from "../generic/subscriptionController.js";
+import { MetadataView } from "../../sampleView/metadata/metadataView.js";
+import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
 
 class ViewSettingsButton extends LitElement {
     /** @type {import("../../app.js").default} */
@@ -140,12 +142,6 @@ class ViewSettingsButton extends LitElement {
             });
         }
 
-        /**
-         * @param {View} view
-         */
-        const isIncluded = (view) =>
-            isConfigurable(view) || hasVariableBindings(view);
-
         // Do some flattening to the hierarchy, filter some levels out
         const paths = nodes
             .filter(isIncluded)
@@ -173,15 +169,11 @@ class ViewSettingsButton extends LitElement {
             const view = item.item;
             const checked = visibilities[view.name] ?? view.isVisibleInSpec();
 
-            /** @type {() => import("../../utils/ui/contextMenu.js").MenuItem[]} */
-            let submenuOpener;
+            /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
+            const submenuItems = [];
 
-            if (
-                [...view.paramMediator.paramConfigs.values()].some(
-                    (param) => isVariableParameter(param) && param.bind
-                )
-            ) {
-                submenuOpener = () => [
+            if (hasVariableBindings(view)) {
+                submenuItems.push(
                     {
                         label: "Parameters",
                         type: "header",
@@ -191,8 +183,33 @@ class ViewSettingsButton extends LitElement {
                         customContent: html`<div class="gs-input-binding">
                             ${createBindingInputs(view.paramMediator)}
                         </div>`,
+                    }
+                );
+            }
+
+            if (view instanceof MetadataView) {
+                if (submenuItems.length) {
+                    submenuItems.push({ type: "divider" });
+                }
+                submenuItems.push(
+                    {
+                        label: "Sample metadata",
+                        type: "header",
                     },
-                ];
+                    { type: "divider" },
+                    {
+                        label: "Upload custom metadata",
+                        icon: faFileUpload,
+                        callback: () => this.#showUploadMetadataDialog(),
+                    }
+                );
+            }
+
+            /** @type {() => import("../../utils/ui/contextMenu.js").MenuItem[]} */
+            let submenuOpener;
+
+            if (submenuItems.length) {
+                submenuOpener = () => submenuItems;
             }
 
             if (depth >= 0) {
@@ -274,6 +291,15 @@ class ViewSettingsButton extends LitElement {
     getVisibilities() {
         return this.#app.store.getState().viewSettings.visibilities;
     }
+
+    #showUploadMetadataDialog() {
+        const sampleView = this.#app.getSampleView();
+        if (!sampleView) {
+            throw new Error("Cannot upload metadata without SampleView");
+        } else {
+            showUploadMetadataDialog(sampleView);
+        }
+    }
 }
 
 const isConfigurable = (/** @type {View} */ view) =>
@@ -284,5 +310,10 @@ const hasVariableBindings = (/** @type {View} */ view) =>
     [...view.paramMediator.paramConfigs.values()].some(
         (param) => isVariableParameter(param) && param.bind
     );
+
+const isIncluded = (/** @type {View} */ view) =>
+    isConfigurable(view) ||
+    hasVariableBindings(view) ||
+    view instanceof MetadataView;
 
 customElements.define("genome-spy-view-visibility", ViewSettingsButton);
