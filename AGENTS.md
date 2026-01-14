@@ -40,6 +40,14 @@ aware interactions.
 
 - Unit tests with Vitest
 - Tests live next to code, with `.test.` in the filename
+- When writing tests, add a short comment for non-obvious test setup/intent.
+
+### Running tests and linting
+
+- From repo root, run the full unit suite: `npm test`
+- Run a focused Vitest suite: `npx vitest run packages/app/src/sampleView/sampleView.test.js`
+- TypeScript checks for workspaces (if present): `npm -ws run test:tsc --if-present`
+- Lint the workspace sources: `npm run lint`
 
 ## Project and code guidelines
 
@@ -70,6 +78,17 @@ aware interactions.
   `switch` structures that cover all cases and fail loudly on unknown values.
 - Use `Map`/`WeakMap` when identity matters; default to empty maps rather than
   optional maps.
+- Fail fast with clear error messages; avoid silent fallbacks.
+- Use consistent naming: classes use `PascalCase` (`FooView`), files use
+  `camelCase` (`fooView.js`), and related types share the same stem.
+- Avoid per-frame allocations in rendering and dataflow hot paths; reuse arrays
+  and maps when possible.
+- Avoid ad hoc `console` logging in core hot paths; use a centralized logger if
+  logging is necessary.
+- Keep tests close to the code, and add a short intent comment for non-obvious
+  setup.
+- Prefer using iterator helpers (`map`, `filter`, `flatMap`) on iterables
+  instead of converting them to arrays first.
 
 ## Architecture and rendering notes (from paper + supplementary)
 
