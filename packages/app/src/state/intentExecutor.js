@@ -21,6 +21,7 @@ export default class IntentExecutor {
 
     /**
      * @param {import("@reduxjs/toolkit").Action} action
+     * @returns {import("@reduxjs/toolkit").Action}
      */
     dispatch(action) {
         if ("payload" in action) {
@@ -33,7 +34,7 @@ export default class IntentExecutor {
             }
             action = payloadAction;
         }
-        this.#store.dispatch(action);
+        return this.#store.dispatch(action);
     }
 
     /**

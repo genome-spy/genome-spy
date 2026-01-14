@@ -543,7 +543,11 @@ export function augmentAttributeAction(
         accessed.domain = attributeInfo.scale?.domain();
     }
 
-    action.payload[AUGMENTED_KEY] = accessed;
-
-    return action;
+    return {
+        ...action,
+        payload: {
+            ...action.payload,
+            [AUGMENTED_KEY]: accessed,
+        },
+    };
 }
