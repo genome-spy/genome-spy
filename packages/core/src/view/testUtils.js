@@ -57,6 +57,12 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         genomeStore,
 
         fontManager: new BmFontManager(),
+        animator: /** @type {import("../utils/animator.js").default} */ (
+            /** @type {any} */ ({
+                requestRender: () => undefined,
+                requestTransition: (callback) => callback(),
+            })
+        ),
 
         isViewConfiguredVisible: () => true,
 
