@@ -27,7 +27,10 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
-import { configureViewHierarchy } from "./genomeSpy/viewHierarchyConfig.js";
+import {
+    configureViewHierarchy,
+    configureViewOpacity,
+} from "./genomeSpy/viewHierarchyConfig.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 
 /**
@@ -378,6 +381,7 @@ export default class GenomeSpy {
         this.#initializeParameterBindings();
 
         configureViewHierarchy(this.viewRoot);
+        configureViewOpacity(this.viewRoot);
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
