@@ -1,10 +1,17 @@
+/*
+Refactor plan (incremental, behavior-preserving):
+- Extract DOM/container setup and loading indicator UI into a small UI helper module.
+- Move mouse/interaction handling (including picking + tooltip flow) into an InteractionController.
+- Isolate layout/render lifecycle into a LayoutEngine that owns render contexts and picking buffer.
+- Split runtime context construction into a factory that takes explicit dependencies.
+- Add an error hook option (onError) so UI messaging can be customized without core DOM coupling.
+*/
 import { formats as vegaFormats } from "vega-loader";
 import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import SPINNER from "./img/90-ring-with-bg.svg";
 
-import css from "./styles/genome-spy.css.js";
-import Tooltip from "./utils/ui/tooltip.js";
+import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 
 import {
     checkForDuplicateScaleNames,
@@ -175,9 +182,9 @@ export default class GenomeSpy {
             return;
         }
 
-        this._inputBindingContainer = element("div", {
-            className: "gs-input-bindings",
-        });
+        const inputBindingContainer = document.createElement("div");
+        inputBindingContainer.className = "gs-input-bindings";
+        this._inputBindingContainer = inputBindingContainer;
 
         if (ibc == "default") {
             this.container.appendChild(this._inputBindingContainer);
@@ -354,18 +361,12 @@ export default class GenomeSpy {
     }
 
     #prepareContainer() {
-        this.container.classList.add("genome-spy");
-
-        const styleElement = document.createElement("style");
-        styleElement.innerHTML = css;
-        this.container.appendChild(styleElement);
-
-        const canvasWrapper = element("div", {
-            class: "canvas-wrapper",
-        });
-        this.container.appendChild(canvasWrapper);
-
-        canvasWrapper.classList.add("loading");
+        const {
+            canvasWrapper,
+            loadingMessageElement,
+            loadingIndicatorsElement,
+            tooltip,
+        } = createContainerUi(this.container);
 
         this._glHelper = new WebGLHelper(
             canvasWrapper,
@@ -377,30 +378,13 @@ export default class GenomeSpy {
         );
 
         // The initial loading message that is shown until the first frame is rendered
-        this.loadingMessageElement = element("div", {
-            class: "loading-message",
-            innerHTML: `<div class="message">Loading<span class="ellipsis">...</span></div>`,
-        });
-        canvasWrapper.appendChild(this.loadingMessageElement);
-
+        this.loadingMessageElement = loadingMessageElement;
         // A container for loading indicators (for lazy data sources.)
         // These could alternatively be included in the view hierarchy,
         // but it's easier this way – particularly if we want to show
         // some fancy animated spinners.
-        this.loadingIndicatorsElement = element("div", {
-            class: "loading-indicators",
-        });
-        canvasWrapper.appendChild(this.loadingIndicatorsElement);
-
-        this.tooltip = new Tooltip(this.container);
-
-        this.loadingMessageElement
-            .querySelector(".message")
-            .addEventListener("transitionend", () => {
-                /** @type {HTMLElement} */ (
-                    this.loadingMessageElement
-                ).style.display = "none";
-            });
+        this.loadingIndicatorsElement = loadingIndicatorsElement;
+        this.tooltip = tooltip;
     }
 
     /**
@@ -1084,35 +1068,4 @@ export default class GenomeSpy {
         });
         return resolutions;
     }
-}
-
-/**
- *
- * @param {HTMLElement} container
- * @param {string} message
- */
-function createMessageBox(container, message) {
-    // Uh, need a templating thingy
-    const messageBox = document.createElement("div");
-    messageBox.className = "message-box";
-    const messageText = document.createElement("div");
-    messageText.textContent = message;
-    messageBox.appendChild(messageText);
-    container.appendChild(messageBox);
-}
-
-/**
- * @param {string} tag
- * @param {Record<string, any>} attrs
- */
-function element(tag, attrs) {
-    const el = document.createElement(tag);
-    for (const [key, value] of Object.entries(attrs)) {
-        if (["innerHTML", "innerText", "className"].includes(key)) {
-            // @ts-ignore
-            el[key] = value;
-        }
-        el.setAttribute(key, value);
-    }
-    return el;
 }
