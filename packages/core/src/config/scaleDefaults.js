@@ -3,8 +3,6 @@ import {
     isDiscreteChannel,
     isPositionalChannel,
 } from "../encoder/encoder.js";
-import { isContinuous } from "vega-scale";
-
 import { NOMINAL, ORDINAL } from "../view/scaleResolutionConstants.js";
 
 /**
@@ -44,19 +42,4 @@ export function getDefaultScaleProperties(channel, dataType, isExplicitDomain) {
     }
 
     return props;
-}
-
-/**
- * @param {import("../spec/scale.js").Scale} props
- * @param {import("../spec/channel.js").Channel} channel
- */
-export function applyLockedProperties(props, channel) {
-    if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        // Unit ranges are a temporary default until pixel ranges are adopted.
-        props.range = [0, 1];
-    }
-
-    if (channel == "opacity" && isContinuous(props.type)) {
-        props.clamp = true;
-    }
 }
