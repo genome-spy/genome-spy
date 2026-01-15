@@ -12,6 +12,7 @@ import { html, render } from "lit";
 import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
 import { createViewHighlighter } from "./utils/ui/viewHighlight.js";
+import KeyboardListenerManager from "./utils/keyboardListenerManager.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import { initializeViewData } from "./data/viewDataInit.js";
@@ -91,10 +92,9 @@ export default class GenomeSpy {
         this._renderCoordinator = undefined;
 
         /**
-         * Keeping track so that these can be cleaned up upon finalization.
-         * @type {Map<string, (function(KeyboardEvent):void)[]>}
+         * @type {KeyboardListenerManager}
          */
-        this._keyboardListeners = new Map();
+        this._keyboardListenerManager = new KeyboardListenerManager();
 
         /**
          * Listers for exposed high-level events such as click on a mark instance.
@@ -314,11 +314,7 @@ export default class GenomeSpy {
         this.container.classList.remove("genome-spy");
         canvasWrapper.classList.remove("loading");
 
-        for (const [type, listeners] of this._keyboardListeners) {
-            for (const listener of listeners) {
-                document.removeEventListener(type, listener);
-            }
-        }
+        this._keyboardListenerManager.removeAll();
 
         this._destructionCallbacks.forEach((callback) => callback());
 
@@ -357,13 +353,7 @@ export default class GenomeSpy {
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the
                 // container or the app covers the full document.
-                document.addEventListener(type, listener);
-                let listeners = this._keyboardListeners.get(type);
-                if (!listeners) {
-                    listeners = [];
-                    this._keyboardListeners.set(type, listeners);
-                }
-                listeners.push(listener);
+                this._keyboardListenerManager.add(type, listener);
             },
             addBroadcastListener: (type, listener) => {
                 const listenersByType = this._extraBroadcastListeners;
