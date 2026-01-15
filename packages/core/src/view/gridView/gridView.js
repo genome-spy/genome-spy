@@ -191,23 +191,6 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {View} child
-     * @param {View} replacement
-     */
-    replaceChild(child, replacement) {
-        const i = this.#children.findIndex(
-            (gridChild) => gridChild.view == child
-        );
-        if (i >= 0) {
-            this.#disposeGridChild(this.#children[i]);
-            this.#children.splice(i, 1);
-            this.insertChildViewAt(replacement, i);
-        } else {
-            throw new Error("Not my child view!");
-        }
-    }
-
-    /**
      * @param {GridChild} gridChild
      */
     #disposeGridChild(gridChild) {

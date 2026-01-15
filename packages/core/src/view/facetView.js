@@ -120,21 +120,6 @@ export default class FacetView extends ContainerView {
         }
     }
 
-    /**
-     * @param {import("./view.js").default} child
-     * @param {import("./view.js").default} replacement
-     */
-    replaceChild(child, replacement) {
-        if (child !== this.child) {
-            throw new Error("Not my child!");
-        }
-
-        child.disposeSubtree();
-        this.child = /** @type {UnitView | LayerView | DecoratorView} */ (
-            replacement
-        );
-    }
-
     transformData() {
         super.transformData();
         // A hacky solution for updating facets. TODO: Something more robust.

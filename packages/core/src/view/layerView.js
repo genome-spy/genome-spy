@@ -85,23 +85,6 @@ export default class LayerView extends ContainerView {
     }
 
     /**
-     * @param {View} child
-     * @param {View} replacement
-     */
-    replaceChild(child, replacement) {
-        const i = this.#children.findIndex((view) => view === child);
-        if (i < 0) {
-            throw new Error("Not my child view!");
-        }
-        child.disposeSubtree();
-        replacement.layoutParent ??= this;
-        this.#children[i] =
-            /** @type {LayerView | import("./unitView.js").default} */ (
-                replacement
-            );
-    }
-
-    /**
      * @returns {ContainerMutationHelper}
      */
     #getMutationHelper() {

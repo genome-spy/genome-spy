@@ -80,7 +80,8 @@ describe("View disposal", () => {
         expect(childC.disposed).toBe(false);
 
         const childD = new DisposableView("d", context, parent, parent);
-        parent.replaceChild(childC, childD);
+        parent.removeChildAt(0);
+        parent.appendChildView(childD);
 
         expect(childC.disposed).toBe(true);
         expect(childD.disposed).toBe(false);

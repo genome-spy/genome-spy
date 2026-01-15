@@ -31,16 +31,6 @@ export default class ContainerView extends View {
     }
 
     /**
-     * Replaces a child view with another one. Does not alter the old or new child.
-     *
-     * @param {import("./view.js").default} child
-     * @param {import("./view.js").default} replacement
-     */
-    replaceChild(child, replacement) {
-        throw new Error("Not implemented");
-    }
-
-    /**
      * Visits child views in depth-first pre-order. Terminates the search and returns
      * the value if the visitor returns a defined value. The `afterChildren` callback
      * allows for post-order traversal
