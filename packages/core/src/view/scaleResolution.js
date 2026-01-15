@@ -2,24 +2,12 @@ import scaleLocus, { isScaleLocus } from "../genome/scaleLocus.js";
 import scaleIndex from "../genome/scaleIndex.js";
 import scaleNull from "../utils/scaleNull.js";
 
-import {
-    panLinear,
-    zoomLinear,
-    clampRange,
-    span,
-    panLog,
-    zoomLog,
-    panPow,
-    zoomPow,
-    isArray,
-    isObject,
-    isBoolean,
-} from "vega-util";
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import ScaleDomainAggregator from "./scaleDomainAggregator.js";
+import ScaleInteractionController from "./scaleInteractionController.js";
 import {
     INDEX,
     LOCUS,
@@ -34,9 +22,7 @@ import {
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
 import { NominalDomain } from "../utils/domainArray.js";
-import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
-import eerp from "../utils/eerp.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -99,6 +85,9 @@ export default class ScaleResolution {
     /** @type {ScaleDomainAggregator} */
     #domainAggregator;
 
+    /** @type {ScaleInteractionController} */
+    #interactionController;
+
     /**
      * @param {Channel} channel
      */
@@ -121,6 +110,18 @@ export default class ScaleResolution {
             getParamMediator: () => this.#firstMemberView.paramMediator,
             onRangeChange: () => this.#notifyListeners("range"),
         });
+
+        this.#interactionController = new ScaleInteractionController({
+            getScale: () => this.scale,
+            getAnimator: () => this.#viewContext.animator,
+            getInitialDomainSnapshot: () =>
+                this.#domainAggregator.initialDomainSnapshot,
+            getResetDomain: () =>
+                this.#domainAggregator.getConfiguredOrDefaultDomain(),
+            fromComplexInterval: this.fromComplexInterval.bind(this),
+            getGenomeExtent: () => this.getGenome().getExtent(),
+            notifyDomainChange: () => this.#notifyListeners("domain"),
+        });
     }
 
     /**
@@ -142,7 +143,10 @@ export default class ScaleResolution {
         return (
             (this.#scaleManager.scale &&
                 isContinuous(this.#scaleManager.scale.type) &&
-                this.#getZoomExtent()) ?? [-Infinity, Infinity]
+                this.#interactionController.getZoomExtent()) ?? [
+                -Infinity,
+                Infinity,
+            ]
         );
     }
 
@@ -365,7 +369,7 @@ export default class ScaleResolution {
             if (this.isZoomable()) {
                 // Don't mess with zoomed views, restore the previous domain
                 scale.domain(previousDomain);
-            } else if (this.#isZoomingSupported()) {
+            } else if (this.#interactionController.isZoomingSupported()) {
                 // It can be zoomed, so lets make a smooth transition.
                 // Restore the previous domain and zoom smoothly to the new domain.
                 scale.domain(previousDomain);
@@ -415,13 +419,7 @@ export default class ScaleResolution {
      * @returns true if zoomed
      */
     isZoomed() {
-        return (
-            this.#isZoomingSupported() &&
-            shallowArrayEquals(
-                this.#domainAggregator.getConfiguredOrDefaultDomain(),
-                this.getDomain()
-            )
-        );
+        return this.#interactionController.isZoomed();
     }
 
     /**
@@ -429,15 +427,7 @@ export default class ScaleResolution {
      */
     isZoomable() {
         // Check explicit configuration
-        return this.#isZoomingSupported() && !!this.scale.props.zoom;
-    }
-
-    /**
-     * Returns true if zooming is supported but not necessarily allowed in view spec.
-     */
-    #isZoomingSupported() {
-        const type = this.scale.type;
-        return isContinuous(type);
+        return this.#interactionController.isZoomable();
     }
 
     /**
@@ -449,70 +439,7 @@ export default class ScaleResolution {
      * @returns {boolean} true if the scale was zoomed
      */
     zoom(scaleFactor, scaleAnchor, pan) {
-        if (!this.#isZoomingSupported()) {
-            return false;
-        }
-
-        const scale = this.scale;
-        const oldDomain = scale.domain();
-        let newDomain = [...oldDomain];
-
-        /** @type {number} */
-        // @ts-ignore
-        let anchor = scale.invert(scaleAnchor);
-
-        if (scale.props.reverse) {
-            pan = -pan;
-        }
-
-        if ("align" in scale) {
-            anchor += scale.align();
-        }
-
-        // TODO: symlog
-        switch (scale.type) {
-            case "linear":
-            case "index":
-            case "locus":
-                newDomain = panLinear(newDomain, pan || 0);
-                newDomain = zoomLinear(newDomain, anchor, scaleFactor);
-                break;
-            case "log":
-                newDomain = panLog(newDomain, pan || 0);
-                newDomain = zoomLog(newDomain, anchor, scaleFactor);
-                break;
-            case "pow":
-            case "sqrt": {
-                const powScale =
-                    /** @type {import("d3-scale").ScalePower<number, number>} */ (
-                        scale
-                    );
-                newDomain = panPow(newDomain, pan || 0, powScale.exponent());
-                newDomain = zoomPow(
-                    newDomain,
-                    anchor,
-                    scaleFactor,
-                    powScale.exponent()
-                );
-                break;
-            }
-            default:
-                throw new Error(
-                    "Zooming is not implemented for: " + scale.type
-                );
-        }
-
-        // TODO: Use the zoomTo method. Move clamping etc there.
-        const zoomExtent = this.zoomExtent;
-        newDomain = clampRange(newDomain, zoomExtent[0], zoomExtent[1]);
-
-        if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            scale.domain(newDomain);
-            this.#notifyListeners("domain");
-            return true;
-        }
-
-        return false;
+        return this.#interactionController.zoom(scaleFactor, scaleAnchor, pan);
     }
 
     /**
@@ -523,60 +450,7 @@ export default class ScaleResolution {
      *      Zero duration zooms immediately. Boolean `true` indicates a default duration.
      */
     async zoomTo(domain, duration = false) {
-        if (isBoolean(duration)) {
-            duration = duration ? 700 : 0;
-        }
-
-        if (!this.#isZoomingSupported()) {
-            throw new Error("Not a zoomable scale!");
-        }
-
-        const to = this.fromComplexInterval(domain);
-
-        // TODO: Intersect the domain with zoom extent
-
-        const animator = this.#viewContext.animator;
-
-        const scale = this.scale;
-        const from = /** @type {number[]} */ (scale.domain());
-
-        if (duration > 0 && from.length == 2) {
-            // Spans
-            const fw = from[1] - from[0];
-            const tw = to[1] - to[0];
-
-            // Centers
-            const fc = from[0] + fw / 2;
-            const tc = to[0] + tw / 2;
-
-            // Constant endpoints. Skip calculation to maintain precision.
-            const ac = from[0] == to[0];
-            const bc = from[1] == to[1];
-
-            // TODO: Abort possible previous transition
-            await animator.transition({
-                duration,
-                easingFunction: easeCubicInOut,
-                onUpdate: (t) => {
-                    const w = eerp(fw, tw, t);
-                    const wt = fw == tw ? t : (fw - w) / (fw - tw);
-                    const c = wt * tc + (1 - wt) * fc;
-                    const domain = [
-                        ac ? from[0] : c - w / 2,
-                        bc ? from[1] : c + w / 2,
-                    ];
-                    scale.domain(domain);
-                    this.#notifyListeners("domain");
-                },
-            });
-
-            scale.domain(to);
-            this.#notifyListeners("domain");
-        } else {
-            scale.domain(to);
-            animator?.requestRender();
-            this.#notifyListeners("domain");
-        }
+        return this.#interactionController.zoomTo(domain, duration);
     }
 
     /**
@@ -585,19 +459,7 @@ export default class ScaleResolution {
      * @returns true if the domain was changed
      */
     resetZoom() {
-        if (!this.#isZoomingSupported()) {
-            throw new Error("Not a zoomable scale!");
-        }
-
-        const oldDomain = this.getDomain();
-        const newDomain = this.#domainAggregator.getConfiguredOrDefaultDomain();
-
-        if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            this.#scaleManager.scale.domain(newDomain);
-            this.#notifyListeners("domain");
-            return true;
-        }
-        return false;
+        return this.#interactionController.resetZoom();
     }
 
     /**
@@ -607,12 +469,7 @@ export default class ScaleResolution {
      * be generalized to other quantitative channels such as color, opacity, size, etc.
      */
     getZoomLevel() {
-        // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
-        if (this.isZoomable()) {
-            return span(this.zoomExtent) / span(this.scale.domain());
-        }
-
-        return 1.0;
+        return this.#interactionController.getZoomLevel();
     }
 
     /**
@@ -643,30 +500,6 @@ export default class ScaleResolution {
         return lengths.length
             ? lengths.reduce((a, b) => Math.min(a, b), 10000)
             : 0;
-    }
-
-    /**
-     * @returns {number[]}
-     */
-    #getZoomExtent() {
-        const props = this.scale.props;
-        const zoom = props.zoom;
-
-        if (isZoomParams(zoom)) {
-            if (isArray(zoom.extent)) {
-                return this.fromComplexInterval(zoom.extent);
-            }
-        }
-
-        if (zoom) {
-            if (props.type == "locus") {
-                return this.getGenome().getExtent();
-            }
-        }
-
-        // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
-        // Would behave similarly to Vega-Lite, which doesn't have constraints.
-        return this.#domainAggregator.initialDomainSnapshot;
     }
 
     /**
@@ -741,15 +574,6 @@ export default class ScaleResolution {
         }
         return /** @type {number[]} */ (interval);
     }
-}
-
-/**
- *
- * @param {boolean | ZoomParams} zoom
- * @returns {zoom is ZoomParams}
- */
-function isZoomParams(zoom) {
-    return isObject(zoom);
 }
 
 /**
