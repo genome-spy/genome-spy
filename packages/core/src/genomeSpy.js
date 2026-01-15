@@ -37,6 +37,7 @@ import createBindingInputs from "./utils/inputBinding.js";
 import { createFramebufferInfo } from "twgl.js";
 import InteractionController from "./interaction/interactionController.js";
 import RenderCoordinator from "./view/renderCoordinator.js";
+import { createViewContext } from "./view/viewContextFactory.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -339,32 +340,23 @@ export default class GenomeSpy {
             await this.genomeStore.initialize(this.spec.genome);
         }
 
-        // eslint-disable-next-line consistent-this
-        const self = this;
-
         /** @type {import("./types/viewContext.js").default} */
-        const context = {
+        const context = createViewContext({
             dataFlow: new DataFlow(),
             glHelper: this._glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
             fontManager: new BmFontManager(this._glHelper),
-
-            requestLayoutReflow: () => {
-                // placeholder
-            },
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
                 this._interactionController.getCurrentHover(),
-
             setDataLoadingStatus: (view, status, detail) =>
                 this._loadingIndicatorManager.setDataLoadingStatus(
                     view,
                     status,
                     detail
                 ),
-
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the
                 // container or the app covers the full document.
@@ -376,9 +368,8 @@ export default class GenomeSpy {
                 }
                 listeners.push(listener);
             },
-
-            addBroadcastListener(type, listener) {
-                const listenersByType = self._extraBroadcastListeners;
+            addBroadcastListener: (type, listener) => {
+                const listenersByType = this._extraBroadcastListeners;
 
                 // Copy-paste code. TODO: Refactor into a helper function.
                 let listeners = listenersByType.get(type);
@@ -389,34 +380,27 @@ export default class GenomeSpy {
 
                 listeners.add(listener);
             },
-
-            removeBroadcastListener(type, listener) {
-                const listenersByType = self._extraBroadcastListeners;
-
-                listenersByType.get(type)?.delete(listener);
+            removeBroadcastListener: (type, listener) => {
+                this._extraBroadcastListeners.get(type)?.delete(listener);
             },
-
-            isViewConfiguredVisible: self.viewVisibilityPredicate,
-
-            isViewSpec: (spec) => self.viewFactory.isViewSpec(spec),
-
-            createOrImportView: async function (
+            isViewConfiguredVisible: this.viewVisibilityPredicate,
+            isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
+            createOrImportView: (
+                ctx,
                 spec,
                 layoutParent,
                 dataParent,
                 defaultName,
                 validator
-            ) {
-                return self.viewFactory.createOrImportView(
+            ) =>
+                this.viewFactory.createOrImportView(
                     spec,
-                    context,
+                    ctx,
                     layoutParent,
                     dataParent,
                     defaultName,
                     validator
-                );
-            },
-
+                ),
             highlightView: (view) => {
                 this.container.querySelector(".view-highlight")?.remove();
                 if (view) {
@@ -439,7 +423,7 @@ export default class GenomeSpy {
                     }
                 }
             },
-        };
+        });
 
         /** @type {ViewSpec & RootConfig} */
         const rootSpec = this.spec;
