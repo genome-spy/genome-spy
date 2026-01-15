@@ -487,7 +487,10 @@ export default class GenomeSpy {
                 reason.view ? `At "${reason.view.getPathString()}": ` : ""
             }${reason.toString()}`;
             console.error(reason.stack);
-            createMessageBox(this.container, message);
+            const handled = this.options.onError?.(reason, this.container);
+            if (!handled) {
+                createMessageBox(this.container, message);
+            }
 
             return false;
         } finally {

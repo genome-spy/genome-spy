@@ -40,6 +40,11 @@ export interface EmbedOptions {
      * @genome-spy/app package.
      */
     powerPreference?: "default" | "high-performance" | "low-power";
+
+    /**
+     * Optional hook for handling launch errors. Return true to suppress default UI.
+     */
+    onError?: (error: unknown, container: HTMLElement) => boolean | void;
 }
 
 /**
