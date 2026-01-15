@@ -1,4 +1,9 @@
-import scaleLocus, { isScaleLocus } from "../genome/scaleLocus.js";
+import scaleLocus, {
+    fromComplexInterval as locusFromComplexInterval,
+    fromComplexValue,
+    isScaleLocus,
+    toComplexValue,
+} from "../genome/scaleLocus.js";
 import scaleIndex from "../genome/scaleIndex.js";
 import scaleNull from "../utils/scaleNull.js";
 
@@ -17,10 +22,6 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { isSecondaryChannel } from "../encoder/encoder.js";
-import {
-    isChromosomalLocus,
-    isChromosomalLocusInterval,
-} from "../genome/genome.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 
@@ -548,8 +549,7 @@ export default class ScaleResolution {
      * @param {number} value
      */
     toComplex(value) {
-        const genome = this.getGenome();
-        return genome ? genome.toChromosomal(value) : value;
+        return toComplexValue(this.getGenome(), value);
     }
 
     /**
@@ -557,11 +557,7 @@ export default class ScaleResolution {
      * @returns {number}
      */
     fromComplex(complex) {
-        if (isChromosomalLocus(complex)) {
-            const genome = this.getGenome();
-            return genome.toContinuous(complex.chrom, complex.pos);
-        }
-        return complex;
+        return fromComplexValue(this.getGenome(), complex);
     }
 
     /**
@@ -569,10 +565,7 @@ export default class ScaleResolution {
      * @returns {number[]}
      */
     fromComplexInterval(interval) {
-        if (this.type === "locus" && isChromosomalLocusInterval(interval)) {
-            return this.getGenome().toContinuousInterval(interval);
-        }
-        return /** @type {number[]} */ (interval);
+        return locusFromComplexInterval(this.getGenome(), interval);
     }
 }
 

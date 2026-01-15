@@ -1,6 +1,8 @@
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
+
 import scaleIndex from "./scaleIndex.js";
+import { isChromosomalLocus, isChromosomalLocusInterval } from "./genome.js";
 
 export default function scaleLocus() {
     /** @type {import("./scaleLocus.js").ScaleLocus} */
@@ -98,4 +100,37 @@ export default function scaleLocus() {
  */
 export function isScaleLocus(scale) {
     return scale.type == "locus";
+}
+
+/**
+ * @param {import("./genome.js").default | undefined} genome
+ * @param {number} value
+ * @returns {number | import("./genome.js").ChromosomalLocus}
+ */
+export function toComplexValue(genome, value) {
+    return genome ? genome.toChromosomal(value) : value;
+}
+
+/**
+ * @param {import("./genome.js").default | undefined} genome
+ * @param {number | import("./genome.js").ChromosomalLocus} complex
+ * @returns {number}
+ */
+export function fromComplexValue(genome, complex) {
+    if (genome && isChromosomalLocus(complex)) {
+        return genome.toContinuous(complex.chrom, complex.pos);
+    }
+    return /** @type {number} */ (complex);
+}
+
+/**
+ * @param {import("./genome.js").default | undefined} genome
+ * @param {import("../spec/scale.js").ScalarDomain | import("../spec/scale.js").ComplexDomain} interval
+ * @returns {number[]}
+ */
+export function fromComplexInterval(genome, interval) {
+    if (genome && isChromosomalLocusInterval(interval)) {
+        return genome.toContinuousInterval(interval);
+    }
+    return /** @type {number[]} */ (interval);
 }
