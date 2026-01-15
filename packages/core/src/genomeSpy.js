@@ -11,6 +11,7 @@ import { html, render } from "lit";
 
 import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
+import { createViewHighlighter } from "./utils/ui/viewHighlight.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import { initializeViewData } from "./data/viewDataInit.js";
@@ -397,28 +398,7 @@ export default class GenomeSpy {
                     defaultName,
                     validator
                 ),
-            highlightView: (view) => {
-                this.container.querySelector(".view-highlight")?.remove();
-                if (view) {
-                    if (!view.isConfiguredVisible()) {
-                        return;
-                    }
-                    const coords = view.coords;
-                    if (coords) {
-                        const div = document.createElement("div");
-                        div.className = "view-highlight";
-                        div.style.position = "absolute";
-                        div.style.left = coords.x + "px";
-                        div.style.top = coords.y + "px";
-                        div.style.width = coords.width + "px";
-                        div.style.height = coords.height + "px";
-                        div.style.border = "1px solid green";
-                        div.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-                        div.style.pointerEvents = "none";
-                        this.container.appendChild(div);
-                    }
-                }
-            },
+            highlightView: createViewHighlighter(this.container),
         });
 
         /** @type {ViewSpec & RootConfig} */
