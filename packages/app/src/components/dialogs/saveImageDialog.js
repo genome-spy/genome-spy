@@ -76,8 +76,7 @@ export default class SaveImageDialog extends BaseDialog {
     connectedCallback() {
         super.connectedCallback();
 
-        // TODO: Make canvas size available through the official API
-        let { width, height } = this.genomeSpy._glHelper.getLogicalCanvasSize();
+        const { width, height } = this.genomeSpy.getLogicalCanvasSize();
 
         this.logicalWidth = roundToEven(width);
         this.logicalHeight = roundToEven(height);
