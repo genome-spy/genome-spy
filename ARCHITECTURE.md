@@ -58,6 +58,9 @@ design patterns.
   a `subtreeDataReady` broadcast after sources resolve.
 - Flow branches are pruned when subtrees are disposed to avoid orphaned nodes
   and unused data sources.
+- TODO: Consider a targeted propagation/load mode for dynamic insertions so new
+  collectors can be populated without re-propagating data through existing
+  branches (avoid redundant updates and re-renders without caching data).
 
 ## View Lifecycle (Dynamic Mutation)
 
