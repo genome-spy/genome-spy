@@ -17,7 +17,7 @@ import {
 } from "vega-util";
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
-import createScale, { configureScale } from "../scale/scale.js";
+import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import ScaleDomainAggregator from "./scaleDomainAggregator.js";
 import {
@@ -37,7 +37,6 @@ import { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
-import { isExprRef } from "./paramMediator.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -94,19 +93,11 @@ export default class ScaleResolution {
         range: new Set(),
     };
 
-    /** @type {ScaleWithProps} */
-    #scale;
+    /** @type {ScaleInstanceManager} */
+    #scaleManager;
 
     /** @type {ScaleDomainAggregator} */
     #domainAggregator;
-
-    /**
-     * Keeps track of the expression references in the range. If range is modified,
-     * new expressions are created and the old ones must be invalidated.
-     *
-     * @type {Set<import("./paramMediator.js").ExprRefFunction>}
-     */
-    #rangeExprRefListeners = new Set();
 
     /**
      * @param {Channel} channel
@@ -124,6 +115,11 @@ export default class ScaleResolution {
             getType: () => this.type,
             getGenome: () => this.getGenome(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
+        });
+
+        this.#scaleManager = new ScaleInstanceManager({
+            getParamMediator: () => this.#firstMemberView.paramMediator,
+            onRangeChange: () => this.#notifyListeners("range"),
         });
     }
 
@@ -144,8 +140,8 @@ export default class ScaleResolution {
 
     get zoomExtent() {
         return (
-            (this.#scale &&
-                isContinuous(this.#scale.type) &&
+            (this.#scaleManager.scale &&
+                isContinuous(this.#scaleManager.scale.type) &&
                 this.#getZoomExtent()) ?? [-Infinity, Infinity]
         );
     }
@@ -261,7 +257,7 @@ export default class ScaleResolution {
     }
 
     #isDomainInitialized() {
-        const s = this.#scale;
+        const s = this.#scaleManager.scale;
         if (!s) {
             return false;
         }
@@ -330,63 +326,6 @@ export default class ScaleResolution {
     }
 
     /**
-     * Configures range. If range is an array of expressions, they are evaluated
-     * and the scale is updated when the expressions change.
-     */
-    #configureRange() {
-        const props = this.#scale.props;
-        const range = props.range;
-        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
-
-        if (!range || !isArray(range)) {
-            // Named ranges?
-            return;
-        }
-
-        /**
-         * @param {T} array
-         * @param {boolean} reverse
-         * @returns {T}
-         * @template T
-         */
-        const flip = (array, reverse) =>
-            // @ts-ignore TODO: Fix the type (should be a generic union array type)
-            reverse ? array.slice().reverse() : array;
-
-        if (range.some(isExprRef)) {
-            /** @type {(() => void)[]} */
-            let expressions;
-
-            const evaluateAndSet = () => {
-                this.#scale.range(
-                    flip(
-                        expressions.map((expr) => expr()),
-                        props.reverse
-                    )
-                );
-            };
-
-            expressions = range.map((elem) => {
-                if (isExprRef(elem)) {
-                    const fn =
-                        this.#firstMemberView.paramMediator.createExpression(
-                            elem.expr
-                        );
-                    fn.addListener(evaluateAndSet);
-                    this.#rangeExprRefListeners.add(fn);
-                    return () => fn(null);
-                } else {
-                    return () => elem;
-                }
-            });
-
-            evaluateAndSet();
-        } else {
-            this.#scale.range(flip(range, props.reverse));
-        }
-    }
-
-    /**
      * Extracts and unions the data domains of all participating views.
      *
      * @return { DomainArray }
@@ -399,7 +338,7 @@ export default class ScaleResolution {
      * Reconfigures the scale: updates domain and other settings
      */
     reconfigure() {
-        const scale = this.#scale;
+        const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
             return;
@@ -409,11 +348,7 @@ export default class ScaleResolution {
         const previousDomain = scale.domain();
 
         const props = this.#getScaleProps(true);
-        configureScale({ ...props, range: undefined }, scale);
-
-        // Annotate the scale with the new props
-        scale.props = props;
-        this.#configureRange();
+        this.#scaleManager.reconfigureScale(props);
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -446,42 +381,15 @@ export default class ScaleResolution {
      * @returns {ScaleWithProps}
      */
     get scale() {
-        if (this.#scale) {
-            return this.#scale;
+        if (this.#scaleManager.scale) {
+            return this.#scaleManager.scale;
         }
 
         const props = this.#getScaleProps();
-
-        const scale = createScale({ ...props, range: undefined });
-        // Annotate the scale with props
-        scale.props = props;
-
-        if ("unknown" in scale) {
-            // Never allow implicit domain construction
-            scale.unknown(null);
-        }
-
-        this.#scale = scale;
-        this.#configureRange();
+        const scale = this.#scaleManager.createScale(props);
 
         if (isScaleLocus(scale)) {
             scale.genome(this.getGenome());
-        }
-
-        // Hijack the range method
-        const range = scale.range;
-        if (range) {
-            const notify = () => this.#notifyListeners("range");
-            scale.range = function (/** @type {any} */ _) {
-                if (arguments.length) {
-                    range(_);
-                    notify();
-                } else {
-                    return range();
-                }
-            };
-            // The initial setting
-            notify();
         }
 
         return scale;
@@ -685,7 +593,7 @@ export default class ScaleResolution {
         const newDomain = this.#domainAggregator.getConfiguredOrDefaultDomain();
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
-            this.#scale.domain(newDomain);
+            this.#scaleManager.scale.domain(newDomain);
             this.#notifyListeners("domain");
             return true;
         }
