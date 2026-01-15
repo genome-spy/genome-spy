@@ -66,21 +66,11 @@ export async function embed(el, spec, options = {}) {
         },
 
         addEventListener(type, listener) {
-            const listenersByType = genomeSpy._eventListeners;
-
-            let listeners = listenersByType.get(type);
-            if (!listeners) {
-                listeners = new Set();
-                listenersByType.set(type, listeners);
-            }
-
-            listeners.add(listener);
+            genomeSpy._eventListeners.add(type, listener);
         },
 
         removeEventListener(type, listener) {
-            const listenersByType = genomeSpy._eventListeners;
-
-            listenersByType.get(type)?.delete(listener);
+            genomeSpy._eventListeners.remove(type, listener);
         },
 
         getScaleResolutionByName(name) {

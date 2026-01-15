@@ -13,7 +13,7 @@ export default class InteractionController {
      * @param {import("../gl/webGLHelper.js").default} options.glHelper
      * @param {import("../utils/ui/tooltip.js").default} options.tooltip
      * @param {import("../utils/animator.js").default} options.animator
-     * @param {Map<string, Set<(event: any) => void>>} options.eventListeners
+     * @param {(type: string, event: any) => void} options.emitEvent
      * @param {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} options.tooltipHandlers
      * @param {() => void} options.renderPickingFramebuffer
      * @param {() => number} options.getDevicePixelRatio
@@ -23,7 +23,7 @@ export default class InteractionController {
         glHelper,
         tooltip,
         animator,
-        eventListeners,
+        emitEvent,
         tooltipHandlers,
         renderPickingFramebuffer,
         getDevicePixelRatio,
@@ -32,7 +32,7 @@ export default class InteractionController {
         this._glHelper = glHelper;
         this._tooltip = tooltip;
         this._animator = animator;
-        this._eventListeners = eventListeners;
+        this._emitEvent = emitEvent;
         this._tooltipHandlers = tooltipHandlers;
         this._renderPickingFramebuffer = renderPickingFramebuffer;
         this._getDevicePixelRatio = getDevicePixelRatio;
@@ -173,9 +173,7 @@ export default class InteractionController {
                               datum: null,
                           };
 
-                    this._eventListeners
-                        .get("click")
-                        ?.forEach((listener) => listener(e));
+                    this._emitEvent("click", e);
                 }
 
                 if (

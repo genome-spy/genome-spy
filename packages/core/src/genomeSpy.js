@@ -13,6 +13,7 @@ import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
 import { createViewHighlighter } from "./utils/ui/viewHighlight.js";
 import KeyboardListenerManager from "./utils/keyboardListenerManager.js";
+import EventListenerRegistry from "./utils/eventListenerRegistry.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import { initializeViewData } from "./data/viewDataInit.js";
@@ -101,15 +102,15 @@ export default class GenomeSpy {
          * These should probably be in the View class and support bubbling through
          * the hierarchy.
          *
-         * @type {Map<string, Set<(event: any) => void>>}
+         * @type {EventListenerRegistry}
          */
-        this._eventListeners = new Map();
+        this._eventListeners = new EventListenerRegistry();
 
         /**
          *
-         * @type {Map<string, Set<(event: any) => void>>}
+         * @type {EventListenerRegistry}
          */
-        this._extraBroadcastListeners = new Map();
+        this._extraBroadcastListeners = new EventListenerRegistry();
 
         /** @type {Record<string, import("./tooltip/tooltipHandler.js").TooltipHandler>}> */
         this.tooltipHandlers = {
@@ -223,9 +224,7 @@ export default class GenomeSpy {
     broadcast(type, payload) {
         const message = { type, payload };
         this.viewRoot.visit((view) => view.handleBroadcast(message));
-        this._extraBroadcastListeners
-            .get(type)
-            ?.forEach((listener) => listener(message));
+        this._extraBroadcastListeners.emit(type, message);
     }
 
     #setupDpr() {
@@ -355,21 +354,10 @@ export default class GenomeSpy {
                 // container or the app covers the full document.
                 this._keyboardListenerManager.add(type, listener);
             },
-            addBroadcastListener: (type, listener) => {
-                const listenersByType = this._extraBroadcastListeners;
-
-                // Copy-paste code. TODO: Refactor into a helper function.
-                let listeners = listenersByType.get(type);
-                if (!listeners) {
-                    listeners = new Set();
-                    listenersByType.set(type, listeners);
-                }
-
-                listeners.add(listener);
-            },
-            removeBroadcastListener: (type, listener) => {
-                this._extraBroadcastListeners.get(type)?.delete(listener);
-            },
+            addBroadcastListener: (type, listener) =>
+                this._extraBroadcastListeners.add(type, listener),
+            removeBroadcastListener: (type, listener) =>
+                this._extraBroadcastListeners.remove(type, listener),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
             createOrImportViewWithContext: (
@@ -449,7 +437,7 @@ export default class GenomeSpy {
             glHelper: this._glHelper,
             tooltip: this.tooltip,
             animator: this.animator,
-            eventListeners: this._eventListeners,
+            emitEvent: this._eventListeners.emit.bind(this._eventListeners),
             tooltipHandlers: this.tooltipHandlers,
             renderPickingFramebuffer: this.renderPickingFramebuffer.bind(this),
             getDevicePixelRatio: () => this.dpr,
