@@ -15,7 +15,7 @@ design patterns.
 - Entry point is `packages/core/src/index.js` which exports `embed()` and
   `GenomeSpy`.
 - `GenomeSpy` (`packages/core/src/genomeSpy.js`) is the central orchestrator:
-  builds view hierarchy, constructs/optimizes dataflow, manages rendering
+  builds view hierarchy, initializes subtree dataflows, manages rendering
   contexts, and schedules animation.
 - The system is divided into:
   - View hierarchy (layout, scales, axes, interactions)
@@ -36,7 +36,7 @@ design patterns.
   - `LayerView`, `ConcatView`, `GridView` -> compose layout
 - `UnitView` (`packages/core/src/view/unitView.js`) instantiates a `Mark`
   (rect/point/rule/link/text) and connects encodings to scales, selections, and
-  axes.
+  axes. It also unregisters scale/axis resolution members on dispose.
 
 ## Dataflow Architecture
 
@@ -53,6 +53,22 @@ design patterns.
   - `BEHAVIOR_COLLECTS` (materialize and reuse)
 - `Collector` stores materialized data, supports grouping/sorting, and provides
   fast lookups (including unique-id indexing for picking).
+- Subtree initialization (`initializeViewSubtree`) can be applied to newly
+  added view subtrees, and subtree data loading (`loadViewSubtreeData`) emits
+  a `subtreeDataReady` broadcast after sources resolve.
+- Flow branches are pruned when subtrees are disposed to avoid orphaned nodes
+  and unused data sources.
+
+## View Lifecycle (Dynamic Mutation)
+
+- View creation uses `ViewFactory.createOrImportView` when possible, but some
+  app-side views are still instantiated directly.
+- Subtree lifecycle helpers live in `packages/core/src/data/flowInit.js`:
+  `initializeViewSubtree`, `loadViewSubtreeData`, and `finalizeSubtreeGraphics`.
+- Disposal is subtree-aware: `disposeSubtree` walks post-order, unregisters
+  resolution members, and prunes dataflow branches.
+- View opacity is configured in a separate post-resolve pass
+  (`configureViewOpacity`) because dynamic opacity depends on resolved scales.
 
 ## Rendering Pipeline
 
