@@ -10,52 +10,71 @@ steps are skipped for newly created subtrees. The goal is to incrementally
 refactor the architecture so that view subtrees can be added and removed safely
 without requiring a full rebuild or relying on a global registry.
 
-## Current state (implemented)
+## Remaining work (focused)
 
-- Subtree lifecycle helpers exist (`initializeViewSubtree`,
-  `finalizeSubtreeGraphics`, `disposeSubtree`) and are used in metadata rebuild.
-- Flow handles are view-owned; `DataFlow` host maps are removed and observers
-  are managed via `Collector.observe()` + `View.registerDisposer()`.
-- Subtree data-ready signaling exists: `loadViewSubtreeData` emits
-  `subtreeDataReady`, and sample extraction listens to it. Global `dataLoaded`
-  broadcast is removed.
-- Metadata rebuild now uses subtree init + subtree data loading and cleans up
-  subscriptions/listeners on dispose.
-- Scale/axis resolution membership can be removed during disposal, and unit
-  views dispose marks and listener wiring.
-- Root init now uses subtree init helpers and subtree data loading, with scale
-  reconfiguration handled by `loadViewSubtreeData`.
-- Flow branches are pruned on subtree dispose, removing empty ancestors and
-  detaching orphaned data sources.
-- Concurrent loads for shared sources are deduplicated with an in-flight cache.
-- Test helpers now use subtree init + subtree load; global `initializeData` is
-  removed.
+1) GridView incremental child management (high priority, needs extensive tests)
+- Goals:
+  - Add/remove children without rebuilding the entire grid.
+  - Ensure axes, titles, grid lines, scrollbars, and selection overlays are
+    created and disposed correctly.
+  - Keep shared axes consistent after insert/remove operations.
+  - Use the existing subtree dataflow helpers for new children.
 
-## Remaining work (resume checklist)
+- API design (GridView):
+  - `insertChildViewAt(view, index)` inserts a GridChild at a position.
+  - `appendChildView(view)` convenience wrapper.
+  - `removeChildView(view)` / `removeChildAt(index)` removes a child.
+  - `syncSharedAxes()` creates or disposes shared axes based on resolutions.
+  - `invalidateSizeCache()` is called after changes (already exists on View).
+  - Document all methods with JSDoc: intended callers, expected lifecycle
+    ordering, and required follow-up calls (layout reflow, data init).
 
-1) Subtree init consistency (root and dynamic)
+- API design (GridChild):
+  - `disposeAxes()` (or `resetDecorations()`) disposes title, axes, grid lines,
+    scrollbars, selection rect, backgrounds.
+  - `createAxes()` assumes a clean slate (calls `disposeAxes()` first or clears
+    internal maps before recreating).
+  - Add a short "Users guide" comment block that explains how GridChild is
+    owned by GridView and why direct usage is not expected.
+
+- API design (ConcatView):
+  - `addChildSpec(spec, index?)` uses `createOrImportView` + `insertChildViewAt`.
+  - `removeChildAt(index)` calls GridView removal + subtree dispose.
+  - Document dynamic insertion/removal lifecycle: axes, opacity, subtree init,
+    data load, layout reflow.
+
+- Implementation steps (ordered):
+  1. Add `GridChild.disposeAxes()` and call it from `GridView.#disposeGridChild`.
+  2. Add `GridView.syncSharedAxes()` and call it from:
+     - `createAxes()` (after per-child axes)
+     - child insert/remove paths
+  3. Add `GridView.insertChildViewAt` + `removeChildAt` that:
+     - handle `layoutParent` assignment
+     - dispose subtree on removal
+     - sync shared axes
+     - invalidate size cache + request layout reflow
+  4. Add ConcatView helpers that:
+     - create view via `createOrImportView`
+     - insert into grid
+     - call `initializeViewSubtree` + `loadViewSubtreeData`
+     - call `configureViewOpacity` after axes exist
+  5. Wire a minimal call site (sample use) to validate behavior.
+
+- Tests (extensive, required):
+  - Insert/remove preserves shared axes (created when needed, removed when no
+    members remain).
+  - GridChild decorations are disposed (no orphaned title/axis views).
+  - Size cache invalidation triggers layout changes on insert/remove.
+  - Subtree dataflow init + load runs once for inserted views.
+  - Removal prunes dataflow branches (collector/source cleanup).
+
+2) Subtree init consistency (medium priority)
 - Ensure flow optimization + handle sync still run for all subtree insertions.
-- Promote in-flight load caching to a persistent load-state per source if
-  repeated loads should be skipped across time, not just concurrently.
+- Consider persistent load-state per source if reloads should be skipped across
+  time, not just concurrently.
 
-2) View creation consistency (app-side)
-- Replace direct `new` usage with `createOrImportView` where practical.
-- Follow the same lifecycle: build subtree -> initializeViewSubtree -> attach ->
-  dispose old subtree.
-- Keep metadata/sidebar out of sample-extraction readiness checks.
-- Add incremental child management for concat/grid layouts:
-  - `appendChildView` / `removeChildView` on `GridView`.
-  - `addChildSpec` (or similar) on `ConcatView` that does create-or-import +
-    append + axes/decoration wiring.
-  - Ensure late-added children get axis/title decorations without full rebuild.
-
-3) Scale reconfiguration wiring
+3) Scale reconfiguration wiring (low priority)
 - Decide whether `updateNamedData` should trigger subtree-level reconfigure.
-
-4) Tests to make resumption safe
-- SubtreeDataReady boundaries (metadata vs. sample data) and ancestry checks.
-- Shared data source caching across time (not just in-flight).
-- Flow branch cleanup on metadata rebuild (no orphaned nodes/collectors).
 
 ## Notes for later
 
@@ -67,4 +86,4 @@ without requiring a full rebuild or relying on a global registry.
 
 ## Progress estimate
 
-[█████████████████████░░░░░] 72%
+[██████████████████████░░░] 78%

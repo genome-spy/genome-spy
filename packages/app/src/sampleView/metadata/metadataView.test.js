@@ -42,6 +42,20 @@ function assertFlowMatchesSubtree(metadataView, dataFlow) {
     expect(observerCount).toBe(unitViews.length);
 }
 
+/**
+ * @param {() => boolean} condition
+ */
+async function waitForCondition(condition) {
+    const attempts = 10;
+    for (let i = 0; i < attempts; i++) {
+        if (condition()) {
+            return;
+        }
+        await Promise.resolve();
+    }
+    throw new Error("Condition was not met in time.");
+}
+
 describe("MetadataView", () => {
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
@@ -155,7 +169,15 @@ describe("MetadataView", () => {
                     },
                 },
             });
-            await Promise.resolve();
+            await waitForCondition(() => {
+                const unitViews = metadataView
+                    .getDescendants()
+                    .filter((view) => view instanceof UnitView);
+                return (
+                    unitViews.length > 0 &&
+                    unitViews.every((view) => view.flowHandle?.collector)
+                );
+            });
         };
 
         await updateMetadata(["a", "b"], {

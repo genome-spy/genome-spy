@@ -1,5 +1,11 @@
 import { isConcatSpec, isHConcatSpec, isVConcatSpec } from "./viewFactory.js";
 import GridView from "./gridView/gridView.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
+import { finalizeSubtreeGraphics } from "./viewUtils.js";
+import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -58,6 +64,60 @@ export default class ConcatView extends GridView {
     }
 
     /**
+     * Adds a child spec dynamically. Intended for post-initialization updates.
+     *
+     * Callers should prefer this over direct GridView insertion to ensure
+     * dataflow initialization, axis wiring, and layout reflow are handled.
+     *
+     * @param {import("../spec/view.js").ViewSpec} childSpec
+     * @param {number} [index]
+     * @returns {Promise<import("./view.js").default>}
+     */
+    async addChildSpec(childSpec, index) {
+        const { specs, insertAt } = this.#getChildSpecs();
+        const insertIndex = index ?? specs.length;
+        const childView = await this.context.createOrImportView(
+            childSpec,
+            this,
+            this,
+            "grid" + this.childCount
+        );
+        insertAt(insertIndex, childSpec);
+        const gridChild = this.insertChildViewAt(childView, insertIndex);
+
+        await gridChild.createAxes();
+        await this.syncSharedAxes();
+
+        configureViewOpacity(childView);
+
+        const { dataSources, graphicsPromises } = initializeViewSubtree(
+            childView,
+            this.context.dataFlow
+        );
+        await loadViewSubtreeData(childView, dataSources);
+        await finalizeSubtreeGraphics(graphicsPromises);
+
+        this.invalidateSizeCache();
+        this.context.requestLayoutReflow();
+
+        return childView;
+    }
+
+    /**
+     * Removes a child by index. Intended for post-initialization updates.
+     *
+     * @param {number} index
+     */
+    async removeChildAt(index) {
+        const { removeAt } = this.#getChildSpecs();
+        super.removeChildAt(index);
+        removeAt(index);
+        await this.syncSharedAxes();
+        this.invalidateSizeCache();
+        this.context.requestLayoutReflow();
+    }
+
+    /**
      * @param {import("../spec/channel.js").Channel} channel
      * @param {import("../spec/view.js").ResolutionTarget} resolutionType
      * @returns {import("../spec/view.js").ResolutionBehavior}
@@ -80,5 +140,35 @@ export default class ConcatView extends GridView {
         } else {
             return "independent";
         }
+    }
+
+    /**
+     * @returns {{
+     *   specs: (import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec)[],
+     *   insertAt: (index: number, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec) => void,
+     *   removeAt: (index: number) => void
+     * }}
+     */
+    #getChildSpecs() {
+        const spec = this.spec;
+        let specs;
+
+        if (isConcatSpec(spec)) {
+            specs = spec.concat;
+        } else if (isVConcatSpec(spec)) {
+            specs = spec.vconcat;
+        } else {
+            specs = spec.hconcat;
+        }
+
+        return {
+            specs,
+            insertAt: (index, childSpec) => {
+                specs.splice(index, 0, childSpec);
+            },
+            removeAt: (index) => {
+                specs.splice(index, 1);
+            },
+        };
     }
 }
