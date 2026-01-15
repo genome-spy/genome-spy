@@ -13,8 +13,6 @@ import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
 
 import {
-    checkForDuplicateScaleNames,
-    setImplicitScaleNames,
     calculateCanvasSize,
     finalizeSubtreeGraphics,
 } from "./view/viewUtils.js";
@@ -38,6 +36,7 @@ import { createFramebufferInfo } from "twgl.js";
 import InteractionController from "./interaction/interactionController.js";
 import RenderCoordinator from "./view/renderCoordinator.js";
 import { createViewContext } from "./view/viewContextFactory.js";
+import { configureViewHierarchy } from "./view/viewHierarchyConfig.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -446,16 +445,7 @@ export default class GenomeSpy {
 
         this.#initializeParameterBindings();
 
-        checkForDuplicateScaleNames(this.viewRoot);
-
-        setImplicitScaleNames(this.viewRoot);
-
-        const views = this.viewRoot.getDescendants();
-
-        // View opacity should be configured after all scales have been resolved.
-        // Currently this doesn't work if new views are added dynamically.
-        // TODO: Figure out how to handle dynamic view addition/removal nicely.
-        views.forEach((view) => view.configureViewOpacity());
+        configureViewHierarchy(this.viewRoot);
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
