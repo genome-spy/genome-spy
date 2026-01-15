@@ -85,6 +85,9 @@ export default class ScaleResolution {
      * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
      */
 
+    /** @type {Set<ScaleResolutionMember>} The involved views */
+    #members = new Set();
+
     /**
      * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
      */
@@ -115,8 +118,6 @@ export default class ScaleResolution {
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {ScaleResolutionMember[]} The involved views */
-        this.members = [];
         /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
@@ -124,8 +125,15 @@ export default class ScaleResolution {
         this.name = undefined;
     }
 
+    /**
+     * @returns {import("./view.js").default}
+     */
     get #firstMemberView() {
-        return this.members[0].view;
+        const first = this.#members.values().next().value;
+        if (!first) {
+            throw new Error("ScaleResolution has no members!");
+        }
+        return first.view;
     }
 
     get #viewContext() {
@@ -178,7 +186,7 @@ export default class ScaleResolution {
      *
      * @param {ScaleResolutionMember} newMember
      */
-    addMember(newMember) {
+    #addMember(newMember) {
         const { channel, channelDef } = newMember;
 
         // A convenience hack for cases where the new member should adapt
@@ -228,17 +236,19 @@ export default class ScaleResolution {
             }
         }
 
-        this.members.push(newMember);
+        this.#members.add(newMember);
     }
 
     /**
-     * @param {UnitView} view
-     * @returns {boolean}
+     * @param {ScaleResolutionMember} member
+     * @returns {() => boolean}
      */
-    removeMembersByView(view) {
-        const before = this.members.length;
-        this.members = this.members.filter((member) => member.view !== view);
-        return this.members.length !== before;
+    registerMember(member) {
+        this.#addMember(member);
+        return () => {
+            const removed = this.#members.delete(member);
+            return removed && this.#members.size === 0;
+        };
     }
 
     /**
@@ -274,7 +284,7 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        const propArray = this.members
+        const propArray = Array.from(this.#members)
             .map((member) => member.channelDef.scale)
             .filter((props) => props !== undefined);
 
@@ -428,7 +438,7 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     #getConfiguredDomain() {
-        const domains = this.members
+        const domains = Array.from(this.#members)
             .map((member) => member.channelDef)
             .filter((channelDef) => channelDef.scale?.domain)
             .map((channelDef) =>
@@ -451,7 +461,7 @@ export default class ScaleResolution {
      * @return { DomainArray }
      */
     getDataDomain() {
-        return this.members
+        return Array.from(this.#members)
             .map((member) =>
                 member.dataDomainSource?.(member.channel, this.type)
             )
@@ -789,7 +799,7 @@ export default class ScaleResolution {
         // Here's a problem: if the view has been hidden, it may have stale coords.
         // TODO: They should be cleared when the layout is invalidated.
         // Alternatively, scale ranges could be set in pixels.
-        const lengths = this.members
+        const lengths = Array.from(this.#members)
             .map(
                 (m) =>
                     m.view.coords?.[this.channel === "x" ? "width" : "height"]

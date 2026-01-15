@@ -348,10 +348,20 @@ export default class UnitView extends View {
                         targetChannel
                     );
                 }
-                view.resolutions[type][targetChannel].addMember({
+                const resolution = view.resolutions[type][targetChannel];
+                const unregister = resolution.registerMember({
                     view: this,
                     channel,
                     channelDef: channelDefWithScale,
+                });
+                this.registerDisposer(() => {
+                    // Unregister returns true when it removed the last member.
+                    if (
+                        unregister() &&
+                        view.resolutions[type][targetChannel] === resolution
+                    ) {
+                        delete view.resolutions[type][targetChannel];
+                    }
                 });
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
@@ -378,11 +388,21 @@ export default class UnitView extends View {
                         ? undefined
                         : this.extractDataDomain.bind(this);
 
-                view.resolutions[type][targetChannel].addMember({
+                const resolution = view.resolutions[type][targetChannel];
+                const unregister = resolution.registerMember({
                     view: this,
                     channel,
                     channelDef: channelDefWithScale,
                     dataDomainSource,
+                });
+                this.registerDisposer(() => {
+                    // Unregister returns true when it removed the last member.
+                    if (
+                        unregister() &&
+                        view.resolutions[type][targetChannel] === resolution
+                    ) {
+                        delete view.resolutions[type][targetChannel];
+                    }
                 });
             }
         }
@@ -393,37 +413,7 @@ export default class UnitView extends View {
      */
     dispose() {
         super.dispose();
-
-        this.#unresolve();
         this.mark.dispose();
-    }
-
-    #unresolve() {
-        for (const view of this.getDataAncestors()) {
-            for (const [channel, resolution] of Object.entries(
-                view.resolutions.scale
-            )) {
-                if (
-                    resolution &&
-                    resolution.removeMembersByView(this) &&
-                    resolution.members.length === 0
-                ) {
-                    delete view.resolutions.scale[channel];
-                }
-            }
-
-            for (const [channel, resolution] of Object.entries(
-                view.resolutions.axis
-            )) {
-                if (
-                    resolution &&
-                    resolution.removeMembersByView(this) &&
-                    resolution.members.length === 0
-                ) {
-                    delete view.resolutions.axis[channel];
-                }
-            }
-        }
     }
 
     /**

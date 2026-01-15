@@ -7,7 +7,6 @@ import {
     isSecondaryChannel,
     isValueDef,
 } from "../encoder/encoder.js";
-import { peek } from "../utils/arrayUtils.js";
 import coalesce from "../utils/coalesce.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
@@ -27,17 +26,19 @@ export default class AxisResolution {
      * @typedef {import("../spec/channel.js").PositionalChannel} PositionalChannel
      */
 
+    /** @type {Set<AxisResolutionMember>} The involved views */
+    #members = new Set();
+
     /**
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
      */
     constructor(channel) {
         this.channel = channel;
-        /** @type {AxisResolutionMember[]} The involved views */
-        this.members = [];
     }
 
     get scaleResolution() {
-        return peek(this.members)?.view.getScaleResolution(this.channel);
+        const first = this.#members.values().next().value;
+        return first?.view.getScaleResolution(this.channel);
     }
 
     /**
@@ -46,7 +47,7 @@ export default class AxisResolution {
      *
      * @param {AxisResolutionMember} newMember
      */
-    addMember(newMember) {
+    #addMember(newMember) {
         const { view } = newMember;
         const newScaleResolution = view.getScaleResolution(this.channel);
 
@@ -61,33 +62,43 @@ export default class AxisResolution {
             throw new Error(
                 `Shared axes must have a shared scale! Channel: ${
                     this.channel
-                }, existing views: [${this.members
+                }, existing views: [${Array.from(this.#members)
                     .map((m) => m.view.getPathString())
                     .join(", ")}], new view: ${view.getPathString()}.`
             );
         }
 
-        this.members.push(newMember);
+        this.#members.add(newMember);
         invalidate(this, "axisProps");
     }
 
     /**
-     * @param {UnitView} view
+     * @param {AxisResolutionMember} member
+     * @returns {() => boolean}
+     */
+    registerMember(member) {
+        this.#addMember(member);
+        return () => {
+            const removed = this.removeMember(member);
+            return removed && this.#members.size === 0;
+        };
+    }
+
+    /**
+     * @param {AxisResolutionMember} member
      * @returns {boolean}
      */
-    removeMembersByView(view) {
-        const before = this.members.length;
-        this.members = this.members.filter((member) => member.view !== view);
-        if (this.members.length !== before) {
+    removeMember(member) {
+        const removed = this.#members.delete(member);
+        if (removed) {
             invalidate(this, "axisProps");
-            return true;
         }
-        return false;
+        return removed;
     }
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = this.members.map((member) => {
+            const propArray = Array.from(this.#members).map((member) => {
                 const channelDef = member.view.mark.encoding[member.channel];
                 return "axis" in channelDef && channelDef.axis;
             });
@@ -138,7 +149,7 @@ export default class AxisResolution {
             };
         };
 
-        const titles = this.members.map(computeTitle);
+        const titles = Array.from(this.#members).map(computeTitle);
 
         // Skip implicit secondary channel titles if the primary channel has an explicit title
         const filteredTitles = titles.filter((title) => {
