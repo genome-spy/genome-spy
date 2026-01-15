@@ -12,11 +12,8 @@ import { html, render } from "lit";
 import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
 import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
 
-import {
-    calculateCanvasSize,
-    finalizeSubtreeGraphics,
-} from "./view/viewUtils.js";
-import { initializeViewSubtree, loadViewSubtreeData } from "./data/flowInit.js";
+import { calculateCanvasSize } from "./view/viewUtils.js";
+import { initializeViewData } from "./data/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, { framebufferToDataUrl } from "./gl/webGLHelper.js";
@@ -461,22 +458,12 @@ export default class GenomeSpy {
 
         this.#setupDpr();
 
-        const { dataFlow, graphicsPromises } = initializeViewSubtree(
+        await initializeViewData(
             this.viewRoot,
-            context.dataFlow
+            context.dataFlow,
+            context.fontManager,
+            (flow) => this.broadcast("dataFlowBuilt", flow)
         );
-        this.broadcast("dataFlowBuilt", dataFlow);
-
-        // Have to wait until asynchronous font loading is complete.
-        // Text mark's geometry builder needs font metrics before data can be
-        // converted into geometries.
-        // TODO: Make updateGraphicsData async and await font loading there.
-        await context.fontManager.waitUntilReady();
-
-        // Find all data sources and initiate loading.
-        await loadViewSubtreeData(this.viewRoot, new Set(dataFlow.dataSources));
-
-        await finalizeSubtreeGraphics(graphicsPromises);
 
         // Allow layout computation
         // eslint-disable-next-line require-atomic-updates
