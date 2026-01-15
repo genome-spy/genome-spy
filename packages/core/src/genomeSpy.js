@@ -7,7 +7,6 @@ Refactor plan (incremental, behavior-preserving):
 - Add an error hook option (onError) so UI messaging can be customized without core DOM coupling.
 */
 import { formats as vegaFormats } from "vega-loader";
-import { html, render } from "lit";
 
 import {
     createContainerUi,
@@ -17,14 +16,13 @@ import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
 import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
 import KeyboardListenerManager from "./genomeSpy/keyboardListenerManager.js";
 import EventListenerRegistry from "./genomeSpy/eventListenerRegistry.js";
+import InputBindingManager from "./genomeSpy/inputBindingManager.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
 import { initializeViewData } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
-import WebGLHelper, { framebufferToDataUrl } from "./gl/webGLHelper.js";
-import Rectangle from "./view/layout/rectangle.js";
-import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
+import WebGLHelper from "./gl/webGLHelper.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import GenomeStore from "./genome/genomeStore.js";
@@ -34,12 +32,11 @@ import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
-import createBindingInputs from "./utils/inputBinding.js";
-import { createFramebufferInfo } from "twgl.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { configureViewHierarchy } from "./genomeSpy/viewHierarchyConfig.js";
+import { exportCanvas } from "./genomeSpy/canvasExport.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -130,10 +127,8 @@ export default class GenomeSpy {
          */
         this._loadingIndicatorManager = undefined;
 
-        /**
-         * @type {HTMLElement}
-         */
-        this._inputBindingContainer = undefined;
+        /** @type {InputBindingManager} */
+        this._inputBindingManager = new InputBindingManager(container, options);
 
         /** @type {InteractionController} */
         this._interactionController = undefined;
@@ -148,37 +143,7 @@ export default class GenomeSpy {
     }
 
     #initializeParameterBindings() {
-        /** @type {import("lit").TemplateResult[]} */
-        const inputs = [];
-
-        this.viewRoot.visit((view) => {
-            const mediator = view.paramMediator;
-            inputs.push(...createBindingInputs(mediator));
-        });
-        const ibc = this.options.inputBindingContainer;
-
-        if (!ibc || ibc == "none" || !inputs.length) {
-            return;
-        }
-
-        const inputBindingContainer = document.createElement("div");
-        inputBindingContainer.className = "gs-input-bindings";
-        this._inputBindingContainer = inputBindingContainer;
-
-        if (ibc == "default") {
-            this.container.appendChild(this._inputBindingContainer);
-        } else if (ibc instanceof HTMLElement) {
-            ibc.appendChild(this._inputBindingContainer);
-        } else {
-            throw new Error("Invalid inputBindingContainer");
-        }
-
-        if (inputs.length) {
-            render(
-                html`<div class="gs-input-binding">${inputs}</div>`,
-                this._inputBindingContainer
-            );
-        }
+        this._inputBindingManager.initialize(this.viewRoot);
     }
 
     /**
@@ -322,7 +287,7 @@ export default class GenomeSpy {
 
         this._glHelper.finalize();
 
-        this._inputBindingContainer?.remove();
+        this._inputBindingManager.remove();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
@@ -531,49 +496,14 @@ export default class GenomeSpy {
         devicePixelRatio,
         clearColor = "white"
     ) {
-        const helper = this._glHelper;
-
-        logicalWidth ??= helper.getLogicalCanvasSize().width;
-        logicalHeight ??= helper.getLogicalCanvasSize().height;
-        devicePixelRatio ??= window.devicePixelRatio ?? 1;
-
-        const gl = helper.gl;
-
-        const width = Math.floor(logicalWidth * devicePixelRatio);
-        const height = Math.floor(logicalHeight * devicePixelRatio);
-
-        const framebufferInfo = createFramebufferInfo(
-            gl,
-            [
-                {
-                    format: gl.RGBA,
-                    type: gl.UNSIGNED_BYTE,
-                    minMag: gl.LINEAR,
-                    wrap: gl.CLAMP_TO_EDGE,
-                },
-            ],
-            width,
-            height
-        );
-
-        const renderingContext = new BufferedViewRenderingContext(
-            { picking: false },
-            {
-                webGLHelper: this._glHelper,
-                canvasSize: { width: logicalWidth, height: logicalHeight },
-                devicePixelRatio,
-                clearColor,
-                framebufferInfo,
-            }
-        );
-
-        this.viewRoot.render(
-            renderingContext,
-            Rectangle.create(0, 0, logicalWidth, logicalHeight)
-        );
-        renderingContext.render();
-
-        const pngUrl = framebufferToDataUrl(gl, framebufferInfo, "image/png");
+        const pngUrl = exportCanvas({
+            glHelper: this._glHelper,
+            viewRoot: this.viewRoot,
+            logicalWidth,
+            logicalHeight,
+            devicePixelRatio,
+            clearColor,
+        });
 
         // Clean up
         this.computeLayout();
