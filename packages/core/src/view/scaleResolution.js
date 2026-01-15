@@ -19,6 +19,7 @@ import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
 import createScale, { configureScale } from "../scale/scale.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
+import ScaleDomainAggregator from "./scaleDomainAggregator.js";
 import {
     INDEX,
     LOCUS,
@@ -32,7 +33,7 @@ import {
     isChromosomalLocus,
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
-import createDomain, { NominalDomain } from "../utils/domainArray.js";
+import { NominalDomain } from "../utils/domainArray.js";
 import { easeCubicInOut } from "d3-ease";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import eerp from "../utils/eerp.js";
@@ -96,11 +97,8 @@ export default class ScaleResolution {
     /** @type {ScaleWithProps} */
     #scale;
 
-    /**
-     * The initial domain before any zooming.
-     * @type {any[]}
-     */
-    #initialDomain;
+    /** @type {ScaleDomainAggregator} */
+    #domainAggregator;
 
     /**
      * Keeps track of the expression references in the range. If range is modified,
@@ -120,6 +118,13 @@ export default class ScaleResolution {
 
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
+
+        this.#domainAggregator = new ScaleDomainAggregator({
+            getMembers: () => this.#members,
+            getType: () => this.type,
+            getGenome: () => this.getGenome(),
+            fromComplexInterval: this.fromComplexInterval.bind(this),
+        });
     }
 
     /**
@@ -252,7 +257,7 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     #isExplicitDomain() {
-        return !!this.#getConfiguredDomain();
+        return this.#domainAggregator.hasConfiguredDomain();
     }
 
     #isDomainInitialized() {
@@ -304,7 +309,10 @@ export default class ScaleResolution {
             return { type: "null" };
         }
 
-        const domain = this.#getInitialDomain(extractDataDomain);
+        const domain =
+            this.#domainAggregator.getConfiguredOrDefaultDomain(
+                extractDataDomain
+            );
 
         if (domain && domain.length > 0) {
             props.domain = domain;
@@ -379,56 +387,12 @@ export default class ScaleResolution {
     }
 
     /**
-     *
-     * @param {boolean} extractDataDomain
-     */
-    #getInitialDomain(extractDataDomain = false) {
-        // TODO: intersect the domain with zoom extent (if it's defined)
-        return (
-            this.#getConfiguredDomain() ??
-            (this.type == LOCUS
-                ? this.getGenome().getExtent()
-                : extractDataDomain
-                  ? this.getDataDomain()
-                  : [])
-        );
-    }
-
-    /**
-     * Unions the configured domains of all participating views.
-     *
-     * @return { DomainArray }
-     */
-    #getConfiguredDomain() {
-        const domains = Array.from(this.#members)
-            .map((member) => member.channelDef)
-            .filter((channelDef) => channelDef.scale?.domain)
-            .map((channelDef) =>
-                // TODO: Handle ExprRefs and Param in domain
-                createDomain(
-                    channelDef.type,
-                    // Chrom/pos must be linearized first
-                    this.fromComplexInterval(channelDef.scale.domain)
-                )
-            );
-
-        if (domains.length > 0) {
-            return domains.reduce((acc, curr) => acc.extendAll(curr));
-        }
-    }
-
-    /**
      * Extracts and unions the data domains of all participating views.
      *
      * @return { DomainArray }
      */
     getDataDomain() {
-        return Array.from(this.#members)
-            .map((member) =>
-                member.dataDomainSource?.(member.channel, this.type)
-            )
-            .filter((domain) => !!domain)
-            .reduce((acc, curr) => acc.extendAll(curr));
+        return this.#domainAggregator.getDataDomain();
     }
 
     /**
@@ -451,15 +415,12 @@ export default class ScaleResolution {
         scale.props = props;
         this.#configureRange();
 
-        if (!this.#initialDomain && isContinuous(scale.type)) {
-            const domain = scale.domain();
-            if (span(domain) > 0) {
-                this.#initialDomain = domain;
-            }
-        }
-
-        if (!domainWasInitialized) {
-            this.#initialDomain = scale.domain();
+        if (
+            this.#domainAggregator.captureInitialDomain(
+                scale,
+                domainWasInitialized
+            )
+        ) {
             this.#notifyListeners("domain");
             return;
         }
@@ -548,7 +509,10 @@ export default class ScaleResolution {
     isZoomed() {
         return (
             this.#isZoomingSupported() &&
-            shallowArrayEquals(this.#getInitialDomain(), this.getDomain())
+            shallowArrayEquals(
+                this.#domainAggregator.getConfiguredOrDefaultDomain(),
+                this.getDomain()
+            )
         );
     }
 
@@ -718,7 +682,7 @@ export default class ScaleResolution {
         }
 
         const oldDomain = this.getDomain();
-        const newDomain = this.#getInitialDomain();
+        const newDomain = this.#domainAggregator.getConfiguredOrDefaultDomain();
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             this.#scale.domain(newDomain);
@@ -794,7 +758,7 @@ export default class ScaleResolution {
 
         // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
         // Would behave similarly to Vega-Lite, which doesn't have constraints.
-        return this.#initialDomain;
+        return this.#domainAggregator.initialDomainSnapshot;
     }
 
     /**
