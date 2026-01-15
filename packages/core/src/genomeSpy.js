@@ -327,13 +327,27 @@ export default class GenomeSpy {
     }
 
     async _prepareViewsAndData() {
+        await this.#initializeGenomeStore();
+        const context = this.#createViewContext();
+        await this.#initializeViewHierarchy(context);
+        await initializeViewData(
+            this.viewRoot,
+            context.dataFlow,
+            context.fontManager,
+            (flow) => this.broadcast("dataFlowBuilt", flow)
+        );
+        this.#finalizeViewInitialization(context);
+    }
+
+    async #initializeGenomeStore() {
         if (this.spec.genome) {
             this.genomeStore = new GenomeStore(this.spec.baseUrl);
             await this.genomeStore.initialize(this.spec.genome);
         }
+    }
 
-        /** @type {import("./types/viewContext.js").default} */
-        const context = createViewContext({
+    #createViewContext() {
+        return createViewContext({
             dataFlow: new DataFlow(),
             glHelper: this._glHelper,
             animator: this.animator,
@@ -378,7 +392,12 @@ export default class GenomeSpy {
                 ),
             highlightView: createViewHighlighter(this.container),
         });
+    }
 
+    /**
+     * @param {import("./types/viewContext.js").default} context
+     */
+    async #initializeViewHierarchy(context) {
         /** @type {ViewSpec & RootConfig} */
         const rootSpec = this.spec;
 
@@ -415,14 +434,12 @@ export default class GenomeSpy {
         });
 
         this.#setupDpr();
+    }
 
-        await initializeViewData(
-            this.viewRoot,
-            context.dataFlow,
-            context.fontManager,
-            (flow) => this.broadcast("dataFlowBuilt", flow)
-        );
-
+    /**
+     * @param {import("./types/viewContext.js").default} context
+     */
+    #finalizeViewInitialization(context) {
         // Allow layout computation
         // eslint-disable-next-line require-atomic-updates
         context.requestLayoutReflow = this.computeLayout.bind(this);
