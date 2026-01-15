@@ -3,51 +3,27 @@
  */
 
 /**
- * @typedef {object} ViewContextOptions
- * @property {import("../data/dataFlow.js").default} dataFlow
- * @property {import("../gl/webGLHelper.js").default} glHelper
- * @property {import("../utils/animator.js").default} animator
- * @property {import("../genome/genomeStore.js").default} [genomeStore]
- * @property {import("../fonts/bmFontManager.js").default} fontManager
- * @property {(datum: any, converter?: (datum: any) => Promise<import("lit").TemplateResult | string | HTMLElement>) => void} updateTooltip
- * @property {(name: string) => any[]} getNamedDataFromProvider
- * @property {() => import("../types/viewContext.js").Hover} getCurrentHover
- * @property {(view: import("./view.js").default, status: import("../types/viewContext.js").DataLoadingStatus, detail?: string) => void} setDataLoadingStatus
- * @property {(type: "keydown" | "keyup", listener: (event: KeyboardEvent) => void) => void} addKeyboardListener
- * @property {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} addBroadcastListener
- * @property {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} removeBroadcastListener
- * @property {(view: import("./view.js").default | null) => void} highlightView
- * @property {(view: import("./view.js").default) => boolean} isViewConfiguredVisible
- * @property {(spec: any) => boolean} isViewSpec
- * @property {(context: ViewContext, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string, validator?: (spec: import("../spec/view.js").ViewSpec) => void) => Promise<import("./view.js").default>} createOrImportView
- */
-
-/**
- * @param {ViewContextOptions} options
+ * Creates a ViewContext from a partial input. Omitted fields default to
+ * "fail-fast" placeholders that throw when called. This lets tests supply only
+ * what they need while keeping production usage explicit.
+ *
+ * @param {Partial<ViewContext> & {
+ *   createOrImportViewWithContext?: (context: ViewContext, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string, validator?: (spec: import("../spec/view.js").ViewSpec) => void) => Promise<import("./view.js").default>
+ * }} options
  * @returns {ViewContext}
  */
 export function createViewContext(options) {
-    /** @type {ViewContext} */
+    /** @param {string} name */
+    const missing = (name) => {
+        throw new Error("ViewContext." + name + " is not configured.");
+    };
+    /** @type {Partial<ViewContext>} */
     const context = {
-        dataFlow: options.dataFlow,
-        glHelper: options.glHelper,
-        animator: options.animator,
+        dataFlow: options.dataFlow ?? missing("dataFlow"),
+        glHelper: options.glHelper ?? missing("glHelper"),
+        animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
-        fontManager: options.fontManager,
-
-        requestLayoutReflow: () => {
-            // placeholder
-        },
-        updateTooltip: options.updateTooltip,
-        getNamedDataFromProvider: options.getNamedDataFromProvider,
-        getCurrentHover: options.getCurrentHover,
-        setDataLoadingStatus: options.setDataLoadingStatus,
-        addKeyboardListener: options.addKeyboardListener,
-        addBroadcastListener: options.addBroadcastListener,
-        removeBroadcastListener: options.removeBroadcastListener,
-        highlightView: options.highlightView,
-        isViewConfiguredVisible: options.isViewConfiguredVisible,
-        isViewSpec: options.isViewSpec,
+        fontManager: options.fontManager ?? missing("fontManager"),
         createOrImportView: async function (
             spec,
             layoutParent,
@@ -55,8 +31,18 @@ export function createViewContext(options) {
             defaultName,
             validator
         ) {
-            return options.createOrImportView(
-                context,
+            const create = options.createOrImportViewWithContext;
+            if (!create) {
+                return Promise.reject(
+                    new Error(
+                        "ViewContext.createOrImportView is not configured."
+                    )
+                );
+            }
+
+            // Needs the fully wired context for recursive view creation.
+            return create(
+                /** @type {ViewContext} */ (context),
                 spec,
                 layoutParent,
                 dataParent,
@@ -66,5 +52,28 @@ export function createViewContext(options) {
         },
     };
 
-    return context;
+    /** @type {(keyof ViewContext)[]} */
+    const methodNames = [
+        "requestLayoutReflow",
+        "updateTooltip",
+        "getNamedDataFromProvider",
+        "getCurrentHover",
+        "setDataLoadingStatus",
+        "addKeyboardListener",
+        "addBroadcastListener",
+        "removeBroadcastListener",
+        "highlightView",
+        "isViewConfiguredVisible",
+        "isViewSpec",
+    ];
+
+    /** @type {Partial<ViewContext>} */
+    const optionValues = options;
+    const contextAny = /** @type {any} */ (context);
+
+    for (const name of methodNames) {
+        contextAny[name] = optionValues[name] ?? (() => missing(name));
+    }
+
+    return /** @type {ViewContext} */ (context);
 }

@@ -372,7 +372,7 @@ export default class GenomeSpy {
             },
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
-            createOrImportView: (
+            createOrImportViewWithContext: (
                 ctx,
                 spec,
                 layoutParent,
