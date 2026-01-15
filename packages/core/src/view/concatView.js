@@ -1,5 +1,6 @@
 import { isConcatSpec, isHConcatSpec, isVConcatSpec } from "./viewFactory.js";
 import GridView from "./gridView/gridView.js";
+import ContainerMutationHelper from "./containerMutationHelper.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -58,6 +59,29 @@ export default class ConcatView extends GridView {
     }
 
     /**
+     * Adds a child spec dynamically. Intended for post-initialization updates.
+     *
+     * Callers should prefer this over direct GridView insertion to ensure
+     * dataflow initialization, axis wiring, and layout reflow are handled.
+     *
+     * @param {import("../spec/view.js").ViewSpec} childSpec
+     * @param {number} [index]
+     * @returns {Promise<import("./view.js").default>}
+     */
+    async addChildSpec(childSpec, index) {
+        return this.#getMutationHelper().addChildSpec(childSpec, index);
+    }
+
+    /**
+     * Removes a child by index. Intended for post-initialization updates.
+     *
+     * @param {number} index
+     */
+    async removeChildAt(index) {
+        await this.#getMutationHelper().removeChildAt(index);
+    }
+
+    /**
      * @param {import("../spec/channel.js").Channel} channel
      * @param {import("../spec/view.js").ResolutionTarget} resolutionType
      * @returns {import("../spec/view.js").ResolutionBehavior}
@@ -80,5 +104,54 @@ export default class ConcatView extends GridView {
         } else {
             return "independent";
         }
+    }
+
+    /**
+     * @returns {{
+     *   specs: (import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec)[],
+     *   insertAt: (index: number, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec) => void,
+     *   removeAt: (index: number) => void
+     * }}
+     */
+    #getChildSpecs() {
+        const spec = this.spec;
+        let specs;
+
+        if (isConcatSpec(spec)) {
+            specs = spec.concat;
+        } else if (isVConcatSpec(spec)) {
+            specs = spec.vconcat;
+        } else {
+            specs = spec.hconcat;
+        }
+
+        return {
+            specs,
+            insertAt: (index, childSpec) => {
+                specs.splice(index, 0, childSpec);
+            },
+            removeAt: (index) => {
+                specs.splice(index, 1);
+            },
+        };
+    }
+
+    /**
+     * @returns {ContainerMutationHelper}
+     */
+    #getMutationHelper() {
+        return new ContainerMutationHelper(this, {
+            getChildSpecs: this.#getChildSpecs.bind(this),
+            insertView: (view, index) => this.insertChildViewAt(view, index),
+            removeView: (index) => super.removeChildAt(index),
+            prepareView: async (view, _index, gridChild) => {
+                await gridChild.createAxes();
+                await this.syncSharedAxes();
+            },
+            afterRemove: async () => {
+                await this.syncSharedAxes();
+            },
+            defaultName: (_index) => "grid" + this.childCount,
+        });
     }
 }

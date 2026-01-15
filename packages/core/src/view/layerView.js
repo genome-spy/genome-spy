@@ -1,6 +1,7 @@
 import { isLayerSpec, isUnitSpec } from "./viewFactory.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
+import ContainerMutationHelper from "./containerMutationHelper.js";
 
 export default class LayerView extends ContainerView {
     /**
@@ -59,6 +60,88 @@ export default class LayerView extends ContainerView {
                     )
             )
         );
+    }
+
+    /**
+     * Adds a child spec dynamically. Intended for post-initialization updates.
+     *
+     * @param {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").ImportSpec} childSpec
+     * @param {number} [index]
+     * @returns {Promise<LayerView | import("./unitView.js").default>}
+     */
+    async addChildSpec(childSpec, index) {
+        return /** @type {Promise<LayerView | import("./unitView.js").default>} */ (
+            this.#getMutationHelper().addChildSpec(childSpec, index)
+        );
+    }
+
+    /**
+     * Removes a child by index. Intended for post-initialization updates.
+     *
+     * @param {number} index
+     */
+    async removeChildAt(index) {
+        await this.#getMutationHelper().removeChildAt(index);
+    }
+
+    /**
+     * @param {View} child
+     * @param {View} replacement
+     */
+    replaceChild(child, replacement) {
+        const i = this.#children.findIndex((view) => view === child);
+        if (i < 0) {
+            throw new Error("Not my child view!");
+        }
+        child.disposeSubtree();
+        replacement.layoutParent ??= this;
+        this.#children[i] =
+            /** @type {LayerView | import("./unitView.js").default} */ (
+                replacement
+            );
+    }
+
+    /**
+     * @returns {ContainerMutationHelper}
+     */
+    #getMutationHelper() {
+        return new ContainerMutationHelper(this, {
+            getChildSpecs: () => ({
+                specs: this.spec.layer,
+                insertAt: (index, spec) => {
+                    this.spec.layer.splice(
+                        index,
+                        0,
+                        /** @type {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").ImportSpec} */ (
+                            spec
+                        )
+                    );
+                },
+                removeAt: (index) => {
+                    this.spec.layer.splice(index, 1);
+                },
+            }),
+            insertView: (view, index) => {
+                view.layoutParent ??= this;
+                this.#children.splice(
+                    index,
+                    0,
+                    /** @type {LayerView | import("./unitView.js").default} */ (
+                        view
+                    )
+                );
+                return view;
+            },
+            removeView: (index) => {
+                const view = this.#children[index];
+                if (!view) {
+                    throw new Error("Child index out of range!");
+                }
+                view.disposeSubtree();
+                this.#children.splice(index, 1);
+            },
+            defaultName: (index) => "layer" + index,
+        });
     }
 
     get children() {

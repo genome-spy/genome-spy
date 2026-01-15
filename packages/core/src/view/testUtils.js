@@ -69,6 +69,8 @@ export function createTestViewContext(viewFactoryOptions = {}) {
             })
         ),
 
+        requestLayoutReflow: () => undefined,
+
         isViewConfiguredVisible: () => true,
 
         //...partialContext,

@@ -14,6 +14,7 @@ import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
 } from "@genome-spy/core/view/viewUtils.js";
+import { configureViewOpacity } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
 import {
     collectViewSubtreeDataSources,
     initializeViewSubtree,
@@ -303,6 +304,8 @@ export class MetadataView extends ConcatView {
 
         this.#createViews();
         await this.createAxes();
+        // Opacity may depend on resolved scales; configure after the subtree exists.
+        configureViewOpacity(this);
 
         const { graphicsPromises } = initializeViewSubtree(this, flow);
         const dynamicSource =

@@ -35,6 +35,13 @@ import GridChild from "./gridChild.js";
  */
 export default class GridView extends ContainerView {
     /**
+     * Users guide:
+     * - GridView owns GridChild instances and manages decorations and shared axes.
+     * - Use ConcatView helpers for dynamic insertion/removal so dataflow and axes
+     *   lifecycle stays consistent.
+     */
+
+    /**
      * @typedef {"row" | "column"} Direction
      * @typedef {"horizontal" | "vertical"} ScrollDirection
      *
@@ -96,9 +103,65 @@ export default class GridView extends ContainerView {
      * @param {View} view
      */
     appendChild(view) {
+        this.appendChildView(view);
+    }
+
+    /**
+     * Appends a child view without initializing dataflow or axes.
+     * Intended for ConcatView when building the initial hierarchy.
+     *
+     * @param {View} view
+     * @returns {GridChild}
+     */
+    appendChildView(view) {
+        return this.insertChildViewAt(view, this.#children.length);
+    }
+
+    /**
+     * Inserts a child view without initializing dataflow or axes.
+     * Callers should create axes, initialize subtree data, and request layout.
+     *
+     * @param {View} view
+     * @param {number} index
+     * @returns {GridChild}
+     */
+    insertChildViewAt(view, index) {
         view.layoutParent ??= this;
-        this.#children.push(new GridChild(view, this, this.#childSerial));
+        const gridChild = new GridChild(view, this, this.#childSerial);
         this.#childSerial++;
+        this.#children.splice(index, 0, gridChild);
+        return gridChild;
+    }
+
+    /**
+     * Removes a child by instance and disposes its subtree.
+     * Callers should sync shared axes and request layout.
+     *
+     * @param {View} view
+     */
+    removeChildView(view) {
+        const index = this.#children.findIndex(
+            (gridChild) => gridChild.view === view
+        );
+        if (index < 0) {
+            throw new Error("Not my child view!");
+        }
+        this.removeChildAt(index);
+    }
+
+    /**
+     * Removes a child by index and disposes its subtree.
+     * Callers should sync shared axes and request layout.
+     *
+     * @param {number} index
+     */
+    removeChildAt(index) {
+        const gridChild = this.#children[index];
+        if (!gridChild) {
+            throw new Error("Child index out of range!");
+        }
+        this.#disposeGridChild(gridChild);
+        this.#children.splice(index, 1);
     }
 
     get #visibleChildren() {
@@ -137,11 +200,8 @@ export default class GridView extends ContainerView {
         );
         if (i >= 0) {
             this.#disposeGridChild(this.#children[i]);
-            this.#children[i] = new GridChild(
-                replacement,
-                this,
-                this.#childSerial
-            );
+            this.#children.splice(i, 1);
+            this.insertChildViewAt(replacement, i);
         } else {
             throw new Error("Not my child view!");
         }
@@ -151,6 +211,7 @@ export default class GridView extends ContainerView {
      * @param {GridChild} gridChild
      */
     #disposeGridChild(gridChild) {
+        gridChild.disposeAxisViews();
         for (const view of gridChild.getChildren()) {
             view.disposeSubtree();
         }
@@ -171,40 +232,54 @@ export default class GridView extends ContainerView {
      * @protected
      */
     async createAxes() {
+        await this.syncSharedAxes();
+        await Promise.all(
+            this.#children.map((gridChild) => gridChild.createAxes())
+        );
+    }
+
+    /**
+     * Recreates shared axes based on current axis resolutions.
+     *
+     * This is used after dynamic child insert/remove to keep shared axes in sync.
+     */
+    async syncSharedAxes() {
+        for (const axisView of Object.values(this.#sharedAxes)) {
+            axisView.disposeSubtree();
+        }
+        this.#sharedAxes = {};
+
         /** @type {Promise<void>[]} */
         const promises = [];
 
-        // Axis ticks, labels, etc. They should be created only if this view has caught
-        // the scale resolution for the channel.
         for (const channel of primaryPositionalChannels) {
             const r = this.resolutions.axis[channel];
-            if (r) {
-                const props = r.getAxisProps();
-                if (props) {
-                    const propsWithDefaults = {
-                        title: r.getTitle(),
-                        orient: CHANNEL_ORIENTS[channel][0],
-                        ...props,
-                    };
-                    // TODO: Validate that channel and orient are compatible
-                    const v = new AxisView(
-                        propsWithDefaults,
-                        r.scaleResolution.type,
-                        this.context,
-                        this,
-                        this
-                    );
-                    promises.push(v.initializeChildren());
-                    this.#sharedAxes[channel] = v;
-                }
+            if (!r) {
+                continue;
             }
+
+            const props = r.getAxisProps();
+            if (!props) {
+                continue;
+            }
+
+            const propsWithDefaults = {
+                title: r.getTitle(),
+                orient: CHANNEL_ORIENTS[channel][0],
+                ...props,
+            };
+            const axisView = new AxisView(
+                propsWithDefaults,
+                r.scaleResolution.type,
+                this.context,
+                this,
+                this
+            );
+            promises.push(axisView.initializeChildren());
+            this.#sharedAxes[channel] = axisView;
         }
 
-        // Create view decorations, grid lines, and independent axes for each child
-        return Promise.all([
-            ...promises,
-            ...this.#children.map((gridChild) => gridChild.createAxes()),
-        ]);
+        await Promise.all(promises);
     }
 
     /**

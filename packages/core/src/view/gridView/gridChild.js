@@ -19,6 +19,14 @@ import SelectionRect from "./selectionRect.js";
 
 export default class GridChild {
     /**
+     * Users guide:
+     * - GridChild is owned by GridView and is not meant to be instantiated or
+     *   managed directly by callers.
+     * - Use GridView/ConcatView APIs for insertion/removal so decorations and
+     *   dataflow are kept in sync.
+     */
+
+    /**
      * @param {import("../view.js").default} view
      * @param {import("../containerView.js").default} layoutParent
      * @param {number} serial
@@ -477,6 +485,8 @@ export default class GridChild {
      * Create view decorations, grid lines, axes, etc.
      */
     async createAxes() {
+        this.disposeAxisViews();
+
         const { view, axes, gridLines } = this;
 
         /**
@@ -642,6 +652,22 @@ export default class GridChild {
                 }
             })
         );
+    }
+
+    /**
+     * Disposes axis and gridline views so axes can be recreated safely.
+     */
+    disposeAxisViews() {
+        for (const axisView of Object.values(this.axes)) {
+            axisView.disposeSubtree();
+        }
+
+        for (const gridView of Object.values(this.gridLines)) {
+            gridView.disposeSubtree();
+        }
+
+        this.axes = {};
+        this.gridLines = {};
     }
 
     getOverhang() {
