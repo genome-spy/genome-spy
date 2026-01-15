@@ -2,7 +2,7 @@
 Refactor plan (incremental, behavior-preserving):
 - Extract DOM/container setup and loading indicator UI into a small UI helper module.
 - Move mouse/interaction handling (including picking + tooltip flow) into an InteractionController.
-- Isolate layout/render lifecycle into a LayoutEngine that owns render contexts and picking buffer.
+- Isolate layout/render lifecycle into a RenderCoordinator that owns render contexts and picking buffer.
 - Split runtime context construction into a factory that takes explicit dependencies.
 - Add an error hook option (onError) so UI messaging can be customized without core DOM coupling.
 */
@@ -24,7 +24,6 @@ import UnitView from "./view/unitView.js";
 import WebGLHelper, { framebufferToDataUrl } from "./gl/webGLHelper.js";
 import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
-import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import GenomeStore from "./genome/genomeStore.js";
@@ -37,6 +36,7 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { createFramebufferInfo } from "twgl.js";
 import InteractionController from "./interaction/interactionController.js";
+import RenderCoordinator from "./view/renderCoordinator.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -89,13 +89,8 @@ export default class GenomeSpy {
          */
         this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
 
-        /** @type {BufferedViewRenderingContext} */
-        this._renderingContext = undefined;
-        /** @type {BufferedViewRenderingContext} */
-        this._pickingContext = undefined;
-
-        /** Does picking buffer need to be rendered again */
-        this._dirtyPickingBuffer = false;
+        /** @type {RenderCoordinator} */
+        this._renderCoordinator = undefined;
 
         /**
          * Keeping track so that these can be cleaned up upon finalization.
@@ -481,6 +476,15 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this._glHelper.invalidateSize();
+        this._renderCoordinator = new RenderCoordinator({
+            viewRoot: this.viewRoot,
+            glHelper: this._glHelper,
+            getBackground: () => this.spec.background,
+            broadcast: this.broadcast.bind(this),
+            onLayoutComputed: () =>
+                this._loadingIndicatorManager.updateLayout(),
+        });
+
         this.#setupDpr();
 
         const { dataFlow, graphicsPromises } = initializeViewSubtree(
@@ -637,73 +641,15 @@ export default class GenomeSpy {
     }
 
     computeLayout() {
-        const root = this.viewRoot;
-        if (!root) {
-            return;
-        }
-
-        this.broadcast("layout");
-
-        const canvasSize = this._glHelper.getLogicalCanvasSize();
-
-        if (isNaN(canvasSize.width) || isNaN(canvasSize.height)) {
-            // TODO: Figure out what causes this
-            console.log(
-                `NaN in canvas size: ${canvasSize.width}x${canvasSize.height}. Skipping computeLayout().`
-            );
-            return;
-        }
-
-        const commonOptions = {
-            webGLHelper: this._glHelper,
-            canvasSize,
-            devicePixelRatio: window.devicePixelRatio ?? 1,
-        };
-
-        this._renderingContext = new BufferedViewRenderingContext(
-            { picking: false },
-            {
-                ...commonOptions,
-                clearColor: this.spec.background,
-            }
-        );
-        this._pickingContext = new BufferedViewRenderingContext(
-            { picking: true },
-            {
-                ...commonOptions,
-                framebufferInfo: this._glHelper._pickingBufferInfo,
-            }
-        );
-
-        root.render(
-            new CompositeViewRenderingContext(
-                this._renderingContext,
-                this._pickingContext
-            ),
-            // Canvas should now be sized based on the root view or the container
-            Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
-        );
-
-        // The view coordinates may have not been known during the initial data loading.
-        // Thus, update them so that possible error messages are shown in the correct place.
-        this._loadingIndicatorManager.updateLayout();
-
-        this.broadcast("layoutComputed");
+        this._renderCoordinator.computeLayout();
     }
 
     renderAll() {
-        this._renderingContext?.render();
-
-        this._dirtyPickingBuffer = true;
+        this._renderCoordinator.renderAll();
     }
 
     renderPickingFramebuffer() {
-        if (!this._dirtyPickingBuffer) {
-            return;
-        }
-
-        this._pickingContext.render();
-        this._dirtyPickingBuffer = false;
+        this._renderCoordinator.renderPickingFramebuffer();
     }
 
     getSearchableViews() {
