@@ -1,12 +1,11 @@
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isDiscrete } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects.js";
+import { isPrimaryPositionalChannel } from "../encoder/encoder.js";
 import {
-    isColorChannel,
-    isDiscreteChannel,
-    isPositionalChannel,
-    isPrimaryPositionalChannel,
-} from "../encoder/encoder.js";
+    applyLockedProperties,
+    getDefaultScaleProperties,
+} from "../config/scaleDefaults.js";
 import {
     INDEX,
     LOCUS,
@@ -84,39 +83,6 @@ export function resolveScalePropsBase({
  * @param {boolean} isExplicitDomain
  * @returns {Scale}
  */
-function getDefaultScaleProperties(channel, dataType, isExplicitDomain) {
-    /** @type {Scale} */
-    const props = {};
-
-    if (isExplicitDomain) {
-        props.zero = false;
-    }
-
-    if (isPositionalChannel(channel)) {
-        props.nice = !isExplicitDomain;
-    } else if (isColorChannel(channel)) {
-        // TODO: Named ranges
-        props.scheme =
-            dataType == NOMINAL
-                ? "tableau10"
-                : dataType == ORDINAL
-                  ? "blues"
-                  : "viridis";
-    } else if (isDiscreteChannel(channel)) {
-        // Shapes of point mark, for example
-        props.range =
-            channel == "shape"
-                ? ["circle", "square", "triangle-up", "cross", "diamond"]
-                : [];
-    } else if (channel == "size") {
-        props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
-    } else if (channel == "angle") {
-        props.range = [0, 360];
-    }
-
-    return props;
-}
-
 /**
  * @param {Channel} channel
  * @param {import("../spec/channel.js").Type} dataType
@@ -192,12 +158,3 @@ function getDefaultScaleType(channel, dataType) {
  * @param {Scale} props
  * @param {Channel} channel
  */
-function applyLockedProperties(props, channel) {
-    if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        props.range = [0, 1];
-    }
-
-    if (channel == "opacity" && isContinuous(props.type)) {
-        props.clamp = true;
-    }
-}
