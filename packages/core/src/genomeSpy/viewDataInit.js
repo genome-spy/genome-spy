@@ -1,12 +1,18 @@
-import { initializeViewSubtree, loadViewSubtreeData } from "./flowInit.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
 import { finalizeSubtreeGraphics } from "../view/viewUtils.js";
 
 /**
+ * Initializes the view data pipeline: builds the flow graph, awaits fonts,
+ * loads sources, and finalizes graphics for rendering.
+ *
  * @param {import("../view/view.js").default} viewRoot
- * @param {import("./dataFlow.js").default} dataFlow
+ * @param {import("../data/dataFlow.js").default} dataFlow
  * @param {import("../fonts/bmFontManager.js").default} fontManager
- * @param {(dataFlow: import("./dataFlow.js").default) => void} onDataFlowBuilt
- * @returns {Promise<import("./dataFlow.js").default>}
+ * @param {(dataFlow: import("../data/dataFlow.js").default) => void} onDataFlowBuilt
+ * @returns {Promise<import("../data/dataFlow.js").default>}
  */
 export async function initializeViewData(
     viewRoot,

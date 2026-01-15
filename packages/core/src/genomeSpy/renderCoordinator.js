@@ -1,11 +1,11 @@
-import BufferedViewRenderingContext from "./renderingContext/bufferedViewRenderingContext.js";
-import CompositeViewRenderingContext from "./renderingContext/compositeViewRenderingContext.js";
-import Rectangle from "./layout/rectangle.js";
+import BufferedViewRenderingContext from "../view/renderingContext/bufferedViewRenderingContext.js";
+import CompositeViewRenderingContext from "../view/renderingContext/compositeViewRenderingContext.js";
+import Rectangle from "../view/layout/rectangle.js";
 
 export default class RenderCoordinator {
     /**
      * @param {object} options
-     * @param {import("./view.js").default} options.viewRoot
+     * @param {import("../view/view.js").default} options.viewRoot
      * @param {import("../gl/webGLHelper.js").default} options.glHelper
      * @param {() => string} options.getBackground
      * @param {(type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void} options.broadcast

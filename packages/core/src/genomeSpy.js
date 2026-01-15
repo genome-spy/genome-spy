@@ -9,14 +9,17 @@ Refactor plan (incremental, behavior-preserving):
 import { formats as vegaFormats } from "vega-loader";
 import { html, render } from "lit";
 
-import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
-import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
-import { createViewHighlighter } from "./utils/ui/viewHighlight.js";
-import KeyboardListenerManager from "./utils/keyboardListenerManager.js";
-import EventListenerRegistry from "./utils/eventListenerRegistry.js";
+import {
+    createContainerUi,
+    createMessageBox,
+} from "./genomeSpy/containerUi.js";
+import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
+import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
+import KeyboardListenerManager from "./genomeSpy/keyboardListenerManager.js";
+import EventListenerRegistry from "./genomeSpy/eventListenerRegistry.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
-import { initializeViewData } from "./data/viewDataInit.js";
+import { initializeViewData } from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper, { framebufferToDataUrl } from "./gl/webGLHelper.js";
@@ -33,10 +36,10 @@ import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import createBindingInputs from "./utils/inputBinding.js";
 import { createFramebufferInfo } from "twgl.js";
-import InteractionController from "./interaction/interactionController.js";
-import RenderCoordinator from "./view/renderCoordinator.js";
-import { createViewContext } from "./view/viewContextFactory.js";
-import { configureViewHierarchy } from "./view/viewHierarchyConfig.js";
+import InteractionController from "./genomeSpy/interactionController.js";
+import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
+import { createViewContext } from "./genomeSpy/viewContextFactory.js";
+import { configureViewHierarchy } from "./genomeSpy/viewHierarchyConfig.js";
 
 /**
  * Events that are broadcasted to all views.

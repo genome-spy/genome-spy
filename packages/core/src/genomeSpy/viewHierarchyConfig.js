@@ -1,10 +1,10 @@
 import {
     checkForDuplicateScaleNames,
     setImplicitScaleNames,
-} from "./viewUtils.js";
+} from "../view/viewUtils.js";
 
 /**
- * @param {import("./view.js").default} viewRoot
+ * @param {import("../view/view.js").default} viewRoot
  */
 export function configureViewHierarchy(viewRoot) {
     checkForDuplicateScaleNames(viewRoot);

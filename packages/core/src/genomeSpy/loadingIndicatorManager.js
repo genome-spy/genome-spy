@@ -1,6 +1,6 @@
 import { html, nothing, render } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import SPINNER from "../../img/90-ring-with-bg.svg";
+import SPINNER from "../img/90-ring-with-bg.svg";
 
 export default class LoadingIndicatorManager {
     /**
@@ -10,14 +10,14 @@ export default class LoadingIndicatorManager {
         this._loadingIndicatorsElement = loadingIndicatorsElement;
 
         /**
-         * @type {Map<import("../../view/view.js").default, { status: import("../../types/viewContext.js").DataLoadingStatus, detail?: string }>}
+         * @type {Map<import("../view/view.js").default, { status: import("../types/viewContext.js").DataLoadingStatus, detail?: string }>}
          */
         this._loadingViews = new Map();
     }
 
     /**
-     * @param {import("../../view/view.js").default} view
-     * @param {import("../../types/viewContext.js").DataLoadingStatus} status
+     * @param {import("../view/view.js").default} view
+     * @param {import("../types/viewContext.js").DataLoadingStatus} status
      * @param {string} [detail]
      */
     setDataLoadingStatus(view, status, detail) {

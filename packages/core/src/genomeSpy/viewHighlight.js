@@ -3,7 +3,7 @@
  */
 export function createViewHighlighter(container) {
     /**
-     * @param {import("../../view/view.js").default | null} view
+     * @param {import("../view/view.js").default | null} view
      */
     return (view) => {
         container.querySelector(".view-highlight")?.remove();

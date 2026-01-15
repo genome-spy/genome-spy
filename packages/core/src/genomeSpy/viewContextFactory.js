@@ -8,7 +8,7 @@
  * what they need while keeping production usage explicit.
  *
  * @param {Partial<ViewContext> & {
- *   createOrImportViewWithContext?: (context: ViewContext, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string, validator?: (spec: import("../spec/view.js").ViewSpec) => void) => Promise<import("./view.js").default>
+ *   createOrImportViewWithContext?: (context: ViewContext, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec, layoutParent?: import("../view/containerView.js").default, dataParent?: import("../view/view.js").default, defaultName?: string, validator?: (spec: import("../spec/view.js").ViewSpec) => void) => Promise<import("../view/view.js").default>
  * }} options
  * @returns {ViewContext}
  */

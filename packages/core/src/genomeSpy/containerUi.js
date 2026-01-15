@@ -1,5 +1,5 @@
-import css from "../../styles/genome-spy.css.js";
-import Tooltip from "./tooltip.js";
+import css from "../styles/genome-spy.css.js";
+import Tooltip from "../utils/ui/tooltip.js";
 
 /**
  * @param {HTMLElement} container
