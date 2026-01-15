@@ -17,16 +17,17 @@ import {
 } from "vega-util";
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
 
-import mergeObjects from "../utils/mergeObjects.js";
 import createScale, { configureScale } from "../scale/scale.js";
-
+import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import {
-    isColorChannel,
-    isDiscreteChannel,
-    isPositionalChannel,
-    isPrimaryPositionalChannel,
-    isSecondaryChannel,
-} from "../encoder/encoder.js";
+    INDEX,
+    LOCUS,
+    NOMINAL,
+    ORDINAL,
+    QUANTITATIVE,
+} from "./scaleResolutionConstants.js";
+
+import { isSecondaryChannel } from "../encoder/encoder.js";
 import {
     isChromosomalLocus,
     isChromosomalLocusInterval,
@@ -43,11 +44,7 @@ vegaScale("index", scaleIndex, ["continuous"]);
 vegaScale("locus", scaleLocus, ["continuous"]);
 vegaScale("null", scaleNull, []);
 
-export const QUANTITATIVE = "quantitative";
-export const ORDINAL = "ordinal";
-export const NOMINAL = "nominal";
-export const LOCUS = "locus";
-export const INDEX = "index";
+export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
@@ -284,12 +281,12 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        const propArray = Array.from(this.#members)
-            .map((member) => member.channelDef.scale)
-            .filter((props) => props !== undefined);
-
-        // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
-        return mergeObjects(propArray, "scale", ["domain"]);
+        return resolveScalePropsBase({
+            channel: this.channel,
+            dataType: this.type,
+            members: this.#members,
+            isExplicitDomain: this.#isExplicitDomain(),
+        });
     }
 
     /**
@@ -300,20 +297,11 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getScaleProps(extractDataDomain = false) {
-        const mergedProps = this.#getMergedScaleProps();
-        if (mergedProps === null || mergedProps.type == "null") {
+        const props = this.#getMergedScaleProps();
+        if (props === null || props.type == "null") {
             // No scale (pass-thru)
             // TODO: Check that the channel is compatible
             return { type: "null" };
-        }
-
-        const props = {
-            ...this.#getDefaultScaleProperties(this.type),
-            ...mergedProps,
-        };
-
-        if (!props.type) {
-            props.type = getDefaultScaleType(this.channel, this.type);
         }
 
         const domain = this.#getInitialDomain(extractDataDomain);
@@ -329,32 +317,6 @@ export default class ScaleResolution {
             // The number of domain elements must be know before the glsl scale is generated.
             props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
         }
-
-        // Reverse discrete y axis
-        if (
-            this.channel == "y" &&
-            isDiscrete(props.type) &&
-            props.reverse == undefined
-        ) {
-            props.reverse = true;
-        }
-
-        if (props.range && props.scheme) {
-            delete props.scheme;
-            // TODO: Props should be set more intelligently
-            /*
-                throw new Error(
-                    `Scale has both "range" and "scheme" defined! Views: ${this._getViewPaths()}`
-                );
-                */
-        }
-
-        // By default, index and locus scales are zoomable, others are not
-        if (!("zoom" in props) && ["index", "locus"].includes(props.type)) {
-            props.zoom = true;
-        }
-
-        applyLockedProperties(props, this.channel);
 
         return props;
     }
@@ -841,38 +803,6 @@ export default class ScaleResolution {
      *
      * @param {string} dataType
      */
-    #getDefaultScaleProperties(dataType) {
-        const channel = this.channel;
-        const props = {};
-
-        if (this.#isExplicitDomain()) {
-            props.zero = false;
-        }
-
-        if (isPositionalChannel(channel)) {
-            props.nice = !this.#isExplicitDomain();
-        } else if (isColorChannel(channel)) {
-            // TODO: Named ranges
-            props.scheme =
-                dataType == NOMINAL
-                    ? "tableau10"
-                    : dataType == ORDINAL
-                      ? "blues"
-                      : "viridis";
-        } else if (isDiscreteChannel(channel)) {
-            // Shapes of point mark, for example
-            props.range =
-                channel == "shape"
-                    ? ["circle", "square", "triangle-up", "cross", "diamond"]
-                    : [];
-        } else if (channel == "size") {
-            props.range = [0, 400]; // TODO: Configurable default. This is currently optimized for points.
-        } else if (channel == "angle") {
-            props.range = [0, 360];
-        }
-
-        return props;
-    }
 
     /**
      *
@@ -938,85 +868,6 @@ export default class ScaleResolution {
             return this.getGenome().toContinuousInterval(interval);
         }
         return /** @type {number[]} */ (interval);
-    }
-}
-
-/**
- *
- * @param {Channel} channel
- * @param {string} dataType
- * @returns {import("../spec/scale.js").ScaleType}
- */
-function getDefaultScaleType(channel, dataType) {
-    // TODO: Band scale, Bin-Quantitative
-
-    if (dataType == INDEX || dataType == LOCUS) {
-        if (isPrimaryPositionalChannel(channel)) {
-            return dataType;
-        } else {
-            // TODO: Also explicitly set scales should be validated
-            throw new Error(
-                `${channel} does not support ${dataType} data type. Only positional channels do.`
-            );
-        }
-    }
-
-    /**
-     * @type {Partial<Record<Channel, (import("../spec/scale.js").ScaleType | undefined)[]>>}
-     * Default types: nominal, ordinal, quantitative.
-     * undefined = incompatible, "null" = disabled (pass-thru)
-     */
-    const defaults = {
-        x: ["band", "band", "linear"],
-        y: ["band", "band", "linear"],
-        size: [undefined, "point", "linear"],
-        opacity: [undefined, "point", "linear"],
-        fillOpacity: [undefined, "point", "linear"],
-        strokeOpacity: [undefined, "point", "linear"],
-        color: ["ordinal", "ordinal", "linear"],
-        fill: ["ordinal", "ordinal", "linear"],
-        stroke: ["ordinal", "ordinal", "linear"],
-        strokeWidth: [undefined, undefined, "linear"],
-        shape: ["ordinal", "ordinal", undefined],
-        dx: [undefined, undefined, "null"],
-        dy: [undefined, undefined, "null"],
-        angle: [undefined, undefined, "linear"],
-        sample: ["null", undefined, undefined],
-    };
-
-    /** @type {Channel[]} */
-    const typelessChannels = ["sample"];
-
-    const type = typelessChannels.includes(channel)
-        ? "null"
-        : defaults[channel]
-          ? defaults[channel][
-                [NOMINAL, ORDINAL, QUANTITATIVE].indexOf(dataType)
-            ]
-          : dataType == QUANTITATIVE
-            ? "linear"
-            : "ordinal";
-
-    if (type === undefined) {
-        throw new Error(
-            `Channel "${channel}" is not compatible with "${dataType}" data type. Use of a proper scale may be needed.`
-        );
-    }
-
-    return type;
-}
-
-/**
- * @param {import("../spec/scale.js").Scale} props
- * @param {import("../spec/channel.js").Channel} channel
- */
-function applyLockedProperties(props, channel) {
-    if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        props.range = [0, 1];
-    }
-
-    if (channel == "opacity" && isContinuous(props.type)) {
-        props.clamp = true;
     }
 }
 
