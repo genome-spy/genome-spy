@@ -12,66 +12,46 @@ without requiring a full rebuild or relying on a global registry.
 
 ## Remaining work (focused)
 
-1) GridView incremental child management (high priority, needs extensive tests)
-- Goals:
-  - Add/remove children without rebuilding the entire grid.
-  - Ensure axes, titles, grid lines, scrollbars, and selection overlays are
-    created and disposed correctly.
-  - Keep shared axes consistent after insert/remove operations.
-  - Use the existing subtree dataflow helpers for new children.
-
-- API design (GridView):
-  - `insertChildViewAt(view, index)` inserts a GridChild at a position.
-  - `appendChildView(view)` convenience wrapper.
-  - `removeChildView(view)` / `removeChildAt(index)` removes a child.
-  - `syncSharedAxes()` creates or disposes shared axes based on resolutions.
-  - `invalidateSizeCache()` is called after changes (already exists on View).
-  - Document all methods with JSDoc: intended callers, expected lifecycle
-    ordering, and required follow-up calls (layout reflow, data init).
-
-- API design (GridChild):
-  - `disposeAxes()` (or `resetDecorations()`) disposes title, axes, grid lines,
-    scrollbars, selection rect, backgrounds.
-  - `createAxes()` assumes a clean slate (calls `disposeAxes()` first or clears
-    internal maps before recreating).
-  - Add a short "Users guide" comment block that explains how GridChild is
-    owned by GridView and why direct usage is not expected.
-
-- API design (ConcatView):
-  - `addChildSpec(spec, index?)` uses `createOrImportView` + `insertChildViewAt`.
-  - `removeChildAt(index)` calls GridView removal + subtree dispose.
-  - Document dynamic insertion/removal lifecycle: axes, opacity, subtree init,
-    data load, layout reflow.
-
-- Implementation steps (ordered):
-  1. Add `GridChild.disposeAxes()` and call it from `GridView.#disposeGridChild`.
-  2. Add `GridView.syncSharedAxes()` and call it from:
-     - `createAxes()` (after per-child axes)
-     - child insert/remove paths
-  3. Add `GridView.insertChildViewAt` + `removeChildAt` that:
-     - handle `layoutParent` assignment
-     - dispose subtree on removal
-     - sync shared axes
-     - invalidate size cache + request layout reflow
-  4. Add ConcatView helpers that:
-     - create view via `createOrImportView`
-     - insert into grid
-     - call `initializeViewSubtree` + `loadViewSubtreeData`
-     - call `configureViewOpacity` after axes exist
-  5. Wire a minimal call site (sample use) to validate behavior.
-
-- Tests (extensive, required):
-  - Insert/remove preserves shared axes (created when needed, removed when no
-    members remain).
-  - GridChild decorations are disposed (no orphaned title/axis views).
-  - Size cache invalidation triggers layout changes on insert/remove.
-  - Subtree dataflow init + load runs once for inserted views.
-  - Removal prunes dataflow branches (collector/source cleanup).
-
-2) Subtree init consistency (medium priority)
+1) Subtree init consistency (medium priority)
 - Ensure flow optimization + handle sync still run for all subtree insertions.
 - Consider persistent load-state per source if reloads should be skipped across
   time, not just concurrently.
+
+2) LayerView dynamic child management (medium priority, avoid duplication)
+- Goals:
+  - Add/remove layer children without rebuilding the entire layer.
+  - Reuse GridView/ConcatView lifecycle helpers where possible.
+  - Centralize dynamic container lifecycle to avoid per-container duplication.
+
+- Design direction:
+  - Introduce a small shared helper (e.g., `ContainerMutationHelper`) that
+    encapsulates the common lifecycle:
+    create view -> insert -> init subtree -> load data -> configure opacity ->
+    request layout.
+  - Container-specific work stays local:
+    - GridView/ConcatView: axes, gridlines, shared axis sync.
+    - LayerView: axis resolution membership and scale resolution are already
+      handled by UnitView; no shared axes, but needs consistent insertion,
+      removal, and layout updates.
+
+- API proposal (LayerView):
+  - `addChildSpec(spec, index?)` for dynamic insertion.
+  - `removeChildAt(index)` for removal.
+  - Keep these thin: rely on the shared helper for lifecycle sequencing.
+
+- Implementation steps (ordered):
+  1. Extract shared dynamic lifecycle into a helper used by ConcatView.
+  2. Add LayerView methods that call the helper with layer-specific insertion
+     and removal callbacks.
+  3. Ensure layout invalidation and reflow calls are made once per mutation.
+  4. Update documentation/JSDoc for LayerView and helper usage.
+
+- Tests (extensive):
+  - Insert/remove updates spec order and children order.
+  - Removing a child disposes subtree and clears flow handles.
+  - Dataflow collectors count returns to zero after removal.
+  - Layout reflow is requested on mutation.
+  - Edge cases: removing out-of-range throws, inserting at index 0 reorders.
 
 3) Scale reconfiguration wiring (low priority)
 - Decide whether `updateNamedData` should trigger subtree-level reconfigure.
