@@ -3,16 +3,22 @@ import { html, render } from "lit";
 import createBindingInputs from "../utils/inputBinding.js";
 
 export default class InputBindingManager {
+    /** @type {HTMLElement} */
+    #container;
+    /** @type {import("../types/embedApi.js").EmbedOptions} */
+    #options;
+    /** @type {HTMLElement} */
+    #inputBindingContainer;
+
     /**
      * @param {HTMLElement} container
      * @param {import("../types/embedApi.js").EmbedOptions} options
      */
     constructor(container, options) {
-        this._container = container;
-        this._options = options;
+        this.#container = container;
+        this.#options = options;
 
-        /** @type {HTMLElement} */
-        this._inputBindingContainer = undefined;
+        this.#inputBindingContainer = undefined;
     }
 
     /**
@@ -26,19 +32,19 @@ export default class InputBindingManager {
             const mediator = view.paramMediator;
             inputs.push(...createBindingInputs(mediator));
         });
-        const ibc = this._options.inputBindingContainer;
+        const ibc = this.#options.inputBindingContainer;
 
         if (!ibc || ibc == "none" || !inputs.length) {
             return;
         }
 
-        this._inputBindingContainer = document.createElement("div");
-        this._inputBindingContainer.className = "gs-input-bindings";
+        this.#inputBindingContainer = document.createElement("div");
+        this.#inputBindingContainer.className = "gs-input-bindings";
 
         if (ibc == "default") {
-            this._container.appendChild(this._inputBindingContainer);
+            this.#container.appendChild(this.#inputBindingContainer);
         } else if (ibc instanceof HTMLElement) {
-            ibc.appendChild(this._inputBindingContainer);
+            ibc.appendChild(this.#inputBindingContainer);
         } else {
             throw new Error("Invalid inputBindingContainer");
         }
@@ -46,12 +52,12 @@ export default class InputBindingManager {
         if (inputs.length) {
             render(
                 html`<div class="gs-input-binding">${inputs}</div>`,
-                this._inputBindingContainer
+                this.#inputBindingContainer
             );
         }
     }
 
     remove() {
-        this._inputBindingContainer?.remove();
+        this.#inputBindingContainer?.remove();
     }
 }

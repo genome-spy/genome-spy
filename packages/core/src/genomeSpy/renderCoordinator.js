@@ -3,6 +3,22 @@ import CompositeViewRenderingContext from "../view/renderingContext/compositeVie
 import Rectangle from "../view/layout/rectangle.js";
 
 export default class RenderCoordinator {
+    /** @type {import("../view/view.js").default} */
+    #viewRoot;
+    /** @type {import("../gl/webGLHelper.js").default} */
+    #glHelper;
+    /** @type {() => string} */
+    #getBackground;
+    /** @type {(type: import("../genomeSpy.js").BroadcastEventType, payload?: any) => void} */
+    #broadcast;
+    /** @type {() => void} */
+    #onLayoutComputed;
+    /** @type {BufferedViewRenderingContext} */
+    #renderingContext;
+    /** @type {BufferedViewRenderingContext} */
+    #pickingContext;
+    /** @type {boolean} */
+    #dirtyPickingBuffer;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -18,30 +34,30 @@ export default class RenderCoordinator {
         broadcast,
         onLayoutComputed,
     }) {
-        this._viewRoot = viewRoot;
-        this._glHelper = glHelper;
-        this._getBackground = getBackground;
-        this._broadcast = broadcast;
-        this._onLayoutComputed = onLayoutComputed;
+        this.#viewRoot = viewRoot;
+        this.#glHelper = glHelper;
+        this.#getBackground = getBackground;
+        this.#broadcast = broadcast;
+        this.#onLayoutComputed = onLayoutComputed;
 
         /** @type {BufferedViewRenderingContext} */
-        this._renderingContext = undefined;
+        this.#renderingContext = undefined;
         /** @type {BufferedViewRenderingContext} */
-        this._pickingContext = undefined;
+        this.#pickingContext = undefined;
 
         /** Does picking buffer need to be rendered again */
-        this._dirtyPickingBuffer = false;
+        this.#dirtyPickingBuffer = false;
     }
 
     computeLayout() {
-        const root = this._viewRoot;
+        const root = this.#viewRoot;
         if (!root) {
             return;
         }
 
-        this._broadcast("layout");
+        this.#broadcast("layout");
 
-        const canvasSize = this._glHelper.getLogicalCanvasSize();
+        const canvasSize = this.#glHelper.getLogicalCanvasSize();
 
         if (isNaN(canvasSize.width) || isNaN(canvasSize.height)) {
             // TODO: Figure out what causes this
@@ -52,51 +68,51 @@ export default class RenderCoordinator {
         }
 
         const commonOptions = {
-            webGLHelper: this._glHelper,
+            webGLHelper: this.#glHelper,
             canvasSize,
             devicePixelRatio: window.devicePixelRatio ?? 1,
         };
 
-        this._renderingContext = new BufferedViewRenderingContext(
+        this.#renderingContext = new BufferedViewRenderingContext(
             { picking: false },
             {
                 ...commonOptions,
-                clearColor: this._getBackground(),
+                clearColor: this.#getBackground(),
             }
         );
-        this._pickingContext = new BufferedViewRenderingContext(
+        this.#pickingContext = new BufferedViewRenderingContext(
             { picking: true },
             {
                 ...commonOptions,
-                framebufferInfo: this._glHelper._pickingBufferInfo,
+                framebufferInfo: this.#glHelper._pickingBufferInfo,
             }
         );
 
         root.render(
             new CompositeViewRenderingContext(
-                this._renderingContext,
-                this._pickingContext
+                this.#renderingContext,
+                this.#pickingContext
             ),
             // Canvas should now be sized based on the root view or the container
             Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
 
-        this._onLayoutComputed();
-        this._broadcast("layoutComputed");
+        this.#onLayoutComputed();
+        this.#broadcast("layoutComputed");
     }
 
     renderAll() {
-        this._renderingContext?.render();
+        this.#renderingContext?.render();
 
-        this._dirtyPickingBuffer = true;
+        this.#dirtyPickingBuffer = true;
     }
 
     renderPickingFramebuffer() {
-        if (!this._dirtyPickingBuffer) {
+        if (!this.#dirtyPickingBuffer) {
             return;
         }
 
-        this._pickingContext.render();
-        this._dirtyPickingBuffer = false;
+        this.#pickingContext.render();
+        this.#dirtyPickingBuffer = false;
     }
 }

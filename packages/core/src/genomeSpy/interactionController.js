@@ -7,6 +7,32 @@ import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 
 export default class InteractionController {
+    /** @type {import("../view/view.js").default} */
+    #viewRoot;
+    /** @type {import("../gl/webGLHelper.js").default} */
+    #glHelper;
+    /** @type {import("../utils/ui/tooltip.js").default} */
+    #tooltip;
+    /** @type {import("../utils/animator.js").default} */
+    #animator;
+    /** @type {(type: string, event: any) => void} */
+    #emitEvent;
+    /** @type {Record<string, import("../tooltip/tooltipHandler.js").TooltipHandler>} */
+    #tooltipHandlers;
+    /** @type {() => void} */
+    #renderPickingFramebuffer;
+    /** @type {() => number} */
+    #getDevicePixelRatio;
+    /**
+     * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
+     */
+    #currentHover;
+    /** @type {Inertia} */
+    #wheelInertia;
+    /** @type {Point} */
+    #mouseDownCoords;
+    /** @type {boolean} */
+    #tooltipUpdateRequested;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -28,35 +54,35 @@ export default class InteractionController {
         renderPickingFramebuffer,
         getDevicePixelRatio,
     }) {
-        this._viewRoot = viewRoot;
-        this._glHelper = glHelper;
-        this._tooltip = tooltip;
-        this._animator = animator;
-        this._emitEvent = emitEvent;
-        this._tooltipHandlers = tooltipHandlers;
-        this._renderPickingFramebuffer = renderPickingFramebuffer;
-        this._getDevicePixelRatio = getDevicePixelRatio;
+        this.#viewRoot = viewRoot;
+        this.#glHelper = glHelper;
+        this.#tooltip = tooltip;
+        this.#animator = animator;
+        this.#emitEvent = emitEvent;
+        this.#tooltipHandlers = tooltipHandlers;
+        this.#renderPickingFramebuffer = renderPickingFramebuffer;
+        this.#getDevicePixelRatio = getDevicePixelRatio;
 
         /**
          * Currently hovered mark and datum
          * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
          */
-        this._currentHover = undefined;
+        this.#currentHover = undefined;
 
-        this._wheelInertia = new Inertia(this._animator);
+        this.#wheelInertia = new Inertia(this.#animator);
 
         /** @type {Point} */
-        this._mouseDownCoords = undefined;
+        this.#mouseDownCoords = undefined;
 
-        this._tooltipUpdateRequested = false;
+        this.#tooltipUpdateRequested = false;
     }
 
     getCurrentHover() {
-        return this._currentHover;
+        return this.#currentHover;
     }
 
     registerMouseEvents() {
-        const canvas = this._glHelper.canvas;
+        const canvas = this.#glHelper.canvas;
 
         let lastWheelEvent = performance.now();
         let longPressTriggered = false;
@@ -74,15 +100,15 @@ export default class InteractionController {
                 );
 
                 if (event.type == "mousemove" && !wheeling) {
-                    this._tooltip.handleMouseMove(event);
-                    this._tooltipUpdateRequested = false;
+                    this.#tooltip.handleMouseMove(event);
+                    this.#tooltipUpdateRequested = false;
 
                     // Disable picking during dragging. Also postpone picking until
                     // the user has stopped zooming as reading pixels from the
                     // picking buffer is slow and ruins smooth animations.
                     if (event.buttons == 0 && !isStillZooming()) {
-                        this._renderPickingFramebuffer();
-                        this._handlePicking(point.x, point.y);
+                        this.#renderPickingFramebuffer();
+                        this.#handlePicking(point.x, point.y);
                     }
                 }
 
@@ -90,17 +116,17 @@ export default class InteractionController {
                  * @param {MouseEvent} dispatchedEvent
                  */
                 const dispatchEvent = (dispatchedEvent) => {
-                    this._viewRoot.propagateInteractionEvent(
+                    this.#viewRoot.propagateInteractionEvent(
                         new InteractionEvent(point, dispatchedEvent)
                     );
 
-                    if (!this._tooltipUpdateRequested) {
-                        this._tooltip.clear();
+                    if (!this.#tooltipUpdateRequested) {
+                        this.#tooltip.clear();
                     }
                 };
 
                 if (event.type != "wheel") {
-                    this._wheelInertia.cancel();
+                    this.#wheelInertia.cancel();
                 }
 
                 if (
@@ -108,10 +134,10 @@ export default class InteractionController {
                     !isStillZooming()
                 ) {
                     // Actually, only needed when clicking on a mark
-                    this._renderPickingFramebuffer();
+                    this.#renderPickingFramebuffer();
                 } else if (event.type == "wheel") {
                     lastWheelEvent = now;
-                    this._tooltipUpdateRequested = false;
+                    this.#tooltipUpdateRequested = false;
 
                     const wheelEvent = /** @type {WheelEvent} */ (event);
 
@@ -125,16 +151,16 @@ export default class InteractionController {
                         // doesn't work incorrectly when zooming in/out.
 
                         // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
-                        this._currentHover = null;
+                        this.#currentHover = null;
 
-                        this._wheelInertia.cancel();
+                        this.#wheelInertia.cancel();
                     } else {
                         // Vertical wheeling zooms.
                         // We use inertia to generate fake wheel events for smoother zooming
 
                         const template = makeEventTemplate(wheelEvent);
 
-                        this._wheelInertia.setMomentum(
+                        this.#wheelInertia.setMomentum(
                             wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
                             (delta) => {
                                 const e = new WheelEvent("wheel", {
@@ -158,14 +184,17 @@ export default class InteractionController {
                         return;
                     }
 
-                    const e = this._currentHover
+                    const e = this.#currentHover
                         ? {
                               type: event.type,
-                              viewPath: this._currentHover.mark.unitView
+                              viewPath: this.#currentHover.mark.unitView
                                   .getLayoutAncestors()
-                                  .map((view) => view.name)
+                                  .map(
+                                      /** @param {import("../view/view.js").default} view */
+                                      (view) => view.name
+                                  )
                                   .reverse(),
-                              datum: this._currentHover.datum,
+                              datum: this.#currentHover.datum,
                           }
                         : {
                               type: event.type,
@@ -173,13 +202,13 @@ export default class InteractionController {
                               datum: null,
                           };
 
-                    this._emitEvent("click", e);
+                    this.#emitEvent("click", e);
                 }
 
                 if (
                     event.type != "click" ||
                     // Suppress click events if the mouse has been dragged
-                    this._mouseDownCoords?.subtract(Point.fromMouseEvent(event))
+                    this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
                         .length < 3
                 ) {
                     dispatchEvent(event);
@@ -199,10 +228,10 @@ export default class InteractionController {
         ].forEach((type) => canvas.addEventListener(type, listener));
 
         canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
-            this._mouseDownCoords = Point.fromMouseEvent(e);
-            if (this._tooltip.sticky) {
-                this._tooltip.sticky = false;
-                this._tooltip.clear();
+            this.#mouseDownCoords = Point.fromMouseEvent(e);
+            if (this.#tooltip.sticky) {
+                this.#tooltip.sticky = false;
+                this.#tooltip.clear();
                 // A hack to prevent selection if the tooltip is sticky.
                 // Let the tooltip be destickified first.
                 longPressTriggered = true;
@@ -213,20 +242,20 @@ export default class InteractionController {
             const disableTooltip = () => {
                 document.addEventListener(
                     "mouseup",
-                    () => this._tooltip.popEnabledState(),
+                    () => this.#tooltip.popEnabledState(),
                     { once: true }
                 );
-                this._tooltip.pushEnabledState(false);
+                this.#tooltip.pushEnabledState(false);
             };
 
             // Opening context menu or using modifier keys disables the tooltip
             if (e.button == 2 || e.shiftKey || e.ctrlKey || e.metaKey) {
                 disableTooltip();
-            } else if (this._tooltip.visible) {
+            } else if (this.#tooltip.visible) {
                 // Make tooltip sticky if the user long-presses
                 const timeout = setTimeout(() => {
                     longPressTriggered = true;
-                    this._tooltip.sticky = true;
+                    this.#tooltip.sticky = true;
                 }, 400);
 
                 const clear = () => clearTimeout(timeout);
@@ -241,8 +270,8 @@ export default class InteractionController {
         );
 
         canvas.addEventListener("mouseout", () => {
-            this._tooltip.clear();
-            this._currentHover = null;
+            this.#tooltip.clear();
+            this.#currentHover = null;
         });
     }
 
@@ -250,11 +279,11 @@ export default class InteractionController {
      * @param {number} x
      * @param {number} y
      */
-    _handlePicking(x, y) {
-        const dpr = this._getDevicePixelRatio();
+    #handlePicking(x, y) {
+        const dpr = this.#getDevicePixelRatio();
         const pp = readPickingPixel(
-            this._glHelper.gl,
-            this._glHelper._pickingBufferInfo,
+            this.#glHelper.gl,
+            this.#glHelper._pickingBufferInfo,
             x * dpr,
             y * dpr
         );
@@ -262,16 +291,16 @@ export default class InteractionController {
         const uniqueId = pp[0] | (pp[1] << 8) | (pp[2] << 16) | (pp[3] << 24);
 
         if (uniqueId == 0) {
-            this._currentHover = null;
+            this.#currentHover = null;
             return;
         }
 
-        if (uniqueId !== this._currentHover?.uniqueId) {
-            this._currentHover = null;
+        if (uniqueId !== this.#currentHover?.uniqueId) {
+            this.#currentHover = null;
         }
 
-        if (!this._currentHover) {
-            this._viewRoot.visit((view) => {
+        if (!this.#currentHover) {
+            this.#viewRoot.visit((view) => {
                 if (view instanceof UnitView) {
                     if (
                         view.mark.isPickingParticipant() &&
@@ -283,23 +312,23 @@ export default class InteractionController {
                             .getCollector()
                             .findDatumByUniqueId(uniqueId);
                         if (datum) {
-                            this._currentHover = {
+                            this.#currentHover = {
                                 mark: view.mark,
                                 datum,
                                 uniqueId,
                             };
                         }
                     }
-                    if (this._currentHover) {
+                    if (this.#currentHover) {
                         return VISIT_STOP;
                     }
                 }
             });
         }
 
-        if (this._currentHover) {
-            const mark = this._currentHover.mark;
-            this.updateTooltip(this._currentHover.datum, async (datum) => {
+        if (this.#currentHover) {
+            const mark = this.#currentHover.mark;
+            this.updateTooltip(this.#currentHover.datum, async (datum) => {
                 if (!mark.isPickingParticipant()) {
                     return;
                 }
@@ -308,7 +337,7 @@ export default class InteractionController {
 
                 if (tooltipProps !== null) {
                     const handlerName = tooltipProps?.handler ?? "default";
-                    const handler = this._tooltipHandlers[handlerName];
+                    const handler = this.#tooltipHandlers[handlerName];
                     if (!handler) {
                         throw new Error(
                             "No such tooltip handler: " + handlerName
@@ -330,9 +359,9 @@ export default class InteractionController {
      * @template T
      */
     updateTooltip(datum, converter) {
-        if (!this._tooltipUpdateRequested || !datum) {
-            this._tooltip.updateWithDatum(datum, converter);
-            this._tooltipUpdateRequested = true;
+        if (!this.#tooltipUpdateRequested || !datum) {
+            this.#tooltip.updateWithDatum(datum, converter);
+            this.#tooltipUpdateRequested = true;
         } else {
             throw new Error(
                 "Tooltip has already been updated! Duplicate event handler?"

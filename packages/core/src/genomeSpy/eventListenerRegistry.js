@@ -1,7 +1,9 @@
 export default class EventListenerRegistry {
+    /** @type {Map<string, Set<(event: any) => void>>} */
+    #listeners;
+
     constructor() {
-        /** @type {Map<string, Set<(event: any) => void>>} */
-        this._listeners = new Map();
+        this.#listeners = new Map();
     }
 
     /**
@@ -9,10 +11,10 @@ export default class EventListenerRegistry {
      * @param {(event: any) => void} listener
      */
     add(type, listener) {
-        let listeners = this._listeners.get(type);
+        let listeners = this.#listeners.get(type);
         if (!listeners) {
             listeners = new Set();
-            this._listeners.set(type, listeners);
+            this.#listeners.set(type, listeners);
         }
 
         listeners.add(listener);
@@ -23,7 +25,7 @@ export default class EventListenerRegistry {
      * @param {(event: any) => void} listener
      */
     remove(type, listener) {
-        this._listeners.get(type)?.delete(listener);
+        this.#listeners.get(type)?.delete(listener);
     }
 
     /**
@@ -31,6 +33,6 @@ export default class EventListenerRegistry {
      * @param {any} event
      */
     emit(type, event) {
-        this._listeners.get(type)?.forEach((listener) => listener(event));
+        this.#listeners.get(type)?.forEach((listener) => listener(event));
     }
 }

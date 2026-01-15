@@ -1,11 +1,3 @@
-/*
-Refactor plan (incremental, behavior-preserving):
-- Extract DOM/container setup and loading indicator UI into a small UI helper module.
-- Move mouse/interaction handling (including picking + tooltip flow) into an InteractionController.
-- Isolate layout/render lifecycle into a RenderCoordinator that owns render contexts and picking buffer.
-- Split runtime context construction into a factory that takes explicit dependencies.
-- Add an error hook option (onError) so UI messaging can be customized without core DOM coupling.
-*/
 import { formats as vegaFormats } from "vega-loader";
 
 import {
@@ -46,6 +38,23 @@ import { exportCanvas } from "./genomeSpy/canvasExport.js";
 vegaFormats("fasta", fasta);
 
 export default class GenomeSpy {
+    /** @type {(() => void)[]} */
+    #destructionCallbacks = [];
+    /** @type {RenderCoordinator} */
+    #renderCoordinator;
+    /** @type {LoadingIndicatorManager} */
+    #loadingIndicatorManager;
+    /** @type {InputBindingManager} */
+    #inputBindingManager;
+    /** @type {InteractionController} */
+    #interactionController;
+    /** @type {WebGLHelper} */
+    #glHelper;
+
+    #keyboardListenerManager = new KeyboardListenerManager();
+    #eventListeners = new EventListenerRegistry();
+    #extraBroadcastListeners = new EventListenerRegistry();
+
     /**
      * @typedef {import("./view/view.js").default} View
      * @typedef {import("./spec/view.js").ViewSpec} ViewSpec
@@ -64,9 +73,6 @@ export default class GenomeSpy {
         this.options = options;
 
         options.inputBindingContainer ??= "default";
-
-        /** @type {(() => void)[]} */
-        this._destructionCallbacks = [];
 
         /** Root level configuration object */
         this.spec = spec;
@@ -89,29 +95,6 @@ export default class GenomeSpy {
          */
         this.viewVisibilityPredicate = (view) => view.isVisibleInSpec();
 
-        /** @type {RenderCoordinator} */
-        this._renderCoordinator = undefined;
-
-        /**
-         * @type {KeyboardListenerManager}
-         */
-        this._keyboardListenerManager = new KeyboardListenerManager();
-
-        /**
-         * Listers for exposed high-level events such as click on a mark instance.
-         * These should probably be in the View class and support bubbling through
-         * the hierarchy.
-         *
-         * @type {EventListenerRegistry}
-         */
-        this._eventListeners = new EventListenerRegistry();
-
-        /**
-         *
-         * @type {EventListenerRegistry}
-         */
-        this._extraBroadcastListeners = new EventListenerRegistry();
-
         /** @type {Record<string, import("./tooltip/tooltipHandler.js").TooltipHandler>}> */
         this.tooltipHandlers = {
             default: dataTooltipHandler,
@@ -122,16 +105,7 @@ export default class GenomeSpy {
         /** @type {View} */
         this.viewRoot = undefined;
 
-        /**
-         * @type {LoadingIndicatorManager}
-         */
-        this._loadingIndicatorManager = undefined;
-
-        /** @type {InputBindingManager} */
-        this._inputBindingManager = new InputBindingManager(container, options);
-
-        /** @type {InteractionController} */
-        this._interactionController = undefined;
+        this.#inputBindingManager = new InputBindingManager(container, options);
 
         this.dpr = window.devicePixelRatio;
     }
@@ -143,7 +117,7 @@ export default class GenomeSpy {
     }
 
     #initializeParameterBindings() {
-        this._inputBindingManager.initialize(this.viewRoot);
+        this.#inputBindingManager.initialize(this.viewRoot);
     }
 
     /**
@@ -184,6 +158,22 @@ export default class GenomeSpy {
     }
 
     /**
+     * @param {string} type
+     * @param {(event: any) => void} listener
+     */
+    addEventListener(type, listener) {
+        this.#eventListeners.add(type, listener);
+    }
+
+    /**
+     * @param {string} type
+     * @param {(event: any) => void} listener
+     */
+    removeEventListener(type, listener) {
+        this.#eventListeners.remove(type, listener);
+    }
+
+    /**
      * Broadcast a message to all views
      
      * @param {BroadcastEventType} type
@@ -192,7 +182,7 @@ export default class GenomeSpy {
     broadcast(type, payload) {
         const message = { type, payload };
         this.viewRoot.visit((view) => view.handleBroadcast(message));
-        this._extraBroadcastListeners.emit(type, message);
+        this.#extraBroadcastListeners.emit(type, message);
     }
 
     #setupDpr() {
@@ -202,7 +192,7 @@ export default class GenomeSpy {
         );
 
         const resizeCallback = () => {
-            this._glHelper.invalidateSize();
+            this.#glHelper.invalidateSize();
             this.dpr = window.devicePixelRatio;
             dprSetter(this.dpr);
             this.computeLayout();
@@ -214,7 +204,7 @@ export default class GenomeSpy {
             // TODO: Size should be observed only if the content is not absolutely sized
             const resizeObserver = new ResizeObserver(resizeCallback);
             resizeObserver.observe(this.container);
-            this._destructionCallbacks.push(() => resizeObserver.disconnect());
+            this.#destructionCallbacks.push(() => resizeObserver.disconnect());
         }
 
         /** @type {() => void} */
@@ -236,7 +226,7 @@ export default class GenomeSpy {
         updatePixelRatio();
 
         if (remove) {
-            this._destructionCallbacks.push(remove);
+            this.#destructionCallbacks.push(remove);
         }
     }
 
@@ -248,7 +238,7 @@ export default class GenomeSpy {
             tooltip,
         } = createContainerUi(this.container);
 
-        this._glHelper = new WebGLHelper(
+        this.#glHelper = new WebGLHelper(
             canvasWrapper,
             () =>
                 this.viewRoot
@@ -265,7 +255,7 @@ export default class GenomeSpy {
         // some fancy animated spinners.
         this.loadingIndicatorsElement = loadingIndicatorsElement;
         this.tooltip = tooltip;
-        this._loadingIndicatorManager = new LoadingIndicatorManager(
+        this.#loadingIndicatorManager = new LoadingIndicatorManager(
             loadingIndicatorsElement
         );
     }
@@ -281,20 +271,20 @@ export default class GenomeSpy {
         this.container.classList.remove("genome-spy");
         canvasWrapper.classList.remove("loading");
 
-        this._keyboardListenerManager.removeAll();
+        this.#keyboardListenerManager.removeAll();
 
-        this._destructionCallbacks.forEach((callback) => callback());
+        this.#destructionCallbacks.forEach((callback) => callback());
 
-        this._glHelper.finalize();
+        this.#glHelper.finalize();
 
-        this._inputBindingManager.remove();
+        this.#inputBindingManager.remove();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
         }
     }
 
-    async _prepareViewsAndData() {
+    async #prepareViewsAndData() {
         await this.#initializeGenomeStore();
         const context = this.#createViewContext();
         await this.#initializeViewHierarchy(context);
@@ -317,16 +307,16 @@ export default class GenomeSpy {
     #createViewContext() {
         return createViewContext({
             dataFlow: new DataFlow(),
-            glHelper: this._glHelper,
+            glHelper: this.#glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
-            fontManager: new BmFontManager(this._glHelper),
+            fontManager: new BmFontManager(this.#glHelper),
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
-                this._interactionController.getCurrentHover(),
+                this.#interactionController.getCurrentHover(),
             setDataLoadingStatus: (view, status, detail) =>
-                this._loadingIndicatorManager.setDataLoadingStatus(
+                this.#loadingIndicatorManager.setDataLoadingStatus(
                     view,
                     status,
                     detail
@@ -334,12 +324,12 @@ export default class GenomeSpy {
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the
                 // container or the app covers the full document.
-                this._keyboardListenerManager.add(type, listener);
+                this.#keyboardListenerManager.add(type, listener);
             },
             addBroadcastListener: (type, listener) =>
-                this._extraBroadcastListeners.add(type, listener),
+                this.#extraBroadcastListeners.add(type, listener),
             removeBroadcastListener: (type, listener) =>
-                this._extraBroadcastListeners.remove(type, listener),
+                this.#extraBroadcastListeners.remove(type, listener),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
             createOrImportViewWithContext: (
@@ -391,14 +381,14 @@ export default class GenomeSpy {
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
-        this._glHelper.invalidateSize();
-        this._renderCoordinator = new RenderCoordinator({
+        this.#glHelper.invalidateSize();
+        this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
-            glHelper: this._glHelper,
+            glHelper: this.#glHelper,
             getBackground: () => this.spec.background,
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
-                this._loadingIndicatorManager.updateLayout(),
+                this.#loadingIndicatorManager.updateLayout(),
         });
 
         this.#setupDpr();
@@ -415,14 +405,14 @@ export default class GenomeSpy {
         // Invalidate cached sizes to ensure that step-based sizes are current.
         // TODO: This should be done automatically when the domains of band/point scales are updated.
         this.viewRoot.visit((view) => invalidatePrefix(view, "size"));
-        this._glHelper.invalidateSize();
+        this.#glHelper.invalidateSize();
 
-        this._interactionController = new InteractionController({
+        this.#interactionController = new InteractionController({
             viewRoot: this.viewRoot,
-            glHelper: this._glHelper,
+            glHelper: this.#glHelper,
             tooltip: this.tooltip,
             animator: this.animator,
-            emitEvent: this._eventListeners.emit.bind(this._eventListeners),
+            emitEvent: this.#eventListeners.emit.bind(this.#eventListeners),
             tooltipHandlers: this.tooltipHandlers,
             renderPickingFramebuffer: this.renderPickingFramebuffer.bind(this),
             getDevicePixelRatio: () => this.dpr,
@@ -437,7 +427,7 @@ export default class GenomeSpy {
         try {
             this.#prepareContainer();
 
-            await this._prepareViewsAndData();
+            await this.#prepareViewsAndData();
 
             this.registerMouseEvents();
 
@@ -466,7 +456,7 @@ export default class GenomeSpy {
     }
 
     registerMouseEvents() {
-        this._interactionController.registerMouseEvents();
+        this.#interactionController.registerMouseEvents();
     }
 
     /**
@@ -478,7 +468,7 @@ export default class GenomeSpy {
      * @template T
      */
     updateTooltip(datum, converter) {
-        this._interactionController.updateTooltip(datum, converter);
+        this.#interactionController.updateTooltip(datum, converter);
     }
 
     /**
@@ -497,7 +487,7 @@ export default class GenomeSpy {
         clearColor = "white"
     ) {
         const pngUrl = exportCanvas({
-            glHelper: this._glHelper,
+            glHelper: this.#glHelper,
             viewRoot: this.viewRoot,
             logicalWidth,
             logicalHeight,
@@ -512,16 +502,20 @@ export default class GenomeSpy {
         return pngUrl;
     }
 
+    getLogicalCanvasSize() {
+        return this.#glHelper.getLogicalCanvasSize();
+    }
+
     computeLayout() {
-        this._renderCoordinator.computeLayout();
+        this.#renderCoordinator.computeLayout();
     }
 
     renderAll() {
-        this._renderCoordinator.renderAll();
+        this.#renderCoordinator.renderAll();
     }
 
     renderPickingFramebuffer() {
-        this._renderCoordinator.renderPickingFramebuffer();
+        this.#renderCoordinator.renderPickingFramebuffer();
     }
 
     getSearchableViews() {

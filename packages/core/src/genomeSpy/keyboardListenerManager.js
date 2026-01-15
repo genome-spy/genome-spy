@@ -1,9 +1,9 @@
 export default class KeyboardListenerManager {
+    /** @type {Map<string, (function(KeyboardEvent):void)[]>} */
+    #listeners;
+
     constructor() {
-        /**
-         * @type {Map<string, (function(KeyboardEvent):void)[]>}
-         */
-        this._listeners = new Map();
+        this.#listeners = new Map();
     }
 
     /**
@@ -12,20 +12,20 @@ export default class KeyboardListenerManager {
      */
     add(type, listener) {
         document.addEventListener(type, listener);
-        let listeners = this._listeners.get(type);
+        let listeners = this.#listeners.get(type);
         if (!listeners) {
             listeners = [];
-            this._listeners.set(type, listeners);
+            this.#listeners.set(type, listeners);
         }
         listeners.push(listener);
     }
 
     removeAll() {
-        for (const [type, listeners] of this._listeners) {
+        for (const [type, listeners] of this.#listeners) {
             for (const listener of listeners) {
                 document.removeEventListener(type, listener);
             }
         }
-        this._listeners.clear();
+        this.#listeners.clear();
     }
 }
