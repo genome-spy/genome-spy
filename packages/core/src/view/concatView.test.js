@@ -43,7 +43,10 @@ describe("ConcatView dynamic children", () => {
         await parent.addChildSpec(second, 0);
 
         // The spec order should mirror the view order for deterministic updates.
-        expect(parent.spec.vconcat).toEqual([second, first]);
+        expect(
+            /** @type {import("../spec/view.js").VConcatSpec} */ (parent.spec)
+                .vconcat
+        ).toEqual([second, first]);
         expect(parent.children.map((view) => view.spec)).toEqual([
             second,
             first,
@@ -72,7 +75,10 @@ describe("ConcatView dynamic children", () => {
 
         // Removing a child should dispose its flow handle to avoid leaks.
         expect(first.flowHandle).toBeUndefined();
-        expect(parent.spec.vconcat).toHaveLength(1);
+        expect(
+            /** @type {import("../spec/view.js").VConcatSpec} */ (parent.spec)
+                .vconcat
+        ).toHaveLength(1);
         expect(context.requestLayoutReflow).toHaveBeenCalled();
     });
 

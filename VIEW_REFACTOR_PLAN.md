@@ -17,41 +17,10 @@ without requiring a full rebuild or relying on a global registry.
 - Consider persistent load-state per source if reloads should be skipped across
   time, not just concurrently.
 
-2) LayerView dynamic child management (medium priority, avoid duplication)
-- Goals:
-  - Add/remove layer children without rebuilding the entire layer.
-  - Reuse GridView/ConcatView lifecycle helpers where possible.
-  - Centralize dynamic container lifecycle to avoid per-container duplication.
-
-- Design direction:
-  - Introduce a small shared helper (e.g., `ContainerMutationHelper`) that
-    encapsulates the common lifecycle:
-    create view -> insert -> init subtree -> load data -> configure opacity ->
-    request layout.
-  - Container-specific work stays local:
-    - GridView/ConcatView: axes, gridlines, shared axis sync.
-    - LayerView: axis resolution membership and scale resolution are already
-      handled by UnitView; no shared axes, but needs consistent insertion,
-      removal, and layout updates.
-
-- API proposal (LayerView):
-  - `addChildSpec(spec, index?)` for dynamic insertion.
-  - `removeChildAt(index)` for removal.
-  - Keep these thin: rely on the shared helper for lifecycle sequencing.
-
-- Implementation steps (ordered):
-  1. Extract shared dynamic lifecycle into a helper used by ConcatView.
-  2. Add LayerView methods that call the helper with layer-specific insertion
-     and removal callbacks.
-  3. Ensure layout invalidation and reflow calls are made once per mutation.
-  4. Update documentation/JSDoc for LayerView and helper usage.
-
-- Tests (extensive):
-  - Insert/remove updates spec order and children order.
-  - Removing a child disposes subtree and clears flow handles.
-  - Dataflow collectors count returns to zero after removal.
-  - Layout reflow is requested on mutation.
-  - Edge cases: removing out-of-range throws, inserting at index 0 reorders.
+2) LayerView dynamic child management (done)
+- Implemented `ContainerMutationHelper` and refactored ConcatView to use it.
+- Added LayerView dynamic methods (`addChildSpec`, `removeChildAt`) via helper.
+- Added LayerView tests: insertion ordering, removal cleanup, error cases.
 
 3) Scale reconfiguration wiring (low priority)
 - Decide whether `updateNamedData` should trigger subtree-level reconfigure.
@@ -66,4 +35,4 @@ without requiring a full rebuild or relying on a global registry.
 
 ## Progress estimate
 
-[██████████████████████░░░] 78%
+[████████████████████████░] 90%
