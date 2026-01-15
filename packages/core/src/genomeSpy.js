@@ -7,11 +7,10 @@ Refactor plan (incremental, behavior-preserving):
 - Add an error hook option (onError) so UI messaging can be customized without core DOM coupling.
 */
 import { formats as vegaFormats } from "vega-loader";
-import { html, nothing, render } from "lit";
-import { styleMap } from "lit/directives/style-map.js";
-import SPINNER from "./img/90-ring-with-bg.svg";
+import { html, render } from "lit";
 
 import { createContainerUi, createMessageBox } from "./utils/ui/containerUi.js";
+import LoadingIndicatorManager from "./utils/ui/loadingIndicatorManager.js";
 
 import {
     checkForDuplicateScaleNames,
@@ -22,29 +21,22 @@ import {
 import { initializeViewSubtree, loadViewSubtreeData } from "./data/flowInit.js";
 import UnitView from "./view/unitView.js";
 
-import WebGLHelper, {
-    framebufferToDataUrl,
-    readPickingPixel,
-} from "./gl/webGLHelper.js";
+import WebGLHelper, { framebufferToDataUrl } from "./gl/webGLHelper.js";
 import Rectangle from "./view/layout/rectangle.js";
 import BufferedViewRenderingContext from "./view/renderingContext/bufferedViewRenderingContext.js";
 import CompositeViewRenderingContext from "./view/renderingContext/compositeViewRenderingContext.js";
-import InteractionEvent from "./utils/interactionEvent.js";
-import Point from "./view/layout/point.js";
 import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import GenomeStore from "./genome/genomeStore.js";
 import BmFontManager from "./fonts/bmFontManager.js";
 import fasta from "./data/formats/fasta.js";
-import { VISIT_STOP } from "./view/view.js";
-import Inertia, { makeEventTemplate } from "./utils/inertia.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import createBindingInputs from "./utils/inputBinding.js";
-import { isStillZooming } from "./view/zoom.js";
 import { createFramebufferInfo } from "twgl.js";
+import InteractionController from "./interaction/interactionController.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -106,14 +98,6 @@ export default class GenomeSpy {
         this._dirtyPickingBuffer = false;
 
         /**
-         * Currently hovered mark and datum
-         * @type {{ mark: import("./marks/mark.js").default, datum: import("./data/flowNode.js").Datum, uniqueId: number }}
-         */
-        this._currentHover = undefined;
-
-        this._wheelInertia = new Inertia(this.animator);
-
-        /**
          * Keeping track so that these can be cleaned up upon finalization.
          * @type {Map<string, (function(KeyboardEvent):void)[]>}
          */
@@ -145,19 +129,17 @@ export default class GenomeSpy {
         this.viewRoot = undefined;
 
         /**
-         * Views that are currently loading data using lazy sources.
-         *
-         * @type {Map<View, { status: import("./types/viewContext.js").DataLoadingStatus, detail?: string }>}
+         * @type {LoadingIndicatorManager}
          */
-        this._loadingViews = new Map();
+        this._loadingIndicatorManager = undefined;
 
         /**
          * @type {HTMLElement}
          */
         this._inputBindingContainer = undefined;
 
-        /** @type {Point} */
-        this._mouseDownCoords = undefined;
+        /** @type {InteractionController} */
+        this._interactionController = undefined;
 
         this.dpr = window.devicePixelRatio;
     }
@@ -253,68 +235,6 @@ export default class GenomeSpy {
             ?.forEach((listener) => listener(message));
     }
 
-    /**
-     * Draw some layers on top of the canvas. It's easier to do fancy spinning
-     * animations with html elements than with WebGL.
-     */
-    _updateLoadingIndicators() {
-        /** @type {import("lit").TemplateResult[]} */
-        const indicators = [];
-
-        const isSomethingVisible = () =>
-            [...this._loadingViews.values()].some(
-                (v) => v.status == "loading" || v.status == "error"
-            );
-
-        for (const [view, status] of this._loadingViews) {
-            const c = view.coords;
-            if (c) {
-                const style = {
-                    left: `${c.x}px`,
-                    top: `${c.y}px`,
-                    width: `${c.width}px`,
-                    height: `${c.height}px`,
-                };
-                indicators.push(
-                    html`<div style=${styleMap(style)}>
-                        <div class=${status.status}>
-                            ${status.status == "error"
-                                ? html`<span
-                                      >Loading
-                                      failed${status.detail
-                                          ? html`: ${status.detail}`
-                                          : nothing}</span
-                                  >`
-                                : html`
-                                      <img src="${SPINNER}" alt="" />
-                                      <span>Loading...</span>
-                                  `}
-                        </div>
-                    </div>`
-                );
-            }
-        }
-
-        // Do some hacks to stop css animations of the loading indicators.
-        // Otherwise they fire animation frames even when their opacity is zero.
-        // TODO: Instead of this, replace the animated spinners with static images.
-        // Or even better, once more widely supported, use `allow-discrete`
-        // https://developer.mozilla.org/en-US/docs/Web/CSS/transition-behavior
-        // to enable transition of the display property.
-        if (isSomethingVisible()) {
-            this.loadingIndicatorsElement.style.display = "block";
-        } else {
-            // TODO: Clear previous timeout
-            setTimeout(() => {
-                if (!isSomethingVisible()) {
-                    this.loadingIndicatorsElement.style.display = "none";
-                }
-            }, 3000);
-        }
-
-        render(indicators, this.loadingIndicatorsElement);
-    }
-
     #setupDpr() {
         const dprSetter = this.viewRoot.paramMediator.allocateSetter(
             "devicePixelRatio",
@@ -385,6 +305,9 @@ export default class GenomeSpy {
         // some fancy animated spinners.
         this.loadingIndicatorsElement = loadingIndicatorsElement;
         this.tooltip = tooltip;
+        this._loadingIndicatorManager = new LoadingIndicatorManager(
+            loadingIndicatorsElement
+        );
     }
 
     /**
@@ -437,12 +360,15 @@ export default class GenomeSpy {
             },
             updateTooltip: this.updateTooltip.bind(this),
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
-            getCurrentHover: () => this._currentHover,
+            getCurrentHover: () =>
+                this._interactionController.getCurrentHover(),
 
-            setDataLoadingStatus: (view, status, detail) => {
-                this._loadingViews.set(view, { status, detail });
-                this._updateLoadingIndicators();
-            },
+            setDataLoadingStatus: (view, status, detail) =>
+                this._loadingIndicatorManager.setDataLoadingStatus(
+                    view,
+                    status,
+                    detail
+                ),
 
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the
@@ -582,6 +508,17 @@ export default class GenomeSpy {
         // TODO: This should be done automatically when the domains of band/point scales are updated.
         this.viewRoot.visit((view) => invalidatePrefix(view, "size"));
         this._glHelper.invalidateSize();
+
+        this._interactionController = new InteractionController({
+            viewRoot: this.viewRoot,
+            glHelper: this._glHelper,
+            tooltip: this.tooltip,
+            animator: this.animator,
+            eventListeners: this._eventListeners,
+            tooltipHandlers: this.tooltipHandlers,
+            renderPickingFramebuffer: this.renderPickingFramebuffer.bind(this),
+            getDevicePixelRatio: () => this.dpr,
+        });
     }
 
     /**
@@ -618,276 +555,7 @@ export default class GenomeSpy {
     }
 
     registerMouseEvents() {
-        const canvas = this._glHelper.canvas;
-
-        // TODO: This function is huge. Refactor this into a separate class
-        // that would also contain state-related stuff that currently pollute the
-        // GenomeSpy class.
-
-        let lastWheelEvent = performance.now();
-
-        let longPressTriggered = false;
-
-        /** @param {Event} event */
-        const listener = (event) => {
-            const now = performance.now();
-            const wheeling = now - lastWheelEvent < 200;
-
-            if (event instanceof MouseEvent) {
-                const rect = canvas.getBoundingClientRect();
-                const point = new Point(
-                    event.clientX - rect.left - canvas.clientLeft,
-                    event.clientY - rect.top - canvas.clientTop
-                );
-
-                if (event.type == "mousemove" && !wheeling) {
-                    this.tooltip.handleMouseMove(event);
-                    this._tooltipUpdateRequested = false;
-
-                    // Disable picking during dragging. Also postpone picking until
-                    // the user has stopped zooming as reading pixels from the
-                    // picking buffer is slow and ruins smooth animations.
-                    if (event.buttons == 0 && !isStillZooming()) {
-                        this.renderPickingFramebuffer();
-                        this._handlePicking(point.x, point.y);
-                    }
-                }
-
-                /**
-                 * @param {MouseEvent} event
-                 */
-                const dispatchEvent = (event) => {
-                    this.viewRoot.propagateInteractionEvent(
-                        new InteractionEvent(point, event)
-                    );
-
-                    if (!this._tooltipUpdateRequested) {
-                        this.tooltip.clear();
-                    }
-                };
-
-                if (event.type != "wheel") {
-                    this._wheelInertia.cancel();
-                }
-
-                if (
-                    (event.type == "mousedown" || event.type == "mouseup") &&
-                    !isStillZooming()
-                ) {
-                    // Actually, only needed when clicking on a mark
-                    this.renderPickingFramebuffer();
-                } else if (event.type == "wheel") {
-                    lastWheelEvent = now;
-                    this._tooltipUpdateRequested = false;
-
-                    const wheelEvent = /** @type {WheelEvent} */ (event);
-
-                    if (
-                        Math.abs(wheelEvent.deltaX) >
-                        Math.abs(wheelEvent.deltaY)
-                    ) {
-                        // If the viewport is panned (horizontally) using the wheel (touchpad),
-                        // the picking buffer becomes stale and needs redrawing. However, we
-                        // optimize by just clearing the currently hovered item so that snapping
-                        // doesn't work incorrectly when zooming in/out.
-
-                        // TODO: More robust solution (handle at higher level such as ScaleResolution's zoom method)
-                        this._currentHover = null;
-
-                        this._wheelInertia.cancel();
-                    } else {
-                        // Vertical wheeling zooms.
-                        // We use inertia to generate fake wheel events for smoother zooming
-
-                        const template = makeEventTemplate(wheelEvent);
-
-                        this._wheelInertia.setMomentum(
-                            wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
-                            (delta) => {
-                                const e = new WheelEvent("wheel", {
-                                    ...template,
-                                    deltaMode: 0,
-                                    deltaX: 0,
-                                    deltaY: delta,
-                                });
-                                dispatchEvent(e);
-                            }
-                        );
-
-                        wheelEvent.preventDefault();
-                        return;
-                    }
-                }
-
-                // TODO: Should be handled at the view level, not globally
-                if (event.type == "click") {
-                    if (longPressTriggered) {
-                        return;
-                    }
-
-                    const e = this._currentHover
-                        ? {
-                              type: event.type,
-                              viewPath: this._currentHover.mark.unitView
-                                  .getLayoutAncestors()
-                                  .map((view) => view.name)
-                                  .reverse(),
-                              datum: this._currentHover.datum,
-                          }
-                        : {
-                              type: event.type,
-                              viewPath: null,
-                              datum: null,
-                          };
-
-                    this._eventListeners
-                        .get("click")
-                        ?.forEach((listener) => listener(e));
-                }
-
-                if (
-                    event.type != "click" ||
-                    // Suppress click events if the mouse has been dragged
-                    this._mouseDownCoords?.subtract(Point.fromMouseEvent(event))
-                        .length < 3
-                ) {
-                    dispatchEvent(event);
-                }
-            }
-        };
-
-        [
-            "mousedown",
-            "mouseup",
-            "wheel",
-            "click",
-            "mousemove",
-            "gesturechange",
-            "contextmenu",
-            "dblclick",
-        ].forEach((type) => canvas.addEventListener(type, listener));
-
-        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
-            this._mouseDownCoords = Point.fromMouseEvent(e);
-            if (this.tooltip.sticky) {
-                this.tooltip.sticky = false;
-                this.tooltip.clear();
-                // A hack to prevent selection if the tooltip is sticky.
-                // Let the tooltip be destickified first.
-                longPressTriggered = true;
-            } else {
-                longPressTriggered = false;
-            }
-
-            const disableTooltip = () => {
-                document.addEventListener(
-                    "mouseup",
-                    () => this.tooltip.popEnabledState(),
-                    { once: true }
-                );
-                this.tooltip.pushEnabledState(false);
-            };
-
-            // Opening context menu or using modifier keys disables the tooltip
-            if (e.button == 2 || e.shiftKey || e.ctrlKey || e.metaKey) {
-                disableTooltip();
-            } else if (this.tooltip.visible) {
-                // Make tooltip sticky if the user long-presses
-                const timeout = setTimeout(() => {
-                    longPressTriggered = true;
-                    this.tooltip.sticky = true;
-                }, 400);
-
-                const clear = () => clearTimeout(timeout);
-                document.addEventListener("mouseup", clear, { once: true });
-                document.addEventListener("mousemove", clear, { once: true });
-            }
-        });
-
-        // Prevent text selections etc while dragging
-        canvas.addEventListener("dragstart", (event) =>
-            event.stopPropagation()
-        );
-
-        canvas.addEventListener("mouseout", () => {
-            this.tooltip.clear();
-            this._currentHover = null;
-        });
-    }
-
-    /**
-     * @param {number} x
-     * @param {number} y
-     */
-    _handlePicking(x, y) {
-        const dpr = this.dpr;
-        const pp = readPickingPixel(
-            this._glHelper.gl,
-            this._glHelper._pickingBufferInfo,
-            x * dpr,
-            y * dpr
-        );
-
-        const uniqueId = pp[0] | (pp[1] << 8) | (pp[2] << 16) | (pp[3] << 24);
-
-        if (uniqueId == 0) {
-            this._currentHover = null;
-            return;
-        }
-
-        if (uniqueId !== this._currentHover?.uniqueId) {
-            this._currentHover = null;
-        }
-
-        if (!this._currentHover) {
-            this.viewRoot.visit((view) => {
-                if (view instanceof UnitView) {
-                    if (
-                        view.mark.isPickingParticipant() &&
-                        [...view.facetCoords.values()].some((coords) =>
-                            coords.containsPoint(x, y)
-                        )
-                    ) {
-                        const datum = view
-                            .getCollector()
-                            .findDatumByUniqueId(uniqueId);
-                        if (datum) {
-                            this._currentHover = {
-                                mark: view.mark,
-                                datum,
-                                uniqueId,
-                            };
-                        }
-                    }
-                    if (this._currentHover) {
-                        return VISIT_STOP;
-                    }
-                }
-            });
-        }
-
-        if (this._currentHover) {
-            const mark = this._currentHover.mark;
-            this.updateTooltip(this._currentHover.datum, async (datum) => {
-                if (!mark.isPickingParticipant()) {
-                    return;
-                }
-
-                const tooltipProps = mark.properties.tooltip;
-
-                if (tooltipProps !== null) {
-                    const handlerName = tooltipProps?.handler ?? "default";
-                    const handler = this.tooltipHandlers[handlerName];
-                    if (!handler) {
-                        throw new Error(
-                            "No such tooltip handler: " + handlerName
-                        );
-                    }
-
-                    return handler(datum, mark, tooltipProps?.params);
-                }
-            });
-        }
+        this._interactionController.registerMouseEvents();
     }
 
     /**
@@ -899,14 +567,7 @@ export default class GenomeSpy {
      * @template T
      */
     updateTooltip(datum, converter) {
-        if (!this._tooltipUpdateRequested || !datum) {
-            this.tooltip.updateWithDatum(datum, converter);
-            this._tooltipUpdateRequested = true;
-        } else {
-            throw new Error(
-                "Tooltip has already been updated! Duplicate event handler?"
-            );
-        }
+        this._interactionController.updateTooltip(datum, converter);
     }
 
     /**
@@ -1025,7 +686,7 @@ export default class GenomeSpy {
 
         // The view coordinates may have not been known during the initial data loading.
         // Thus, update them so that possible error messages are shown in the correct place.
-        this._updateLoadingIndicators();
+        this._loadingIndicatorManager.updateLayout();
 
         this.broadcast("layoutComputed");
     }
