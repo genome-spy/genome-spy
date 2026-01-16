@@ -1,93 +1,45 @@
 # ScaleResolution refactor plan
 
-## Current concerns handled in ScaleResolution
-- Merge scale properties from multiple views (including per-channel defaults).
-- Resolve scale type and domain, including configured vs data-derived.
-- Create and configure the Vega scale instance and its range.
-- Track and notify domain/range listeners.
-- Support zooming, panning, animated transitions, and zoom extent rules.
-- Handle genome-specific locus/index conversions and extent logic.
-- Apply channel-specific locked properties (e.g., unit range for positional).
-- Provide utility methods (axis length, invert helpers, zoom state).
+## Current state after refactor
+- ScaleResolution is mostly wiring across dedicated modules.
+- Prop merging and defaults are handled by ScalePropsResolver + scaleDefaults.
+- Domain aggregation and initial-domain tracking live in ScaleDomainAggregator.
+- Scale instance creation/range handling lives in ScaleInstanceManager.
+- Zoom/pan logic lives in ScaleInteractionController.
+- Locus conversion helpers live in scaleLocus.
+- Channel/type compatibility rules live in ScaleRules.
 
-## Concerns that likely do not belong here
-- Genome/locus conversions and extent rules. These are specific to locus/index
-  scale types and could live in a locus-scale adapter or in scaleLocus.
-- Default channel-specific scale props (schemes, size ranges, angle ranges).
-  These are policy and theme-ish decisions, not resolution logic.
-- Animated transition logic (eerp/easing) tied to zoomTo. That could live in a
-  higher-level interaction or a zoom controller, not in the scale resolver.
-- Mixed prop merging + domain/range logic in a single step. Merging scale props
-  should be isolated from domain/range decisions for clarity and testability.
-- Rules for channel/type compatibility and default constraints live inline and
-  are hard to audit. These should be centralized and named.
-
-## Proposed split
-1) ScalePropsResolver
-   - Inputs: channel, data type, member channelDefs.
-   - Output: merged props with defaults, excluding domain/range.
-   - Knows about default scale type per channel.
-
-2) ScaleInstanceManager
-   - Owns the Vega scale instance creation/configuration.
-   - Applies range, handles expr-ref ranges, annotates props.
-   - Provides reconfigure() with no interaction logic.
-
-3) ScaleDomainAggregator
-   - Collects configured and data-driven domains across members.
-   - Owns domain merging logic and initial-domain semantics.
-   - Should be explicit about "initial" vs "current" domain.
-   - Should be the only place that decides how domain/range interact
-     (e.g., domainMid bootstrapping).
-
-4) ScaleInteractionController
-   - Owns zoom/pan, zoom extent, zoom state, transitions, listeners.
-   - Takes a scale instance and a domain provider.
-
-5) LocusScaleAdapter (or move into scaleLocus)
-   - Handles to/from complex locus conversions.
-   - Handles genome extent and chromosomal intervals.
-
-6) ScaleRules module (new)
-   - Centralizes channel/type compatibility rules.
-   - Encapsulates default scale types per channel/data type.
-   - Encapsulates locked constraints (e.g., positional unit ranges, opacity clamp).
-   - Exposes a small, testable API so ScaleResolution can be mostly wiring.
-
-## Tests to add or move
-- Rules/compatibility:
+## Tests to add or move (now that logic is split)
+- ScaleRules (`packages/core/src/view/scaleRules.js`):
   - Channel/type compatibility errors are explicit and stable.
   - Default scale type lookup is deterministic and documented.
   - Locked constraints apply only when intended (positional non-ordinal, opacity).
-- Domain merge and precedence:
+- ScaleDomainAggregator (`packages/core/src/view/scaleDomainAggregator.js`):
   - Configured domain union across multiple members.
   - Data-derived domain union with no configured domain.
   - Behavior when no member provides a domain.
-- Initial domain semantics:
   - Initial domain captured once, not drifting with data reconfigure.
-  - Document intent: zoom should clamp when the original domain is fully visible.
-  - Constant domain [0, 0] should be treated as initialized.
-- Range handling:
+  - Constant domain [0, 0] treated as initialized.
+- ScaleInstanceManager (`packages/core/src/view/scaleInstanceManager.js`):
   - Range expr refs update scale on param change.
   - Range listener cleanup when reconfiguring with new range.
   - Reverse range behavior consistent for discrete and continuous.
-- Zoom/interaction:
+- ScaleInteractionController (`packages/core/src/view/scaleInteractionController.js`):
   - ZoomTo with duration updates and final domain.
   - Zoom extent clamp behavior for locus and non-locus.
   - isZoomed correctly reflects non-initial domain.
-- Locus conversions:
+- Locus conversions (`packages/core/src/genome/scaleLocus.js`):
   - to/from chromosomal interval and scalar domain.
 
-## Potential bugs and fragility points
-- isZoomed returns true when domain equals initial domain, i.e., inverted logic.
-- getDataDomain() reduces without an initial value and can throw on empty array.
-- Range expr ref listeners are invalidated but not removed from the set,
-  potentially leaking.
-- Domain initialized check treats [0, 0] as uninitialized, which can be valid.
-- "Initial domain" is recomputed from current inputs; this can drift with data
-  changes, making zoom state ambiguous.
-- applyLockedProperties forces unit ranges for positional channels even when
-  user-specified ranges exist; unclear if intentional.
+## Observations for further improvement
+- Initial-domain and zoom-clamp semantics are still implicit; document and test
+  them alongside ScaleInteractionController.
+- Domain aggregation still allocates arrays on each query; consider caching or
+  reuse if profiling shows hot-path pressure.
+- Range expression listeners are invalidated but not explicitly pruned; confirm
+  lifecycle and add tests to guard against leaks.
+- applyLockedProperties still enforces unit ranges; keep the transitional
+  comment and revisit when pixel ranges are introduced.
 
 ## Allowed semantic fixes (to document + test)
 - Fix isZoomed logic to report zoomed state correctly.
@@ -96,21 +48,11 @@
 - Ensure range expr refs do not leak listeners on reconfigure.
 - Make initial-domain behavior explicit and non-drifting for zoom clamp.
 
-## Refactor sequence suggestion
-1) Separate prop merging from domain/range handling (pure ScalePropsResolver).
-2) Extract domain aggregation and initial-domain management to its own helper.
-3) Extract scale creation/configuration and range handling to ScaleInstanceManager.
-4) Move zoom/pan/transition into a controller with minimal dependencies.
-5) Move locus-specific conversions and extents into scaleLocus if it fits.
-6) Move default props + locked props into theme/config ownership.
-7) Extract channel/type compatibility + locked rules into a ScaleRules module.
-
-## Definition of done per step
-- Each extraction step leaves ScaleResolution as wiring only for that concern.
-- New modules have focused tests that cover the documented rules.
+## Definition of done for follow-up changes
+- Changes stay internal; `ScaleResolutionApi` remains stable.
+- New tests cover rule/behavior changes in the new modules.
 - Run the full Vitest suite (`npm test`).
-- Make a commit for each step.
-- Public `ScaleResolutionApi` behavior remains stable.
+- Make a commit per logical change.
 - No new per-frame allocations in zoom paths.
 - All affected internal consumers still receive domain/range events as before.
 
