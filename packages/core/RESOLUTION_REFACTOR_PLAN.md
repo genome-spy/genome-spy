@@ -40,6 +40,10 @@
   lifecycle and add tests to guard against leaks.
 - applyLockedProperties still enforces unit ranges; keep the transitional
   comment and revisit when pixel ranges are introduced.
+- Genome-specific logic still seeps into ScaleResolution via helper callbacks;
+  refactor toward scale-local genome binding for locus scales.
+- Scale creation happens lazily in the `scale` getter; it is convenient but
+  hides side effects. Prefer an explicit initialization step.
 
 ## Allowed semantic fixes (to document + test)
 - Fix isZoomed logic to report zoomed state correctly.
@@ -47,6 +51,34 @@
 - Treat [0, 0] as a valid initialized domain.
 - Ensure range expr refs do not leak listeners on reconfigure.
 - Make initial-domain behavior explicit and non-drifting for zoom clamp.
+
+## Next steps to remove genome-specific logic from ScaleResolution
+1) Bind genome to locus scales at creation time (per-scale, immutable). This
+   enables per-channel genomes for synteny/dot plots without shared state.
+2) Move `toComplex`, `fromComplex`, and `fromComplexInterval` into `scaleLocus`
+   (or a small locus adapter) so conversions operate on the scale instance,
+   not on view/context.
+3) Update ScaleDomainAggregator and ScaleInteractionController to accept a
+   conversion adapter based on the scale type (locus vs non-locus), not a
+   `getGenome` callback.
+4) Remove `getGenome()` from ScaleResolution; keep ComplexDomain support by
+   delegating to the adapter.
+5) Add tests for per-scale genome binding and conversion behavior (ensure
+   x/y scales can carry different genomes).
+
+## Next steps to make scale creation explicit
+1) Introduce an explicit `initializeScale()`/`ensureScale()` call that creates
+   the scale after members are registered.
+2) Make the `scale` getter side-effect-free (return cached instance only).
+3) Update resolution wiring to call initialization during view resolution.
+4) Add tests to confirm initialization happens once and is required before use.
+
+## Future extension: per-scale assembly selection
+- Add `scale.assembly` (scaleDef only) to select a genome assembly for locus
+  scales. If not defined, use the default genome from `genomeStore`.
+- Resolve the genome at scale creation time and bind it to the locus scale
+  instance; never re-query later.
+- If the named assembly is not found, throw.
 
 ## Definition of done for follow-up changes
 - Changes stay internal; `ScaleResolutionApi` remains stable.
@@ -90,3 +122,18 @@
 - Future work can split rules into smaller modules (domain, range, schemes,
   scale-key inference) and align the rule tables with `ScaleRules`, but this is
   explicitly out of scope for now.
+
+## Explicit implementation steps
+1) Add initial tests for new modules (ScaleRules, ScaleDomainAggregator,
+   ScaleInstanceManager, ScaleInteractionController, scaleLocus helpers).
+2) Make scale creation explicit: introduce `initializeScale()`/`ensureScale()`,
+   make `scale` getter side‑effect‑free, update resolution wiring to call init.
+3) Remove genome-specific logic from ScaleResolution: bind genome per locus
+   scale at creation time; move complex conversions into scaleLocus/adapter and
+   update aggregators/controllers to use adapters.
+4) Add/adjust tests for explicit initialization and per-scale genome binding.
+5) Add `scale.assembly` support (scaleDef only): resolve via genomeStore on
+   scale creation, default to store’s default, throw on missing name.
+6) Add/adjust tests for assembly selection and error behavior.
+7) Run `npm test`, run `npm -ws run test:tsc --if-present`, and commit after
+   each step.
