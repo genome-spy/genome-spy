@@ -43,10 +43,11 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * @prop {(channel: ChannelWithScale, type: import("../spec/channel.js").Type) => DomainArray} dataDomainSource
  */
 /**
- * Resolution takes care of merging domains and scales from multiple views.
- * This class also provides some utility methods for zooming the scales etc..
- *
- * TODO: This has grown a bit too fat. Consider splitting.
+ * Resolves a shared scale for a channel by merging scale properties and domains
+ * across participating views, then coordinating range updates and zoom/pan
+ * interactions. It is the central wiring point for scale-related state and
+ * notifications, while delegating domain aggregation, scale instance setup, and
+ * interaction logic to focused helpers.
  *
  * @implements {ScaleResolutionApi}
  */
