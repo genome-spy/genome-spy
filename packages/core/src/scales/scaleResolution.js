@@ -164,6 +164,9 @@ export default class ScaleResolution {
      * @returns {import("../genome/scaleLocus.js").GenomeSource}
      */
     #getGenomeSource() {
+        if (this.type !== LOCUS) {
+            return undefined;
+        }
         return /** @type {import("../genome/scaleLocus.js").GenomeSource} */ (
             this.#scaleManager.scale ?? this.#scaleManager.getLocusGenome()
         );

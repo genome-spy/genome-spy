@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
+import GenomeStore from "../genome/genomeStore.js";
+import "./scaleResolution.js";
 
 describe("ScaleInstanceManager", () => {
     test("creates scale and notifies on range changes", () => {
@@ -64,5 +66,34 @@ describe("ScaleInstanceManager", () => {
         current = 5;
         listener?.();
         expect(scale.range()[0]).toBe(5);
+    });
+
+    test("binds a genome when creating locus scales", async () => {
+        const genomeStore = new GenomeStore(".");
+        await genomeStore.initialize({
+            name: "test",
+            contigs: [{ name: "chr1", size: 10 }],
+        });
+
+        const manager = new ScaleInstanceManager({
+            getParamMediator: () =>
+                /** @type {import("../view/paramMediator.js").default} */ (
+                    /** @type {unknown} */ ({
+                        createExpression: () => /** @type {any} */ (() => 0),
+                    })
+                ),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome()).toBe(genomeStore.getGenome());
     });
 });
