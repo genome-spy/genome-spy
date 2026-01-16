@@ -1,7 +1,8 @@
 import scaleLocus, {
     fromComplexInterval as locusFromComplexInterval,
     fromComplexValue,
-    isScaleLocus,
+    getGenomeExtent,
+    toComplexInterval,
     toComplexValue,
 } from "../genome/scaleLocus.js";
 import scaleIndex from "../genome/scaleIndex.js";
@@ -103,13 +104,14 @@ export default class ScaleResolution {
         this.#domainAggregator = new ScaleDomainAggregator({
             getMembers: () => this.#members,
             getType: () => this.type,
-            getGenome: () => this.getGenome(),
+            getLocusExtent: () => this.#getLocusExtent(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
         });
 
         this.#scaleManager = new ScaleInstanceManager({
             getParamMediator: () => this.#firstMemberView.paramMediator,
             onRangeChange: () => this.#notifyListeners("range"),
+            getGenomeStore: () => this.#viewContext.genomeStore,
         });
 
         this.#interactionController = new ScaleInteractionController({
@@ -120,7 +122,7 @@ export default class ScaleResolution {
             getResetDomain: () =>
                 this.#domainAggregator.getConfiguredOrDefaultDomain(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
-            getGenomeExtent: () => this.getGenome().getExtent(),
+            getGenomeExtent: () => this.#getLocusExtent(),
             notifyDomainChange: () => this.#notifyListeners("domain"),
         });
     }
@@ -148,6 +150,22 @@ export default class ScaleResolution {
                 -Infinity,
                 Infinity,
             ]
+        );
+    }
+
+    /**
+     * @returns {number[]}
+     */
+    #getLocusExtent() {
+        return getGenomeExtent(this.#getGenomeSource());
+    }
+
+    /**
+     * @returns {import("../genome/scaleLocus.js").GenomeSource}
+     */
+    #getGenomeSource() {
+        return /** @type {import("../genome/scaleLocus.js").GenomeSource} */ (
+            this.#scaleManager.scale ?? this.#scaleManager.getLocusGenome()
         );
     }
 
@@ -418,10 +436,6 @@ export default class ScaleResolution {
         const props = this.#getScaleProps();
         const scale = this.#scaleManager.createScale(props);
 
-        if (isScaleLocus(scale)) {
-            scale.genome(this.getGenome());
-        }
-
         return scale;
     }
 
@@ -433,9 +447,8 @@ export default class ScaleResolution {
      * @returns {NumericDomain | ComplexDomain}
      */
     getComplexDomain() {
-        return (
-            this.getGenome()?.toChromosomalInterval(this.getDomain()) ??
-            this.getDomain()
+        return /** @type {NumericDomain | ComplexDomain} */ (
+            toComplexInterval(this.#getGenomeSource(), this.getDomain())
         );
     }
 
@@ -536,32 +549,13 @@ export default class ScaleResolution {
      */
 
     /**
-     *
-     * @returns {import("../genome/genome.js").default}
-     */
-    getGenome() {
-        if (this.type !== "locus") {
-            return undefined;
-        }
-
-        // TODO: Support multiple assemblies
-        const genome = this.#viewContext.genomeStore?.getGenome();
-        if (!genome) {
-            throw new Error("No genome has been defined!");
-        }
-        return genome;
-    }
-
-    // TODO: Move the "complex" stuff into scaleLocus.
-
-    /**
      * Inverts a value in range to a value on domain. Returns an object in
      * case of locus scale.
      *
      * @param {number} value
      */
     invertToComplex(value) {
-        const scale = this.scale;
+        const scale = this.getScale();
         if ("invert" in scale) {
             const inverted = /** @type {number} */ (scale.invert(value));
             return this.toComplex(inverted);
@@ -574,7 +568,7 @@ export default class ScaleResolution {
      * @param {number} value
      */
     toComplex(value) {
-        return toComplexValue(this.getGenome(), value);
+        return toComplexValue(this.#getGenomeSource(), value);
     }
 
     /**
@@ -582,7 +576,7 @@ export default class ScaleResolution {
      * @returns {number}
      */
     fromComplex(complex) {
-        return fromComplexValue(this.getGenome(), complex);
+        return fromComplexValue(this.#getGenomeSource(), complex);
     }
 
     /**
@@ -590,7 +584,10 @@ export default class ScaleResolution {
      * @returns {number[]}
      */
     fromComplexInterval(interval) {
-        return locusFromComplexInterval(this.getGenome(), interval);
+        if (this.type == LOCUS) {
+            return locusFromComplexInterval(this.#getGenomeSource(), interval);
+        }
+        return /** @type {number[]} */ (interval);
     }
 }
 

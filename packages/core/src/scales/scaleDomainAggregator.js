@@ -18,8 +18,8 @@ export default class ScaleDomainAggregator {
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
-    /** @type {() => import("../genome/genome.js").default | undefined} */
-    #getGenome;
+    /** @type {() => number[]} */
+    #getLocusExtent;
 
     /** @type {(interval: ScalarDomain | ComplexDomain) => number[]} */
     #fromComplexInterval;
@@ -31,13 +31,13 @@ export default class ScaleDomainAggregator {
      * @param {object} options
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
      * @param {() => import("../spec/channel.js").Type} options.getType
-     * @param {() => import("../genome/genome.js").default | undefined} options.getGenome
+     * @param {() => number[]} options.getLocusExtent
      * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      */
-    constructor({ getMembers, getType, getGenome, fromComplexInterval }) {
+    constructor({ getMembers, getType, getLocusExtent, fromComplexInterval }) {
         this.#members = getMembers();
         this.#getType = getType;
-        this.#getGenome = getGenome;
+        this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
     }
 
@@ -63,7 +63,7 @@ export default class ScaleDomainAggregator {
         return (
             this.getConfiguredDomain() ??
             (this.#getType() == LOCUS
-                ? this.#getGenome().getExtent()
+                ? this.#getLocusExtent()
                 : extractDataDomain
                   ? this.getDataDomain()
                   : [])

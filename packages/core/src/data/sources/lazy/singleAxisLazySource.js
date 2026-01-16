@@ -71,7 +71,14 @@ export default class SingleAxisLazySource extends DataSource {
      * @protected
      */
     get genome() {
-        return this.scaleResolution.getGenome();
+        const scale = this.scaleResolution.getScale();
+        if ("genome" in scale) {
+            const genome = scale.genome();
+            if (genome) {
+                return genome;
+            }
+        }
+        throw new Error("No genome has been defined!");
     }
 
     /**

@@ -25,7 +25,8 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     let scalarLocus;
 
     if (isChromosomalLocus(specifier.locus)) {
-        const genome = xScaleResolution.getGenome();
+        const scale = xScaleResolution.getScale();
+        const genome = "genome" in scale ? scale.genome() : undefined;
         if (genome) {
             scalarLocus = genome.toContinuous(
                 specifier.locus.chrom,
@@ -50,7 +51,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             "field" in channelDef && channelDef.field == specifier.field
     );
     const scale = isChannelWithScale(channel)
-        ? view.getScaleResolution(channel).scale
+        ? view.getScaleResolution(channel).getScale()
         : undefined;
 
     /** @type {import("./types.js").AttributeInfo} */

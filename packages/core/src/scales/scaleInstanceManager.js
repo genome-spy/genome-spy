@@ -2,6 +2,7 @@ import { isArray } from "vega-util";
 
 import createScale, { configureScale } from "../scale/scale.js";
 import { isExprRef } from "../view/paramMediator.js";
+import { isScaleLocus } from "../genome/scaleLocus.js";
 
 export default class ScaleInstanceManager {
     /**
@@ -21,18 +22,35 @@ export default class ScaleInstanceManager {
     /** @type {() => void} */
     #onRangeChange;
 
+    /** @type {() => import("../genome/genomeStore.js").default | undefined} */
+    #getGenomeStore;
+
     /**
      * @param {object} options
      * @param {() => import("../view/paramMediator.js").default} options.getParamMediator
      * @param {() => void} options.onRangeChange
+     * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
      */
-    constructor({ getParamMediator, onRangeChange }) {
+    constructor({ getParamMediator, onRangeChange, getGenomeStore }) {
         this.#getParamMediator = getParamMediator;
         this.#onRangeChange = onRangeChange;
+        this.#getGenomeStore = getGenomeStore;
     }
 
     get scale() {
         return this.#scale;
+    }
+
+    /**
+     * @returns {import("../genome/genome.js").default}
+     */
+    getLocusGenome() {
+        const genomeStore = this.#getGenomeStore?.();
+        const genome = genomeStore?.getGenome();
+        if (!genome) {
+            throw new Error("No genome has been defined!");
+        }
+        return genome;
     }
 
     /**
@@ -49,10 +67,30 @@ export default class ScaleInstanceManager {
         }
 
         this.#scale = /** @type {ScaleWithProps} */ (scale);
+        this.#bindGenomeIfNeeded(props);
         this.#configureRange();
         this.#wrapRange();
 
         return this.#scale;
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     */
+    #bindGenomeIfNeeded(props) {
+        void props;
+        const scale = this.#scale;
+        if (!scale || !isScaleLocus(scale)) {
+            return;
+        }
+
+        const genomeStore = this.#getGenomeStore?.();
+        const genome = genomeStore?.getGenome();
+        if (!genome) {
+            throw new Error("No genome has been defined!");
+        }
+
+        scale.genome(genome);
     }
 
     /**

@@ -28,7 +28,8 @@ export default class LinearizeGenomicCoordinate extends Transform {
             throw new Error("Invalid channel: " + channel);
         }
 
-        const genome = view.getScaleResolution(channel).getGenome();
+        const scale = view.getScaleResolution(channel).getScale();
+        const genome = "genome" in scale ? scale.genome() : undefined;
         if (!genome) {
             throw new Error(
                 "LinearizeGenomicCoordinate transform requires a locus scale!"

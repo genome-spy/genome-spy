@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
 import ScaleDomainAggregator from "./scaleDomainAggregator.js";
-import Genome from "../genome/genome.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
 /**
@@ -9,14 +8,10 @@ import createDomain, { toRegularArray } from "../utils/domainArray.js";
  * @param {import("../spec/channel.js").Type} type
  */
 function createAggregator(members, type) {
-    const genome = new Genome({
-        name: "test",
-        contigs: [{ name: "chr1", size: 10 }],
-    });
     return new ScaleDomainAggregator({
         getMembers: () => new Set(members),
         getType: () => type,
-        getGenome: () => genome,
+        getLocusExtent: () => [0, 10],
         fromComplexInterval: (interval) => /** @type {number[]} */ (interval),
     });
 }
