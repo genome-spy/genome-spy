@@ -58,7 +58,10 @@ export default class ScaleInstanceManager {
      * @returns {ScaleWithProps}
      */
     createScale(props) {
-        const scale = createScale({ ...props, range: undefined });
+        const scale = createScale({
+            ...this.#stripAssembly(props),
+            range: undefined,
+        });
         /** @type {ScaleWithProps} */ (scale).props = props;
 
         if ("unknown" in scale) {
@@ -78,14 +81,13 @@ export default class ScaleInstanceManager {
      * @param {import("../spec/scale.js").Scale} props
      */
     #bindGenomeIfNeeded(props) {
-        void props;
         const scale = this.#scale;
         if (!scale || !isScaleLocus(scale)) {
             return;
         }
 
         const genomeStore = this.#getGenomeStore?.();
-        const genome = genomeStore?.getGenome();
+        const genome = genomeStore?.getGenome(props.assembly);
         if (!genome) {
             throw new Error("No genome has been defined!");
         }
@@ -102,9 +104,26 @@ export default class ScaleInstanceManager {
             return;
         }
 
-        configureScale({ ...props, range: undefined }, scale);
+        configureScale(
+            { ...this.#stripAssembly(props), range: undefined },
+            scale
+        );
         scale.props = props;
         this.#configureRange();
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     * @returns {import("../spec/scale.js").Scale}
+     */
+    #stripAssembly(props) {
+        if (!("assembly" in props)) {
+            return props;
+        }
+        // Avoid sending non-scale properties into vega-scale.
+        const { assembly: _assembly, ...rest } = props;
+        void _assembly;
+        return rest;
     }
 
     /**

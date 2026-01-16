@@ -48,6 +48,12 @@ export interface Scale {
     type?: ScaleType;
 
     /**
+     * The genome assembly name for locus scales. If undefined, the default
+     * genome from the genome store is used.
+     */
+    assembly?: string;
+
+    /**
      * Customized domain values.
      *
      * For _quantitative_ fields, `domain` can take the form of a two-element array with minimum and maximum values.  [Piecewise scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise) can be created by providing a `domain` with more than two entries.
