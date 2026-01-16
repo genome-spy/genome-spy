@@ -14,7 +14,6 @@ import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import createTitle from "../title.js";
 import UnitView from "../unitView.js";
-import { initializeScaleResolutions } from "../viewUtils.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
 
@@ -650,7 +649,6 @@ export default class GridChild {
             v.visit((view) => {
                 if (view instanceof UnitView) {
                     view.resolve("scale");
-                    initializeScaleResolutions(view);
                 }
             })
         );

@@ -6,10 +6,7 @@
  * @typedef {import("../types/viewContext.js").default} ViewContext
  */
 
-import {
-    checkForDuplicateScaleNames,
-    initializeScaleResolutions,
-} from "./viewUtils.js";
+import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -105,8 +102,6 @@ export async function createAndInitialize(spec, viewClass) {
     const view = await create(spec, viewClass);
 
     checkForDuplicateScaleNames(view);
-    initializeScaleResolutions(view);
-
     if (view instanceof UnitView) {
         view.mark.initializeEncoders();
     } else if (view instanceof ContainerView) {

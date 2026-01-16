@@ -95,14 +95,6 @@ export function setImplicitScaleNames(root) {
  *
  * @param {View} root
  */
-export function initializeScaleResolutions(root) {
-    root.visit((view) => {
-        for (const resolution of Object.values(view.resolutions.scale)) {
-            resolution.initializeScale();
-        }
-    });
-}
-
 /**
  * @param {Promise<import("../marks/mark.js").default>[]} graphicsPromises
  * @param {() => boolean} [shouldFinalize]

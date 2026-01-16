@@ -1,6 +1,5 @@
 import {
     checkForDuplicateScaleNames,
-    initializeScaleResolutions,
     setImplicitScaleNames,
 } from "../view/viewUtils.js";
 
@@ -9,7 +8,6 @@ import {
  */
 export function configureViewHierarchy(viewRoot) {
     checkForDuplicateScaleNames(viewRoot);
-    initializeScaleResolutions(viewRoot);
     setImplicitScaleNames(viewRoot);
 }
 
