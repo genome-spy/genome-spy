@@ -127,17 +127,12 @@
   scale-key inference) and align the rule tables with `ScaleRules`, but this is
   explicitly out of scope for now.
 
-## Explicit implementation steps
-1) Add initial tests for new modules (ScaleRules, ScaleDomainAggregator,
-   ScaleInstanceManager, ScaleInteractionController, scaleLocus helpers).
-2) Adopt the `getScale()` contract: keep `scale` initialized-only, introduce
-   `getScale()` for lazy creation, and update internal call sites accordingly.
-3) Remove genome-specific logic from ScaleResolution: bind genome per locus
-   scale at creation time; move complex conversions into scaleLocus/adapter and
-   update aggregators/controllers to use adapters.
-4) Add/adjust tests for explicit initialization and per-scale genome binding.
-5) Add `scale.assembly` support (scaleDef only): resolve via genomeStore on
-   scale creation, default to store’s default, throw on missing name.
-6) Add/adjust tests for assembly selection and error behavior.
-7) Run `npm test`, run `npm -ws run test:tsc --if-present`, and commit after
-   each step.
+## Explicit implementation steps (completed)
+1) Added initial tests for the new helper modules.
+2) Adopted the `getScale()` contract and updated internal call sites.
+3) Moved locus conversions to scaleLocus helpers and bound genomes at scale
+   creation time.
+4) Added tests for locus conversions and genome binding.
+5) Added `scale.assembly` support (scaleDef only) with default/throw behavior.
+6) Added tests for assembly selection and error handling.
+7) Ran `npm test` and `npm -ws run test:tsc --if-present`, committing per step.
