@@ -8,6 +8,7 @@
 - Zoom/pan logic lives in ScaleInteractionController.
 - Locus conversion helpers live in scaleLocus.
 - Channel/type compatibility rules live in ScaleRules.
+- Scale access is split into `scale` (initialized-only) and `getScale()` (lazy).
 
 ## Tests to add or move (now that logic is split)
 - ScaleRules (`packages/core/src/view/scaleRules.js`):
@@ -42,8 +43,10 @@
   comment and revisit when pixel ranges are introduced.
 - Genome-specific logic still seeps into ScaleResolution via helper callbacks;
   refactor toward scale-local genome binding for locus scales.
-- Scale creation happens lazily in the `scale` getter; it is convenient but
-  hides side effects. Prefer an explicit initialization step.
+- The `clip` default relies on `isZoomable()` and lazy scale access; keep as-is
+  for now and revisit once resolution/clip wiring is cleaner.
+- Lazy scale creation should flow through `getScale()`; keep `scale` as
+  initialized-only and document the intent in JSDoc.
 
 ## Allowed semantic fixes (to document + test)
 - Fix isZoomed logic to report zoomed state correctly.
@@ -66,12 +69,13 @@
 5) Add tests for per-scale genome binding and conversion behavior (ensure
    x/y scales can carry different genomes).
 
-## Next steps to make scale creation explicit
-1) Introduce an explicit `initializeScale()`/`ensureScale()` call that creates
-   the scale after members are registered.
-2) Make the `scale` getter side-effect-free (return cached instance only).
-3) Update resolution wiring to call initialization during view resolution.
-4) Add tests to confirm initialization happens once and is required before use.
+## Scale initialization contract (Option 3)
+1) Keep `scale` as initialized-only and fail fast when accessed early.
+2) Provide `getScale()` as the lazy-init entry point for early call sites.
+3) Update internal call sites (encoders, interaction, tick sources, view
+   helpers) to use `getScale()` when initialization order is uncertain.
+4) Add/adjust tests that cover early access paths without requiring a
+   centralized initialization step.
 
 ## Future extension: per-scale assembly selection
 - Add `scale.assembly` (scaleDef only) to select a genome assembly for locus
@@ -126,8 +130,8 @@
 ## Explicit implementation steps
 1) Add initial tests for new modules (ScaleRules, ScaleDomainAggregator,
    ScaleInstanceManager, ScaleInteractionController, scaleLocus helpers).
-2) Make scale creation explicit: introduce `initializeScale()`/`ensureScale()`,
-   make `scale` getter side‑effect‑free, update resolution wiring to call init.
+2) Adopt the `getScale()` contract: keep `scale` initialized-only, introduce
+   `getScale()` for lazy creation, and update internal call sites accordingly.
 3) Remove genome-specific logic from ScaleResolution: bind genome per locus
    scale at creation time; move complex conversions into scaleLocus/adapter and
    update aggregators/controllers to use adapters.

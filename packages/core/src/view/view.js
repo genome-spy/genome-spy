@@ -843,7 +843,7 @@ function createViewOpacityFunction(view) {
         } else if (isDynamicOpacity(opacityDef)) {
             /** @type {(channel: import("../spec/channel.js").ChannelWithScale) => any} */
             const getScale = (channel) => {
-                const scale = view.getScaleResolution(channel)?.scale;
+                const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
                     return scale;

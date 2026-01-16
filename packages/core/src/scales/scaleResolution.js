@@ -113,7 +113,7 @@ export default class ScaleResolution {
         });
 
         this.#interactionController = new ScaleInteractionController({
-            getScale: () => this.scale,
+            getScale: () => this.getScale(),
             getAnimator: () => this.#viewContext.animator,
             getInitialDomainSnapshot: () =>
                 this.#domainAggregator.initialDomainSnapshot,
@@ -389,6 +389,31 @@ export default class ScaleResolution {
         if (this.#scaleManager.scale) {
             return this.#scaleManager.scale;
         }
+        throw new Error(
+            "ScaleResolution.scale accessed before initialization. Call initializeScale()."
+        );
+    }
+
+    /**
+     * Returns the scale instance, creating it if needed.
+     *
+     * Use this from call sites that may run before explicit initialization.
+     *
+     * @returns {ScaleWithProps}
+     */
+    getScale() {
+        return this.#scaleManager.scale ?? this.initializeScale();
+    }
+
+    /**
+     * Initializes the scale instance once resolution has stabilized.
+     *
+     * @returns {ScaleWithProps}
+     */
+    initializeScale() {
+        if (this.#scaleManager.scale) {
+            return this.#scaleManager.scale;
+        }
 
         const props = this.#getScaleProps();
         const scale = this.#scaleManager.createScale(props);
@@ -401,7 +426,7 @@ export default class ScaleResolution {
     }
 
     getDomain() {
-        return this.scale.domain();
+        return this.getScale().domain();
     }
 
     /**

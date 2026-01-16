@@ -14,6 +14,7 @@ import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import createTitle from "../title.js";
 import UnitView from "../unitView.js";
+import { initializeScaleResolutions } from "../viewUtils.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
 
@@ -145,7 +146,7 @@ export default class GridChild {
             const scaleResolutions = Object.fromEntries(
                 channels.map((channel) => {
                     const resolution = this.view.getScaleResolution(channel);
-                    const scale = resolution?.scale;
+                    const scale = resolution?.getScale();
 
                     if (!scale || !isContinuous(scale.type)) {
                         throw new Error(
@@ -222,7 +223,7 @@ export default class GridChild {
                 const np = view.coords.normalizePoint(point.x, point.y, true);
 
                 for (const channel of channels) {
-                    const scale = scaleResolutions[channel].scale;
+                    const scale = scaleResolutions[channel].getScale();
                     // @ts-ignore
                     const val = scale.invert(channel == "x" ? np.x : np.y);
                     inverted[channel] =
@@ -251,7 +252,7 @@ export default class GridChild {
                         /** @type {number} */ val
                     ) => {
                         if (val == null) return null;
-                        return scaleResolutions[channel].scale(val);
+                        return scaleResolutions[channel].getScale()(val);
                     };
                     const px = getCoord("x", xVal) ?? i;
                     const py = getCoord("y", yVal) ?? i;
@@ -649,6 +650,7 @@ export default class GridChild {
             v.visit((view) => {
                 if (view instanceof UnitView) {
                     view.resolve("scale");
+                    initializeScaleResolutions(view);
                 }
             })
         );
