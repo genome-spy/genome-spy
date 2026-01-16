@@ -13,3 +13,20 @@ export interface ScaleLocus extends ScaleIndex {
 }
 
 export function isScaleLocus(scale: any): scale is ScaleLocus;
+
+export function toComplexValue(
+    genome: Genome | undefined,
+    value: number
+): number | import("./genome.js").ChromosomalLocus;
+
+export function fromComplexValue(
+    genome: Genome | undefined,
+    value: number | import("./genome.js").ChromosomalLocus
+): number;
+
+export function fromComplexInterval(
+    genome: Genome | undefined,
+    interval:
+        | import("../spec/scale.js").ScalarDomain
+        | import("../spec/scale.js").ComplexDomain
+): number[];

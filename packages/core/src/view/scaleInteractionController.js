@@ -19,13 +19,15 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 
 /**
  * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
+ * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ZoomParams} ZoomParams
  * @typedef {import("../types/encoder.js").VegaScale} VegaScale
+ * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
  */
 
 export default class ScaleInteractionController {
-    /** @type {() => VegaScale} */
+    /** @type {() => ScaleWithProps} */
     #getScale;
 
     /** @type {() => import("../utils/animator.js").default} */
@@ -37,7 +39,7 @@ export default class ScaleInteractionController {
     /** @type {() => number[]} */
     #getResetDomain;
 
-    /** @type {(domain: NumericDomain | ComplexDomain) => number[]} */
+    /** @type {(domain: ScalarDomain | ComplexDomain) => number[]} */
     #fromComplexInterval;
 
     /** @type {() => number[]} */
@@ -48,11 +50,11 @@ export default class ScaleInteractionController {
 
     /**
      * @param {object} options
-     * @param {() => VegaScale} options.getScale
+     * @param {() => ScaleWithProps} options.getScale
      * @param {() => import("../utils/animator.js").default} options.getAnimator
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[]} options.getResetDomain
-     * @param {(domain: NumericDomain | ComplexDomain) => number[]} options.fromComplexInterval
+     * @param {(domain: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      * @param {() => number[]} options.getGenomeExtent
      * @param {() => void} options.notifyDomainChange
      */

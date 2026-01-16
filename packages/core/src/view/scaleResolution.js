@@ -59,7 +59,6 @@ export default class ScaleResolution {
      * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
      * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
      * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
-     * @typedef {import("../spec/scale.js").ZoomParams} ZoomParams
      * @typedef {import("./unitView.js").default} UnitView
      * @typedef {import("../types/encoder.js").VegaScale} VegaScale
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray

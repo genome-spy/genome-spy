@@ -4,7 +4,12 @@ import createScale, { configureScale } from "../scale/scale.js";
 import { isExprRef } from "./paramMediator.js";
 
 export default class ScaleInstanceManager {
-    /** @type {import("../types/encoder.js").VegaScale | undefined} */
+    /**
+     * @typedef {import("../types/encoder.js").VegaScale} VegaScale
+     * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
+     */
+
+    /** @type {ScaleWithProps | undefined} */
     #scale;
 
     /** @type {Set<import("./paramMediator.js").ExprRefFunction>} */
@@ -32,22 +37,22 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {import("../spec/scale.js").Scale} props
-     * @returns {import("../types/encoder.js").VegaScale}
+     * @returns {ScaleWithProps}
      */
     createScale(props) {
         const scale = createScale({ ...props, range: undefined });
-        scale.props = props;
+        /** @type {ScaleWithProps} */ (scale).props = props;
 
         if ("unknown" in scale) {
             // Never allow implicit domain construction
             scale.unknown(null);
         }
 
-        this.#scale = scale;
+        this.#scale = /** @type {ScaleWithProps} */ (scale);
         this.#configureRange();
         this.#wrapRange();
 
-        return scale;
+        return this.#scale;
     }
 
     /**
@@ -133,14 +138,16 @@ export default class ScaleInstanceManager {
         }
 
         const notify = () => this.#onRangeChange();
-        scale.range = function (/** @type {any} */ _) {
-            if (arguments.length) {
-                range(_);
-                notify();
-            } else {
-                return range();
+        scale.range = /** @type {any} */ (
+            function (/** @type {any} */ _) {
+                if (arguments.length) {
+                    range(_);
+                    notify();
+                } else {
+                    return range();
+                }
             }
-        };
+        );
 
         // The initial setting
         notify();
