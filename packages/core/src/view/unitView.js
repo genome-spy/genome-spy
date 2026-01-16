@@ -4,7 +4,7 @@ import RuleMark from "../marks/rule.js";
 import LinkMark from "../marks/link.js";
 import TextMark from "../marks/text.js";
 
-import ScaleResolution from "./scaleResolution.js";
+import ScaleResolution from "../scales/scaleResolution.js";
 import {
     isPositionalChannel,
     isChannelDefWithScale,
@@ -15,7 +15,7 @@ import {
     isValueDefWithCondition,
 } from "../encoder/encoder.js";
 import createDomain from "../utils/domainArray.js";
-import AxisResolution from "./axisResolution.js";
+import AxisResolution from "../scales/axisResolution.js";
 import View from "./view.js";
 import {
     asSelectionConfig,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { createAndInitialize } from "./testUtils.js";
-import UnitView from "./unitView.js";
-import View from "./view.js";
+import { createAndInitialize } from "../view/testUtils.js";
+import UnitView from "../view/unitView.js";
+import View from "../view/view.js";
 
 /** @type {import("../spec/view.js").LayerSpec} */
 const spec = {

@@ -3,7 +3,7 @@ import {
     isDiscreteChannel,
     isPositionalChannel,
 } from "../encoder/encoder.js";
-import { NOMINAL, ORDINAL } from "../view/scaleResolutionConstants.js";
+import { NOMINAL, ORDINAL } from "../scales/scaleResolutionConstants.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel

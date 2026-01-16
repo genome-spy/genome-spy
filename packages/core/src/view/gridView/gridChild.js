@@ -490,7 +490,7 @@ export default class GridChild {
         const { view, axes, gridLines } = this;
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          */
         const getAxisPropsWithDefaults = (r, channel) => {
@@ -531,7 +531,7 @@ export default class GridChild {
         };
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {import("../view.js").default} axisParent
          */
@@ -558,7 +558,7 @@ export default class GridChild {
         };
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {import("../view.js").default} axisParent
          */

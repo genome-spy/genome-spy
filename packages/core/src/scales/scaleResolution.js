@@ -37,7 +37,7 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * @template {ChannelWithScale}[T=ChannelWithScale]
  *
  * @typedef {object} ScaleResolutionMember
- * @prop {import("./unitView.js").default} view TODO: Get rid of the view reference
+ * @prop {import("../view/unitView.js").default} view TODO: Get rid of the view reference
  * @prop {T} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
  * @prop {(channel: ChannelWithScale, type: import("../spec/channel.js").Type) => DomainArray} dataDomainSource
@@ -59,7 +59,7 @@ export default class ScaleResolution {
      * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
      * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
      * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
-     * @typedef {import("./unitView.js").default} UnitView
+     * @typedef {import("../view/unitView.js").default} UnitView
      * @typedef {import("../types/encoder.js").VegaScale} VegaScale
      * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../genome/genome.js").ChromosomalLocus} ChromosomalLocus
@@ -125,7 +125,7 @@ export default class ScaleResolution {
     }
 
     /**
-     * @returns {import("./view.js").default}
+     * @returns {import("../view/view.js").default}
      */
     get #firstMemberView() {
         const first = this.#members.values().next().value;
@@ -577,13 +577,13 @@ export default class ScaleResolution {
  * TODO: This may reconfigure channels that are not affected by the change.
  * Causes performance issues with domains that are extracted from data.
  *
- * @param {import("./view.js").default | import("./view.js").default[]} fromViews
+ * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
  */
 export function reconfigureScales(fromViews) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
-    /** @param {import("./view.js").default} view */
+    /** @param {import("../view/view.js").default} view */
     function collectResolutions(view) {
         for (const resolution of Object.values(view.resolutions.scale)) {
             uniqueResolutions.add(resolution);

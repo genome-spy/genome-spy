@@ -16,13 +16,13 @@ import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
  * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
  *
  * @typedef {object} AxisResolutionMember
- * @prop {import("./unitView.js").default} view
+ * @prop {import("../view/unitView.js").default} view
  * @prop {T} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
  */
 export default class AxisResolution {
     /**
-     * @typedef {import("./unitView.js").default} UnitView
+     * @typedef {import("../view/unitView.js").default} UnitView
      * @typedef {import("../spec/channel.js").PositionalChannel} PositionalChannel
      */
 

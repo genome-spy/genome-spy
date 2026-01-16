@@ -1,6 +1,6 @@
 import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
-import { reconfigureScales } from "../../../view/scaleResolution.js";
+import { reconfigureScales } from "../../../scales/scaleResolution.js";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.

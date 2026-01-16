@@ -5,7 +5,7 @@ import ConcatView from "@genome-spy/core/view/concatView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
-import { NOMINAL, ORDINAL } from "@genome-spy/core/view/scaleResolution.js";
+import { NOMINAL, ORDINAL } from "@genome-spy/core/scales/scaleResolution.js";
 import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";

@@ -1,7 +1,7 @@
 import { isArray } from "vega-util";
 
 import createScale, { configureScale } from "../scale/scale.js";
-import { isExprRef } from "./paramMediator.js";
+import { isExprRef } from "../view/paramMediator.js";
 
 export default class ScaleInstanceManager {
     /**
@@ -12,10 +12,10 @@ export default class ScaleInstanceManager {
     /** @type {ScaleWithProps | undefined} */
     #scale;
 
-    /** @type {Set<import("./paramMediator.js").ExprRefFunction>} */
+    /** @type {Set<import("../view/paramMediator.js").ExprRefFunction>} */
     #rangeExprRefListeners = new Set();
 
-    /** @type {() => import("./paramMediator.js").default} */
+    /** @type {() => import("../view/paramMediator.js").default} */
     #getParamMediator;
 
     /** @type {() => void} */
@@ -23,7 +23,7 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {object} options
-     * @param {() => import("./paramMediator.js").default} options.getParamMediator
+     * @param {() => import("../view/paramMediator.js").default} options.getParamMediator
      * @param {() => void} options.onRangeChange
      */
     constructor({ getParamMediator, onRangeChange }) {
