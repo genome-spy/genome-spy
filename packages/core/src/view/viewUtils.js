@@ -91,11 +91,6 @@ export function setImplicitScaleNames(root) {
 }
 
 /**
- * Initializes scale instances after resolution has stabilized.
- *
- * @param {View} root
- */
-/**
  * @param {Promise<import("../marks/mark.js").default>[]} graphicsPromises
  * @param {() => boolean} [shouldFinalize]
  * @returns {Promise<void>}

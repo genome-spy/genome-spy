@@ -54,6 +54,7 @@ aware interactions.
 - Always use type hints in any language which supports them
 - JavaScript/TypeScript files should use JSDoc for type annotations
 - Use a blank line between adjacent members with JSDoc; skip it for the first member in a block
+- When removing a function/class, also remove its JSDoc block to avoid orphaned docs
 - JavaScript is indented with 4 spaces, no tabs
 - WGSL code should be indented with 4 spaces, no tabs
 - JSON files are indented with 2 spaces, no tabs
