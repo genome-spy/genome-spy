@@ -534,7 +534,7 @@ export default class GenomeSpy {
     }
 
     getNamedScaleResolutions() {
-        /** @type {Map<string, import("./view/scaleResolution.js").default>} */
+        /** @type {Map<string, import("./scales/scaleResolution.js").default>} */
         const resolutions = new Map();
         this.viewRoot.visit((view) => {
             for (const resolution of Object.values(view.resolutions.scale)) {

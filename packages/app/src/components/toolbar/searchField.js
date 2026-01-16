@@ -396,7 +396,7 @@ function typeSlowly(text, element) {
  * @param {import("@genome-spy/core/view/view.js").default} viewRoot
  */
 export function findGenomeScaleResolution(viewRoot) {
-    /** @type {import("@genome-spy/core/view/scaleResolution.js").default} */
+    /** @type {import("@genome-spy/core/scales/scaleResolution.js").default} */
     let match;
 
     viewRoot.visit((view) => {

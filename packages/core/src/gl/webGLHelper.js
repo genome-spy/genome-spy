@@ -231,11 +231,11 @@ export default class WebGLHelper {
      *
      * TODO: This may be too specific to be included in WebGLHelper. Find a better place.
      *
-     * @param {import("../view/scaleResolution.js").default} resolution
+     * @param {import("../scales/scaleResolution.js").default} resolution
      * @param {boolean} update Update the texture if it exists already.
      */
     createRangeTexture(resolution, update = false) {
-        const existingTexture = this.rangeTextures.get(resolution.scale);
+        const existingTexture = this.rangeTextures.get(resolution.getScale());
         if (!update && existingTexture) {
             return;
         }
@@ -263,7 +263,7 @@ export default class WebGLHelper {
         const channel = resolution.channel;
 
         if (isColorChannel(channel)) {
-            const scale = resolution.scale;
+            const scale = resolution.getScale();
             const props = scale.props;
 
             const range = /** @type {any[]} */ (scale.range());
@@ -317,7 +317,7 @@ export default class WebGLHelper {
 
             this.rangeTextures.set(scale, texture);
         } else {
-            const scale = resolution.scale;
+            const scale = resolution.getScale();
 
             if (scale.type === "ordinal" || isDiscretizing(scale.type)) {
                 /** @type {function(any):number} Handle "shape" etc */

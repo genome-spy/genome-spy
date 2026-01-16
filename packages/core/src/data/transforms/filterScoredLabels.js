@@ -76,7 +76,7 @@ export default class FilterScoredLabelsTransform extends Transform {
     _filterAndPropagate() {
         super.reset();
 
-        const scale = this.resolution.scale;
+        const scale = this.resolution.getScale();
         const rangeSpan = this.resolution.getAxisLength();
         if (!rangeSpan) {
             // The view size is not (yet) available

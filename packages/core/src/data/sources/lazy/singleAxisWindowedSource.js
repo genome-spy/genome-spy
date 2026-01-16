@@ -125,7 +125,11 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
         try {
             const resultByChrom = await Promise.all(
-                discreteChromosomeIntervals.map(async (d) => loader(d, signal))
+                discreteChromosomeIntervals.map(
+                    async (
+                        /** @type {import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval} */ d
+                    ) => loader(d, signal)
+                )
             );
 
             if (!signal.aborted) {

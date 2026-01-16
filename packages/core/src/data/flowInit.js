@@ -2,7 +2,7 @@ import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
-import { reconfigureScales } from "../view/scaleResolution.js";
+import { reconfigureScales } from "../scales/scaleResolution.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
 const inFlightLoads = new WeakMap();

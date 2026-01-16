@@ -1,11 +1,11 @@
 // @ts-nocheck
 
 import { describe, expect, test } from "vitest";
-import { createAndInitialize } from "./testUtils.js";
+import { createAndInitialize } from "../view/testUtils.js";
 import createDomain, { toRegularArray as r } from "../utils/domainArray.js";
-import LayerView from "./layerView.js";
-import ConcatView from "./concatView.js";
-import UnitView from "./unitView.js";
+import LayerView from "../view/layerView.js";
+import ConcatView from "../view/concatView.js";
+import UnitView from "../view/unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 
 /**
@@ -336,7 +336,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -372,7 +372,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -404,7 +404,7 @@ describe("Domain handling", () => {
             UnitView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         // FAILS!!!!!!! TODO: FIX!!
@@ -443,7 +443,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);

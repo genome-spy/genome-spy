@@ -75,7 +75,7 @@ export default function createEncoders(unitView, encoding) {
     /**
      * @param {import("../spec/channel.js").ChannelWithScale} channel */
     const scaleSource = (channel) =>
-        unitView.getScaleResolution(channel)?.scale;
+        unitView.getScaleResolution(channel)?.getScale();
 
     for (const [channel, channelDef] of Object.entries(encoding)) {
         if (!channelDef) {

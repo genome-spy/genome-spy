@@ -50,7 +50,7 @@ export default class AxisTickSource extends SingleAxisLazySource {
         // Note, although this function is async, it is not awaited. Data are updated
         // synchronously to ensure that the new ticks are available before the next frame is drawn.
 
-        const scale = this.scaleResolution.scale;
+        const scale = this.scaleResolution.getScale();
         const axisLength = this.scaleResolution.getAxisLength();
         const axisParams = this.params.axis;
 

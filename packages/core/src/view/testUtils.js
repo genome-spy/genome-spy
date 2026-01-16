@@ -102,7 +102,6 @@ export async function createAndInitialize(spec, viewClass) {
     const view = await create(spec, viewClass);
 
     checkForDuplicateScaleNames(view);
-
     if (view instanceof UnitView) {
         view.mark.initializeEncoders();
     } else if (view instanceof ContainerView) {
