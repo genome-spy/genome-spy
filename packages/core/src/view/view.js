@@ -276,7 +276,7 @@ export default class View {
 
             const scale = this.getScaleResolution(
                 dimension == "width" ? "x" : "y"
-            )?.scale;
+            )?.getScale();
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
