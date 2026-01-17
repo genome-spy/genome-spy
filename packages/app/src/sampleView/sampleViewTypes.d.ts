@@ -10,8 +10,8 @@ export interface KeyAndLocation<T> {
     locSize: LocSize;
 }
 
-export interface GroupLocation extends KeyAndLocation<Group[]> {}
-export interface SampleLocation extends KeyAndLocation<string> {}
+export type GroupLocation = KeyAndLocation<Group[]>;
+export type SampleLocation = KeyAndLocation<string>;
 
 export interface GroupDetails {
     index: number;
@@ -20,8 +20,7 @@ export interface GroupDetails {
     n: number;
 }
 
-export interface HierarchicalGroupLocation
-    extends KeyAndLocation<GroupDetails> {}
+export type HierarchicalGroupLocation = KeyAndLocation<GroupDetails>;
 
 export type InterpolatedLocationMaker = <K, T extends KeyAndLocation<K>>(
     fitted: T[],
