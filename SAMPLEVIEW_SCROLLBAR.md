@@ -1,60 +1,49 @@
 # SampleView Scrollbar Plan
 
-## Overview
-Add a vertical scrollbar that is always visible and smoothly transitions its thumb size and position during peek transitions. The scrollbar should ignore sticky summaries when computing content height, and it should render over the right edge of the child viewport with no extra padding. Prefer reusing the existing `GridChild.scrollbars` plumbing if feasible; otherwise, implement the cleanest minimal alternative.
+## Status
 
-## Phase 0 — Confirm scrollbar TODOs impact (analysis-only)
-- **Variable-height contentCoords**: current `Scrollbar.updateScrollbar` assumes a static `contentCoords` size and is called only during layout; for SampleView, content height changes during peek transitions. We will ensure `updateScrollbar` is called every render using dynamic rectangles so size/position stays in sync.
-- **Minimum thumb size**: optional enhancement. If implemented, it must preserve correct proportional scrolling (i.e., adjust effective scroll range or clamp thumb size and recompute max scroll length). This can be a follow-up if needed.
+Implemented. This document now tracks follow-up observations and potential refinements.
 
-## Phase 1 — Expose scroll metrics in LocationManager
-Goal: Surface scroll state and scrollable content height so the scrollbar can be synchronized without poking private fields.
+## Critical review notes (potential fixes)
 
-Planned changes:
-- Add public getters/setters on `LocationManager`:
-  - `getScrollOffset()` / `setScrollOffset(value)` (clamp to valid range)
-  - `getScrollableHeight()` (current scrollable content height)
-  - `getPeekState()` (0..1), or a combined `getScrollMetrics(viewportHeight)`
-- Ensure setters trigger render/update hooks consistent with current wheel handling.
+1. **Render-batch coupling to scrollbar coords**
 
-Tests: run full test suite after this phase.
+- The scrollbar uses a stable `Rectangle` instance so buffered rendering sees dynamic updates. Keep this invariant; reassigning `#scrollbarCoords` in `updateScrollbar()` would regress behavior.
+- ACTION: Add a comment in the code to warn future maintainers. Explain current rationale.
 
-## Phase 2 — Make Scrollbar safe and externally syncable
-Goal: Allow SampleView to drive scrollbar state and propagate drag back to LocationManager.
+2. **Opacity vs. interaction threshold**
 
-Planned changes:
-- Guard `scrollOffset` getter so it returns 0 when `#maxViewportOffset <= 0` or `#maxScrollOffset <= 0`.
-- Add a callback or method to notify external scroll changes (e.g., `onViewportOffsetChange` passed in constructor or `setViewportOffset(value, { notify })`).
-- Ensure the drag handler uses the notify path.
+- Scrollbar interaction is disabled only when `peekState == 0`. Consider a small threshold (e.g., `peekState > 0.05`) to avoid invisible-but-interactive behavior during early transition frames.
+- ACTION: Interaction is only needed when peekState > 0.95, e.g., when in the closeup view
 
-Tests: run full test suite after this phase.
+3. **Minimum thumb length vs. scroll mapping**
 
-## Phase 3 — Wire Scrollbar into SampleView via GridChild
-Goal: Use the existing `GridChild.scrollbars` structure and render/update it from SampleView.
+- The min thumb length clamps size but doesn’t remap the scroll range, which can make dragging feel “faster” on large content. If needed, adjust the scroll mapping so the effective scroll range matches `maxScrollLength - minLength`.
+- ACTION: Implement
 
-Planned changes:
-- Prefer creating `gridChild.scrollbars.vertical` for the SampleView child (if not already created) and let it live alongside axes/backgrounds.
-- During `SampleView.render`, compute:
-  - `viewportCoords = childCoords`
-  - `contentHeight` based on peek state and scrollable height (ignoring sticky summaries):
-    - Example: `contentHeight = lerp(viewportHeight, scrollableHeight, peekState)`
-  - `contentCoords = viewportCoords.modify({ height: () => contentHeight })`
-- Call `scrollbar.updateScrollbar(viewportCoords, contentCoords)` on every render so the thumb reacts to transitions.
-- Render the scrollbar after content rendering so it appears on top.
+4. **Sticky summary height source**
 
-Tests: run full test suite after this phase.
+- The scrollbar uses `summaryViews.getSize().height.px` as the sticky summary height. If summaries become responsive or dynamic in the future, ensure this stays accurate during render-only passes.
+- ACTION: No action needed
 
-## Phase 4 — Sync interactions (wheel + drag)
-Goal: Keep wheel scrolling and drag scrolling consistent.
+5. **Centralize scroll metrics**
 
-Planned changes:
-- Wheel handler: after `LocationManager.handleWheelEvent`, update scrollbar viewport offset with `notify: false` and request render.
-- Drag handler: on scrollbar drag, call `LocationManager.setScrollOffset(newOffset)`, update sample range, and request render.
-- Ensure interaction routing in `SampleView.propagateInteractionEvent` checks the scrollbar hit-test first, mirroring `GridView` behavior.
+- SampleView currently reconstructs scroll metrics in `onBeforeRender`. Consider a single `LocationManager.getScrollMetrics()` helper to avoid duplicated math and to centralize scroll behavior.
+- ACTION: Implement
 
-Tests: run full test suite after this phase.
+6. **Declarative visibility/opacity**
 
-## Notes
-- Scrollbar always visible, even in bird’s-eye view; if `contentHeight <= viewportHeight`, thumb fills the track and drag is effectively inert.
-- Sticky summaries are excluded from content height calculations as requested.
-- If GridChild proves incompatible for SampleView, fall back to owning a scrollbar in SampleView, but keep rendering and interaction behavior the same.
+- Scrollbar opacity is set via `opacityFunction`. If declarative config is preferred, consider a dedicated view param to drive opacity.
+- ACTION: Implement
+
+7. **Sticky summary interaction region**
+
+- If sticky summaries should also block scrollbar interaction, ensure hit-testing ignores the sticky summary band, not just the thumb.
+- ACTION: No action needed
+
+## Optional architecture improvements
+
+- Introduce a `ScrollMetrics` helper or utility to compute `contentHeight`, `maxScrollOffset`, and thumb length in a pure way (easier to unit test).
+  - ACTION: Implement
+- Consider a reusable “scrollable region with inset” abstraction (top/bottom insets for sticky summaries) so GridView/SampleView share the same logic.
+  - ACTION: Implement if it increases testability and has minimal increase in the amount of code.
