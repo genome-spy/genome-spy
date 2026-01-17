@@ -959,7 +959,7 @@ export default class SampleView extends ContainerView {
         }
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            if (this.locationManager.getPeekState() > 0) {
+            if (this.locationManager.getPeekState() > 0.95) {
                 for (const scrollbar of Object.values(
                     this.#gridChild.scrollbars
                 )) {
