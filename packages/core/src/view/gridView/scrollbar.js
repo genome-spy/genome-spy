@@ -39,7 +39,7 @@ export default class Scrollbar extends UnitView {
      * @param {{ onViewportOffsetChange?: (offset: number) => void }} [options]
      */
     constructor(gridChild, scrollDirection, options = {}) {
-        // TODO: Configurable
+        // TODO: Configurable per view
         const config = {
             scrollbarSize: 8,
             scrollbarPadding: 2,
@@ -107,7 +107,7 @@ export default class Scrollbar extends UnitView {
                       () => sSize
                   );
 
-        // Make it smooth!
+        // Smooth viewport offset updates
         this.#initViewportOffsetSmoother(this.viewportOffset);
 
         this.addInteractionEventListener("mousedown", (coords, event) => {
@@ -257,23 +257,16 @@ export default class Scrollbar extends UnitView {
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options) {
-        // NOTE: this only builds the layout, doesn't actually render anything
+        // NOTE: This only records layout coordinates for buffered rendering.
         super.render(context, this.#scrollbarCoords, options);
     }
 
     /**
-     * Updates the scrollbar with new dynamic coordinate rectangles.
+     * Updates the scrollbar with the latest viewport and content rectangles.
      *
-     * Note: This method should be only called during the layout phase
-     * triggered by "requestLayoutReflow". When the view is actually rendered
-     * based on the layout, `#scrollbarCoords` magically contains the correct
-     * coordinates.
-     *
-     * TODO: This should be refactored so that "coords", the content, is treated
-     * as fully dynamic, meaning that if the content's size changes, the scrollbar
-     * updates accordingly—particularly its length.
-     *
-     * TODO: Implement a minimum scrollbar thumb size, e.g., 20px.
+     * Viewport coords are flattened to stay stable between layout passes, while
+     * content coords may be dynamic (e.g., peek transitions) and are evaluated
+     * on demand via accessors.
      *
      * @param {Rectangle} viewportCoords
      * @param {Rectangle} contentCoords
