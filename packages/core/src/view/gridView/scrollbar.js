@@ -15,9 +15,9 @@ export default class Scrollbar extends UnitView {
 
     #scrollbarCoords = Rectangle.ZERO;
 
-    #maxScrollOffset = 0;
+    #viewportCoords = Rectangle.ZERO;
 
-    #maxViewportOffset = 0;
+    #contentCoords = Rectangle.ZERO;
 
     /**
      * The actual state of the scrollbar.
@@ -86,7 +86,7 @@ export default class Scrollbar extends UnitView {
         this.addInteractionEventListener("mousedown", (coords, event) => {
             event.stopPropagation();
 
-            if (this.#maxScrollOffset <= 0) {
+            if (this.#getMaxScrollOffset() <= 0) {
                 return;
             }
 
@@ -103,18 +103,23 @@ export default class Scrollbar extends UnitView {
             const onMousemove = /** @param {MouseEvent} moveEvent */ (
                 moveEvent
             ) => {
+                const maxScrollOffset = this.#getMaxScrollOffset();
+                if (maxScrollOffset <= 0) {
+                    return;
+                }
+
                 const scrollOffset = clamp(
                     getMouseOffset(moveEvent) -
                         initialOffset +
                         initialScrollOffset,
                     0,
-                    this.#maxScrollOffset
+                    maxScrollOffset
                 );
 
                 this.interpolateViewportOffset({
                     x:
-                        (scrollOffset / this.#maxScrollOffset) *
-                        this.#maxViewportOffset,
+                        (scrollOffset / maxScrollOffset) *
+                        this.#getMaxViewportOffset(),
                 });
             };
 
@@ -129,14 +134,14 @@ export default class Scrollbar extends UnitView {
     }
 
     get scrollOffset() {
-        if (this.#maxViewportOffset <= 0 || this.#maxScrollOffset <= 0) {
+        const maxViewportOffset = this.#getMaxViewportOffset();
+        const maxScrollOffset = this.#getMaxScrollOffset();
+
+        if (maxViewportOffset <= 0 || maxScrollOffset <= 0) {
             return 0;
         }
 
-        return (
-            (this.viewportOffset / this.#maxViewportOffset) *
-            this.#maxScrollOffset
-        );
+        return (this.viewportOffset / maxViewportOffset) * maxScrollOffset;
     }
 
     /**
@@ -144,11 +149,52 @@ export default class Scrollbar extends UnitView {
      * @param {{ notify?: boolean }} [options]
      */
     setViewportOffset(value, { notify = true } = {}) {
-        this.viewportOffset = clamp(value, 0, this.#maxViewportOffset);
+        this.viewportOffset = clamp(value, 0, this.#getMaxViewportOffset());
 
         if (notify && this.#onViewportOffsetChange) {
             this.#onViewportOffsetChange(this.viewportOffset);
         }
+    }
+
+    #getVisibleFraction() {
+        const dimension =
+            this.#scrollDirection == "horizontal" ? "width" : "height";
+
+        const viewportSize = this.#viewportCoords[dimension];
+        const contentSize = this.#contentCoords[dimension];
+
+        return contentSize > 0 ? Math.min(1, viewportSize / contentSize) : 1;
+    }
+
+    #getMaxScrollLength() {
+        const dimension =
+            this.#scrollDirection == "horizontal" ? "width" : "height";
+
+        return Math.max(
+            0,
+            this.#viewportCoords[dimension] - 2 * this.config.scrollbarPadding
+        );
+    }
+
+    #getScrollLength() {
+        return this.#getVisibleFraction() * this.#getMaxScrollLength();
+    }
+
+    #getMaxScrollOffset() {
+        return Math.max(
+            0,
+            this.#getMaxScrollLength() - this.#getScrollLength()
+        );
+    }
+
+    #getMaxViewportOffset() {
+        const dimension =
+            this.#scrollDirection == "horizontal" ? "width" : "height";
+
+        return Math.max(
+            0,
+            this.#contentCoords[dimension] - this.#viewportCoords[dimension]
+        );
     }
 
     /**
@@ -182,41 +228,32 @@ export default class Scrollbar extends UnitView {
         const sPad = this.config.scrollbarPadding;
         const sSize = this.config.scrollbarSize;
 
-        const dimension =
-            this.#scrollDirection == "horizontal" ? "width" : "height";
-
-        const visibleFraction = Math.min(
-            1,
-            viewportCoords[dimension] / contentCoords[dimension]
-        );
-        const maxScrollLength = viewportCoords[dimension] - 2 * sPad;
-        const scrollLength = visibleFraction * maxScrollLength;
-
-        this.#maxScrollOffset = maxScrollLength - scrollLength;
-        this.#maxViewportOffset =
-            contentCoords[dimension] - viewportCoords[dimension];
+        this.#viewportCoords = viewportCoords.flatten();
+        this.#contentCoords = contentCoords;
         this.setViewportOffset(this.viewportOffset, { notify: false });
+
+        const scrollLength = () => this.#getScrollLength();
 
         this.#scrollbarCoords =
             this.#scrollDirection == "vertical"
                 ? new Rectangle(
                       () =>
-                          viewportCoords.x +
-                          viewportCoords.width -
+                          this.#viewportCoords.x +
+                          this.#viewportCoords.width -
                           sSize -
                           sPad,
-                      () => viewportCoords.y + sPad + this.scrollOffset,
+                      () => this.#viewportCoords.y + sPad + this.scrollOffset,
                       () => sSize,
-                      () => scrollLength
+                      scrollLength
                   )
                 : new Rectangle(
-                      () => viewportCoords.x + sPad + this.scrollOffset,
+                      () => this.#viewportCoords.x + sPad + this.scrollOffset,
                       () =>
-                          viewportCoords.y +
-                          viewportCoords.height -
+                          this.#viewportCoords.y +
+                          this.#viewportCoords.height -
                           sSize -
                           sPad,
-                      () => scrollLength,
+                      scrollLength,
                       () => sSize
                   );
     }
