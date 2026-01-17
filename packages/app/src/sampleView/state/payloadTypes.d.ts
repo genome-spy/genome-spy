@@ -1,3 +1,10 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/*
+ * Many payload types are empty interfaces that extend PayloadWithAttribute.
+ * They are semantically distinct types for FSA actions but don't add new properties.
+ * Using interfaces keeps them consistent with other payload types in this file.
+ */
+
 import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";

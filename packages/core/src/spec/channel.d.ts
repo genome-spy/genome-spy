@@ -166,19 +166,15 @@ export interface ValueDefBase<V extends Value = Scalar> {
 export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
 
 export interface DatumDef<V extends Scalar | ExprRef = Scalar | ExprRef>
-    extends Partial<TypeMixins<Type>>,
-        BandMixins,
-        ScaleMixins,
-        TitleMixins {
+    extends Partial<TypeMixins<Type>>, BandMixins, ScaleMixins, TitleMixins {
     /**
      * A constant value in data domain.
      */
     datum?: V;
 }
 
-export interface ExprDef<>extends Partial<TypeMixins<Type>>,
-        BandMixins,
-        TitleMixins {
+export interface ExprDef
+    extends Partial<TypeMixins<Type>>, BandMixins, TitleMixins {
     /**
      *  An expression. Properties of the data can be accessed through the `datum` object.
      */
@@ -200,17 +196,16 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
     ScaleDatumDef &
     TypeMixins<T>;
 
-export interface LegendMixins {
-    /**
-     * An object defining properties of the legend.
-     * If `null`, the legend for the encoding channel will be removed.
-     *
-     * __Default value:__ If undefined, default [legend properties](https://vega.github.io/vega-lite/docs/legend.html) are applied.
-     *
-     * __See also:__ [`legend`](https://vega.github.io/vega-lite/docs/legend.html) documentation.
-     */
-    // TODO: legend?: Legend<ExprRef | SignalRef> | null;
-}
+/**
+ * An object defining properties of the legend.
+ * If `null`, the legend for the encoding channel will be removed.
+ *
+ * __Default value:__ If undefined, default [legend properties](https://vega.github.io/vega-lite/docs/legend.html) are applied.
+ *
+ * __See also:__ [`legend`](https://vega.github.io/vega-lite/docs/legend.html) documentation.
+ */
+// TODO: legend?: Legend<ExprRef | SignalRef> | null;
+export type LegendMixins = Record<string, never>;
 
 export type ConditionalTemplate =
     | FieldDef<any>

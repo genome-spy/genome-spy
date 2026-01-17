@@ -68,6 +68,7 @@ export function createProvenanceReducer(reducersMap, opts = {}) {
         ...reducersMap,
         lastAction: actionRecorder,
     });
+    // @ts-ignore - redux-undo type definitions have complex generics
     return undoable(combined, {
         filter: filter,
         ignoreInitialState: true,

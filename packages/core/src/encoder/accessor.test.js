@@ -133,7 +133,6 @@ describe.skip("createConditionalAccessors", () => {
                     type: "quantitative",
                     condition: {
                         param: "p",
-                        // @ts-expect-error
                         field: "b",
                         type: "quantitative",
                     },

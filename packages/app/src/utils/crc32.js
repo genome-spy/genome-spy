@@ -1,22 +1,24 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable global-require */
 /*
  * Adapted from: https://stackoverflow.com/a/18639999/1547896
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports, global-require, no-undef */
 /**
  * A hack for nodejs (and jest)
+ * @returns {TextEncoder}
  */
 function getEncoder() {
-    const Constr =
-        // @ts-ignore
-        typeof process !== "undefined"
-            ? // @ts-ignore
-              // eslint-disable-next-line no-undef
-              require("util").TextEncoder
-            : TextEncoder;
-    return new Constr();
+    // @ts-ignore - process is a global in Node.js
+    if (typeof process !== "undefined") {
+        // Node.js environment - use require with a fallback
+        // @ts-ignore - require is available in Node.js
+        const utilModule = require("util");
+        // @ts-ignore - TextEncoder is exported from util
+        return new utilModule.TextEncoder();
+    }
+    return new TextEncoder();
 }
+/* eslint-enable @typescript-eslint/no-require-imports, global-require, no-undef */
 
 /** @type {number[]} */
 let table;
