@@ -62,16 +62,35 @@ export class LocationManager {
         this.resetLocations();
     }
 
+    getPeekState() {
+        return this.#peekState;
+    }
+
+    getScrollOffset() {
+        return this.#scrollOffset;
+    }
+
+    /**
+     * @param {number} value
+     */
+    setScrollOffset(value) {
+        const maxScrollOffset = Math.max(
+            0,
+            this.#scrollableHeight - this.#locationContext.getHeight()
+        );
+        this.#scrollOffset = clamp(value, 0, maxScrollOffset);
+    }
+
+    getScrollableHeight() {
+        return this.#scrollableHeight;
+    }
+
     /**
      *
      * @param {WheelEvent} wheelEvent
      */
     handleWheelEvent(wheelEvent) {
-        this.#scrollOffset = clamp(
-            this.#scrollOffset + wheelEvent.deltaY,
-            0,
-            this.#scrollableHeight - this.#locationContext.getHeight()
-        );
+        this.setScrollOffset(this.#scrollOffset + wheelEvent.deltaY);
     }
 
     #callOnLocationUpdate() {
@@ -217,6 +236,8 @@ export class LocationManager {
         this.#scrollableHeight = scrollableLocations.summaries
             .map((d) => d.locSize.location + d.locSize.size)
             .reduce((a, b) => Math.max(a, b), 0);
+
+        this.setScrollOffset(this.#scrollOffset);
 
         /** @type {import("./sampleViewTypes.js").InterpolatedLocationMaker} */
         const makeInterpolatedLocations = (fitted, scrollable) => {

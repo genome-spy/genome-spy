@@ -28,11 +28,15 @@ export default class Scrollbar extends UnitView {
      */
     viewportOffset = 0;
 
+    /** @type {(offset: number) => void} */
+    #onViewportOffsetChange;
+
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {ScrollDirection} scrollDirection
+     * @param {{ onViewportOffsetChange?: (offset: number) => void }} [options]
      */
-    constructor(gridChild, scrollDirection) {
+    constructor(gridChild, scrollDirection, options = {}) {
         // TODO: Configurable
         const config = {
             scrollbarSize: 8,
@@ -66,12 +70,13 @@ export default class Scrollbar extends UnitView {
 
         this.config = config;
         this.#scrollDirection = scrollDirection;
+        this.#onViewportOffsetChange = options.onViewportOffsetChange;
 
         // Make it smooth!
         this.interpolateViewportOffset = makeLerpSmoother(
             this.context.animator,
             (value) => {
-                this.viewportOffset = value.x;
+                this.setViewportOffset(value.x, { notify: true });
             },
             50,
             0.4,
@@ -124,10 +129,26 @@ export default class Scrollbar extends UnitView {
     }
 
     get scrollOffset() {
+        if (this.#maxViewportOffset <= 0 || this.#maxScrollOffset <= 0) {
+            return 0;
+        }
+
         return (
             (this.viewportOffset / this.#maxViewportOffset) *
             this.#maxScrollOffset
         );
+    }
+
+    /**
+     * @param {number} value
+     * @param {{ notify?: boolean }} [options]
+     */
+    setViewportOffset(value, { notify = true } = {}) {
+        this.viewportOffset = clamp(value, 0, this.#maxViewportOffset);
+
+        if (notify && this.#onViewportOffsetChange) {
+            this.#onViewportOffsetChange(this.viewportOffset);
+        }
     }
 
     /**
@@ -174,11 +195,7 @@ export default class Scrollbar extends UnitView {
         this.#maxScrollOffset = maxScrollLength - scrollLength;
         this.#maxViewportOffset =
             contentCoords[dimension] - viewportCoords[dimension];
-        this.viewportOffset = clamp(
-            this.viewportOffset,
-            0,
-            this.#maxViewportOffset
-        );
+        this.setViewportOffset(this.viewportOffset, { notify: false });
 
         this.#scrollbarCoords =
             this.#scrollDirection == "vertical"
