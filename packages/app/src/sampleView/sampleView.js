@@ -776,8 +776,10 @@ export default class SampleView extends ContainerView {
             summaryHeight
         );
 
-        const viewportCoords = this.childCoords.modify({
-            y: () => this.childCoords.y + summaryHeight,
+        const viewportCoords = applyVerticalInset(
+            this.childCoords,
+            summaryHeight
+        ).modify({
             height: () => effectiveViewportHeight,
         });
 
@@ -1197,4 +1199,19 @@ class SampleGridChild extends GridChild {
 
         yield* super.getChildren();
     }
+}
+
+/**
+ * @param {Rectangle} coords
+ * @param {number} insetTop
+ */
+function applyVerticalInset(coords, insetTop) {
+    if (!insetTop) {
+        return coords;
+    }
+
+    return coords.modify({
+        y: () => coords.y + insetTop,
+        height: () => coords.height - insetTop,
+    });
 }
