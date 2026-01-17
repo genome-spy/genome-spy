@@ -768,6 +768,9 @@ export default class SampleView extends ContainerView {
             height: () => contentHeight,
         });
 
+        vScrollbar.setViewportOffset(this.locationManager.getScrollOffset(), {
+            notify: false,
+        });
         vScrollbar.updateScrollbar(this.childCoords, contentCoords);
     }
 
