@@ -41,7 +41,7 @@ export default class Scrollbar extends UnitView {
         const config = {
             scrollbarSize: 8,
             scrollbarPadding: 2,
-            // TODO: minimum scrollbar thumb size
+            scrollbarMinLength: 20,
         };
 
         super(
@@ -203,7 +203,11 @@ export default class Scrollbar extends UnitView {
     }
 
     #getScrollLength() {
-        return this.#getVisibleFraction() * this.#getMaxScrollLength();
+        const maxScrollLength = this.#getMaxScrollLength();
+        const scrollLength = this.#getVisibleFraction() * maxScrollLength;
+        const minLength = this.config.scrollbarMinLength;
+
+        return Math.min(maxScrollLength, Math.max(minLength, scrollLength));
     }
 
     #getMaxScrollOffset() {
