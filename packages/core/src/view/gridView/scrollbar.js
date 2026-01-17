@@ -145,9 +145,7 @@ export default class Scrollbar extends UnitView {
                 );
 
                 this.interpolateViewportOffset({
-                    x:
-                        (scrollOffset / maxScrollOffset) *
-                        this.#getMaxViewportOffset(),
+                    x: this.#getViewportOffsetFromScrollOffset(scrollOffset),
                 });
             };
 
@@ -162,14 +160,7 @@ export default class Scrollbar extends UnitView {
     }
 
     get scrollOffset() {
-        const maxViewportOffset = this.#getMaxViewportOffset();
-        const maxScrollOffset = this.#getMaxScrollOffset();
-
-        if (maxViewportOffset <= 0 || maxScrollOffset <= 0) {
-            return 0;
-        }
-
-        return (this.viewportOffset / maxViewportOffset) * maxScrollOffset;
+        return this.#getScrollOffsetFromViewportOffset(this.viewportOffset);
     }
 
     /**
@@ -217,6 +208,34 @@ export default class Scrollbar extends UnitView {
             0,
             this.#getMaxScrollLength() - this.#getScrollLength()
         );
+    }
+
+    /**
+     * @param {number} viewportOffset
+     */
+    #getScrollOffsetFromViewportOffset(viewportOffset) {
+        const maxViewportOffset = this.#getMaxViewportOffset();
+        const maxScrollOffset = this.#getMaxScrollOffset();
+
+        if (maxViewportOffset <= 0 || maxScrollOffset <= 0) {
+            return 0;
+        }
+
+        return (viewportOffset / maxViewportOffset) * maxScrollOffset;
+    }
+
+    /**
+     * @param {number} scrollOffset
+     */
+    #getViewportOffsetFromScrollOffset(scrollOffset) {
+        const maxViewportOffset = this.#getMaxViewportOffset();
+        const maxScrollOffset = this.#getMaxScrollOffset();
+
+        if (maxViewportOffset <= 0 || maxScrollOffset <= 0) {
+            return 0;
+        }
+
+        return (scrollOffset / maxScrollOffset) * maxViewportOffset;
     }
 
     #getMaxViewportOffset() {
