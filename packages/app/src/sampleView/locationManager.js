@@ -62,16 +62,80 @@ export class LocationManager {
         this.resetLocations();
     }
 
+    getPeekState() {
+        return this.#peekState;
+    }
+
+    getScrollOffset() {
+        return this.#scrollOffset;
+    }
+
+    /**
+     * @param {number} value
+     */
+    setScrollOffset(value) {
+        const maxScrollOffset = Math.max(
+            0,
+            this.#scrollableHeight - this.#locationContext.getHeight()
+        );
+        this.#scrollOffset = clamp(value, 0, maxScrollOffset);
+    }
+
+    getScrollableHeight() {
+        return this.#scrollableHeight;
+    }
+
+    /**
+     * @param {number} viewportHeight
+     * @param {number} [summaryHeight]
+     */
+    getScrollMetrics(viewportHeight, summaryHeight = 0) {
+        return computeScrollMetrics({
+            viewportHeight,
+            summaryHeight,
+            scrollableHeight: this.#scrollableHeight,
+            scrollOffset: this.#scrollOffset,
+            peekState: this.#peekState,
+        });
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} viewportCoords
+     * @param {number} [summaryHeight]
+     */
+    getScrollbarLayout(viewportCoords, summaryHeight = 0) {
+        const {
+            effectiveViewportHeight,
+            contentHeight,
+            effectiveScrollOffset,
+        } = this.getScrollMetrics(viewportCoords.height, summaryHeight);
+
+        const scrollbarViewportCoords = summaryHeight
+            ? viewportCoords.modify({
+                  y: () => viewportCoords.y + summaryHeight,
+                  height: () => effectiveViewportHeight,
+              })
+            : viewportCoords.modify({
+                  height: () => effectiveViewportHeight,
+              });
+
+        const contentCoords = scrollbarViewportCoords.modify({
+            height: () => contentHeight,
+        });
+
+        return {
+            viewportCoords: scrollbarViewportCoords,
+            contentCoords,
+            effectiveScrollOffset,
+        };
+    }
+
     /**
      *
      * @param {WheelEvent} wheelEvent
      */
     handleWheelEvent(wheelEvent) {
-        this.#scrollOffset = clamp(
-            this.#scrollOffset + wheelEvent.deltaY,
-            0,
-            this.#scrollableHeight - this.#locationContext.getHeight()
-        );
+        this.setScrollOffset(this.#scrollOffset + wheelEvent.deltaY);
     }
 
     #callOnLocationUpdate() {
@@ -217,6 +281,8 @@ export class LocationManager {
         this.#scrollableHeight = scrollableLocations.summaries
             .map((d) => d.locSize.location + d.locSize.size)
             .reduce((a, b) => Math.max(a, b), 0);
+
+        this.setScrollOffset(this.#scrollOffset);
 
         /** @type {import("./sampleViewTypes.js").InterpolatedLocationMaker} */
         const makeInterpolatedLocations = (fitted, scrollable) => {
@@ -540,4 +606,36 @@ function calculateLocations(
 export function getSampleLocationAt(pos, sampleLocations) {
     // TODO: Matching should be done without paddings
     return sampleLocations.find((sl) => locSizeEncloses(sl.locSize, pos));
+}
+
+/**
+ * @param {object} metrics
+ * @param {number} metrics.viewportHeight
+ * @param {number} metrics.scrollableHeight
+ * @param {number} metrics.scrollOffset
+ * @param {number} metrics.peekState
+ * @param {number} [metrics.summaryHeight]
+ */
+export function computeScrollMetrics({
+    viewportHeight,
+    scrollableHeight,
+    scrollOffset,
+    peekState,
+    summaryHeight = 0,
+}) {
+    const effectiveViewportHeight = Math.max(0, viewportHeight - summaryHeight);
+    const effectiveScrollableHeight =
+        scrollableHeight || effectiveViewportHeight;
+    const contentHeight =
+        effectiveViewportHeight +
+        (effectiveScrollableHeight - effectiveViewportHeight) * peekState;
+
+    return {
+        peekState,
+        summaryHeight,
+        effectiveViewportHeight,
+        effectiveScrollableHeight,
+        contentHeight,
+        effectiveScrollOffset: scrollOffset * peekState,
+    };
 }

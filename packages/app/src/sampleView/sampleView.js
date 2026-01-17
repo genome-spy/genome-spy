@@ -41,6 +41,7 @@ import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
+import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import {
@@ -82,6 +83,9 @@ export default class SampleView extends ContainerView {
 
     /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
     #actionAugmenter;
+
+    /** @type {(value: number) => void} */
+    #scrollbarOpacitySetter;
 
     /**
      *
@@ -196,6 +200,14 @@ export default class SampleView extends ContainerView {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
                     this.locationManager.handleWheelEvent(wheelEvent);
+
+                    const vScrollbar = this.#gridChild.scrollbars.vertical;
+                    if (vScrollbar) {
+                        vScrollbar.setViewportOffset(
+                            this.locationManager.getScrollOffset(),
+                            { notify: false, syncSmoother: true }
+                        );
+                    }
 
                     this.sampleGroupView.updateRange();
                     this.context.animator.requestRender();
@@ -373,6 +385,22 @@ export default class SampleView extends ContainerView {
             this.sampleLabelView,
             this.metadataView,
         ]);
+
+        this.#gridChild.scrollbars.vertical = new Scrollbar(
+            this.#gridChild,
+            "vertical",
+            {
+                onViewportOffsetChange: (offset) => {
+                    this.locationManager.setScrollOffset(offset);
+                    this.sampleGroupView.updateRange();
+                    this.context.animator.requestRender();
+                },
+            }
+        );
+        this.#scrollbarOpacitySetter =
+            this.#gridChild.scrollbars.vertical.paramMediator.getSetter(
+                "scrollbarOpacity"
+            );
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
@@ -718,12 +746,42 @@ export default class SampleView extends ContainerView {
 
         this.#renderChild(context, this.childCoords, options);
 
+        const vScrollbar = this.#gridChild.scrollbars.vertical;
+        if (vScrollbar) {
+            vScrollbar.render(context, coords, options);
+        }
+
         context.popView(this);
     }
 
     onBeforeRender() {
         // TODO: Only when needed
         this.locationManager.updateFacetTexture();
+
+        // TODO: Consider letting LocationManager own stable scrollbar rectangles.
+        // Might reduce wiring here, but accessors still need per-frame inputs
+        // (peek state, scroll offset, sticky summary inset, viewport changes).
+
+        const vScrollbar = this.#gridChild?.scrollbars.vertical;
+        if (!vScrollbar || !this.childCoords.isDefined()) {
+            return;
+        }
+
+        const summaryHeight = this.#stickySummaries
+            ? this.#gridChild.summaryViews.getSize().height.px
+            : 0;
+        const { viewportCoords, contentCoords, effectiveScrollOffset } =
+            this.locationManager.getScrollbarLayout(
+                this.childCoords,
+                summaryHeight
+            );
+
+        vScrollbar.updateScrollbar(viewportCoords, contentCoords);
+        vScrollbar.setViewportOffset(effectiveScrollOffset, {
+            notify: false,
+            syncSmoother: true,
+        });
+        this.#scrollbarOpacitySetter(this.locationManager.getPeekState());
     }
 
     getSampleFacetTexture() {
@@ -891,6 +949,15 @@ export default class SampleView extends ContainerView {
 
         if (event.stopped) {
             return;
+        }
+
+        for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
+            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
+                scrollbar.propagateInteractionEvent(event);
+                if (event.stopped) {
+                    return;
+                }
+            }
         }
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
