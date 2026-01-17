@@ -13,6 +13,8 @@ export default class Scrollbar extends UnitView {
     /** @type {ScrollDirection} */
     #scrollDirection;
 
+    // NOTE: Keep this Rectangle instance stable. Buffered rendering caches
+    // a reference to coords; replacing it breaks dynamic updates.
     #scrollbarCoords = Rectangle.ZERO;
 
     #viewportCoords = Rectangle.ZERO;
