@@ -758,6 +758,10 @@ export default class SampleView extends ContainerView {
         // TODO: Only when needed
         this.locationManager.updateFacetTexture();
 
+        // TODO: Consider letting LocationManager own stable scrollbar rectangles.
+        // Might reduce wiring here, but accessors still need per-frame inputs
+        // (peek state, scroll offset, sticky summary inset, viewport changes).
+
         const vScrollbar = this.#gridChild?.scrollbars.vertical;
         if (!vScrollbar || !this.childCoords.isDefined()) {
             return;
