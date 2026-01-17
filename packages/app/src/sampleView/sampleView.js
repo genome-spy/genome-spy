@@ -768,10 +768,13 @@ export default class SampleView extends ContainerView {
             height: () => contentHeight,
         });
 
-        vScrollbar.setViewportOffset(this.locationManager.getScrollOffset(), {
+        const effectiveScrollOffset =
+            this.locationManager.getScrollOffset() * peekState;
+
+        vScrollbar.updateScrollbar(this.childCoords, contentCoords);
+        vScrollbar.setViewportOffset(effectiveScrollOffset, {
             notify: false,
         });
-        vScrollbar.updateScrollbar(this.childCoords, contentCoords);
     }
 
     getSampleFacetTexture() {
