@@ -394,6 +394,8 @@ export default class SampleView extends ContainerView {
                 },
             }
         );
+        this.#gridChild.scrollbars.vertical.opacityFunction = () =>
+            this.locationManager.getPeekState();
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
@@ -945,13 +947,20 @@ export default class SampleView extends ContainerView {
         }
 
         if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
-                if (
-                    scrollbar.coords.containsPoint(event.point.x, event.point.y)
-                ) {
-                    scrollbar.propagateInteractionEvent(event);
-                    if (event.stopped) {
-                        return;
+            if (this.locationManager.getPeekState() > 0) {
+                for (const scrollbar of Object.values(
+                    this.#gridChild.scrollbars
+                )) {
+                    if (
+                        scrollbar.coords.containsPoint(
+                            event.point.x,
+                            event.point.y
+                        )
+                    ) {
+                        scrollbar.propagateInteractionEvent(event);
+                        if (event.stopped) {
+                            return;
+                        }
                     }
                 }
             }
