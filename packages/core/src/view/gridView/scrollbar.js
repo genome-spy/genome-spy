@@ -48,11 +48,18 @@ export default class Scrollbar extends UnitView {
 
         super(
             {
+                params: [
+                    {
+                        name: "scrollbarOpacity",
+                        value: 1,
+                    },
+                ],
                 data: { values: [{}] },
                 mark: {
                     type: "rect",
                     fill: "#b0b0b0",
                     fillOpacity: 0.6,
+                    opacity: { expr: "scrollbarOpacity" },
                     stroke: "white",
                     strokeWidth: 1,
                     strokeOpacity: 1,

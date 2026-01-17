@@ -84,6 +84,9 @@ export default class SampleView extends ContainerView {
     /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
     #actionAugmenter;
 
+    /** @type {(value: number) => void} */
+    #scrollbarOpacitySetter;
+
     /**
      *
      * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
@@ -394,8 +397,10 @@ export default class SampleView extends ContainerView {
                 },
             }
         );
-        this.#gridChild.scrollbars.vertical.opacityFunction = () =>
-            this.locationManager.getPeekState();
+        this.#scrollbarOpacitySetter =
+            this.#gridChild.scrollbars.vertical.paramMediator.getSetter(
+                "scrollbarOpacity"
+            );
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
@@ -784,6 +789,7 @@ export default class SampleView extends ContainerView {
         vScrollbar.setViewportOffset(effectiveScrollOffset, {
             notify: false,
         });
+        this.#scrollbarOpacitySetter(this.locationManager.getPeekState());
     }
 
     getSampleFacetTexture() {
