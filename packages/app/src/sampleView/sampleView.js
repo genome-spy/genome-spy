@@ -741,20 +741,6 @@ export default class SampleView extends ContainerView {
 
         const vScrollbar = this.#gridChild.scrollbars.vertical;
         if (vScrollbar) {
-            const viewportHeight = this.childCoords.height;
-            const scrollableHeight = this.locationManager.getScrollableHeight();
-            const effectiveScrollableHeight =
-                scrollableHeight || viewportHeight;
-            const peekState = this.locationManager.getPeekState();
-            const contentHeight =
-                viewportHeight +
-                (effectiveScrollableHeight - viewportHeight) * peekState;
-
-            const contentCoords = this.childCoords.modify({
-                height: () => contentHeight,
-            });
-
-            vScrollbar.updateScrollbar(this.childCoords, contentCoords);
             vScrollbar.render(context, coords, options);
         }
 
@@ -764,6 +750,25 @@ export default class SampleView extends ContainerView {
     onBeforeRender() {
         // TODO: Only when needed
         this.locationManager.updateFacetTexture();
+
+        const vScrollbar = this.#gridChild?.scrollbars.vertical;
+        if (!vScrollbar || !this.childCoords.isDefined()) {
+            return;
+        }
+
+        const viewportHeight = this.childCoords.height;
+        const scrollableHeight = this.locationManager.getScrollableHeight();
+        const effectiveScrollableHeight = scrollableHeight || viewportHeight;
+        const peekState = this.locationManager.getPeekState();
+        const contentHeight =
+            viewportHeight +
+            (effectiveScrollableHeight - viewportHeight) * peekState;
+
+        const contentCoords = this.childCoords.modify({
+            height: () => contentHeight,
+        });
+
+        vScrollbar.updateScrollbar(this.childCoords, contentCoords);
     }
 
     getSampleFacetTexture() {

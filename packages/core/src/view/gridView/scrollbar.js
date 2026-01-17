@@ -72,6 +72,32 @@ export default class Scrollbar extends UnitView {
         this.#scrollDirection = scrollDirection;
         this.#onViewportOffsetChange = options.onViewportOffsetChange;
 
+        const sPad = this.config.scrollbarPadding;
+        const sSize = this.config.scrollbarSize;
+
+        this.#scrollbarCoords =
+            this.#scrollDirection == "vertical"
+                ? new Rectangle(
+                      () =>
+                          this.#viewportCoords.x +
+                          this.#viewportCoords.width -
+                          sSize -
+                          sPad,
+                      () => this.#viewportCoords.y + sPad + this.scrollOffset,
+                      () => sSize,
+                      () => this.#getScrollLength()
+                  )
+                : new Rectangle(
+                      () => this.#viewportCoords.x + sPad + this.scrollOffset,
+                      () =>
+                          this.#viewportCoords.y +
+                          this.#viewportCoords.height -
+                          sSize -
+                          sPad,
+                      () => this.#getScrollLength(),
+                      () => sSize
+                  );
+
         // Make it smooth!
         this.interpolateViewportOffset = makeLerpSmoother(
             this.context.animator,
@@ -225,36 +251,8 @@ export default class Scrollbar extends UnitView {
      * @param {Rectangle} contentCoords
      */
     updateScrollbar(viewportCoords, contentCoords) {
-        const sPad = this.config.scrollbarPadding;
-        const sSize = this.config.scrollbarSize;
-
         this.#viewportCoords = viewportCoords.flatten();
         this.#contentCoords = contentCoords;
         this.setViewportOffset(this.viewportOffset, { notify: false });
-
-        const scrollLength = () => this.#getScrollLength();
-
-        this.#scrollbarCoords =
-            this.#scrollDirection == "vertical"
-                ? new Rectangle(
-                      () =>
-                          this.#viewportCoords.x +
-                          this.#viewportCoords.width -
-                          sSize -
-                          sPad,
-                      () => this.#viewportCoords.y + sPad + this.scrollOffset,
-                      () => sSize,
-                      scrollLength
-                  )
-                : new Rectangle(
-                      () => this.#viewportCoords.x + sPad + this.scrollOffset,
-                      () =>
-                          this.#viewportCoords.y +
-                          this.#viewportCoords.height -
-                          sSize -
-                          sPad,
-                      scrollLength,
-                      () => sSize
-                  );
     }
 }
