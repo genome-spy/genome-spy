@@ -164,7 +164,7 @@ export default class Scrollbar extends UnitView {
 
     /**
      * @param {number} value
-     * @param {{ notify?: boolean }} [options]
+     * @param {{ notify?: boolean, syncSmoother?: boolean }} [options]
      */
     setViewportOffset(value, { notify = true, syncSmoother = false } = {}) {
         this.viewportOffset = clamp(value, 0, this.#getMaxViewportOffset());
