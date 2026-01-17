@@ -4,6 +4,9 @@ import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 
 /**
+ * This class represents a scrollbar thumb that can be used within a grid view
+ * to provide scrolling functionality for overflowing content.
+ *
  * @typedef {"horizontal" | "vertical"} ScrollDirection
  */
 export default class Scrollbar extends UnitView {
@@ -16,9 +19,13 @@ export default class Scrollbar extends UnitView {
 
     #maxViewportOffset = 0;
 
-    // This is the actual state of the scrollbar. It's better to keep track of
-    // the viewport offset rather than the scrollbar offset because the former
-    // is more stable when the viewport size changes.
+    /**
+     * The actual state of the scrollbar.
+     *
+     * It's better to keep track of the viewport offset rather than the
+     * scrollbar offset because the former is more stable when the
+     * viewport size changes.
+     */
     viewportOffset = 0;
 
     /**
@@ -30,7 +37,7 @@ export default class Scrollbar extends UnitView {
         const config = {
             scrollbarSize: 8,
             scrollbarPadding: 2,
-            // TODO: inside/outside view
+            // TODO: minimum scrollbar thumb size
         };
 
         super(
@@ -129,15 +136,28 @@ export default class Scrollbar extends UnitView {
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
     render(context, coords, options) {
+        // NOTE: this only builds the layout, doesn't actually render anything
         super.render(context, this.#scrollbarCoords, options);
     }
 
     /**
+     * Updates the scrollbar with new dynamic coordinate rectangles.
+     *
+     * Note: This method should be only called during the layout phase
+     * triggered by "requestLayoutReflow". When the view is actually rendered
+     * based on the layout, `#scrollbarCoords` magically contains the correct
+     * coordinates.
+     *
+     * TODO: This should be refactored so that "coords", the content, is treated
+     * as fully dynamic, meaning that if the content's size changes, the scrollbar
+     * updates accordingly—particularly its length.
+     *
+     * TODO: Implement a minimum scrollbar thumb size, e.g., 20px.
      *
      * @param {Rectangle} viewportCoords
-     * @param {Rectangle} coords
+     * @param {Rectangle} contentCoords
      */
-    updateScrollbar(viewportCoords, coords) {
+    updateScrollbar(viewportCoords, contentCoords) {
         const sPad = this.config.scrollbarPadding;
         const sSize = this.config.scrollbarSize;
 
@@ -146,13 +166,14 @@ export default class Scrollbar extends UnitView {
 
         const visibleFraction = Math.min(
             1,
-            viewportCoords[dimension] / coords[dimension]
+            viewportCoords[dimension] / contentCoords[dimension]
         );
         const maxScrollLength = viewportCoords[dimension] - 2 * sPad;
         const scrollLength = visibleFraction * maxScrollLength;
 
         this.#maxScrollOffset = maxScrollLength - scrollLength;
-        this.#maxViewportOffset = coords[dimension] - viewportCoords[dimension];
+        this.#maxViewportOffset =
+            contentCoords[dimension] - viewportCoords[dimension];
         this.viewportOffset = clamp(
             this.viewportOffset,
             0,
