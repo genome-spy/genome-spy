@@ -205,7 +205,7 @@ export default class SampleView extends ContainerView {
                     if (vScrollbar) {
                         vScrollbar.setViewportOffset(
                             this.locationManager.getScrollOffset(),
-                            { notify: false }
+                            { notify: false, syncSmoother: true }
                         );
                     }
 
@@ -790,6 +790,7 @@ export default class SampleView extends ContainerView {
         vScrollbar.updateScrollbar(viewportCoords, contentCoords);
         vScrollbar.setViewportOffset(effectiveScrollOffset, {
             notify: false,
+            syncSmoother: true,
         });
         this.#scrollbarOpacitySetter(this.locationManager.getPeekState());
     }

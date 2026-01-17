@@ -54,12 +54,12 @@ export default class Scrollbar extends UnitView {
                         value: 1,
                     },
                 ],
+                opacity: { expr: "scrollbarOpacity" },
                 data: { values: [{}] },
                 mark: {
                     type: "rect",
                     fill: "#b0b0b0",
                     fillOpacity: 0.6,
-                    opacity: { expr: "scrollbarOpacity" },
                     stroke: "white",
                     strokeWidth: 1,
                     strokeOpacity: 1,
@@ -108,15 +108,7 @@ export default class Scrollbar extends UnitView {
                   );
 
         // Make it smooth!
-        this.interpolateViewportOffset = makeLerpSmoother(
-            this.context.animator,
-            (value) => {
-                this.setViewportOffset(value.x, { notify: true });
-            },
-            50,
-            0.4,
-            { x: this.viewportOffset }
-        );
+        this.#initViewportOffsetSmoother(this.viewportOffset);
 
         this.addInteractionEventListener("mousedown", (coords, event) => {
             event.stopPropagation();
@@ -174,8 +166,12 @@ export default class Scrollbar extends UnitView {
      * @param {number} value
      * @param {{ notify?: boolean }} [options]
      */
-    setViewportOffset(value, { notify = true } = {}) {
+    setViewportOffset(value, { notify = true, syncSmoother = false } = {}) {
         this.viewportOffset = clamp(value, 0, this.#getMaxViewportOffset());
+
+        if (syncSmoother) {
+            this.#initViewportOffsetSmoother(this.viewportOffset);
+        }
 
         if (notify && this.#onViewportOffsetChange) {
             this.#onViewportOffsetChange(this.viewportOffset);
@@ -285,6 +281,27 @@ export default class Scrollbar extends UnitView {
     updateScrollbar(viewportCoords, contentCoords) {
         this.#viewportCoords = viewportCoords.flatten();
         this.#contentCoords = contentCoords;
-        this.setViewportOffset(this.viewportOffset, { notify: false });
+        this.setViewportOffset(this.viewportOffset, {
+            notify: false,
+            syncSmoother: true,
+        });
+    }
+
+    /**
+     * @param {number} value
+     */
+    #initViewportOffsetSmoother(value) {
+        this.interpolateViewportOffset = makeLerpSmoother(
+            this.context.animator,
+            (current) => {
+                this.setViewportOffset(current.x, {
+                    notify: true,
+                    syncSmoother: false,
+                });
+            },
+            50,
+            0.4,
+            { x: value }
+        );
     }
 }
