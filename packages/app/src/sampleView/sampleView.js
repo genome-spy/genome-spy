@@ -763,29 +763,14 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        const viewportHeight = this.childCoords.height;
         const summaryHeight = this.#stickySummaries
             ? this.#gridChild.summaryViews.getSize().height.px
             : 0;
-        const {
-            effectiveViewportHeight,
-            contentHeight,
-            effectiveScrollOffset,
-        } = this.locationManager.getScrollMetrics(
-            viewportHeight,
-            summaryHeight
-        );
-
-        const viewportCoords = applyVerticalInset(
-            this.childCoords,
-            summaryHeight
-        ).modify({
-            height: () => effectiveViewportHeight,
-        });
-
-        const contentCoords = viewportCoords.modify({
-            height: () => contentHeight,
-        });
+        const { viewportCoords, contentCoords, effectiveScrollOffset } =
+            this.locationManager.getScrollbarLayout(
+                this.childCoords,
+                summaryHeight
+            );
 
         vScrollbar.updateScrollbar(viewportCoords, contentCoords);
         vScrollbar.setViewportOffset(effectiveScrollOffset, {
@@ -1191,19 +1176,4 @@ class SampleGridChild extends GridChild {
 
         yield* super.getChildren();
     }
-}
-
-/**
- * @param {Rectangle} coords
- * @param {number} insetTop
- */
-function applyVerticalInset(coords, insetTop) {
-    if (!insetTop) {
-        return coords;
-    }
-
-    return coords.modify({
-        y: () => coords.y + insetTop,
-        height: () => coords.height - insetTop,
-    });
 }

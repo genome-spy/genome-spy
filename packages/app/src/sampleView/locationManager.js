@@ -100,6 +100,37 @@ export class LocationManager {
     }
 
     /**
+     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} viewportCoords
+     * @param {number} [summaryHeight]
+     */
+    getScrollbarLayout(viewportCoords, summaryHeight = 0) {
+        const {
+            effectiveViewportHeight,
+            contentHeight,
+            effectiveScrollOffset,
+        } = this.getScrollMetrics(viewportCoords.height, summaryHeight);
+
+        const scrollbarViewportCoords = summaryHeight
+            ? viewportCoords.modify({
+                  y: () => viewportCoords.y + summaryHeight,
+                  height: () => effectiveViewportHeight,
+              })
+            : viewportCoords.modify({
+                  height: () => effectiveViewportHeight,
+              });
+
+        const contentCoords = scrollbarViewportCoords.modify({
+            height: () => contentHeight,
+        });
+
+        return {
+            viewportCoords: scrollbarViewportCoords,
+            contentCoords,
+            effectiveScrollOffset,
+        };
+    }
+
+    /**
      *
      * @param {WheelEvent} wheelEvent
      */
