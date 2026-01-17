@@ -292,7 +292,7 @@ export default class Scrollbar extends UnitView {
                     syncSmoother: false,
                 });
             },
-            30,
+            35,
             0.4,
             { x: value }
         );
