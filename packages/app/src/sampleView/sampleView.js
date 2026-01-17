@@ -759,21 +759,33 @@ export default class SampleView extends ContainerView {
         }
 
         const viewportHeight = this.childCoords.height;
+        const summaryHeight = this.#stickySummaries
+            ? this.#gridChild.summaryViews.getSize().height.px
+            : 0;
+        const effectiveViewportHeight = Math.max(
+            0,
+            viewportHeight - summaryHeight
+        );
         const scrollableHeight = this.locationManager.getScrollableHeight();
         const effectiveScrollableHeight = scrollableHeight || viewportHeight;
         const peekState = this.locationManager.getPeekState();
         const contentHeight =
-            viewportHeight +
-            (effectiveScrollableHeight - viewportHeight) * peekState;
+            effectiveViewportHeight +
+            (effectiveScrollableHeight - effectiveViewportHeight) * peekState;
 
-        const contentCoords = this.childCoords.modify({
+        const viewportCoords = this.childCoords.modify({
+            y: () => this.childCoords.y + summaryHeight,
+            height: () => effectiveViewportHeight,
+        });
+
+        const contentCoords = viewportCoords.modify({
             height: () => contentHeight,
         });
 
         const effectiveScrollOffset =
             this.locationManager.getScrollOffset() * peekState;
 
-        vScrollbar.updateScrollbar(this.childCoords, contentCoords);
+        vScrollbar.updateScrollbar(viewportCoords, contentCoords);
         vScrollbar.setViewportOffset(effectiveScrollOffset, {
             notify: false,
         });
