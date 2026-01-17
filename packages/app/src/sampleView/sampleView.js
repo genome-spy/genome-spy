@@ -762,16 +762,14 @@ export default class SampleView extends ContainerView {
         const summaryHeight = this.#stickySummaries
             ? this.#gridChild.summaryViews.getSize().height.px
             : 0;
-        const effectiveViewportHeight = Math.max(
-            0,
-            viewportHeight - summaryHeight
+        const {
+            effectiveViewportHeight,
+            contentHeight,
+            effectiveScrollOffset,
+        } = this.locationManager.getScrollMetrics(
+            viewportHeight,
+            summaryHeight
         );
-        const scrollableHeight = this.locationManager.getScrollableHeight();
-        const effectiveScrollableHeight = scrollableHeight || viewportHeight;
-        const peekState = this.locationManager.getPeekState();
-        const contentHeight =
-            effectiveViewportHeight +
-            (effectiveScrollableHeight - effectiveViewportHeight) * peekState;
 
         const viewportCoords = this.childCoords.modify({
             y: () => this.childCoords.y + summaryHeight,
@@ -781,9 +779,6 @@ export default class SampleView extends ContainerView {
         const contentCoords = viewportCoords.modify({
             height: () => contentHeight,
         });
-
-        const effectiveScrollOffset =
-            this.locationManager.getScrollOffset() * peekState;
 
         vScrollbar.updateScrollbar(viewportCoords, contentCoords);
         vScrollbar.setViewportOffset(effectiveScrollOffset, {

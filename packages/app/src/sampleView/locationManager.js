@@ -86,6 +86,20 @@ export class LocationManager {
     }
 
     /**
+     * @param {number} viewportHeight
+     * @param {number} [summaryHeight]
+     */
+    getScrollMetrics(viewportHeight, summaryHeight = 0) {
+        return computeScrollMetrics({
+            viewportHeight,
+            summaryHeight,
+            scrollableHeight: this.#scrollableHeight,
+            scrollOffset: this.#scrollOffset,
+            peekState: this.#peekState,
+        });
+    }
+
+    /**
      *
      * @param {WheelEvent} wheelEvent
      */
@@ -561,4 +575,36 @@ function calculateLocations(
 export function getSampleLocationAt(pos, sampleLocations) {
     // TODO: Matching should be done without paddings
     return sampleLocations.find((sl) => locSizeEncloses(sl.locSize, pos));
+}
+
+/**
+ * @param {object} metrics
+ * @param {number} metrics.viewportHeight
+ * @param {number} metrics.scrollableHeight
+ * @param {number} metrics.scrollOffset
+ * @param {number} metrics.peekState
+ * @param {number} [metrics.summaryHeight]
+ */
+export function computeScrollMetrics({
+    viewportHeight,
+    scrollableHeight,
+    scrollOffset,
+    peekState,
+    summaryHeight = 0,
+}) {
+    const effectiveViewportHeight = Math.max(0, viewportHeight - summaryHeight);
+    const effectiveScrollableHeight =
+        scrollableHeight || effectiveViewportHeight;
+    const contentHeight =
+        effectiveViewportHeight +
+        (effectiveScrollableHeight - effectiveViewportHeight) * peekState;
+
+    return {
+        peekState,
+        summaryHeight,
+        effectiveViewportHeight,
+        effectiveScrollableHeight,
+        contentHeight,
+        effectiveScrollOffset: scrollOffset * peekState,
+    };
 }
