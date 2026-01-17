@@ -962,25 +962,16 @@ export default class SampleView extends ContainerView {
             return;
         }
 
-        if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            if (this.locationManager.getPeekState() > 0.95) {
-                for (const scrollbar of Object.values(
-                    this.#gridChild.scrollbars
-                )) {
-                    if (
-                        scrollbar.coords.containsPoint(
-                            event.point.x,
-                            event.point.y
-                        )
-                    ) {
-                        scrollbar.propagateInteractionEvent(event);
-                        if (event.stopped) {
-                            return;
-                        }
-                    }
+        for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
+            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
+                scrollbar.propagateInteractionEvent(event);
+                if (event.stopped) {
+                    return;
                 }
             }
+        }
 
+        if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
             this.#gridChild.view.propagateInteractionEvent(event);
 
             if (event.stopped) {
