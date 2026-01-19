@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.66.0](https://github.com/genome-spy/genome-spy/compare/v0.65.0...v0.66.0) (2026-01-19)
+
+### Bug Fixes
+
+* **core:** set requestLayoutReflow earlier ([78f9765](https://github.com/genome-spy/genome-spy/commit/78f976588d1de2d51477ac03bb569cb7290c3fa9)) by @tuner
+* resolve linting and TypeScript errors ([e20514d](https://github.com/genome-spy/genome-spy/commit/e20514d77a7a131c1866684b5ef7ffb442be5f3a)) by @tuner
+
+### Features
+
+* **app:** add scrollbar to SampleView ([#309](https://github.com/genome-spy/genome-spy/issues/309)) ([7bc9de1](https://github.com/genome-spy/genome-spy/commit/7bc9de1a1332ca2036de2bc464ea6ffdb0b6f1fc)) by @tuner
+* **core:** dynamic container mutations for concat/layer views ([#307](https://github.com/genome-spy/genome-spy/issues/307)) ([f6fc957](https://github.com/genome-spy/genome-spy/commit/f6fc957ceed30bae139f83d44d4e534ef17586f2)) by @tuner
+
 # [0.65.0](https://github.com/genome-spy/genome-spy/compare/v0.64.0...v0.65.0) (2026-01-14)
 
 ### Bug Fixes
