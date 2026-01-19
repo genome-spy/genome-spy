@@ -384,6 +384,7 @@ export default class ScaleResolution {
                 domainWasInitialized
             )
         ) {
+            // Domain changes were suppressed during reconfigure; notify explicitly.
             this.#notifyListeners("domain");
             return;
         }
@@ -404,6 +405,7 @@ export default class ScaleResolution {
                 this.zoomTo(newDomain, 500); // TODO: Configurable duration
             } else {
                 // Update immediately if the previous domain was the initial domain [0, 0]
+                // Notifications were suppressed during reconfigure; notify explicitly.
                 this.#notifyListeners("domain");
             }
         }
