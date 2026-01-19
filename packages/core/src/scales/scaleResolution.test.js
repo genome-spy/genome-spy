@@ -539,6 +539,55 @@ describe("Domain handling", () => {
         expect(d("y")).toEqual([2, 3]);
     });
 
+    test("reconfigureDomain notifies when a non-zoomable domain changes", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: ["a", "b"] },
+                mark: "point",
+                encoding: {
+                    color: { field: "data", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("color");
+        const notify = vi.fn();
+        resolution.addEventListener("domain", notify);
+
+        // Non-obvious: force a domain change on a non-zoomable scale.
+        resolution.getScale().domain(["z"]);
+        resolution.reconfigureDomain();
+
+        expect(notify).toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual(["a", "b"]);
+    });
+
+    test("reconfigureDomain preserves zoomed domains for zoomable scales", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3, 4] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        // Non-obvious: simulate a zoomed domain so the reconfigure path must preserve it.
+        resolution.getScale().domain([2, 3]);
+
+        resolution.reconfigureDomain();
+
+        expect(resolution.scale.domain()).toEqual([2, 3]);
+    });
+
     test("reconfigureScaleDomains triggers domain-only refresh", async () => {
         const view = await createAndInitialize(
             {
