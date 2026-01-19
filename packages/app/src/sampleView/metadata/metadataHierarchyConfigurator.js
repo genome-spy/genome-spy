@@ -483,7 +483,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
     render() {
         return html`
             <div class="gs-form-group">
-                <label for="group-name">Group name</label>
+                <label for="group-name">Root group name</label>
                 <input
                     id="group-name"
                     type="text"
@@ -494,7 +494,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             </div>
 
             <div class="gs-form-group">
-                <label for="separator">Separator</label>
+                <label for="separator">Hierarchy-level separator</label>
                 <input
                     id="separator"
                     type="text"
@@ -505,7 +505,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             </div>
 
             <div>
-                <label>Columns (hierarchy)</label>
+                <label>Attributes</label>
                 <div class="table-wrapper">
                     <table>
                         <thead>
