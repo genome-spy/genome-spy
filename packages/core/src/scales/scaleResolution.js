@@ -545,13 +545,6 @@ export default class ScaleResolution {
     }
 
     /**
-     * TODO: These actually depend on the mark, so this is clearly a wrong place.
-     * And besides, these should be configurable (themeable)
-     *
-     * @param {string} dataType
-     */
-
-    /**
      * Inverts a value in range to a value on domain. Returns an object in
      * case of locus scale.
      *
