@@ -6,4 +6,4 @@
 
 This package provides a user interface for interactive analysis of multiple
 samples, which can be filtered, sorted, and grouped flexibly. A session handling
-with provenance, url hashes, and bookmarks is included.
+with provenance, URL hashes, and bookmarks is included.
