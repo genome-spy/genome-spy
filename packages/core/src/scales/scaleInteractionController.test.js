@@ -42,13 +42,12 @@ describe("ScaleInteractionController", () => {
                 /** @type {any} */ interval
             ) => interval,
             getGenomeExtent: () => [0, 10],
-            notifyDomainChange: notify,
         });
 
         const changed = controller.zoom(0.5, 5, 0);
         expect(changed).toBe(true);
         expect(scale.domain()).toEqual([2.5, 7.5]);
-        expect(notify).toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
     });
 
     test("resetZoom restores the reset domain", () => {
@@ -63,13 +62,12 @@ describe("ScaleInteractionController", () => {
                 /** @type {any} */ interval
             ) => interval,
             getGenomeExtent: () => [0, 10],
-            notifyDomainChange: notify,
         });
 
         const changed = controller.resetZoom();
         expect(changed).toBe(true);
         expect(scale.domain()).toEqual([0, 10]);
-        expect(notify).toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
     });
 
     test("zoom extent uses explicit extent for locus scales", () => {
@@ -86,7 +84,6 @@ describe("ScaleInteractionController", () => {
                 /** @type {any} */ interval
             ) => interval,
             getGenomeExtent: () => [0, 10],
-            notifyDomainChange: () => undefined,
         });
 
         expect(controller.getZoomExtent()).toEqual([1, 4]);
@@ -106,7 +103,6 @@ describe("ScaleInteractionController", () => {
                 /** @type {any} */ interval
             ) => interval,
             getGenomeExtent: () => [0, 12],
-            notifyDomainChange: () => undefined,
         });
 
         expect(controller.getZoomExtent()).toEqual([0, 12]);

@@ -22,18 +22,30 @@ export default class ScaleInstanceManager {
     /** @type {() => void} */
     #onRangeChange;
 
+    /** @type {() => void} */
+    #onDomainChange;
+
     /** @type {() => import("../genome/genomeStore.js").default | undefined} */
     #getGenomeStore;
+
+    #domainNotificationsSuspended = 0;
 
     /**
      * @param {object} options
      * @param {() => import("../view/paramMediator.js").default} options.getParamMediator
      * @param {() => void} options.onRangeChange
+     * @param {() => void} [options.onDomainChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
      */
-    constructor({ getParamMediator, onRangeChange, getGenomeStore }) {
+    constructor({
+        getParamMediator,
+        onRangeChange,
+        onDomainChange,
+        getGenomeStore,
+    }) {
         this.#getParamMediator = getParamMediator;
         this.#onRangeChange = onRangeChange;
+        this.#onDomainChange = onDomainChange;
         this.#getGenomeStore = getGenomeStore;
     }
 
@@ -72,7 +84,7 @@ export default class ScaleInstanceManager {
         this.#scale = /** @type {ScaleWithProps} */ (scale);
         this.#bindGenomeIfNeeded(props);
         this.#configureRange();
-        this.#wrapRange();
+        this.#wrapScaleInterceptors();
 
         return this.#scale;
     }
@@ -110,6 +122,19 @@ export default class ScaleInstanceManager {
         );
         scale.props = props;
         this.#configureRange();
+    }
+
+    /**
+     * @param {() => void} callback
+     * @returns {void}
+     */
+    withDomainNotificationsSuppressed(callback) {
+        this.#domainNotificationsSuspended += 1;
+        try {
+            callback();
+        } finally {
+            this.#domainNotificationsSuspended -= 1;
+        }
     }
 
     /**
@@ -162,27 +187,69 @@ export default class ScaleInstanceManager {
         apply();
     }
 
-    #wrapRange() {
+    #wrapScaleInterceptors() {
         const scale = this.#scale;
-        const range = scale?.range;
-        if (!range) {
+        if (!scale) {
             return;
         }
 
-        const notify = () => this.#onRangeChange();
+        const range = scale.range;
+        const domain = scale.domain;
+        const notifyRange = () => this.#onRangeChange?.();
+        const notifyDomain = () => {
+            if (this.#domainNotificationsSuspended > 0) {
+                return;
+            }
+            this.#onDomainChange?.();
+        };
+
+        withScaleInterceptors(scale, {
+            onRangeChange: notifyRange,
+            onDomainChange: notifyDomain,
+            range,
+            domain,
+        });
+
+        notifyRange();
+    }
+}
+
+/**
+ * @param {import("../types/encoder.js").VegaScale} scale
+ * @param {object} options
+ * @param {(value: any) => void} [options.onRangeChange]
+ * @param {(value: any) => void} [options.onDomainChange]
+ * @param {(value?: any) => any} options.range
+ * @param {(value?: any) => any} options.domain
+ */
+function withScaleInterceptors(
+    scale,
+    { onRangeChange, onDomainChange, range, domain }
+) {
+    if (typeof range === "function") {
         scale.range = /** @type {any} */ (
             function (/** @type {any} */ _) {
                 if (arguments.length) {
                     range(_);
-                    notify();
+                    onRangeChange?.();
                 } else {
                     return range();
                 }
             }
         );
+    }
 
-        // The initial setting
-        notify();
+    if (typeof domain === "function") {
+        scale.domain = /** @type {any} */ (
+            function (/** @type {any} */ _) {
+                if (arguments.length) {
+                    domain(_);
+                    onDomainChange?.();
+                } else {
+                    return domain();
+                }
+            }
+        );
     }
 }
 

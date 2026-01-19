@@ -45,9 +45,6 @@ export default class ScaleInteractionController {
     /** @type {() => number[]} */
     #getGenomeExtent;
 
-    /** @type {() => void} */
-    #notifyDomainChange;
-
     /**
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
@@ -56,7 +53,6 @@ export default class ScaleInteractionController {
      * @param {() => number[]} options.getResetDomain
      * @param {(domain: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      * @param {() => number[]} options.getGenomeExtent
-     * @param {() => void} options.notifyDomainChange
      */
     constructor({
         getScale,
@@ -65,7 +61,6 @@ export default class ScaleInteractionController {
         getResetDomain,
         fromComplexInterval,
         getGenomeExtent,
-        notifyDomainChange,
     }) {
         this.#getScale = getScale;
         this.#getAnimator = getAnimator;
@@ -73,7 +68,6 @@ export default class ScaleInteractionController {
         this.#getResetDomain = getResetDomain;
         this.#fromComplexInterval = fromComplexInterval;
         this.#getGenomeExtent = getGenomeExtent;
-        this.#notifyDomainChange = notifyDomainChange;
     }
 
     getZoomExtent() {
@@ -140,7 +134,6 @@ export default class ScaleInteractionController {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this.#notifyDomainChange();
             return true;
         }
 
@@ -198,16 +191,13 @@ export default class ScaleInteractionController {
                         bc ? from[1] : c + w / 2,
                     ];
                     scale.domain(newDomain);
-                    this.#notifyDomainChange();
                 },
             });
 
             scale.domain(to);
-            this.#notifyDomainChange();
         } else {
             scale.domain(to);
             animator?.requestRender();
-            this.#notifyDomainChange();
         }
     }
 
@@ -227,7 +217,6 @@ export default class ScaleInteractionController {
 
         if ([0, 1].some((i) => newDomain[i] != oldDomain[i])) {
             scale.domain(newDomain);
-            this.#notifyDomainChange();
             return true;
         }
         return false;

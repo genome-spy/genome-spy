@@ -69,6 +69,29 @@ describe("ScaleInstanceManager", () => {
         expect(scale.range()[0]).toBe(5);
     });
 
+    test("domain changes notify listeners", () => {
+        const onDomainChange = vi.fn();
+        const manager = new ScaleInstanceManager({
+            getParamMediator: () =>
+                /** @type {import("../view/paramMediator.js").default} */ (
+                    /** @type {unknown} */ ({
+                        createExpression: () => /** @type {any} */ (() => 0),
+                    })
+                ),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            onDomainChange,
+        });
+
+        const scale = manager.createScale({
+            type: "linear",
+            domain: [0, 1],
+            range: [0, 1],
+        });
+
+        scale.domain([1, 2]);
+        expect(onDomainChange).toHaveBeenCalled();
+    });
+
     test("binds a genome when creating locus scales", async () => {
         const genomeStore = new GenomeStore(".");
         await genomeStore.initialize({

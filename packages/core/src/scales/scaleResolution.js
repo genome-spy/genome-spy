@@ -111,6 +111,7 @@ export default class ScaleResolution {
         this.#scaleManager = new ScaleInstanceManager({
             getParamMediator: () => this.#firstMemberView.paramMediator,
             onRangeChange: () => this.#notifyListeners("range"),
+            onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,
         });
 
@@ -123,7 +124,6 @@ export default class ScaleResolution {
                 this.#domainAggregator.getConfiguredOrDefaultDomain(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
             getGenomeExtent: () => this.#getLocusExtent(),
-            notifyDomainChange: () => this.#notifyListeners("domain"),
         });
     }
 
@@ -374,7 +374,9 @@ export default class ScaleResolution {
         const previousDomain = scale.domain();
 
         const props = this.#getScaleProps(true);
-        this.#scaleManager.reconfigureScale(props);
+        this.#scaleManager.withDomainNotificationsSuppressed(() => {
+            this.#scaleManager.reconfigureScale(props);
+        });
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -390,11 +392,15 @@ export default class ScaleResolution {
         if (!shallowArrayEquals(newDomain, previousDomain)) {
             if (this.isZoomable()) {
                 // Don't mess with zoomed views, restore the previous domain
-                scale.domain(previousDomain);
+                this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                    scale.domain(previousDomain);
+                });
             } else if (this.#interactionController.isZoomingSupported()) {
                 // It can be zoomed, so lets make a smooth transition.
                 // Restore the previous domain and zoom smoothly to the new domain.
-                scale.domain(previousDomain);
+                this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                    scale.domain(previousDomain);
+                });
                 this.zoomTo(newDomain, 500); // TODO: Configurable duration
             } else {
                 // Update immediately if the previous domain was the initial domain [0, 0]
