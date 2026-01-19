@@ -395,6 +395,10 @@ export default class GenomeSpy {
                 this.#loadingIndicatorManager.updateLayout(),
         });
 
+        // Allow early layout requests from view subscriptions created during initialization.
+        // Layout will be recomputed anyway once launch completes.
+        context.requestLayoutReflow = this.computeLayout.bind(this);
+
         this.#setupDpr();
     }
 
@@ -402,7 +406,7 @@ export default class GenomeSpy {
      * @param {import("./types/viewContext.js").default} context
      */
     #finalizeViewInitialization(context) {
-        // Allow layout computation
+        // Allow layout computation (in case a custom context overrode the early assignment).
         // eslint-disable-next-line require-atomic-updates
         context.requestLayoutReflow = this.computeLayout.bind(this);
 
