@@ -353,15 +353,6 @@ export default class ScaleResolution {
     }
 
     /**
-     * Extracts and unions the data domains of all participating views.
-     *
-     * @return { DomainArray }
-     */
-    getDataDomain() {
-        return this.#domainAggregator.getDataDomain();
-    }
-
-    /**
      * Reconfigures the scale: updates domain and other settings.
      *
      * Use this when the set of participating members changes (views added or removed),
@@ -369,9 +360,7 @@ export default class ScaleResolution {
      */
     reconfigure() {
         const props = this.#getScaleProps(true);
-        this.#reconfigureWith(props, () =>
-            this.#scaleManager.reconfigureScale(props)
-        );
+        this.#reconfigureWith(() => this.#scaleManager.reconfigureScale(props));
     }
 
     /**
@@ -381,19 +370,15 @@ export default class ScaleResolution {
      */
     reconfigureDomain() {
         const props = this.#getScaleProps(true);
-        this.#reconfigureWith(props, () => {
-            const scale = this.#scaleManager.scale;
-            if (scale) {
-                configureDomain(scale, props);
-            }
+        this.#reconfigureWith(() => {
+            configureDomain(this.#scaleManager.scale, props);
         });
     }
 
     /**
-     * @param {import("../spec/scale.js").Scale} props
      * @param {() => void} apply
      */
-    #reconfigureWith(props, apply) {
+    #reconfigureWith(apply) {
         const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
