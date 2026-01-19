@@ -1,12 +1,13 @@
 // @ts-nocheck
 
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createAndInitialize } from "../view/testUtils.js";
 import createDomain, { toRegularArray as r } from "../utils/domainArray.js";
 import LayerView from "../view/layerView.js";
 import ConcatView from "../view/concatView.js";
 import UnitView from "../view/unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
+import { reconfigureScaleDomains } from "./scaleResolution.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -466,7 +467,7 @@ describe("Domain handling", () => {
 
         for (const channel of primaryPositionalChannels) {
             // Extract domain from data
-            view.getScaleResolution(channel).reconfigure();
+            view.getScaleResolution(channel).reconfigureDomain();
         }
 
         const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
@@ -528,7 +529,7 @@ describe("Domain handling", () => {
 
         for (const channel of primaryPositionalChannels) {
             // Extract domain from data
-            view.getScaleResolution(channel).reconfigure();
+            view.getScaleResolution(channel).reconfigureDomain();
         }
 
         const d = /** @param {Channel} channel*/ (channel) =>
@@ -536,6 +537,27 @@ describe("Domain handling", () => {
 
         expect(d("x")).toEqual([2, 3]);
         expect(d("y")).toEqual([2, 3]);
+    });
+
+    test("reconfigureScaleDomains triggers domain-only refresh", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        const spy = vi.spyOn(resolution, "reconfigureDomain");
+
+        reconfigureScaleDomains(view);
+
+        expect(spy).toHaveBeenCalled();
+        spy.mockRestore();
     });
 });
 

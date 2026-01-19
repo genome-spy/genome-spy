@@ -9,6 +9,7 @@ import scaleIndex from "../genome/scaleIndex.js";
 import scaleNull from "../utils/scaleNull.js";
 
 import { scale as vegaScale, isDiscrete, isContinuous } from "vega-scale";
+import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
@@ -361,9 +362,38 @@ export default class ScaleResolution {
     }
 
     /**
-     * Reconfigures the scale: updates domain and other settings
+     * Reconfigures the scale: updates domain and other settings.
+     *
+     * Use this when the set of participating members changes (views added or removed),
+     * or when scale properties are otherwise re-resolved from the view hierarchy.
      */
     reconfigure() {
+        const props = this.#getScaleProps(true);
+        this.#reconfigureWith(props, () =>
+            this.#scaleManager.reconfigureScale(props)
+        );
+    }
+
+    /**
+     * Reconfigures only the effective domain (configured + data-derived).
+     *
+     * Use this when data changes but the scale membership and properties are stable.
+     */
+    reconfigureDomain() {
+        const props = this.#getScaleProps(true);
+        this.#reconfigureWith(props, () => {
+            const scale = this.#scaleManager.scale;
+            if (scale) {
+                configureDomain(scale, props);
+            }
+        });
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     * @param {() => void} apply
+     */
+    #reconfigureWith(props, apply) {
         const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
@@ -373,10 +403,7 @@ export default class ScaleResolution {
         const domainWasInitialized = this.#isDomainInitialized();
         const previousDomain = scale.domain();
 
-        const props = this.#getScaleProps(true);
-        this.#scaleManager.withDomainNotificationsSuppressed(() => {
-            this.#scaleManager.reconfigureScale(props);
-        });
+        this.#scaleManager.withDomainNotificationsSuppressed(apply);
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -596,7 +623,9 @@ export default class ScaleResolution {
 }
 
 /**
- * Reconfigures scales, starting from the given view.
+ * Reconfigures scale domains, starting from the given view.
+ *
+ * Use this for data-driven updates where only domains need refreshing.
  *
  * TODO: This should be made unnecessary. Collectors should trigger the reconfiguration
  * for those views that get their data from the collector.
@@ -606,7 +635,7 @@ export default class ScaleResolution {
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
  */
-export function reconfigureScales(fromViews) {
+export function reconfigureScaleDomains(fromViews) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
@@ -631,5 +660,5 @@ export function reconfigureScales(fromViews) {
         }
     }
 
-    uniqueResolutions.forEach((resolution) => resolution.reconfigure());
+    uniqueResolutions.forEach((resolution) => resolution.reconfigureDomain());
 }
