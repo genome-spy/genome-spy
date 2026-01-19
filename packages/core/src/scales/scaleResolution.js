@@ -467,6 +467,15 @@ export default class ScaleResolution {
     }
 
     /**
+     * Extracts and unions the data domains of all participating views.
+     *
+     * @return { DomainArray }
+     */
+    getDataDomain() {
+        return this.#domainAggregator.getDataDomain();
+    }
+
+    /**
      * @returns {NumericDomain | ComplexDomain}
      */
     getComplexDomain() {
