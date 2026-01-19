@@ -1,12 +1,13 @@
 // @ts-nocheck
 
-import { describe, expect, test } from "vitest";
-import { createAndInitialize } from "./testUtils.js";
+import { describe, expect, test, vi } from "vitest";
+import { createAndInitialize } from "../view/testUtils.js";
 import createDomain, { toRegularArray as r } from "../utils/domainArray.js";
-import LayerView from "./layerView.js";
-import ConcatView from "./concatView.js";
-import UnitView from "./unitView.js";
+import LayerView from "../view/layerView.js";
+import ConcatView from "../view/concatView.js";
+import UnitView from "../view/unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
+import { reconfigureScaleDomains } from "./scaleResolution.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -336,7 +337,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -372,7 +373,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -404,7 +405,7 @@ describe("Domain handling", () => {
             UnitView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         // FAILS!!!!!!! TODO: FIX!!
@@ -443,7 +444,7 @@ describe("Domain handling", () => {
             LayerView
         );
 
-        /** @param {import("./view.js").default} view */
+        /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
         expect(r(d(view))).toEqual([1, 5]);
@@ -466,7 +467,7 @@ describe("Domain handling", () => {
 
         for (const channel of primaryPositionalChannels) {
             // Extract domain from data
-            view.getScaleResolution(channel).reconfigure();
+            view.getScaleResolution(channel).reconfigureDomain();
         }
 
         const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
@@ -528,7 +529,7 @@ describe("Domain handling", () => {
 
         for (const channel of primaryPositionalChannels) {
             // Extract domain from data
-            view.getScaleResolution(channel).reconfigure();
+            view.getScaleResolution(channel).reconfigureDomain();
         }
 
         const d = /** @param {Channel} channel*/ (channel) =>
@@ -536,6 +537,76 @@ describe("Domain handling", () => {
 
         expect(d("x")).toEqual([2, 3]);
         expect(d("y")).toEqual([2, 3]);
+    });
+
+    test("reconfigureDomain notifies when a non-zoomable domain changes", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: ["a", "b"] },
+                mark: "point",
+                encoding: {
+                    color: { field: "data", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("color");
+        const notify = vi.fn();
+        resolution.addEventListener("domain", notify);
+
+        // Non-obvious: force a domain change on a non-zoomable scale.
+        resolution.getScale().domain(["z"]);
+        resolution.reconfigureDomain();
+
+        expect(notify).toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual(["a", "b"]);
+    });
+
+    test("reconfigureDomain preserves zoomed domains for zoomable scales", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3, 4] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        // Non-obvious: simulate a zoomed domain so the reconfigure path must preserve it.
+        resolution.getScale().domain([2, 3]);
+
+        resolution.reconfigureDomain();
+
+        expect(resolution.scale.domain()).toEqual([2, 3]);
+    });
+
+    test("reconfigureScaleDomains triggers domain-only refresh", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        const spy = vi.spyOn(resolution, "reconfigureDomain");
+
+        reconfigureScaleDomains(view);
+
+        expect(spy).toHaveBeenCalled();
+        spy.mockRestore();
     });
 });
 

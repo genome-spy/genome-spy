@@ -1,6 +1,6 @@
 import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
-import { reconfigureScales } from "../../../view/scaleResolution.js";
+import { reconfigureScaleDomains } from "../../../scales/scaleResolution.js";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.
@@ -71,7 +71,14 @@ export default class SingleAxisLazySource extends DataSource {
      * @protected
      */
     get genome() {
-        return this.scaleResolution.getGenome();
+        const scale = this.scaleResolution.getScale();
+        if ("genome" in scale) {
+            const genome = scale.genome();
+            if (genome) {
+                return genome;
+            }
+        }
+        throw new Error("No genome has been defined!");
     }
 
     /**
@@ -123,6 +130,6 @@ export default class SingleAxisLazySource extends DataSource {
 
         this.complete();
 
-        reconfigureScales(this.view);
+        reconfigureScaleDomains(this.view);
     }
 }

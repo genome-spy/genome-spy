@@ -2,7 +2,7 @@ import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
-import { reconfigureScales } from "../view/scaleResolution.js";
+import { reconfigureScaleDomains } from "../scales/scaleResolution.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
 const inFlightLoads = new WeakMap();
@@ -215,7 +215,7 @@ export function loadViewSubtreeData(
             loadDataSourceOnce(dataSource)
         )
     ).then((results) => {
-        reconfigureScales(subtreeRoot);
+        reconfigureScaleDomains(subtreeRoot);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });

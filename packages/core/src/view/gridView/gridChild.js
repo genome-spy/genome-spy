@@ -145,7 +145,7 @@ export default class GridChild {
             const scaleResolutions = Object.fromEntries(
                 channels.map((channel) => {
                     const resolution = this.view.getScaleResolution(channel);
-                    const scale = resolution?.scale;
+                    const scale = resolution?.getScale();
 
                     if (!scale || !isContinuous(scale.type)) {
                         throw new Error(
@@ -222,7 +222,7 @@ export default class GridChild {
                 const np = view.coords.normalizePoint(point.x, point.y, true);
 
                 for (const channel of channels) {
-                    const scale = scaleResolutions[channel].scale;
+                    const scale = scaleResolutions[channel].getScale();
                     // @ts-ignore
                     const val = scale.invert(channel == "x" ? np.x : np.y);
                     inverted[channel] =
@@ -251,7 +251,7 @@ export default class GridChild {
                         /** @type {number} */ val
                     ) => {
                         if (val == null) return null;
-                        return scaleResolutions[channel].scale(val);
+                        return scaleResolutions[channel].getScale()(val);
                     };
                     const px = getCoord("x", xVal) ?? i;
                     const py = getCoord("y", yVal) ?? i;
@@ -490,7 +490,7 @@ export default class GridChild {
         const { view, axes, gridLines } = this;
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          */
         const getAxisPropsWithDefaults = (r, channel) => {
@@ -531,7 +531,7 @@ export default class GridChild {
         };
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {import("../view.js").default} axisParent
          */
@@ -558,7 +558,7 @@ export default class GridChild {
         };
 
         /**
-         * @param {import("../axisResolution.js").default} r
+         * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
          * @param {import("../view.js").default} axisParent
          */

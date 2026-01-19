@@ -602,7 +602,9 @@ export default class Mark {
 
                         // TODO: High precision scales
                         const { attributeType } = getAttributeAndArrayTypes(
-                            this.unitView.getScaleResolution(channel).scale,
+                            this.unitView
+                                .getScaleResolution(channel)
+                                .getScale(),
                             channel
                         );
 
@@ -1353,7 +1355,7 @@ export default class Mark {
         /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */
         let drawWithRangeEntry;
 
-        const scale = this.unitView.getScaleResolution("x")?.scale;
+        const scale = this.unitView.getScaleResolution("x")?.getScale();
         const continuous = scale && isContinuous(scale.type);
         const domainStartOffset = ["index", "locus"].includes(scale?.type)
             ? -1

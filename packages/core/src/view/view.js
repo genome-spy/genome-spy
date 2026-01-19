@@ -123,12 +123,12 @@ export default class View {
         this.resolutions = {
             /**
              * Channel-specific scale resolutions
-             * @type {Partial<Record<import("../spec/channel.js").ChannelWithScale, import("./scaleResolution.js").default>>}
+             * @type {Partial<Record<import("../spec/channel.js").ChannelWithScale, import("../scales/scaleResolution.js").default>>}
              */
             scale: {},
             /**
              * Channel-specific axis resolutions
-             * @type {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisResolution.js").default>>}
+             * @type {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../scales/axisResolution.js").default>>}
              */
             axis: {},
         };
@@ -276,7 +276,7 @@ export default class View {
 
             const scale = this.getScaleResolution(
                 dimension == "width" ? "x" : "y"
-            )?.scale;
+            )?.getScale();
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
@@ -843,7 +843,7 @@ function createViewOpacityFunction(view) {
         } else if (isDynamicOpacity(opacityDef)) {
             /** @type {(channel: import("../spec/channel.js").ChannelWithScale) => any} */
             const getScale = (channel) => {
-                const scale = view.getScaleResolution(channel)?.scale;
+                const scale = view.getScaleResolution(channel)?.getScale();
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
                     return scale;

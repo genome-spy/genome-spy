@@ -855,7 +855,7 @@ export default class GridView extends ContainerView {
  * @returns
  */
 function getZoomableResolutions(view) {
-    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, Set<import("../scaleResolution.js").default>>} */
+    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, Set<import("../../scales/scaleResolution.js").default>>} */
     const resolutions = {
         x: new Set(),
         y: new Set(),

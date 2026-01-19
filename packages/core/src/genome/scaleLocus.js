@@ -1,6 +1,8 @@
 import { tickStep } from "d3-array";
 import { format as d3format } from "d3-format";
+
 import scaleIndex from "./scaleIndex.js";
+import { isChromosomalLocus, isChromosomalLocusInterval } from "./genome.js";
 
 export default function scaleLocus() {
     /** @type {import("./scaleLocus.js").ScaleLocus} */
@@ -98,4 +100,78 @@ export default function scaleLocus() {
  */
 export function isScaleLocus(scale) {
     return scale.type == "locus";
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @param {number} value
+ * @returns {number | import("./genome.js").ChromosomalLocus}
+ */
+export function toComplexValue(scaleOrGenome, value) {
+    const genome = resolveGenome(scaleOrGenome);
+    return genome ? genome.toChromosomal(value) : value;
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @param {number | import("./genome.js").ChromosomalLocus} complex
+ * @returns {number}
+ */
+export function fromComplexValue(scaleOrGenome, complex) {
+    const genome = resolveGenome(scaleOrGenome);
+    if (genome && isChromosomalLocus(complex)) {
+        return genome.toContinuous(complex.chrom, complex.pos);
+    }
+    return /** @type {number} */ (complex);
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @param {import("../spec/scale.js").ScalarDomain | import("../spec/scale.js").ComplexDomain} interval
+ * @returns {number[]}
+ */
+export function fromComplexInterval(scaleOrGenome, interval) {
+    const genome = resolveGenome(scaleOrGenome);
+    if (genome && isChromosomalLocusInterval(interval)) {
+        return genome.toContinuousInterval(interval);
+    }
+    return /** @type {number[]} */ (interval);
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @param {import("../spec/scale.js").ScalarDomain | import("../spec/scale.js").ComplexDomain} interval
+ * @returns {import("../spec/scale.js").ScalarDomain | import("../spec/scale.js").ComplexDomain}
+ */
+export function toComplexInterval(scaleOrGenome, interval) {
+    const genome = resolveGenome(scaleOrGenome);
+    return genome
+        ? genome.toChromosomalInterval(/** @type {number[]} */ (interval))
+        : interval;
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @returns {number[]}
+ */
+export function getGenomeExtent(scaleOrGenome) {
+    const genome = resolveGenome(scaleOrGenome);
+    if (!genome) {
+        throw new Error("No genome has been defined!");
+    }
+    return genome.getExtent();
+}
+
+/**
+ * @param {import("./genome.js").default | { genome?: () => import("./genome.js").default } | undefined} scaleOrGenome
+ * @returns {import("./genome.js").default | undefined}
+ */
+function resolveGenome(scaleOrGenome) {
+    if (scaleOrGenome && "toChromosomal" in scaleOrGenome) {
+        return scaleOrGenome;
+    }
+    if (scaleOrGenome && "genome" in scaleOrGenome) {
+        return scaleOrGenome.genome();
+    }
+    return undefined;
 }
