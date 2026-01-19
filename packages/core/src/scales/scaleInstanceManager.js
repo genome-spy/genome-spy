@@ -59,7 +59,7 @@ export default class ScaleInstanceManager {
      */
     createScale(props) {
         const scale = createScale({
-            ...this.#stripAssembly(props),
+            ...this.#stripNonScaleProps(props),
             range: undefined,
         });
         /** @type {ScaleWithProps} */ (scale).props = props;
@@ -105,7 +105,7 @@ export default class ScaleInstanceManager {
         }
 
         configureScale(
-            { ...this.#stripAssembly(props), range: undefined },
+            { ...this.#stripNonScaleProps(props), range: undefined },
             scale
         );
         scale.props = props;
@@ -116,7 +116,7 @@ export default class ScaleInstanceManager {
      * @param {import("../spec/scale.js").Scale} props
      * @returns {import("../spec/scale.js").Scale}
      */
-    #stripAssembly(props) {
+    #stripNonScaleProps(props) {
         if (!("assembly" in props)) {
             return props;
         }
@@ -137,54 +137,29 @@ export default class ScaleInstanceManager {
         }
 
         const props = scale.props;
-        const range = props.range;
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
 
-        if (!range || !isArray(range)) {
+        const resolved = resolveRange({
+            range: props.range,
+            reverse: props.reverse,
+            createExpression: (expr) =>
+                this.#getParamMediator().createExpression(expr),
+            registerExpr: (fn) => this.#rangeExprRefListeners.add(fn),
+        });
+
+        if (!resolved) {
             // Named ranges?
             return;
         }
 
-        /**
-         * @param {T} array
-         * @param {boolean} reverse
-         * @returns {T}
-         * @template T
-         */
-        const flip = (array, reverse) =>
-            // @ts-ignore TODO: Fix the type (should be a generic union array type)
-            reverse ? array.slice().reverse() : array;
-
-        if (range.some(isExprRef)) {
-            /** @type {(() => void)[]} */
-            let expressions;
-
-            const evaluateAndSet = () => {
-                scale.range(
-                    flip(
-                        expressions.map((expr) => expr()),
-                        props.reverse
-                    )
-                );
-            };
-
-            expressions = range.map((elem) => {
-                if (isExprRef(elem)) {
-                    const fn = this.#getParamMediator().createExpression(
-                        elem.expr
-                    );
-                    fn.addListener(evaluateAndSet);
-                    this.#rangeExprRefListeners.add(fn);
-                    return () => fn(null);
-                } else {
-                    return () => elem;
-                }
-            });
-
-            evaluateAndSet();
-        } else {
-            scale.range(flip(range, props.reverse));
+        if ("values" in resolved) {
+            scale.range(/** @type {any[]} */ (resolved.values));
+            return;
         }
+
+        const apply = () => scale.range(resolved.evaluate());
+        resolved.setup(apply);
+        apply();
     }
 
     #wrapRange() {
@@ -209,4 +184,63 @@ export default class ScaleInstanceManager {
         // The initial setting
         notify();
     }
+}
+
+/**
+ * @param {object} options
+ * @param {import("../spec/scale.js").Scale["range"]} options.range
+ * @param {boolean | undefined} options.reverse
+ * @param {(expr: string) => import("../view/paramMediator.js").ExprRefFunction} options.createExpression
+ * @param {(fn: import("../view/paramMediator.js").ExprRefFunction) => void} options.registerExpr
+ * @returns {{
+ *   dynamic: true,
+ *   evaluate: () => any[],
+ *   setup: (listener: () => void) => void
+ * } | {
+ *   dynamic: false,
+ *   values: any[]
+ * } | null}
+ */
+function resolveRange({ range, reverse, createExpression, registerExpr }) {
+    if (!range || !isArray(range)) {
+        return null;
+    }
+
+    /**
+     * @param {T} array
+     * @param {boolean} reverseFlag
+     * @returns {T}
+     * @template T
+     */
+    const flip = (array, reverseFlag) =>
+        // @ts-ignore TODO: Fix the type (should be a generic union array type)
+        reverseFlag ? array.slice().reverse() : array;
+
+    if (range.some(isExprRef)) {
+        /** @type {(() => any)[]} */
+        let expressions;
+        const evaluate = () =>
+            flip(
+                expressions.map((expr) => expr()),
+                reverse
+            );
+        const setup = (/** @type {() => void} */ listener) => {
+            expressions = range.map((elem) => {
+                if (isExprRef(elem)) {
+                    const fn = createExpression(elem.expr);
+                    fn.addListener(listener);
+                    registerExpr(fn);
+                    return () => fn(null);
+                }
+                return () => elem;
+            });
+        };
+
+        return { dynamic: true, evaluate, setup };
+    }
+
+    return {
+        dynamic: false,
+        values: flip(range, reverse),
+    };
 }

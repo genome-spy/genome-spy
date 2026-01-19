@@ -91,4 +91,24 @@ describe("ScaleInteractionController", () => {
 
         expect(controller.getZoomExtent()).toEqual([1, 4]);
     });
+
+    test("zoom extent falls back to genome extent for locus scales", () => {
+        const scale = createLinearScale([0, 10], {
+            type: "locus",
+            zoom: true,
+        });
+        const controller = new ScaleInteractionController({
+            getScale: () => scale,
+            getAnimator: () => createAnimator(),
+            getInitialDomainSnapshot: () => [0, 10],
+            getResetDomain: () => [0, 10],
+            fromComplexInterval: /** @returns {number[]} */ (
+                /** @type {any} */ interval
+            ) => interval,
+            getGenomeExtent: () => [0, 12],
+            notifyDomainChange: () => undefined,
+        });
+
+        expect(controller.getZoomExtent()).toEqual([0, 12]);
+    });
 });

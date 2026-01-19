@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import ScaleDomainAggregator from "./scaleDomainAggregator.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
@@ -56,6 +56,36 @@ describe("ScaleDomainAggregator", () => {
     test("locus defaults to genome extent when no domain is configured", () => {
         const aggregator = createAggregator([], "locus");
         expect(aggregator.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
+    });
+
+    test("configured domains use complex conversion", () => {
+        const fromComplexInterval = vi.fn(
+            (interval) => /** @type {number[]} */ (interval)
+        );
+        const aggregator = new ScaleDomainAggregator({
+            getMembers: () =>
+                new Set(
+                    /** @type {any} */ ([
+                        {
+                            channelDef: {
+                                type: "quantitative",
+                                scale: { domain: [0, 5] },
+                            },
+                        },
+                    ])
+                ),
+            getType: () => "quantitative",
+            getLocusExtent: () => [0, 10],
+            fromComplexInterval,
+        });
+
+        aggregator.getConfiguredDomain();
+        expect(fromComplexInterval).toHaveBeenCalledWith([0, 5]);
+    });
+
+    test("default domain is empty when no data is requested", () => {
+        const aggregator = createAggregator([], "quantitative");
+        expect(aggregator.getConfiguredOrDefaultDomain()).toEqual([]);
     });
 
     test("captures initial domain for continuous scales", () => {

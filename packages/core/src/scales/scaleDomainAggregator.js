@@ -62,11 +62,11 @@ export default class ScaleDomainAggregator {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
             this.getConfiguredDomain() ??
-            (this.#getType() == LOCUS
-                ? this.#getLocusExtent()
-                : extractDataDomain
-                  ? this.getDataDomain()
-                  : [])
+            resolveDefaultDomain(
+                this.#getType(),
+                this.#getLocusExtent,
+                extractDataDomain ? this.getDataDomain() : undefined
+            )
         );
     }
 
@@ -76,21 +76,10 @@ export default class ScaleDomainAggregator {
      * @return {DomainArray}
      */
     getConfiguredDomain() {
-        const domains = Array.from(this.#members)
-            .map((member) => member.channelDef)
-            .filter((channelDef) => channelDef.scale?.domain)
-            .map((channelDef) =>
-                // TODO: Handle ExprRefs and Param in domain
-                createDomain(
-                    channelDef.type,
-                    // Chrom/pos must be linearized first
-                    this.#fromComplexInterval(channelDef.scale.domain)
-                )
-            );
-
-        if (domains.length > 0) {
-            return domains.reduce((acc, curr) => acc.extendAll(curr));
-        }
+        return resolveConfiguredDomain(
+            this.#members,
+            this.#fromComplexInterval
+        );
     }
 
     /**
@@ -99,12 +88,7 @@ export default class ScaleDomainAggregator {
      * @return {DomainArray}
      */
     getDataDomain() {
-        return Array.from(this.#members)
-            .map((member) =>
-                member.dataDomainSource?.(member.channel, this.#getType())
-            )
-            .filter((domain) => !!domain)
-            .reduce((acc, curr) => acc.extendAll(curr));
+        return resolveDataDomain(this.#members, this.#getType);
     }
 
     /**
@@ -127,4 +111,52 @@ export default class ScaleDomainAggregator {
 
         return false;
     }
+}
+
+/**
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @returns {DomainArray | undefined}
+ */
+function resolveConfiguredDomain(members, fromComplexInterval) {
+    const domains = Array.from(members)
+        .map((member) => member.channelDef)
+        .filter((channelDef) => channelDef.scale?.domain)
+        .map((channelDef) =>
+            // TODO: Handle ExprRefs and Param in domain
+            createDomain(
+                channelDef.type,
+                // Chrom/pos must be linearized first
+                fromComplexInterval(channelDef.scale.domain)
+            )
+        );
+
+    if (domains.length > 0) {
+        return domains.reduce((acc, curr) => acc.extendAll(curr));
+    }
+}
+
+/**
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {() => import("../spec/channel.js").Type} getType
+ * @returns {DomainArray}
+ */
+function resolveDataDomain(members, getType) {
+    return Array.from(members)
+        .map((member) => member.dataDomainSource?.(member.channel, getType()))
+        .filter((domain) => !!domain)
+        .reduce((acc, curr) => acc.extendAll(curr));
+}
+
+/**
+ * @param {import("../spec/channel.js").Type} type
+ * @param {() => number[]} getLocusExtent
+ * @param {DomainArray | undefined} dataDomain
+ * @returns {any[]}
+ */
+function resolveDefaultDomain(type, getLocusExtent, dataDomain) {
+    if (type == LOCUS) {
+        return getLocusExtent();
+    }
+    return dataDomain ?? [];
 }

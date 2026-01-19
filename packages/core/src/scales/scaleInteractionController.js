@@ -79,20 +79,13 @@ export default class ScaleInteractionController {
     getZoomExtent() {
         const scale = this.#getScale();
         const zoom = scale.props.zoom;
-
-        if (isZoomParams(zoom)) {
-            if (isArray(zoom.extent)) {
-                return this.#fromComplexInterval(zoom.extent);
-            }
-        }
-
-        if (zoom && scale.props.type == "locus") {
-            return this.#getGenomeExtent();
-        }
-
-        // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
-        // Would behave similarly to Vega-Lite, which doesn't have constraints.
-        return this.#getInitialDomainSnapshot();
+        return resolveZoomExtent(
+            scale,
+            zoom,
+            this.#fromComplexInterval,
+            this.#getGenomeExtent,
+            this.#getInitialDomainSnapshot
+        );
     }
 
     isZoomable() {
@@ -133,52 +126,13 @@ export default class ScaleInteractionController {
 
         const scale = this.#getScale();
         const oldDomain = scale.domain();
-        let newDomain = [...oldDomain];
-
-        /** @type {number} */
-        // @ts-ignore
-        let anchor = scale.invert(scaleAnchor);
-
-        if (scale.props.reverse) {
-            pan = -pan;
-        }
-
-        if ("align" in scale) {
-            anchor += scale.align();
-        }
-
-        // TODO: symlog
-        switch (scale.type) {
-            case "linear":
-            case "index":
-            case "locus":
-                newDomain = panLinear(newDomain, pan || 0);
-                newDomain = zoomLinear(newDomain, anchor, scaleFactor);
-                break;
-            case "log":
-                newDomain = panLog(newDomain, pan || 0);
-                newDomain = zoomLog(newDomain, anchor, scaleFactor);
-                break;
-            case "pow":
-            case "sqrt": {
-                const powScale =
-                    /** @type {import("d3-scale").ScalePower<number, number>} */ (
-                        scale
-                    );
-                newDomain = panPow(newDomain, pan || 0, powScale.exponent());
-                newDomain = zoomPow(
-                    newDomain,
-                    anchor,
-                    scaleFactor,
-                    powScale.exponent()
-                );
-                break;
-            }
-            default:
-                throw new Error(
-                    "Zooming is not implemented for: " + scale.type
-                );
-        }
+        let newDomain = applyZoomTransform(
+            scale,
+            oldDomain,
+            scaleFactor,
+            scaleAnchor,
+            pan
+        );
 
         // TODO: Use the zoomTo method. Move clamping etc there.
         const zoomExtent = this.getZoomExtent();
@@ -290,6 +244,93 @@ export default class ScaleInteractionController {
 
         return 1.0;
     }
+}
+
+/**
+ * @param {ScaleWithProps} scale
+ * @param {ZoomParams | boolean | undefined} zoom
+ * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @param {() => number[]} getGenomeExtent
+ * @param {() => number[]} getInitialDomainSnapshot
+ * @returns {number[]}
+ */
+function resolveZoomExtent(
+    scale,
+    zoom,
+    fromComplexInterval,
+    getGenomeExtent,
+    getInitialDomainSnapshot
+) {
+    if (isZoomParams(zoom)) {
+        if (isArray(zoom.extent)) {
+            return fromComplexInterval(zoom.extent);
+        }
+    }
+
+    if (zoom && scale.props.type == "locus") {
+        return getGenomeExtent();
+    }
+
+    // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
+    // Would behave similarly to Vega-Lite, which doesn't have constraints.
+    return getInitialDomainSnapshot();
+}
+
+/**
+ * @param {ScaleWithProps} scale
+ * @param {number[]} domain
+ * @param {number} scaleFactor
+ * @param {number} scaleAnchor
+ * @param {number} pan
+ * @returns {number[]}
+ */
+function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
+    let newDomain = [...domain];
+
+    /** @type {number} */
+    // @ts-ignore
+    let anchor = scale.invert(scaleAnchor);
+
+    if (scale.props.reverse) {
+        pan = -pan;
+    }
+
+    if ("align" in scale) {
+        anchor += scale.align();
+    }
+
+    // TODO: symlog
+    switch (scale.type) {
+        case "linear":
+        case "index":
+        case "locus":
+            newDomain = panLinear(newDomain, pan || 0);
+            newDomain = zoomLinear(newDomain, anchor, scaleFactor);
+            break;
+        case "log":
+            newDomain = panLog(newDomain, pan || 0);
+            newDomain = zoomLog(newDomain, anchor, scaleFactor);
+            break;
+        case "pow":
+        case "sqrt": {
+            const powScale =
+                /** @type {import("d3-scale").ScalePower<number, number>} */ (
+                    scale
+                );
+            newDomain = panPow(newDomain, pan || 0, powScale.exponent());
+            newDomain = zoomPow(
+                newDomain,
+                anchor,
+                scaleFactor,
+                powScale.exponent()
+            );
+            break;
+        }
+        default:
+            throw new Error("Zooming is not implemented for: " + scale.type);
+    }
+
+    return newDomain;
 }
 
 /**
