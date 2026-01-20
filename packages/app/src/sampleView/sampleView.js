@@ -40,6 +40,7 @@ import GridChild, {
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { aggregationOps } from "./aggregationOps.js";
+import { formatInterval } from "./intervalFormatting.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
@@ -952,6 +953,9 @@ export default class SampleView extends ContainerView {
                         selectionInterval
                     )
                   : undefined;
+        const selectionIntervalLabel = selectionIntervalComplex
+            ? formatInterval(selectionInfo.view, selectionIntervalComplex)
+            : undefined;
 
         const uniqueViewNames = findUniqueViewNames(
             this.getLayoutAncestors().at(-1)
@@ -979,12 +983,8 @@ export default class SampleView extends ContainerView {
             this.makePeekMenuItem(),
             DIVIDER,
             {
-                label: selectionInterval
-                    ? `Interval: ${locusOrNumberToString(
-                          selectionIntervalComplex[0]
-                      )} – ${locusOrNumberToString(
-                          selectionIntervalComplex[1]
-                      )}`
+                label: selectionIntervalLabel
+                    ? `Interval: ${selectionIntervalLabel}`
                     : resolution.type === "locus"
                       ? `Locus: ${locusOrNumberToString(complexX)}`
                       : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,

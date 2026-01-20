@@ -2,9 +2,13 @@ import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
-import { formatAggregationExpression } from "./aggregationOps.js";
+import {
+    formatAggregationExpression,
+    formatAggregationLabel,
+} from "./aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
+import { formatInterval } from "./intervalFormatting.js";
 
 /**
  *
@@ -29,6 +33,10 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
                   specifier.field
               )
             : specifier.field;
+    const attributeTitle =
+        "aggregation" in specifier
+            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            : html`<em class="attribute">${specifier.field}</em>`;
 
     const accessor = createViewAttributeAccessor(view, specifier);
     const defaultValuesProvider = createDefaultValuesProvider(accessor);
@@ -76,16 +84,12 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         name: attributeLabel,
         attribute: attributeIdentifier,
         // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
-        title: html` <em class="attribute">${attributeLabel}</em>
+        title: html`${attributeTitle}
             <span class="viewTitle">(${view.getTitleText() ?? view.name})</span>
             ${"interval" in specifier
                 ? html`in
                       <span class="interval"
-                          >${locusOrNumberToString(specifier.interval[0])}</span
-                      >
-                      –
-                      <span class="interval"
-                          >${locusOrNumberToString(specifier.interval[1])}</span
+                          >${formatInterval(view, specifier.interval)}</span
                       >`
                 : html`at
                       <span class="locus"
@@ -102,6 +106,16 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 }
 
 /**
+ * @param {import("./types.js").AggregationOp} op
+ * @param {string} field
+ * @returns {import("lit").TemplateResult}
+ */
+function formatAggregationTitle(op, field) {
+    return html`${formatAggregationLabel(op)}(<em class="attribute">${field}</em
+        >)`;
+}
+
+/**
  * @param {import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} value
  * @returns {string}
  */
@@ -111,3 +125,9 @@ function formatLocusValue(value) {
     }
     return String(value);
 }
+
+/**
+ * @param {import("@genome-spy/core/view/unitView.js").default} view
+ * @param {import("./types.js").Interval} interval
+ * @returns {string}
+ */
