@@ -8,6 +8,7 @@ export const aggregationOps = [
     { op: "min", label: "Min" },
     { op: "max", label: "Max" },
     { op: "weightedMean", label: "Weighted mean" },
+    { op: "variance", label: "Variance" },
 ];
 
 /**
@@ -22,6 +23,8 @@ export function formatAggregationLabel(op) {
             return op;
         case "weightedMean":
             return "weighted mean";
+        case "variance":
+            return "variance";
         default:
             throw new Error("Unknown aggregation op: " + op);
     }

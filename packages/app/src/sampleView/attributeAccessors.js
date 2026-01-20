@@ -5,6 +5,7 @@ import {
     aggregateCount,
     aggregateMax,
     aggregateMin,
+    aggregateVariance,
     aggregateWeightedMean,
 } from "./attributeAggregation.js";
 
@@ -89,6 +90,7 @@ export function createViewAttributeAccessor(view, specifier) {
         interval[0] <= interval[1] ? interval : [interval[1], interval[0]]
     );
     const op = specifier.aggregation.op;
+    const needsWeights = op === "weightedMean" || op === "variance";
 
     return (sampleId) => {
         const data = collector.facetBatches.get(asArray(sampleId));
@@ -112,14 +114,14 @@ export function createViewAttributeAccessor(view, specifier) {
                         (x2 >= start && x2 <= end)
                     ) {
                         values.push(valueAccessor(datum));
-                        if (op === "weightedMean") {
+                        if (needsWeights) {
                             weights.push(1);
                         }
                     }
                 } else if (hitTestMode === "encloses") {
                     if (x >= start && x2 <= end) {
                         values.push(valueAccessor(datum));
-                        if (op === "weightedMean") {
+                        if (needsWeights) {
                             weights.push(x2 - x);
                         }
                     }
@@ -128,7 +130,7 @@ export function createViewAttributeAccessor(view, specifier) {
                     const overlapEnd = x2 < end ? x2 : end;
                     if (overlapEnd > overlapStart) {
                         values.push(valueAccessor(datum));
-                        if (op === "weightedMean") {
+                        if (needsWeights) {
                             weights.push(overlapEnd - overlapStart);
                         }
                     }
@@ -140,7 +142,7 @@ export function createViewAttributeAccessor(view, specifier) {
                 const x = /** @type {number} */ (xAccessor(datum));
                 if (x >= start && x <= end) {
                     values.push(valueAccessor(datum));
-                    if (op === "weightedMean") {
+                    if (needsWeights) {
                         weights.push(1);
                     }
                 }
@@ -156,6 +158,8 @@ export function createViewAttributeAccessor(view, specifier) {
                 return aggregateMax(values);
             case "weightedMean":
                 return aggregateWeightedMean(values, weights);
+            case "variance":
+                return aggregateVariance(values, weights);
             default:
                 throw new Error("Unknown aggregation op: " + op);
         }

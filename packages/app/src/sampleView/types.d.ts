@@ -15,7 +15,12 @@ export type IntervalPoint = number | ChromosomalLocus;
 
 export type Interval = [IntervalPoint, IntervalPoint];
 
-export type AggregationOp = "min" | "max" | "weightedMean" | "count";
+export type AggregationOp =
+    | "min"
+    | "max"
+    | "weightedMean"
+    | "variance"
+    | "count";
 
 export interface AggregationSpec {
     op: AggregationOp;

@@ -50,6 +50,36 @@ export function aggregateWeightedMean(values, weights) {
 }
 
 /**
+ * Computes a (possibly weighted) population variance.
+ *
+ * @param {number[]} values
+ * @param {number[]} weights
+ * @returns {number}
+ */
+export function aggregateVariance(values, weights) {
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (let i = 0; i < values.length; i++) {
+        const weight = weights[i];
+        weightedSum += values[i] * weight;
+        weightSum += weight;
+    }
+
+    if (weightSum === 0) {
+        return;
+    }
+
+    const mean = weightedSum / weightSum;
+    let varianceSum = 0;
+    for (let i = 0; i < values.length; i++) {
+        const diff = values[i] - mean;
+        varianceSum += weights[i] * diff * diff;
+    }
+
+    return varianceSum / weightSum;
+}
+
+/**
  * @param {number[]} values
  * @returns {number}
  */
