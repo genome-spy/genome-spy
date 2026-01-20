@@ -7,8 +7,8 @@ import {
     findUniqueViewNames,
 } from "@genome-spy/core/view/viewUtils.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
-import { aggregationOps } from "./aggregationOps.js";
-import { formatInterval } from "./intervalFormatting.js";
+import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
+import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 
 /**
  * @typedef {Object} FieldInfo

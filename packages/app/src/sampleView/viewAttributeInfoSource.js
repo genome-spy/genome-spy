@@ -5,10 +5,10 @@ import { html } from "lit";
 import {
     formatAggregationExpression,
     formatAggregationLabel,
-} from "./aggregationOps.js";
-import { createViewAttributeAccessor } from "./attributeAccessors.js";
+} from "./attributeAggregation/aggregationOps.js";
+import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
-import { formatInterval } from "./intervalFormatting.js";
+import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 
 /**
  *
@@ -136,9 +136,3 @@ function formatLocusValue(value) {
     }
     return String(value);
 }
-
-/**
- * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {import("./types.js").Interval} interval
- * @returns {string}
- */

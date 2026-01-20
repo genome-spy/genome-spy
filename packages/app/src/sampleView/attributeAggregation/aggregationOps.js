@@ -1,5 +1,5 @@
 /**
- * @typedef {import("./types.js").AggregationOp} AggregationOp
+ * @typedef {import("../types.js").AggregationOp} AggregationOp
  */
 
 /** @typedef {{ op: AggregationOp, label: string, description: string }} AggregationOpInfo */

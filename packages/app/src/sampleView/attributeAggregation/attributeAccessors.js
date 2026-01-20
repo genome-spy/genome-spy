@@ -1,6 +1,6 @@
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
-import { createDatumAtAccessor } from "./datumLookup.js";
+import { createDatumAtAccessor } from "../datumLookup.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -32,7 +32,7 @@ function toScalar(scaleResolution, value) {
 
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
- * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+ * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
  * @returns {[import("@genome-spy/core/spec/channel.js").Scalar, import("@genome-spy/core/spec/channel.js").Scalar]}
  */
 function normalizeInterval(scaleResolution, specifier) {
@@ -49,15 +49,15 @@ function normalizeInterval(scaleResolution, specifier) {
 
 /**
  * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
- * @returns {import("./types.js").AttributeInfo["accessor"]}
+ * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
+ * @returns {import("../types.js").AttributeInfo["accessor"]}
  */
 /**
  * Builds a per-sample accessor for point or interval-based view attributes.
  *
  * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
- * @returns {import("./types.js").AttributeInfo["accessor"]}
+ * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
+ * @returns {import("../types.js").AttributeInfo["accessor"]}
  */
 export function createViewAttributeAccessor(view, specifier) {
     const xType = /** @type {any} */ (view.getEncoding()?.x)?.type;

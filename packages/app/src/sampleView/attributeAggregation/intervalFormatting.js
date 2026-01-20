@@ -3,7 +3,7 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 
 /**
  * @param {import("@genome-spy/core/view/view.js").default} view
- * @param {import("./types.js").Interval} interval
+ * @param {import("../types.js").Interval} interval
  * @returns {string}
  */
 export function formatInterval(view, interval) {
