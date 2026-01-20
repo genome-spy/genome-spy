@@ -40,6 +40,9 @@ export interface AttributeInfo {
     /** More detailed name with optional formatting */
     title?: string | import("lit").TemplateResult;
 
+    /** Formatted attribute name for context menus (e.g., with selective emphasis). */
+    emphasizedName?: string | import("lit").TemplateResult;
+
     /** Function that maps a sampleId to an attribute value */
     accessor: (sampleId: string, sampleHierarchy: SampleHierarchy) => any;
 

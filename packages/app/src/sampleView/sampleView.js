@@ -1016,6 +1016,7 @@ export default class SampleView extends ContainerView {
             }
 
             if (selectionInterval) {
+                /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
                 const aggregationItems = [
                     { label: "Interval aggregation", type: "header" },
                     ...aggregationOps.map((op) => {

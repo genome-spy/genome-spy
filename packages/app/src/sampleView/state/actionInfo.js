@@ -42,7 +42,7 @@ export function formatSet(values, braces = true) {
  * @typedef {Object} ActionHandlerContext
  * @property {any} payload
  * @property {Object} template
- * @property {string} attributeName
+ * @property {string | import("lit").TemplateResult} attributeName
  * @property {string | import("lit").TemplateResult} attributeTitle
  */
 
@@ -73,10 +73,7 @@ const actionHandlers = {
 
     retainFirstOfEach: ({ template, attributeName, attributeTitle }) => ({
         ...template,
-        title: html`
-            Retain the first sample of each
-            <em>${attributeName}</em>
-        `,
+        title: html` Retain the first sample of each ${attributeName} `,
         provenanceTitle: html`
             Retain the first sample of each ${attributeTitle}
         `,
@@ -91,8 +88,7 @@ const actionHandlers = {
     }) => ({
         ...template,
         title: html`
-            Retain first <strong>n</strong> categories of
-            <em>${attributeName}</em>...
+            Retain first <strong>n</strong> categories of ${attributeName}...
         `,
         provenanceTitle: html`
             Retain first <strong>${payload.n}</strong> categories of
@@ -118,7 +114,7 @@ const actionHandlers = {
 
         return {
             ...template,
-            title: makeTitle(html` <em>${attributeName}</em> `),
+            title: makeTitle(attributeName),
             provenanceTitle: makeTitle(attributeTitle),
             icon: payload.remove ? faTrashAlt : faFilter,
         };
@@ -141,7 +137,7 @@ const actionHandlers = {
 
         return {
             ...template,
-            title: makeTitle(html` <em>${attributeName}</em> `),
+            title: makeTitle(attributeName),
             provenanceTitle: makeTitle(attributeTitle),
             icon: faFilter,
         };
@@ -221,10 +217,7 @@ const actionHandlers = {
 
     retainMatched: ({ template, attributeName, attributeTitle }) => ({
         ...template,
-        title: html`
-            Retain group-wise matched samples using
-            <em>${attributeName}</em>
-        `,
+        title: html` Retain group-wise matched samples using ${attributeName} `,
         provenanceTitle: html`
             Retain group-wise matched samples using ${attributeTitle}
         `,
@@ -248,9 +241,12 @@ export function getActionInfo(action, getAttributeInfo) {
 
     const attributeInfo =
         payload.attribute && getAttributeInfo(payload.attribute);
-    const attributeName = attributeInfo?.name;
-    const attributeTitle =
-        attributeInfo?.title || html` <em>${attributeName}</em> `;
+    const attributeName =
+        attributeInfo?.emphasizedName ??
+        (attributeInfo?.name
+            ? html` <em>${attributeInfo.name}</em> `
+            : undefined);
+    const attributeTitle = attributeInfo?.title ?? attributeName;
 
     const template = {
         attributeName,

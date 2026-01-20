@@ -33,6 +33,10 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
                   specifier.field
               )
             : specifier.field;
+    const emphasizedName =
+        "aggregation" in specifier
+            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            : html`<em class="attribute">${specifier.field}</em>`;
     const attributeTitle =
         "aggregation" in specifier
             ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
@@ -100,6 +104,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         // TODO: Ensure that there's a type even if it's missing from spec
         type: "type" in channelDef ? channelDef.type : undefined,
         scale,
+        emphasizedName,
     };
 
     return attributeInfo;
