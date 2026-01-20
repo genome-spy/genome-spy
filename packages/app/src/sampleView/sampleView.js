@@ -39,6 +39,7 @@ import GridChild, {
 } from "@genome-spy/core/view/gridView/gridChild.js";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
+import { aggregationOps } from "./aggregationOps.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
@@ -991,14 +992,6 @@ export default class SampleView extends ContainerView {
             }
 
             if (selectionInterval) {
-                /** @type {{ op: import("./types.js").AggregationOp, label: string }[]} */
-                const aggregationOps = [
-                    { op: "count", label: "Count" },
-                    { op: "min", label: "Min" },
-                    { op: "max", label: "Max" },
-                    { op: "weightedMean", label: "Weighted mean" },
-                ];
-
                 const aggregationItems = aggregationOps.map((op) => {
                     /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
                     const specifier = {

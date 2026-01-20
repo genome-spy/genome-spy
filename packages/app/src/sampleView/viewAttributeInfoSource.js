@@ -2,6 +2,7 @@ import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
+import { formatAggregationExpression } from "./aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 
@@ -23,9 +24,10 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 
     const attributeLabel =
         "aggregation" in specifier
-            ? formatAggregationLabel(specifier.aggregation.op) +
-              " " +
-              specifier.field
+            ? formatAggregationExpression(
+                  specifier.aggregation.op,
+                  specifier.field
+              )
             : specifier.field;
 
     const accessor = createViewAttributeAccessor(view, specifier);
@@ -108,21 +110,4 @@ function formatLocusValue(value) {
         return locusOrNumberToString(value);
     }
     return String(value);
-}
-
-/**
- * @param {import("./types.js").AggregationOp} op
- * @returns {string}
- */
-function formatAggregationLabel(op) {
-    switch (op) {
-        case "min":
-        case "max":
-        case "count":
-            return op;
-        case "weightedMean":
-            return "weighted mean";
-        default:
-            throw new Error("Unknown aggregation op: " + op);
-    }
 }
