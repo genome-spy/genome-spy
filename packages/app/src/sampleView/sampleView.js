@@ -963,10 +963,16 @@ export default class SampleView extends ContainerView {
 
         const axisTitle = view.getAxisResolution("x")?.getTitle();
 
-        const fieldInfos = findEncodedFields(view)
+        let fieldInfos = findEncodedFields(view)
             .filter((d) => !["sample", "x", "x2"].includes(d.channel))
             // TODO: Log a warning if the view name is not unique
             .filter((info) => uniqueViewNames.has(info.view.name));
+
+        if (!selectionInterval) {
+            fieldInfos = fieldInfos.filter(
+                (info) => info.view.getEncoding()?.x2
+            );
+        }
 
         // The same field may be used on multiple channels.
         const uniqueFieldInfos = Array.from(
