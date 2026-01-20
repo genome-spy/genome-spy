@@ -2,6 +2,7 @@ import { html } from "lit";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { selectionContainsPoint } from "@genome-spy/core/selection/selection.js";
+import UnitView from "@genome-spy/core/view/unitView.js";
 import {
     findEncodedFields,
     findUniqueViewNames,
@@ -87,10 +88,49 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
 export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
     const uniqueViewNames = findUniqueViewNames(layoutRoot);
 
+    /** @type {import("@genome-spy/core/view/unitView.js").default[]} */
+    const unitViews = [];
+    view.visit((child) => {
+        if (child instanceof UnitView) {
+            unitViews.push(child);
+        }
+    });
+
     let fieldInfos = findEncodedFields(view)
         .filter((d) => !["sample", "x", "x2"].includes(d.channel))
         // TODO: Log a warning if the view name is not unique
-        .filter((info) => uniqueViewNames.has(info.view.name));
+        .filter((info) => info.view.name && uniqueViewNames.has(info.view.name))
+        .filter((info) => info.view.isVisible());
+
+    if (hasInterval) {
+        for (const unitView of unitViews) {
+            if (!unitView.isVisible()) {
+                continue;
+            }
+
+            if (!unitView.name || !uniqueViewNames.has(unitView.name)) {
+                continue;
+            }
+
+            const encoding = unitView.getEncoding();
+            const hasXField = encoding?.x && "field" in encoding.x;
+            const hasNonPositionalField = Object.entries(encoding).some(
+                ([channel, def]) =>
+                    !["sample", "x", "x2"].includes(channel) &&
+                    def &&
+                    "field" in def
+            );
+
+            if (hasXField && !hasNonPositionalField) {
+                fieldInfos.push({
+                    view: unitView,
+                    channel: "x",
+                    field: "Items",
+                    type: "nominal",
+                });
+            }
+        }
+    }
 
     if (!hasInterval) {
         fieldInfos = fieldInfos.filter((info) => info.view.getEncoding()?.x2);
