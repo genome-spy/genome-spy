@@ -1,9 +1,4 @@
-import {
-    findEncodedFields,
-    findUniqueViewNames,
-} from "@genome-spy/core/view/viewUtils.js";
 import ContainerView from "@genome-spy/core/view/containerView.js";
-import { html } from "lit";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -11,7 +6,6 @@ import {
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
-import generateAttributeContextMenu from "./attributeContextMenu.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import createDataSource from "@genome-spy/core/data/sources/dataSourceFactory.js";
@@ -40,9 +34,6 @@ import GridChild, {
 } from "@genome-spy/core/view/gridView/gridChild.js";
 import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
-import { aggregationOps } from "./aggregationOps.js";
-import { formatInterval } from "./intervalFormatting.js";
-import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
@@ -51,13 +42,19 @@ import {
     asSelectionConfig,
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
-    selectionContainsPoint,
 } from "@genome-spy/core/selection/selection.js";
 import {
     METADATA_PATH_SEPARATOR,
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
+import {
+    buildIntervalAggregationMenu,
+    buildPointQueryMenu,
+    formatPointContextLabel,
+    getContextMenuFieldInfos,
+    resolveIntervalSelection,
+} from "./contextMenuBuilder.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -929,60 +926,16 @@ export default class SampleView extends ContainerView {
         const selectionPoint = selectionInfo
             ? this.#getSelectionPoint(selectionInfo.view, event)
             : undefined;
-        const selectionInterval =
-            selectionInfo &&
-            selectionInfo.selection.intervals.x?.length === 2 &&
-            selectionPoint &&
-            selectionContainsPoint(selectionInfo.selection, selectionPoint)
-                ? /** @type {[number, number]} */ (
-                      selectionInfo.selection.intervals.x
-                  )
-                : undefined;
-        const selectionIntervalComplex =
-            selectionInterval &&
-            selectionInfo?.view.getScaleResolution("x")?.type === "locus"
-                ? /** @type {import("./types.js").Interval} */ ([
-                      selectionInfo.view
-                          .getScaleResolution("x")
-                          .toComplex(selectionInterval[0]),
-                      selectionInfo.view
-                          .getScaleResolution("x")
-                          .toComplex(selectionInterval[1]),
-                  ])
-                : selectionInterval
-                  ? /** @type {import("./types.js").Interval} */ (
-                        selectionInterval
-                    )
-                  : undefined;
-        const selectionIntervalLabel = selectionIntervalComplex
-            ? formatInterval(selectionInfo.view, selectionIntervalComplex)
-            : undefined;
+        const {
+            selectionInterval,
+            selectionIntervalComplex,
+            selectionIntervalLabel,
+        } = resolveIntervalSelection(selectionInfo, selectionPoint);
 
-        const uniqueViewNames = findUniqueViewNames(
-            this.getLayoutAncestors().at(-1)
-        );
-
-        const axisTitle = view.getAxisResolution("x")?.getTitle();
-
-        let fieldInfos = findEncodedFields(view)
-            .filter((d) => !["sample", "x", "x2"].includes(d.channel))
-            // TODO: Log a warning if the view name is not unique
-            .filter((info) => uniqueViewNames.has(info.view.name));
-
-        if (!selectionInterval) {
-            fieldInfos = fieldInfos.filter(
-                (info) => info.view.getEncoding()?.x2
-            );
-        }
-
-        // The same field may be used on multiple channels.
-        const uniqueFieldInfos = Array.from(
-            new Map(
-                fieldInfos.map((info) => [
-                    JSON.stringify([info.view.name, info.field]),
-                    info,
-                ])
-            ).values()
+        const uniqueFieldInfos = getContextMenuFieldInfos(
+            view,
+            this.getLayoutAncestors().at(-1),
+            !!selectionInterval
         );
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
@@ -992,9 +945,7 @@ export default class SampleView extends ContainerView {
             {
                 label: selectionIntervalLabel
                     ? `Interval: ${selectionIntervalLabel}`
-                    : resolution.type === "locus"
-                      ? `Locus: ${locusOrNumberToString(complexX)}`
-                      : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
+                    : formatPointContextLabel(view, resolution, complexX),
                 type: "header",
             },
             DIVIDER,
@@ -1017,79 +968,32 @@ export default class SampleView extends ContainerView {
             }
 
             if (selectionInterval) {
-                /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-                const aggregationItems = [
-                    { label: "Interval aggregation", type: "header" },
-                    ...aggregationOps.map((op) => {
-                        /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
-                        const specifier = {
-                            view: fieldInfo.view.name,
-                            field: fieldInfo.field,
-                            interval: selectionIntervalComplex,
-                            aggregation: { op: op.op },
-                        };
-
-                        const attributeInfo =
-                            this.compositeAttributeInfoSource.getAttributeInfo({
-                                type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
-                                specifier,
-                            });
-                        const attributeValue = sample
-                            ? attributeInfo.accessor(
-                                  sample.id,
-                                  this.sampleHierarchy
-                              )
-                            : undefined;
-
-                        return {
-                            label: op.label,
-                            submenu: generateAttributeContextMenu(
-                                html`Using ${op.label.toLowerCase()}(<em
-                                        class="attribute"
-                                        >${fieldInfo.field}</em
-                                    >) over interval...`,
-                                attributeInfo,
-                                attributeValue,
-                                this
-                            ),
-                        };
-                    }),
-                ];
-
                 items.push({
                     label: fieldInfo.field,
-                    submenu: aggregationItems,
+                    submenu: buildIntervalAggregationMenu({
+                        fieldInfo,
+                        selectionIntervalComplex,
+                        sample,
+                        sampleHierarchy: this.sampleHierarchy,
+                        attributeInfoSource: this.compositeAttributeInfoSource,
+                        attributeType: VALUE_AT_LOCUS,
+                        sampleView: this,
+                    }),
                 });
                 continue;
             }
 
-            /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
-            const specifier = {
-                view: fieldInfo.view.name,
-                field: fieldInfo.field,
-                locus: complexX,
-            };
-
-            const attributeInfo =
-                this.compositeAttributeInfoSource.getAttributeInfo({
-                    type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
-                    specifier,
-                });
-
-            const scalarX = sample
-                ? attributeInfo.accessor(sample.id, this.sampleHierarchy)
-                : undefined;
-
             items.push({
                 label: fieldInfo.field,
-                submenu: generateAttributeContextMenu(
-                    null,
-                    attributeInfo,
-                    // TODO: Get the value from data
-                    // But ability to remove undefined is useful too
-                    scalarX,
-                    this
-                ),
+                submenu: buildPointQueryMenu({
+                    fieldInfo,
+                    complexX,
+                    sample,
+                    sampleHierarchy: this.sampleHierarchy,
+                    attributeInfoSource: this.compositeAttributeInfoSource,
+                    attributeType: VALUE_AT_LOCUS,
+                    sampleView: this,
+                }),
             });
         }
 
