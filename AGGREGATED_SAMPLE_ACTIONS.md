@@ -207,8 +207,10 @@ Checkpoint 3:
 Goal: enable brush-driven aggregate selection workflow.
 
 Steps:
-1. Read active brush interval from `gridChild.js` selection state.
-2. Update context menu to show aggregation ops only when a brush is active.
+1. Read active brush interval from selection params in the view hierarchy
+   (single shared interval for the sampleView subtree, excluding sidebar/metadata).
+2. Show aggregation ops only when a brush is active and the context click is
+   inside the brush interval.
 3. Add submenu flow: field → aggregation → sample op.
 
 Checkpoint 4:
