@@ -92,7 +92,7 @@ export function syncFlowHandles(root, canonicalBySource) {
  *
  * @param {import("../view/view.js").default} subtreeRoot
  * @param {import("./dataFlow.js").default} flow
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  * @param {(view: import("../view/view.js").default) => boolean} [viewInitializationPredicate]
  * @returns {{
  *     dataFlow: import("./dataFlow.js").default,
@@ -104,11 +104,11 @@ export function syncFlowHandles(root, canonicalBySource) {
 export function initializeViewSubtree(
     subtreeRoot,
     flow,
-    viewPredicate,
+    viewFilter,
     viewInitializationPredicate
 ) {
     const shouldInitializeView = viewInitializationPredicate ?? (() => true);
-    const subtreeViews = collectSubtreeViews(subtreeRoot, viewPredicate);
+    const subtreeViews = collectSubtreeViews(subtreeRoot, viewFilter);
     const viewsToInitialize = subtreeViews.filter(shouldInitializeView);
     if (viewsToInitialize.length === 0) {
         return {
@@ -126,7 +126,7 @@ export function initializeViewSubtree(
 
     let dataFlow;
     try {
-        dataFlow = buildDataFlow(subtreeRoot, flow, viewPredicate, (view) =>
+        dataFlow = buildDataFlow(subtreeRoot, flow, viewFilter, (view) =>
             viewsToInitializeSet.has(view)
         );
         const canonicalBySource = optimizeDataFlow(dataFlow);
@@ -198,17 +198,17 @@ export function initializeViewSubtree(
  * This includes sources that are overridden deeper in the hierarchy.
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} subtreeRoot
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  * @returns {Set<import("./sources/dataSource.js").default>}
  */
-export function collectViewSubtreeDataSources(subtreeRoot, viewPredicate) {
+export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
     const subtreeViews = Array.isArray(subtreeRoot)
         ? subtreeRoot
-        : collectSubtreeViews(subtreeRoot, viewPredicate);
+        : collectSubtreeViews(subtreeRoot, viewFilter);
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     for (const view of subtreeViews) {
-        if (viewPredicate && !viewPredicate(view)) {
+        if (viewFilter && !viewFilter(view)) {
             continue;
         }
         // Walk up to the nearest view that owns a data source.
@@ -228,17 +228,14 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewPredicate) {
  * These sources define data-ready boundaries for subtree-level loading.
  *
  * @param {import("../view/view.js").default} subtreeRoot
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  * @returns {Set<import("./sources/dataSource.js").default>}
  */
-export function collectNearestViewSubtreeDataSources(
-    subtreeRoot,
-    viewPredicate
-) {
+export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     subtreeRoot.visit((view) => {
-        if (viewPredicate && !viewPredicate(view)) {
+        if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
         }
         if (view.flowHandle?.dataSource) {
@@ -255,14 +252,14 @@ export function collectNearestViewSubtreeDataSources(
  *
  * @param {import("../view/view.js").default} subtreeRoot
  * @param {Set<import("./sources/dataSource.js").default>} [dataSources]
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  * @returns {Promise<void[]>}
  */
-export function loadViewSubtreeData(subtreeRoot, dataSources, viewPredicate) {
+export function loadViewSubtreeData(subtreeRoot, dataSources, viewFilter) {
     if (!dataSources) {
         dataSources = collectNearestViewSubtreeDataSources(
             subtreeRoot,
-            viewPredicate
+            viewFilter
         );
     }
     return Promise.all(
@@ -270,7 +267,7 @@ export function loadViewSubtreeData(subtreeRoot, dataSources, viewPredicate) {
             loadDataSourceOnce(dataSource)
         )
     ).then((results) => {
-        reconfigureScaleDomains(subtreeRoot, viewPredicate);
+        reconfigureScaleDomains(subtreeRoot, viewFilter);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });
@@ -278,17 +275,17 @@ export function loadViewSubtreeData(subtreeRoot, dataSources, viewPredicate) {
 
 /**
  * @param {import("../view/view.js").default} subtreeRoot
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  * @returns {import("../view/view.js").default[]}
  */
-function collectSubtreeViews(subtreeRoot, viewPredicate) {
+function collectSubtreeViews(subtreeRoot, viewFilter) {
     /** @type {import("../view/view.js").default[]} */
     const views = [];
-    if (!viewPredicate) {
+    if (!viewFilter) {
         return subtreeRoot.getDescendants();
     }
     subtreeRoot.visit((view) => {
-        if (!viewPredicate(view)) {
+        if (!viewFilter(view)) {
             return VISIT_SKIP;
         }
         views.push(view);

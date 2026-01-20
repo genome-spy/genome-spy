@@ -27,13 +27,13 @@ import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
  * @param {View} root
  * @param {DataFlow} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
- * @param {(view: View) => boolean} [viewPredicate]
+ * @param {(view: View) => boolean} [viewFilter]
  * @param {(view: View) => boolean} [viewInitializationPredicate]
  */
 export function buildDataFlow(
     root,
     existingFlow,
-    viewPredicate,
+    viewFilter,
     viewInitializationPredicate
 ) {
     /**
@@ -245,7 +245,7 @@ export function buildDataFlow(
 
     // Views only keep track of their children based on the layout hierachy.
     // Thus, let's get traversable hierarchies using dataParents.
-    const views = collectSubtreeViews(root, viewPredicate);
+    const views = collectSubtreeViews(root, viewFilter);
     const dataTrees = nodesToTreesWithAccessor(
         views,
         (view) => view.dataParent
@@ -276,18 +276,18 @@ export function buildDataFlow(
 
 /**
  * @param {import("./view.js").default} root
- * @param {(view: import("./view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("./view.js").default) => boolean} [viewFilter]
  * @returns {import("./view.js").default[]}
  */
-function collectSubtreeViews(root, viewPredicate) {
-    if (!viewPredicate) {
+function collectSubtreeViews(root, viewFilter) {
+    if (!viewFilter) {
         return root.getDescendants();
     }
 
     /** @type {import("./view.js").default[]} */
     const views = [];
     root.visit((view) => {
-        if (!viewPredicate(view)) {
+        if (!viewFilter(view)) {
             return VISIT_SKIP;
         }
         views.push(view);

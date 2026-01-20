@@ -690,9 +690,9 @@ export default class ScaleResolution {
  * Causes performance issues with domains that are extracted from data.
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
- * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  */
-export function reconfigureScaleDomains(fromViews, viewPredicate) {
+export function reconfigureScaleDomains(fromViews, viewFilter) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
@@ -705,7 +705,7 @@ export function reconfigureScaleDomains(fromViews, viewPredicate) {
 
     /** @type {import("../view/view.js").VisitorCallback} */
     function collectVisibleResolutions(view) {
-        if (viewPredicate && !viewPredicate(view)) {
+        if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
         }
         collectResolutions(view);
@@ -717,7 +717,7 @@ export function reconfigureScaleDomains(fromViews, viewPredicate) {
 
         // Ancestors
         for (const view of fromView.getDataAncestors()) {
-            if (viewPredicate && !viewPredicate(view)) {
+            if (viewFilter && !viewFilter(view)) {
                 break;
             }
             // Skip axis views etc. They should not mess with the domains.

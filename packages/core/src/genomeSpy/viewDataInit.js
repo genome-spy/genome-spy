@@ -21,13 +21,13 @@ export async function initializeViewData(
     fontManager,
     onDataFlowBuilt
 ) {
-    const viewPredicate = (
+    const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
     ) => view.isConfiguredVisible();
     const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
         viewRoot,
         dataFlow,
-        viewPredicate
+        visibilityPredicate
     );
     onDataFlowBuilt(builtDataFlow);
 
@@ -41,7 +41,7 @@ export async function initializeViewData(
     await loadViewSubtreeData(
         viewRoot,
         new Set(builtDataFlow.dataSources),
-        viewPredicate
+        visibilityPredicate
     );
 
     await finalizeSubtreeGraphics(graphicsPromises);
@@ -63,10 +63,10 @@ export async function initializeVisibleViewData(
     dataFlow,
     fontManager
 ) {
-    const viewPredicate = (
+    const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
     ) => view.isConfiguredVisible();
-    const visibleViews = collectVisibleViews(viewRoot, viewPredicate);
+    const visibleViews = collectVisibleViews(viewRoot, visibilityPredicate);
     const viewsToInitialize = visibleViews.filter(
         (view) => view.getDataInitializationState() === "none"
     );
@@ -83,7 +83,7 @@ export async function initializeVisibleViewData(
     const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
         viewRoot,
         dataFlow,
-        viewPredicate,
+        visibilityPredicate,
         viewInitializationPredicate
     );
 
@@ -104,14 +104,14 @@ export async function initializeVisibleViewData(
 
 /**
  * @param {import("../view/view.js").default} viewRoot
- * @param {(view: import("../view/view.js").default) => boolean} viewPredicate
+ * @param {(view: import("../view/view.js").default) => boolean} viewFilter
  * @returns {import("../view/view.js").default[]}
  */
-function collectVisibleViews(viewRoot, viewPredicate) {
+function collectVisibleViews(viewRoot, viewFilter) {
     /** @type {import("../view/view.js").default[]} */
     const views = [];
     viewRoot.visit((view) => {
-        if (!viewPredicate(view)) {
+        if (!viewFilter(view)) {
             return VISIT_SKIP;
         }
         views.push(view);

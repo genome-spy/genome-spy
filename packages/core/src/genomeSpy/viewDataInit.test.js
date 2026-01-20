@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import UnitView from "../view/unitView.js";
+
 import { createTestViewContext } from "../view/testUtils.js";
 import {
     initializeViewData,
@@ -160,9 +162,10 @@ describe("viewDataInit", () => {
         const visibleView = root
             .getDescendants()
             .find((view) => view.name === "visible");
-        const mark = /** @type {import("../marks/mark.js").default} */ (
-            visibleView?.mark
-        );
+        if (!(visibleView instanceof UnitView)) {
+            throw new Error("Expected a unit view for visible branch.");
+        }
+        const mark = visibleView.mark;
 
         // Visibility toggle should not wire the same collector twice.
         const initializeSpy = vi.spyOn(mark, "initializeData");
