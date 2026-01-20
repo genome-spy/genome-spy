@@ -66,6 +66,11 @@ export function createTestViewContext(viewFactoryOptions = {}) {
                     /** @type {(callback: () => void) => void} */ (
                         (callback) => callback()
                     ),
+                transition: (/** @type {any} */ options) => {
+                    const to = typeof options.to === "number" ? options.to : 1;
+                    options.onUpdate(to);
+                    return Promise.resolve();
+                },
             })
         ),
 

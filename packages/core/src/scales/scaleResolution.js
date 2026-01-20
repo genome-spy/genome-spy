@@ -26,6 +26,8 @@ import {
 import { isSecondaryChannel } from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
+import { VISIT_SKIP } from "../view/view.js";
+import createIndexer from "../utils/indexer.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -91,6 +93,11 @@ export default class ScaleResolution {
     /** @type {ScaleInteractionController} */
     #interactionController;
 
+    /** @type {ReturnType<typeof createIndexer> | undefined} */
+    #categoricalIndexer;
+
+    #categoricalIndexerExplicit = false;
+
     /**
      * @param {Channel} channel
      */
@@ -103,7 +110,7 @@ export default class ScaleResolution {
         this.name = undefined;
 
         this.#domainAggregator = new ScaleDomainAggregator({
-            getMembers: () => this.#members,
+            getMembers: () => this.#getActiveMembers(),
             getType: () => this.type,
             getLocusExtent: () => this.#getLocusExtent(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -137,6 +144,26 @@ export default class ScaleResolution {
             throw new Error("ScaleResolution has no members!");
         }
         return first.view;
+    }
+
+    #getActiveMembers() {
+        /** @type {Set<ScaleResolutionMember>} */
+        const active = new Set();
+        for (const member of this.#members) {
+            const view = member.view;
+            if (!view.isConfiguredVisible()) {
+                continue;
+            }
+            if (
+                !view.isDataInitialized() &&
+                !member.channelDef?.scale?.domain
+            ) {
+                // Explicit domains should be honored even before data init.
+                continue;
+            }
+            active.add(member);
+        }
+        return active;
     }
 
     get #viewContext() {
@@ -337,10 +364,31 @@ export default class ScaleResolution {
                 extractDataDomain
             );
 
-        if (domain && domain.length > 0) {
+        if (isDiscrete(props.type)) {
+            const isExplicit = this.#isExplicitDomain();
+            const indexer = this.#getCategoricalIndexer(isExplicit);
+            if (domain && domain.length > 0) {
+                if (
+                    isExplicit &&
+                    indexer.domain().length > 0 &&
+                    !shallowArrayEquals(indexer.domain(), domain)
+                ) {
+                    this.#categoricalIndexer = undefined;
+                    return this.#getScaleProps(extractDataDomain);
+                }
+                indexer.addAll(domain);
+            }
+            const indexedDomain = indexer.domain();
+            props.domain =
+                indexedDomain.length > 0
+                    ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
+                          indexedDomain
+                      )
+                    : new NominalDomain();
+            // Scale props are spec-shaped; keep the indexer off the public type.
+            /** @type {any} */ (props).domainIndexer = indexer;
+        } else if (domain && domain.length > 0) {
             props.domain = domain;
-        } else if (isDiscrete(props.type)) {
-            props.domain = new NominalDomain();
         }
 
         if (!props.domain && props.domainMid !== undefined) {
@@ -350,6 +398,20 @@ export default class ScaleResolution {
         }
 
         return props;
+    }
+
+    /**
+     * @param {boolean} isExplicit
+     */
+    #getCategoricalIndexer(isExplicit) {
+        if (
+            !this.#categoricalIndexer ||
+            this.#categoricalIndexerExplicit !== isExplicit
+        ) {
+            this.#categoricalIndexer = createIndexer();
+            this.#categoricalIndexerExplicit = isExplicit;
+        }
+        return this.#categoricalIndexer;
     }
 
     /**
@@ -628,8 +690,9 @@ export default class ScaleResolution {
  * Causes performance issues with domains that are extracted from data.
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
  */
-export function reconfigureScaleDomains(fromViews) {
+export function reconfigureScaleDomains(fromViews, viewFilter) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
@@ -640,12 +703,23 @@ export function reconfigureScaleDomains(fromViews) {
         }
     }
 
+    /** @type {import("../view/view.js").VisitorCallback} */
+    function collectVisibleResolutions(view) {
+        if (viewFilter && !viewFilter(view)) {
+            return VISIT_SKIP;
+        }
+        collectResolutions(view);
+    }
+
     for (const fromView of asArray(fromViews)) {
         // Descendants
-        fromView.visit(collectResolutions);
+        fromView.visit(collectVisibleResolutions);
 
         // Ancestors
         for (const view of fromView.getDataAncestors()) {
+            if (viewFilter && !viewFilter(view)) {
+                break;
+            }
             // Skip axis views etc. They should not mess with the domains.
             if (!view.options.contributesToScaleDomain) {
                 break;

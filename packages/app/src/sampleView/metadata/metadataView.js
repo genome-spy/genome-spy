@@ -308,7 +308,14 @@ export class MetadataView extends ConcatView {
         // Opacity may depend on resolved scales; configure after the subtree exists.
         configureViewOpacity(this);
 
-        const { graphicsPromises } = initializeViewSubtree(this, flow);
+        const viewPredicate = (
+            /** @type {import("@genome-spy/core/view/view.js").default} */ view
+        ) => view.isConfiguredVisible();
+        const { graphicsPromises } = initializeViewSubtree(
+            this,
+            flow,
+            viewPredicate
+        );
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.flowHandle?.dataSource
@@ -341,7 +348,7 @@ export class MetadataView extends ConcatView {
         dynamicSource.updateDynamicData(metadataTable);
 
         // Load all subtree sources so that decorations (titles, axes) are ready.
-        const dataSources = collectViewSubtreeDataSources(this);
+        const dataSources = collectViewSubtreeDataSources(this, viewPredicate);
         dataSources.delete(dynamicSource);
         await loadViewSubtreeData(this, dataSources);
 

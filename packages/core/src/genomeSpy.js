@@ -11,7 +11,10 @@ import EventListenerRegistry from "./genomeSpy/eventListenerRegistry.js";
 import InputBindingManager from "./genomeSpy/inputBindingManager.js";
 
 import { calculateCanvasSize } from "./view/viewUtils.js";
-import { initializeViewData } from "./genomeSpy/viewDataInit.js";
+import {
+    initializeViewData,
+    initializeVisibleViewData,
+} from "./genomeSpy/viewDataInit.js";
 import UnitView from "./view/unitView.js";
 
 import WebGLHelper from "./gl/webGLHelper.js";
@@ -461,6 +464,25 @@ export default class GenomeSpy {
                 this.loadingMessageElement.style.display = "none";
             }, 2000);
         }
+    }
+
+    async initializeVisibleViewData() {
+        if (!this.viewRoot) {
+            return;
+        }
+
+        await initializeVisibleViewData(
+            this.viewRoot,
+            this.viewRoot.context.dataFlow,
+            this.viewRoot.context.fontManager
+        );
+
+        // Visibility toggles can change sizes; ensure layout is recomputed even
+        // when callers don't explicitly request it.
+        this.viewRoot._invalidateCacheByPrefix("size", "progeny");
+        this.#glHelper.invalidateSize();
+        this.computeLayout();
+        this.animator.requestRender();
     }
 
     registerMouseEvents() {

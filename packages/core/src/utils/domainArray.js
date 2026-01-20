@@ -2,6 +2,9 @@
  * @typedef {boolean | number | string} scalar
  */
 
+// DomainArray tracks categorical order for scale domain extraction.
+// For rendering, ScaleResolution maintains a stable Indexer to prevent
+// categorical indices from changing across updates.
 export class DomainArray /** @type {Array<scalar>} */ extends Array {
     constructor() {
         super();

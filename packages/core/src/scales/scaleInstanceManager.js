@@ -142,12 +142,16 @@ export default class ScaleInstanceManager {
      * @returns {import("../spec/scale.js").Scale}
      */
     #stripNonScaleProps(props) {
-        if (!("assembly" in props)) {
-            return props;
-        }
         // Avoid sending non-scale properties into vega-scale.
-        const { assembly: _assembly, ...rest } = props;
+        // Strip internal runtime-only props before passing into vega-scale.
+        const propsAny = /** @type {any} */ (props);
+        const {
+            assembly: _assembly,
+            domainIndexer: _domainIndexer,
+            ...rest
+        } = propsAny;
         void _assembly;
+        void _domainIndexer;
         return rest;
     }
 

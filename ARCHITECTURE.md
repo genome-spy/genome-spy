@@ -56,6 +56,13 @@ design patterns.
 - Subtree initialization (`initializeViewSubtree`) can be applied to newly
   added view subtrees, and subtree data loading (`loadViewSubtreeData`) emits
   a `subtreeDataReady` broadcast after sources resolve.
+- Initialization is visibility-aware: hidden subtrees skip dataflow + mark
+  wiring at startup and are initialized later via
+  `initializeVisibleViewData` when visibility changes.
+- Hidden views do not contribute to shared scale domains until they are
+  initialized; domains can expand when a subtree becomes visible.
+- Views track data initialization state (`none`/`pending`/`ready`) so lazy
+  initialization does not duplicate flow nodes or collectors.
 - Flow branches are pruned when subtrees are disposed to avoid orphaned nodes
   and unused data sources.
 - TODO: Consider a targeted propagation/load mode for dynamic insertions so new
@@ -68,6 +75,9 @@ design patterns.
   app-side views are still instantiated directly.
 - Subtree lifecycle helpers live in `packages/core/src/data/flowInit.js`:
   `initializeViewSubtree`, `loadViewSubtreeData`, and `finalizeSubtreeGraphics`.
+- Visibility-triggered data init is centralized in
+  `packages/core/src/genomeSpy/viewDataInit.js` and should be invoked after
+  visibility state changes (e.g., app view settings toggles).
 - Disposal is subtree-aware: `disposeSubtree` walks post-order, unregisters
   resolution members, and prunes dataflow branches.
 - View opacity is configured in a separate post-resolve pass

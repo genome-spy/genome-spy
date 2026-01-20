@@ -1,6 +1,9 @@
 /**
  * Assigns unique values an index number in the order they are encountered.
  *
+ * Used to keep categorical GPU encodings stable: once a value gets an index,
+ * it must never change for the lifetime of the owning scale.
+ *
  * TODO: What about undefined?
  *
  * @template T

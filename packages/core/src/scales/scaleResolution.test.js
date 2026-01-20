@@ -588,6 +588,69 @@ describe("Domain handling", () => {
         expect(resolution.scale.domain()).toEqual([2, 3]);
     });
 
+    test("categorical indexers preserve stable ordering across domain refreshes", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ data: "a" }, { data: "b" }] },
+                mark: "point",
+                encoding: {
+                    color: { field: "data", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("color");
+        const scale = resolution.getScale();
+        const indexer = scale.props.domainIndexer;
+
+        // Non-obvious: reorder collector data so the extracted domain order changes.
+        const collector = view.getCollector();
+        const data = collector.facetBatches.get(undefined);
+        if (!data) {
+            throw new Error("Missing collector data for categorical test.");
+        }
+        data.length = 0;
+        data.push({ data: "b" }, { data: "a" }, { data: "c" });
+
+        const firstA = indexer("a");
+        const firstB = indexer("b");
+
+        resolution.reconfigureDomain();
+
+        expect(indexer("a")).toEqual(firstA);
+        expect(indexer("b")).toEqual(firstB);
+        expect(indexer("c")).toEqual(2);
+        expect(scale.domain()).toEqual(["a", "b", "c"]);
+    });
+
+    test("explicit categorical domains define the indexer order", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ data: "b" }, { data: "a" }, { data: "c" }] },
+                mark: "point",
+                encoding: {
+                    color: {
+                        field: "data",
+                        type: "nominal",
+                        scale: { domain: ["a", "b", "c"] },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("color");
+        const scale = resolution.getScale();
+        const indexer = scale.props.domainIndexer;
+
+        // Explicit domains should dictate the categorical index order.
+        expect(indexer("a")).toEqual(0);
+        expect(indexer("b")).toEqual(1);
+        expect(indexer("c")).toEqual(2);
+        expect(scale.domain()).toEqual(["a", "b", "c"]);
+    });
+
     test("reconfigureScaleDomains triggers domain-only refresh", async () => {
         const view = await createAndInitialize(
             {
