@@ -932,10 +932,26 @@ export default class SampleView extends ContainerView {
             selectionInfo.selection.intervals.x?.length === 2 &&
             selectionPoint &&
             selectionContainsPoint(selectionInfo.selection, selectionPoint)
-                ? /** @type {import("./types.js").Interval} */ (
+                ? /** @type {[number, number]} */ (
                       selectionInfo.selection.intervals.x
                   )
                 : undefined;
+        const selectionIntervalComplex =
+            selectionInterval &&
+            selectionInfo?.view.getScaleResolution("x")?.type === "locus"
+                ? /** @type {import("./types.js").Interval} */ ([
+                      selectionInfo.view
+                          .getScaleResolution("x")
+                          .toComplex(selectionInterval[0]),
+                      selectionInfo.view
+                          .getScaleResolution("x")
+                          .toComplex(selectionInterval[1]),
+                  ])
+                : selectionInterval
+                  ? /** @type {import("./types.js").Interval} */ (
+                        selectionInterval
+                    )
+                  : undefined;
 
         const uniqueViewNames = findUniqueViewNames(
             this.getLayoutAncestors().at(-1)
@@ -965,8 +981,10 @@ export default class SampleView extends ContainerView {
             {
                 label: selectionInterval
                     ? `Interval: ${locusOrNumberToString(
-                          selectionInterval[0]
-                      )} – ${locusOrNumberToString(selectionInterval[1])}`
+                          selectionIntervalComplex[0]
+                      )} – ${locusOrNumberToString(
+                          selectionIntervalComplex[1]
+                      )}`
                     : resolution.type === "locus"
                       ? `Locus: ${locusOrNumberToString(complexX)}`
                       : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
@@ -997,7 +1015,7 @@ export default class SampleView extends ContainerView {
                     const specifier = {
                         view: fieldInfo.view.name,
                         field: fieldInfo.field,
-                        interval: selectionInterval,
+                        interval: selectionIntervalComplex,
                         aggregation: { op: op.op },
                     };
 
