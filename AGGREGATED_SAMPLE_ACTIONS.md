@@ -164,15 +164,16 @@ Goal: eliminate `mark.findDatumAt` usage and centralize data lookup near
 SampleView/attribute accessors.
 
 Steps:
-1. Add a pure datum-lookup helper that uses collector data + accessors.
-2. Replace `view.mark.findDatumAt` in `viewAttributeInfoSource.js` with the helper.
-3. Replace `view.mark.findDatumAt` in `sampleView.js` context menu with the helper.
-4. Add unit tests for the helper (discrete vs continuous, point vs segment).
+1. DONE: Add a pure datum-lookup helper that uses collector data + accessors.
+2. DONE: Replace `view.mark.findDatumAt` in `viewAttributeInfoSource.js` with the helper.
+3. DONE: Replace `view.mark.findDatumAt` in `sampleView.js` context menu with the helper.
+4. DONE: Add unit tests for the helper (discrete vs continuous, point vs segment).
 
 Checkpoint 1:
-- No `findDatumAt` calls remain in app code.
-- Context menu still shows per-sample “value at locus”.
-- Tests cover the lookup helper.
+- DONE: No `findDatumAt` calls remain in app code.
+- DONE: Context menu still shows per-sample “value at locus”.
+- DONE: Tests cover the lookup helper.
+- DONE: Run `npm test`, `npm -ws run test:tsc --if-present`, `npm run lint`.
 
 ### Phase 2: Introduce Aggregation Spec + Accessor Factory
 Goal: define interval-based aggregation and expose it via accessors.

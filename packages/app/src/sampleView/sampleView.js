@@ -49,6 +49,7 @@ import {
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
+import { createDatumAtAccessor } from "./datumLookup.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -915,9 +916,10 @@ export default class SampleView extends ContainerView {
             }
 
             const scale = resolution.scale;
+            const datumAtX = createDatumAtAccessor(fieldInfo.view);
             const scalarX =
                 "invert" in scale && sample
-                    ? fieldInfo.view.mark.findDatumAt(
+                    ? datumAtX(
                           sample.id,
                           /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */ (
                               scale.invert(normalizedXPos)

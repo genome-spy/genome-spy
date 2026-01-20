@@ -2,6 +2,7 @@ import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
+import { createDatumAtAccessor } from "./datumLookup.js";
 
 /**
  *
@@ -41,9 +42,11 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         scalarLocus = specifier.locus;
     }
 
+    const datumAtX = createDatumAtAccessor(view);
+
     /** @param {string} sampleId */
     const accessor = (sampleId) =>
-        view.mark.findDatumAt(sampleId, scalarLocus)?.[specifier.field];
+        datumAtX(sampleId, scalarLocus)?.[specifier.field];
 
     // Find the channel and scale that matches the field
     const [channel, channelDef] = Object.entries(view.getEncoding()).find(
