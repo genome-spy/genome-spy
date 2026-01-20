@@ -213,13 +213,23 @@ design patterns.
 The detailed plan now lives in
 `packages/webgpu-renderer/MIGRATION_PLAN.md`.
 
-## Quick Pointers
+## Research context and capabilities
 
-- Entry: `packages/core/src/index.js`
-- Orchestrator: `packages/core/src/genomeSpy.js`
-- View hierarchy: `packages/core/src/view/*`
-- Dataflow: `packages/core/src/data/*`
-- Marks and shaders: `packages/core/src/marks/*`, `packages/core/src/gl/*`
+- Grammar-based toolkit for authoring tailored, interactive genomic
+  visualizations and embedding them in web apps/pages.
+- Demonstrated with 753 ovarian cancer samples (DECIDER trial), including
+  interactive cohort exploration and clinically actionable variant inspection.
+- Key interaction patterns include:
+  - Rapid bird's-eye-to-close-up transitions for large sample collections
+  - Incremental, reversible actions with provenance
+  - Score-based semantic zoom to reduce overplotting while preserving signal
+  - Data summarization tracks (e.g., copy number summaries)
+
+## Project structure
+
+- `packages/core`: GenomeSpy Core library
+- `packages/app`: GenomeSpy Application
+- `docs`: Documentation site source files
 
 ## App State and Provenance (packages/app)
 
@@ -263,3 +273,56 @@ This section summarizes the Redux/provenance architecture in the app package.
   settings.
 - The same data structure is used for shareable URL hashes to keep bookmark
   and sharing workflows consistent.
+
+## Sample view UI & helpers (packages/app/src/sampleView)
+
+- `SampleView` orchestrates the sample tracks: it composes segmenting subviews,
+  wires metadata panels, handles attribute context menus, and bridges the Core
+  layout helpers with Redux and provenance via `IntentExecutor`
+  (`packages/app/src/sampleView/sampleView.js#L1`).
+- Attribute metadata and dialogs live alongside the main view (`attributeContextMenu.js#L1`,
+  `attributeDialogs/*`), while `SampleGroupView`, `SampleLabelView`, and the
+  metadata sources (`metadata/*`, `compositeAttributeInfoSource.js`) capture how
+  the UI displays grouped samples, labels, and metadata-driven controls.
+- Context menus, scrollbars, location tracking, and grouping utilities are housed
+  under `packages/app/src/sampleView` (`locationManager.js`, `mergeFacets.js`,
+  `state/`, `viewAttributeInfoSource.js`), giving a focused developer entry point
+  for sample collection interactions beyond the Redux provenance slice.
+
+## Embedding & example frontends
+
+- `packages/doc-embed` provides a `<genome-spy-doc-embed>` web component that
+  upgrades Markdown `<code>` blocks into live specs; the README describes the
+  transformation and ties into the MkDocs extension pipeline
+  (`packages/doc-embed/README.md#L1`).
+- `packages/embed-examples` gathers standalone HTML/JS pages that cover shared
+  scale domains, dynamic data updates, FASTA data, named data providers, and the
+  React wrapper; the index page lists each scenario and imports `@genome-spy/core`
+  to exercise those embedding APIs (`packages/embed-examples/src/index.html#L1`).
+- `packages/react-component/src/main.js#L1` is the tiny React integration that
+  calls `embed` inside a hook, captures the resulting API, and cleans it up on
+  unmount, making GenomeSpy easy to reuse inside React applications.
+- `packages/playground` is the interactive spec editor used in the docs and site;
+  `packages/playground/src/index.js#L1` renders the Lit-powered split-pane editor,
+  loads `defaultspec.json`, and re-embeds the Core library whenever the spec or
+  options change, making it a useful experimental sandbox for the grammar.
+
+## Documentation site resources
+
+- The MkDocs sources in `docs/` (e.g., `docs/index.md#L1`, `docs/getting-started.md`, `docs/grammar/`) host the canonical tutorials, grammar reference, data examples, and schema (`docs/genome-spy-schema.json`).
+- `mkdocs.yml#L1` configures the build (site metadata, theme/custom theme,
+  plugin stack, markdown extensions, extra JS/CSS, navigation, and custom theme
+  directory), so the file is the entry point to customizing and rebuilding the
+  documentation site.
+- `custom_theme/`, `docs/stylesheets/`, and `site/` hold the theming overrides,
+  extra CSS, and the generated site output (`site/index.html`, `site/api`, etc.),
+  which helps anyone who needs to tweak how documentation examples render or
+  deploy the static site.
+
+## Quick Pointers
+
+- Entry: `packages/core/src/index.js`
+- Orchestrator: `packages/core/src/genomeSpy.js`
+- View hierarchy: `packages/core/src/view/*`
+- Dataflow: `packages/core/src/data/*`
+- Marks and shaders: `packages/core/src/marks/*`, `packages/core/src/gl/*`
