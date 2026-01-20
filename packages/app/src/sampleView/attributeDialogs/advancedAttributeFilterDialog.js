@@ -13,6 +13,7 @@ import { classMap } from "lit/directives/class-map.js";
 import "../../components/generic/histogram.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
+import { extractAttributeValues } from "../attributeValues.js";
 
 const checkboxListStyles = css`
     .gs-checkbox-list-wrapper {
@@ -567,8 +568,7 @@ const verboseOps = {
  * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
-    const a = attributeInfo.accessor;
     return /** @type {Scalar[]} */ (
-        samples.map((sampleId) => a(sampleId, sampleHierarchy))
+        extractAttributeValues(attributeInfo, samples, sampleHierarchy)
     );
 }

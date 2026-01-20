@@ -194,9 +194,10 @@ Checkpoint 2:
 Goal: enable histogram/category dialogs to use aggregated values.
 
 Steps:
-1. Extend `AttributeInfo` with `valuesProvider({ sampleIds, interval, aggregation })`.
-2. Update dialogs in `attributeDialogs/` to use `valuesProvider` when present.
-3. Add tests verifying dialog inputs use aggregated values.
+1. DONE: Extend `AttributeInfo` with `valuesProvider({ sampleIds, interval, aggregation })`.
+2. DONE: Update dialogs in `attributeDialogs/` to use `valuesProvider` when present.
+3. DONE: Add tests verifying dialog inputs use aggregated values.
+4. DONE: Run `npm test`, `npm -ws run test:tsc --if-present`, `npm run lint`.
 
 Checkpoint 3:
 - Threshold and advanced filter dialogs build histograms from aggregated values.

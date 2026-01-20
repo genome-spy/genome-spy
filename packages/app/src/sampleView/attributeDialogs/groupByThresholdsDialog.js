@@ -7,6 +7,7 @@ import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
 } from "../state/groupOperations.js";
+import { extractAttributeValues } from "../attributeValues.js";
 
 /**
  * @param {import("../types.js").AttributeInfo} attributeInfo
@@ -321,8 +322,7 @@ export function showGroupByThresholdsDialog(attributeInfo, sampleView) {
  * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
  */
 function extractValues(attributeInfo, samples, sampleHierarchy) {
-    const a = attributeInfo.accessor;
     return /** @type {number[]} */ (
-        samples.map((sampleId) => a(sampleId, sampleHierarchy))
+        extractAttributeValues(attributeInfo, samples, sampleHierarchy)
     );
 }

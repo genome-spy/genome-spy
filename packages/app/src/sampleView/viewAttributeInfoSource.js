@@ -28,6 +28,36 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             : specifier.field;
 
     const accessor = createViewAttributeAccessor(view, specifier);
+    /**
+     * @param {import("./types.js").AttributeValuesScope} scope
+     */
+    const valuesProvider = (scope) => {
+        if (!scope.interval) {
+            return scope.sampleIds.map((/** @type {string} */ sampleId) =>
+                accessor(sampleId, scope.sampleHierarchy)
+            );
+        }
+
+        if (!scope.aggregation) {
+            throw new Error(
+                "Interval values require an aggregation specification!"
+            );
+        }
+
+        const intervalSpecifier = {
+            view: specifier.view,
+            field: specifier.field,
+            interval: scope.interval,
+            aggregation: scope.aggregation,
+        };
+        const intervalAccessor = createViewAttributeAccessor(
+            view,
+            intervalSpecifier
+        );
+        return scope.sampleIds.map((/** @type {string} */ sampleId) =>
+            intervalAccessor(sampleId, scope.sampleHierarchy)
+        );
+    };
 
     // Find the channel and scale that matches the field
     const [channel, channelDef] = Object.entries(view.getEncoding()).find(
@@ -59,6 +89,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
                           >${formatLocusValue(specifier.locus)}</span
                       >`}`,
         accessor,
+        valuesProvider,
         // TODO: Ensure that there's a type even if it's missing from spec
         type: "type" in channelDef ? channelDef.type : undefined,
         scale,

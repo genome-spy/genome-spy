@@ -21,6 +21,13 @@ export interface AggregationSpec {
     op: AggregationOp;
 }
 
+export interface AttributeValuesScope {
+    sampleIds: string[];
+    sampleHierarchy: SampleHierarchy;
+    interval?: Interval;
+    aggregation?: AggregationSpec;
+}
+
 export interface AttributeInfo {
     /**
      * A concise name of the attribute: TODO: Used for what?
@@ -35,6 +42,11 @@ export interface AttributeInfo {
 
     /** Function that maps a sampleId to an attribute value */
     accessor: (sampleId: string, sampleHierarchy: SampleHierarchy) => any;
+
+    /**
+     * Provides values for dialogs (e.g., histograms) with optional interval aggregation.
+     */
+    valuesProvider?: (scope: AttributeValuesScope) => any[];
 
     /** e.g., "quantitative" */
     type: string;
