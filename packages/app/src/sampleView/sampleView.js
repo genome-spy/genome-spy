@@ -45,11 +45,16 @@ import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import {
+    asSelectionConfig,
+    isActiveIntervalSelection,
+    isIntervalSelectionConfig,
+    selectionContainsPoint,
+} from "@genome-spy/core/selection/selection.js";
+import {
     METADATA_PATH_SEPARATOR,
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
-import { createDatumAtAccessor } from "./datumLookup.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -827,6 +832,77 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Finds an active interval selection in the layout ancestor chain.
+     * @returns {{ selection: import("@genome-spy/core/types/selectionTypes.js").IntervalSelection, view: View }}
+     */
+    #getActiveIntervalSelection() {
+        const ancestors = this.#gridChild.view.getLayoutAncestors();
+
+        for (const view of ancestors) {
+            for (const [name, param] of view.paramMediator.paramConfigs) {
+                if (!("select" in param)) {
+                    continue;
+                }
+
+                const select = asSelectionConfig(param.select);
+                if (!isIntervalSelectionConfig(select)) {
+                    continue;
+                }
+
+                if (!select.encodings?.includes("x")) {
+                    continue;
+                }
+
+                const selection = view.paramMediator.getValue(name);
+                if (selection && isActiveIntervalSelection(selection)) {
+                    return { selection, view };
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/view.js").default} view
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @returns {Partial<Record<"x" | "y", number>>}
+     */
+    #getSelectionPoint(view, event) {
+        const normalized = this.childCoords.normalizePoint(
+            event.point.x,
+            event.point.y
+        );
+
+        /** @type {Partial<Record<"x" | "y", number>>} */
+        const point = {};
+
+        /** @type {import("@genome-spy/core/spec/channel.js").PrimaryPositionalChannel[]} */
+        const channels = ["x", "y"];
+
+        for (const channel of channels) {
+            const resolution = view.getScaleResolution(
+                /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
+                    channel
+                )
+            );
+            const scale = resolution?.getScale();
+            if (!scale || !("invert" in scale)) {
+                continue;
+            }
+
+            const normalizedValue =
+                channel === "x" ? normalized.x : normalized.y;
+            // @ts-ignore
+            let value = scale.invert(normalizedValue);
+            if (["index", "locus"].includes(scale.type)) {
+                value = /** @type {number} */ (value) + 0.5;
+            }
+            point[channel] = /** @type {number} */ (value);
+        }
+
+        return point;
+    }
+
+    /**
      * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
@@ -846,6 +922,19 @@ export default class SampleView extends ContainerView {
 
         const resolution = view.getScaleResolution("x");
         const complexX = resolution.invertToComplex(normalizedXPos);
+        const selectionInfo = this.#getActiveIntervalSelection();
+        const selectionPoint = selectionInfo
+            ? this.#getSelectionPoint(selectionInfo.view, event)
+            : undefined;
+        const selectionInterval =
+            selectionInfo &&
+            selectionInfo.selection.intervals.x?.length === 2 &&
+            selectionPoint &&
+            selectionContainsPoint(selectionInfo.selection, selectionPoint)
+                ? /** @type {import("./types.js").Interval} */ (
+                      selectionInfo.selection.intervals.x
+                  )
+                : undefined;
 
         const uniqueViewNames = findUniqueViewNames(
             this.getLayoutAncestors().at(-1)
@@ -855,10 +944,6 @@ export default class SampleView extends ContainerView {
 
         const fieldInfos = findEncodedFields(view)
             .filter((d) => !["sample", "x", "x2"].includes(d.channel))
-            // TODO: A method to check if a mark covers a range (both x and x2 defined)
-            .filter((info) =>
-                ["rect", "rule"].includes(info.view.getMarkType())
-            )
             // TODO: Log a warning if the view name is not unique
             .filter((info) => uniqueViewNames.has(info.view.name));
 
@@ -877,10 +962,13 @@ export default class SampleView extends ContainerView {
             this.makePeekMenuItem(),
             DIVIDER,
             {
-                label:
-                    resolution.type === "locus"
-                        ? `Locus: ${locusOrNumberToString(complexX)}`
-                        : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
+                label: selectionInterval
+                    ? `Interval: ${locusOrNumberToString(
+                          selectionInterval[0]
+                      )} – ${locusOrNumberToString(selectionInterval[1])}`
+                    : resolution.type === "locus"
+                      ? `Locus: ${locusOrNumberToString(complexX)}`
+                      : `${axisTitle ? axisTitle + ": " : ""}${complexX}`,
                 type: "header",
             },
             DIVIDER,
@@ -889,6 +977,54 @@ export default class SampleView extends ContainerView {
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
+            if (selectionInterval) {
+                /** @type {{ op: import("./types.js").AggregationOp, label: string }[]} */
+                const aggregationOps = [
+                    { op: "count", label: "Count" },
+                    { op: "min", label: "Min" },
+                    { op: "max", label: "Max" },
+                    { op: "weightedMean", label: "Weighted mean" },
+                ];
+
+                const aggregationItems = aggregationOps.map((op) => {
+                    /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
+                    const specifier = {
+                        view: fieldInfo.view.name,
+                        field: fieldInfo.field,
+                        interval: selectionInterval,
+                        aggregation: { op: op.op },
+                    };
+
+                    const attributeInfo =
+                        this.compositeAttributeInfoSource.getAttributeInfo({
+                            type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
+                            specifier,
+                        });
+                    const attributeValue = sample
+                        ? attributeInfo.accessor(
+                              sample.id,
+                              this.sampleHierarchy
+                          )
+                        : undefined;
+
+                    return {
+                        label: op.label,
+                        submenu: generateAttributeContextMenu(
+                            null,
+                            attributeInfo,
+                            attributeValue,
+                            this
+                        ),
+                    };
+                });
+
+                items.push({
+                    label: fieldInfo.field,
+                    submenu: aggregationItems,
+                });
+                continue;
+            }
+
             /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
             const specifier = {
                 view: fieldInfo.view.name,
@@ -915,17 +1051,9 @@ export default class SampleView extends ContainerView {
                 previousContextTitle = contextTitle;
             }
 
-            const scale = resolution.scale;
-            const datumAtX = createDatumAtAccessor(fieldInfo.view);
-            const scalarX =
-                "invert" in scale && sample
-                    ? datumAtX(
-                          sample.id,
-                          /** @type {import("@genome-spy/core/spec/channel.js").Scalar} */ (
-                              scale.invert(normalizedXPos)
-                          )
-                      )?.[fieldInfo.field]
-                    : undefined;
+            const scalarX = sample
+                ? attributeInfo.accessor(sample.id, this.sampleHierarchy)
+                : undefined;
 
             items.push({
                 label: fieldInfo.field,

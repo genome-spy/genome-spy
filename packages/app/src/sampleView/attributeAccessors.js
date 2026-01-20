@@ -70,6 +70,7 @@ export function createViewAttributeAccessor(view, specifier) {
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
     const x2Accessor = view.getDataAccessor("x2");
+    const hitTestMode = view.mark?.defaultHitTestMode ?? "intersects";
 
     if (!collector || !xAccessor) {
         return () => undefined;
@@ -105,12 +106,31 @@ export function createViewAttributeAccessor(view, specifier) {
                 const datum = data[i];
                 const x = /** @type {number} */ (xAccessor(datum));
                 const x2 = /** @type {number} */ (x2Accessor(datum));
-                const overlapStart = x > start ? x : start;
-                const overlapEnd = x2 < end ? x2 : end;
-                if (overlapEnd > overlapStart) {
-                    values.push(valueAccessor(datum));
-                    if (op === "weightedMean") {
-                        weights.push(overlapEnd - overlapStart);
+                if (hitTestMode === "endpoints") {
+                    if (
+                        (x >= start && x <= end) ||
+                        (x2 >= start && x2 <= end)
+                    ) {
+                        values.push(valueAccessor(datum));
+                        if (op === "weightedMean") {
+                            weights.push(1);
+                        }
+                    }
+                } else if (hitTestMode === "encloses") {
+                    if (x >= start && x2 <= end) {
+                        values.push(valueAccessor(datum));
+                        if (op === "weightedMean") {
+                            weights.push(x2 - x);
+                        }
+                    }
+                } else {
+                    const overlapStart = x > start ? x : start;
+                    const overlapEnd = x2 < end ? x2 : end;
+                    if (overlapEnd > overlapStart) {
+                        values.push(valueAccessor(datum));
+                        if (op === "weightedMean") {
+                            weights.push(overlapEnd - overlapStart);
+                        }
                     }
                 }
             }

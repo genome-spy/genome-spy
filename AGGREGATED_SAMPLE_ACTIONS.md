@@ -207,11 +207,12 @@ Checkpoint 3:
 Goal: enable brush-driven aggregate selection workflow.
 
 Steps:
-1. Read active brush interval from selection params in the view hierarchy
+1. DONE: Read active brush interval from selection params in the view hierarchy
    (single shared interval for the sampleView subtree, excluding sidebar/metadata).
-2. Show aggregation ops only when a brush is active and the context click is
+2. DONE: Show aggregation ops only when a brush is active and the context click is
    inside the brush interval.
-3. Add submenu flow: field → aggregation → sample op.
+3. DONE: Add submenu flow: field → aggregation → sample op.
+4. DONE: Run `npm test`, `npm -ws run test:tsc --if-present`, `npm run lint`.
 
 Checkpoint 4:
 - Menus hide aggregation ops without an active brush.
