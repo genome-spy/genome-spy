@@ -134,9 +134,14 @@ function collectDataSourceRoots(views) {
         }
 
         if (!current?.flowHandle?.dataSource) {
-            throw new Error(
-                "No data source found for view " + view.getPathString()
-            );
+            if (view.spec.data) {
+                throw new Error(
+                    "No data source found for view " + view.getPathString()
+                );
+            }
+            // Some views are data-less (constants or references); they don't
+            // participate in data loading but still need graphics init.
+            continue;
         }
 
         let dataSources = roots.get(current);

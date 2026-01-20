@@ -476,6 +476,13 @@ export default class GenomeSpy {
             this.viewRoot.context.dataFlow,
             this.viewRoot.context.fontManager
         );
+
+        // Visibility toggles can change sizes; ensure layout is recomputed even
+        // when callers don't explicitly request it.
+        this.viewRoot._invalidateCacheByPrefix("size", "progeny");
+        this.#glHelper.invalidateSize();
+        this.computeLayout();
+        this.animator.requestRender();
     }
 
     registerMouseEvents() {
