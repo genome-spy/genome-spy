@@ -367,7 +367,7 @@ export default class ScaleResolution {
         if (isDiscrete(props.type)) {
             const isExplicit = this.#isExplicitDomain();
             const indexer = this.#getCategoricalIndexer(isExplicit);
-            if (domain && domain.length > 0) {
+            if (domain != null) {
                 if (
                     isExplicit &&
                     indexer.domain().length > 0 &&
@@ -377,14 +377,25 @@ export default class ScaleResolution {
                     return this.#getScaleProps(extractDataDomain);
                 }
                 indexer.addAll(domain);
+                const active = new Set(domain);
+                const indexedDomain = indexer
+                    .domain()
+                    .filter((value) => active.has(value));
+                props.domain =
+                    indexedDomain.length > 0
+                        ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
+                              indexedDomain
+                          )
+                        : new NominalDomain();
+            } else {
+                const indexedDomain = indexer.domain();
+                props.domain =
+                    indexedDomain.length > 0
+                        ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
+                              indexedDomain
+                          )
+                        : new NominalDomain();
             }
-            const indexedDomain = indexer.domain();
-            props.domain =
-                indexedDomain.length > 0
-                    ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
-                          indexedDomain
-                      )
-                    : new NominalDomain();
             // Scale props are spec-shaped; keep the indexer off the public type.
             /** @type {any} */ (props).domainIndexer = indexer;
         } else if (domain && domain.length > 0) {
