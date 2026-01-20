@@ -977,6 +977,19 @@ export default class SampleView extends ContainerView {
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
+            const contextTitle =
+                fieldInfo.view.getTitleText() ?? fieldInfo.view.spec.name;
+            if (contextTitle != previousContextTitle) {
+                if (i > 0) {
+                    items.push({ type: "divider" });
+                }
+                items.push({
+                    label: contextTitle,
+                    type: "header",
+                });
+                previousContextTitle = contextTitle;
+            }
+
             if (selectionInterval) {
                 /** @type {{ op: import("./types.js").AggregationOp, label: string }[]} */
                 const aggregationOps = [
@@ -1037,19 +1050,6 @@ export default class SampleView extends ContainerView {
                     type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
                     specifier,
                 });
-
-            const contextTitle =
-                fieldInfo.view.getTitleText() ?? fieldInfo.view.spec.name;
-            if (contextTitle != previousContextTitle) {
-                if (i > 0) {
-                    items.push({ type: "divider" });
-                }
-                items.push({
-                    label: contextTitle,
-                    type: "header",
-                });
-                previousContextTitle = contextTitle;
-            }
 
             const scalarX = sample
                 ? attributeInfo.accessor(sample.id, this.sampleHierarchy)
