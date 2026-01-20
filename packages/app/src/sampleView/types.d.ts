@@ -45,8 +45,9 @@ export interface AttributeInfo {
 
     /**
      * Provides values for dialogs (e.g., histograms) with optional interval aggregation.
+     * Use `extractAttributeValues` for the default fallback implementation.
      */
-    valuesProvider?: (scope: AttributeValuesScope) => any[];
+    valuesProvider: (scope: AttributeValuesScope) => any[];
 
     /** e.g., "quantitative" */
     type: string;

@@ -23,6 +23,7 @@ import {
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
+import { createDefaultValuesProvider } from "../attributeValues.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -489,6 +490,12 @@ export class MetadataView extends ConcatView {
                 sampleHierarchy.sampleMetadata.entities[sampleId]?.[
                     attributeName
                 ],
+            valuesProvider: createDefaultValuesProvider(
+                (sampleId, sampleHierarchy) =>
+                    sampleHierarchy.sampleMetadata.entities[sampleId]?.[
+                        attributeName
+                    ]
+            ),
             type: resolution.type,
             scale: resolution.getScale(),
             title: html`<em class="attribute">${attributeName}</em>`,

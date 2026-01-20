@@ -355,7 +355,7 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
     }
 
     renderBody() {
-        const values = extractValues(
+        const values = extractAttributeValues(
             this.attributeInfo,
             this.sampleView.leafSamples,
             this.sampleView.sampleHierarchy
@@ -510,7 +510,7 @@ export function discreteAttributeFilterDialog(
     categoryToMarker = (value) => nothing
 ) {
     const presentValues = new Set(
-        extractValues(
+        extractAttributeValues(
             attributeInfo,
             sampleView.leafSamples,
             sampleView.sampleHierarchy
@@ -559,16 +559,3 @@ const verboseOps = {
     gte: ["\u2265", "greater than or equal to"],
     gt: [">", "greater than"],
 };
-
-/**
- * Extract values for histogram
- *
- * @param {import("../types.js").AttributeInfo} attributeInfo
- * @param {string[]} samples
- * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
- */
-function extractValues(attributeInfo, samples, sampleHierarchy) {
-    return /** @type {Scalar[]} */ (
-        extractAttributeValues(attributeInfo, samples, sampleHierarchy)
-    );
-}

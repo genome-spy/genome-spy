@@ -3,6 +3,7 @@ import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { html } from "lit";
 import { subscribeTo } from "../state/subscribeTo.js";
+import { createDefaultValuesProvider } from "./attributeValues.js";
 
 const SAMPLE_NAME = "SAMPLE_NAME";
 
@@ -11,6 +12,9 @@ const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     name: "sample",
     attribute: { type: SAMPLE_NAME },
     accessor: (/** @type {string} */ sampleId) => sampleId,
+    valuesProvider: createDefaultValuesProvider(
+        (/** @type {string} */ sampleId) => sampleId
+    ),
     type: "identifier",
     scale: undefined,
 });

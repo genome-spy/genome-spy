@@ -3,6 +3,7 @@ import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
 import { createViewAttributeAccessor } from "./attributeAccessors.js";
+import { createDefaultValuesProvider } from "./attributeValues.js";
 
 /**
  *
@@ -28,14 +29,14 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             : specifier.field;
 
     const accessor = createViewAttributeAccessor(view, specifier);
+    const defaultValuesProvider = createDefaultValuesProvider(accessor);
+
     /**
      * @param {import("./types.js").AttributeValuesScope} scope
      */
     const valuesProvider = (scope) => {
         if (!scope.interval) {
-            return scope.sampleIds.map((/** @type {string} */ sampleId) =>
-                accessor(sampleId, scope.sampleHierarchy)
-            );
+            return defaultValuesProvider(scope);
         }
 
         if (!scope.aggregation) {
