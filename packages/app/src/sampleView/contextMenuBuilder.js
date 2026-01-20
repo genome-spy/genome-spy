@@ -127,9 +127,14 @@ export function buildIntervalAggregationMenu({
     attributeType,
     sampleView,
 }) {
+    const availableOps =
+        fieldInfo.type === "quantitative"
+            ? aggregationOps
+            : aggregationOps.filter((op) => op.op === "count");
+
     return [
         { label: "Interval aggregation", type: "header" },
-        ...aggregationOps.map((op) => {
+        ...availableOps.map((op) => {
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
             const specifier = {
                 view: fieldInfo.view.name,

@@ -83,6 +83,9 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         ? view.getScaleResolution(channel).getScale()
         : undefined;
 
+    const baseType = "type" in channelDef ? channelDef.type : undefined;
+    const resolvedType = "aggregation" in specifier ? "quantitative" : baseType;
+
     /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: attributeLabel,
@@ -102,7 +105,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         accessor,
         valuesProvider,
         // TODO: Ensure that there's a type even if it's missing from spec
-        type: "type" in channelDef ? channelDef.type : undefined,
+        type: resolvedType,
         scale,
         emphasizedName,
     };
