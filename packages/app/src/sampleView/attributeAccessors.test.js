@@ -8,6 +8,7 @@ describe("createViewAttributeAccessor", () => {
      * @param {object} options
      */
     const makeViewStub = (data, options) => ({
+        getEncoding: () => ({ x: { type: options.xType ?? "quantitative" } }),
         getDataAccessor: (channel) => options[`${channel}Accessor`],
         getScaleResolution: () => ({
             getScale: () => ({ type: options.scaleType ?? "linear" }),

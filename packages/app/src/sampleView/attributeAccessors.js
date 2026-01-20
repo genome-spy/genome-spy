@@ -59,8 +59,13 @@ function normalizeInterval(scaleResolution, specifier) {
  * @returns {import("./types.js").AttributeInfo["accessor"]}
  */
 export function createViewAttributeAccessor(view, specifier) {
+    const xType = /** @type {any} */ (view.getEncoding()?.x)?.type;
+    if (!xType || !["quantitative", "index", "locus"].includes(xType)) {
+        throw new Error(
+            "Interval aggregation requires an x encoding of type quantitative, index, or locus!"
+        );
+    }
     const scaleResolution = view.getScaleResolution("x");
-    // TODO: Validate x encoding type (quantitative/index) once and fail fast.
     const interval = normalizeInterval(scaleResolution, specifier);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
