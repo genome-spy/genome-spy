@@ -135,6 +135,14 @@ export function buildIntervalAggregationMenu({
     return [
         { label: "Interval aggregation", type: "header" },
         ...availableOps.map((op) => {
+            const opLabel = op.op === "count" ? "Item count" : op.label;
+            const menuTitle =
+                op.op === "count"
+                    ? "Using item count over interval..."
+                    : html`Using ${op.label.toLowerCase()}(<em class="attribute"
+                              >${fieldInfo.field}</em
+                          >) over interval...`;
+
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
             const specifier = {
                 view: fieldInfo.view.name,
@@ -152,11 +160,9 @@ export function buildIntervalAggregationMenu({
                 : undefined;
 
             return {
-                label: op.label,
+                label: opLabel,
                 submenu: generateAttributeContextMenu(
-                    html`Using ${op.label.toLowerCase()}(<em class="attribute"
-                            >${fieldInfo.field}</em
-                        >) over interval...`,
+                    menuTitle,
                     attributeInfo,
                     attributeValue,
                     sampleView

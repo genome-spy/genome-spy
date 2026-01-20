@@ -119,6 +119,9 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
  * @returns {import("lit").TemplateResult}
  */
 function formatAggregationTitle(op, field) {
+    if (op === "count") {
+        return html`${formatAggregationLabel(op)}`;
+    }
     return html`${formatAggregationLabel(op)}(<em class="attribute">${field}</em
         >)`;
 }
