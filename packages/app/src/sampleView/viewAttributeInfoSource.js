@@ -75,15 +75,33 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     };
 
     // Find the channel and scale that matches the field
-    const [channel, channelDef] = Object.entries(view.getEncoding()).find(
+    const channelEntry = Object.entries(view.getEncoding()).find(
         ([_channel, channelDef]) =>
             "field" in channelDef && channelDef.field == specifier.field
     );
-    const scale = isChannelWithScale(channel)
-        ? view.getScaleResolution(channel).getScale()
-        : undefined;
+    const channel = channelEntry?.[0];
+    const channelDef = channelEntry?.[1];
+    if (!channelDef && !("aggregation" in specifier)) {
+        throw new Error(
+            `Cannot resolve field '${specifier.field}' in view '${view.name}'`
+        );
+    }
+    if (
+        !channelDef &&
+        "aggregation" in specifier &&
+        specifier.aggregation.op !== "count"
+    ) {
+        throw new Error(
+            `Aggregation '${specifier.aggregation.op}' requires a field definition for '${specifier.field}' in view '${view.name}'`
+        );
+    }
+    const scale =
+        channel && isChannelWithScale(channel)
+            ? view.getScaleResolution(channel).getScale()
+            : undefined;
 
-    const baseType = "type" in channelDef ? channelDef.type : undefined;
+    const baseType =
+        channelDef && "type" in channelDef ? channelDef.type : undefined;
     const resolvedType = "aggregation" in specifier ? "quantitative" : baseType;
 
     /** @type {import("./types.js").AttributeInfo} */
