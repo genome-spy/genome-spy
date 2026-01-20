@@ -39,7 +39,6 @@ Example (conceptual):
   - interval: [45600000, 45850000]
   - aggregation:
     - op: "max" | "min" | "weightedMean" | "count"
-    - weightByOverlap: true | false              # optional
 
 This keeps the existing attribute identity while allowing richer queries.
 
@@ -179,12 +178,13 @@ Checkpoint 1:
 Goal: define interval-based aggregation and expose it via accessors.
 
 Steps:
-1. Extend types to include aggregation spec and interval format.
-2. Add `attributeAggregation.js` with min/max/weighted mean/count implemented
+1. DONE: Extend types to include aggregation spec and interval format.
+2. DONE: Add `attributeAggregation.js` with min/max/weighted mean/count implemented
    as small, pure, testable functions.
-3. Add an accessor factory that returns `(sampleId) => aggregatedValue`,
+3. DONE: Add an accessor factory that returns `(sampleId) => aggregatedValue`,
    normalizing point queries to `[p, p]`.
-4. Wire `viewAttributeInfoSource.js` to use the accessor factory.
+4. DONE: Wire `viewAttributeInfoSource.js` to use the accessor factory.
+5. DONE: Run `npm test`, `npm -ws run test:tsc --if-present`, `npm run lint`.
 
 Checkpoint 2:
 - Aggregated accessors return expected values for test data.

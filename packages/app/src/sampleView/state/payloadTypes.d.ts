@@ -8,7 +8,7 @@
 import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";
-import { AttributeIdentifier } from "../types.js";
+import { AggregationSpec, AttributeIdentifier, Interval } from "../types.js";
 import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
 
 /*
@@ -75,6 +75,11 @@ export type ThresholdOperator = "lt" | "lte";
 export interface Threshold {
     operator: ThresholdOperator;
     operand: number;
+}
+
+export interface IntervalAggregation {
+    interval: Interval;
+    aggregation: AggregationSpec;
 }
 
 /**

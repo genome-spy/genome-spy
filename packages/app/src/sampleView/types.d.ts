@@ -1,4 +1,5 @@
 import { SampleHierarchy } from "./state/sampleState.js";
+import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
@@ -8,6 +9,16 @@ import { SampleHierarchy } from "./state/sampleState.js";
 export interface AttributeIdentifier {
     type: string;
     specifier?: unknown;
+}
+
+export type IntervalPoint = number | ChromosomalLocus;
+
+export type Interval = [IntervalPoint, IntervalPoint];
+
+export type AggregationOp = "min" | "max" | "weightedMean" | "count";
+
+export interface AggregationSpec {
+    op: AggregationOp;
 }
 
 export interface AttributeInfo {
