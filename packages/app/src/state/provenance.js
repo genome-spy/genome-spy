@@ -6,7 +6,7 @@
  *      context menus or provenance tracking
  * @prop {string | import("lit").TemplateResult} [provenanceTitle] A title
  *      shown in the provenance tracking, if defined. Replaces the normal title.
- * @prop {string} [attributeName]
+ * @prop {string | import("lit").TemplateResult} [attributeName]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
  */
 

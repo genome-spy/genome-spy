@@ -13,6 +13,7 @@ import { classMap } from "lit/directives/class-map.js";
 import "../../components/generic/histogram.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
+import { extractAttributeValues } from "../attributeValues.js";
 
 const checkboxListStyles = css`
     .gs-checkbox-list-wrapper {
@@ -354,7 +355,7 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
     }
 
     renderBody() {
-        const values = extractValues(
+        const values = extractAttributeValues(
             this.attributeInfo,
             this.sampleView.leafSamples,
             this.sampleView.sampleHierarchy
@@ -509,7 +510,7 @@ export function discreteAttributeFilterDialog(
     categoryToMarker = (value) => nothing
 ) {
     const presentValues = new Set(
-        extractValues(
+        extractAttributeValues(
             attributeInfo,
             sampleView.leafSamples,
             sampleView.sampleHierarchy
@@ -558,17 +559,3 @@ const verboseOps = {
     gte: ["\u2265", "greater than or equal to"],
     gt: [">", "greater than"],
 };
-
-/**
- * Extract values for histogram
- *
- * @param {import("../types.js").AttributeInfo} attributeInfo
- * @param {string[]} samples
- * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
- */
-function extractValues(attributeInfo, samples, sampleHierarchy) {
-    const a = attributeInfo.accessor;
-    return /** @type {Scalar[]} */ (
-        samples.map((sampleId) => a(sampleId, sampleHierarchy))
-    );
-}

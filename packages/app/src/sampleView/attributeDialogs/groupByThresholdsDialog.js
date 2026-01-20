@@ -7,6 +7,7 @@ import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
 } from "../state/groupOperations.js";
+import { extractAttributeValues } from "../attributeValues.js";
 
 /**
  * @param {import("../types.js").AttributeInfo} attributeInfo
@@ -297,32 +298,11 @@ export function showGroupByThresholdsDialog(attributeInfo, sampleView) {
                 /** @type {import("../state/payloadTypes.js").Threshold[]} */ ([]);
             el.attributeInfo = attributeInfo;
             el.sampleView = sampleView;
-            el.values = extractValues(
+            el.values = extractAttributeValues(
                 attributeInfo,
                 sampleView.leafSamples,
                 sampleView.sampleHierarchy
             );
         }
-    );
-}
-
-/**
- *
- * @param {import("../state/payloadTypes.js").Threshold[]} thresholds
- */
-
-/**
- * Extract values for histogram
- *
- * N.B. This is copy-paste from advanced filter. TODO: dedupe
- *
- * @param {import("../types.js").AttributeInfo} attributeInfo
- * @param {string[]} samples
- * @param {import("../state/sampleSlice.js").SampleHierarchy} sampleHierarchy
- */
-function extractValues(attributeInfo, samples, sampleHierarchy) {
-    const a = attributeInfo.accessor;
-    return /** @type {number[]} */ (
-        samples.map((sampleId) => a(sampleId, sampleHierarchy))
     );
 }

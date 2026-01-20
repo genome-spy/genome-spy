@@ -64,6 +64,19 @@ export default function generateAttributeContextMenu(
 
     const type = attributeInfo?.type ?? "identifier";
 
+    let isCountAggregation = false;
+    const specifier = attributeInfo.attribute.specifier;
+    if (
+        specifier &&
+        typeof specifier === "object" &&
+        "aggregation" in specifier
+    ) {
+        isCountAggregation =
+            /** @type {import("./types.js").AggregationSpec} */ (
+                specifier.aggregation
+            ).op === "count";
+    }
+
     if (type != "quantitative") {
         if (type != "identifier") {
             addActions(actions.groupByNominal({ attribute }));
@@ -122,7 +135,20 @@ export default function generateAttributeContextMenu(
             callback: () =>
                 showGroupByThresholdsDialog(attributeInfo, sampleView),
         });
-        if (isDefined(attributeValue)) {
+        if (isCountAggregation) {
+            addActions(
+                actions.filterByQuantitative({
+                    attribute,
+                    operator: "gte",
+                    operand: 1,
+                }),
+                actions.filterByQuantitative({
+                    attribute,
+                    operator: "eq",
+                    operand: 0,
+                })
+            );
+        } else if (isDefined(attributeValue)) {
             addActions(
                 actions.filterByQuantitative({
                     attribute,
