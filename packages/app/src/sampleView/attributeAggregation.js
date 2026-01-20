@@ -3,10 +3,6 @@
  * @returns {number}
  */
 export function aggregateMin(values) {
-    if (!values.length) {
-        return;
-    }
-
     let min = values[0];
     for (let i = 1; i < values.length; i++) {
         const value = values[i];
@@ -22,10 +18,6 @@ export function aggregateMin(values) {
  * @returns {number}
  */
 export function aggregateMax(values) {
-    if (!values.length) {
-        return;
-    }
-
     let max = values[0];
     for (let i = 1; i < values.length; i++) {
         const value = values[i];
@@ -42,10 +34,6 @@ export function aggregateMax(values) {
  * @returns {number}
  */
 export function aggregateWeightedMean(values, weights) {
-    if (!values.length) {
-        return;
-    }
-
     let sum = 0;
     let weightSum = 0;
     for (let i = 0; i < values.length; i++) {

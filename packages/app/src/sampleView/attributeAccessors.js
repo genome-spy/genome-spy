@@ -51,8 +51,16 @@ function normalizeInterval(scaleResolution, specifier) {
  * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
  * @returns {import("./types.js").AttributeInfo["accessor"]}
  */
+/**
+ * Builds a per-sample accessor for point or interval-based view attributes.
+ *
+ * @param {import("@genome-spy/core/view/unitView.js").default} view
+ * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+ * @returns {import("./types.js").AttributeInfo["accessor"]}
+ */
 export function createViewAttributeAccessor(view, specifier) {
     const scaleResolution = view.getScaleResolution("x");
+    // TODO: Validate x encoding type (quantitative/index) once and fail fast.
     const interval = normalizeInterval(scaleResolution, specifier);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
@@ -90,13 +98,8 @@ export function createViewAttributeAccessor(view, specifier) {
         if (x2Accessor) {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
-                const x = xAccessor(datum);
-                const x2 = x2Accessor(datum);
-                if (typeof x !== "number" || typeof x2 !== "number") {
-                    throw new Error(
-                        "Interval aggregation requires numeric x values!"
-                    );
-                }
+                const x = /** @type {number} */ (xAccessor(datum));
+                const x2 = /** @type {number} */ (x2Accessor(datum));
                 const overlapStart = x > start ? x : start;
                 const overlapEnd = x2 < end ? x2 : end;
                 if (overlapEnd > overlapStart) {
@@ -109,12 +112,7 @@ export function createViewAttributeAccessor(view, specifier) {
         } else {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
-                const x = xAccessor(datum);
-                if (typeof x !== "number") {
-                    throw new Error(
-                        "Interval aggregation requires numeric x values!"
-                    );
-                }
+                const x = /** @type {number} */ (xAccessor(datum));
                 if (x >= start && x <= end) {
                     values.push(valueAccessor(datum));
                     if (op === "weightedMean") {
