@@ -368,11 +368,26 @@ export default class UnitView extends View {
                     const resolution = new ScaleResolution(targetChannel);
                     view.resolutions[type][targetChannel] = resolution;
 
-                    resolution.addEventListener("range", (event) => {
-                        // Create if WebGLHelper is available, i.e., if not running in headless mode
+                    const updateRangeTexture = (
+                        /** @type {import("../types/scaleResolutionApi.js").ScaleResolutionEvent} */ event
+                    ) => {
+                        // Create if WebGLHelper is available, i.e., if not running in headless mode.
+                        // Domain changes can alter discrete texture sizes as well.
                         this.context.glHelper?.createRangeTexture(
                             event.scaleResolution,
                             true
+                        );
+                    };
+                    resolution.addEventListener("range", updateRangeTexture);
+                    resolution.addEventListener("domain", updateRangeTexture);
+                    this.registerDisposer(() => {
+                        resolution.removeEventListener(
+                            "range",
+                            updateRangeTexture
+                        );
+                        resolution.removeEventListener(
+                            "domain",
+                            updateRangeTexture
                         );
                     });
                 }

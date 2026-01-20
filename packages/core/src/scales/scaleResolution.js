@@ -27,6 +27,7 @@ import { isSecondaryChannel } from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
+import createIndexer from "../utils/indexer.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -92,6 +93,11 @@ export default class ScaleResolution {
     /** @type {ScaleInteractionController} */
     #interactionController;
 
+    /** @type {ReturnType<typeof createIndexer> | undefined} */
+    #categoricalIndexer;
+
+    #categoricalIndexerExplicit = false;
+
     /**
      * @param {Channel} channel
      */
@@ -148,7 +154,11 @@ export default class ScaleResolution {
             if (!view.isConfiguredVisible()) {
                 continue;
             }
-            if (!view.isDataInitialized()) {
+            if (
+                !view.isDataInitialized() &&
+                !member.channelDef?.scale?.domain
+            ) {
+                // Explicit domains should be honored even before data init.
                 continue;
             }
             active.add(member);
@@ -354,10 +364,31 @@ export default class ScaleResolution {
                 extractDataDomain
             );
 
-        if (domain && domain.length > 0) {
+        if (isDiscrete(props.type)) {
+            const isExplicit = this.#isExplicitDomain();
+            const indexer = this.#getCategoricalIndexer(isExplicit);
+            if (domain && domain.length > 0) {
+                if (
+                    isExplicit &&
+                    indexer.domain().length > 0 &&
+                    !shallowArrayEquals(indexer.domain(), domain)
+                ) {
+                    this.#categoricalIndexer = undefined;
+                    return this.#getScaleProps(extractDataDomain);
+                }
+                indexer.addAll(domain);
+            }
+            const indexedDomain = indexer.domain();
+            props.domain =
+                indexedDomain.length > 0
+                    ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
+                          indexedDomain
+                      )
+                    : new NominalDomain();
+            // Scale props are spec-shaped; keep the indexer off the public type.
+            /** @type {any} */ (props).domainIndexer = indexer;
+        } else if (domain && domain.length > 0) {
             props.domain = domain;
-        } else if (isDiscrete(props.type)) {
-            props.domain = new NominalDomain();
         }
 
         if (!props.domain && props.domainMid !== undefined) {
@@ -367,6 +398,20 @@ export default class ScaleResolution {
         }
 
         return props;
+    }
+
+    /**
+     * @param {boolean} isExplicit
+     */
+    #getCategoricalIndexer(isExplicit) {
+        if (
+            !this.#categoricalIndexer ||
+            this.#categoricalIndexerExplicit !== isExplicit
+        ) {
+            this.#categoricalIndexer = createIndexer();
+            this.#categoricalIndexerExplicit = isExplicit;
+        }
+        return this.#categoricalIndexer;
     }
 
     /**
@@ -658,7 +703,7 @@ export function reconfigureScaleDomains(fromViews, viewPredicate) {
         }
     }
 
-    /** @param {import("../view/view.js").default} view */
+    /** @type {import("../view/view.js").VisitorCallback} */
     function collectVisibleResolutions(view) {
         if (viewPredicate && !viewPredicate(view)) {
             return VISIT_SKIP;

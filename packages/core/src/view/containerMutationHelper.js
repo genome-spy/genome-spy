@@ -77,7 +77,9 @@ export default class ContainerMutationHelper {
 
         configureViewOpacity(childView);
 
-        const viewPredicate = (view) => view.isConfiguredVisible();
+        const viewPredicate = (
+            /** @type {import("./view.js").default} */ view
+        ) => view.isConfiguredVisible();
         const { dataSources, graphicsPromises } = initializeViewSubtree(
             childView,
             this.container.context.dataFlow,

@@ -275,16 +275,16 @@ export function buildDataFlow(
 }
 
 /**
- * @param {View} root
- * @param {(view: View) => boolean} [viewPredicate]
- * @returns {View[]}
+ * @param {import("./view.js").default} root
+ * @param {(view: import("./view.js").default) => boolean} [viewPredicate]
+ * @returns {import("./view.js").default[]}
  */
 function collectSubtreeViews(root, viewPredicate) {
     if (!viewPredicate) {
         return root.getDescendants();
     }
 
-    /** @type {View[]} */
+    /** @type {import("./view.js").default[]} */
     const views = [];
     root.visit((view) => {
         if (!viewPredicate(view)) {

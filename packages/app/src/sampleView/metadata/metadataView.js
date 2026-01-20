@@ -308,7 +308,9 @@ export class MetadataView extends ConcatView {
         // Opacity may depend on resolved scales; configure after the subtree exists.
         configureViewOpacity(this);
 
-        const viewPredicate = (view) => view.isConfiguredVisible();
+        const viewPredicate = (
+            /** @type {import("@genome-spy/core/view/view.js").default} */ view
+        ) => view.isConfiguredVisible();
         const { graphicsPromises } = initializeViewSubtree(
             this,
             flow,

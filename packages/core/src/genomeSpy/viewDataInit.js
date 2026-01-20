@@ -21,7 +21,9 @@ export async function initializeViewData(
     fontManager,
     onDataFlowBuilt
 ) {
-    const viewPredicate = (view) => view.isConfiguredVisible();
+    const viewPredicate = (
+        /** @type {import("../view/view.js").default} */ view
+    ) => view.isConfiguredVisible();
     const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -61,7 +63,9 @@ export async function initializeVisibleViewData(
     dataFlow,
     fontManager
 ) {
-    const viewPredicate = (view) => view.isConfiguredVisible();
+    const viewPredicate = (
+        /** @type {import("../view/view.js").default} */ view
+    ) => view.isConfiguredVisible();
     const visibleViews = collectVisibleViews(viewRoot, viewPredicate);
     const viewsToInitialize = visibleViews.filter(
         (view) => view.getDataInitializationState() === "none"
@@ -72,8 +76,9 @@ export async function initializeVisibleViewData(
     }
 
     const viewsToInitializeSet = new Set(viewsToInitialize);
-    const viewInitializationPredicate = (view) =>
-        viewsToInitializeSet.has(view);
+    const viewInitializationPredicate = (
+        /** @type {import("../view/view.js").default} */ view
+    ) => viewsToInitializeSet.has(view);
 
     const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
         viewRoot,
