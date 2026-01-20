@@ -38,8 +38,7 @@ Example (conceptual):
   - field: "logR"
   - interval: [45600000, 45850000]
   - aggregation:
-    - op: "max" | "min" | "mean" | "sum" | "count" | "any" | "coverage"
-    - predicate: { operator: "gt", operand: 2 }  # optional
+    - op: "max" | "min" | "weightedMean" | "count"
     - weightByOverlap: true | false              # optional
 
 This keeps the existing attribute identity while allowing richer queries.
@@ -56,19 +55,15 @@ Interval format:
 Return a single value per sample. Suggested defaults:
 
 - For segment features (intervals with x and x2):
-  - `coverage`: sum of overlap lengths / interval length
   - `weightedMean`: mean of field weighted by overlap length
   - `max`/`min`: extrema of field among overlapping segments
   - `count`: number of overlapping segments
 
 - For point features (x only):
   - `count`: number of points in interval
-  - `any`: 0/1 whether any point falls in interval
-  - `max`/`min`/`mean` over a field
-  - `countByPredicate`: number of points matching predicate
+  - `max`/`min` over a field
 
 Notes:
-- `any` can be modeled as `count > 0`.
 - If no overlaps, return `undefined`, except `count` returns `0`.
 
 ### Accessor Factory (Core Idea)
@@ -157,7 +152,66 @@ Optional:
   - No overlaps returns `undefined` (except `count` returns `0`)
 - ActionInfo tests:
   - Titles include aggregation op and formatted interval
-  - Predicate rendering (e.g., `count > 0`, `max >= 2`)
+  - Comparison operators are handled by existing quantitative filters
+
+## Step-by-Step Execution Plan (With Checkpoints)
+After each phase, run: `npm test`, `npm -ws run test:tsc --if-present`, and
+`npm run lint`.
+After completing an item or phase, update this document and mark it DONE.
+
+### Phase 1: Remove Mark-Level Data Access
+Goal: eliminate `mark.findDatumAt` usage and centralize data lookup near
+SampleView/attribute accessors.
+
+Steps:
+1. Add a pure datum-lookup helper that uses collector data + accessors.
+2. Replace `view.mark.findDatumAt` in `viewAttributeInfoSource.js` with the helper.
+3. Replace `view.mark.findDatumAt` in `sampleView.js` context menu with the helper.
+4. Add unit tests for the helper (discrete vs continuous, point vs segment).
+
+Checkpoint 1:
+- No `findDatumAt` calls remain in app code.
+- Context menu still shows per-sample “value at locus”.
+- Tests cover the lookup helper.
+
+### Phase 2: Introduce Aggregation Spec + Accessor Factory
+Goal: define interval-based aggregation and expose it via accessors.
+
+Steps:
+1. Extend types to include aggregation spec and interval format.
+2. Add `attributeAggregation.js` with min/max/weighted mean/count implemented
+   as small, pure, testable functions.
+3. Add an accessor factory that returns `(sampleId) => aggregatedValue`,
+   normalizing point queries to `[p, p]`.
+4. Wire `viewAttributeInfoSource.js` to use the accessor factory.
+
+Checkpoint 2:
+- Aggregated accessors return expected values for test data.
+- Point queries still behave like the old “value at locus”.
+
+### Phase 3: Dialog Support via valuesProvider
+Goal: enable histogram/category dialogs to use aggregated values.
+
+Steps:
+1. Extend `AttributeInfo` with `valuesProvider({ sampleIds, interval, aggregation })`.
+2. Update dialogs in `attributeDialogs/` to use `valuesProvider` when present.
+3. Add tests verifying dialog inputs use aggregated values.
+
+Checkpoint 3:
+- Threshold and advanced filter dialogs build histograms from aggregated values.
+- Categorical dialogs still work for nominal data.
+
+### Phase 4: Context Menu for Aggregations
+Goal: enable brush-driven aggregate selection workflow.
+
+Steps:
+1. Read active brush interval from `gridChild.js` selection state.
+2. Update context menu to show aggregation ops only when a brush is active.
+3. Add submenu flow: field → aggregation → sample op.
+
+Checkpoint 4:
+- Menus hide aggregation ops without an active brush.
+- Aggregation selection flows into existing sample actions.
 
 ## Interval Inclusion Semantics (HitTestMode)
 Interval-based aggregation should honor mark-specific inclusion rules to match
@@ -174,7 +228,6 @@ and apply the corresponding predicate before aggregating.
 
 ## Open Questions
 - Do we need interval specs for non-genomic x scales?
-- How should predicates combine with aggregations (pre-filter vs post-filter)?
 - Do we need caching for repeated queries during interactive filtering?
 
 ## Out of Scope (for now)
