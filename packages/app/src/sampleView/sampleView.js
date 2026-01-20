@@ -1016,37 +1016,40 @@ export default class SampleView extends ContainerView {
             }
 
             if (selectionInterval) {
-                const aggregationItems = aggregationOps.map((op) => {
-                    /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
-                    const specifier = {
-                        view: fieldInfo.view.name,
-                        field: fieldInfo.field,
-                        interval: selectionIntervalComplex,
-                        aggregation: { op: op.op },
-                    };
+                const aggregationItems = [
+                    { label: "Interval aggregation", type: "header" },
+                    ...aggregationOps.map((op) => {
+                        /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
+                        const specifier = {
+                            view: fieldInfo.view.name,
+                            field: fieldInfo.field,
+                            interval: selectionIntervalComplex,
+                            aggregation: { op: op.op },
+                        };
 
-                    const attributeInfo =
-                        this.compositeAttributeInfoSource.getAttributeInfo({
-                            type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
-                            specifier,
-                        });
-                    const attributeValue = sample
-                        ? attributeInfo.accessor(
-                              sample.id,
-                              this.sampleHierarchy
-                          )
-                        : undefined;
+                        const attributeInfo =
+                            this.compositeAttributeInfoSource.getAttributeInfo({
+                                type: VALUE_AT_LOCUS, // TODO: Come up with a more generic name for the type
+                                specifier,
+                            });
+                        const attributeValue = sample
+                            ? attributeInfo.accessor(
+                                  sample.id,
+                                  this.sampleHierarchy
+                              )
+                            : undefined;
 
-                    return {
-                        label: op.label,
-                        submenu: generateAttributeContextMenu(
-                            null,
-                            attributeInfo,
-                            attributeValue,
-                            this
-                        ),
-                    };
-                });
+                        return {
+                            label: op.label,
+                            submenu: generateAttributeContextMenu(
+                                null,
+                                attributeInfo,
+                                attributeValue,
+                                this
+                            ),
+                        };
+                    }),
+                ];
 
                 items.push({
                     label: fieldInfo.field,
