@@ -3,6 +3,7 @@ import {
     findUniqueViewNames,
 } from "@genome-spy/core/view/viewUtils.js";
 import ContainerView from "@genome-spy/core/view/containerView.js";
+import { html } from "lit";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -1043,7 +1044,10 @@ export default class SampleView extends ContainerView {
                         return {
                             label: op.label,
                             submenu: generateAttributeContextMenu(
-                                null,
+                                html`Using ${op.label.toLowerCase()}(<em
+                                        class="attribute"
+                                        >${fieldInfo.field}</em
+                                    >) over interval...`,
                                 attributeInfo,
                                 attributeValue,
                                 this
