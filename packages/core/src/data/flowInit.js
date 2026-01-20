@@ -121,7 +121,7 @@ export function initializeViewSubtree(
 
     const viewsToInitializeSet = new Set(viewsToInitialize);
     for (const view of viewsToInitialize) {
-        view.setDataInitializationState("pending");
+        view._setDataInitializationState("pending");
     }
 
     let dataFlow;
@@ -133,7 +133,7 @@ export function initializeViewSubtree(
         syncFlowHandles(subtreeRoot, canonicalBySource);
     } catch (error) {
         for (const view of viewsToInitialize) {
-            view.setDataInitializationState("none");
+            view._setDataInitializationState("none");
         }
         throw error;
     }
@@ -182,7 +182,7 @@ export function initializeViewSubtree(
     }
 
     for (const view of viewsToInitialize) {
-        view.setDataInitializationState("ready");
+        view._setDataInitializationState("ready");
     }
 
     return {

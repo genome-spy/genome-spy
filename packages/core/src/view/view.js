@@ -356,9 +356,12 @@ export default class View {
     }
 
     /**
+     * Internal hook for lazy dataflow initialization.
+     * Use only from flow initialization helpers to avoid inconsistent state.
+     *
      * @param {"none" | "pending" | "ready"} state
      */
-    setDataInitializationState(state) {
+    _setDataInitializationState(state) {
         this.#dataInitializationState = state;
     }
 
