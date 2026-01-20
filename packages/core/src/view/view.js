@@ -92,6 +92,11 @@ export default class View {
     #disposers = [];
 
     /**
+     * @type {"none" | "pending" | "ready"}
+     */
+    #dataInitializationState = "none";
+
+    /**
      * Coords of the view for each facet, recorded during the last layout rendering pass.
      * Most views have only one facet, so the map is usually of size 1.
      *
@@ -341,6 +346,24 @@ export default class View {
         return this.getLayoutAncestors().every((view) =>
             view.isConfiguredVisible()
         );
+    }
+
+    /**
+     * @returns {"none" | "pending" | "ready"}
+     */
+    getDataInitializationState() {
+        return this.#dataInitializationState;
+    }
+
+    /**
+     * @param {"none" | "pending" | "ready"} state
+     */
+    setDataInitializationState(state) {
+        this.#dataInitializationState = state;
+    }
+
+    isDataInitialized() {
+        return this.#dataInitializationState === "ready";
     }
 
     /**

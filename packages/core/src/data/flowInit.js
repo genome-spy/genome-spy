@@ -92,6 +92,8 @@ export function syncFlowHandles(root, canonicalBySource) {
  *
  * @param {import("../view/view.js").default} subtreeRoot
  * @param {import("./dataFlow.js").default} flow
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewInitializationPredicate]
  * @returns {{
  *     dataFlow: import("./dataFlow.js").default,
  *     unitViews: UnitView[],
@@ -99,12 +101,44 @@ export function syncFlowHandles(root, canonicalBySource) {
  *     graphicsPromises: Promise<import("../marks/mark.js").default>[]
  * }}
  */
-export function initializeViewSubtree(subtreeRoot, flow) {
-    const dataFlow = buildDataFlow(subtreeRoot, flow);
-    const canonicalBySource = optimizeDataFlow(dataFlow);
-    syncFlowHandles(subtreeRoot, canonicalBySource);
-    const subtreeViews = subtreeRoot.getDescendants();
-    const dataSources = collectViewSubtreeDataSources(subtreeViews);
+export function initializeViewSubtree(
+    subtreeRoot,
+    flow,
+    viewPredicate,
+    viewInitializationPredicate
+) {
+    const shouldInitializeView = viewInitializationPredicate ?? (() => true);
+    const subtreeViews = collectSubtreeViews(subtreeRoot, viewPredicate);
+    const viewsToInitialize = subtreeViews.filter(shouldInitializeView);
+    if (viewsToInitialize.length === 0) {
+        return {
+            dataFlow: flow,
+            unitViews: [],
+            dataSources: new Set(),
+            graphicsPromises: [],
+        };
+    }
+
+    const viewsToInitializeSet = new Set(viewsToInitialize);
+    for (const view of viewsToInitialize) {
+        view.setDataInitializationState("pending");
+    }
+
+    let dataFlow;
+    try {
+        dataFlow = buildDataFlow(subtreeRoot, flow, viewPredicate, (view) =>
+            viewsToInitializeSet.has(view)
+        );
+        const canonicalBySource = optimizeDataFlow(dataFlow);
+        syncFlowHandles(subtreeRoot, canonicalBySource);
+    } catch (error) {
+        for (const view of viewsToInitialize) {
+            view.setDataInitializationState("none");
+        }
+        throw error;
+    }
+
+    const dataSources = collectViewSubtreeDataSources(viewsToInitialize);
 
     // Initialize flow nodes for the sources that belong to this subtree.
     for (const dataSource of dataSources) {
@@ -112,7 +146,9 @@ export function initializeViewSubtree(subtreeRoot, flow) {
     }
 
     /** @type {UnitView[]} */
-    const unitViews = subtreeViews.filter((view) => view instanceof UnitView);
+    const unitViews = viewsToInitialize.filter(
+        (view) => view instanceof UnitView
+    );
 
     /** @type {Promise<import("../marks/mark.js").default>[]} */
     const graphicsPromises = [];
@@ -145,6 +181,10 @@ export function initializeViewSubtree(subtreeRoot, flow) {
         view.registerDisposer(view.flowHandle.collector.observe(observer));
     }
 
+    for (const view of viewsToInitialize) {
+        view.setDataInitializationState("ready");
+    }
+
     return {
         dataFlow,
         unitViews,
@@ -158,15 +198,19 @@ export function initializeViewSubtree(subtreeRoot, flow) {
  * This includes sources that are overridden deeper in the hierarchy.
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} subtreeRoot
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
  * @returns {Set<import("./sources/dataSource.js").default>}
  */
-export function collectViewSubtreeDataSources(subtreeRoot) {
+export function collectViewSubtreeDataSources(subtreeRoot, viewPredicate) {
     const subtreeViews = Array.isArray(subtreeRoot)
         ? subtreeRoot
-        : subtreeRoot.getDescendants();
+        : collectSubtreeViews(subtreeRoot, viewPredicate);
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     for (const view of subtreeViews) {
+        if (viewPredicate && !viewPredicate(view)) {
+            continue;
+        }
         // Walk up to the nearest view that owns a data source.
         let current = view;
         while (current && !current.flowHandle?.dataSource) {
@@ -184,12 +228,19 @@ export function collectViewSubtreeDataSources(subtreeRoot) {
  * These sources define data-ready boundaries for subtree-level loading.
  *
  * @param {import("../view/view.js").default} subtreeRoot
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
  * @returns {Set<import("./sources/dataSource.js").default>}
  */
-export function collectNearestViewSubtreeDataSources(subtreeRoot) {
+export function collectNearestViewSubtreeDataSources(
+    subtreeRoot,
+    viewPredicate
+) {
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
     subtreeRoot.visit((view) => {
+        if (viewPredicate && !viewPredicate(view)) {
+            return VISIT_SKIP;
+        }
         if (view.flowHandle?.dataSource) {
             dataSources.add(view.flowHandle.dataSource);
             return VISIT_SKIP;
@@ -204,21 +255,45 @@ export function collectNearestViewSubtreeDataSources(subtreeRoot) {
  *
  * @param {import("../view/view.js").default} subtreeRoot
  * @param {Set<import("./sources/dataSource.js").default>} [dataSources]
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
  * @returns {Promise<void[]>}
  */
-export function loadViewSubtreeData(
-    subtreeRoot,
-    dataSources = collectNearestViewSubtreeDataSources(subtreeRoot)
-) {
+export function loadViewSubtreeData(subtreeRoot, dataSources, viewPredicate) {
+    if (!dataSources) {
+        dataSources = collectNearestViewSubtreeDataSources(
+            subtreeRoot,
+            viewPredicate
+        );
+    }
     return Promise.all(
         Array.from(dataSources).map((dataSource) =>
             loadDataSourceOnce(dataSource)
         )
     ).then((results) => {
-        reconfigureScaleDomains(subtreeRoot);
+        reconfigureScaleDomains(subtreeRoot, viewPredicate);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });
+}
+
+/**
+ * @param {import("../view/view.js").default} subtreeRoot
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
+ * @returns {import("../view/view.js").default[]}
+ */
+function collectSubtreeViews(subtreeRoot, viewPredicate) {
+    /** @type {import("../view/view.js").default[]} */
+    const views = [];
+    if (!viewPredicate) {
+        return subtreeRoot.getDescendants();
+    }
+    subtreeRoot.visit((view) => {
+        if (!viewPredicate(view)) {
+            return VISIT_SKIP;
+        }
+        views.push(view);
+    });
+    return views;
 }
 
 /**

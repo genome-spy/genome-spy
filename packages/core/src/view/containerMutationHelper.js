@@ -77,9 +77,11 @@ export default class ContainerMutationHelper {
 
         configureViewOpacity(childView);
 
+        const viewPredicate = (view) => view.isConfiguredVisible();
         const { dataSources, graphicsPromises } = initializeViewSubtree(
             childView,
-            this.container.context.dataFlow
+            this.container.context.dataFlow,
+            viewPredicate
         );
         await loadViewSubtreeData(childView, dataSources);
         await finalizeSubtreeGraphics(graphicsPromises);

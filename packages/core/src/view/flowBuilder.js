@@ -2,6 +2,7 @@ import Collector from "../data/collector.js";
 import createTransform from "../data/transforms/transformFactory.js";
 import createDataSource from "../data/sources/dataSourceFactory.js";
 import UnitView from "./unitView.js";
+import { VISIT_SKIP } from "./view.js";
 import { BEHAVIOR_MODIFIES } from "../data/flowNode.js";
 import CloneTransform from "../data/transforms/clone.js";
 import DataFlow from "../data/dataFlow.js";
@@ -26,8 +27,15 @@ import { nodesToTreesWithAccessor, visitTree } from "../utils/trees.js";
  * @param {View} root
  * @param {DataFlow} [existingFlow] Add data flow
  *      graphs to an existing DataFlow object.
+ * @param {(view: View) => boolean} [viewPredicate]
+ * @param {(view: View) => boolean} [viewInitializationPredicate]
  */
-export function buildDataFlow(root, existingFlow) {
+export function buildDataFlow(
+    root,
+    existingFlow,
+    viewPredicate,
+    viewInitializationPredicate
+) {
     /**
      * @typedef {import("./view.js").default} View
      * @typedef {import("../data/flowNode.js").default} FlowNode
@@ -46,6 +54,8 @@ export function buildDataFlow(root, existingFlow) {
 
     /** @type {(function():void)[]} */
     const postProcessOps = [];
+
+    const shouldInitializeView = viewInitializationPredicate ?? (() => true);
 
     /**
      * @param {FlowNode} node
@@ -121,6 +131,27 @@ export function buildDataFlow(root, existingFlow) {
 
     /** @param {View} view */
     const processView = (view) => {
+        if (!shouldInitializeView(view)) {
+            const flowNode = view.flowHandle?.node;
+            if (flowNode) {
+                if (flowNode !== currentNode) {
+                    currentNode = flowNode;
+                    nodeStack.push(flowNode);
+                }
+                return;
+            }
+            if (
+                view.spec.data ||
+                view.spec.transform ||
+                view instanceof UnitView
+            ) {
+                throw new Error(
+                    "Cannot reuse missing flow nodes for " +
+                        view.getPathString()
+                );
+            }
+            return;
+        }
         if (view.spec.data) {
             const previousDataSource = view.flowHandle?.dataSource;
             if (
@@ -205,12 +236,18 @@ export function buildDataFlow(root, existingFlow) {
             view.flowHandle ??= {};
             view.flowHandle.collector = collector;
         }
+
+        if (currentNode) {
+            view.flowHandle ??= {};
+            view.flowHandle.node = currentNode;
+        }
     };
 
     // Views only keep track of their children based on the layout hierachy.
     // Thus, let's get traversable hierarchies using dataParents.
+    const views = collectSubtreeViews(root, viewPredicate);
     const dataTrees = nodesToTreesWithAccessor(
-        root.getDescendants(),
+        views,
         (view) => view.dataParent
     );
 
@@ -235,6 +272,27 @@ export function buildDataFlow(root, existingFlow) {
     postProcessOps.forEach((op) => op());
 
     return dataFlow;
+}
+
+/**
+ * @param {View} root
+ * @param {(view: View) => boolean} [viewPredicate]
+ * @returns {View[]}
+ */
+function collectSubtreeViews(root, viewPredicate) {
+    if (!viewPredicate) {
+        return root.getDescendants();
+    }
+
+    /** @type {View[]} */
+    const views = [];
+    root.visit((view) => {
+        if (!viewPredicate(view)) {
+            return VISIT_SKIP;
+        }
+        views.push(view);
+    });
+    return views;
 }
 
 /**

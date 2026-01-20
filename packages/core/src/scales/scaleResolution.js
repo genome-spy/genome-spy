@@ -26,6 +26,7 @@ import {
 import { isSecondaryChannel } from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
+import { VISIT_SKIP } from "../view/view.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -103,7 +104,7 @@ export default class ScaleResolution {
         this.name = undefined;
 
         this.#domainAggregator = new ScaleDomainAggregator({
-            getMembers: () => this.#members,
+            getMembers: () => this.#getActiveMembers(),
             getType: () => this.type,
             getLocusExtent: () => this.#getLocusExtent(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -137,6 +138,22 @@ export default class ScaleResolution {
             throw new Error("ScaleResolution has no members!");
         }
         return first.view;
+    }
+
+    #getActiveMembers() {
+        /** @type {Set<ScaleResolutionMember>} */
+        const active = new Set();
+        for (const member of this.#members) {
+            const view = member.view;
+            if (!view.isConfiguredVisible()) {
+                continue;
+            }
+            if (!view.isDataInitialized()) {
+                continue;
+            }
+            active.add(member);
+        }
+        return active;
     }
 
     get #viewContext() {
@@ -628,8 +645,9 @@ export default class ScaleResolution {
  * Causes performance issues with domains that are extracted from data.
  *
  * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
+ * @param {(view: import("../view/view.js").default) => boolean} [viewPredicate]
  */
-export function reconfigureScaleDomains(fromViews) {
+export function reconfigureScaleDomains(fromViews, viewPredicate) {
     /** @type {Set<ScaleResolution>} */
     const uniqueResolutions = new Set();
 
@@ -640,12 +658,23 @@ export function reconfigureScaleDomains(fromViews) {
         }
     }
 
+    /** @param {import("../view/view.js").default} view */
+    function collectVisibleResolutions(view) {
+        if (viewPredicate && !viewPredicate(view)) {
+            return VISIT_SKIP;
+        }
+        collectResolutions(view);
+    }
+
     for (const fromView of asArray(fromViews)) {
         // Descendants
-        fromView.visit(collectResolutions);
+        fromView.visit(collectVisibleResolutions);
 
         // Ancestors
         for (const view of fromView.getDataAncestors()) {
+            if (viewPredicate && !viewPredicate(view)) {
+                break;
+            }
             // Skip axis views etc. They should not mess with the domains.
             if (!view.options.contributesToScaleDomain) {
                 break;

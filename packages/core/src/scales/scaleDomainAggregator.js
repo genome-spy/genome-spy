@@ -12,8 +12,8 @@ import createDomain from "../utils/domainArray.js";
  */
 
 export default class ScaleDomainAggregator {
-    /** @type {Set<ScaleResolutionMember>} */
-    #members;
+    /** @type {() => Set<ScaleResolutionMember>} */
+    #getMembers;
 
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
@@ -35,7 +35,7 @@ export default class ScaleDomainAggregator {
      * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      */
     constructor({ getMembers, getType, getLocusExtent, fromComplexInterval }) {
-        this.#members = getMembers();
+        this.#getMembers = getMembers;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -77,7 +77,7 @@ export default class ScaleDomainAggregator {
      */
     getConfiguredDomain() {
         return resolveConfiguredDomain(
-            this.#members,
+            this.#getMembers(),
             this.#fromComplexInterval
         );
     }
@@ -85,10 +85,10 @@ export default class ScaleDomainAggregator {
     /**
      * Extracts and unions the data domains of all participating views.
      *
-     * @return {DomainArray}
+     * @return {DomainArray | undefined}
      */
     getDataDomain() {
-        return resolveDataDomain(this.#members, this.#getType);
+        return resolveDataDomain(this.#getMembers(), this.#getType);
     }
 
     /**
@@ -139,13 +139,18 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {() => import("../spec/channel.js").Type} getType
- * @returns {DomainArray}
+ * @returns {DomainArray | undefined}
  */
 function resolveDataDomain(members, getType) {
-    return Array.from(members)
+    const domains = Array.from(members)
         .map((member) => member.dataDomainSource?.(member.channel, getType()))
-        .filter((domain) => !!domain)
-        .reduce((acc, curr) => acc.extendAll(curr));
+        .filter((domain) => !!domain);
+
+    if (domains.length === 0) {
+        return undefined;
+    }
+
+    return domains.reduce((acc, curr) => acc.extendAll(curr));
 }
 
 /**

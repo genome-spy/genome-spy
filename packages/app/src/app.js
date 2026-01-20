@@ -209,6 +209,7 @@ export default class App {
             (state) => state.viewSettings?.visibilities,
             withMicrotask(() => {
                 // TODO: Optimize: only invalidate the affected views
+                void this.genomeSpy.initializeVisibleViewData();
                 this.genomeSpy.viewRoot._invalidateCacheByPrefix(
                     "size",
                     "progeny"
