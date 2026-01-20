@@ -11,23 +11,20 @@ export const aggregationOps = [
     { op: "variance", label: "Variance" },
 ];
 
+const aggregationOpsById = new Map(
+    aggregationOps.map((entry) => [entry.op, entry])
+);
+
 /**
  * @param {AggregationOp} op
  * @returns {string}
  */
 export function formatAggregationLabel(op) {
-    switch (op) {
-        case "min":
-        case "max":
-        case "count":
-            return op;
-        case "weightedMean":
-            return "weighted mean";
-        case "variance":
-            return "variance";
-        default:
-            throw new Error("Unknown aggregation op: " + op);
+    const entry = aggregationOpsById.get(op);
+    if (!entry) {
+        throw new Error("Unknown aggregation op: " + op);
     }
+    return entry.label.toLowerCase();
 }
 
 /**
