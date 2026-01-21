@@ -121,7 +121,9 @@ export type TypedFieldDef<T extends Type = Type> = FieldDefBase &
     TitleMixins &
     TypeMixins<T>;
 
-export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> & ScaleMixins;
+export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> &
+    ScaleMixins &
+    DomainContributionMixins;
 
 export type FieldDefWithoutScale = FieldDefBase & TitleMixins;
 
@@ -145,7 +147,9 @@ export interface ScaleMixins {
      * @internal
      */
     resolutionChannel?: ChannelWithScale;
+}
 
+export interface DomainContributionMixins {
     /**
      * Whether the field or evaluated expr should be included in the scale's domain.
      *
@@ -190,6 +194,7 @@ export type MarkPropFieldDef<T extends Type = Type> = ScaleFieldDef<T> &
 export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
     ScaleMixins &
+    DomainContributionMixins &
     TitleMixins;
 
 export type MarkPropDatumDef<T extends Type> = LegendMixins &
@@ -279,16 +284,18 @@ export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =
 
 export type MarkPropDef<V extends Value, T extends Type = Type> =
     | FieldOrDatumDefWithCondition<MarkPropFieldDef<T>, V>
-    | FieldOrDatumDefWithCondition<DatumDef, V>
+    | FieldOrDatumDefWithCondition<ScaleDatumDef, V>
     | ValueDefWithCondition<V>;
 
 export type ColorDef = MarkPropDef<string | null>;
 
-export type SecondaryFieldDef = FieldDefBase & TitleMixins;
+export type SecondaryFieldDef = FieldDefBase &
+    TitleMixins &
+    DomainContributionMixins;
 
 export type NumericValueDef = ValueDef<number>;
 
-export type ScaleDatumDef = ScaleMixins & DatumDef;
+export type ScaleDatumDef = ScaleMixins & DatumDef & DomainContributionMixins;
 
 export type PositionDatumDefBase = ScaleDatumDef & TypeMixins<Type>;
 
@@ -299,7 +306,8 @@ export type PositionDatumDef = PositionDatumDefBase & PositionMixins;
 export type PositionExprDef = ExprDef &
     PositionMixins &
     BandMixins &
-    TypeMixins<Type>;
+    TypeMixins<Type> &
+    DomainContributionMixins;
 
 export type PositionValueDef = NumericValueDef;
 
@@ -344,7 +352,8 @@ export interface ChromPosDefBase extends BandMixins {
 
 export type SecondaryChromPosDef = ChromPosDefBase &
     TitleMixins &
-    PositionMixins;
+    PositionMixins &
+    DomainContributionMixins;
 
 export type ChromPosDef = SecondaryChromPosDef &
     TypeMixins<"locus"> &
@@ -360,8 +369,8 @@ export type PositionDef =
 export type Position2Def =
     | (SecondaryFieldDef & BandMixins)
     | SecondaryChromPosDef
-    | (DatumDef & BandMixins)
-    | (ExprDef & BandMixins)
+    | (ScaleDatumDef & BandMixins)
+    | (ExprDef & BandMixins & DomainContributionMixins)
     | PositionValueDef;
 
 export type NumericMarkPropDef = MarkPropDef<number>;
@@ -375,7 +384,9 @@ export type TextDef = StringFieldDef | StringDatumDef | ExprDef; // TODO: Condit
 export type ChannelDef = Encoding[keyof Encoding];
 
 // TODO: Does this make sense?
-export type ChannelDefWithScale = ScaleMixins & TypeMixins<Type>;
+export type ChannelDefWithScale = ScaleMixins &
+    TypeMixins<Type> &
+    DomainContributionMixins;
 
 export interface XIndexDef {
     /**
