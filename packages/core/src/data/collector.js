@@ -46,11 +46,8 @@ export default class Collector extends FlowNode {
      */
     #comparator;
 
-    /** @type {Map<string, import("../utils/domainArray.js").DomainArray>} */
-    #domainCache = new Map();
-
-    /** @type {Map<string, Set<() => void>>} */
-    #domainObservers = new Map();
+    /** @type {DomainCache} */
+    #domainCache = new DomainCache();
 
     get behavior() {
         return BEHAVIOR_COLLECTS;
@@ -89,14 +86,15 @@ export default class Collector extends FlowNode {
     }
 
     reset() {
-        const shouldNotify = this.completed || this.#domainCache.size > 0;
+        const shouldNotify =
+            this.completed || this.#domainCache.hasCachedDomains();
 
         super.reset();
         this.#init();
 
         this.#domainCache.clear();
         if (shouldNotify) {
-            this.#notifyDomainObservers();
+            this.#domainCache.notify();
         }
     }
 
@@ -214,25 +212,21 @@ export default class Collector extends FlowNode {
      * @returns {import("../utils/domainArray.js").DomainArray}
      */
     getDomain(domainKey, type, accessor) {
-        const cached = this.#domainCache.get(domainKey);
-        if (cached) {
-            return cached;
-        }
+        return this.#domainCache.getDomain(domainKey, () => {
+            const domain = createDomain(type);
 
-        const domain = createDomain(type);
-
-        if (accessor.constant) {
-            domain.extend(accessor({}));
-        } else if (this.completed) {
-            for (const data of this.facetBatches.values()) {
-                for (let i = 0, n = data.length; i < n; i++) {
-                    domain.extend(accessor(data[i]));
+            if (accessor.constant) {
+                domain.extend(accessor({}));
+            } else if (this.completed) {
+                for (const data of this.facetBatches.values()) {
+                    for (let i = 0, n = data.length; i < n; i++) {
+                        domain.extend(accessor(data[i]));
+                    }
                 }
             }
-        }
 
-        this.#domainCache.set(domainKey, domain);
-        return domain;
+            return domain;
+        });
     }
 
     /**
@@ -241,23 +235,7 @@ export default class Collector extends FlowNode {
      * @returns {() => void}
      */
     subscribeDomainChanges(domainKey, listener) {
-        let listeners = this.#domainObservers.get(domainKey);
-        if (!listeners) {
-            listeners = new Set();
-            this.#domainObservers.set(domainKey, listeners);
-        }
-        listeners.add(listener);
-
-        return () => {
-            const entry = this.#domainObservers.get(domainKey);
-            if (!entry) {
-                return;
-            }
-            entry.delete(listener);
-            if (entry.size === 0) {
-                this.#domainObservers.delete(domainKey);
-            }
-        };
+        return this.#domainCache.subscribe(domainKey, listener);
     }
 
     /**
@@ -318,28 +296,10 @@ export default class Collector extends FlowNode {
     }
 
     #invalidateDomains() {
-        if (this.#domainCache.size > 0) {
+        if (this.#domainCache.hasCachedDomains()) {
             this.#domainCache.clear();
         }
-        this.#notifyDomainObservers();
-    }
-
-    #notifyDomainObservers() {
-        if (this.#domainObservers.size === 0) {
-            return;
-        }
-
-        /** @type {Set<() => void>} */
-        const listeners = new Set();
-        for (const observers of this.#domainObservers.values()) {
-            for (const observer of observers) {
-                listeners.add(observer);
-            }
-        }
-
-        for (const listener of listeners) {
-            listener();
-        }
+        this.#domainCache.notify();
     }
 
     /**
@@ -408,6 +368,84 @@ export default class Collector extends FlowNode {
             if (datum && a(datum) === uniqueId) {
                 return datum;
             }
+        }
+    }
+}
+
+/**
+ * Manages cached domains and subscriptions for invalidation.
+ */
+class DomainCache {
+    /** @type {Map<string, import("../utils/domainArray.js").DomainArray>} */
+    #cache = new Map();
+
+    /** @type {Map<string, Set<() => void>>} */
+    #observers = new Map();
+
+    hasCachedDomains() {
+        return this.#cache.size > 0;
+    }
+
+    clear() {
+        this.#cache.clear();
+    }
+
+    /**
+     * @param {string} domainKey
+     * @param {() => import("../utils/domainArray.js").DomainArray} build
+     * @returns {import("../utils/domainArray.js").DomainArray}
+     */
+    getDomain(domainKey, build) {
+        const cached = this.#cache.get(domainKey);
+        if (cached) {
+            return cached;
+        } else {
+            const domain = build();
+            this.#cache.set(domainKey, domain);
+            return domain;
+        }
+    }
+
+    /**
+     * @param {string} domainKey
+     * @param {() => void} listener
+     * @returns {() => void}
+     */
+    subscribe(domainKey, listener) {
+        let listeners = this.#observers.get(domainKey);
+        if (!listeners) {
+            listeners = new Set();
+            this.#observers.set(domainKey, listeners);
+        }
+        listeners.add(listener);
+
+        return () => {
+            const entry = this.#observers.get(domainKey);
+            if (!entry) {
+                return;
+            }
+            entry.delete(listener);
+            if (entry.size === 0) {
+                this.#observers.delete(domainKey);
+            }
+        };
+    }
+
+    notify() {
+        if (this.#observers.size === 0) {
+            return;
+        }
+
+        /** @type {Set<() => void>} */
+        const listeners = new Set();
+        for (const observers of this.#observers.values()) {
+            for (const observer of observers) {
+                listeners.add(observer);
+            }
+        }
+
+        for (const listener of listeners) {
+            listener();
         }
     }
 }
