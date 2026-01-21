@@ -300,11 +300,10 @@ function collectSubtreeViews(root, viewFilter) {
  * LinearizeGenomicCoordinate transform(s) that should be inserted into
  * the data flow.
  *
- * @param {View} view
+ * @param {import("./unitView.js").default} view
  */
 export function linearizeLocusAccess(view) {
     /**
-     * @typedef {import("./view.js").default} View
      * @typedef {import("../data/flowNode.js").default} FlowNode
      * @typedef {import("../spec/channel.js").Channel} Channel
      * @typedef {import("../spec/channel.js").Encoding} Encoding
@@ -316,12 +315,18 @@ export function linearizeLocusAccess(view) {
     /** @type {Encoding} */
     const rewrittenEncoding = {};
 
+    // Use mark.encoding so we see the same channel defs that encoders consume,
+    // including inherited channels and mark defaults. getEncoding() only returns
+    // spec/inherited encodings and can omit channels during lazy init (e.g.,
+    // summary views that inherit chrom/pos), which would skip chrom/pos rewrites.
+    const encoding = view.mark.encoding;
+
     /** @type {{ channel: Channel, chromPosDef: import("../spec/channel.js").ChromPosDef}[]} */
     const channelsAndChromPosDefs = [];
 
     // Optimize the number of transforms. Use only a single transform for positions
     // that share the chromosome field and channel.
-    for (const [c, channelDef] of Object.entries(view.getEncoding())) {
+    for (const [c, channelDef] of Object.entries(encoding)) {
         const channel = /** @type {Channel} */ (c);
         if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
             channelsAndChromPosDefs.push({ channel, chromPosDef: channelDef });
@@ -360,7 +365,7 @@ export function linearizeLocusAccess(view) {
                 /** @type {any} */
                 const newFieldDef = {
                     ...(view.spec.encoding?.[channel] ??
-                        view.getEncoding()[channel] ??
+                        encoding[channel] ??
                         {}),
                     field: linearizedField,
                 };
