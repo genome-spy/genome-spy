@@ -155,6 +155,14 @@ export function createConditionalAccessors(channel, channelDef, paramMediator) {
 }
 
 /**
+ * @param {import("../types/encoder.js").Accessor} accessor
+ * @returns {accessor is import("../types/encoder.js").ScaleAccessor}
+ */
+export function isScaleAccessor(accessor) {
+    return accessor.scaleChannel !== undefined;
+}
+
+/**
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {string}
  */
@@ -196,7 +204,7 @@ export function finalizeDomainKey(domainKeyBase, type) {
 }
 
 /**
- * @param {import("../types/encoder.js").Accessor} accessor
+ * @param {import("../types/encoder.js").ScaleAccessor} accessor
  * @param {import("../spec/channel.js").Type} type
  * @returns {string}
  */

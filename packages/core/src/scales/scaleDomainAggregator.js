@@ -3,7 +3,7 @@ import { isContinuous } from "vega-scale";
 
 import { LOCUS } from "./scaleResolutionConstants.js";
 import createDomain from "../utils/domainArray.js";
-import { getAccessorDomainKey } from "../encoder/accessor.js";
+import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -172,14 +172,10 @@ function resolveDataDomain(members, getType) {
         const collector = member.view.getCollector();
 
         for (const accessor of accessors) {
-            if (!accessor.scaleChannel) {
+            if (!isScaleAccessor(accessor)) {
                 continue;
             }
-            const channelDef =
-                /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
-                    accessor.channelDef
-                );
-            if (channelDef.contributesToScaleDomain === false) {
+            if (accessor.channelDef.contributesToScaleDomain === false) {
                 continue;
             }
 

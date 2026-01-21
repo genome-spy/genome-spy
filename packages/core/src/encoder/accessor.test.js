@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import ParamMediator from "../view/paramMediator.js";
-import { createAccessor, getAccessorDomainKey } from "./accessor.js";
+import {
+    createAccessor,
+    getAccessorDomainKey,
+    isScaleAccessor,
+} from "./accessor.js";
 
 describe("Accessor domain keys", () => {
     test("Domain keys are derived from field definitions", () => {
@@ -14,6 +18,9 @@ describe("Accessor domain keys", () => {
         );
 
         expect(accessor.domainKeyBase).toBe("field|value");
+        if (!isScaleAccessor(accessor)) {
+            throw new Error("Expected a scale accessor for x channel.");
+        }
         expect(getAccessorDomainKey(accessor, "quantitative")).toBe(
             "quantitative|field|value"
         );
@@ -28,6 +35,9 @@ describe("Accessor domain keys", () => {
         );
 
         expect(accessor.domainKeyBase).toBe("expr|datum.value + 1");
+        if (!isScaleAccessor(accessor)) {
+            throw new Error("Expected a scale accessor for x channel.");
+        }
         expect(getAccessorDomainKey(accessor, "quantitative")).toBe(
             "quantitative|expr|datum.value + 1"
         );
@@ -42,6 +52,9 @@ describe("Accessor domain keys", () => {
         );
 
         expect(accessor.domainKeyBase).toBe("datum|123");
+        if (!isScaleAccessor(accessor)) {
+            throw new Error("Expected a scale accessor for x channel.");
+        }
         expect(getAccessorDomainKey(accessor, "quantitative")).toBe(
             "quantitative|datum|123"
         );

@@ -14,7 +14,7 @@ import {
     isPrimaryPositionalChannel,
     isValueDefWithCondition,
 } from "../encoder/encoder.js";
-import { getAccessorDomainKey } from "../encoder/accessor.js";
+import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import AxisResolution from "../scales/axisResolution.js";
 import View from "./view.js";
 import {
@@ -498,14 +498,10 @@ export default class UnitView extends View {
             }
 
             for (const accessor of accessors) {
-                if (!accessor.scaleChannel) {
+                if (!isScaleAccessor(accessor)) {
                     continue;
                 }
-                const channelDef =
-                    /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
-                        accessor.channelDef
-                    );
-                if (channelDef.contributesToScaleDomain === false) {
+                if (accessor.channelDef.contributesToScaleDomain === false) {
                     continue;
                 }
 
