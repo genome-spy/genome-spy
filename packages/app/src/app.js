@@ -21,6 +21,7 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
+import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
@@ -194,6 +195,10 @@ export default class App {
                   )
             : Promise.resolve([]);
 
+        // Restore view visibility early so initial data/scale init honors bookmarks.
+        // This avoids lazy-init races where in-flight loads miss newly visible branches.
+        await this.#restoreViewSettingsFromUrlHash(remoteBookmarkPromise);
+
         const result = await this.genomeSpy.launch();
         if (!result) {
             return;
@@ -222,12 +227,7 @@ export default class App {
         );
 
         try {
-            const remoteBookmarks = await remoteBookmarkPromise;
-            if (remoteBookmarks.length) {
-                this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
-                    remoteBookmarks
-                );
-            }
+            await this.#ensureRemoteBookmarks(remoteBookmarkPromise);
         } catch (e) {
             throw new Error(`Cannot load remote bookmarks: ${e}`);
         }
@@ -268,6 +268,35 @@ export default class App {
         }
 
         this.store.dispatch(lifecycleSlice.actions.setInitialized());
+    }
+
+    /**
+     * @param {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} remoteBookmarkPromise
+     */
+    async #restoreViewSettingsFromUrlHash(remoteBookmarkPromise) {
+        const hash = window.location.hash;
+        if (!hash) {
+            return;
+        }
+        // Apply viewSettings before the initial dataflow build so views that are
+        // visible in a bookmark are initialized eagerly. Otherwise lazy-init
+        // can attach new branches while a shared data source is already loading,
+        // causing missing data until a manual toggle forces a reload.
+        try {
+            const entry = await this.#resolveBookmarkFromHash(
+                hash,
+                remoteBookmarkPromise
+            );
+            if (entry?.viewSettings) {
+                this.store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings(
+                        entry.viewSettings
+                    )
+                );
+            }
+        } catch (e) {
+            // Ignore invalid hashes here; _restoreStateFromUrl handles reporting.
+        }
     }
 
     /**
@@ -351,37 +380,18 @@ export default class App {
      */
     async _restoreStateFromUrl() {
         const hash = window.location.hash;
-        const bookmarkHashMatch = hash.match(/^#bookmark:(.+)$/)?.[1];
-        if (bookmarkHashMatch) {
-            const remoteConf = this.rootSpec.bookmarks?.remote;
-            const remoteDb = this.globalBookmarkDatabase;
-            if (remoteConf && remoteDb) {
-                const name = (await remoteDb.getNames()).find(
-                    (name) => name.replaceAll(" ", "-") == bookmarkHashMatch
-                );
-                if (!name) {
-                    throw new Error(`No such bookmark: ${bookmarkHashMatch}`);
-                } else {
-                    const bookmark = await remoteDb.get(name);
-                    if (!bookmark) {
-                        throw new Error(`No such bookmark: ${name}`);
-                    }
-                    await restoreBookmarkAndShowInfoBox(bookmark, this, {
-                        mode: "tour",
-                        database: remoteDb,
-                    });
-                    return true;
-                }
-            }
-        }
-
         if (hash && hash.length > 0) {
             try {
-                /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
-                const entry = decompressFromUrlHash(hash);
-                restoreBookmarkAndShowInfoBox(entry, this, {
-                    mode: "shared",
-                    database: this.localBookmarkDatabase,
+                const resolved =
+                    await this.#resolveBookmarkContextFromHash(hash);
+                if (!resolved) {
+                    return false;
+                }
+                const { entry, mode, database, afterTourBookmark } = resolved;
+                await restoreBookmarkAndShowInfoBox(entry, this, {
+                    mode,
+                    database,
+                    afterTourBookmark,
                 });
                 return true;
             } catch (e) {
@@ -393,6 +403,101 @@ export default class App {
             }
         }
         return false;
+    }
+
+    /**
+     * Resolve a bookmark entry from the URL hash without applying it.
+     *
+     * @param {string} hash
+     * @param {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} [remoteBookmarkPromise]
+     * @returns {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry | undefined>}
+     */
+    async #resolveBookmarkFromHash(hash, remoteBookmarkPromise) {
+        if (hash.startsWith("#bookmark:")) {
+            const remoteConf = this.rootSpec.bookmarks?.remote;
+            if (!remoteConf) {
+                return;
+            }
+
+            const remoteDb =
+                this.globalBookmarkDatabase ??
+                (remoteBookmarkPromise
+                    ? await this.#ensureRemoteBookmarks(remoteBookmarkPromise)
+                    : undefined);
+            if (!remoteDb) {
+                return;
+            }
+
+            const bookmarkHashMatch = hash.match(/^#bookmark:(.+)$/)?.[1];
+            if (!bookmarkHashMatch) {
+                return;
+            }
+
+            const name = (await remoteDb.getNames()).find(
+                (name) => name.replaceAll(" ", "-") == bookmarkHashMatch
+            );
+            if (!name) {
+                throw new Error(`No such bookmark: ${bookmarkHashMatch}`);
+            }
+
+            const bookmark = await remoteDb.get(name);
+            if (!bookmark) {
+                throw new Error(`No such bookmark: ${name}`);
+            }
+            return bookmark;
+        }
+
+        /** @type {import("./bookmark/databaseSchema.js").BookmarkEntry} */
+        return decompressFromUrlHash(hash);
+    }
+
+    /**
+     * @param {string} hash
+     * @returns {Promise<{
+     *     entry: import("./bookmark/databaseSchema.js").BookmarkEntry,
+     *     mode: "tour" | "shared",
+     *     database?: import("./bookmark/bookmarkDatabase.js").default,
+     *     afterTourBookmark?: string,
+     * } | undefined>}
+     */
+    async #resolveBookmarkContextFromHash(hash) {
+        const entry = await this.#resolveBookmarkFromHash(hash);
+        if (!entry) {
+            return;
+        }
+
+        if (hash.startsWith("#bookmark:")) {
+            const remoteConf = this.rootSpec.bookmarks?.remote;
+            return {
+                entry,
+                mode: "tour",
+                database: this.globalBookmarkDatabase,
+                afterTourBookmark: remoteConf?.afterTourBookmark,
+            };
+        }
+
+        return {
+            entry,
+            mode: "shared",
+            database: this.localBookmarkDatabase,
+        };
+    }
+
+    /**
+     * @param {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>} remoteBookmarkPromise
+     * @returns {Promise<import("./bookmark/bookmarkDatabase.js").default | undefined>}
+     */
+    async #ensureRemoteBookmarks(remoteBookmarkPromise) {
+        const remoteBookmarks = await remoteBookmarkPromise;
+        if (!remoteBookmarks.length) {
+            return;
+        }
+        if (!this.globalBookmarkDatabase) {
+            this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
+                remoteBookmarks
+            );
+        }
+        return this.globalBookmarkDatabase;
     }
 
     getSampleView() {

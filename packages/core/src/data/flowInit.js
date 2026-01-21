@@ -6,6 +6,8 @@ import { reconfigureScaleDomains } from "../scales/scaleResolution.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
 const inFlightLoads = new WeakMap();
+/** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
+const queuedReloads = new WeakMap();
 
 /**
  * Deduplicate concurrent loads for shared sources without changing propagation.
@@ -16,12 +18,31 @@ const inFlightLoads = new WeakMap();
  * promise settles, the source may be loaded again later as usual.
  *
  * @param {import("./sources/dataSource.js").default} dataSource
+ * @param {{ queueReload?: boolean }} [options]
  * @returns {Promise<void>}
  */
-function loadDataSourceOnce(dataSource) {
+function loadDataSourceOnce(dataSource, options) {
     const existing = inFlightLoads.get(dataSource);
     if (existing) {
-        return existing;
+        if (!options?.queueReload) {
+            return existing;
+        }
+        const queued = queuedReloads.get(dataSource);
+        if (queued) {
+            return queued;
+        }
+        const reload = existing
+            .catch(
+                /** @returns {void} */ () => {
+                    // Nop: ensure a queued reload can proceed after a failure.
+                }
+            )
+            .then(() => loadDataSourceOnce(dataSource))
+            .finally(() => {
+                queuedReloads.delete(dataSource);
+            });
+        queuedReloads.set(dataSource, reload);
+        return reload;
     }
 
     const loadPromise = Promise.resolve()
@@ -253,9 +274,15 @@ export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
  * @param {import("../view/view.js").default} subtreeRoot
  * @param {Set<import("./sources/dataSource.js").default>} [dataSources]
  * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
+ * @param {{ queueReload?: boolean }} [loadOptions]
  * @returns {Promise<void[]>}
  */
-export function loadViewSubtreeData(subtreeRoot, dataSources, viewFilter) {
+export function loadViewSubtreeData(
+    subtreeRoot,
+    dataSources,
+    viewFilter,
+    loadOptions
+) {
     if (!dataSources) {
         dataSources = collectNearestViewSubtreeDataSources(
             subtreeRoot,
@@ -264,7 +291,7 @@ export function loadViewSubtreeData(subtreeRoot, dataSources, viewFilter) {
     }
     return Promise.all(
         Array.from(dataSources).map((dataSource) =>
-            loadDataSourceOnce(dataSource)
+            loadDataSourceOnce(dataSource, loadOptions)
         )
     ).then((results) => {
         reconfigureScaleDomains(subtreeRoot, viewFilter);

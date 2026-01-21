@@ -93,7 +93,11 @@ export async function initializeVisibleViewData(
     await Promise.all(
         Array.from(dataSourceRoots.entries()).map(
             ([subtreeRoot, dataSources]) =>
-                loadViewSubtreeData(subtreeRoot, dataSources)
+                loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
+                    // If a source is already loading, schedule a reload so new branches
+                    // added during lazy init receive a complete data propagation.
+                    queueReload: true,
+                })
         )
     );
 
