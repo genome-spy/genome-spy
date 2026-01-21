@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+
+
+### Bug Fixes
+
+* **app:** restore visibility before data init ([281573e](https://github.com/genome-spy/genome-spy/commit/281573edc84749d136d48556e4ca46966d6021a8))
+* **core:** align chrom/pos rewrite with mark encoding ([42b1d7f](https://github.com/genome-spy/genome-spy/commit/42b1d7ffe4e0e0608ba720fb72d509ebf1010224))
+* **core:** keep categorical indices stable ([a88a189](https://github.com/genome-spy/genome-spy/commit/a88a1895d83ad652bd9a0c929bf0f52f4715f03d))
+
+
+### Features
+
+* **core:** lazy initialize hidden subtrees + stabilize categorical encoding ([#311](https://github.com/genome-spy/genome-spy/issues/311)) ([0455285](https://github.com/genome-spy/genome-spy/commit/0455285b0009bbc38be7e680ad3a51cde17620e7))
+
+
+### Performance Improvements
+
+* **core:** limit scale domain refresh ([397ca54](https://github.com/genome-spy/genome-spy/commit/397ca54c2480f39573de7adbc1c23737098e4e07))
+
+
+
+
+
 ## [0.66.1](https://github.com/genome-spy/genome-spy/compare/v0.66.0...v0.66.1) (2026-01-19)
 
 **Note:** Version bump only for package @genome-spy/core

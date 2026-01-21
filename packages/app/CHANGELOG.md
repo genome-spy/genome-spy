@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+
+
+### Bug Fixes
+
+* **app:** restore visibility before data init ([281573e](https://github.com/genome-spy/genome-spy/commit/281573edc84749d136d48556e4ca46966d6021a8))
+
+
+### Features
+
+* **app:** interval-based sample actions ([#310](https://github.com/genome-spy/genome-spy/issues/310)) ([3c9fecc](https://github.com/genome-spy/genome-spy/commit/3c9fecc84f941d899c6d3202b672b6b344dc2487))
+* **core:** lazy initialize hidden subtrees + stabilize categorical encoding ([#311](https://github.com/genome-spy/genome-spy/issues/311)) ([0455285](https://github.com/genome-spy/genome-spy/commit/0455285b0009bbc38be7e680ad3a51cde17620e7))
+
+
+
+
+
 ## [0.66.1](https://github.com/genome-spy/genome-spy/compare/v0.66.0...v0.66.1) (2026-01-19)
 
 **Note:** Version bump only for package @genome-spy/app
