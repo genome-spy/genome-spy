@@ -690,7 +690,7 @@ export default class ScaleResolution {
 }
 
 /**
- * Reconfigures scale domains, starting from the given view.
+ * Reconfigures scale domains for resolutions used by the given view(s).
  *
  * Use this for data-driven updates where only domains need refreshing.
  *
@@ -719,24 +719,13 @@ export function reconfigureScaleDomains(fromViews, viewFilter) {
         if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
         }
-        collectResolutions(view);
+        if (view.options.contributesToScaleDomain) {
+            collectResolutions(view);
+        }
     }
 
     for (const fromView of asArray(fromViews)) {
-        // Descendants
         fromView.visit(collectVisibleResolutions);
-
-        // Ancestors
-        for (const view of fromView.getDataAncestors()) {
-            if (viewFilter && !viewFilter(view)) {
-                break;
-            }
-            // Skip axis views etc. They should not mess with the domains.
-            if (!view.options.contributesToScaleDomain) {
-                break;
-            }
-            collectResolutions(view);
-        }
     }
 
     uniqueResolutions.forEach((resolution) => resolution.reconfigureDomain());
