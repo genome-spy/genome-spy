@@ -64,12 +64,14 @@ export interface Accessor<T = Scalar> {
     channelDef: ChannelDef;
 
     /**
-     * A domain key base derived from the channel definition.
+     * A domain key base derived from the channel definition and scale channel.
+     * Format: <scaleChannel>|<kind>|<value>
      */
     domainKeyBase?: string;
 
     /**
      * A domain key finalized with the resolved data type.
+     * Format: <type>|<domainKeyBase>
      */
     domainKey?: string;
 

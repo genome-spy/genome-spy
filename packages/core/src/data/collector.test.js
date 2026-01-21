@@ -227,7 +227,7 @@ function createTestAccessor(fn) {
             field: "x",
             type: "quantitative",
         });
-    accessor.domainKeyBase = "field|x";
+    accessor.domainKeyBase = "x|field|x";
     accessor.predicate =
         /** @type {import("../types/encoder.js").Predicate} */ (() => true);
     return accessor;

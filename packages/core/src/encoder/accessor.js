@@ -38,13 +38,19 @@ export function createAccessor(channel, channelDef, paramMediator) {
         a.constant = a.fields.length === 0;
         a.channelDef = channelDef;
         a.channel = channel;
-        a.domainKeyBase = getDomainKeyBase(channelDef);
 
         a.scaleChannel =
             ((isChannelDefWithScale(channelDef) &&
                 channelDef.resolutionChannel) ??
                 (isChannelWithScale(channel) && channel)) ||
             undefined;
+
+        if (a.scaleChannel !== undefined) {
+            a.domainKeyBase = buildDomainKey({
+                scaleChannel: a.scaleChannel,
+                source: getDomainKeySource(channelDef),
+            }).domainKeyBase;
+        }
 
         if ("param" in channelDef) {
             // TODO: Figure out how to fix it. Interval selection depends on FIELDS!
@@ -163,24 +169,40 @@ export function isScaleAccessor(accessor) {
 }
 
 /**
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @returns {string}
+ * @typedef {{
+ *     kind: "field",
+ *     value: string,
+ * } | {
+ *     kind: "expr",
+ *     value: string,
+ * } | {
+ *     kind: "datum",
+ *     value: import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef,
+ * } | {
+ *     kind: "value",
+ *     value: import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef,
+ * }} DomainKeySource
  */
-export function getDomainKeyBase(channelDef) {
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {DomainKeySource}
+ */
+function getDomainKeySource(channelDef) {
     if (isFieldDef(channelDef)) {
-        return "field|" + channelDef.field;
+        return { kind: "field", value: channelDef.field };
     }
 
     if (isExprDef(channelDef)) {
-        return "expr|" + channelDef.expr;
+        return { kind: "expr", value: channelDef.expr };
     }
 
     if (isDatumDef(channelDef)) {
-        return "datum|" + stringifyDomainValue(channelDef.datum);
+        return { kind: "datum", value: channelDef.datum };
     }
 
     if (isValueDef(channelDef)) {
-        return "value|" + stringifyDomainValue(channelDef.value);
+        return { kind: "value", value: channelDef.value };
     }
 
     throw new Error(
@@ -190,17 +212,26 @@ export function getDomainKeyBase(channelDef) {
 }
 
 /**
- * @param {string} domainKeyBase
- * @param {import("../spec/channel.js").Type} type
- * @returns {string}
+ * Builds domain key strings in the format:
+ * - domainKeyBase: <scaleChannel>|<kind>|<value>
+ * - domainKey: <type>|<domainKeyBase>
+ *
+ * @param {object} options
+ * @param {import("../spec/channel.js").ChannelWithScale} options.scaleChannel
+ * @param {DomainKeySource} options.source
+ * @param {import("../spec/channel.js").Type} [options.type]
+ * @returns {{ domainKeyBase: string, domainKey?: string }}
  */
-export function finalizeDomainKey(domainKeyBase, type) {
-    if (!type) {
-        throw new Error(
-            "Cannot finalize a domain key without a resolved type."
-        );
+export function buildDomainKey({ scaleChannel, source, type }) {
+    if (!scaleChannel) {
+        throw new Error("Cannot build a domain key without a scale channel.");
     }
-    return type + "|" + domainKeyBase;
+
+    const domainKeyBase =
+        scaleChannel + "|" + source.kind + "|" + stringifyDomainSource(source);
+    const domainKey = type ? type + "|" + domainKeyBase : undefined;
+
+    return { domainKeyBase, domainKey };
 }
 
 /**
@@ -209,12 +240,36 @@ export function finalizeDomainKey(domainKeyBase, type) {
  * @returns {string}
  */
 export function getAccessorDomainKey(accessor, type) {
-    const domainKeyBase =
-        accessor.domainKeyBase ?? getDomainKeyBase(accessor.channelDef);
+    const { domainKey, domainKeyBase } = buildDomainKey({
+        scaleChannel: accessor.scaleChannel,
+        source: getDomainKeySource(accessor.channelDef),
+        type,
+    });
+    if (!domainKey) {
+        throw new Error(
+            "Cannot finalize a domain key without a resolved type."
+        );
+    }
     accessor.domainKeyBase = domainKeyBase;
-    const domainKey = finalizeDomainKey(domainKeyBase, type);
     accessor.domainKey = domainKey;
     return domainKey;
+}
+
+/**
+ * @param {DomainKeySource} source
+ * @returns {string}
+ */
+function stringifyDomainSource(source) {
+    switch (source.kind) {
+        case "field":
+        case "expr":
+            return source.value;
+        case "datum":
+        case "value":
+            return stringifyDomainValue(source.value);
+        default:
+            throw new Error("Unknown domain key source.");
+    }
 }
 
 /**

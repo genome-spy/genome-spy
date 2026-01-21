@@ -4,10 +4,10 @@ import ScaleDomainAggregator from "./scaleDomainAggregator.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
 /**
- * @param {string} domainKeyBase
+ * @param {string} field
  * @returns {import("../types/encoder.js").Accessor}
  */
-function createAccessor(domainKeyBase) {
+function createAccessor(field) {
     const accessor = /** @type {import("../types/encoder.js").Accessor} */ (
         /** @type {any} */ (
             (/** @type {{ value: number }} */ datum) => datum.value
@@ -16,8 +16,11 @@ function createAccessor(domainKeyBase) {
     accessor.constant = false;
     accessor.scaleChannel = "x";
     accessor.channel = "x";
-    accessor.channelDef = { contributesToScaleDomain: true };
-    accessor.domainKeyBase = domainKeyBase;
+    accessor.channelDef = {
+        contributesToScaleDomain: true,
+        field,
+        type: "quantitative",
+    };
     return accessor;
 }
 
@@ -76,8 +79,8 @@ describe("ScaleDomainAggregator", () => {
 
     test("data domains are unioned", () => {
         const domainsByKey = new Map([
-            ["quantitative|field|a", createDomain("quantitative", [1, 4])],
-            ["quantitative|field|b", createDomain("quantitative", [0, 6])],
+            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
+            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
         ]);
 
         const collector = {
@@ -86,8 +89,8 @@ describe("ScaleDomainAggregator", () => {
         };
 
         const members = [
-            createMember([createAccessor("field|a")], collector),
-            createMember([createAccessor("field|b")], collector),
+            createMember([createAccessor("a")], collector),
+            createMember([createAccessor("b")], collector),
         ];
         const aggregator = createAggregator(members, "quantitative");
         const domain = aggregator.getDataDomain();
@@ -96,8 +99,8 @@ describe("ScaleDomainAggregator", () => {
 
     test("non-contributing members are ignored", () => {
         const domainsByKey = new Map([
-            ["quantitative|field|a", createDomain("quantitative", [1, 4])],
-            ["quantitative|field|b", createDomain("quantitative", [0, 6])],
+            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
+            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
         ]);
 
         const collector = {
@@ -107,8 +110,8 @@ describe("ScaleDomainAggregator", () => {
         };
 
         const members = [
-            createMember([createAccessor("field|a")], collector, false),
-            createMember([createAccessor("field|b")], collector, true),
+            createMember([createAccessor("a")], collector, false),
+            createMember([createAccessor("b")], collector, true),
         ];
 
         const aggregator = createAggregator(members, "quantitative");
