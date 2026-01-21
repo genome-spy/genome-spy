@@ -14,7 +14,7 @@ import {
     isPrimaryPositionalChannel,
     isValueDefWithCondition,
 } from "../encoder/encoder.js";
-import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import { isScaleAccessor } from "../encoder/accessor.js";
 import AxisResolution from "../scales/axisResolution.js";
 import View from "./view.js";
 import {
@@ -484,8 +484,8 @@ export default class UnitView extends View {
 
         this.#domainSubscriptionsRegistered = true;
 
-        /** @type {Map<import("../scales/scaleResolution.js").default, Set<string>>} */
-        const domainKeysByResolution = new Map();
+        /** @type {Map<import("../scales/scaleResolution.js").default, Set<import("../types/encoder.js").ScaleAccessor>>} */
+        const accessorsByResolution = new Map();
 
         for (const encoder of Object.values(encoders)) {
             if (!encoder) {
@@ -515,42 +515,28 @@ export default class UnitView extends View {
                     );
                 }
 
-                const domainKey = getAccessorDomainKey(
-                    accessor,
-                    resolution.type
-                );
-                let domainKeys = domainKeysByResolution.get(resolution);
-                if (!domainKeys) {
-                    domainKeys = new Set();
-                    domainKeysByResolution.set(resolution, domainKeys);
+                let accessorsForResolution =
+                    accessorsByResolution.get(resolution);
+                if (!accessorsForResolution) {
+                    accessorsForResolution = new Set();
+                    accessorsByResolution.set(
+                        resolution,
+                        accessorsForResolution
+                    );
                 }
-                domainKeys.add(domainKey);
+                accessorsForResolution.add(accessor);
             }
         }
 
-        for (const [resolution, domainKeys] of domainKeysByResolution) {
-            if (domainKeys.size === 0) {
+        for (const [resolution, accessors] of accessorsByResolution) {
+            if (accessors.size === 0) {
                 continue;
             }
-
-            const listener = () => {
-                resolution.reconfigureDomain();
-            };
-
-            /** @type {(() => void)[]} */
-            const unregisters = [];
-
-            for (const domainKey of domainKeys) {
-                unregisters.push(
-                    collector.subscribeDomainChanges(domainKey, listener)
-                );
-            }
-
-            this.registerDisposer(() => {
-                for (const unregister of unregisters) {
-                    unregister();
-                }
-            });
+            const unregister = resolution.registerCollectorSubscriptions(
+                collector,
+                accessors
+            );
+            this.registerDisposer(unregister);
         }
     }
 

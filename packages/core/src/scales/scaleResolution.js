@@ -23,6 +23,7 @@ import {
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
 
+import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isSecondaryChannel } from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -299,6 +300,45 @@ export default class ScaleResolution {
         return () => {
             const removed = this.#members.delete(member);
             return removed && this.#members.size === 0;
+        };
+    }
+
+    /**
+     * @param {import("../data/collector.js").default} collector
+     * @param {Iterable<import("../types/encoder.js").ScaleAccessor>} accessors
+     * @returns {() => void}
+     */
+    registerCollectorSubscriptions(collector, accessors) {
+        /** @type {Set<string>} */
+        const domainKeys = new Set();
+
+        for (const accessor of accessors) {
+            if (accessor.channelDef.contributesToScaleDomain === false) {
+                continue;
+            }
+            domainKeys.add(getAccessorDomainKey(accessor, this.type));
+        }
+
+        if (domainKeys.size === 0) {
+            return () => undefined;
+        }
+
+        const listener = () => {
+            this.reconfigureDomain();
+        };
+
+        /** @type {(() => void)[]} */
+        const unregisters = [];
+        for (const domainKey of domainKeys) {
+            unregisters.push(
+                collector.subscribeDomainChanges(domainKey, listener)
+            );
+        }
+
+        return () => {
+            for (const unregister of unregisters) {
+                unregister();
+            }
         };
     }
 
