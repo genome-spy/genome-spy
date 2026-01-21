@@ -38,6 +38,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
         a.constant = a.fields.length === 0;
         a.channelDef = channelDef;
         a.channel = channel;
+        a.domainKeyBase = getDomainKeyBase(channelDef);
 
         a.scaleChannel =
             ((isChannelDefWithScale(channelDef) &&
@@ -151,4 +152,75 @@ export function createConditionalAccessors(channel, channelDef, paramMediator) {
         );
     }
     return conditionalAccessors;
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {string}
+ */
+export function getDomainKeyBase(channelDef) {
+    if (isFieldDef(channelDef)) {
+        return "field|" + channelDef.field;
+    }
+
+    if (isExprDef(channelDef)) {
+        return "expr|" + channelDef.expr;
+    }
+
+    if (isDatumDef(channelDef)) {
+        return "datum|" + stringifyDomainValue(channelDef.datum);
+    }
+
+    if (isValueDef(channelDef)) {
+        return "value|" + stringifyDomainValue(channelDef.value);
+    }
+
+    throw new Error(
+        "Cannot derive a domain key from channel definition: " +
+            JSON.stringify(channelDef)
+    );
+}
+
+/**
+ * @param {string} domainKeyBase
+ * @param {import("../spec/channel.js").Type} type
+ * @returns {string}
+ */
+export function finalizeDomainKey(domainKeyBase, type) {
+    if (!type) {
+        throw new Error(
+            "Cannot finalize a domain key without a resolved type."
+        );
+    }
+    return type + "|" + domainKeyBase;
+}
+
+/**
+ * @param {import("../types/encoder.js").Accessor} accessor
+ * @param {import("../spec/channel.js").Type} type
+ * @returns {string}
+ */
+export function getAccessorDomainKey(accessor, type) {
+    const domainKeyBase =
+        accessor.domainKeyBase ?? getDomainKeyBase(accessor.channelDef);
+    accessor.domainKeyBase = domainKeyBase;
+    const domainKey = finalizeDomainKey(domainKeyBase, type);
+    accessor.domainKey = domainKey;
+    return domainKey;
+}
+
+/**
+ * @param {import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef} value
+ * @returns {string}
+ */
+function stringifyDomainValue(value) {
+    if (isExprRef(value)) {
+        return "expr:" + value.expr;
+    }
+
+    if (value === undefined) {
+        return "undefined";
+    }
+
+    return JSON.stringify(value);
 }

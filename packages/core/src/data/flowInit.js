@@ -2,7 +2,6 @@ import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
 import { VISIT_SKIP } from "../view/view.js";
-import { reconfigureScaleDomains } from "../scales/scaleResolution.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
 const inFlightLoads = new WeakMap();
@@ -180,6 +179,7 @@ export function initializeViewSubtree(
         const mark = view.mark;
         // Encoders can be initialized immediately; graphics need a GL context.
         mark.initializeEncoders();
+        view.registerDomainSubscriptions();
         if (canInitializeGraphics) {
             graphicsPromises.push(mark.initializeGraphics().then(() => mark));
         }
@@ -294,7 +294,6 @@ export function loadViewSubtreeData(
             loadDataSourceOnce(dataSource, loadOptions)
         )
     ).then((results) => {
-        reconfigureScaleDomains(subtreeRoot, viewFilter);
         broadcastSubtreeDataReady(subtreeRoot);
         return results;
     });

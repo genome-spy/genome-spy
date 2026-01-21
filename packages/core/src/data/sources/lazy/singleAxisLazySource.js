@@ -1,6 +1,5 @@
 import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
-import { reconfigureScaleDomains } from "../../../scales/scaleResolution.js";
 
 /**
  * Base class for data sources that listen a domain and propagate data lazily.
@@ -129,7 +128,5 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         this.complete();
-
-        reconfigureScaleDomains(this.view);
     }
 }

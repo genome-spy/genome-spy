@@ -46,12 +46,28 @@ export default class SelectionRect extends LayerView {
         };
 
         if (channels.includes("x")) {
-            layerSpec.encoding.x = { field: "_x", type: null, title: null };
-            layerSpec.encoding.x2 = { field: "_x2" };
+            layerSpec.encoding.x = {
+                field: "_x",
+                type: null,
+                title: null,
+                contributesToScaleDomain: false,
+            };
+            layerSpec.encoding.x2 = {
+                field: "_x2",
+                contributesToScaleDomain: false,
+            };
         }
         if (channels.includes("y")) {
-            layerSpec.encoding.y = { field: "_y", type: null, title: null };
-            layerSpec.encoding.y2 = { field: "_y2" };
+            layerSpec.encoding.y = {
+                field: "_y",
+                type: null,
+                title: null,
+                contributesToScaleDomain: false,
+            };
+            layerSpec.encoding.y2 = {
+                field: "_y2",
+                contributesToScaleDomain: false,
+            };
         }
 
         layerSpec.layer.push({
@@ -102,9 +118,11 @@ export default class SelectionRect extends LayerView {
                               field: "_y2",
                               type: null,
                               title: null,
+                              contributesToScaleDomain: false,
                           }
                         : {
                               value: 1,
+                              contributesToScaleDomain: false,
                           },
                     y2: null,
                 },
@@ -137,7 +155,6 @@ export default class SelectionRect extends LayerView {
             "selectionRect", // TODO: Serial
             {
                 blockEncodingInheritance: true,
-                contributesToScaleDomain: false,
             }
         );
 

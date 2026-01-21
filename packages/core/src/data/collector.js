@@ -7,6 +7,7 @@ import { field } from "../utils/field.js";
 import { asArray } from "../utils/arrayUtils.js";
 import { radixSortIntoLookupArray } from "../utils/radixSort.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
+import createDomain from "../utils/domainArray.js";
 
 /**
  * Collects (materializes) the data that flows through this node.
@@ -45,6 +46,12 @@ export default class Collector extends FlowNode {
      */
     #comparator;
 
+    /** @type {Map<string, import("../utils/domainArray.js").DomainArray>} */
+    #domainCache = new Map();
+
+    /** @type {Map<string, Set<() => void>>} */
+    #domainObservers = new Map();
+
     get behavior() {
         return BEHAVIOR_COLLECTS;
     }
@@ -82,8 +89,15 @@ export default class Collector extends FlowNode {
     }
 
     reset() {
+        const shouldNotify = this.completed || this.#domainCache.size > 0;
+
         super.reset();
         this.#init();
+
+        this.#domainCache.clear();
+        if (shouldNotify) {
+            this.#notifyDomainObservers();
+        }
     }
 
     /**
@@ -144,6 +158,8 @@ export default class Collector extends FlowNode {
 
         super.complete();
 
+        this.#invalidateDomains();
+
         for (const observer of this.observers) {
             observer(this);
         }
@@ -187,6 +203,61 @@ export default class Collector extends FlowNode {
         for (const child of this.children) {
             child.complete();
         }
+
+        this.#invalidateDomains();
+    }
+
+    /**
+     * @param {string} domainKey
+     * @param {import("../spec/channel.js").Type} type
+     * @param {import("../types/encoder.js").Accessor} accessor
+     * @returns {import("../utils/domainArray.js").DomainArray}
+     */
+    getDomain(domainKey, type, accessor) {
+        const cached = this.#domainCache.get(domainKey);
+        if (cached) {
+            return cached;
+        }
+
+        const domain = createDomain(type);
+
+        if (accessor.constant) {
+            domain.extend(accessor({}));
+        } else if (this.completed) {
+            for (const data of this.facetBatches.values()) {
+                for (let i = 0, n = data.length; i < n; i++) {
+                    domain.extend(accessor(data[i]));
+                }
+            }
+        }
+
+        this.#domainCache.set(domainKey, domain);
+        return domain;
+    }
+
+    /**
+     * @param {string} domainKey
+     * @param {() => void} listener
+     * @returns {() => void}
+     */
+    subscribeDomainChanges(domainKey, listener) {
+        let listeners = this.#domainObservers.get(domainKey);
+        if (!listeners) {
+            listeners = new Set();
+            this.#domainObservers.set(domainKey, listeners);
+        }
+        listeners.add(listener);
+
+        return () => {
+            const entry = this.#domainObservers.get(domainKey);
+            if (!entry) {
+                return;
+            }
+            entry.delete(listener);
+            if (entry.size === 0) {
+                this.#domainObservers.delete(domainKey);
+            }
+        };
     }
 
     /**
@@ -243,6 +314,31 @@ export default class Collector extends FlowNode {
             throw new Error(
                 "Data propagation is not completed! No data are available."
             );
+        }
+    }
+
+    #invalidateDomains() {
+        if (this.#domainCache.size > 0) {
+            this.#domainCache.clear();
+        }
+        this.#notifyDomainObservers();
+    }
+
+    #notifyDomainObservers() {
+        if (this.#domainObservers.size === 0) {
+            return;
+        }
+
+        /** @type {Set<() => void>} */
+        const listeners = new Set();
+        for (const observers of this.#domainObservers.values()) {
+            for (const observer of observers) {
+                listeners.add(observer);
+            }
+        }
+
+        for (const listener of listeners) {
+            listener();
         }
     }
 

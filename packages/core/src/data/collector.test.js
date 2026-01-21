@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import Collector from "./collector.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
+import { toRegularArray } from "../utils/domainArray.js";
 
 const data = [1, 5, 2, 4, 3].map((x) => ({ x }));
 
@@ -136,3 +137,98 @@ describe("Indexing unique ids", () => {
         expect(collector.findDatumByUniqueId(0)).toBeUndefined();
     });
 });
+
+describe("Domain caching and notifications", () => {
+    test("Collector caches domains by key", () => {
+        const collector = new Collector();
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        // Count calls to verify that domains are computed once per key.
+        let calls = 0;
+        const accessor = createTestAccessor(
+            (/** @type {{ x: number }} */ datum) => {
+                calls += 1;
+                return datum.x;
+            }
+        );
+
+        const first = collector.getDomain("key", "quantitative", accessor);
+        const second = collector.getDomain("key", "quantitative", accessor);
+
+        expect(toRegularArray(first)).toEqual([1, 5]);
+        expect(first).toBe(second);
+        expect(calls).toBe(data.length);
+    });
+
+    test("Collector clears cached domains on updates", () => {
+        const collector = new Collector();
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        let calls = 0;
+        const accessor = createTestAccessor(
+            (/** @type {{ x: number }} */ datum) => {
+                calls += 1;
+                return datum.x;
+            }
+        );
+
+        collector.getDomain("key", "quantitative", accessor);
+        expect(calls).toBe(data.length);
+
+        collector.reset();
+        collector.handle({ x: 10 });
+        collector.handle({ x: 20 });
+        collector.complete();
+
+        collector.getDomain("key", "quantitative", accessor);
+        expect(calls).toBe(data.length + 2);
+    });
+
+    test("Collector domain subscriptions notify and unregister", () => {
+        const collector = new Collector();
+
+        let calls = 0;
+        const unregister = collector.subscribeDomainChanges("key", () => {
+            calls += 1;
+        });
+
+        collector.handle({ x: 1 });
+        collector.complete();
+
+        expect(calls).toBe(1);
+
+        unregister();
+        collector.repropagate();
+
+        expect(calls).toBe(1);
+    });
+});
+
+/**
+ * @param {(datum: { x: number }) => number} fn
+ * @returns {import("../types/encoder.js").Accessor<number>}
+ */
+function createTestAccessor(fn) {
+    const accessor =
+        /** @type {import("../types/encoder.js").Accessor<number>} */ (fn);
+    accessor.asNumberAccessor = () => accessor;
+    accessor.constant = false;
+    accessor.fields = ["x"];
+    accessor.channel = "x";
+    accessor.scaleChannel = "x";
+    accessor.channelDef =
+        /** @type {import("../spec/channel.js").FieldDef} */ ({
+            field: "x",
+            type: "quantitative",
+        });
+    accessor.domainKeyBase = "field|x";
+    accessor.predicate =
+        /** @type {import("../types/encoder.js").Predicate} */ (() => true);
+    return accessor;
+}

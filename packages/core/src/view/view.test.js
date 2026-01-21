@@ -104,7 +104,7 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("x", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("x").getDataDomain())).toEqual([
                 123, 123,
             ])
         ));
@@ -121,7 +121,7 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("y", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("y").getDataDomain())).toEqual([
                 1, 3,
             ])
         ));
@@ -145,7 +145,7 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("size", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("size").getDataDomain())).toEqual([
                 1, 123,
             ])
         ));

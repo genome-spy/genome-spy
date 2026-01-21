@@ -59,6 +59,16 @@ export interface Accessor<T = Scalar> {
     channelDef: ChannelDef;
 
     /**
+     * A domain key base derived from the channel definition.
+     */
+    domainKeyBase: string;
+
+    /**
+     * A domain key finalized with the resolved data type.
+     */
+    domainKey?: string;
+
+    /**
      * This accessor should be used when the predicate is true
      */
     predicate: Predicate;

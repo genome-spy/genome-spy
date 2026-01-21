@@ -7,7 +7,6 @@ import LayerView from "../view/layerView.js";
 import ConcatView from "../view/concatView.js";
 import UnitView from "../view/unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
-import { reconfigureScaleDomains } from "./scaleResolution.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -616,6 +615,7 @@ describe("Domain handling", () => {
         const firstA = indexer("a");
         const firstB = indexer("b");
 
+        collector.repropagate();
         resolution.reconfigureDomain();
 
         expect(indexer("a")).toEqual(firstA);
@@ -649,27 +649,6 @@ describe("Domain handling", () => {
         expect(indexer("b")).toEqual(1);
         expect(indexer("c")).toEqual(2);
         expect(scale.domain()).toEqual(["a", "b", "c"]);
-    });
-
-    test("reconfigureScaleDomains triggers domain-only refresh", async () => {
-        const view = await createAndInitialize(
-            {
-                data: { values: [2, 3] },
-                mark: "point",
-                encoding: {
-                    x: { field: "data", type: "quantitative" },
-                },
-            },
-            UnitView
-        );
-
-        const resolution = view.getScaleResolution("x");
-        const spy = vi.spyOn(resolution, "reconfigureDomain");
-
-        reconfigureScaleDomains(view);
-
-        expect(spy).toHaveBeenCalled();
-        spy.mockRestore();
     });
 });
 

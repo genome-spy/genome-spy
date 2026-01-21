@@ -3,6 +3,7 @@ import { isContinuous } from "vega-scale";
 
 import { LOCUS } from "./scaleResolutionConstants.js";
 import createDomain from "../utils/domainArray.js";
+import { getAccessorDomainKey } from "../encoder/accessor.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -120,6 +121,7 @@ export default class ScaleDomainAggregator {
  */
 function resolveConfiguredDomain(members, fromComplexInterval) {
     const domains = Array.from(members)
+        .filter((member) => member.contributesToDomain)
         .map((member) => member.channelDef)
         .filter((channelDef) => channelDef.scale?.domain)
         .map((channelDef) =>
@@ -142,15 +144,84 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
  * @returns {DomainArray | undefined}
  */
 function resolveDataDomain(members, getType) {
-    const domains = Array.from(members)
-        .map((member) => member.dataDomainSource?.(member.channel, getType()))
-        .filter((domain) => !!domain);
+    const type = getType();
 
-    if (domains.length === 0) {
+    /** @type {Map<import("../data/collector.js").default | null, Map<string, DomainArray>>} */
+    const domainsByCollector = new Map();
+
+    for (const member of members) {
+        if (!member.contributesToDomain) {
+            continue;
+        }
+
+        const encoders = member.view.mark.encoders;
+        if (!encoders) {
+            continue;
+        }
+
+        const encoder = encoders[member.channel];
+        if (!encoder) {
+            continue;
+        }
+
+        const accessors = encoder.accessors ?? [];
+        if (accessors.length === 0) {
+            continue;
+        }
+
+        const collector = member.view.getCollector();
+
+        for (const accessor of accessors) {
+            if (!accessor.scaleChannel) {
+                continue;
+            }
+            const channelDef =
+                /** @type {import("../spec/channel.js").ChannelDefWithScale} */ (
+                    accessor.channelDef
+                );
+            if (channelDef.contributesToScaleDomain === false) {
+                continue;
+            }
+
+            const domainKey = getAccessorDomainKey(accessor, type);
+
+            const collectorKey = collector ?? null;
+            let domainsForCollector = domainsByCollector.get(collectorKey);
+            if (!domainsForCollector) {
+                domainsForCollector = new Map();
+                domainsByCollector.set(collectorKey, domainsForCollector);
+            }
+
+            if (domainsForCollector.has(domainKey)) {
+                continue;
+            }
+
+            let domain;
+            if (collector) {
+                domain = collector.getDomain(domainKey, type, accessor);
+            } else if (accessor.constant) {
+                domain = createDomain(type);
+                domain.extend(accessor({}));
+            } else {
+                continue;
+            }
+
+            domainsForCollector.set(domainKey, domain);
+        }
+    }
+
+    if (domainsByCollector.size === 0) {
         return undefined;
     }
 
-    return domains.reduce((acc, curr) => acc.extendAll(curr));
+    const domain = createDomain(type);
+    for (const domainsForCollector of domainsByCollector.values()) {
+        for (const memberDomain of domainsForCollector.values()) {
+            domain.extendAll(memberDomain);
+        }
+    }
+
+    return domain;
 }
 
 /**

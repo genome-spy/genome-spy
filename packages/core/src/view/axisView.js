@@ -93,7 +93,6 @@ export default class AxisView extends LayerView {
             `axis_${axisProps.orient}`,
             {
                 blockEncodingInheritance: true,
-                contributesToScaleDomain: false,
                 ...options,
             }
         );
@@ -266,6 +265,12 @@ function createAxis(axisProps, type) {
 
     const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
 
+    const makeMainDomainDef = () => ({
+        field: "value",
+        type,
+        contributesToScaleDomain: false,
+    });
+
     /**
      * @return {import("../spec/view.js").UnitSpec}
      */
@@ -302,7 +307,7 @@ function createAxis(axisProps, type) {
             minBufferSize: 1500, // to prevent GPU buffer reallocation when zooming
         },
         encoding: {
-            [main]: { field: "value", type },
+            [main]: makeMainDomainDef(),
             text: { field: "label" },
         },
     });
@@ -358,7 +363,7 @@ function createAxis(axisProps, type) {
         const spec = {
             name: "ticks_and_labels",
             encoding: {
-                [main]: { field: "value", type },
+                [main]: makeMainDomainDef(),
             },
             layer: [],
         };
@@ -527,7 +532,11 @@ export function createGenomeAxis(axisProps, type) {
                 ...chromLabelMarkProps,
             },
             encoding: {
-                [main + "2"]: { field: "continuousEnd", type },
+                [main + "2"]: {
+                    field: "continuousEnd",
+                    type,
+                    contributesToScaleDomain: false,
+                },
                 text: { field: "name" },
             },
         };
@@ -582,7 +591,12 @@ export function createGenomeAxis(axisProps, type) {
             },
             encoding: {
                 // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-                [main]: { field: "continuousStart", type, band: 0 },
+                [main]: {
+                    field: "continuousStart",
+                    type,
+                    band: 0,
+                    contributesToScaleDomain: false,
+                },
             },
             layer: [],
         };
