@@ -380,6 +380,70 @@ describe("Domain handling", () => {
         expect(r(d(view.children[1]))).toEqual([1, 5]);
     });
 
+    test("shared collectors de-duplicate domain extraction for conditional encodings", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: {
+                values: [{ a: 1 }, { a: 2 }],
+            },
+            resolve: {
+                scale: { x: "shared" },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            condition: { value: 0 },
+                        },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            condition: { value: 0 },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+        const [left, right] = view.children;
+        const collector = left.getCollector();
+        if (!collector) {
+            throw new Error("Missing collector for shared collector test.");
+        }
+
+        if (collector !== right.getCollector()) {
+            if (!right.flowHandle) {
+                throw new Error(
+                    "Missing flow handle for shared collector test."
+                );
+            }
+            // Non-obvious: simulate a shared collector for merged dataflow.
+            right.flowHandle.collector = collector;
+        }
+
+        const resolution = left.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error("Missing x scale resolution.");
+        }
+
+        // Non-obvious: conditional values still exercise the conditional path.
+        const spy = vi.spyOn(collector, "getDomain");
+
+        resolution.reconfigureDomain();
+
+        expect(spy).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
+    });
+
     test("Scales of primary and secondary channels are shared and extracted domains merged properly", async () => {
         const view = await createAndInitialize(
             {
