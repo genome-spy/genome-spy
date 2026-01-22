@@ -528,11 +528,6 @@ describe("Domain handling", () => {
             UnitView
         );
 
-        for (const channel of primaryPositionalChannels) {
-            // Extract domain from data
-            view.getScaleResolution(channel).reconfigureDomain();
-        }
-
         const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
             channel
         ) => view.getScaleResolution(channel).scale.domain();
@@ -589,11 +584,6 @@ describe("Domain handling", () => {
             },
             UnitView
         );
-
-        for (const channel of primaryPositionalChannels) {
-            // Extract domain from data
-            view.getScaleResolution(channel).reconfigureDomain();
-        }
 
         const d = /** @param {Channel} channel*/ (channel) =>
             view.getScaleResolution(channel).scale.domain();
