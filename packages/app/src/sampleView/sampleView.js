@@ -92,12 +92,6 @@ export default class SampleView extends ContainerView {
     /** @type {(value: number) => void} */
     #scrollbarOpacitySetter;
 
-    /** @type {number} */
-    #sampleHeightFactor = 1;
-
-    /** @type {() => number} */
-    #sampleHeightFactorSource = () => this.#sampleHeightFactor;
-
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     #sampleRenderOptions = [];
 
@@ -620,11 +614,13 @@ export default class SampleView extends ContainerView {
             return this.#sampleRenderOptions;
         }
 
+        const pixelToUnit = 1 / this.coords.height;
+
         this.#sampleRenderOptions = sampleLocations.map(
             (sampleLocation, index) => ({
                 sampleFacetRenderingOptions: {
                     locSize: sampleLocation.locSize,
-                    pixelToUnit: this.#sampleHeightFactor,
+                    pixelToUnit,
                 },
                 facetId: [sampleLocation.key],
                 firstFacet: index === 0,
@@ -663,12 +659,8 @@ export default class SampleView extends ContainerView {
 
         const locations = this.locationManager.getLocations();
 
-        this.#sampleHeightFactor = 1 / coords.height;
         const sampleOptions = this.#getSampleRenderOptions(locations.samples);
-        for (const opt of sampleOptions) {
-            opt.sampleFacetRenderingOptions.pixelToUnit =
-                this.#sampleHeightFactor;
-        }
+
         const passThroughOptions = { ...options };
         delete passThroughOptions.facetId;
         delete passThroughOptions.firstFacet;
@@ -684,6 +676,7 @@ export default class SampleView extends ContainerView {
                 Object.assign(opt, passThroughOptions);
             }
             opt.clipRect = clipRect;
+
             gridChild.background?.render(context, coords, opt);
             gridChild.view.render(context, coords, opt);
             gridChild.backgroundStroke?.render(context, coords, opt);
@@ -796,7 +789,6 @@ export default class SampleView extends ContainerView {
     }
 
     onBeforeRender() {
-        // TODO: Only when needed
         this.locationManager.updateFacetTexture();
 
         // TODO: Consider letting LocationManager own stable scrollbar rectangles.
