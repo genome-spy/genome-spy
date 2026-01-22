@@ -268,7 +268,7 @@ export default class SampleView extends ContainerView {
             getSummaryHeight: () =>
                 this.#gridChild?.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
-                this.sampleGroupView.updateGroups();
+                this.sampleGroupView.updateRange();
                 this.#sampleHeightParam?.(sampleHeight);
             },
             viewContext: this.context,
