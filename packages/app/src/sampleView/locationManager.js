@@ -452,7 +452,7 @@ export class LocationManager {
  * @param {number} [object.summaryHeight] Height of group summaries
  *
  */
-function calculateLocations(
+export function calculateLocations(
     flattenedGroupHierarchy,
     { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
 ) {
