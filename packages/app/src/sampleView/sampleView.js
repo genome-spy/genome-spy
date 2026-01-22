@@ -2,6 +2,7 @@ import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
+    scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
@@ -92,11 +93,17 @@ export default class SampleView extends ContainerView {
     /** @type {(value: number) => void} */
     #scrollbarOpacitySetter;
 
-    /** @type {string[][]} */
-    #sampleFacetIds = [];
+    /** @type {number} */
+    #sampleHeightFactor = 1;
+
+    /** @type {() => number} */
+    #sampleHeightFactorSource = () => this.#sampleHeightFactor;
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    #sampleRenderOptions = [];
 
     /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
-    #sampleFacetIdSource;
+    #sampleRenderLocationSource;
 
     /**
      *
@@ -607,16 +614,28 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
-     * @returns {string[][]}
+     * @returns {import("@genome-spy/core/types/rendering.js").RenderingOptions[]}
      */
-    #getSampleFacetIds(sampleLocations) {
-        if (this.#sampleFacetIdSource !== sampleLocations) {
-            this.#sampleFacetIds = sampleLocations.map((sampleLocation) => [
-                sampleLocation.key,
-            ]);
-            this.#sampleFacetIdSource = sampleLocations;
+    #getSampleRenderOptions(sampleLocations) {
+        if (this.#sampleRenderLocationSource === sampleLocations) {
+            return this.#sampleRenderOptions;
         }
-        return this.#sampleFacetIds;
+
+        this.#sampleRenderOptions = sampleLocations.map(
+            (sampleLocation, index) => ({
+                sampleFacetRenderingOptions: {
+                    locSize: scaleLocSize(
+                        sampleLocation.locSize,
+                        this.#sampleHeightFactorSource
+                    ),
+                },
+                facetId: [sampleLocation.key],
+                firstFacet: index === 0,
+            })
+        );
+        this.#sampleRenderLocationSource = sampleLocations;
+
+        return this.#sampleRenderOptions;
     }
 
     /**
@@ -642,39 +661,28 @@ export default class SampleView extends ContainerView {
 
         // Sample rendering --------
 
-        const heightFactor = 1 / coords.height;
-
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
         const locations = this.locationManager.getLocations();
 
-        const sampleFacetIds = this.#getSampleFacetIds(locations.samples);
-        const sampleFacetRenderingOptions = {
-            locSize: { location: 0, size: 0 },
-        };
-        /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions} */
-        const sampleOptions = {
-            ...options,
-            sampleFacetRenderingOptions,
-            facetId: undefined,
-            firstFacet: false,
-            clipRect,
-        };
-        const scaledLocSize = sampleFacetRenderingOptions.locSize;
+        this.#sampleHeightFactor = 1 / coords.height;
+        const sampleOptions = this.#getSampleRenderOptions(locations.samples);
 
         // Render the view for each sample, pass location and facet id as options
         // TODO: Support facet texture as an alternative to multiple draw calls
-        for (let index = 0; index < locations.samples.length; index++) {
-            const sampleLocation = locations.samples[index];
-            const locSize = sampleLocation.locSize;
-            scaledLocSize.location = locSize.location * heightFactor;
-            scaledLocSize.size = locSize.size * heightFactor;
-            sampleOptions.facetId = sampleFacetIds[index];
-            sampleOptions.firstFacet = index === 0;
-            gridChild.background?.render(context, coords, sampleOptions);
-            gridChild.view.render(context, coords, sampleOptions);
-            gridChild.backgroundStroke?.render(context, coords, sampleOptions);
+        for (const opt of sampleOptions) {
+            const locSizeOptions = opt.sampleFacetRenderingOptions;
+            const facetId = opt.facetId;
+            const firstFacet = opt.firstFacet;
+            Object.assign(opt, options);
+            opt.sampleFacetRenderingOptions = locSizeOptions;
+            opt.facetId = facetId;
+            opt.firstFacet = firstFacet;
+            opt.clipRect = clipRect;
+            gridChild.background?.render(context, coords, opt);
+            gridChild.view.render(context, coords, opt);
+            gridChild.backgroundStroke?.render(context, coords, opt);
         }
 
         // Background stroke and axis rendering --------
