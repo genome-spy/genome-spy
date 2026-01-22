@@ -60,6 +60,14 @@ export class LocationManager {
         baseVersion: -1,
     };
 
+    #facetTextureInputs = {
+        baseVersion: -1,
+        height: 0,
+        peekState: 0,
+        scrollOffset: 0,
+        sampleCount: 0,
+    };
+
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
@@ -315,15 +323,34 @@ export class LocationManager {
     }
 
     updateFacetTexture() {
+        if (!this.#ensureDynamicLocations()) {
+            return;
+        }
+
         const sampleData =
             this.#locationContext.getSampleHierarchy().sampleData;
 
-        if (!this.#facetTextureData) {
-            const samples = sampleData && Object.values(sampleData.entities);
+        const samples = sampleData && Object.values(sampleData.entities);
+        const sampleCount = samples?.length ?? 0;
+        const requiredLength = Math.ceil((sampleCount * 2) / 4) * 4;
+
+        if (
+            !this.#facetTextureData ||
+            this.#facetTextureData.length !== requiredLength
+        ) {
             // Align size to four bytes
-            this.#facetTextureData = new Float32Array(
-                Math.ceil((samples.length * 2) / 4) * 4
-            );
+            this.#facetTextureData = new Float32Array(requiredLength);
+        }
+
+        const height = this.#locationContext.getHeight();
+        if (
+            this.#facetTextureInputs.baseVersion === this.#baseLayoutVersion &&
+            this.#facetTextureInputs.height === height &&
+            this.#facetTextureInputs.peekState === this.#peekState &&
+            this.#facetTextureInputs.scrollOffset === this.#scrollOffset &&
+            this.#facetTextureInputs.sampleCount === sampleCount
+        ) {
+            return;
         }
 
         const arr = this.#facetTextureData;
@@ -331,9 +358,7 @@ export class LocationManager {
 
         const entities = sampleData?.entities;
         if (entities) {
-            const sampleLocations = this.getLocations().samples;
-
-            const height = this.#locationContext.getHeight();
+            const sampleLocations = this.#locations.samples;
 
             for (const sampleLocation of sampleLocations) {
                 // TODO: Get rid of the map lookup
@@ -355,6 +380,14 @@ export class LocationManager {
             arr,
             this.#facetTexture
         );
+
+        this.#facetTextureInputs = {
+            baseVersion: this.#baseLayoutVersion,
+            height,
+            peekState: this.#peekState,
+            scrollOffset: this.#scrollOffset,
+            sampleCount,
+        };
     }
 
     getFacetTexture() {
