@@ -228,10 +228,6 @@ export default class SampleGroupView extends LayerView {
 
         dynamicSource.updateDynamicData(data);
 
-        // TODO: Get rid of the following. Should happen automatically:
-        this.getScaleResolution("x").reconfigure();
-        this.getScaleResolution("y").reconfigure();
-
         if (groupLocations.length) {
             this.updateRange();
         }
