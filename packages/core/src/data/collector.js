@@ -86,16 +86,8 @@ export default class Collector extends FlowNode {
     }
 
     reset() {
-        const shouldNotify =
-            this.completed || this.#domainCache.hasCachedDomains();
-
         super.reset();
         this.#init();
-
-        this.#domainCache.clear();
-        if (shouldNotify) {
-            this.#domainCache.notify();
-        }
     }
 
     /**
