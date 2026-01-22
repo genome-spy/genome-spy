@@ -59,13 +59,13 @@ A successful outcome means:
 
 ## Incremental Refactor Plan
 
-1) **Baseline & profiling hooks**
+1) **Baseline & profiling hooks** (PENDING)
    - Add a minimal benchmarking view/spec (or local profiling notes) that
      captures frame time and GC behavior for 5k+ samples with scroll + peek.
    - Identify a few representative scenarios: idle, scroll-only, peek-only,
      and scroll+peek.
 
-2) **Testability improvements (small, safe changes)**
+2) **Testability improvements (small, safe changes)** (DONE)
    - Export pure helpers like `calculateLocations` (or equivalent) and add
      unit tests for layout invariants and interpolation correctness.
    - Add tests for `computeScrollMetrics` and `getSampleLocationAt`.
@@ -73,45 +73,45 @@ A successful outcome means:
      then **pause for manual testing** to confirm behavior is unchanged before
      continuing.
 
-3) **Separate structural vs dynamic layout updates**
+3) **Separate structural vs dynamic layout updates** (DONE)
    - Introduce explicit “structural” rebuild (on hierarchy/size changes) and
      “dynamic” updates (on scroll/peek changes).
    - Add a layout version/dirty flag to avoid recomputation when inputs are
      unchanged.
 
-4) **Replace getter-based LocSize wrappers (hot path)**
+4) **Replace getter-based LocSize wrappers (hot path)** (DONE)
    - Compute interpolated locations explicitly in a refresh step.
    - Keep the public API stable initially; internal storage can move to numeric
      arrays while still exposing a compatible shape.
    - After this phase: run `npx vitest run` and `npm -ws run test:tsc --if-present`,
      then **pause for evaluation** of the core optimized calculation logic.
 
-5) **Reduce per-frame allocations in rendering**
+5) **Reduce per-frame allocations in rendering** (DONE)
    - Reuse `sampleOptions` (or equivalent) arrays in `SampleView`.
    - Avoid per-sample `scaleLocSize` wrappers; precompute scale factor once
      and apply during refresh.
 
-6) **Facet texture update gating**
+6) **Facet texture update gating** (DONE)
    - Track when Y layout changes and only then rebuild and upload the facet
      texture.
    - Ensure scrolling on X does not trigger texture work.
 
-7) **Optional: visible-range culling**
+7) **Optional: visible-range culling** (PENDING)
    - Compute visible sample range and render only those samples. This is
      especially beneficial for large N and narrow viewports.
    - Keep summaries/groups unchanged; their counts are small.
 
-8) **API cleanup (if needed)**
+8) **API cleanup (if needed)** (PENDING)
    - If a new layout snapshot format is adopted, update consumers to use it
      directly. Keep compatibility shims if necessary.
 
-9) **Regression tests and validation**
+9) **Regression tests and validation** (PENDING)
    - Extend tests to cover peek transitions (state 0, mid, 1) and scroll
      semantics (offset applied only in closeup).
    - Verify layout equality against the current implementation for fixed
      inputs.
 
-10) **Performance validation**
+10) **Performance validation** (PENDING)
    - Re-run baseline scenarios and document improvements (frame time,
      allocations, GC frequency).
 
