@@ -1299,6 +1299,8 @@ export default class Mark {
                 return false;
             }
 
+            // No target locSize in the current API. Keep a consistent shader path
+            // by repeating the current position/height.
             // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
@@ -1307,8 +1309,8 @@ export default class Mark {
                 locationSetter.location, // TODO: Make a twgl pull request to fix typing
                 pos,
                 height,
-                0,
-                0
+                pos,
+                height
             );
         }
 
