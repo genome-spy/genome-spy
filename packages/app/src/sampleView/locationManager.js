@@ -1,10 +1,7 @@
 import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
-import {
-    locSizeEncloses,
-    mapToPixelCoords,
-} from "@genome-spy/core/view/layout/flexLayout.js";
+import { mapToPixelCoords } from "@genome-spy/core/view/layout/flexLayout.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
 import transition from "@genome-spy/core/utils/transition.js";
@@ -851,4 +848,12 @@ export function computeScrollMetrics({
         contentHeight,
         effectiveScrollOffset: scrollOffset * peekState,
     };
+}
+
+/**
+ * @param {LocSize} locSize
+ * @param {number} value
+ */
+export function locSizeEncloses(locSize, value) {
+    return value >= locSize.location && value < locSize.location + locSize.size;
 }
