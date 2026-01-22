@@ -1290,24 +1290,14 @@ export default class Mark {
         const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
 
         if (opts && locationSetter) {
-            const pos = opts.locSize
-                ? opts.locSize.location * opts.pixelToUnit
-                : 0.0;
-            const height = opts.locSize
-                ? opts.locSize.size * opts.pixelToUnit
-                : 1.0;
+            const scale = opts.pixelToUnit;
+            const pos = opts.locSize.location * scale;
+            const height = opts.locSize.size * scale;
 
             if (pos > 1.0 || pos + height < 0.0) {
                 // Not visible
                 return false;
             }
-
-            const targetPos = opts.targetLocSize
-                ? opts.targetLocSize.location * opts.pixelToUnit
-                : pos;
-            const targetHeight = opts.targetLocSize
-                ? opts.targetLocSize.size * opts.pixelToUnit
-                : height;
 
             // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
             // inferior performance. Based on profiling, this optimization gives
@@ -1317,8 +1307,8 @@ export default class Mark {
                 locationSetter.location, // TODO: Make a twgl pull request to fix typing
                 pos,
                 height,
-                targetPos,
-                targetHeight
+                0,
+                0
             );
         }
 
