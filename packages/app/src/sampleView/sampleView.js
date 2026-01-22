@@ -668,17 +668,20 @@ export default class SampleView extends ContainerView {
 
         this.#sampleHeightFactor = 1 / coords.height;
         const sampleOptions = this.#getSampleRenderOptions(locations.samples);
+        const passThroughOptions = { ...options };
+        delete passThroughOptions.facetId;
+        delete passThroughOptions.firstFacet;
+        delete passThroughOptions.sampleFacetRenderingOptions;
+        delete passThroughOptions.clipRect;
+        const hasPassThroughOptions =
+            Object.keys(passThroughOptions).length > 0;
 
         // Render the view for each sample, pass location and facet id as options
         // TODO: Support facet texture as an alternative to multiple draw calls
         for (const opt of sampleOptions) {
-            const locSizeOptions = opt.sampleFacetRenderingOptions;
-            const facetId = opt.facetId;
-            const firstFacet = opt.firstFacet;
-            Object.assign(opt, options);
-            opt.sampleFacetRenderingOptions = locSizeOptions;
-            opt.facetId = facetId;
-            opt.firstFacet = firstFacet;
+            if (hasPassThroughOptions) {
+                Object.assign(opt, passThroughOptions);
+            }
             opt.clipRect = clipRect;
             gridChild.background?.render(context, coords, opt);
             gridChild.view.render(context, coords, opt);
