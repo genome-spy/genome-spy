@@ -54,12 +54,14 @@ export class LocationManager {
 
     #baseLayoutVersion = 0;
 
+    // Cache of the inputs used to update interpolated locations.
     #dynamicInputs = {
         peekState: 0,
         scrollOffset: 0,
         baseVersion: -1,
     };
 
+    // Cache of the inputs that affect facet texture updates.
     #facetTextureInputs = {
         baseVersion: -1,
         height: 0,
@@ -80,6 +82,7 @@ export class LocationManager {
     }
 
     resetLocations() {
+        // Layout inputs changed; force a structural rebuild on the next access.
         this.#structuralDirty = true;
         this.#locations = undefined;
         this.#baseLocations = undefined;
@@ -442,14 +445,14 @@ export class LocationManager {
 
         const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
 
-        // Locations squeezed into the viewport height
+        // Locations squeezed into the viewport height.
         const fittedLocations = calculateLocations(flattened, {
             viewHeight: height,
             groupSpacing: 5, // TODO: Configurable
             summaryHeight,
         });
 
-        // Scrollable locations that are shown when "peek" activates
+        // Scrollable locations that are shown when "peek" activates.
         const scrollableLocations = calculateLocations(flattened, {
             sampleHeight: 35, // TODO: Configurable
             groupSpacing: 15, // TODO: Configurable
@@ -518,6 +521,7 @@ export class LocationManager {
         this.#dynamicInputs.scrollOffset = scrollOffset;
         this.#dynamicInputs.baseVersion = baseVersion;
 
+        // Sample height can change when the base layout or peek state changes.
         if (baseUpdated || peekChanged) {
             this.#callOnLocationUpdate();
         }
@@ -608,6 +612,9 @@ function updateInterpolatedLocations(target, base, ratio, offset) {
 }
 
 /**
+ * Writes interpolated locations into the existing target array to avoid
+ * per-frame allocations.
+ *
  * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} target
  * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} fitted
  * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} scrollable
