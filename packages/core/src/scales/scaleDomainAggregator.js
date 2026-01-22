@@ -175,7 +175,7 @@ function resolveDataDomain(members, getType) {
             if (!isScaleAccessor(accessor)) {
                 continue;
             }
-            if (accessor.channelDef.contributesToScaleDomain === false) {
+            if (accessor.channelDef.domainInert) {
                 continue;
             }
 

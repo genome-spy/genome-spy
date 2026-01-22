@@ -345,6 +345,24 @@ export default class View {
     }
 
     /**
+     * Returns true if this view or any ancestor is marked as domain inert.
+     *
+     * @returns {boolean}
+     */
+    isDomainInert() {
+        if (this.spec.domainInert) {
+            return true;
+        }
+
+        const parent = this.dataParent;
+        if (!parent) {
+            return false;
+        }
+
+        return parent.isDomainInert();
+    }
+
+    /**
      * @returns {"none" | "pending" | "ready"}
      */
     getDataInitializationState() {

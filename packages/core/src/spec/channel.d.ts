@@ -151,13 +151,13 @@ export interface ScaleMixins {
 
 export interface DomainContributionMixins {
     /**
-     * Whether the field or evaluated expr should be included in the scale's domain.
+     * Whether the field or evaluated expr should be excluded from the scale's domain.
      *
-     * **Default value:** `true`
+     * **Default value:** `false`
      *
      * @internal
      */
-    contributesToScaleDomain?: boolean;
+    domainInert?: boolean;
 }
 
 export interface ValueDefBase<V extends Value = Scalar> {

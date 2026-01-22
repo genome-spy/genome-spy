@@ -268,7 +268,6 @@ function createAxis(axisProps, type) {
     const makeMainDomainDef = () => ({
         field: "value",
         type,
-        contributesToScaleDomain: false,
     });
 
     /**
@@ -383,6 +382,7 @@ function createAxis(axisProps, type) {
     const axisSpec = {
         // Force the resolution towards the parent view even if it has "independent" behavior
         resolve: { scale: { [main]: "forced" } },
+        domainInert: true,
         [CHANNEL_DIMENSIONS[getPerpendicularChannel(main)]]: ap.extent,
         data: {
             lazy: {
@@ -535,7 +535,6 @@ export function createGenomeAxis(axisProps, type) {
                 [main + "2"]: {
                     field: "continuousEnd",
                     type,
-                    contributesToScaleDomain: false,
                 },
                 text: { field: "name" },
             },
@@ -595,7 +594,6 @@ export function createGenomeAxis(axisProps, type) {
                     field: "continuousStart",
                     type,
                     band: 0,
-                    contributesToScaleDomain: false,
                 },
             },
             layer: [],

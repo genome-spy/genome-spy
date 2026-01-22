@@ -123,7 +123,6 @@ function createRegularAxisGrid(axisProps, type) {
             [channel]: {
                 field: "value",
                 type,
-                contributesToScaleDomain: false,
             },
         },
     };
@@ -160,7 +159,6 @@ function createChromAxisGrid(axisProps, type) {
                 field: "continuousStart",
                 type,
                 band: 0,
-                contributesToScaleDomain: false,
             },
         },
     };
@@ -192,12 +190,10 @@ function createChromAxisFill(axisProps, type) {
                 field: "continuousStart",
                 type,
                 band: 0,
-                contributesToScaleDomain: false,
             },
             [channel + "2"]: {
                 field: "continuousEnd",
                 band: 0,
-                contributesToScaleDomain: false,
             },
             fill: {
                 field: "odd",
@@ -262,6 +258,7 @@ function createAxisGrid(axisProps, type) {
                 opacity: "independent",
             },
         },
+        domainInert: true,
         layer: layers,
     };
 }

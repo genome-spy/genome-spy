@@ -396,8 +396,7 @@ export default class UnitView extends View {
                     });
                 }
 
-                const contributesToDomain =
-                    channelDefWithScale.contributesToScaleDomain !== false;
+                const contributesToDomain = !this.isDomainInert();
 
                 const resolution = view.resolutions[type][targetChannel];
                 const unregister = resolution.registerMember({
@@ -472,6 +471,10 @@ export default class UnitView extends View {
             return;
         }
 
+        if (this.isDomainInert()) {
+            return;
+        }
+
         const collector = this.getCollector();
         if (!collector) {
             return;
@@ -501,10 +504,9 @@ export default class UnitView extends View {
                 if (!isScaleAccessor(accessor)) {
                     continue;
                 }
-                if (accessor.channelDef.contributesToScaleDomain === false) {
+                if (accessor.channelDef.domainInert) {
                     continue;
                 }
-
                 const resolution = this.getScaleResolution(
                     accessor.scaleChannel
                 );

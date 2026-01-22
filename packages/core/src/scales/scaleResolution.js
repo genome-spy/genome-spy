@@ -313,7 +313,7 @@ export default class ScaleResolution {
         const domainKeys = new Set();
 
         for (const accessor of accessors) {
-            if (accessor.channelDef.contributesToScaleDomain === false) {
+            if (accessor.channelDef.domainInert) {
                 continue;
             }
             domainKeys.add(getAccessorDomainKey(accessor, this.type));

@@ -16,11 +16,7 @@ function createAccessor(field) {
     accessor.constant = false;
     accessor.scaleChannel = "x";
     accessor.channel = "x";
-    accessor.channelDef = {
-        contributesToScaleDomain: true,
-        field,
-        type: "quantitative",
-    };
+    accessor.channelDef = { field, type: "quantitative" };
     return accessor;
 }
 

@@ -38,7 +38,7 @@ export function fixPositional(encoding, channel) {
         if (!secondary) {
             if (primary.type == "quantitative") {
                 // Bar plot, anchor the other end to zero
-                secondary = { datum: 0, contributesToScaleDomain: false };
+                secondary = { datum: 0, domainInert: true };
             } else {
                 secondary = { ...primary };
 
