@@ -330,8 +330,7 @@ export class LocationManager {
         const sampleData =
             this.#locationContext.getSampleHierarchy().sampleData;
 
-        const samples = sampleData && Object.values(sampleData.entities);
-        const sampleCount = samples?.length ?? 0;
+        const sampleCount = sampleData?.ids?.length ?? 0;
         const requiredLength = Math.ceil((sampleCount * 2) / 4) * 4;
 
         if (
