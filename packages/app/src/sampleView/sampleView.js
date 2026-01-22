@@ -2,7 +2,6 @@ import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
-    scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
@@ -92,6 +91,12 @@ export default class SampleView extends ContainerView {
 
     /** @type {(value: number) => void} */
     #scrollbarOpacitySetter;
+
+    /** @type {string[][]} */
+    #sampleFacetIds = [];
+
+    /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
+    #sampleFacetIdSource;
 
     /**
      *
@@ -601,6 +606,20 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
+     * @returns {string[][]}
+     */
+    #getSampleFacetIds(sampleLocations) {
+        if (this.#sampleFacetIdSource !== sampleLocations) {
+            this.#sampleFacetIds = sampleLocations.map((sampleLocation) => [
+                sampleLocation.key,
+            ]);
+            this.#sampleFacetIdSource = sampleLocations;
+        }
+        return this.#sampleFacetIds;
+    }
+
+    /**
      * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     #renderChild(context, coords, options = {}) {
@@ -624,34 +643,38 @@ export default class SampleView extends ContainerView {
         // Sample rendering --------
 
         const heightFactor = 1 / coords.height;
-        const heightFactorSource = () => heightFactor;
 
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
         const locations = this.locationManager.getLocations();
 
-        const sampleOptions = locations.samples.map(
-            (sampleLocation, index) => ({
-                ...options,
-                sampleFacetRenderingOptions: {
-                    locSize: scaleLocSize(
-                        sampleLocation.locSize,
-                        heightFactorSource
-                    ),
-                },
-                facetId: [sampleLocation.key],
-                firstFacet: index == 0,
-                clipRect,
-            })
-        );
+        const sampleFacetIds = this.#getSampleFacetIds(locations.samples);
+        const sampleFacetRenderingOptions = {
+            locSize: { location: 0, size: 0 },
+        };
+        /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions} */
+        const sampleOptions = {
+            ...options,
+            sampleFacetRenderingOptions,
+            facetId: undefined,
+            firstFacet: false,
+            clipRect,
+        };
+        const scaledLocSize = sampleFacetRenderingOptions.locSize;
 
         // Render the view for each sample, pass location and facet id as options
         // TODO: Support facet texture as an alternative to multiple draw calls
-        for (const opt of sampleOptions) {
-            gridChild.background?.render(context, coords, opt);
-            gridChild.view.render(context, coords, opt);
-            gridChild.backgroundStroke?.render(context, coords, opt);
+        for (let index = 0; index < locations.samples.length; index++) {
+            const sampleLocation = locations.samples[index];
+            const locSize = sampleLocation.locSize;
+            scaledLocSize.location = locSize.location * heightFactor;
+            scaledLocSize.size = locSize.size * heightFactor;
+            sampleOptions.facetId = sampleFacetIds[index];
+            sampleOptions.firstFacet = index === 0;
+            gridChild.background?.render(context, coords, sampleOptions);
+            gridChild.view.render(context, coords, sampleOptions);
+            gridChild.backgroundStroke?.render(context, coords, sampleOptions);
         }
 
         // Background stroke and axis rendering --------
