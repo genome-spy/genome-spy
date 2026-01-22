@@ -453,8 +453,10 @@ describe("Domain handling", () => {
                         { a: 2, b: 5 },
                     ],
                 },
-                mark: "point",
+                mark: "rect",
                 encoding: {
+                    x: { value: 0 },
+                    x2: { value: 1 },
                     y: {
                         field: "a",
                         type: "quantitative",
@@ -471,8 +473,7 @@ describe("Domain handling", () => {
         /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
-        // FAILS!!!!!!! TODO: FIX!!
-        // expect(r(d(view))).toEqual([1, 5]);
+        expect(r(d(view))).toEqual([1, 5]);
     });
 
     test("resolutionChannel property is respected", async () => {
