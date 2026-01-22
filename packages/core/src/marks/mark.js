@@ -1290,21 +1290,17 @@ export default class Mark {
         const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
 
         if (opts && locationSetter) {
-            const pos = opts.locSize ? opts.locSize.location : 0.0;
-            const height = opts.locSize ? opts.locSize.size : 1.0;
+            const scale = opts.pixelToUnit;
+            const pos = opts.locSize.location * scale;
+            const height = opts.locSize.size * scale;
 
             if (pos > 1.0 || pos + height < 0.0) {
                 // Not visible
                 return false;
             }
 
-            const targetPos = opts.targetLocSize
-                ? opts.targetLocSize.location
-                : pos;
-            const targetHeight = opts.targetLocSize
-                ? opts.targetLocSize.size
-                : height;
-
+            // No target locSize in the current API. Keep a consistent shader path
+            // by repeating the current position/height.
             // Use WebGL directly, because twgl uses gl.uniform4fv, which has an
             // inferior performance. Based on profiling, this optimization gives
             // a significant performance boost.
@@ -1313,8 +1309,8 @@ export default class Mark {
                 locationSetter.location, // TODO: Make a twgl pull request to fix typing
                 pos,
                 height,
-                targetPos,
-                targetHeight
+                pos,
+                height
             );
         }
 

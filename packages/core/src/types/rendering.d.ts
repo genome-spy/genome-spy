@@ -9,14 +9,15 @@ import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.
  */
 export interface SampleFacetRenderingOptions {
     /**
-     * Location and height on unit scale, zero at top
+     * Location and height. Use unit scale by default; when `pixelToUnit` is
+     * provided, interpret values as pixels and scale them.
      */
     locSize: LocSize;
 
     /**
-     * Target (during transition)
+     * Multiply pixel-based locSize values to unit scale.
      */
-    targetLocSize?: LocSize;
+    pixelToUnit: number;
 }
 
 export interface RenderingOptions {

@@ -2,7 +2,6 @@ import ContainerView from "@genome-spy/core/view/containerView.js";
 import {
     FlexDimensions,
     mapToPixelCoords,
-    scaleLocSize,
     sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
@@ -92,6 +91,12 @@ export default class SampleView extends ContainerView {
 
     /** @type {(value: number) => void} */
     #scrollbarOpacitySetter;
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    #sampleRenderOptions = [];
+
+    /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
+    #sampleRenderLocationSource;
 
     /**
      *
@@ -601,6 +606,32 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
+     * @returns {import("@genome-spy/core/types/rendering.js").RenderingOptions[]}
+     */
+    #getSampleRenderOptions(sampleLocations) {
+        if (this.#sampleRenderLocationSource === sampleLocations) {
+            return this.#sampleRenderOptions;
+        }
+
+        const pixelToUnit = 1 / this.coords.height;
+
+        this.#sampleRenderOptions = sampleLocations.map(
+            (sampleLocation, index) => ({
+                sampleFacetRenderingOptions: {
+                    locSize: sampleLocation.locSize,
+                    pixelToUnit,
+                },
+                facetId: [sampleLocation.key],
+                firstFacet: index === 0,
+            })
+        );
+        this.#sampleRenderLocationSource = sampleLocations;
+
+        return this.#sampleRenderOptions;
+    }
+
+    /**
      * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
      */
     #renderChild(context, coords, options = {}) {
@@ -623,32 +654,29 @@ export default class SampleView extends ContainerView {
 
         // Sample rendering --------
 
-        const heightFactor = 1 / coords.height;
-        const heightFactorSource = () => heightFactor;
-
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
         const locations = this.locationManager.getLocations();
 
-        const sampleOptions = locations.samples.map(
-            (sampleLocation, index) => ({
-                ...options,
-                sampleFacetRenderingOptions: {
-                    locSize: scaleLocSize(
-                        sampleLocation.locSize,
-                        heightFactorSource
-                    ),
-                },
-                facetId: [sampleLocation.key],
-                firstFacet: index == 0,
-                clipRect,
-            })
-        );
+        const sampleOptions = this.#getSampleRenderOptions(locations.samples);
+
+        const passThroughOptions = { ...options };
+        delete passThroughOptions.facetId;
+        delete passThroughOptions.firstFacet;
+        delete passThroughOptions.sampleFacetRenderingOptions;
+        delete passThroughOptions.clipRect;
+        const hasPassThroughOptions =
+            Object.keys(passThroughOptions).length > 0;
 
         // Render the view for each sample, pass location and facet id as options
         // TODO: Support facet texture as an alternative to multiple draw calls
         for (const opt of sampleOptions) {
+            if (hasPassThroughOptions) {
+                Object.assign(opt, passThroughOptions);
+            }
+            opt.clipRect = clipRect;
+
             gridChild.background?.render(context, coords, opt);
             gridChild.view.render(context, coords, opt);
             gridChild.backgroundStroke?.render(context, coords, opt);
@@ -761,7 +789,6 @@ export default class SampleView extends ContainerView {
     }
 
     onBeforeRender() {
-        // TODO: Only when needed
         this.locationManager.updateFacetTexture();
 
         // TODO: Consider letting LocationManager own stable scrollbar rectangles.
