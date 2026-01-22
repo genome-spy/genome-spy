@@ -164,6 +164,7 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * If true, this view and its descendants do not contribute to scale domains.
+     * Child views inherit this flag automatically.
      *
      * **Default value:** `false`
      *

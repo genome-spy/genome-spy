@@ -152,6 +152,7 @@ export interface ScaleMixins {
 export interface DomainContributionMixins {
     /**
      * Whether the field or evaluated expr should be excluded from the scale's domain.
+     * Prefer the view-level `domainInert` when an entire subtree should be excluded.
      *
      * **Default value:** `false`
      *
