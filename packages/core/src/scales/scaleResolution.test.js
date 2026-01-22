@@ -201,7 +201,86 @@ describe("Scale resolution", () => {
         );
     });
 
-    // TODO: Add test for "forced" resolution
+    test("forced resolutions bubble to independent parents", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [] },
+            resolve: {
+                scale: { x: "independent" },
+                axis: { x: "independent" },
+            },
+            layer: [
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+
+        expect(view.children[0].children[0].getScaleResolution("x")).toBe(
+            view.children[1].children[0].getScaleResolution("x")
+        );
+    });
+
+    test("forced resolutions stay separate from non-forced branches", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [] },
+            resolve: {
+                scale: { x: "independent" },
+                axis: { x: "independent" },
+            },
+            layer: [
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                {
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+
+        expect(view.children[0].children[0].getScaleResolution("x")).not.toBe(
+            view.children[1].children[0].getScaleResolution("x")
+        );
+    });
 
     test("Default resolution is configurable", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
