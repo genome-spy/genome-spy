@@ -2,10 +2,8 @@ import { createOrUpdateTexture } from "@genome-spy/core/gl/webGLHelper.js";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import clamp from "@genome-spy/core/utils/clamp.js";
 import {
-    interpolateLocSizes,
     locSizeEncloses,
     mapToPixelCoords,
-    translateLocSize,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 import smoothstep from "@genome-spy/core/utils/smoothstep.js";
@@ -54,6 +52,14 @@ export class LocationManager {
 
     #structuralDirty = true;
 
+    #baseLayoutVersion = 0;
+
+    #dynamicInputs = {
+        peekState: 0,
+        scrollOffset: 0,
+        baseVersion: -1,
+    };
+
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
      */
@@ -70,6 +76,8 @@ export class LocationManager {
         this.#locations = undefined;
         this.#baseLocations = undefined;
         this.#scrollableLocations = undefined;
+        this.#baseLayoutVersion += 1;
+        this.#dynamicInputs.baseVersion = -1;
     }
 
     reset() {
@@ -189,7 +197,7 @@ export class LocationManager {
                 viewContext.animator.requestTransition(callback),
             onUpdate: (value) => {
                 this.#peekState = Math.pow(value, 2);
-                this.#callOnLocationUpdate();
+                this.#ensureDynamicLocations();
                 viewContext.animator.requestRender();
             },
             from: this.#peekState,
@@ -262,63 +270,9 @@ export class LocationManager {
      * @returns {import("./sampleViewTypes.js").Locations}
      */
     getLocations() {
-        if (!this.#ensureBaseLayout()) {
+        if (!this.#ensureDynamicLocations()) {
             return;
         }
-
-        if (this.#locations) {
-            return this.#locations;
-        }
-
-        const offsetSource = () => -this.#scrollOffset;
-        const ratioSource = () => this.#peekState;
-
-        const { fitted, scrollable } = this.#baseLocations;
-
-        /** @type {import("./sampleViewTypes.js").InterpolatedLocationMaker} */
-        const makeInterpolatedLocations = (
-            fittedLocations,
-            scrollableLocations
-        ) => {
-            /** @type {any[]} */
-            const interactiveLocations = [];
-            for (let i = 0; i < fittedLocations.length; i++) {
-                const key = fittedLocations[i].key;
-                interactiveLocations.push({
-                    key,
-                    locSize: interpolateLocSizes(
-                        fittedLocations[i].locSize,
-                        translateLocSize(
-                            scrollableLocations[i].locSize,
-                            offsetSource
-                        ),
-                        ratioSource
-                    ),
-                });
-            }
-            return interactiveLocations;
-        };
-
-        const groups = makeInterpolatedLocations(
-            fitted.groups,
-            scrollable.groups
-        );
-
-        this.#locations = {
-            samples: makeInterpolatedLocations(
-                fitted.samples,
-                scrollable.samples
-            ),
-            summaries: makeInterpolatedLocations(
-                fitted.summaries,
-                scrollable.summaries
-            ),
-            groups,
-        };
-
-        // Silly place. TODO: Move
-        this.#callOnLocationUpdate();
-
         return this.#locations;
     }
 
@@ -446,13 +400,14 @@ export class LocationManager {
         const sampleHierarchy = this.#locationContext.getSampleHierarchy();
         const summaryHeight = this.#locationContext.getSummaryHeight();
 
-        if (
-            !this.#structuralDirty &&
-            this.#layoutInputs.height === height &&
-            this.#layoutInputs.summaryHeight === summaryHeight &&
-            this.#layoutInputs.sampleHierarchy === sampleHierarchy
-        ) {
-            return true;
+        if (!this.#structuralDirty) {
+            if (
+                this.#layoutInputs.height === height &&
+                this.#layoutInputs.summaryHeight === summaryHeight &&
+                this.#layoutInputs.sampleHierarchy === sampleHierarchy
+            ) {
+                return true;
+            }
         }
 
         const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
@@ -493,8 +448,162 @@ export class LocationManager {
         };
         this.#structuralDirty = false;
         this.#locations = undefined;
+        this.#baseLayoutVersion += 1;
 
         return true;
+    }
+
+    // Builds and updates interpolated locations from the cached base layouts.
+    #ensureDynamicLocations() {
+        if (!this.#ensureBaseLayout()) {
+            return false;
+        }
+
+        if (!this.#locations) {
+            this.#locations = this.#createInterpolatedLocations();
+            this.#dynamicInputs.baseVersion = -1;
+        }
+
+        const peekState = this.#peekState;
+        const scrollOffset = this.#scrollOffset;
+        const baseVersion = this.#baseLayoutVersion;
+
+        const baseUpdated = this.#dynamicInputs.baseVersion !== baseVersion;
+        const peekChanged = this.#dynamicInputs.peekState !== peekState;
+        const scrollChanged = this.#dynamicInputs.scrollOffset !== scrollOffset;
+
+        if (!baseUpdated && !peekChanged && !scrollChanged) {
+            return true;
+        }
+
+        this.#updateInterpolatedLocations(peekState, scrollOffset);
+
+        this.#dynamicInputs = {
+            peekState,
+            scrollOffset,
+            baseVersion,
+        };
+
+        if (baseUpdated || peekChanged) {
+            this.#callOnLocationUpdate();
+        }
+
+        return true;
+    }
+
+    #createInterpolatedLocations() {
+        const { fitted } = this.#baseLocations;
+
+        /** @type {import("./sampleViewTypes.js").Locations} */
+        const locations = {
+            samples: [],
+            summaries: [],
+            groups: [],
+        };
+
+        for (const fittedLocation of fitted.samples) {
+            locations.samples.push({
+                key: fittedLocation.key,
+                locSize: {
+                    location: fittedLocation.locSize.location,
+                    size: fittedLocation.locSize.size,
+                },
+            });
+        }
+
+        for (const fittedLocation of fitted.summaries) {
+            locations.summaries.push({
+                key: fittedLocation.key,
+                locSize: {
+                    location: fittedLocation.locSize.location,
+                    size: fittedLocation.locSize.size,
+                },
+            });
+        }
+
+        for (const fittedLocation of fitted.groups) {
+            locations.groups.push({
+                key: fittedLocation.key,
+                locSize: {
+                    location: fittedLocation.locSize.location,
+                    size: fittedLocation.locSize.size,
+                },
+            });
+        }
+
+        return locations;
+    }
+
+    /**
+     * @param {number} peekState
+     * @param {number} scrollOffset
+     */
+    #updateInterpolatedLocations(peekState, scrollOffset) {
+        const offset = -scrollOffset;
+
+        const { fitted, scrollable } = this.#baseLocations;
+
+        this.#interpolateLocations(
+            this.#locations.samples,
+            fitted.samples,
+            scrollable.samples,
+            peekState,
+            offset
+        );
+        this.#interpolateLocations(
+            this.#locations.summaries,
+            fitted.summaries,
+            scrollable.summaries,
+            peekState,
+            offset
+        );
+        this.#interpolateLocations(
+            this.#locations.groups,
+            fitted.groups,
+            scrollable.groups,
+            peekState,
+            offset
+        );
+    }
+
+    /**
+     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} target
+     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} fitted
+     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} scrollable
+     * @param {number} ratio
+     * @param {number} offset
+     */
+    #interpolateLocations(target, fitted, scrollable, ratio, offset) {
+        if (ratio === 0) {
+            for (let i = 0; i < target.length; i++) {
+                const targetLoc = target[i].locSize;
+                const fromLoc = fitted[i].locSize;
+                targetLoc.location = fromLoc.location;
+                targetLoc.size = fromLoc.size;
+            }
+            return;
+        }
+
+        if (ratio === 1) {
+            for (let i = 0; i < target.length; i++) {
+                const targetLoc = target[i].locSize;
+                const toLoc = scrollable[i].locSize;
+                targetLoc.location = toLoc.location + offset;
+                targetLoc.size = toLoc.size;
+            }
+            return;
+        }
+
+        const inverse = 1 - ratio;
+
+        for (let i = 0; i < target.length; i++) {
+            const targetLoc = target[i].locSize;
+            const fromLoc = fitted[i].locSize;
+            const toLoc = scrollable[i].locSize;
+            targetLoc.location =
+                ratio * (toLoc.location + offset) + inverse * fromLoc.location;
+            targetLoc.size = ratio * toLoc.size + inverse * fromLoc.size;
+        }
     }
 }
 
