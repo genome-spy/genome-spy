@@ -381,13 +381,11 @@ export class LocationManager {
             this.#facetTexture
         );
 
-        this.#facetTextureInputs = {
-            baseVersion: this.#baseLayoutVersion,
-            height,
-            peekState: this.#peekState,
-            scrollOffset: this.#scrollOffset,
-            sampleCount,
-        };
+        this.#facetTextureInputs.baseVersion = this.#baseLayoutVersion;
+        this.#facetTextureInputs.height = height;
+        this.#facetTextureInputs.peekState = this.#peekState;
+        this.#facetTextureInputs.scrollOffset = this.#scrollOffset;
+        this.#facetTextureInputs.sampleCount = sampleCount;
     }
 
     getFacetTexture() {
@@ -493,7 +491,9 @@ export class LocationManager {
         }
 
         if (!this.#locations) {
-            this.#locations = this.#createInterpolatedLocations();
+            this.#locations = createInterpolatedLocations(
+                this.#baseLocations.fitted
+            );
             this.#dynamicInputs.baseVersion = -1;
         }
 
@@ -509,13 +509,15 @@ export class LocationManager {
             return true;
         }
 
-        this.#updateInterpolatedLocations(peekState, scrollOffset);
-
-        this.#dynamicInputs = {
+        updateInterpolatedLocations(
+            this.#locations,
+            this.#baseLocations,
             peekState,
-            scrollOffset,
-            baseVersion,
-        };
+            -scrollOffset
+        );
+        this.#dynamicInputs.peekState = peekState;
+        this.#dynamicInputs.scrollOffset = scrollOffset;
+        this.#dynamicInputs.baseVersion = baseVersion;
 
         if (baseUpdated || peekChanged) {
             this.#callOnLocationUpdate();
@@ -523,120 +525,126 @@ export class LocationManager {
 
         return true;
     }
+}
 
-    #createInterpolatedLocations() {
-        const { fitted } = this.#baseLocations;
+/**
+ * Creates mutable locations with fitted positions as a baseline for interpolation.
+ *
+ * @param {import("./sampleViewTypes.js").Locations} fittedLocations
+ * @returns {import("./sampleViewTypes.js").Locations}
+ */
+function createInterpolatedLocations(fittedLocations) {
+    /** @type {import("./sampleViewTypes.js").Locations} */
+    const locations = {
+        samples: [],
+        summaries: [],
+        groups: [],
+    };
 
-        /** @type {import("./sampleViewTypes.js").Locations} */
-        const locations = {
-            samples: [],
-            summaries: [],
-            groups: [],
-        };
-
-        for (const fittedLocation of fitted.samples) {
-            locations.samples.push({
-                key: fittedLocation.key,
-                locSize: {
-                    location: fittedLocation.locSize.location,
-                    size: fittedLocation.locSize.size,
-                },
-            });
-        }
-
-        for (const fittedLocation of fitted.summaries) {
-            locations.summaries.push({
-                key: fittedLocation.key,
-                locSize: {
-                    location: fittedLocation.locSize.location,
-                    size: fittedLocation.locSize.size,
-                },
-            });
-        }
-
-        for (const fittedLocation of fitted.groups) {
-            locations.groups.push({
-                key: fittedLocation.key,
-                locSize: {
-                    location: fittedLocation.locSize.location,
-                    size: fittedLocation.locSize.size,
-                },
-            });
-        }
-
-        return locations;
+    for (const fittedLocation of fittedLocations.samples) {
+        locations.samples.push({
+            key: fittedLocation.key,
+            locSize: {
+                location: fittedLocation.locSize.location,
+                size: fittedLocation.locSize.size,
+            },
+        });
     }
 
-    /**
-     * @param {number} peekState
-     * @param {number} scrollOffset
-     */
-    #updateInterpolatedLocations(peekState, scrollOffset) {
-        const offset = -scrollOffset;
-
-        const { fitted, scrollable } = this.#baseLocations;
-
-        this.#interpolateLocations(
-            this.#locations.samples,
-            fitted.samples,
-            scrollable.samples,
-            peekState,
-            offset
-        );
-        this.#interpolateLocations(
-            this.#locations.summaries,
-            fitted.summaries,
-            scrollable.summaries,
-            peekState,
-            offset
-        );
-        this.#interpolateLocations(
-            this.#locations.groups,
-            fitted.groups,
-            scrollable.groups,
-            peekState,
-            offset
-        );
+    for (const fittedLocation of fittedLocations.summaries) {
+        locations.summaries.push({
+            key: fittedLocation.key,
+            locSize: {
+                location: fittedLocation.locSize.location,
+                size: fittedLocation.locSize.size,
+            },
+        });
     }
 
-    /**
-     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} target
-     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} fitted
-     * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} scrollable
-     * @param {number} ratio
-     * @param {number} offset
-     */
-    #interpolateLocations(target, fitted, scrollable, ratio, offset) {
-        if (ratio === 0) {
-            for (let i = 0; i < target.length; i++) {
-                const targetLoc = target[i].locSize;
-                const fromLoc = fitted[i].locSize;
-                targetLoc.location = fromLoc.location;
-                targetLoc.size = fromLoc.size;
-            }
-            return;
-        }
+    for (const fittedLocation of fittedLocations.groups) {
+        locations.groups.push({
+            key: fittedLocation.key,
+            locSize: {
+                location: fittedLocation.locSize.location,
+                size: fittedLocation.locSize.size,
+            },
+        });
+    }
 
-        if (ratio === 1) {
-            for (let i = 0; i < target.length; i++) {
-                const targetLoc = target[i].locSize;
-                const toLoc = scrollable[i].locSize;
-                targetLoc.location = toLoc.location + offset;
-                targetLoc.size = toLoc.size;
-            }
-            return;
-        }
+    return locations;
+}
 
-        const inverse = 1 - ratio;
+/**
+ * Updates locations in place. Kept stateless for easier testing.
+ *
+ * @param {import("./sampleViewTypes.js").Locations} target
+ * @param {{fitted: import("./sampleViewTypes.js").Locations, scrollable: import("./sampleViewTypes.js").Locations}} base
+ * @param {number} ratio
+ * @param {number} offset
+ */
+function updateInterpolatedLocations(target, base, ratio, offset) {
+    const { fitted, scrollable } = base;
 
+    interpolateLocations(
+        target.samples,
+        fitted.samples,
+        scrollable.samples,
+        ratio,
+        offset
+    );
+    interpolateLocations(
+        target.summaries,
+        fitted.summaries,
+        scrollable.summaries,
+        ratio,
+        offset
+    );
+    interpolateLocations(
+        target.groups,
+        fitted.groups,
+        scrollable.groups,
+        ratio,
+        offset
+    );
+}
+
+/**
+ * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} target
+ * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} fitted
+ * @param {import("./sampleViewTypes.js").KeyAndLocation<any>[]} scrollable
+ * @param {number} ratio
+ * @param {number} offset
+ */
+function interpolateLocations(target, fitted, scrollable, ratio, offset) {
+    if (ratio === 0) {
         for (let i = 0; i < target.length; i++) {
             const targetLoc = target[i].locSize;
             const fromLoc = fitted[i].locSize;
-            const toLoc = scrollable[i].locSize;
-            targetLoc.location =
-                ratio * (toLoc.location + offset) + inverse * fromLoc.location;
-            targetLoc.size = ratio * toLoc.size + inverse * fromLoc.size;
+            targetLoc.location = fromLoc.location;
+            targetLoc.size = fromLoc.size;
         }
+        return;
+    }
+
+    if (ratio === 1) {
+        for (let i = 0; i < target.length; i++) {
+            const targetLoc = target[i].locSize;
+            const toLoc = scrollable[i].locSize;
+            targetLoc.location = toLoc.location + offset;
+            targetLoc.size = toLoc.size;
+        }
+        return;
+    }
+
+    const inverse = 1 - ratio;
+
+    for (let i = 0; i < target.length; i++) {
+        const targetLoc = target[i].locSize;
+        const fromLoc = fitted[i].locSize;
+        const toLoc = scrollable[i].locSize;
+        targetLoc.location =
+            ratio * (toLoc.location + offset) + inverse * fromLoc.location;
+        targetLoc.size = ratio * toLoc.size + inverse * fromLoc.size;
     }
 }
 
