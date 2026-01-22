@@ -607,14 +607,15 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {import("./sampleViewTypes.js").SampleLocation[]} sampleLocations
+     * @param {number} viewHeight
      * @returns {import("@genome-spy/core/types/rendering.js").RenderingOptions[]}
      */
-    #getSampleRenderOptions(sampleLocations) {
+    #getSampleRenderOptions(sampleLocations, viewHeight) {
         if (this.#sampleRenderLocationSource === sampleLocations) {
             return this.#sampleRenderOptions;
         }
 
-        const pixelToUnit = 1 / this.coords.height;
+        const pixelToUnit = 1 / viewHeight;
 
         this.#sampleRenderOptions = sampleLocations.map(
             (sampleLocation, index) => ({
@@ -659,7 +660,10 @@ export default class SampleView extends ContainerView {
 
         const locations = this.locationManager.getLocations();
 
-        const sampleOptions = this.#getSampleRenderOptions(locations.samples);
+        const sampleOptions = this.#getSampleRenderOptions(
+            locations.samples,
+            coords.height
+        );
 
         const passThroughOptions = { ...options };
         delete passThroughOptions.facetId;
