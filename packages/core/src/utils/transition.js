@@ -2,6 +2,16 @@
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Lightweight cancellation token for transitions.
+ * Use this when you want a cheap, synchronous cancel path without errors.
+ *
+ * @returns {{ canceled: boolean }}
+ */
+export function createCancelToken() {
+    return { canceled: false };
+}
+
+/**
  * @param {TransitionOptions} options
  *
  * @typedef {Object} TransitionOptions
@@ -14,15 +24,24 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @prop {function(function(number):void):void} [requestAnimationFrame]
  *      default: window.requestAnimationFrame
  * @prop {AbortSignal} [signal]
+ * @prop {{ canceled: boolean }} [cancelToken]
+ *      Prefer this for internal transitions where cancellation is expected and should be cheap.
+ *      The transition resolves immediately when canceled and does not throw or reject.
+ *      Use AbortSignal when you need external orchestration or standardized cancellation.
  */
 export default function transition(options) {
     const requestAnimationFrame =
         options.requestAnimationFrame || window.requestAnimationFrame;
 
     const signal = options.signal;
+    const cancelToken = options.cancelToken;
 
     const makePromise = () =>
         new Promise((resolve, reject) => {
+            if (cancelToken?.canceled) {
+                return resolve();
+            }
+
             if (signal?.aborted) {
                 return reject("aborted");
             }
@@ -46,6 +65,11 @@ export default function transition(options) {
 
             /** @param {number} stamp */
             const step = (stamp) => {
+                if (cancelToken?.canceled) {
+                    resolve();
+                    return;
+                }
+
                 if (signal?.aborted) {
                     reject("aborted");
                 } else {
@@ -63,6 +87,10 @@ export default function transition(options) {
         });
 
     if (options.delay) {
+        if (cancelToken?.canceled) {
+            return Promise.resolve();
+        }
+
         if (signal?.aborted) {
             return Promise.reject("aborted");
         }

@@ -16,6 +16,7 @@ import { easeCubicInOut } from "d3-ease";
 
 import eerp from "../utils/eerp.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { createCancelToken } from "../utils/transition.js";
 
 /**
  * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
@@ -44,6 +45,9 @@ export default class ScaleInteractionController {
 
     /** @type {() => number[]} */
     #getGenomeExtent;
+
+    /** @type {{ canceled: boolean } | null} */
+    #zoomTransitionToken = null;
 
     /**
      * @param {object} options
@@ -178,10 +182,14 @@ export default class ScaleInteractionController {
             const ac = from[0] == to[0];
             const bc = from[1] == to[1];
 
-            // TODO: Abort possible previous transition
+            this.#cancelZoomTransition();
+            const cancelToken = createCancelToken();
+            this.#zoomTransitionToken = cancelToken;
+
             await animator.transition({
                 duration,
                 easingFunction: easeCubicInOut,
+                cancelToken,
                 onUpdate: (t) => {
                     const w = eerp(fw, tw, t);
                     const wt = fw == tw ? t : (fw - w) / (fw - tw);
@@ -194,10 +202,21 @@ export default class ScaleInteractionController {
                 },
             });
 
+            if (this.#zoomTransitionToken === cancelToken) {
+                this.#zoomTransitionToken = null;
+            }
             scale.domain(to);
         } else {
+            this.#cancelZoomTransition();
             scale.domain(to);
             animator?.requestRender();
+        }
+    }
+
+    #cancelZoomTransition() {
+        if (this.#zoomTransitionToken) {
+            this.#zoomTransitionToken.canceled = true;
+            this.#zoomTransitionToken = null;
         }
     }
 
