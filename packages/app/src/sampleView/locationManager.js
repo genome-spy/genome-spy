@@ -36,11 +36,23 @@ export class LocationManager {
     /** @type {import("./sampleViewTypes.js").Locations} */
     #locations = undefined;
 
+    /** @type {{fitted: import("./sampleViewTypes.js").Locations, scrollable: import("./sampleViewTypes.js").Locations}} */
+    #baseLocations = undefined;
+
     /** @type {import("./sampleViewTypes.js").Locations} */
     #scrollableLocations;
 
     /** @type {import("./sampleViewTypes.js").LocationContext} */
     #locationContext;
+
+    /** @type {{height: number, summaryHeight: number, sampleHierarchy: import("./state/sampleState.js").SampleHierarchy | undefined}} */
+    #layoutInputs = {
+        height: 0,
+        summaryHeight: 0,
+        sampleHierarchy: undefined,
+    };
+
+    #structuralDirty = true;
 
     /**
      * @param {import("./sampleViewTypes.js").LocationContext} locationContext
@@ -54,7 +66,10 @@ export class LocationManager {
     }
 
     resetLocations() {
+        this.#structuralDirty = true;
         this.#locations = undefined;
+        this.#baseLocations = undefined;
+        this.#scrollableLocations = undefined;
     }
 
     reset() {
@@ -161,6 +176,10 @@ export class LocationManager {
             return;
         }
 
+        if (!this.getLocations()) {
+            return;
+        }
+
         const viewContext = this.#locationContext.viewContext;
         const height = this.#locationContext.getHeight();
 
@@ -243,58 +262,36 @@ export class LocationManager {
      * @returns {import("./sampleViewTypes.js").Locations}
      */
     getLocations() {
+        if (!this.#ensureBaseLayout()) {
+            return;
+        }
+
         if (this.#locations) {
             return this.#locations;
         }
 
-        const height = this.#locationContext.getHeight();
-
-        if (!height) {
-            return;
-        }
-
-        const sampleHierarchy = this.#locationContext.getSampleHierarchy();
-        const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
-        const summaryHeight = this.#locationContext.getSummaryHeight();
-
-        // Locations squeezed into the viewport height
-        const fittedLocations = calculateLocations(flattened, {
-            viewHeight: height,
-            groupSpacing: 5, // TODO: Configurable
-            summaryHeight,
-        });
-
-        // Scrollable locations that are shown when "peek" activates
-        const scrollableLocations = calculateLocations(flattened, {
-            sampleHeight: 35, // TODO: Configurable
-            groupSpacing: 15, // TODO: Configurable
-            summaryHeight,
-        });
-
         const offsetSource = () => -this.#scrollOffset;
         const ratioSource = () => this.#peekState;
 
-        /** Store for scroll offset calculation when peek fires */
-        this.#scrollableLocations = scrollableLocations;
-
-        // TODO: Use groups to calculate
-        this.#scrollableHeight = scrollableLocations.summaries
-            .map((d) => d.locSize.location + d.locSize.size)
-            .reduce((a, b) => Math.max(a, b), 0);
-
-        this.setScrollOffset(this.#scrollOffset);
+        const { fitted, scrollable } = this.#baseLocations;
 
         /** @type {import("./sampleViewTypes.js").InterpolatedLocationMaker} */
-        const makeInterpolatedLocations = (fitted, scrollable) => {
+        const makeInterpolatedLocations = (
+            fittedLocations,
+            scrollableLocations
+        ) => {
             /** @type {any[]} */
             const interactiveLocations = [];
-            for (let i = 0; i < fitted.length; i++) {
-                const key = fitted[i].key;
+            for (let i = 0; i < fittedLocations.length; i++) {
+                const key = fittedLocations[i].key;
                 interactiveLocations.push({
                     key,
                     locSize: interpolateLocSizes(
-                        fitted[i].locSize,
-                        translateLocSize(scrollable[i].locSize, offsetSource),
+                        fittedLocations[i].locSize,
+                        translateLocSize(
+                            scrollableLocations[i].locSize,
+                            offsetSource
+                        ),
                         ratioSource
                     ),
                 });
@@ -303,18 +300,18 @@ export class LocationManager {
         };
 
         const groups = makeInterpolatedLocations(
-            fittedLocations.groups,
-            scrollableLocations.groups
+            fitted.groups,
+            scrollable.groups
         );
 
         this.#locations = {
             samples: makeInterpolatedLocations(
-                fittedLocations.samples,
-                scrollableLocations.samples
+                fitted.samples,
+                scrollable.samples
             ),
             summaries: makeInterpolatedLocations(
-                fittedLocations.summaries,
-                scrollableLocations.summaries
+                fitted.summaries,
+                scrollable.summaries
             ),
             groups,
         };
@@ -438,6 +435,66 @@ export class LocationManager {
             }
         }
         return coords;
+    }
+
+    #ensureBaseLayout() {
+        const height = this.#locationContext.getHeight();
+        if (!height) {
+            return false;
+        }
+
+        const sampleHierarchy = this.#locationContext.getSampleHierarchy();
+        const summaryHeight = this.#locationContext.getSummaryHeight();
+
+        if (
+            !this.#structuralDirty &&
+            this.#layoutInputs.height === height &&
+            this.#layoutInputs.summaryHeight === summaryHeight &&
+            this.#layoutInputs.sampleHierarchy === sampleHierarchy
+        ) {
+            return true;
+        }
+
+        const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
+
+        // Locations squeezed into the viewport height
+        const fittedLocations = calculateLocations(flattened, {
+            viewHeight: height,
+            groupSpacing: 5, // TODO: Configurable
+            summaryHeight,
+        });
+
+        // Scrollable locations that are shown when "peek" activates
+        const scrollableLocations = calculateLocations(flattened, {
+            sampleHeight: 35, // TODO: Configurable
+            groupSpacing: 15, // TODO: Configurable
+            summaryHeight,
+        });
+
+        this.#baseLocations = {
+            fitted: fittedLocations,
+            scrollable: scrollableLocations,
+        };
+
+        /** Store for scroll offset calculation when peek fires */
+        this.#scrollableLocations = scrollableLocations;
+
+        // TODO: Use groups to calculate
+        this.#scrollableHeight = scrollableLocations.summaries
+            .map((d) => d.locSize.location + d.locSize.size)
+            .reduce((a, b) => Math.max(a, b), 0);
+
+        this.setScrollOffset(this.#scrollOffset);
+
+        this.#layoutInputs = {
+            height,
+            summaryHeight,
+            sampleHierarchy,
+        };
+        this.#structuralDirty = false;
+        this.#locations = undefined;
+
+        return true;
     }
 }
 
