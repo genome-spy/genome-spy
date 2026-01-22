@@ -1290,12 +1290,11 @@ export default class Mark {
         const locationSetter = this.programInfo.uniformSetters.uSampleFacet;
 
         if (opts && locationSetter) {
-            const scale = opts.pixelToUnit;
             const pos = opts.locSize
-                ? opts.locSize.location * (scale ?? 1)
+                ? opts.locSize.location * opts.pixelToUnit
                 : 0.0;
             const height = opts.locSize
-                ? opts.locSize.size * (scale ?? 1)
+                ? opts.locSize.size * opts.pixelToUnit
                 : 1.0;
 
             if (pos > 1.0 || pos + height < 0.0) {
@@ -1304,10 +1303,10 @@ export default class Mark {
             }
 
             const targetPos = opts.targetLocSize
-                ? opts.targetLocSize.location * (scale ?? 1)
+                ? opts.targetLocSize.location * opts.pixelToUnit
                 : pos;
             const targetHeight = opts.targetLocSize
-                ? opts.targetLocSize.size * (scale ?? 1)
+                ? opts.targetLocSize.size * opts.pixelToUnit
                 : height;
 
             // Use WebGL directly, because twgl uses gl.uniform4fv, which has an

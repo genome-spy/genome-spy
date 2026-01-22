@@ -17,7 +17,7 @@ export interface SampleFacetRenderingOptions {
     /**
      * Multiply pixel-based locSize values to unit scale.
      */
-    pixelToUnit?: number;
+    pixelToUnit: number;
 
     /**
      * Target (during transition)
