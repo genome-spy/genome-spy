@@ -14,7 +14,7 @@ import {
     isPrimaryPositionalChannel,
     isValueDefWithCondition,
 } from "../encoder/encoder.js";
-import createDomain from "../utils/domainArray.js";
+import { isScaleAccessor } from "../encoder/accessor.js";
 import AxisResolution from "../scales/axisResolution.js";
 import View from "./view.js";
 import {
@@ -48,7 +48,6 @@ export const markTypes = {
 export default class UnitView extends View {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
-     * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
      * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
      * @typedef {((datum: import("../data/flowNode.js").Datum) => import("../spec/channel.js").Scalar) & { fieldDef: import("../spec/channel.js").FieldDef}} FieldAccessor
      *
@@ -59,6 +58,11 @@ export default class UnitView extends View {
      * @type {(zoomLevel: number) => void}
      */
     #zoomLevelSetter;
+
+    /**
+     * @type {boolean}
+     */
+    #domainSubscriptionsRegistered = false;
 
     /**
      *
@@ -392,23 +396,14 @@ export default class UnitView extends View {
                     });
                 }
 
-                const dataDomainSource =
-                    this.getLayoutAncestors()
-                        // TODO: Should check until the resolved scale resolution
-                        .some(
-                            (view) => !view.options.contributesToScaleDomain
-                        ) ||
-                    (isChannelDefWithScale(channelDefWithScale) &&
-                        channelDefWithScale.contributesToScaleDomain === false)
-                        ? undefined
-                        : this.extractDataDomain.bind(this);
+                const contributesToDomain = !this.isDomainInert();
 
                 const resolution = view.resolutions[type][targetChannel];
                 const unregister = resolution.registerMember({
                     view: this,
                     channel,
                     channelDef: channelDefWithScale,
-                    dataDomainSource,
+                    contributesToDomain,
                 });
                 this.registerDisposer(() => {
                     // Unregister returns true when it removed the last member.
@@ -469,37 +464,82 @@ export default class UnitView extends View {
     }
 
     /**
-     * Extracts the domain from the data.
-     *
-     * TODO: Optimize! Now this performs redundant work if multiple views share the same collector.
-     * Also, all relevant fields should be processed in one iteration: https://jsbench.me/y5kkqy52jo/1
-     * In fact, domain extraction could be a responsibility of the collector: As it handles data items,
-     * it extracts domains for all fields (and data types) that need extracted domains.
-     * Alternatively, extractor nodes could be added to the data flow, just like Vega does
-     * (with aggregate and extent).
-     *
-     * @param {Channel} channel
-     * @param {import("../spec/channel.js").Type} type
-     * @returns {DomainArray}
+     * Registers collector subscriptions that keep scale domains up to date.
      */
-    extractDataDomain(channel, type) {
-        /** @type {DomainArray} */
-        let domain = createDomain(type);
+    registerDomainSubscriptions() {
+        if (this.#domainSubscriptionsRegistered) {
+            return;
+        }
 
-        (this.mark.encoders[channel]?.accessors ?? [])
-            .filter((a) => a.scaleChannel)
-            .forEach((accessor) => {
-                if (accessor.constant) {
-                    domain.extend(accessor({}));
-                } else {
-                    const collector = this.getCollector();
-                    if (collector?.completed) {
-                        collector.visitData((d) => domain.extend(accessor(d)));
-                    }
+        if (this.isDomainInert()) {
+            return;
+        }
+
+        const collector = this.getCollector();
+        if (!collector) {
+            return;
+        }
+
+        const encoders = this.mark.encoders;
+        if (!encoders) {
+            throw new Error("Encoders are not initialized!");
+        }
+
+        this.#domainSubscriptionsRegistered = true;
+
+        /** @type {Map<import("../scales/scaleResolution.js").default, Set<import("../types/encoder.js").ScaleAccessor>>} */
+        const accessorsByResolution = new Map();
+
+        for (const encoder of Object.values(encoders)) {
+            if (!encoder) {
+                continue;
+            }
+
+            const accessors = encoder.accessors ?? [];
+            if (accessors.length === 0) {
+                continue;
+            }
+
+            for (const accessor of accessors) {
+                if (!isScaleAccessor(accessor)) {
+                    continue;
                 }
-            });
+                if (accessor.channelDef.domainInert) {
+                    continue;
+                }
+                const resolution = this.getScaleResolution(
+                    accessor.scaleChannel
+                );
+                if (!resolution) {
+                    throw new Error(
+                        "Missing scale resolution for channel: " +
+                            accessor.scaleChannel
+                    );
+                }
 
-        return domain;
+                let accessorsForResolution =
+                    accessorsByResolution.get(resolution);
+                if (!accessorsForResolution) {
+                    accessorsForResolution = new Set();
+                    accessorsByResolution.set(
+                        resolution,
+                        accessorsForResolution
+                    );
+                }
+                accessorsForResolution.add(accessor);
+            }
+        }
+
+        for (const [resolution, accessors] of accessorsByResolution) {
+            if (accessors.size === 0) {
+                continue;
+            }
+            const unregister = resolution.registerCollectorSubscriptions(
+                collector,
+                accessors
+            );
+            this.registerDisposer(unregister);
+        }
     }
 
     getZoomLevel() {

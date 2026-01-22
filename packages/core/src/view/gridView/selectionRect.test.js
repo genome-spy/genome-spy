@@ -84,4 +84,58 @@ describe("SelectionRect", () => {
             { _x: 5, _x2: 6, _y: 7, _y2: 8 },
         ]);
     });
+
+    it("marks the view as domain inert", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "p"
+        );
+
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const unitSpec = {
+            data: { values: [{ x: 0, y: 0 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const unitView = new UnitView(unitSpec, context, parent, parent, "u");
+
+        /** @type {(listener: () => void) => void} */
+        const addListener = () => undefined;
+        /** @type {(listener: () => void) => void} */
+        const removeListener = () => undefined;
+        /** @type {() => void} */
+        const invalidate = () => undefined;
+
+        const selectionExpr = Object.assign(
+            () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
+            {
+                addListener,
+                removeListener,
+                invalidate,
+                identifier: () => "selection",
+                fields: [],
+                globals: [],
+                code: "selection",
+            }
+        );
+
+        // Use a real unit view so SelectionRect can resolve scales if needed.
+        const gridChild = /** @type {import("./gridChild.js").default} */ (
+            /** @type {unknown} */ ({
+                layoutParent: parent,
+                view: unitView,
+            })
+        );
+
+        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        expect(selectionRect.isDomainInert()).toBe(true);
+    });
 });

@@ -7,7 +7,6 @@ import LayerView from "../view/layerView.js";
 import ConcatView from "../view/concatView.js";
 import UnitView from "../view/unitView.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
-import { reconfigureScaleDomains } from "./scaleResolution.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -202,7 +201,86 @@ describe("Scale resolution", () => {
         );
     });
 
-    // TODO: Add test for "forced" resolution
+    test("forced resolutions bubble to independent parents", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [] },
+            resolve: {
+                scale: { x: "independent" },
+                axis: { x: "independent" },
+            },
+            layer: [
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+
+        expect(view.children[0].children[0].getScaleResolution("x")).toBe(
+            view.children[1].children[0].getScaleResolution("x")
+        );
+    });
+
+    test("forced resolutions stay separate from non-forced branches", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [] },
+            resolve: {
+                scale: { x: "independent" },
+                axis: { x: "independent" },
+            },
+            layer: [
+                {
+                    resolve: { scale: { x: "forced" } },
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                {
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: { field: "data", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+
+        expect(view.children[0].children[0].getScaleResolution("x")).not.toBe(
+            view.children[1].children[0].getScaleResolution("x")
+        );
+    });
 
     test("Default resolution is configurable", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
@@ -381,6 +459,70 @@ describe("Domain handling", () => {
         expect(r(d(view.children[1]))).toEqual([1, 5]);
     });
 
+    test("shared collectors de-duplicate domain extraction for conditional encodings", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: {
+                values: [{ a: 1 }, { a: 2 }],
+            },
+            resolve: {
+                scale: { x: "shared" },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            condition: { value: 0 },
+                        },
+                    },
+                },
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            condition: { value: 0 },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await createAndInitialize(spec, LayerView);
+        const [left, right] = view.children;
+        const collector = left.getCollector();
+        if (!collector) {
+            throw new Error("Missing collector for shared collector test.");
+        }
+
+        if (collector !== right.getCollector()) {
+            if (!right.flowHandle) {
+                throw new Error(
+                    "Missing flow handle for shared collector test."
+                );
+            }
+            // Non-obvious: simulate a shared collector for merged dataflow.
+            right.flowHandle.collector = collector;
+        }
+
+        const resolution = left.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error("Missing x scale resolution.");
+        }
+
+        // Non-obvious: conditional values still exercise the conditional path.
+        const spy = vi.spyOn(collector, "getDomain");
+
+        resolution.reconfigureDomain();
+
+        expect(spy).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
+    });
+
     test("Scales of primary and secondary channels are shared and extracted domains merged properly", async () => {
         const view = await createAndInitialize(
             {
@@ -390,8 +532,10 @@ describe("Domain handling", () => {
                         { a: 2, b: 5 },
                     ],
                 },
-                mark: "point",
+                mark: "rect",
                 encoding: {
+                    x: { value: 0 },
+                    x2: { value: 1 },
                     y: {
                         field: "a",
                         type: "quantitative",
@@ -408,8 +552,7 @@ describe("Domain handling", () => {
         /** @param {import("../view/view.js").default} view */
         const d = (view) => view.getScaleResolution("y").scale.domain();
 
-        // FAILS!!!!!!! TODO: FIX!!
-        // expect(r(d(view))).toEqual([1, 5]);
+        expect(r(d(view))).toEqual([1, 5]);
     });
 
     test("resolutionChannel property is respected", async () => {
@@ -464,11 +607,6 @@ describe("Domain handling", () => {
             },
             UnitView
         );
-
-        for (const channel of primaryPositionalChannels) {
-            // Extract domain from data
-            view.getScaleResolution(channel).reconfigureDomain();
-        }
 
         const d = /** @param {import("../spec/channel.js").Channel} channel*/ (
             channel
@@ -526,11 +664,6 @@ describe("Domain handling", () => {
             },
             UnitView
         );
-
-        for (const channel of primaryPositionalChannels) {
-            // Extract domain from data
-            view.getScaleResolution(channel).reconfigureDomain();
-        }
 
         const d = /** @param {Channel} channel*/ (channel) =>
             view.getScaleResolution(channel).scale.domain();
@@ -616,6 +749,7 @@ describe("Domain handling", () => {
         const firstA = indexer("a");
         const firstB = indexer("b");
 
+        collector.repropagate();
         resolution.reconfigureDomain();
 
         expect(indexer("a")).toEqual(firstA);
@@ -649,27 +783,6 @@ describe("Domain handling", () => {
         expect(indexer("b")).toEqual(1);
         expect(indexer("c")).toEqual(2);
         expect(scale.domain()).toEqual(["a", "b", "c"]);
-    });
-
-    test("reconfigureScaleDomains triggers domain-only refresh", async () => {
-        const view = await createAndInitialize(
-            {
-                data: { values: [2, 3] },
-                mark: "point",
-                encoding: {
-                    x: { field: "data", type: "quantitative" },
-                },
-            },
-            UnitView
-        );
-
-        const resolution = view.getScaleResolution("x");
-        const spy = vi.spyOn(resolution, "reconfigureDomain");
-
-        reconfigureScaleDomains(view);
-
-        expect(spy).toHaveBeenCalled();
-        spy.mockRestore();
     });
 });
 

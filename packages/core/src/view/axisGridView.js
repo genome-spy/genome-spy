@@ -42,7 +42,6 @@ export default class AxisGridView extends LayerView {
             `axisGrid_${axisProps.orient}`,
             {
                 blockEncodingInheritance: true,
-                contributesToScaleDomain: false,
                 ...options,
             }
         );
@@ -121,7 +120,10 @@ function createRegularAxisGrid(axisProps, type) {
             minBufferSize: 300,
         },
         encoding: {
-            [channel]: { field: "value", type },
+            [channel]: {
+                field: "value",
+                type,
+            },
         },
     };
 }
@@ -153,7 +155,11 @@ function createChromAxisGrid(axisProps, type) {
         },
         encoding: {
             // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-            [channel]: { field: "continuousStart", type, band: 0 },
+            [channel]: {
+                field: "continuousStart",
+                type,
+                band: 0,
+            },
         },
     };
 }
@@ -180,8 +186,15 @@ function createChromAxisFill(axisProps, type) {
         },
         encoding: {
             // TODO: { chrom: "name", type: "locus" } // without pos = pos is 0
-            [channel]: { field: "continuousStart", type, band: 0 },
-            [channel + "2"]: { field: "continuousEnd", band: 0 },
+            [channel]: {
+                field: "continuousStart",
+                type,
+                band: 0,
+            },
+            [channel + "2"]: {
+                field: "continuousEnd",
+                band: 0,
+            },
             fill: {
                 field: "odd",
                 type: "nominal",
@@ -245,6 +258,7 @@ function createAxisGrid(axisProps, type) {
                 opacity: "independent",
             },
         },
+        domainInert: true,
         layer: layers,
     };
 }

@@ -78,6 +78,11 @@ describe("GridView incremental child management", () => {
         await gridChild.createAxes();
         const axisCount = Object.keys(gridChild.axes).length;
 
+        // Axis views must not contribute to shared scale domains.
+        for (const axisView of Object.values(gridChild.axes)) {
+            expect(axisView.isDomainInert()).toBe(true);
+        }
+
         // Recreating axes should not leak or duplicate axis views.
         await gridChild.createAxes();
         expect(Object.keys(gridChild.axes)).toHaveLength(axisCount);

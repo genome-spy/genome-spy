@@ -34,6 +34,7 @@ export default class SelectionRect extends LayerView {
         const layerSpec = {
             name: "selectionRect",
             configurableVisibility: false,
+            domainInert: true,
             resolve: {
                 scale: {
                     x: "forced",
@@ -46,12 +47,24 @@ export default class SelectionRect extends LayerView {
         };
 
         if (channels.includes("x")) {
-            layerSpec.encoding.x = { field: "_x", type: null, title: null };
-            layerSpec.encoding.x2 = { field: "_x2" };
+            layerSpec.encoding.x = {
+                field: "_x",
+                type: null,
+                title: null,
+            };
+            layerSpec.encoding.x2 = {
+                field: "_x2",
+            };
         }
         if (channels.includes("y")) {
-            layerSpec.encoding.y = { field: "_y", type: null, title: null };
-            layerSpec.encoding.y2 = { field: "_y2" };
+            layerSpec.encoding.y = {
+                field: "_y",
+                type: null,
+                title: null,
+            };
+            layerSpec.encoding.y2 = {
+                field: "_y2",
+            };
         }
 
         layerSpec.layer.push({
@@ -137,7 +150,6 @@ export default class SelectionRect extends LayerView {
             "selectionRect", // TODO: Serial
             {
                 blockEncodingInheritance: true,
-                contributesToScaleDomain: false,
             }
         );
 

@@ -23,10 +23,10 @@ import {
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
 
+import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isSecondaryChannel } from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
-import { asArray, shallowArrayEquals } from "../utils/arrayUtils.js";
-import { VISIT_SKIP } from "../view/view.js";
+import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
 
 // Register scaleLocus to Vega-Scale.
@@ -44,7 +44,7 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * @prop {import("../view/unitView.js").default} view TODO: Get rid of the view reference
  * @prop {T} channel
  * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
- * @prop {(channel: ChannelWithScale, type: import("../spec/channel.js").Type) => DomainArray} dataDomainSource
+ * @prop {boolean} contributesToDomain
  */
 /**
  * Resolves a shared scale for a channel by merging scale properties and domains
@@ -300,6 +300,45 @@ export default class ScaleResolution {
         return () => {
             const removed = this.#members.delete(member);
             return removed && this.#members.size === 0;
+        };
+    }
+
+    /**
+     * @param {import("../data/collector.js").default} collector
+     * @param {Iterable<import("../types/encoder.js").ScaleAccessor>} accessors
+     * @returns {() => void}
+     */
+    registerCollectorSubscriptions(collector, accessors) {
+        /** @type {Set<string>} */
+        const domainKeys = new Set();
+
+        for (const accessor of accessors) {
+            if (accessor.channelDef.domainInert) {
+                continue;
+            }
+            domainKeys.add(getAccessorDomainKey(accessor, this.type));
+        }
+
+        if (domainKeys.size === 0) {
+            return () => undefined;
+        }
+
+        const listener = () => {
+            this.reconfigureDomain();
+        };
+
+        /** @type {(() => void)[]} */
+        const unregisters = [];
+        for (const domainKey of domainKeys) {
+            unregisters.push(
+                collector.subscribeDomainChanges(domainKey, listener)
+            );
+        }
+
+        return () => {
+            for (const unregister of unregisters) {
+                unregister();
+            }
         };
     }
 
@@ -687,46 +726,4 @@ export default class ScaleResolution {
         }
         return /** @type {number[]} */ (interval);
     }
-}
-
-/**
- * Reconfigures scale domains for resolutions used by the given view(s).
- *
- * Use this for data-driven updates where only domains need refreshing.
- *
- * TODO: This should be made unnecessary. Collectors should trigger the reconfiguration
- * for those views that get their data from the collector.
- *
- * TODO: This may reconfigure channels that are not affected by the change.
- * Causes performance issues with domains that are extracted from data.
- *
- * @param {import("../view/view.js").default | import("../view/view.js").default[]} fromViews
- * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
- */
-export function reconfigureScaleDomains(fromViews, viewFilter) {
-    /** @type {Set<ScaleResolution>} */
-    const uniqueResolutions = new Set();
-
-    /** @param {import("../view/view.js").default} view */
-    function collectResolutions(view) {
-        for (const resolution of Object.values(view.resolutions.scale)) {
-            uniqueResolutions.add(resolution);
-        }
-    }
-
-    /** @type {import("../view/view.js").VisitorCallback} */
-    function collectVisibleResolutions(view) {
-        if (viewFilter && !viewFilter(view)) {
-            return VISIT_SKIP;
-        }
-        if (view.options.contributesToScaleDomain) {
-            collectResolutions(view);
-        }
-    }
-
-    for (const fromView of asArray(fromViews)) {
-        fromView.visit(collectVisibleResolutions);
-    }
-
-    uniqueResolutions.forEach((resolution) => resolution.reconfigureDomain());
 }

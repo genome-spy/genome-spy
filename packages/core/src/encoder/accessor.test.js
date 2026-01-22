@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
+
 import ParamMediator from "../view/paramMediator.js";
-import { createAccessor, createConditionalAccessors } from "./accessor.js";
+import {
+    buildDomainKey,
+    createAccessor,
+    createConditionalAccessors,
+    getAccessorDomainKey,
+    isScaleAccessor,
+} from "./accessor.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createSinglePointSelection } from "../selection/selection.js";
 
@@ -12,7 +19,11 @@ const datum = {
 
 describe("Accessors for different encoding types", () => {
     test("Creates a field accessor", () => {
-        const a = createAccessor("x", { field: "a" }, new ParamMediator());
+        const a = createAccessor(
+            "x",
+            { field: "a" },
+            new ParamMediator(() => undefined)
+        );
         expect(a(datum)).toEqual(1);
         expect(a.constant).toBeFalsy();
         expect(a.fields).toEqual(["a"]);
@@ -21,23 +32,31 @@ describe("Accessors for different encoding types", () => {
     test("Creates an expression accessor", () => {
         const a = createAccessor(
             "x",
-            { expr: `datum.b + datum['x\.c']` },
-            new ParamMediator()
+            { expr: `datum.b + datum['x\\.c']` },
+            new ParamMediator(() => undefined)
         );
         expect(a(datum)).toEqual(5);
         expect(a.constant).toBeFalsy();
-        expect(a.fields.sort()).toEqual(["b", "x.c"].sort());
+        expect(a.fields.sort()).toEqual(["b", "x\\.c"].sort());
     });
 
     test("Creates a constant accessor", () => {
-        const a = createAccessor("x", { datum: 0 }, new ParamMediator());
+        const a = createAccessor(
+            "x",
+            { datum: 0 },
+            new ParamMediator(() => undefined)
+        );
         expect(a(datum)).toEqual(0);
         expect(a.constant).toBeTruthy();
         expect(a.fields).toEqual([]);
     });
 
     test("Creates a value accessor", () => {
-        const a = createAccessor("x", { value: 123 }, new ParamMediator());
+        const a = createAccessor(
+            "x",
+            { value: 123 },
+            new ParamMediator(() => undefined)
+        );
         expect(a(datum)).toEqual(123);
         expect(a.constant).toBeTruthy();
         expect(a.fields).toEqual([]);
@@ -45,7 +64,9 @@ describe("Accessors for different encoding types", () => {
 });
 
 test("Throws on incomplete encoding spec", () => {
-    expect(() => createAccessor("x", {}, new ParamMediator())).toThrow();
+    expect(() =>
+        createAccessor("x", {}, new ParamMediator(() => undefined))
+    ).toThrow();
 });
 
 // TODO: Refactor and fix conditional accessors
@@ -55,7 +76,7 @@ describe.skip("createConditionalAccessors", () => {
         { a: 3, b: 4, [UNIQUE_ID_KEY]: 1 },
     ];
 
-    const paramMediator = new ParamMediator();
+    const paramMediator = new ParamMediator(() => undefined);
     paramMediator.allocateSetter("p", createSinglePointSelection(data[0]));
 
     const a = createConditionalAccessors(
@@ -157,5 +178,77 @@ describe.skip("createConditionalAccessors", () => {
                 paramMediator
             )
         ).toThrow();
+    });
+});
+
+describe("Accessor domain keys", () => {
+    /** @type {Array<{
+     *  name: string,
+     *  channel: import("../spec/channel.js").Channel,
+     *  channelDef: import("../spec/channel.js").ChannelDef,
+     *  resolvedType: import("../spec/channel.js").Type,
+     *  expectedBase: string,
+     *  expectedKey: string,
+     * }>} */
+    const cases = [
+        {
+            name: "field definitions",
+            channel: "x",
+            channelDef: { field: "value", type: "quantitative" },
+            resolvedType: "quantitative",
+            expectedBase: "x|field|value",
+            expectedKey: "quantitative|x|field|value",
+        },
+        {
+            name: "expression definitions",
+            channel: "y",
+            channelDef: { expr: "datum.value + 1", type: "quantitative" },
+            resolvedType: "quantitative",
+            expectedBase: "y|expr|datum.value + 1",
+            expectedKey: "quantitative|y|expr|datum.value + 1",
+        },
+        {
+            name: "datum values",
+            channel: "x",
+            channelDef: { datum: 123, type: "quantitative" },
+            resolvedType: "quantitative",
+            expectedBase: "x|datum|123",
+            expectedKey: "quantitative|x|datum|123",
+        },
+    ];
+
+    test.each(cases)(
+        "$name",
+        ({ channel, channelDef, resolvedType, expectedBase, expectedKey }) => {
+            // ParamMediator is required even when accessors only read fields.
+            const paramMediator = new ParamMediator(() => undefined);
+            const accessor = createAccessor(channel, channelDef, paramMediator);
+
+            expect(accessor.domainKeyBase).toBe(expectedBase);
+            if (!isScaleAccessor(accessor)) {
+                throw new Error(
+                    "Expected a scale accessor for " + channel + " channel."
+                );
+            }
+            expect(getAccessorDomainKey(accessor, resolvedType)).toBe(
+                expectedKey
+            );
+        }
+    );
+
+    test("value literals are encoded in domain keys", () => {
+        const scaleChannel =
+            /** @type {import("../spec/channel.js").ChannelWithScale} */ ("x");
+        const type = /** @type {import("../spec/channel.js").Type} */ (
+            "nominal"
+        );
+        const { domainKeyBase, domainKey } = buildDomainKey({
+            scaleChannel,
+            source: { kind: "value", value: "blue" },
+            type,
+        });
+
+        expect(domainKeyBase).toBe('x|value|"blue"');
+        expect(domainKey).toBe('nominal|x|value|"blue"');
     });
 });

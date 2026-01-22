@@ -4,6 +4,40 @@ import ScaleDomainAggregator from "./scaleDomainAggregator.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
 /**
+ * @param {string} field
+ * @returns {import("../types/encoder.js").Accessor}
+ */
+function createAccessor(field) {
+    const accessor = /** @type {import("../types/encoder.js").Accessor} */ (
+        /** @type {any} */ (
+            (/** @type {{ value: number }} */ datum) => datum.value
+        )
+    );
+    accessor.constant = false;
+    accessor.scaleChannel = "x";
+    accessor.channel = "x";
+    accessor.channelDef = { field, type: "quantitative" };
+    return accessor;
+}
+
+/**
+ * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {object} collector
+ * @param {boolean} [contributesToDomain]
+ */
+function createMember(accessors, collector, contributesToDomain = true) {
+    return {
+        channel: "x",
+        channelDef: { type: "quantitative", scale: {} },
+        contributesToDomain,
+        view: {
+            mark: { encoders: { x: { accessors } } },
+            getCollector: () => collector,
+        },
+    };
+}
+
+/**
  * @param {any[]} members
  * @param {import("../spec/channel.js").Type} type
  */
@@ -24,12 +58,14 @@ describe("ScaleDomainAggregator", () => {
                     type: "quantitative",
                     scale: { domain: [0, 5] },
                 },
+                contributesToDomain: true,
             },
             {
                 channelDef: {
                     type: "quantitative",
                     scale: { domain: [2, 7] },
                 },
+                contributesToDomain: true,
             },
         ];
         const aggregator = createAggregator(members, "quantitative");
@@ -38,19 +74,47 @@ describe("ScaleDomainAggregator", () => {
     });
 
     test("data domains are unioned", () => {
+        const domainsByKey = new Map([
+            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
+            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
+        ]);
+
+        const collector = {
+            getDomain: (/** @type {string} */ domainKey) =>
+                domainsByKey.get(domainKey),
+        };
+
         const members = [
-            {
-                channel: "x",
-                dataDomainSource: () => createDomain("quantitative", [1, 4]),
-            },
-            {
-                channel: "x",
-                dataDomainSource: () => createDomain("quantitative", [0, 6]),
-            },
+            createMember([createAccessor("a")], collector),
+            createMember([createAccessor("b")], collector),
         ];
         const aggregator = createAggregator(members, "quantitative");
         const domain = aggregator.getDataDomain();
         expect(toRegularArray(domain)).toEqual([0, 6]);
+    });
+
+    test("non-contributing members are ignored", () => {
+        const domainsByKey = new Map([
+            ["quantitative|x|field|a", createDomain("quantitative", [1, 4])],
+            ["quantitative|x|field|b", createDomain("quantitative", [0, 6])],
+        ]);
+
+        const collector = {
+            getDomain: vi.fn((/** @type {string} */ domainKey) =>
+                domainsByKey.get(domainKey)
+            ),
+        };
+
+        const members = [
+            createMember([createAccessor("a")], collector, false),
+            createMember([createAccessor("b")], collector, true),
+        ];
+
+        const aggregator = createAggregator(members, "quantitative");
+        const domain = aggregator.getDataDomain();
+
+        expect(toRegularArray(domain)).toEqual([0, 6]);
+        expect(collector.getDomain).toHaveBeenCalledTimes(1);
     });
 
     test("locus defaults to genome extent when no domain is configured", () => {
@@ -71,6 +135,7 @@ describe("ScaleDomainAggregator", () => {
                                 type: "quantitative",
                                 scale: { domain: [0, 5] },
                             },
+                            contributesToDomain: true,
                         },
                     ])
                 ),

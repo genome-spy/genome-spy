@@ -15,7 +15,12 @@ import {
     ScaleDiverging,
     ScaleContinuousNumeric,
 } from "d3-scale";
-import { Channel, ChannelDef, ChannelWithScale } from "../spec/channel.js";
+import {
+    Channel,
+    ChannelDef,
+    ChannelDefWithScale,
+    ChannelWithScale,
+} from "../spec/channel.js";
 import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
@@ -51,7 +56,7 @@ export interface Accessor<T = Scalar> {
      * before visual encoding, indicates with channel has the scale.
      * If no scale is needed, this is undefined.
      */
-    scaleChannel: ChannelWithScale;
+    scaleChannel?: ChannelWithScale;
 
     /**
      * The ChannelDef that the accessor is based on
@@ -59,9 +64,27 @@ export interface Accessor<T = Scalar> {
     channelDef: ChannelDef;
 
     /**
+     * A domain key base derived from the channel definition and scale channel.
+     * Format: <scaleChannel>|<kind>|<value>
+     */
+    domainKeyBase?: string;
+
+    /**
+     * A domain key finalized with the resolved data type.
+     * Format: <type>|<domainKeyBase>
+     */
+    domainKey?: string;
+
+    /**
      * This accessor should be used when the predicate is true
      */
     predicate: Predicate;
+}
+
+export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
+    scaleChannel: ChannelWithScale;
+    channelDef: ChannelDefWithScale;
+    domainKeyBase: string;
 }
 
 export interface Predicate extends ExprRefFunction {

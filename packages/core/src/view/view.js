@@ -58,9 +58,6 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
- * @prop {boolean} [contributesToScaleDomain]
- *      Whether ScaleResolution should include this view or its children in the
- *      domain. Default: true
  * @prop {boolean} [layersChildren]
  *      View's children are layered on top of each other and they have the same
  *      coordinates as their parent.
@@ -142,7 +139,6 @@ export default class View {
 
         this.options = {
             blockEncodingInheritance: false,
-            contributesToScaleDomain: true,
             ...options,
         };
 
@@ -346,6 +342,24 @@ export default class View {
         return this.getLayoutAncestors().every((view) =>
             view.isConfiguredVisible()
         );
+    }
+
+    /**
+     * Returns true if this view or any ancestor is marked as domain inert.
+     *
+     * @returns {boolean}
+     */
+    isDomainInert() {
+        if (this.spec.domainInert) {
+            return true;
+        }
+
+        const parent = this.dataParent;
+        if (!parent) {
+            return false;
+        }
+
+        return parent.isDomainInert();
     }
 
     /**

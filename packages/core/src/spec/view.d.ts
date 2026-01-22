@@ -163,6 +163,16 @@ export interface ViewSpecBase extends ResolveSpec {
     encoding?: Encoding;
 
     /**
+     * If true, this view and its descendants do not contribute to scale domains.
+     * Child views inherit this flag automatically.
+     *
+     * **Default value:** `false`
+     *
+     * @internal
+     */
+    domainInert?: boolean;
+
+    /**
      * View title.
      * N.B.: Currently, GenomeSpy doesn't do bound calculation, and you need to
      * manually specify proper padding for the view to ensure that the title is
@@ -225,9 +235,7 @@ export interface DynamicOpacitySpec {
 }
 
 export interface UnitSpec
-    extends ViewSpecBase,
-        DynamicOpacitySpec,
-        AggregateSamplesSpec {
+    extends ViewSpecBase, DynamicOpacitySpec, AggregateSamplesSpec {
     /**
      * The background of the view, including fill, stroke, and stroke width.
      */
@@ -250,9 +258,7 @@ export interface AggregateSamplesSpec {
 }
 
 export interface LayerSpec
-    extends ViewSpecBase,
-        DynamicOpacitySpec,
-        AggregateSamplesSpec {
+    extends ViewSpecBase, DynamicOpacitySpec, AggregateSamplesSpec {
     view?: ViewBackground;
     layer: (LayerSpec | UnitSpec | ImportSpec)[];
 }

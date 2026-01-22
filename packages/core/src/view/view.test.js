@@ -104,7 +104,7 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("x", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("x").getDataDomain())).toEqual([
                 123, 123,
             ])
         ));
@@ -121,7 +121,7 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("y", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("y").getDataDomain())).toEqual([
                 1, 3,
             ])
         ));
@@ -145,10 +145,57 @@ describe("Test domain handling", () => {
             },
             UnitView
         ).then((view) =>
-            expect(r(view.extractDataDomain("size", "quantitative"))).toEqual([
+            expect(r(view.getScaleResolution("size").getDataDomain())).toEqual([
                 1, 123,
             ])
         ));
+
+    test("domainInert views do not contribute to shared domains", () =>
+        createAndInitialize(
+            {
+                data: dataSpec,
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            x: { field: "a", type: "quantitative" },
+                        },
+                    },
+                    {
+                        domainInert: true,
+                        mark: "point",
+                        encoding: {
+                            x: { field: "b", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        ).then((view) =>
+            expect(
+                r(view.children[0].getScaleResolution("x").getDataDomain())
+            ).toEqual([1, 3])
+        ));
+
+    test("domainInert is inherited by child views", () =>
+        createAndInitialize(
+            {
+                domainInert: true,
+                layer: [
+                    {
+                        data: dataSpec,
+                        mark: "point",
+                        encoding: {
+                            x: { field: "a", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        ).then((view) => expect(view.children[0].isDomainInert()).toBe(true)));
 });
 
 describe("Utility methods", () => {

@@ -1,10 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "./concatView.js";
+import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
 import UnitView from "./unitView.js";
 import View from "./view.js";
-import { create, createTestViewContext } from "./testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createTestViewContext,
+} from "./testUtils.js";
 
 class DisposableView extends View {
     /** @type {boolean} */
@@ -56,6 +61,47 @@ describe("View disposal", () => {
 
         expect(view.getScaleResolution("x")).toBeUndefined();
         expect(view.getAxisResolution("x")).toBeUndefined();
+    });
+
+    test("disposes domain subscriptions when unit views are removed", async () => {
+        const activeListeners = new Set();
+        const originalSubscribe = Collector.prototype.subscribeDomainChanges;
+        const subscribeSpy = vi
+            .spyOn(Collector.prototype, "subscribeDomainChanges")
+            .mockImplementation(function (domainKey, listener) {
+                // Non-obvious: track active listeners through disposer callbacks.
+                activeListeners.add(listener);
+                const unregister = originalSubscribe.call(
+                    this,
+                    domainKey,
+                    listener
+                );
+                return () => {
+                    activeListeners.delete(listener);
+                    unregister();
+                };
+            });
+
+        try {
+            const view = await createAndInitialize(
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+                UnitView
+            );
+
+            expect(activeListeners.size).toBeGreaterThan(0);
+
+            view.disposeSubtree();
+
+            expect(activeListeners.size).toBe(0);
+        } finally {
+            subscribeSpy.mockRestore();
+        }
     });
 
     test("disposes replaced grid children", () => {

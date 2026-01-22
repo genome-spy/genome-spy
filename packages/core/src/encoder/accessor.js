@@ -45,6 +45,13 @@ export function createAccessor(channel, channelDef, paramMediator) {
                 (isChannelWithScale(channel) && channel)) ||
             undefined;
 
+        if (a.scaleChannel !== undefined) {
+            a.domainKeyBase = buildDomainKey({
+                scaleChannel: a.scaleChannel,
+                source: getDomainKeySource(channelDef),
+            }).domainKeyBase;
+        }
+
         if ("param" in channelDef) {
             // TODO: Figure out how to fix it. Interval selection depends on FIELDS!
             /*
@@ -151,4 +158,132 @@ export function createConditionalAccessors(channel, channelDef, paramMediator) {
         );
     }
     return conditionalAccessors;
+}
+
+/**
+ * @param {import("../types/encoder.js").Accessor} accessor
+ * @returns {accessor is import("../types/encoder.js").ScaleAccessor}
+ */
+export function isScaleAccessor(accessor) {
+    return accessor.scaleChannel !== undefined;
+}
+
+/**
+ * @typedef {{
+ *     kind: "field",
+ *     value: string,
+ * } | {
+ *     kind: "expr",
+ *     value: string,
+ * } | {
+ *     kind: "datum",
+ *     value: import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef,
+ * } | {
+ *     kind: "value",
+ *     value: import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef,
+ * }} DomainKeySource
+ */
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {DomainKeySource}
+ */
+function getDomainKeySource(channelDef) {
+    if (isFieldDef(channelDef)) {
+        return { kind: "field", value: channelDef.field };
+    }
+
+    if (isExprDef(channelDef)) {
+        return { kind: "expr", value: channelDef.expr };
+    }
+
+    if (isDatumDef(channelDef)) {
+        return { kind: "datum", value: channelDef.datum };
+    }
+
+    if (isValueDef(channelDef)) {
+        return { kind: "value", value: channelDef.value };
+    }
+
+    throw new Error(
+        "Cannot derive a domain key from channel definition: " +
+            JSON.stringify(channelDef)
+    );
+}
+
+/**
+ * Builds domain key strings in the format:
+ * - domainKeyBase: <scaleChannel>|<kind>|<value>
+ * - domainKey: <type>|<domainKeyBase>
+ *
+ * @param {object} options
+ * @param {import("../spec/channel.js").ChannelWithScale} options.scaleChannel
+ * @param {DomainKeySource} options.source
+ * @param {import("../spec/channel.js").Type} [options.type]
+ * @returns {{ domainKeyBase: string, domainKey?: string }}
+ */
+export function buildDomainKey({ scaleChannel, source, type }) {
+    if (!scaleChannel) {
+        throw new Error("Cannot build a domain key without a scale channel.");
+    }
+
+    const domainKeyBase =
+        scaleChannel + "|" + source.kind + "|" + stringifyDomainSource(source);
+    const domainKey = type ? type + "|" + domainKeyBase : undefined;
+
+    return { domainKeyBase, domainKey };
+}
+
+/**
+ * @param {import("../types/encoder.js").ScaleAccessor} accessor
+ * @param {import("../spec/channel.js").Type} type
+ * @returns {string}
+ */
+export function getAccessorDomainKey(accessor, type) {
+    const { domainKey, domainKeyBase } = buildDomainKey({
+        scaleChannel: accessor.scaleChannel,
+        source: getDomainKeySource(accessor.channelDef),
+        type,
+    });
+    if (!domainKey) {
+        throw new Error(
+            "Cannot finalize a domain key without a resolved type."
+        );
+    }
+    accessor.domainKeyBase = domainKeyBase;
+    accessor.domainKey = domainKey;
+    return domainKey;
+}
+
+/**
+ * @param {DomainKeySource} source
+ * @returns {string}
+ */
+function stringifyDomainSource(source) {
+    switch (source.kind) {
+        case "field":
+        case "expr":
+            return source.value;
+        case "datum":
+        case "value":
+            return stringifyDomainValue(source.value);
+        default:
+            throw new Error("Unknown domain key source.");
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").Scalar | import("../spec/parameter.js").ExprRef} value
+ * @returns {string}
+ */
+function stringifyDomainValue(value) {
+    if (isExprRef(value)) {
+        return "expr:" + value.expr;
+    }
+
+    if (value === undefined) {
+        return "undefined";
+    }
+
+    return JSON.stringify(value);
 }
