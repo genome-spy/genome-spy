@@ -12,9 +12,12 @@ import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  */
 
-export default class ScaleDomainAggregator {
+export default class DomainPlanner {
     /** @type {() => Set<ScaleResolutionMember>} */
     #getMembers;
+
+    /** @type {() => Set<ScaleResolutionMember>} */
+    #getDataMembers;
 
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
@@ -28,15 +31,31 @@ export default class ScaleDomainAggregator {
     /** @type {any[]} */
     #initialDomain;
 
+    /** @type {DomainArray | undefined} */
+    #configuredDomain;
+
+    #configuredDomainDirty = true;
+
+    /** @type {WeakMap<ScaleResolutionMember, import("../types/encoder.js").ScaleAccessor[]>} */
+    #accessorsByMember = new WeakMap();
+
     /**
      * @param {object} options
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
+     * @param {() => Set<ScaleResolutionMember>} [options.getDataMembers]
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {() => number[]} options.getLocusExtent
      * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      */
-    constructor({ getMembers, getType, getLocusExtent, fromComplexInterval }) {
+    constructor({
+        getMembers,
+        getDataMembers,
+        getType,
+        getLocusExtent,
+        fromComplexInterval,
+    }) {
         this.#getMembers = getMembers;
+        this.#getDataMembers = getDataMembers ?? getMembers;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -51,6 +70,10 @@ export default class ScaleDomainAggregator {
 
     hasConfiguredDomain() {
         return !!this.getConfiguredDomain();
+    }
+
+    invalidateConfiguredDomain() {
+        this.#configuredDomainDirty = true;
     }
 
     /**
@@ -77,10 +100,17 @@ export default class ScaleDomainAggregator {
      * @return {DomainArray}
      */
     getConfiguredDomain() {
-        return resolveConfiguredDomain(
+        if (!this.#configuredDomainDirty) {
+            return this.#configuredDomain;
+        }
+
+        const domain = resolveConfiguredDomain(
             this.#getMembers(),
             this.#fromComplexInterval
         );
+        this.#configuredDomain = domain;
+        this.#configuredDomainDirty = false;
+        return domain;
     }
 
     /**
@@ -89,7 +119,11 @@ export default class ScaleDomainAggregator {
      * @return {DomainArray | undefined}
      */
     getDataDomain() {
-        return resolveDataDomain(this.#getMembers(), this.#getType);
+        return resolveDataDomain(
+            this.#getDataMembers(),
+            this.#getType,
+            (member) => this.#getMemberAccessors(member)
+        );
     }
 
     /**
@@ -111,6 +145,39 @@ export default class ScaleDomainAggregator {
         }
 
         return false;
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     * @returns {import("../types/encoder.js").ScaleAccessor[]}
+     */
+    #getMemberAccessors(member) {
+        const cached = this.#accessorsByMember.get(member);
+        if (cached) {
+            return cached;
+        }
+
+        const encoders = member.view.mark.encoders;
+        if (!encoders) {
+            return [];
+        }
+
+        const encoder = encoders[member.channel];
+        if (!encoder) {
+            return [];
+        }
+
+        const accessors = encoder.accessors ?? [];
+        if (accessors.length === 0) {
+            return [];
+        }
+
+        const scaleAccessors = accessors
+            .filter(isScaleAccessor)
+            .filter((accessor) => !accessor.channelDef.domainInert);
+
+        this.#accessorsByMember.set(member, scaleAccessors);
+        return scaleAccessors;
     }
 }
 
@@ -141,9 +208,10 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {() => import("../spec/channel.js").Type} getType
+ * @param {(member: ScaleResolutionMember) => import("../types/encoder.js").ScaleAccessor[]} getAccessorsForMember
  * @returns {DomainArray | undefined}
  */
-function resolveDataDomain(members, getType) {
+function resolveDataDomain(members, getType, getAccessorsForMember) {
     const type = getType();
 
     /** @type {Map<import("../data/collector.js").default | null, Map<string, DomainArray>>} */
@@ -154,17 +222,7 @@ function resolveDataDomain(members, getType) {
             continue;
         }
 
-        const encoders = member.view.mark.encoders;
-        if (!encoders) {
-            continue;
-        }
-
-        const encoder = encoders[member.channel];
-        if (!encoder) {
-            continue;
-        }
-
-        const accessors = encoder.accessors ?? [];
+        const accessors = getAccessorsForMember(member);
         if (accessors.length === 0) {
             continue;
         }
@@ -172,13 +230,6 @@ function resolveDataDomain(members, getType) {
         const collector = member.view.getCollector();
 
         for (const accessor of accessors) {
-            if (!isScaleAccessor(accessor)) {
-                continue;
-            }
-            if (accessor.channelDef.domainInert) {
-                continue;
-            }
-
             const domainKey = getAccessorDomainKey(accessor, type);
 
             const collectorKey = collector ?? null;

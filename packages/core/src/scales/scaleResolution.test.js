@@ -696,6 +696,55 @@ describe("Domain handling", () => {
         expect(resolution.scale.domain()).toEqual(["a", "b"]);
     });
 
+    test("reconfigureDomain does not notify when the domain is unchanged", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: ["a", "b"] },
+                mark: "point",
+                encoding: {
+                    color: { field: "data", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("color");
+        const notify = vi.fn();
+        resolution.addEventListener("domain", notify);
+
+        resolution.reconfigureDomain();
+
+        expect(notify).not.toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual(["a", "b"]);
+    });
+
+    test("reconfigureDomain skips notifications when nice keeps the domain stable", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [1.2, 9.7] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "quantitative",
+                        scale: { nice: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        const notify = vi.fn();
+        const initialDomain = resolution.scale.domain();
+
+        resolution.addEventListener("domain", notify);
+        resolution.reconfigureDomain();
+
+        expect(notify).not.toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual(initialDomain);
+    });
+
     test("reconfigureDomain preserves zoomed domains for zoomable scales", async () => {
         const view = await createAndInitialize(
             {

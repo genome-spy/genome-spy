@@ -13,7 +13,7 @@ import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import ScaleDomainAggregator from "./scaleDomainAggregator.js";
+import DomainPlanner from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import {
     INDEX,
@@ -53,6 +53,16 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * notifications, while delegating domain aggregation, scale instance setup, and
  * interaction logic to focused helpers.
  *
+ * Documentation overview of current concerns this class (and its helpers) deal with:
+ * - Resolution membership and rules (shared/independent/forced/excluded, visibility, registration).
+ * - Scale property aggregation (merge props, channel overrides, unique scale names).
+ * - Domain computation and caching (configured/data unions, defaults, indexer stability, subscriptions).
+ * - Scale instance lifecycle (create, reconfigure props, apply domains, notify changes).
+ * - Interaction and zoom (zoom/pan/reset coordination, snapshots, zoom extents).
+ * - Rendering integration (range textures, axis sizing/positioning).
+ * - Locus-specific conversions (complex intervals, genome extent bindings).
+ * - Diagnostics and edge cases (ordinal unknown, nice/zero/padding, log warnings).
+ *
  * @implements {ScaleResolutionApi}
  */
 export default class ScaleResolution {
@@ -76,6 +86,9 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} The involved views */
     #members = new Set();
 
+    /** @type {Set<ScaleResolutionMember>} */
+    #dataDomainMembers = new Set();
+
     /**
      * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
      */
@@ -87,7 +100,7 @@ export default class ScaleResolution {
     /** @type {ScaleInstanceManager} */
     #scaleManager;
 
-    /** @type {ScaleDomainAggregator} */
+    /** @type {DomainPlanner} */
     #domainAggregator;
 
     /** @type {ScaleInteractionController} */
@@ -109,8 +122,10 @@ export default class ScaleResolution {
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
 
-        this.#domainAggregator = new ScaleDomainAggregator({
+        this.#domainAggregator = new DomainPlanner({
             getMembers: () => this.#getActiveMembers(),
+            getDataMembers: () =>
+                this.#getActiveMembers(this.#dataDomainMembers),
             getType: () => this.type,
             getLocusExtent: () => this.#getLocusExtent(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -146,10 +161,13 @@ export default class ScaleResolution {
         return first.view;
     }
 
-    #getActiveMembers() {
+    /**
+     * @param {Set<ScaleResolutionMember>} [members]
+     */
+    #getActiveMembers(members = this.#members) {
         /** @type {Set<ScaleResolutionMember>} */
         const active = new Set();
-        for (const member of this.#members) {
+        for (const member of members) {
             const view = member.view;
             if (!view.isConfiguredVisible()) {
                 continue;
@@ -289,6 +307,10 @@ export default class ScaleResolution {
         }
 
         this.#members.add(newMember);
+        if (newMember.contributesToDomain) {
+            this.#dataDomainMembers.add(newMember);
+        }
+        this.#domainAggregator.invalidateConfiguredDomain();
     }
 
     /**
@@ -299,6 +321,10 @@ export default class ScaleResolution {
         this.#addMember(member);
         return () => {
             const removed = this.#members.delete(member);
+            if (removed) {
+                this.#dataDomainMembers.delete(member);
+                this.#domainAggregator.invalidateConfiguredDomain();
+            }
             return removed && this.#members.size === 0;
         };
     }
@@ -471,8 +497,15 @@ export default class ScaleResolution {
      * or when scale properties are otherwise re-resolved from the view hierarchy.
      */
     reconfigure() {
-        const props = this.#getScaleProps(true);
-        this.#reconfigureWith(() => this.#scaleManager.reconfigureScale(props));
+        this.#domainAggregator.invalidateConfiguredDomain();
+        const state = this.#computeScaleState(true);
+        if (!state) {
+            return;
+        }
+        this.#applyReconfigure(state, (scale, props) =>
+            this.#scaleManager.reconfigureScale(props)
+        );
+        this.#finalizeReconfigure(state);
     }
 
     /**
@@ -481,26 +514,90 @@ export default class ScaleResolution {
      * Use this when data changes but the scale membership and properties are stable.
      */
     reconfigureDomain() {
-        const props = this.#getScaleProps(true);
-        this.#reconfigureWith(() => {
-            configureDomain(this.#scaleManager.scale, props);
-        });
+        const state = this.#computeScaleState(true, true);
+        if (!state) {
+            return;
+        }
+        const { domainConfig, targetDomain } = state;
+        const domainMatches =
+            targetDomain != null &&
+            shallowArrayEquals(targetDomain, state.scale.domain());
+
+        if (targetDomain != null && !domainMatches) {
+            this.#applyReconfigure(state, (scale) => {
+                scale.domain(targetDomain);
+                if (domainConfig.applyOrdinalUnknown) {
+                    // Keep ordinal unknown handling close to the domain write so
+                    // domainImplicit semantics stay aligned with the applied domain.
+                    /** @type {any} */ (scale).unknown(
+                        domainConfig.ordinalUnknown
+                    );
+                }
+            });
+        }
+        this.#finalizeReconfigure(state);
     }
 
     /**
-     * @param {() => void} apply
+     * @param {boolean} extractDataDomain
+     * @param {boolean} [includeDomainConfig]
+     * @returns {{
+     *     scale: ScaleWithProps,
+     *     props: import("../spec/scale.js").Scale,
+     *     previousDomain: any[],
+     *     domainWasInitialized: boolean,
+     *     domainConfig?: ReturnType<typeof configureDomain>,
+     *     targetDomain?: any[] | null,
+     * } | undefined}
      */
-    #reconfigureWith(apply) {
+    #computeScaleState(extractDataDomain, includeDomainConfig = false) {
         const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
             return;
         }
 
-        const domainWasInitialized = this.#isDomainInitialized();
-        const previousDomain = scale.domain();
+        const state = {
+            scale,
+            props: this.#getScaleProps(extractDataDomain),
+            previousDomain: scale.domain(),
+            domainWasInitialized: this.#isDomainInitialized(),
+        };
 
-        this.#scaleManager.withDomainNotificationsSuppressed(apply);
+        if (includeDomainConfig) {
+            const domainConfig = configureDomain(scale, state.props);
+            return {
+                ...state,
+                domainConfig,
+                targetDomain: domainConfig.domain,
+            };
+        }
+
+        return state;
+    }
+
+    /**
+     * @param {{
+     *     scale: ScaleWithProps,
+     *     props: import("../spec/scale.js").Scale,
+     * }} inputs
+     * @param {(scale: ScaleWithProps, props: import("../spec/scale.js").Scale) => void} apply
+     */
+    #applyReconfigure(inputs, apply) {
+        this.#scaleManager.withDomainNotificationsSuppressed(() => {
+            apply(inputs.scale, inputs.props);
+        });
+    }
+
+    /**
+     * @param {{
+     *     scale: ScaleWithProps,
+     *     previousDomain: any[],
+     *     domainWasInitialized: boolean,
+     * }} inputs
+     */
+    #finalizeReconfigure(inputs) {
+        const { scale, previousDomain, domainWasInitialized } = inputs;
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -514,24 +611,27 @@ export default class ScaleResolution {
         }
 
         const newDomain = scale.domain();
-        if (!shallowArrayEquals(newDomain, previousDomain)) {
-            if (this.isZoomable()) {
-                // Don't mess with zoomed views, restore the previous domain
-                this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                    scale.domain(previousDomain);
-                });
-            } else if (this.#interactionController.isZoomingSupported()) {
-                // It can be zoomed, so lets make a smooth transition.
-                // Restore the previous domain and zoom smoothly to the new domain.
-                this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                    scale.domain(previousDomain);
-                });
-                this.zoomTo(newDomain, 500); // TODO: Configurable duration
-            } else {
-                // Update immediately if the previous domain was the initial domain [0, 0]
-                // Notifications were suppressed during reconfigure; notify explicitly.
-                this.#notifyListeners("domain");
-            }
+        const action = this.#interactionController.getDomainChangeAction(
+            previousDomain,
+            newDomain
+        );
+
+        if (action === "restore") {
+            // Don't mess with zoomed views, restore the previous domain
+            this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                scale.domain(previousDomain);
+            });
+        } else if (action === "animate") {
+            // It can be zoomed, so lets make a smooth transition.
+            // Restore the previous domain and zoom smoothly to the new domain.
+            this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                scale.domain(previousDomain);
+            });
+            this.zoomTo(newDomain, 500); // TODO: Configurable duration
+        } else if (action === "notify") {
+            // Update immediately if the previous domain was the initial domain [0, 0]
+            // Notifications were suppressed during reconfigure; notify explicitly.
+            this.#notifyListeners("domain");
         }
     }
 

@@ -90,7 +90,20 @@ export default function scaleLocus() {
 
     const originalCopy = scale.copy;
 
-    scale.copy = () => originalCopy().genome(genome);
+    scale.copy = () => {
+        const copied = originalCopy();
+        let copiedGenome = genome;
+        // @ts-expect-error
+        copied.genome = function (_) {
+            if (arguments.length) {
+                copiedGenome = _;
+                return copied;
+            } else {
+                return copiedGenome;
+            }
+        };
+        return copied.genome(genome);
+    };
 
     return scale;
 }
