@@ -518,6 +518,8 @@ export default class ScaleResolution {
             this.#applyReconfigure(inputs, (scale) => {
                 scale.domain(targetDomain);
                 if (domainConfig.applyOrdinalUnknown) {
+                    // Keep ordinal unknown handling close to the domain write so
+                    // domainImplicit semantics stay aligned with the applied domain.
                     /** @type {any} */ (scale).unknown(
                         domainConfig.ordinalUnknown
                     );
