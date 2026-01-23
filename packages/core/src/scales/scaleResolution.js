@@ -53,6 +53,16 @@ export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
  * notifications, while delegating domain aggregation, scale instance setup, and
  * interaction logic to focused helpers.
  *
+ * Documentation overview of current concerns this class (and its helpers) deal with:
+ * - Resolution membership and rules (shared/independent/forced/excluded, visibility, registration).
+ * - Scale property aggregation (merge props, channel overrides, unique scale names).
+ * - Domain computation and caching (configured/data unions, defaults, indexer stability, subscriptions).
+ * - Scale instance lifecycle (create, reconfigure props, apply domains, notify changes).
+ * - Interaction and zoom (zoom/pan/reset coordination, snapshots, zoom extents).
+ * - Rendering integration (range textures, axis sizing/positioning).
+ * - Locus-specific conversions (complex intervals, genome extent bindings).
+ * - Diagnostics and edge cases (ordinal unknown, nice/zero/padding, log warnings).
+ *
  * @implements {ScaleResolutionApi}
  */
 export default class ScaleResolution {

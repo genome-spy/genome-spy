@@ -11,8 +11,20 @@
 /* eslint-disable */
 // @ts-nocheck
 
-// This file is a mess
-// TODO: Fix types, etc.
+/*
+ * Rewrite rationale (non-perf):
+ * - This module mixes spec-level policy, vega-scale helpers, and D3 scale
+ *   mutability. The combination works but is clunky to maintain and hard to
+ *   integrate with higher-level orchestration like ScaleResolution.
+ * - Side-effectful configuration and implicit defaults make the data flow
+ *   difficult to reason about and to test in isolation.
+ *
+ * Why not rewrite yet:
+ * - Behavior is subtle and well-tested; a rewrite is risky without a clear
+ *   contract for the pure inputs/outputs and their callers.
+ * - It depends on D3 scale semantics (copy, unknown, interpolate, etc.), so any
+ *   refactor must preserve those semantics explicitly.
+ */
 
 import { tickCount } from "./ticks.js";
 import {
