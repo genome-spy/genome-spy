@@ -95,6 +95,24 @@ export default class ScaleInteractionController {
     }
 
     /**
+     * @param {number[]} previousDomain
+     * @param {number[]} newDomain
+     * @returns {"restore" | "animate" | "notify" | "none"}
+     */
+    getDomainChangeAction(previousDomain, newDomain) {
+        if (shallowArrayEquals(newDomain, previousDomain)) {
+            return "none";
+        }
+        if (this.isZoomable()) {
+            return "restore";
+        }
+        if (this.isZoomingSupported()) {
+            return "animate";
+        }
+        return "notify";
+    }
+
+    /**
      * Return true if the scale is zoomable and the current domain differs from the initial domain.
      *
      * @returns true if zoomed

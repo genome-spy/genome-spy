@@ -601,24 +601,27 @@ export default class ScaleResolution {
         }
 
         const newDomain = scale.domain();
-        if (!shallowArrayEquals(newDomain, previousDomain)) {
-            if (this.isZoomable()) {
-                // Don't mess with zoomed views, restore the previous domain
-                this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                    scale.domain(previousDomain);
-                });
-            } else if (this.#interactionController.isZoomingSupported()) {
-                // It can be zoomed, so lets make a smooth transition.
-                // Restore the previous domain and zoom smoothly to the new domain.
-                this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                    scale.domain(previousDomain);
-                });
-                this.zoomTo(newDomain, 500); // TODO: Configurable duration
-            } else {
-                // Update immediately if the previous domain was the initial domain [0, 0]
-                // Notifications were suppressed during reconfigure; notify explicitly.
-                this.#notifyListeners("domain");
-            }
+        const action = this.#interactionController.getDomainChangeAction(
+            previousDomain,
+            newDomain
+        );
+
+        if (action === "restore") {
+            // Don't mess with zoomed views, restore the previous domain
+            this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                scale.domain(previousDomain);
+            });
+        } else if (action === "animate") {
+            // It can be zoomed, so lets make a smooth transition.
+            // Restore the previous domain and zoom smoothly to the new domain.
+            this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                scale.domain(previousDomain);
+            });
+            this.zoomTo(newDomain, 500); // TODO: Configurable duration
+        } else if (action === "notify") {
+            // Update immediately if the previous domain was the initial domain [0, 0]
+            // Notifications were suppressed during reconfigure; notify explicitly.
+            this.#notifyListeners("domain");
         }
     }
 
