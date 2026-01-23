@@ -12,7 +12,7 @@ import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  */
 
-export default class ScaleDomainAggregator {
+export default class DomainPlanner {
     /** @type {() => Set<ScaleResolutionMember>} */
     #getMembers;
 

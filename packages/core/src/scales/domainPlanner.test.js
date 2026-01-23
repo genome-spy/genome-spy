@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import ScaleDomainAggregator from "./scaleDomainAggregator.js";
+import DomainPlanner from "./domainPlanner.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
 /**
@@ -41,8 +41,8 @@ function createMember(accessors, collector, contributesToDomain = true) {
  * @param {any[]} members
  * @param {import("../spec/channel.js").Type} type
  */
-function createAggregator(members, type) {
-    return new ScaleDomainAggregator({
+function createPlanner(members, type) {
+    return new DomainPlanner({
         getMembers: () => new Set(members),
         getType: () => type,
         getLocusExtent: () => [0, 10],
@@ -50,7 +50,7 @@ function createAggregator(members, type) {
     });
 }
 
-describe("ScaleDomainAggregator", () => {
+describe("DomainPlanner", () => {
     test("configured domains are unioned", () => {
         const members = [
             {
@@ -68,8 +68,8 @@ describe("ScaleDomainAggregator", () => {
                 contributesToDomain: true,
             },
         ];
-        const aggregator = createAggregator(members, "quantitative");
-        const domain = aggregator.getConfiguredDomain();
+        const planner = createPlanner(members, "quantitative");
+        const domain = planner.getConfiguredDomain();
         expect(toRegularArray(domain)).toEqual([0, 7]);
     });
 
@@ -88,8 +88,8 @@ describe("ScaleDomainAggregator", () => {
             createMember([createAccessor("a")], collector),
             createMember([createAccessor("b")], collector),
         ];
-        const aggregator = createAggregator(members, "quantitative");
-        const domain = aggregator.getDataDomain();
+        const planner = createPlanner(members, "quantitative");
+        const domain = planner.getDataDomain();
         expect(toRegularArray(domain)).toEqual([0, 6]);
     });
 
@@ -110,23 +110,23 @@ describe("ScaleDomainAggregator", () => {
             createMember([createAccessor("b")], collector, true),
         ];
 
-        const aggregator = createAggregator(members, "quantitative");
-        const domain = aggregator.getDataDomain();
+        const planner = createPlanner(members, "quantitative");
+        const domain = planner.getDataDomain();
 
         expect(toRegularArray(domain)).toEqual([0, 6]);
         expect(collector.getDomain).toHaveBeenCalledTimes(1);
     });
 
     test("locus defaults to genome extent when no domain is configured", () => {
-        const aggregator = createAggregator([], "locus");
-        expect(aggregator.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
+        const planner = createPlanner([], "locus");
+        expect(planner.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
     });
 
     test("configured domains use complex conversion", () => {
         const fromComplexInterval = vi.fn(
             (interval) => /** @type {number[]} */ (interval)
         );
-        const aggregator = new ScaleDomainAggregator({
+        const planner = new DomainPlanner({
             getMembers: () =>
                 new Set(
                     /** @type {any} */ ([
@@ -144,7 +144,7 @@ describe("ScaleDomainAggregator", () => {
             fromComplexInterval,
         });
 
-        aggregator.getConfiguredDomain();
+        planner.getConfiguredDomain();
         expect(fromComplexInterval).toHaveBeenCalledWith([0, 5]);
     });
 
@@ -152,7 +152,7 @@ describe("ScaleDomainAggregator", () => {
         const fromComplexInterval = vi.fn(
             (interval) => /** @type {number[]} */ (interval)
         );
-        const aggregator = new ScaleDomainAggregator({
+        const planner = new DomainPlanner({
             getMembers: () =>
                 new Set(
                     /** @type {any} */ ([
@@ -170,8 +170,8 @@ describe("ScaleDomainAggregator", () => {
             fromComplexInterval,
         });
 
-        aggregator.getConfiguredDomain();
-        aggregator.getConfiguredDomain();
+        planner.getConfiguredDomain();
+        planner.getConfiguredDomain();
 
         expect(fromComplexInterval).toHaveBeenCalledTimes(1);
     });
@@ -192,16 +192,14 @@ describe("ScaleDomainAggregator", () => {
             },
         ]);
 
-        const aggregator = new ScaleDomainAggregator({
+        const planner = new DomainPlanner({
             getMembers: () => members,
             getType: () => "quantitative",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
         });
 
-        expect(toRegularArray(aggregator.getConfiguredDomain())).toEqual([
-            0, 5,
-        ]);
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([0, 5]);
 
         members.add({
             channelDef: {
@@ -211,27 +209,25 @@ describe("ScaleDomainAggregator", () => {
             contributesToDomain: true,
         });
 
-        aggregator.invalidateConfiguredDomain();
+        planner.invalidateConfiguredDomain();
 
-        expect(toRegularArray(aggregator.getConfiguredDomain())).toEqual([
-            0, 7,
-        ]);
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([0, 7]);
         expect(fromComplexInterval).toHaveBeenCalledTimes(3);
     });
 
     test("default domain is empty when no data is requested", () => {
-        const aggregator = createAggregator([], "quantitative");
-        expect(aggregator.getConfiguredOrDefaultDomain()).toEqual([]);
+        const planner = createPlanner([], "quantitative");
+        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
     });
 
     test("captures initial domain for continuous scales", () => {
-        const aggregator = createAggregator([], "quantitative");
+        const planner = createPlanner([], "quantitative");
         const scale = /** @type {any} */ ({
             type: "linear",
             domain: () => [2, 8],
         });
-        const notify = aggregator.captureInitialDomain(scale, false);
+        const notify = planner.captureInitialDomain(scale, false);
         expect(notify).toBe(true);
-        expect(aggregator.initialDomainSnapshot).toEqual([2, 8]);
+        expect(planner.initialDomainSnapshot).toEqual([2, 8]);
     });
 });

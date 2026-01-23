@@ -13,7 +13,7 @@ import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import ScaleDomainAggregator from "./scaleDomainAggregator.js";
+import DomainPlanner from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import {
     INDEX,
@@ -90,7 +90,7 @@ export default class ScaleResolution {
     /** @type {ScaleInstanceManager} */
     #scaleManager;
 
-    /** @type {ScaleDomainAggregator} */
+    /** @type {DomainPlanner} */
     #domainAggregator;
 
     /** @type {ScaleInteractionController} */
@@ -112,7 +112,7 @@ export default class ScaleResolution {
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
 
-        this.#domainAggregator = new ScaleDomainAggregator({
+        this.#domainAggregator = new DomainPlanner({
             getMembers: () => this.#getActiveMembers(),
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
