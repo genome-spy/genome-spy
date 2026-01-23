@@ -289,6 +289,7 @@ export default class ScaleResolution {
         }
 
         this.#members.add(newMember);
+        this.#domainAggregator.invalidateConfiguredDomain();
     }
 
     /**
@@ -299,6 +300,9 @@ export default class ScaleResolution {
         this.#addMember(member);
         return () => {
             const removed = this.#members.delete(member);
+            if (removed) {
+                this.#domainAggregator.invalidateConfiguredDomain();
+            }
             return removed && this.#members.size === 0;
         };
     }
@@ -471,6 +475,7 @@ export default class ScaleResolution {
      * or when scale properties are otherwise re-resolved from the view hierarchy.
      */
     reconfigure() {
+        this.#domainAggregator.invalidateConfiguredDomain();
         const props = this.#getScaleProps(true);
         this.#reconfigureWith(() => this.#scaleManager.reconfigureScale(props));
     }

@@ -28,6 +28,11 @@ export default class ScaleDomainAggregator {
     /** @type {any[]} */
     #initialDomain;
 
+    /** @type {DomainArray | undefined} */
+    #configuredDomain;
+
+    #configuredDomainDirty = true;
+
     /**
      * @param {object} options
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
@@ -51,6 +56,10 @@ export default class ScaleDomainAggregator {
 
     hasConfiguredDomain() {
         return !!this.getConfiguredDomain();
+    }
+
+    invalidateConfiguredDomain() {
+        this.#configuredDomainDirty = true;
     }
 
     /**
@@ -77,10 +86,17 @@ export default class ScaleDomainAggregator {
      * @return {DomainArray}
      */
     getConfiguredDomain() {
-        return resolveConfiguredDomain(
+        if (!this.#configuredDomainDirty) {
+            return this.#configuredDomain;
+        }
+
+        const domain = resolveConfiguredDomain(
             this.#getMembers(),
             this.#fromComplexInterval
         );
+        this.#configuredDomain = domain;
+        this.#configuredDomainDirty = false;
+        return domain;
     }
 
     /**

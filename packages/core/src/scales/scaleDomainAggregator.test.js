@@ -148,6 +148,77 @@ describe("ScaleDomainAggregator", () => {
         expect(fromComplexInterval).toHaveBeenCalledWith([0, 5]);
     });
 
+    test("configured domains are cached between calls", () => {
+        const fromComplexInterval = vi.fn(
+            (interval) => /** @type {number[]} */ (interval)
+        );
+        const aggregator = new ScaleDomainAggregator({
+            getMembers: () =>
+                new Set(
+                    /** @type {any} */ ([
+                        {
+                            channelDef: {
+                                type: "quantitative",
+                                scale: { domain: [0, 5] },
+                            },
+                            contributesToDomain: true,
+                        },
+                    ])
+                ),
+            getType: () => "quantitative",
+            getLocusExtent: () => [0, 10],
+            fromComplexInterval,
+        });
+
+        aggregator.getConfiguredDomain();
+        aggregator.getConfiguredDomain();
+
+        expect(fromComplexInterval).toHaveBeenCalledTimes(1);
+    });
+
+    test("configured domain cache can be invalidated", () => {
+        const fromComplexInterval = vi.fn(
+            (interval) => /** @type {number[]} */ (interval)
+        );
+
+        /** @type {Set<any>} */
+        const members = new Set([
+            {
+                channelDef: {
+                    type: "quantitative",
+                    scale: { domain: [0, 5] },
+                },
+                contributesToDomain: true,
+            },
+        ]);
+
+        const aggregator = new ScaleDomainAggregator({
+            getMembers: () => members,
+            getType: () => "quantitative",
+            getLocusExtent: () => [0, 10],
+            fromComplexInterval,
+        });
+
+        expect(toRegularArray(aggregator.getConfiguredDomain())).toEqual([
+            0, 5,
+        ]);
+
+        members.add({
+            channelDef: {
+                type: "quantitative",
+                scale: { domain: [2, 7] },
+            },
+            contributesToDomain: true,
+        });
+
+        aggregator.invalidateConfiguredDomain();
+
+        expect(toRegularArray(aggregator.getConfiguredDomain())).toEqual([
+            0, 7,
+        ]);
+        expect(fromComplexInterval).toHaveBeenCalledTimes(3);
+    });
+
     test("default domain is empty when no data is requested", () => {
         const aggregator = createAggregator([], "quantitative");
         expect(aggregator.getConfiguredOrDefaultDomain()).toEqual([]);
