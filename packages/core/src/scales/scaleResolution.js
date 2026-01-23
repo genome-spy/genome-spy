@@ -488,14 +488,14 @@ export default class ScaleResolution {
      */
     reconfigure() {
         this.#domainAggregator.invalidateConfiguredDomain();
-        const inputs = this.#resolveReconfigureInputs(true);
-        if (!inputs) {
+        const state = this.#computeScaleState(true);
+        if (!state) {
             return;
         }
-        this.#applyReconfigure(inputs, (scale, props) =>
+        this.#applyReconfigure(state, (scale, props) =>
             this.#scaleManager.reconfigureScale(props)
         );
-        this.#finalizeReconfigure(inputs);
+        this.#finalizeReconfigure(state);
     }
 
     /**
@@ -504,18 +504,17 @@ export default class ScaleResolution {
      * Use this when data changes but the scale membership and properties are stable.
      */
     reconfigureDomain() {
-        const inputs = this.#resolveReconfigureInputs(true);
-        if (!inputs) {
+        const state = this.#computeScaleState(true, true);
+        if (!state) {
             return;
         }
-        const domainConfig = configureDomain(inputs.scale, inputs.props);
-        const targetDomain = domainConfig.domain;
+        const { domainConfig, targetDomain } = state;
         const domainMatches =
             targetDomain != null &&
-            shallowArrayEquals(targetDomain, inputs.scale.domain());
+            shallowArrayEquals(targetDomain, state.scale.domain());
 
         if (targetDomain != null && !domainMatches) {
-            this.#applyReconfigure(inputs, (scale) => {
+            this.#applyReconfigure(state, (scale) => {
                 scale.domain(targetDomain);
                 if (domainConfig.applyOrdinalUnknown) {
                     // Keep ordinal unknown handling close to the domain write so
@@ -526,31 +525,45 @@ export default class ScaleResolution {
                 }
             });
         }
-        this.#finalizeReconfigure(inputs);
+        this.#finalizeReconfigure(state);
     }
 
     /**
      * @param {boolean} extractDataDomain
+     * @param {boolean} [includeDomainConfig]
      * @returns {{
      *     scale: ScaleWithProps,
      *     props: import("../spec/scale.js").Scale,
      *     previousDomain: any[],
      *     domainWasInitialized: boolean,
+     *     domainConfig?: ReturnType<typeof configureDomain>,
+     *     targetDomain?: any[] | null,
      * } | undefined}
      */
-    #resolveReconfigureInputs(extractDataDomain) {
+    #computeScaleState(extractDataDomain, includeDomainConfig = false) {
         const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
             return;
         }
 
-        return {
+        const state = {
             scale,
             props: this.#getScaleProps(extractDataDomain),
             previousDomain: scale.domain(),
             domainWasInitialized: this.#isDomainInitialized(),
         };
+
+        if (includeDomainConfig) {
+            const domainConfig = configureDomain(scale, state.props);
+            return {
+                ...state,
+                domainConfig,
+                targetDomain: domainConfig.domain,
+            };
+        }
+
+        return state;
     }
 
     /**
