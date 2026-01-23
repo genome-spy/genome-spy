@@ -508,9 +508,22 @@ export default class ScaleResolution {
         if (!inputs) {
             return;
         }
-        this.#applyReconfigure(inputs, (scale, props) => {
-            configureDomain(scale, props);
-        });
+        const domainConfig = configureDomain(inputs.scale, inputs.props);
+        const targetDomain = domainConfig.domain;
+        const domainMatches =
+            targetDomain != null &&
+            shallowArrayEquals(targetDomain, inputs.scale.domain());
+
+        if (targetDomain != null && !domainMatches) {
+            this.#applyReconfigure(inputs, (scale) => {
+                scale.domain(targetDomain);
+                if (domainConfig.applyOrdinalUnknown) {
+                    /** @type {any} */ (scale).unknown(
+                        domainConfig.ordinalUnknown
+                    );
+                }
+            });
+        }
         this.#finalizeReconfigure(inputs);
     }
 

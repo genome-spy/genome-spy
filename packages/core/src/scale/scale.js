@@ -128,11 +128,15 @@ export function configureScale(_, scale, logger) {
         }
     }
 
-    configureRange(
-        scale,
-        _,
-        configureBins(scale, _, configureDomain(scale, _, logger))
-    );
+    const domainConfig = configureDomain(scale, _, logger);
+    if (domainConfig.domain) {
+        scale.domain(domainConfig.domain);
+    }
+    if (domainConfig.applyOrdinalUnknown) {
+        scale.unknown(domainConfig.ordinalUnknown);
+    }
+
+    configureRange(scale, _, configureBins(scale, _, domainConfig.count));
 }
 
 /**
@@ -191,24 +195,62 @@ function isContinuousColor(_) {
     );
 }
 
+function copyScaleForDomain(scale) {
+    if (!scale.copy) {
+        return scale;
+    }
+
+    const copy = scale.copy();
+    if (copy.type == null && scale.type != null) {
+        copy.type = scale.type;
+    }
+    return copy;
+}
+
 export function configureDomain(scale, _, logger) {
     if (!scale.domain) {
-        return 0;
+        return {
+            domain: null,
+            count: 0,
+            ordinalUnknown: undefined,
+            applyOrdinalUnknown: false,
+        };
     }
 
     logger = ensureLogger(logger);
 
+    const workingScale = copyScaleForDomain(scale);
+
     // check raw domain, if provided use that and exit early
-    var raw = rawDomain(scale, _.domainRaw, logger);
-    if (raw > -1) return raw;
+    var raw = rawDomain(workingScale, _.domainRaw, logger);
+    if (raw > -1) {
+        return {
+            domain: workingScale.domain(),
+            count: raw,
+            ordinalUnknown:
+                workingScale.type === Ordinal
+                    ? _.domainImplicit
+                        ? scaleImplicit
+                        : undefined
+                    : undefined,
+            applyOrdinalUnknown: false,
+        };
+    }
 
     var domain = _.domain,
-        type = scale.type,
-        zero = _.zero || (_.zero === undefined && includeZero(scale)),
+        type = workingScale.type,
+        zero = _.zero || (_.zero === undefined && includeZero(workingScale)),
         n,
         mid;
 
-    if (!domain) return 0;
+    if (!domain) {
+        return {
+            domain: null,
+            count: 0,
+            ordinalUnknown: undefined,
+            applyOrdinalUnknown: false,
+        };
+    }
 
     // adjust continuous domain for minimum pixel padding
     if (includePad(type) && _.padding && domain[0] !== peek(domain)) {
@@ -247,21 +289,27 @@ export function configureDomain(scale, _, logger) {
     }
 
     // set the scale domain
-    scale.domain(domainCheck(type, domain, logger));
-
-    // if ordinal scale domain is defined, prevent implicit
-    // domain construction as side-effect of scale lookup
-    if (type === Ordinal) {
-        scale.unknown(_.domainImplicit ? scaleImplicit : undefined);
-    }
+    workingScale.domain(domainCheck(type, domain, logger));
 
     // perform 'nice' adjustment as requested
-    if (_.nice && scale.nice) {
-        scale.nice((_.nice !== true && tickCount(scale, _.nice)) || null);
+    if (_.nice && workingScale.nice) {
+        workingScale.nice(
+            (_.nice !== true && tickCount(workingScale, _.nice)) || null
+        );
     }
 
     // return the cardinality of the domain
-    return domain.length;
+    return {
+        domain: workingScale.domain(),
+        count: domain.length,
+        ordinalUnknown:
+            type === Ordinal
+                ? _.domainImplicit
+                    ? scaleImplicit
+                    : undefined
+                : undefined,
+        applyOrdinalUnknown: type === Ordinal,
+    };
 }
 
 function rawDomain(scale, raw, logger) {
