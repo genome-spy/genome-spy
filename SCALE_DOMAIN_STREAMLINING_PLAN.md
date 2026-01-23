@@ -5,6 +5,7 @@
 - Collector already caches data domains, so repeated domain reads should not re-scan raw data.
 - When a configured domain exists, data-domain access is unnecessary and should be avoided entirely.
 - Resolution type changes are effectively unsupported; assume type is stable per resolution.
+- Data-domain updates should stay lightweight: avoid repeated traversal and unnecessary scale mutation on each notification.
 
 ## Current Concerns (ScaleResolution + Helpers)
 
@@ -22,6 +23,7 @@
 - Defaults for locus and empty domains
 - Categorical indexer stability
 - Domain key and collector subscription wiring
+- Data-domain updates should remain cheap (cached, minimal traversal, no redundant notifications).
 
 4) Scale instance lifecycle
 - Create scale, reconfigure props, reconfigure domain
