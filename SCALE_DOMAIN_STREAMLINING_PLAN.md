@@ -1,4 +1,4 @@
-# Scale Domain Streamlining Plan
+# Scale Resolution Simplification Plan
 
 ## Context
 
@@ -6,81 +6,129 @@
 - When a configured domain exists, data-domain access is unnecessary and should be avoided entirely.
 - Resolution type changes are effectively unsupported; assume type is stable per resolution.
 
-## Concrete Plan
+## Current Concerns (ScaleResolution + Helpers)
 
-### Phase 1: Cache configured-domain union and short-circuit data domains
+1) Resolution membership and rules
+- Shared/independent/forced/excluded resolution logic
+- Member registration/unregistration and visibility gating
+
+2) Scale property aggregation
+- Merging scale props across members
+- Handling channel resolution overrides and scale name uniqueness
+
+3) Domain computation and caching
+- Configured domain union
+- Data-domain union
+- Defaults for locus and empty domains
+- Categorical indexer stability
+- Domain key and collector subscription wiring
+
+4) Scale instance lifecycle
+- Create scale, reconfigure props, reconfigure domain
+- Domain/range notification suppression and manual notification
+
+5) Interaction and zoom
+- Zoom/pan/reset/zoomTo coordination
+- Initial domain snapshots and zoom extent logic
+
+6) Rendering integration
+- Range texture updates on domain/range changes
+- Axis length/coords usage for positional channels
+
+7) Locus-specific conversions
+- Complex interval conversions
+- Genome extent and scale genome bindings
+
+8) Diagnostics and edge cases
+- Domain implicit/unknown handling for ordinal scales
+- Nice/zero/padding interactions
+- Log domain warnings
+
+## Simplification Approach (High-Level)
+
+- Separate "resolution wiring" from "scale engine": keep ScaleResolution minimal and push the heavy state machine into a dedicated engine.
+- Make domain/props computation a pure pipeline (inputs -> outputs) with explicit state objects.
+- Treat interaction (zoom/pan) as a plug-in with a narrow interface.
+- Consider an optional rewrite of `scale.js` to make scale configuration pure and explicit (backed by tests).
+
+## Incremental Plan
+
+### Phase 1: Extract a ScaleState pipeline
 
 Rationale:
-- Configured domains are static relative to data updates.
-- Avoiding data-domain access when a configured domain exists removes unnecessary aggregation work.
+- Make "compute domain/props" a pure step to reduce side effects and branching in ScaleResolution.
 
 Plan:
-- Introduce a configured-domain cache in `ScaleDomainAggregator` (or `ScaleResolution`).
-- Invalidate cache only on member add/remove or when a member’s `channelDef.scale.domain` changes.
-- If configured domain exists, `getConfiguredOrDefaultDomain()` returns it directly (no data-domain lookup).
+- Introduce a `ScaleState` (or similar) object returned by a pure `computeScaleState(...)` helper.
+- Inputs: resolved members, scale props, configured/data domains, type, and interaction flags.
+- Outputs: target domain, domain metadata (ordinal unknown), categorical indexer updates, and any warnings.
+- ScaleResolution uses the returned state to apply changes, notify, and update interaction controller.
 
 Tests:
-- Update/extend existing scale resolution tests to ensure configured domains bypass data-domain aggregation.
-- Verify that removing/adding members or changing configured domains invalidates the cache and recomputes.
+- Add unit tests for `computeScaleState` with controlled inputs.
+- Ensure existing ScaleResolution tests still pass (behavior unchanged).
 
 Run tests after Phase 1:
 - `npx vitest run`
 - `npm -ws run test:tsc --if-present`
 
-### Phase 2: Precompute data-domain accessor sets and restrict member scanning
+### Phase 2: Formalize the DomainPlanner module
 
 Rationale:
-- `getDataDomain()` currently re-discovers accessors on every call.
-- Data-domain updates happen frequently; avoid repeated traversal over encoders and accessors.
+- Domain computation is currently split across ScaleResolution, ScaleDomainAggregator, and scale.js.
+- A single planner can own domain caches and return a stable, minimal output.
 
 Plan:
-- Maintain a stable accessor collection per resolution, filtered to scale accessors and data-domain contributors.
-- Track a data-domain-contributing member set separately (views that are not domain-inert and do contribute).
-- Update these sets on member registration/unregistration and on encoder updates that affect accessors.
+- Create a `DomainPlanner` that:
+  - owns configured and data-domain caches,
+  - provides `getConfiguredDomain()` / `getDataDomain()` / `getFinalDomain()`,
+  - exposes invalidation hooks for membership/spec changes.
+- Move ScaleDomainAggregator logic into DomainPlanner (or make it a thin wrapper around it).
+- ScaleResolution only calls DomainPlanner and never touches raw members/accessors directly.
 
 Tests:
-- Add/adjust tests to confirm data-domain aggregation uses only contributing members.
-- Add a test that a domain-inert subtree does not produce accessors for data-domain aggregation.
+- Move/duplicate ScaleDomainAggregator tests to the new module.
+- Add tests for configured-domain short-circuiting and invalidation.
 
 Run tests after Phase 2:
 - `npx vitest run`
 - `npm -ws run test:tsc --if-present`
 
-### Phase 3: Split `reconfigureDomain` into explicit phases
+### Phase 3: Split interaction into a plug-in
 
 Rationale:
-- The current flow mixes collection, domain computation, scale mutation, and notifications.
-- Explicit phases make it easier to short-circuit and verify correctness.
+- Interaction logic is orthogonal to domain resolution and clutters ScaleResolution.
 
 Plan:
-- Refactor `reconfigureDomain` into explicit phases:
-  1) resolve inputs (configured/domain cache + data-domain union),
-  2) compute target domain (including defaults and locus behavior),
-  3) apply and notify only if changed.
-- Ensure Phase 1 feeds Phase 2 with cached configured domains when available.
+- Define a minimal interface that ScaleResolution uses:
+  - `getDomain()`, `setDomain(domain)`, `isZoomable()`, `onDomainApplied(...)`.
+- Move zoom/pan/zoomTo/reset logic behind this interface.
+- ScaleResolution only asks the plug-in to react to domain changes.
 
 Tests:
-- Add tests ensuring that phase ordering does not regress zoom reset, configured domain, or data-domain behaviors.
-- Add a test ensuring no domain notification when computed domain is unchanged.
+- Keep existing interaction tests but route through the plug-in.
+- Add a small contract test for the plug-in interface.
 
 Run tests after Phase 3:
 - `npx vitest run`
 - `npm -ws run test:tsc --if-present`
 
-### Phase 4: Make `configureDomain` pure and enable early-out
+### Phase 4: Optional rewrite of `scale.js`
 
 Rationale:
-- Current `configureDomain` mutates the scale and performs nicening internally.
-- Early-out should compare against the *post-configured* target to avoid false positives due to nicening.
+- `scale.js` mixes spec-level logic with D3 mutability, which complicates reasoning.
+- It already has solid tests, making a rewrite safer.
 
 Plan:
-- Refactor `configureDomain` to return a target domain (and any derived values) without mutating the scale.
-- Use the returned target domain in `reconfigureDomain` Phase 3 to compare against the current scale domain.
-- Only apply mutations when target differs, preserving nicening semantics without reimplementing D3 logic.
+- Define a pure `computeScaleConfig` that returns:
+  - domain, domain metadata, range configuration, and warnings.
+- Apply the configuration in a small, explicit mutator that touches the D3 scale.
+- Keep the D3-specific logic isolated; use the pure function in tests.
+- Ensure scale.copy() behavior (especially for locus scales) is explicitly covered.
 
 Tests:
-- Add a test where `configureDomain` nicens the domain and verify that repeated reconfigure does not notify.
-- Add a test to confirm that a change in data-domain that results in the same niced domain does not trigger updates.
+- Reuse existing `scale.test.js` and add new pure-config tests.
+- Ensure locus scale behavior remains intact (scaleLocus copy/genome binding).
 
 Run tests after Phase 4:
 - `npx vitest run`
@@ -88,29 +136,11 @@ Run tests after Phase 4:
 
 ## Postponed / Investigate Further
 
-### Batch domain refreshes per tick
+- Full API rewrite for ScaleResolution (public interface changes).
+- Per-domain-key invalidation (likely low ROI due to small key counts).
+- Per-tick batching (if perf data indicates multiple updates per frame).
 
-Notes:
-- Potentially useful, but ordering/timing concerns with microtasks vs render scheduling.
-- Only pursue after confirming clear performance wins.
+## Additional Notes
 
-### Incremental per-domain-key aggregation
-
-Notes:
-- Collector domain caching makes raw access cheap; complexity may outweigh gains unless union/iteration dominates.
-
-### Domain-key scoped invalidation
-
-Notes:
-- Typically only 1–3 domain keys per resolution; complexity may not be justified.
-
-### Additional analysis questions
-
-- How often do data-domain recomputations happen per frame under typical interactions?
-  - Very rarely per frame; if anything happens per frame, it is usually zoom transition animation.
-- Can multiple domain updates happen per frame?
-  - Yes. Primary/secondary positional channels (e.g., x and x2) may notify separately, causing up to two updates per frame. Worth checking if collector notifications can be coalesced or if per-resolution debouncing is needed.
-- How many accessors per resolution are common in real-world specs?
-  - Typically 0–5 accessors per resolution, often 1–2.
-- Does configured-domain usage cover a significant share of workflows?
-  - Yes. Domains are often configured because they are more stable.
+- Accessor counts are typically small (0-5), and data-domain recomputes are rarely per-frame.
+- Configured domains are common, so short-circuit paths should remain the fast path.
