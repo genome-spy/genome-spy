@@ -76,6 +76,9 @@ export default class ScaleResolution {
     /** @type {Set<ScaleResolutionMember>} The involved views */
     #members = new Set();
 
+    /** @type {Set<ScaleResolutionMember>} */
+    #dataDomainMembers = new Set();
+
     /**
      * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
      */
@@ -111,6 +114,8 @@ export default class ScaleResolution {
 
         this.#domainAggregator = new ScaleDomainAggregator({
             getMembers: () => this.#getActiveMembers(),
+            getDataMembers: () =>
+                this.#getActiveMembers(this.#dataDomainMembers),
             getType: () => this.type,
             getLocusExtent: () => this.#getLocusExtent(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -146,10 +151,13 @@ export default class ScaleResolution {
         return first.view;
     }
 
-    #getActiveMembers() {
+    /**
+     * @param {Set<ScaleResolutionMember>} [members]
+     */
+    #getActiveMembers(members = this.#members) {
         /** @type {Set<ScaleResolutionMember>} */
         const active = new Set();
-        for (const member of this.#members) {
+        for (const member of members) {
             const view = member.view;
             if (!view.isConfiguredVisible()) {
                 continue;
@@ -289,6 +297,9 @@ export default class ScaleResolution {
         }
 
         this.#members.add(newMember);
+        if (newMember.contributesToDomain) {
+            this.#dataDomainMembers.add(newMember);
+        }
         this.#domainAggregator.invalidateConfiguredDomain();
     }
 
@@ -301,6 +312,7 @@ export default class ScaleResolution {
         return () => {
             const removed = this.#members.delete(member);
             if (removed) {
+                this.#dataDomainMembers.delete(member);
                 this.#domainAggregator.invalidateConfiguredDomain();
             }
             return removed && this.#members.size === 0;
