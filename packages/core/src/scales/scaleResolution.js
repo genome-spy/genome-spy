@@ -488,8 +488,14 @@ export default class ScaleResolution {
      */
     reconfigure() {
         this.#domainAggregator.invalidateConfiguredDomain();
-        const props = this.#getScaleProps(true);
-        this.#reconfigureWith(() => this.#scaleManager.reconfigureScale(props));
+        const inputs = this.#resolveReconfigureInputs(true);
+        if (!inputs) {
+            return;
+        }
+        this.#applyReconfigure(inputs, (scale, props) =>
+            this.#scaleManager.reconfigureScale(props)
+        );
+        this.#finalizeReconfigure(inputs);
     }
 
     /**
@@ -498,26 +504,62 @@ export default class ScaleResolution {
      * Use this when data changes but the scale membership and properties are stable.
      */
     reconfigureDomain() {
-        const props = this.#getScaleProps(true);
-        this.#reconfigureWith(() => {
-            configureDomain(this.#scaleManager.scale, props);
+        const inputs = this.#resolveReconfigureInputs(true);
+        if (!inputs) {
+            return;
+        }
+        this.#applyReconfigure(inputs, (scale, props) => {
+            configureDomain(scale, props);
         });
+        this.#finalizeReconfigure(inputs);
     }
 
     /**
-     * @param {() => void} apply
+     * @param {boolean} extractDataDomain
+     * @returns {{
+     *     scale: ScaleWithProps,
+     *     props: import("../spec/scale.js").Scale,
+     *     previousDomain: any[],
+     *     domainWasInitialized: boolean,
+     * } | undefined}
      */
-    #reconfigureWith(apply) {
+    #resolveReconfigureInputs(extractDataDomain) {
         const scale = this.#scaleManager.scale;
 
         if (!scale || scale.type == "null") {
             return;
         }
 
-        const domainWasInitialized = this.#isDomainInitialized();
-        const previousDomain = scale.domain();
+        return {
+            scale,
+            props: this.#getScaleProps(extractDataDomain),
+            previousDomain: scale.domain(),
+            domainWasInitialized: this.#isDomainInitialized(),
+        };
+    }
 
-        this.#scaleManager.withDomainNotificationsSuppressed(apply);
+    /**
+     * @param {{
+     *     scale: ScaleWithProps,
+     *     props: import("../spec/scale.js").Scale,
+     * }} inputs
+     * @param {(scale: ScaleWithProps, props: import("../spec/scale.js").Scale) => void} apply
+     */
+    #applyReconfigure(inputs, apply) {
+        this.#scaleManager.withDomainNotificationsSuppressed(() => {
+            apply(inputs.scale, inputs.props);
+        });
+    }
+
+    /**
+     * @param {{
+     *     scale: ScaleWithProps,
+     *     previousDomain: any[],
+     *     domainWasInitialized: boolean,
+     * }} inputs
+     */
+    #finalizeReconfigure(inputs) {
+        const { scale, previousDomain, domainWasInitialized } = inputs;
 
         if (
             this.#domainAggregator.captureInitialDomain(
