@@ -770,6 +770,54 @@ describe("Domain handling", () => {
         expect(resolution.scale.domain()).toEqual([2, 3]);
     });
 
+    test("reconfigureDomain skips zoom animation before first render", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        const spy = vi.spyOn(resolution, "zoomTo");
+
+        // Non-obvious: set a different domain to force a reconfigure change.
+        resolution.getScale().domain([0, 1]);
+        resolution.reconfigureDomain();
+
+        expect(spy).not.toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual([0, 3]);
+        spy.mockRestore();
+    });
+
+    test("reconfigureDomain animates after a view has rendered once", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [2, 3] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = view.getScaleResolution("x");
+        const spy = vi.spyOn(resolution, "zoomTo");
+
+        // Non-obvious: simulate the first render to allow transitions.
+        view.onBeforeRender();
+        resolution.getScale().domain([0, 1]);
+        resolution.reconfigureDomain();
+
+        expect(spy).toHaveBeenCalled();
+        spy.mockRestore();
+    });
+
     test("categorical indexers preserve stable ordering across domain refreshes", async () => {
         const view = await createAndInitialize(
             {

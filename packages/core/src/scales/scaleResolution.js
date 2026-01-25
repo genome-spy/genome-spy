@@ -329,6 +329,15 @@ export default class ScaleResolution {
         };
     }
 
+    #hasRenderedMember() {
+        for (const member of this.#members) {
+            if (member.view.hasRendered()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * @param {import("../data/collector.js").default} collector
      * @param {Iterable<import("../types/encoder.js").ScaleAccessor>} accessors
@@ -622,12 +631,16 @@ export default class ScaleResolution {
                 scale.domain(previousDomain);
             });
         } else if (action === "animate") {
-            // It can be zoomed, so lets make a smooth transition.
-            // Restore the previous domain and zoom smoothly to the new domain.
-            this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                scale.domain(previousDomain);
-            });
-            this.zoomTo(newDomain, 500); // TODO: Configurable duration
+            if (this.#hasRenderedMember()) {
+                // It can be zoomed, so lets make a smooth transition.
+                // Restore the previous domain and zoom smoothly to the new domain.
+                this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                    scale.domain(previousDomain);
+                });
+                this.zoomTo(newDomain, 500); // TODO: Configurable duration
+            } else {
+                this.#notifyListeners("domain");
+            }
         } else if (action === "notify") {
             // Update immediately if the previous domain was the initial domain [0, 0]
             // Notifications were suppressed during reconfigure; notify explicitly.

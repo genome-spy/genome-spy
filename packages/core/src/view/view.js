@@ -78,6 +78,9 @@ export default class View {
     /** @type {(value: number) => void} */
     #heightSetter;
 
+    /** @type {boolean} */
+    #hasRendered = false;
+
     /**
      * @type {function(number):number}
      */
@@ -623,7 +626,13 @@ export default class View {
      * pass. The order is depth first, pre order.
      */
     onBeforeRender() {
-        //
+        if (!this.#hasRendered) {
+            this.#hasRendered = true;
+        }
+    }
+
+    hasRendered() {
+        return this.#hasRendered;
     }
 
     /**
