@@ -162,7 +162,7 @@ export function initializeViewSubtree(
 
     // Initialize flow nodes for the sources that belong to this subtree.
     for (const dataSource of dataSources) {
-        dataSource.visit((node) => node.initialize());
+        dataSource.visit((node) => node.initializeOnce());
     }
 
     /** @type {UnitView[]} */

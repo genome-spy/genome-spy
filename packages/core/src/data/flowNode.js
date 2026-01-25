@@ -35,6 +35,9 @@ export default class FlowNode {
         first: null,
     };
 
+    /** @type {boolean} */
+    #initialized = false;
+
     /**
      * An object that provides a paramMediator. (Most likely a View)
      *
@@ -89,9 +92,24 @@ export default class FlowNode {
     /**
      * Allows for doing final initialization after the flow structure has been
      * built and optimized. Must be called before any data are to be propagated.
+     * Note: Some transforms call initialize() from reset() to rebuild internal
+     * fast paths per batch. Use initializeOnce() for graph-level init to avoid
+     * double-initialization issues.
      */
     initialize() {
         // override
+    }
+
+    /**
+     * Calls initialize() once per node instance. Intended for graph-level init
+     * passes that should not rerun when reusing existing branches.
+     */
+    initializeOnce() {
+        if (this.#initialized) {
+            return;
+        }
+        this.initialize();
+        this.#initialized = true;
     }
 
     /**

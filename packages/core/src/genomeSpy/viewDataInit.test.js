@@ -8,6 +8,8 @@ import {
     initializeViewData,
     initializeVisibleViewData,
 } from "./viewDataInit.js";
+import { transforms } from "../data/transforms/transformFactory.js";
+import Transform from "../data/transforms/transform.js";
 
 describe("viewDataInit", () => {
     test("skips hidden subtrees during initial data initialization", async () => {
@@ -283,5 +285,101 @@ describe("viewDataInit", () => {
         expect(loadSpy).not.toHaveBeenCalled();
 
         loadSpy.mockRestore();
+    });
+
+    test("lazy init does not reinitialize existing flow nodes", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
+        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        let initCalls = 0;
+
+        class InitOnceTransform extends Transform {
+            initialize() {
+                initCalls += 1;
+                this.paramMediatorProvider.paramMediator.allocateSetter(
+                    "initOnceParam",
+                    0,
+                    true
+                );
+            }
+
+            /**
+             * @param {import("../data/flowNode.js").Datum} datum
+             */
+            handle(datum) {
+                this._propagate(datum);
+            }
+        }
+
+        const previousTransform = transforms.initOnceTest;
+        transforms.initOnceTest = InitOnceTransform;
+
+        try {
+            /** @type {import("../spec/view.js").HConcatSpec} */
+            const spec = {
+                hconcat: [
+                    {
+                        name: "visible",
+                        data: { name: "shared" },
+                        mark: "point",
+                        transform: /** @type {any} */ ([
+                            { type: "initOnceTest" },
+                        ]),
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                    },
+                    {
+                        name: "hidden",
+                        visible: false,
+                        data: { name: "shared" },
+                        mark: "point",
+                        transform: /** @type {any} */ ([
+                            { type: "initOnceTest" },
+                        ]),
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                    },
+                ],
+            };
+
+            const root = await context.createOrImportView(
+                spec,
+                null,
+                null,
+                "root"
+            );
+
+            await initializeViewData(
+                root,
+                context.dataFlow,
+                context.fontManager,
+                () => undefined
+            );
+
+            // Only the visible branch should initialize at first.
+            expect(initCalls).toBe(1);
+
+            context.isViewConfiguredVisible = () => true;
+
+            await initializeVisibleViewData(
+                root,
+                context.dataFlow,
+                context.fontManager
+            );
+
+            // Hidden branch initializes once; visible branch is not reinitialized.
+            expect(initCalls).toBe(2);
+        } finally {
+            if (previousTransform) {
+                transforms.initOnceTest = previousTransform;
+            } else {
+                delete transforms.initOnceTest;
+            }
+        }
     });
 });
