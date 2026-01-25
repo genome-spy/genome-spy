@@ -68,6 +68,18 @@ design patterns.
 - TODO: Consider a targeted propagation/load mode for dynamic insertions so new
   collectors can be populated without re-propagating data through existing
   branches (avoid redundant updates and re-renders without caching data).
+- Observed issues and fragilities to keep in mind as the system becomes more
+  dynamic:
+  - `FlowNode.initialize()` is used for both graph-level init and some per-batch
+    fast-path rebuilds; callers must use `initializeOnce()` for graph-level init.
+  - `Collector` is both cache and fan-out boundary; downstream mutations depend
+    on its completion state and repropagation behavior.
+  - Data sources lack a persistent “loaded/dirty” lifecycle contract; reload vs
+    repropagate needs explicit decisions in dynamic flows.
+  - Dependency tracking is implicit (view/dataParent traversal); the flow graph
+    cannot yet describe “only this branch needs new data.”
+  - Categorical domains/indexers/encodings are tightly coupled and order-sensitive,
+    which can surface as correctness issues if domains change mid-lifecycle.
 
 ## View Lifecycle (Dynamic Mutation)
 
