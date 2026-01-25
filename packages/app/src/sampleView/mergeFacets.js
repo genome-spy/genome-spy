@@ -8,7 +8,6 @@ import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { field } from "@genome-spy/core/utils/field.js";
 import kWayMerge from "@genome-spy/core/utils/kWayMerge.js";
 import SampleView from "./sampleView.js";
-import UnitView from "@genome-spy/core/view/unitView.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import FlowNode from "@genome-spy/core/data/flowNode.js";
 
@@ -139,7 +138,6 @@ export default class MergeSampleFacets extends FlowNode {
             );
 
             super.complete();
-            this.#updateScales();
         } else {
             super.complete();
         }
@@ -206,23 +204,6 @@ export default class MergeSampleFacets extends FlowNode {
         super.setParent(parent);
 
         // TODO: Validate that the parent is a collector
-    }
-
-    #updateScales() {
-        /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
-        const resolutions = new Set();
-        this.view.visit((view) => {
-            if (view instanceof UnitView && view.mark.encoding.y) {
-                const resolution = view.getScaleResolution("y");
-                if (resolution) {
-                    resolutions.add(resolution);
-                }
-            }
-        });
-        for (const resolution of resolutions) {
-            // TODO: This should be handled automatically by collectors
-            resolution.reconfigure();
-        }
     }
 }
 
