@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import UnitView from "../view/unitView.js";
+import ConcatView from "../view/concatView.js";
 
 import { createTestViewContext } from "../view/testUtils.js";
 import {
@@ -92,8 +93,14 @@ describe("viewDataInit", () => {
         };
 
         const root = await context.createOrImportView(spec, null, null, "root");
+        if (!(root instanceof ConcatView)) {
+            throw new Error("Expected a concat view for root.");
+        }
+        /** @type {ConcatView} */
+        const rootView = root;
+
         await initializeViewData(
-            root,
+            rootView,
             context.dataFlow,
             context.fontManager,
             () => undefined
@@ -179,5 +186,102 @@ describe("viewDataInit", () => {
 
         expect(initializeSpy).toHaveBeenCalledTimes(1);
         initializeSpy.mockRestore();
+    });
+
+    test("completed collectors repropagate to newly attached views", async () => {
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        // Build a minimal concat tree so we can dynamically append a view.
+        /** @type {import("../spec/view.js").VConcatSpec} */
+        const spec = {
+            vconcat: [
+                {
+                    name: "base",
+                    data: { values: [{ x: 1 }, { x: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        if (!(root instanceof ConcatView)) {
+            throw new Error("Expected a concat view for root.");
+        }
+        /** @type {ConcatView} */
+        const rootView = root;
+
+        await initializeViewData(
+            rootView,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        // Base view owns the data source + collector; it is already complete.
+        const baseView = rootView
+            .getDescendants()
+            .find(
+                /** @param {import("../view/view.js").default} view */ (view) =>
+                    view.name === "base"
+            );
+        if (!(baseView instanceof UnitView)) {
+            throw new Error("Expected a unit view for base branch.");
+        }
+
+        const dataSource = baseView.flowHandle?.dataSource;
+        if (!dataSource) {
+            throw new Error("Expected base view to have a data source.");
+        }
+
+        // If we attach a new view below the completed collector, we should
+        // repropagate instead of triggering another source load.
+        const loadSpy = vi.spyOn(dataSource, "load");
+        loadSpy.mockClear();
+
+        // Attach a new UnitView that inherits data from baseView's collector.
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const summarySpec = {
+            name: "summary",
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const summaryView = await context.createOrImportView(
+            summarySpec,
+            rootView,
+            baseView,
+            "summary"
+        );
+
+        rootView.appendChildView(summaryView);
+
+        await initializeVisibleViewData(
+            rootView,
+            context.dataFlow,
+            context.fontManager
+        );
+
+        // The new collector should have data even though the data source
+        // was not reloaded.
+        const summaryCollector = summaryView.flowHandle?.collector;
+        expect(summaryCollector).toBeDefined();
+        expect(summaryCollector?.completed).toBe(true);
+        let datumCount = 0;
+        for (const _ of summaryCollector?.getData() ?? []) {
+            datumCount++;
+        }
+        expect(datumCount).toBeGreaterThan(0);
+        expect(loadSpy).not.toHaveBeenCalled();
+
+        loadSpy.mockRestore();
     });
 });

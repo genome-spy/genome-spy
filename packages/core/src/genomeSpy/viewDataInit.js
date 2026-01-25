@@ -63,6 +63,10 @@ export async function initializeVisibleViewData(
     dataFlow,
     fontManager
 ) {
+    // Initialize dataflow/graphics for views that have become visible since the
+    // initial load, while avoiding unnecessary data source reloads. If a view
+    // attaches downstream of an already completed collector, repropagate that
+    // collector instead of reloading the source.
     const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
     ) => view.isConfiguredVisible();
@@ -80,6 +84,23 @@ export async function initializeVisibleViewData(
         /** @type {import("../view/view.js").default} */ view
     ) => viewsToInitializeSet.has(view);
 
+    /** @type {Set<import("../data/collector.js").default>} */
+    const collectorsToRepropagate = new Set();
+    /** @type {import("../view/view.js").default[]} */
+    const viewsNeedingLoad = [];
+    for (const view of viewsToInitialize) {
+        if (view.spec.data) {
+            viewsNeedingLoad.push(view);
+            continue;
+        }
+        const collector = findCompletedAncestorCollector(view);
+        if (collector) {
+            collectorsToRepropagate.add(collector);
+        } else {
+            viewsNeedingLoad.push(view);
+        }
+    }
+
     const { dataFlow: builtDataFlow, graphicsPromises } = initializeViewSubtree(
         viewRoot,
         dataFlow,
@@ -89,17 +110,23 @@ export async function initializeVisibleViewData(
 
     await fontManager.waitUntilReady();
 
-    const dataSourceRoots = collectDataSourceRoots(viewsToInitialize);
-    await Promise.all(
-        Array.from(dataSourceRoots.entries()).map(
-            ([subtreeRoot, dataSources]) =>
-                loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
-                    // If a source is already loading, schedule a reload so new branches
-                    // added during lazy init receive a complete data propagation.
-                    queueReload: true,
-                })
-        )
-    );
+    for (const collector of collectorsToRepropagate) {
+        collector.repropagate();
+    }
+
+    if (viewsNeedingLoad.length) {
+        const dataSourceRoots = collectDataSourceRoots(viewsNeedingLoad);
+        await Promise.all(
+            Array.from(dataSourceRoots.entries()).map(
+                ([subtreeRoot, dataSources]) =>
+                    loadViewSubtreeData(subtreeRoot, dataSources, undefined, {
+                        // If a source is already loading, schedule a reload so new branches
+                        // added during lazy init receive a complete data propagation.
+                        queueReload: true,
+                    })
+            )
+        );
+    }
 
     await finalizeSubtreeGraphics(graphicsPromises);
 
@@ -157,4 +184,22 @@ function collectDataSourceRoots(views) {
     }
 
     return roots;
+}
+
+/**
+ * Finds the nearest completed collector in the dataParent chain.
+ *
+ * @param {import("../view/view.js").default} view
+ * @returns {import("../data/collector.js").default | undefined}
+ */
+function findCompletedAncestorCollector(view) {
+    let current = view.dataParent;
+    while (current) {
+        const collector = current.flowHandle?.collector;
+        if (collector) {
+            return collector.completed ? collector : undefined;
+        }
+        current = current.dataParent;
+    }
+    return undefined;
 }
