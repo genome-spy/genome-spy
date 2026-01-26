@@ -150,6 +150,22 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
 }
 
 /**
+ * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ */
+function appendPlotMenuItems(items, attributeInfo, sampleView) {
+    if (attributeInfo.type !== "quantitative") {
+        return;
+    }
+
+    items.push(DIVIDER, {
+        label: "Show a boxplot",
+        callback: () => showHierarchyBoxplotDialog(attributeInfo, sampleView),
+    });
+}
+
+/**
  * @param {Object} params
  * @param {FieldInfo} params.fieldInfo
  * @param {import("./types.js").Interval} params.selectionIntervalComplex
@@ -207,13 +223,7 @@ export function buildIntervalAggregationMenu({
                 attributeValue,
                 sampleView
             );
-            if (attributeInfo.type === "quantitative") {
-                submenuItems.push(DIVIDER, {
-                    label: "Show a boxplot",
-                    callback: () =>
-                        showHierarchyBoxplotDialog(attributeInfo, sampleView),
-                });
-            }
+            appendPlotMenuItems(submenuItems, attributeInfo, sampleView);
 
             return {
                 label: opLabel,
@@ -267,13 +277,7 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
-    if (attributeInfo.type === "quantitative") {
-        items.push(DIVIDER, {
-            label: "Show a boxplot",
-            callback: () =>
-                showHierarchyBoxplotDialog(attributeInfo, sampleView),
-        });
-    }
+    appendPlotMenuItems(items, attributeInfo, sampleView);
 
     return items;
 }
