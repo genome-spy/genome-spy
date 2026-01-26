@@ -36,19 +36,11 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 
 /**
- * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
+ * @typedef {import("./boxplotTypes.d.ts").BoxplotStatsRow} BoxplotStatsRow
  */
 
 /**
- * @typedef {NonNullable<ReturnType<typeof boxplotStats>["statistics"]>} BoxplotStatistics
- */
-
-/**
- * @typedef {BoxplotStatistics & Record<string, Scalar>} BoxplotStatsRow
- */
-
-/**
- * @typedef {Record<string, any>} BoxplotOutlierRow
+ * @typedef {import("./boxplotTypes.d.ts").BoxplotOutlierRow} BoxplotOutlierRow
  */
 
 /**
