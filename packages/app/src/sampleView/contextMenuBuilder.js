@@ -10,8 +10,7 @@ import {
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
-import { DIVIDER } from "../utils/ui/contextMenu.js";
-import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
+import { appendPlotMenuItems } from "./plotMenuItems.js";
 
 /**
  * @typedef {Object} FieldInfo
@@ -147,22 +146,6 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
             ])
         ).values()
     );
-}
-
-/**
- * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
- * @param {import("./types.js").AttributeInfo} attributeInfo
- * @param {import("./sampleView.js").default} sampleView
- */
-function appendPlotMenuItems(items, attributeInfo, sampleView) {
-    if (attributeInfo.type !== "quantitative") {
-        return;
-    }
-
-    items.push(DIVIDER, {
-        label: "Show a boxplot",
-        callback: () => showHierarchyBoxplotDialog(attributeInfo, sampleView),
-    });
 }
 
 /**
