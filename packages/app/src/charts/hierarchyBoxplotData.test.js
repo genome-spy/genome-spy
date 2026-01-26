@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
+import { createDefaultValuesProvider } from "../sampleView/attributeValues.js";
 
 /**
  * @returns {import("../sampleView/state/sampleState.js").SampleHierarchy}
@@ -63,10 +64,21 @@ function createSampleHierarchy() {
 describe("buildHierarchyBoxplotData", () => {
     it("builds stats and outliers for nested groups", () => {
         const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = {
+            name: "score",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
+            accessor: (sampleId, hierarchy) =>
+                hierarchy.sampleMetadata.entities[sampleId]?.score,
+            valuesProvider: createDefaultValuesProvider(
+                (sampleId, hierarchy) =>
+                    hierarchy.sampleMetadata.entities[sampleId]?.score
+            ),
+            type: "quantitative",
+        };
 
         // Non-obvious setup: subgroup A has a clear high outlier.
         const { statsRows, outlierRows, groupDomain } =
-            buildHierarchyBoxplotData(sampleHierarchy, "score");
+            buildHierarchyBoxplotData(sampleHierarchy, attributeInfo);
 
         expect(groupDomain).toEqual(["Group A / Sub A", "Group B"]);
         expect(statsRows.map((row) => row.group)).toEqual([
@@ -87,9 +99,20 @@ describe("buildHierarchyBoxplotData", () => {
 
     it("fails on unknown attributes", () => {
         const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = {
+            name: "missing",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "missing" },
+            accessor: (sampleId, hierarchy) =>
+                hierarchy.sampleMetadata.entities[sampleId]?.missing,
+            valuesProvider: createDefaultValuesProvider(
+                (sampleId, hierarchy) =>
+                    hierarchy.sampleMetadata.entities[sampleId]?.missing
+            ),
+            type: "quantitative",
+        };
 
         expect(() =>
-            buildHierarchyBoxplotData(sampleHierarchy, "missing")
+            buildHierarchyBoxplotData(sampleHierarchy, attributeInfo)
         ).toThrow("Unknown metadata attribute");
     });
 });

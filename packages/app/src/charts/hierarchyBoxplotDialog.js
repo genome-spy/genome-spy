@@ -71,20 +71,23 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             );
         }
 
-        const attribute = /** @type {string} */ (
-            this.attributeInfo.attribute.specifier
-        );
-        const title =
+        const attributeLabel =
+            typeof this.attributeInfo.name == "string"
+                ? this.attributeInfo.name
+                : String(this.attributeInfo.attribute.specifier);
+        const axisTitle =
             typeof this.attributeInfo.title == "string"
                 ? this.attributeInfo.title
-                : attribute;
+                : attributeLabel;
 
-        this.dialogTitle = html`Boxplot of <em>${title}</em>`;
+        const dialogLabel =
+            this.attributeInfo.title ?? html`<em>${attributeLabel}</em>`;
+        this.dialogTitle = html`Boxplot of ${dialogLabel}`;
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
                 this.sampleView.sampleHierarchy,
-                attribute,
+                this.attributeInfo,
                 {
                     groupField: GROUP_FIELD,
                     valueField: VALUE_FIELD,
@@ -97,14 +100,12 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             groupField: GROUP_FIELD,
             valueField: VALUE_FIELD,
             groupTitle: "Group",
-            valueTitle: title,
+            valueTitle: axisTitle,
             height: 260,
         });
 
-        const scale = spec.encoding?.x?.scale;
-        if (scale) {
-            scale.domain = groupDomain;
-        }
+        const scale = spec.encoding.x.scale;
+        scale.domain = groupDomain;
 
         const container = /** @type {HTMLElement} */ (
             this.renderRoot.querySelector(".chart-container")

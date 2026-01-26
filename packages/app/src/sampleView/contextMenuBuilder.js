@@ -10,6 +10,8 @@ import {
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
+import { DIVIDER } from "../utils/ui/contextMenu.js";
+import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
 
 /**
  * @typedef {Object} FieldInfo
@@ -199,14 +201,23 @@ export function buildIntervalAggregationMenu({
                 ? attributeInfo.accessor(sample.id, sampleHierarchy)
                 : undefined;
 
+            const submenuItems = generateAttributeContextMenu(
+                menuTitle,
+                attributeInfo,
+                attributeValue,
+                sampleView
+            );
+            if (attributeInfo.type === "quantitative") {
+                submenuItems.push(DIVIDER, {
+                    label: "Show a boxplot",
+                    callback: () =>
+                        showHierarchyBoxplotDialog(attributeInfo, sampleView),
+                });
+            }
+
             return {
                 label: opLabel,
-                submenu: generateAttributeContextMenu(
-                    menuTitle,
-                    attributeInfo,
-                    attributeValue,
-                    sampleView
-                ),
+                submenu: submenuItems,
             };
         }),
     ];
@@ -248,7 +259,7 @@ export function buildPointQueryMenu({
         ? attributeInfo.accessor(sample.id, sampleHierarchy)
         : undefined;
 
-    return generateAttributeContextMenu(
+    const items = generateAttributeContextMenu(
         null,
         attributeInfo,
         // TODO: Get the value from data
@@ -256,4 +267,13 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
+    if (attributeInfo.type === "quantitative") {
+        items.push(DIVIDER, {
+            label: "Show a boxplot",
+            callback: () =>
+                showHierarchyBoxplotDialog(attributeInfo, sampleView),
+        });
+    }
+
+    return items;
 }

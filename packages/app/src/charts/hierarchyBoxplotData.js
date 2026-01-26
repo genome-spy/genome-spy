@@ -1,6 +1,6 @@
-import { field } from "@genome-spy/core/utils/field.js";
 import { boxplotStats } from "../utils/statistics/boxplot.js";
 import { getFlattenedGroupHierarchy } from "../sampleView/state/sampleSlice.js";
+import { extractAttributeValues } from "../sampleView/attributeValues.js";
 
 const DEFAULT_OPTIONS = Object.freeze({
     groupField: "group",
@@ -27,6 +27,10 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 
 /**
+ * @typedef {import("../sampleView/types.js").AttributeInfo} AttributeInfo
+ */
+
+/**
  * @typedef {object} HierarchyBoxplotOptions
  * @prop {string} [groupField]
  * @prop {string} [valueField]
@@ -44,8 +48,28 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 
 /**
+ * @param {AttributeInfo} attributeInfo
+ * @returns {Pick<import("../sampleView/types.js").AttributeValuesScope, "interval" | "aggregation">}
+ */
+function getAttributeScope(attributeInfo) {
+    const specifier = attributeInfo.attribute.specifier;
+    if (!specifier || typeof specifier !== "object") {
+        return {};
+    }
+
+    if ("interval" in specifier) {
+        return {
+            interval: specifier.interval,
+            aggregation: specifier.aggregation,
+        };
+    }
+
+    return {};
+}
+
+/**
  * @param {SampleHierarchy} sampleHierarchy
- * @param {string} attribute
+ * @param {AttributeInfo} attributeInfo
  * @param {HierarchyBoxplotOptions} [options]
  * @returns {{
  *   statsRows: BoxplotStatsRow[],
@@ -55,25 +79,32 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 export function buildHierarchyBoxplotData(
     sampleHierarchy,
-    attribute,
+    attributeInfo,
     options = {}
 ) {
     if (!sampleHierarchy.sampleData) {
         throw new Error("Sample data has not been initialized.");
     }
 
-    if (!sampleHierarchy.sampleMetadata.attributeNames.includes(attribute)) {
-        throw new Error("Unknown metadata attribute: " + String(attribute));
+    if (attributeInfo.type !== "quantitative") {
+        throw new Error("Boxplot requires a quantitative attribute.");
+    }
+
+    const specifier = attributeInfo.attribute.specifier;
+    if (
+        typeof specifier === "string" &&
+        !sampleHierarchy.sampleMetadata.attributeNames.includes(specifier)
+    ) {
+        throw new Error("Unknown metadata attribute: " + String(specifier));
     }
 
     /** @type {ResolvedHierarchyBoxplotOptions} */
     const resolved = { ...DEFAULT_OPTIONS, ...options };
 
-    const valueAccessor = field(attribute);
-
     const statsRows = [];
     const outlierRows = [];
     const groupDomain = [];
+    const attributeScope = getAttributeScope(attributeInfo);
 
     for (const path of getFlattenedGroupHierarchy(sampleHierarchy)) {
         const leaf = path[path.length - 1];
@@ -88,16 +119,26 @@ export function buildHierarchyBoxplotData(
         const groupLabel = labelParts.join(resolved.groupLabelSeparator);
         groupDomain.push(groupLabel);
 
-        const sampleRows = [];
-        for (const sampleId of leaf.samples) {
-            const metadatum = sampleHierarchy.sampleMetadata.entities[sampleId];
-            if (!metadatum) {
-                continue;
-            }
-            sampleRows.push({
-                sampleId,
-                value: valueAccessor(metadatum),
-            });
+        const sampleIds = leaf.samples;
+        const values = extractAttributeValues(
+            attributeInfo,
+            sampleIds,
+            sampleHierarchy,
+            attributeScope
+        );
+        if (values.length !== sampleIds.length) {
+            throw new Error(
+                "Attribute values length does not match sample ids."
+            );
+        }
+
+        const sampleRows = sampleIds.map((sampleId, index) => ({
+            sampleId,
+            value: values[index],
+        }));
+
+        if (sampleRows.length === 0) {
+            continue;
         }
 
         const { statistics, outliers } = boxplotStats(
