@@ -10,6 +10,7 @@ import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
+import showHierarchyBoxplotDialog from "../../charts/hierarchyBoxplotDialog.js";
 import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
@@ -288,6 +289,11 @@ export class MetadataView extends ConcatView {
                     this.#sampleView
                 )
             );
+            items.push(DIVIDER, {
+                label: "Show a boxplot",
+                callback: () =>
+                    showHierarchyBoxplotDialog(attributeInfo, this.#sampleView),
+            });
         }
 
         contextMenu({ items }, event.mouseEvent);
