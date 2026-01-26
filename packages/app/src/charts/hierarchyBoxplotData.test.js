@@ -139,4 +139,50 @@ describe("buildHierarchyBoxplotData", () => {
         expect(statsRows).toHaveLength(1);
         expect(outlierRows).toEqual([]);
     });
+
+    it("uses interval aggregation scope for values", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = {
+            name: "mean(score)",
+            attribute: {
+                type: "VIEW_ATTRIBUTE",
+                specifier: {
+                    view: "view",
+                    field: "score",
+                    interval: [0, 1],
+                    aggregation: { op: "mean" },
+                },
+            },
+            accessor: () => undefined,
+            valuesProvider: ({ sampleIds, interval, aggregation }) =>
+                sampleIds.map(() =>
+                    interval && aggregation ? 100 : Number.NaN
+                ),
+            type: "quantitative",
+        };
+
+        // Non-obvious setup: values provider only yields finite values when scoped.
+        const { statsRows } = buildHierarchyBoxplotData(
+            sampleHierarchy,
+            attributeInfo
+        );
+
+        expect(statsRows[0].min).toBe(100);
+        expect(statsRows[0].max).toBe(100);
+    });
+
+    it("rejects non-quantitative attributes", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = {
+            name: "status",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: "nominal",
+        };
+
+        expect(() =>
+            buildHierarchyBoxplotData(sampleHierarchy, attributeInfo)
+        ).toThrow("Boxplot requires a quantitative attribute.");
+    });
 });
