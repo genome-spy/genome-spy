@@ -117,7 +117,6 @@ export function buildHierarchyBoxplotData(
                 ? path.slice(1).map((group) => group.title || group.name)
                 : [leaf.title || leaf.name];
         const groupLabel = labelParts.join(resolved.groupLabelSeparator);
-        groupDomain.push(groupLabel);
 
         const sampleIds = leaf.samples;
         const values = extractAttributeValues(
@@ -155,6 +154,7 @@ export function buildHierarchyBoxplotData(
                 [resolved.groupField]: groupLabel,
                 ...statistics,
             });
+            groupDomain.push(groupLabel);
         }
 
         for (const outlier of outliers) {

@@ -115,4 +115,28 @@ describe("buildHierarchyBoxplotData", () => {
             buildHierarchyBoxplotData(sampleHierarchy, attributeInfo)
         ).toThrow("Unknown metadata attribute");
     });
+
+    it("skips groups with no valid values", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = {
+            name: "score",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
+            accessor: () => undefined,
+            valuesProvider: ({ sampleIds }) =>
+                sampleIds.map((sampleId) =>
+                    ["s1", "s2", "s3", "s4", "s5"].includes(sampleId)
+                        ? Number.NaN
+                        : Number(sampleId.slice(1))
+                ),
+            type: "quantitative",
+        };
+
+        // Non-obvious setup: first group values are all invalid.
+        const { statsRows, outlierRows, groupDomain } =
+            buildHierarchyBoxplotData(sampleHierarchy, attributeInfo);
+
+        expect(groupDomain).toEqual(["Group B"]);
+        expect(statsRows).toHaveLength(1);
+        expect(outlierRows).toEqual([]);
+    });
 });
