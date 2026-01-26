@@ -34,6 +34,13 @@ const spec = {
     ],
 };
 
+const layer0 = /** @type {import("../spec/view.js").UnitSpec} */ (
+    spec.layer[0]
+);
+const layer1 = /** @type {import("../spec/view.js").UnitSpec} */ (
+    spec.layer[1]
+);
+
 describe("Axes resolve properly", () => {
     test("Independent axes are independent", async () => {
         const view = await createAndInitialize(
@@ -74,9 +81,9 @@ describe("Axes resolve properly", () => {
                 ...spec,
                 layer: [
                     {
-                        ...spec.layer[0],
+                        ...layer0,
                         encoding: {
-                            ...spec.layer[0].encoding,
+                            ...layer0.encoding,
                             y: {
                                 field: "a",
                                 type: "quantitative",
@@ -84,7 +91,7 @@ describe("Axes resolve properly", () => {
                             },
                         },
                     },
-                    spec.layer[1],
+                    layer1,
                 ],
                 resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
             },
@@ -102,9 +109,9 @@ describe("Axes resolve properly", () => {
                 ...spec,
                 layer: [
                     {
-                        ...spec.layer[0],
+                        ...layer0,
                         encoding: {
-                            ...spec.layer[0].encoding,
+                            ...layer0.encoding,
                             y: {
                                 field: "a",
                                 type: "quantitative",
@@ -113,9 +120,9 @@ describe("Axes resolve properly", () => {
                         },
                     },
                     {
-                        ...spec.layer[1],
+                        ...layer1,
                         encoding: {
-                            ...spec.layer[1].encoding,
+                            ...layer1.encoding,
                             y: {
                                 field: "b",
                                 type: "quantitative",
