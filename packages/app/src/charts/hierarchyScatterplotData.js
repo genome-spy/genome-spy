@@ -9,22 +9,6 @@ const DEFAULT_OPTIONS = Object.freeze({
 });
 
 /**
- * @typedef {import("../sampleView/state/sampleState.js").SampleHierarchy} SampleHierarchy
- */
-
-/**
- * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- */
-
-/**
- * @typedef {import("../sampleView/types.js").AttributeInfo} AttributeInfo
- */
-
-/**
- * @typedef {Record<string, Scalar | number> & { sampleId: string }} ScatterplotRow
- */
-
-/**
  * @typedef {object} HierarchyScatterplotOptions
  * @prop {string} [groupField]
  * @prop {string} [xField]
@@ -42,7 +26,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 
 /**
- * @param {AttributeInfo} attributeInfo
+ * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
  * @returns {Pick<import("../sampleView/types.js").AttributeValuesScope, "interval" | "aggregation">}
  */
 function getAttributeScope(attributeInfo) {
@@ -66,12 +50,12 @@ function getAttributeScope(attributeInfo) {
 }
 
 /**
- * @param {SampleHierarchy} sampleHierarchy
- * @param {AttributeInfo} xAttributeInfo
- * @param {AttributeInfo} yAttributeInfo
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo
+ * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo
  * @param {HierarchyScatterplotOptions} [options]
  * @returns {{
- *   rows: ScatterplotRow[],
+ *   rows: (Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number> & { sampleId: string })[],
  *   groupDomain: string[]
  * }}
  */

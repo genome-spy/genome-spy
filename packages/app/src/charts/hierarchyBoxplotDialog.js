@@ -88,7 +88,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
         const attributeLabel = text.label;
         const axisTitle = text.title;
 
-        this.dialogTitle = html`Boxplot of <em>${attributeLabel}</em>`;
+        this.dialogTitle = html`Boxplot of ${attributeLabel}`;
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(

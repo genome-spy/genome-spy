@@ -11,26 +11,6 @@ const DEFAULT_OPTIONS = Object.freeze({
 });
 
 /**
- * @typedef {import("../sampleView/state/sampleState.js").SampleHierarchy} SampleHierarchy
- */
-
-/**
- * @typedef {import("./boxplotTypes.d.ts").Scalar} Scalar
- */
-
-/**
- * @typedef {import("./boxplotTypes.d.ts").BoxplotStatsRow} BoxplotStatsRow
- */
-
-/**
- * @typedef {import("./boxplotTypes.d.ts").BoxplotOutlierRow} BoxplotOutlierRow
- */
-
-/**
- * @typedef {import("../sampleView/types.js").AttributeInfo} AttributeInfo
- */
-
-/**
  * @typedef {object} HierarchyBoxplotOptions
  * @prop {string} [groupField]
  * @prop {string} [valueField]
@@ -48,7 +28,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  */
 
 /**
- * @param {AttributeInfo} attributeInfo
+ * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
  * @returns {Pick<import("../sampleView/types.js").AttributeValuesScope, "interval" | "aggregation">}
  */
 function getAttributeScope(attributeInfo) {
@@ -72,13 +52,13 @@ function getAttributeScope(attributeInfo) {
 }
 
 /**
- * @param {SampleHierarchy} sampleHierarchy
- * @param {AttributeInfo} attributeInfo
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
  * @param {HierarchyBoxplotOptions} [options]
  * @returns {{
- *   statsRows: BoxplotStatsRow[],
- *   outlierRows: BoxplotOutlierRow[],
- *   groupDomain: Scalar[]
+ *   statsRows: import("./boxplotTypes.d.ts").BoxplotStatsRow[],
+ *   outlierRows: import("./boxplotTypes.d.ts").BoxplotOutlierRow[],
+ *   groupDomain: import("@genome-spy/core/spec/channel.js").Scalar[]
  * }}
  */
 export function buildHierarchyBoxplotData(

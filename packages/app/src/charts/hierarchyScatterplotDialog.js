@@ -102,7 +102,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         const xTitle = xText.title;
         const yTitle = yText.title;
 
-        const dialogLabel = html`<em>${xLabel}</em> vs <em>${yLabel}</em>`;
+        const dialogLabel = html`${xLabel} vs ${yLabel}`;
         this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
 
         const { rows, groupDomain } = buildHierarchyScatterplotData(
