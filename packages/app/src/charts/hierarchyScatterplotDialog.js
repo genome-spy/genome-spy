@@ -14,6 +14,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         xAttributeInfo: {},
         yAttributeInfo: {},
         sampleHierarchy: {},
+        colorScaleRange: {},
     };
 
     static styles = [
@@ -39,6 +40,8 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         this.yAttributeInfo = null;
         /** @type {import("../sampleView/state/sampleState.js").SampleHierarchy | null} */
         this.sampleHierarchy = null;
+        /** @type {string[] | null} */
+        this.colorScaleRange = null;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -97,7 +100,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         const dialogLabel = html`<em>${xLabel}</em> vs <em>${yLabel}</em>`;
         this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
 
-        const { rows } = buildHierarchyScatterplotData(
+        const { rows, groupDomain } = buildHierarchyScatterplotData(
             this.sampleHierarchy,
             this.xAttributeInfo,
             this.yAttributeInfo,
@@ -138,6 +141,13 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             height: 300,
         };
 
+        const colorEncoding = /** @type {any} */ (spec.encoding.color);
+        colorEncoding.scale = {
+            ...(colorEncoding.scale ?? {}),
+            domain: groupDomain,
+            ...(this.colorScaleRange ? { range: this.colorScaleRange } : {}),
+        };
+
         const container = /** @type {HTMLElement} */ (
             this.renderRoot.querySelector(".chart-container")
         );
@@ -163,12 +173,14 @@ customElements.define(
  * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo
  * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {string[]} [colorScaleRange]
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
 export default function hierarchyScatterplotDialog(
     xAttributeInfo,
     yAttributeInfo,
-    sampleHierarchy
+    sampleHierarchy,
+    colorScaleRange
 ) {
     return showDialog(
         "gs-hierarchy-scatterplot-dialog",
@@ -176,6 +188,7 @@ export default function hierarchyScatterplotDialog(
             el.xAttributeInfo = xAttributeInfo;
             el.yAttributeInfo = yAttributeInfo;
             el.sampleHierarchy = sampleHierarchy;
+            el.colorScaleRange = colorScaleRange ?? null;
         }
     );
 }
