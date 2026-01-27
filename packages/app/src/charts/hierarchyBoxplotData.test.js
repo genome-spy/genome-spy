@@ -66,6 +66,8 @@ describe("buildHierarchyBoxplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const attributeInfo = {
             name: "score",
+            title: "score",
+            emphasizedName: "score",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
             accessor: (sampleId, hierarchy) =>
                 hierarchy.sampleMetadata.entities[sampleId]?.score,
@@ -101,6 +103,8 @@ describe("buildHierarchyBoxplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const attributeInfo = {
             name: "missing",
+            title: "missing",
+            emphasizedName: "missing",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "missing" },
             accessor: (sampleId, hierarchy) =>
                 hierarchy.sampleMetadata.entities[sampleId]?.missing,
@@ -120,6 +124,8 @@ describe("buildHierarchyBoxplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const attributeInfo = {
             name: "score",
+            title: "score",
+            emphasizedName: "score",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
             accessor: () => undefined,
             valuesProvider: ({ sampleIds }) =>
@@ -144,6 +150,8 @@ describe("buildHierarchyBoxplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const attributeInfo = {
             name: "mean(score)",
+            title: "mean(score)",
+            emphasizedName: "mean(score)",
             attribute: {
                 type: "VIEW_ATTRIBUTE",
                 specifier: {
@@ -175,6 +183,8 @@ describe("buildHierarchyBoxplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const attributeInfo = {
             name: "status",
+            title: "status",
+            emphasizedName: "status",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
             accessor: () => undefined,
             valuesProvider: () => [],

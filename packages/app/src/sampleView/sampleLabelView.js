@@ -10,6 +10,8 @@ const SAMPLE_NAME = "SAMPLE_NAME";
 /** @type {import("./types.js").AttributeInfo} */
 const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     name: "sample",
+    title: html`<em class="attribute">Sample</em>`,
+    emphasizedName: html`<em class="attribute">Sample</em>`,
     attribute: { type: SAMPLE_NAME },
     accessor: (/** @type {string} */ sampleId) => sampleId,
     valuesProvider: createDefaultValuesProvider(

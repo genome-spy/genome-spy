@@ -50,6 +50,8 @@ describe("buildHierarchyScatterplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const xAttributeInfo = {
             name: "a",
+            title: "a",
+            emphasizedName: "a",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "a" },
             accessor: (sampleId, hierarchy) =>
                 hierarchy.sampleMetadata.entities[sampleId]?.a,
@@ -61,6 +63,8 @@ describe("buildHierarchyScatterplotData", () => {
         };
         const yAttributeInfo = {
             name: "b",
+            title: "b",
+            emphasizedName: "b",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "b" },
             accessor: (sampleId, hierarchy) =>
                 hierarchy.sampleMetadata.entities[sampleId]?.b,
@@ -89,6 +93,8 @@ describe("buildHierarchyScatterplotData", () => {
         const sampleHierarchy = createSampleHierarchy();
         const xAttributeInfo = {
             name: "a",
+            title: "a",
+            emphasizedName: "a",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "a" },
             accessor: () => undefined,
             valuesProvider: () => [],
@@ -96,6 +102,8 @@ describe("buildHierarchyScatterplotData", () => {
         };
         const yAttributeInfo = {
             name: "b",
+            title: "b",
+            emphasizedName: "b",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "b" },
             accessor: () => undefined,
             valuesProvider: () => [],
