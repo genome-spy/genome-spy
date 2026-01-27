@@ -84,6 +84,12 @@ export class HierarchyBoxplotDialog extends BaseDialog {
         const info = this.attributeInfoSource.getAttributeInfo(
             this.attributeInfo.attribute
         );
+        const groupTitle = resolveGroupTitle(
+            this.attributeInfoSource,
+            this.sampleHierarchy.groupMetadata
+        );
+
+        const axisTitle = templateResultToString(info.emphasizedName);
 
         this.dialogTitle = html`Boxplot of ${info.title}`;
 
@@ -102,8 +108,8 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             outliersName: OUTLIERS_NAME,
             groupField: GROUP_FIELD,
             valueField: VALUE_FIELD,
-            groupTitle: "Group",
-            valueTitle: templateResultToString(info.emphasizedName),
+            groupTitle: groupTitle ?? "Group",
+            valueTitle: axisTitle,
             height: 260,
         });
 
@@ -127,6 +133,24 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 }
 
 customElements.define("gs-hierarchy-boxplot-dialog", HierarchyBoxplotDialog);
+
+/**
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
+ * @param {import("../sampleView/state/sampleState.js").GroupMetadata[]} groupMetadata
+ * @returns {string | null}
+ */
+function resolveGroupTitle(attributeInfoSource, groupMetadata) {
+    if (groupMetadata.length === 0) {
+        return null;
+    }
+
+    const labels = groupMetadata.map((entry) => {
+        const info = attributeInfoSource.getAttributeInfo(entry.attribute);
+        return templateResultToString(info.title ?? info.name);
+    });
+
+    return labels.join(" / ");
+}
 
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
