@@ -172,6 +172,14 @@ export default class SampleGroupView extends LayerView {
         });
     }
 
+    /**
+     * @override
+     */
+    async initializeChildren() {
+        await super.initializeChildren();
+        this.registerStepSizeInvalidation();
+    }
+
     updateRange() {
         const groupLocations =
             this.sampleView.locationManager.getLocations()?.groups;

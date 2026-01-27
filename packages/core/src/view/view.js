@@ -78,9 +78,6 @@ export default class View {
     /** @type {(value: number) => void} */
     #heightSetter;
 
-    /** @type {Map<string, function():void> | undefined} */
-    #sizeInvalidationUnsub;
-
     /** @type {boolean} */
     #hasRendered = false;
 
@@ -287,24 +284,6 @@ export default class View {
             )?.getScale();
 
             if (scale) {
-                const key = dimension;
-                if (!this.#sizeInvalidationUnsub?.has(key)) {
-                    const invalidate = () => this.invalidateSizeCache();
-                    const resolution = this.getScaleResolution(
-                        dimension == "width" ? "x" : "y"
-                    );
-                    if (resolution) {
-                        resolution.addEventListener("domain", invalidate);
-                        this.registerDisposer(() =>
-                            resolution.removeEventListener("domain", invalidate)
-                        );
-                        if (!this.#sizeInvalidationUnsub) {
-                            this.#sizeInvalidationUnsub = new Map();
-                        }
-                        this.#sizeInvalidationUnsub.set(key, invalidate);
-                    }
-                }
-
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
                 let steps = 0;
                 if (isDiscrete(scale.type)) {
@@ -334,7 +313,7 @@ export default class View {
                 return { px: steps * stepSize, grow: 0 };
             } else {
                 throw new ViewError(
-                    "Cannot use 'step' size with missing scale!",
+                    `Cannot use step-based size with "${dimension}"!`,
                     this
                 );
             }
@@ -344,6 +323,36 @@ export default class View {
                 (viewport ? undefined : { px: 0, grow: 1 })
             );
         }
+    }
+
+    registerStepSizeInvalidation() {
+        this.#registerStepSizeInvalidationFor("width", "x");
+        this.#registerStepSizeInvalidationFor("height", "y");
+    }
+
+    /**
+     * @param {"width" | "height"} dimension
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    #registerStepSizeInvalidationFor(dimension, channel) {
+        const value = this.spec[dimension];
+        if (!isStepSize(value)) {
+            return;
+        }
+
+        const resolution = this.getScaleResolution(channel);
+        if (!resolution) {
+            throw new ViewError(
+                `Cannot use step-based size with "${dimension}"!`,
+                this
+            );
+        }
+
+        const listener = () => this.invalidateSizeCache();
+        resolution.addEventListener("domain", listener);
+        this.registerDisposer(() =>
+            resolution.removeEventListener("domain", listener)
+        );
     }
 
     isConfiguredVisible() {
