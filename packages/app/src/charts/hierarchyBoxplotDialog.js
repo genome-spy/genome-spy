@@ -91,8 +91,6 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
         const axisTitle = templateResultToString(info.emphasizedName);
 
-        this.dialogTitle = html`Boxplot of ${info.title}`;
-
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
                 this.sampleHierarchy,
@@ -163,12 +161,15 @@ export default function hierarchyBoxplotDialog(
     sampleHierarchy,
     attributeInfoSource
 ) {
+    const info = attributeInfoSource.getAttributeInfo(attributeInfo.attribute);
+
     return showDialog(
         "gs-hierarchy-boxplot-dialog",
         (/** @type {HierarchyBoxplotDialog} */ el) => {
             el.attributeInfo = attributeInfo;
             el.sampleHierarchy = sampleHierarchy;
             el.attributeInfoSource = attributeInfoSource;
+            el.dialogTitle = html`Boxplot of ${info.title}`;
         }
     );
 }

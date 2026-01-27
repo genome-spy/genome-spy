@@ -96,9 +96,6 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             this.yAttributeInfo.attribute
         );
 
-        const dialogLabel = html`${xInfo.title} vs ${yInfo.title}`;
-        this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
-
         const { rows, groupDomain } = buildHierarchyScatterplotData(
             this.sampleHierarchy,
             this.xAttributeInfo,
@@ -134,10 +131,9 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             data: { name: DATA_NAME },
             mark: {
                 type: "point",
-                filled: true,
-                size: 40,
-                opacity: 0.8,
-                tooltip: null,
+                filled: false,
+                size: 30,
+                opacity: 0.7,
             },
             encoding: {
                 ...encoding,
@@ -201,6 +197,14 @@ export default function hierarchyScatterplotDialog(
     attributeInfoSource,
     colorScaleRange
 ) {
+    const xInfo = attributeInfoSource.getAttributeInfo(
+        xAttributeInfo.attribute
+    );
+    const yInfo = attributeInfoSource.getAttributeInfo(
+        yAttributeInfo.attribute
+    );
+    const dialogLabel = html`${xInfo.title} vs ${yInfo.title}`;
+
     return showDialog(
         "gs-hierarchy-scatterplot-dialog",
         (/** @type {HierarchyScatterplotDialog} */ el) => {
@@ -209,6 +213,7 @@ export default function hierarchyScatterplotDialog(
             el.sampleHierarchy = sampleHierarchy;
             el.attributeInfoSource = attributeInfoSource;
             el.colorScaleRange = colorScaleRange ?? null;
+            el.dialogTitle = html`Scatterplot of ${dialogLabel}`;
         }
     );
 }

@@ -109,7 +109,6 @@ function buildBoxplotSpec(options) {
             size: 30,
             stroke: "black",
             opacity: 0.5,
-            tooltip: null,
         },
         encoding: {
             y: {
@@ -163,6 +162,7 @@ function buildBoxplotSpec(options) {
             stroke: "black",
             strokeWidth: 1,
             fill: "#ccd5ae",
+            tooltip: null,
         },
         encoding: {
             y: {
