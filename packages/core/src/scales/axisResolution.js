@@ -137,6 +137,9 @@ export default class AxisResolution {
 
             return {
                 member,
+                axisTitle:
+                    // TODO: Proper type guard
+                    "axis" in channelDef ? channelDef.axis?.title : undefined,
                 explicitTitle: coalesce(
                     // TODO: Proper type guard
                     "axis" in channelDef ? channelDef.axis?.title : undefined,
@@ -150,6 +153,13 @@ export default class AxisResolution {
         };
 
         const titles = Array.from(this.#members).map(computeTitle);
+        const explicitAxisTitle = titles
+            .map((title) => title.axisTitle)
+            .find((title) => title !== undefined);
+
+        if (explicitAxisTitle !== undefined) {
+            return explicitAxisTitle;
+        }
 
         // Skip implicit secondary channel titles if the primary channel has an explicit title
         const filteredTitles = titles.filter((title) => {

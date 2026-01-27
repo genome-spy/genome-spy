@@ -10,6 +10,7 @@ import { easeQuadInOut } from "d3-ease";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
+import { appendPlotMenuItems } from "../plotMenuItems.js";
 import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
@@ -288,6 +289,7 @@ export class MetadataView extends ConcatView {
                     this.#sampleView
                 )
             );
+            appendPlotMenuItems(items, attributeInfo, this.#sampleView);
         }
 
         contextMenu({ items }, event.mouseEvent);
@@ -506,6 +508,7 @@ export class MetadataView extends ConcatView {
             type: resolution.type,
             scale: resolution.getScale(),
             title: html`<em class="attribute">${attributeName}</em>`,
+            emphasizedName: attributeName,
         };
     }
 

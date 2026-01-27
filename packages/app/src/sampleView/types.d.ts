@@ -1,14 +1,13 @@
+import { ViewAttributeSpecifier } from "./sampleViewTypes.js";
 import { SampleHierarchy } from "./state/sampleState.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
- *
- * TODO: Stricter typing
  */
 export interface AttributeIdentifier {
     type: string;
-    specifier?: unknown;
+    specifier?: string | ViewAttributeSpecifier;
 }
 
 export type IntervalPoint = number | ChromosomalLocus;
@@ -43,10 +42,10 @@ export interface AttributeInfo {
     attribute: AttributeIdentifier;
 
     /** More detailed name with optional formatting */
-    title?: string | import("lit").TemplateResult;
+    title: string | import("lit").TemplateResult;
 
     /** Formatted attribute name for context menus (e.g., with selective emphasis). */
-    emphasizedName?: string | import("lit").TemplateResult;
+    emphasizedName: string | import("lit").TemplateResult;
 
     /** Function that maps a sampleId to an attribute value */
     accessor: (sampleId: string, sampleHierarchy: SampleHierarchy) => any;

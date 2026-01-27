@@ -34,6 +34,13 @@ const spec = {
     ],
 };
 
+const layer0 = /** @type {import("../spec/view.js").UnitSpec} */ (
+    spec.layer[0]
+);
+const layer1 = /** @type {import("../spec/view.js").UnitSpec} */ (
+    spec.layer[1]
+);
+
 describe("Axes resolve properly", () => {
     test("Independent axes are independent", async () => {
         const view = await createAndInitialize(
@@ -65,6 +72,72 @@ describe("Axes resolve properly", () => {
         // @ts-ignore
         expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
             "a, b"
+        );
+    });
+
+    test("Explicit axis title overrides concatenation", async () => {
+        const view = await createAndInitialize(
+            {
+                ...spec,
+                layer: [
+                    {
+                        ...layer0,
+                        encoding: {
+                            ...layer0.encoding,
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                axis: { title: "Value" },
+                            },
+                        },
+                    },
+                    layer1,
+                ],
+                resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
+            },
+            View
+        );
+        // @ts-ignore
+        expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
+            "Value"
+        );
+    });
+
+    test("Shared axes concatenate titles when no axis title is present", async () => {
+        const view = await createAndInitialize(
+            {
+                ...spec,
+                layer: [
+                    {
+                        ...layer0,
+                        encoding: {
+                            ...layer0.encoding,
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                title: "Alpha",
+                            },
+                        },
+                    },
+                    {
+                        ...layer1,
+                        encoding: {
+                            ...layer1.encoding,
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                title: "Beta",
+                            },
+                        },
+                    },
+                ],
+                resolve: { scale: { y: "shared" }, axis: { y: "shared" } },
+            },
+            View
+        );
+        // @ts-ignore
+        expect(view.children[0].getAxisResolution("y").getTitle()).toEqual(
+            "Alpha, Beta"
         );
     });
 
@@ -184,7 +257,7 @@ describe("Axes resolve properly", () => {
             },
             UnitView
         );
-        expect(view3.getAxisResolution("x").getTitle()).toEqual("foo, bar");
+        expect(view3.getAxisResolution("x").getTitle()).toEqual("foo");
 
         let view4 = await createAndInitialize(
             {

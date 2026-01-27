@@ -10,6 +10,7 @@ import {
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
+import { appendPlotMenuItems } from "./plotMenuItems.js";
 
 /**
  * @typedef {Object} FieldInfo
@@ -199,14 +200,17 @@ export function buildIntervalAggregationMenu({
                 ? attributeInfo.accessor(sample.id, sampleHierarchy)
                 : undefined;
 
+            const submenuItems = generateAttributeContextMenu(
+                menuTitle,
+                attributeInfo,
+                attributeValue,
+                sampleView
+            );
+            appendPlotMenuItems(submenuItems, attributeInfo, sampleView);
+
             return {
                 label: opLabel,
-                submenu: generateAttributeContextMenu(
-                    menuTitle,
-                    attributeInfo,
-                    attributeValue,
-                    sampleView
-                ),
+                submenu: submenuItems,
             };
         }),
     ];
@@ -248,7 +252,7 @@ export function buildPointQueryMenu({
         ? attributeInfo.accessor(sample.id, sampleHierarchy)
         : undefined;
 
-    return generateAttributeContextMenu(
+    const items = generateAttributeContextMenu(
         null,
         attributeInfo,
         // TODO: Get the value from data
@@ -256,4 +260,7 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
+    appendPlotMenuItems(items, attributeInfo, sampleView);
+
+    return items;
 }
