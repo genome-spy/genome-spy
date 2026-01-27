@@ -115,7 +115,10 @@ export class HierarchyBoxplotDialog extends BaseDialog {
         });
 
         const xEncoding = /** @type {any} */ (spec.encoding.x);
-        xEncoding.scale = { ...(xEncoding.scale ?? {}), domain: groupDomain };
+        xEncoding.scale = {
+            ...(xEncoding.scale ?? {}),
+            domain: groupDomain.slice().reverse(),
+        };
 
         const container = /** @type {HTMLElement} */ (
             this.renderRoot.querySelector(".chart-container")
