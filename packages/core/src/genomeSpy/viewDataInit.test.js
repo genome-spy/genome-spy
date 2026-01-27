@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import UnitView from "../view/unitView.js";
 import ConcatView from "../view/concatView.js";
+import NamedSource from "../data/sources/namedSource.js";
 
 import { createTestViewContext } from "../view/testUtils.js";
 import {
@@ -381,5 +382,97 @@ describe("viewDataInit", () => {
                 delete transforms.initOnceTest;
             }
         }
+    });
+
+    test("stacked data updates named domains after dynamic data injection", async () => {
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [];
+        context.isViewConfiguredVisible = () => true;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { name: "data" },
+            transform: [
+                {
+                    type: "stack",
+                    field: "z",
+                    groupby: ["x"],
+                    as: ["y0", "y1"],
+                },
+            ],
+            mark: "rect",
+            encoding: {
+                x: { field: "x", type: "nominal", band: 0.8 },
+                y: { field: "y0", type: "quantitative" },
+                y2: { field: "y1" },
+                color: { field: "q", type: "nominal" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        if (!(root instanceof UnitView)) {
+            throw new Error("Expected a unit view for stacked test.");
+        }
+
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        const dataSource = root.flowHandle?.dataSource;
+        if (!(dataSource instanceof NamedSource)) {
+            throw new Error(
+                "Expected a named data source with updateDynamicData"
+            );
+        }
+
+        // Simulate a late-arriving named dataset update.
+        const data = [
+            { x: 1, q: "A", z: 7 },
+            { x: 1, q: "B", z: 3 },
+            { x: 1, q: "C", z: 10 },
+            { x: 2, q: "A", z: 8 },
+            { x: 2, q: "B", z: 5 },
+            { x: 3, q: "B", z: 10 },
+        ];
+
+        dataSource.updateDynamicData(data);
+
+        const collector = root.flowHandle?.collector;
+        if (!collector) {
+            throw new Error("Expected a collector after initialization.");
+        }
+
+        // Stacked output should be materialized in the collector.
+        const stacked = Array.from(collector.getData());
+        expect(stacked.length).toBe(data.length);
+        expect(
+            stacked.every(
+                (datum) =>
+                    typeof datum.y0 === "number" && typeof datum.y1 === "number"
+            )
+        ).toBe(true);
+
+        // Domains should reflect the dynamic data update.
+        expect(root.getScaleResolution("x")?.getDomain()).toEqual([1, 2, 3]);
+        expect(root.getScaleResolution("color")?.getDomain()).toEqual([
+            "A",
+            "B",
+            "C",
+        ]);
+
+        // Sanity check: max stack height per x equals group sum.
+        const maxByX = new Map();
+        for (const datum of stacked) {
+            const previous = maxByX.get(datum.x) ?? -Infinity;
+            maxByX.set(datum.x, Math.max(previous, datum.y1));
+        }
+        expect(maxByX.get(1)).toBe(20);
+        expect(maxByX.get(2)).toBe(13);
+        expect(maxByX.get(3)).toBe(10);
     });
 });

@@ -21,6 +21,7 @@ export default class StackTransform extends Transform {
     }
 
     reset() {
+        super.reset();
         this.buffer = [];
     }
 
