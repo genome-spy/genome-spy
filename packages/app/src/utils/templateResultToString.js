@@ -7,5 +7,5 @@ import { render } from "lit";
 export default function templateResultToString(templateResult) {
     const container = document.createElement("div");
     render(templateResult, container);
-    return container.textContent ?? "";
+    return (container.textContent ?? "").replace(/\s+/g, " ").trim();
 }
