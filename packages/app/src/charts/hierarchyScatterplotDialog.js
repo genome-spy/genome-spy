@@ -2,6 +2,7 @@ import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
+import { resolveAttributeText } from "./chartUtils.js";
 
 const DATA_NAME = "hierarchy_scatterplot_points";
 const GROUP_FIELD = "group";
@@ -14,6 +15,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         xAttributeInfo: {},
         yAttributeInfo: {},
         sampleHierarchy: {},
+        attributeInfoSource: {},
         colorScaleRange: {},
     };
 
@@ -36,10 +38,16 @@ export class HierarchyScatterplotDialog extends BaseDialog {
 
         /** @type {import("../sampleView/types.js").AttributeInfo | null} */
         this.xAttributeInfo = null;
+
         /** @type {import("../sampleView/types.js").AttributeInfo | null} */
         this.yAttributeInfo = null;
+
         /** @type {import("../sampleView/state/sampleState.js").SampleHierarchy | null} */
         this.sampleHierarchy = null;
+
+        /** @type {import("../sampleView/compositeAttributeInfoSource.js").default | null} */
+        this.attributeInfoSource = null;
+
         /** @type {string[] | null} */
         this.colorScaleRange = null;
 
@@ -73,29 +81,26 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         if (
             !this.xAttributeInfo ||
             !this.yAttributeInfo ||
-            !this.sampleHierarchy
+            !this.sampleHierarchy ||
+            !this.attributeInfoSource
         ) {
             throw new Error(
-                "Scatterplot dialog requires x/y attributes and sample hierarchy."
+                "Scatterplot dialog requires x/y attributes, sample hierarchy, and attribute info source."
             );
         }
 
-        const xLabel =
-            typeof this.xAttributeInfo.name == "string"
-                ? this.xAttributeInfo.name
-                : String(this.xAttributeInfo.attribute.specifier);
-        const yLabel =
-            typeof this.yAttributeInfo.name == "string"
-                ? this.yAttributeInfo.name
-                : String(this.yAttributeInfo.attribute.specifier);
-        const xTitle =
-            typeof this.xAttributeInfo.title == "string"
-                ? this.xAttributeInfo.title
-                : xLabel;
-        const yTitle =
-            typeof this.yAttributeInfo.title == "string"
-                ? this.yAttributeInfo.title
-                : yLabel;
+        const xText = resolveAttributeText(
+            this.attributeInfoSource,
+            this.xAttributeInfo
+        );
+        const yText = resolveAttributeText(
+            this.attributeInfoSource,
+            this.yAttributeInfo
+        );
+        const xLabel = xText.label;
+        const yLabel = yText.label;
+        const xTitle = xText.title;
+        const yTitle = yText.title;
 
         const dialogLabel = html`<em>${xLabel}</em> vs <em>${yLabel}</em>`;
         this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
@@ -190,9 +195,15 @@ function buildColorEncoding(groupDomain, colorScaleRange) {
 }
 
 /**
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
+ * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
+ * @returns {{ label: string, title: string }}
+ */
+/**
  * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo
  * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
  * @param {string[]} [colorScaleRange]
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
@@ -200,6 +211,7 @@ export default function hierarchyScatterplotDialog(
     xAttributeInfo,
     yAttributeInfo,
     sampleHierarchy,
+    attributeInfoSource,
     colorScaleRange
 ) {
     return showDialog(
@@ -208,6 +220,7 @@ export default function hierarchyScatterplotDialog(
             el.xAttributeInfo = xAttributeInfo;
             el.yAttributeInfo = yAttributeInfo;
             el.sampleHierarchy = sampleHierarchy;
+            el.attributeInfoSource = attributeInfoSource;
             el.colorScaleRange = colorScaleRange ?? null;
         }
     );

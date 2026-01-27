@@ -58,7 +58,8 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
         callback: () =>
             showHierarchyBoxplotDialog(
                 attributeInfo,
-                sampleView.sampleHierarchy
+                sampleView.sampleHierarchy,
+                sampleView.compositeAttributeInfoSource
             ),
     });
 
@@ -75,6 +76,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
                     attributeInfo,
                     info,
                     sampleView.sampleHierarchy,
+                    sampleView.compositeAttributeInfoSource,
                     groupColorRange
                 ),
         })),

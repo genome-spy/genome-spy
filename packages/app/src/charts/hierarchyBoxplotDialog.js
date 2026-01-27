@@ -3,6 +3,7 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { createBoxplotSpec } from "./boxplotChart.js";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
+import { resolveAttributeText } from "./chartUtils.js";
 
 const STATS_NAME = "hierarchy_boxplot_stats";
 const OUTLIERS_NAME = "hierarchy_boxplot_outliers";
@@ -14,6 +15,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
         ...super.properties,
         attributeInfo: {},
         sampleHierarchy: {},
+        attributeInfoSource: {},
     };
 
     static styles = [
@@ -35,8 +37,12 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
         /** @type {import("../sampleView/types.js").AttributeInfo | null} */
         this.attributeInfo = null;
+
         /** @type {import("../sampleView/state/sampleState.js").SampleHierarchy | null} */
         this.sampleHierarchy = null;
+
+        /** @type {import("../sampleView/compositeAttributeInfoSource.js").default | null} */
+        this.attributeInfoSource = null;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -65,24 +71,24 @@ export class HierarchyBoxplotDialog extends BaseDialog {
     }
 
     async #initializeChart() {
-        if (!this.attributeInfo || !this.sampleHierarchy) {
+        if (
+            !this.attributeInfo ||
+            !this.sampleHierarchy ||
+            !this.attributeInfoSource
+        ) {
             throw new Error(
-                "Boxplot dialog requires attribute and sample hierarchy."
+                "Boxplot dialog requires attribute, sample hierarchy, and attribute info source."
             );
         }
 
-        const attributeLabel =
-            typeof this.attributeInfo.name == "string"
-                ? this.attributeInfo.name
-                : String(this.attributeInfo.attribute.specifier);
-        const axisTitle =
-            typeof this.attributeInfo.title == "string"
-                ? this.attributeInfo.title
-                : attributeLabel;
+        const text = resolveAttributeText(
+            this.attributeInfoSource,
+            this.attributeInfo
+        );
+        const attributeLabel = text.label;
+        const axisTitle = text.title;
 
-        const dialogLabel =
-            this.attributeInfo.title ?? html`<em>${attributeLabel}</em>`;
-        this.dialogTitle = html`Boxplot of ${dialogLabel}`;
+        this.dialogTitle = html`Boxplot of <em>${attributeLabel}</em>`;
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
@@ -130,14 +136,20 @@ customElements.define("gs-hierarchy-boxplot-dialog", HierarchyBoxplotDialog);
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
-export default function hierarchyBoxplotDialog(attributeInfo, sampleHierarchy) {
+export default function hierarchyBoxplotDialog(
+    attributeInfo,
+    sampleHierarchy,
+    attributeInfoSource
+) {
     return showDialog(
         "gs-hierarchy-boxplot-dialog",
         (/** @type {HierarchyBoxplotDialog} */ el) => {
             el.attributeInfo = attributeInfo;
             el.sampleHierarchy = sampleHierarchy;
+            el.attributeInfoSource = attributeInfoSource;
         }
     );
 }
