@@ -111,6 +111,25 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             }
         );
 
+        /** @type {import("@genome-spy/core/spec/channel.js").Encoding} */
+        const encoding = {
+            x: {
+                field: X_FIELD,
+                type: "quantitative",
+                title: xTitle,
+            },
+            y: {
+                field: Y_FIELD,
+                type: "quantitative",
+                title: yTitle,
+            },
+        };
+
+        const colorEncoding = buildColorEncoding(
+            groupDomain,
+            this.colorScaleRange
+        );
+
         /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
         const spec = {
             data: { name: DATA_NAME },
@@ -122,30 +141,10 @@ export class HierarchyScatterplotDialog extends BaseDialog {
                 tooltip: null,
             },
             encoding: {
-                x: {
-                    field: X_FIELD,
-                    type: "quantitative",
-                    title: xTitle,
-                },
-                y: {
-                    field: Y_FIELD,
-                    type: "quantitative",
-                    title: yTitle,
-                },
-                color: {
-                    field: GROUP_FIELD,
-                    type: "nominal",
-                    title: "Group",
-                },
+                ...encoding,
+                ...(colorEncoding ? { color: colorEncoding } : {}),
             },
             height: 300,
-        };
-
-        const colorEncoding = /** @type {any} */ (spec.encoding.color);
-        colorEncoding.scale = {
-            ...(colorEncoding.scale ?? {}),
-            domain: groupDomain,
-            ...(this.colorScaleRange ? { range: this.colorScaleRange } : {}),
         };
 
         const container = /** @type {HTMLElement} */ (
@@ -168,6 +167,27 @@ customElements.define(
     "gs-hierarchy-scatterplot-dialog",
     HierarchyScatterplotDialog
 );
+
+/**
+ * @param {string[]} groupDomain
+ * @param {string[] | null} colorScaleRange
+ * @returns {import("@genome-spy/core/spec/channel.js").ColorDef | undefined}
+ */
+function buildColorEncoding(groupDomain, colorScaleRange) {
+    if (groupDomain.length === 0) {
+        return undefined;
+    } else {
+        return {
+            field: GROUP_FIELD,
+            type: "nominal",
+            title: "Group",
+            scale: {
+                domain: groupDomain,
+                ...(colorScaleRange ? { range: colorScaleRange } : {}),
+            },
+        };
+    }
+}
 
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo

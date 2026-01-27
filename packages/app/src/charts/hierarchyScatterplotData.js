@@ -72,7 +72,7 @@ function getAttributeScope(attributeInfo) {
  * @param {HierarchyScatterplotOptions} [options]
  * @returns {{
  *   rows: ScatterplotRow[],
- *   groupDomain: Scalar[]
+ *   groupDomain: string[]
  * }}
  */
 export function buildHierarchyScatterplotData(
@@ -96,6 +96,7 @@ export function buildHierarchyScatterplotData(
     const resolved = { ...DEFAULT_OPTIONS, ...options };
 
     const rows = [];
+    /** @type {string[]} */
     const groupDomain = [];
     const xScope = getAttributeScope(xAttributeInfo);
     const yScope = getAttributeScope(yAttributeInfo);
