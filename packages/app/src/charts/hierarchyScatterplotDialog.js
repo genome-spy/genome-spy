@@ -2,7 +2,7 @@ import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
-import { resolveAttributeText } from "./chartUtils.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 const DATA_NAME = "hierarchy_scatterplot_points";
 const GROUP_FIELD = "group";
@@ -89,20 +89,14 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             );
         }
 
-        const xText = resolveAttributeText(
-            this.attributeInfoSource,
-            this.xAttributeInfo
+        const xInfo = this.attributeInfoSource.getAttributeInfo(
+            this.xAttributeInfo.attribute
         );
-        const yText = resolveAttributeText(
-            this.attributeInfoSource,
-            this.yAttributeInfo
+        const yInfo = this.attributeInfoSource.getAttributeInfo(
+            this.yAttributeInfo.attribute
         );
-        const xLabel = xText.label;
-        const yLabel = yText.label;
-        const xTitle = xText.title;
-        const yTitle = yText.title;
 
-        const dialogLabel = html`${xLabel} vs ${yLabel}`;
+        const dialogLabel = html`${xInfo.title} vs ${yInfo.title}`;
         this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
 
         const { rows, groupDomain } = buildHierarchyScatterplotData(
@@ -121,12 +115,12 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             x: {
                 field: X_FIELD,
                 type: "quantitative",
-                title: xTitle,
+                title: templateResultToString(xInfo.emphasizedName),
             },
             y: {
                 field: Y_FIELD,
                 type: "quantitative",
-                title: yTitle,
+                title: templateResultToString(yInfo.emphasizedName),
             },
         };
 
@@ -159,9 +153,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             throw new Error("Cannot find chart container.");
         }
 
-        const api = await embed(container, spec, {
-            powerPreference: "high-performance",
-        });
+        const api = await embed(container, spec);
 
         api.updateNamedData(DATA_NAME, rows);
         this._api = api;
@@ -194,11 +186,6 @@ function buildColorEncoding(groupDomain, colorScaleRange) {
     }
 }
 
-/**
- * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
- * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
- * @returns {{ label: string, title: string }}
- */
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo
  * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo

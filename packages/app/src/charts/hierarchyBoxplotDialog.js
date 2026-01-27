@@ -3,7 +3,7 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { createBoxplotSpec } from "./boxplotChart.js";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
-import { resolveAttributeText } from "./chartUtils.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 const STATS_NAME = "hierarchy_boxplot_stats";
 const OUTLIERS_NAME = "hierarchy_boxplot_outliers";
@@ -81,14 +81,11 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             );
         }
 
-        const text = resolveAttributeText(
-            this.attributeInfoSource,
-            this.attributeInfo
+        const info = this.attributeInfoSource.getAttributeInfo(
+            this.attributeInfo.attribute
         );
-        const attributeLabel = text.label;
-        const axisTitle = text.title;
 
-        this.dialogTitle = html`Boxplot of ${attributeLabel}`;
+        this.dialogTitle = html`Boxplot of ${info.title}`;
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
@@ -106,7 +103,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             groupField: GROUP_FIELD,
             valueField: VALUE_FIELD,
             groupTitle: "Group",
-            valueTitle: axisTitle,
+            valueTitle: templateResultToString(info.emphasizedName),
             height: 260,
         });
 
@@ -120,9 +117,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
             throw new Error("Cannot find chart container.");
         }
 
-        const api = await embed(container, spec, {
-            powerPreference: "high-performance",
-        });
+        const api = await embed(container, spec);
 
         api.updateNamedData(STATS_NAME, statsRows);
         api.updateNamedData(OUTLIERS_NAME, outlierRows);

@@ -1,7 +1,3 @@
-import { embed } from "@genome-spy/core";
-import { field } from "@genome-spy/core/utils/field.js";
-import { boxplotStats } from "../utils/statistics/boxplot.js";
-
 /** @type {BoxplotChartOptions} */
 const DEFAULT_OPTIONS = Object.freeze({
     statsName: "boxplot_stats",
@@ -38,9 +34,6 @@ const DEFAULT_OPTIONS = Object.freeze({
 
 /**
  * @typedef {import("./boxplotTypes.d.ts").BoxplotStatsRow} BoxplotStatsRow
- */
-
-/**
  * @typedef {import("./boxplotTypes.d.ts").BoxplotOutlierRow} BoxplotOutlierRow
  */
 
@@ -217,105 +210,6 @@ function buildBoxplotSpec(options) {
     spec.layer.push(outliersLayer, whiskersLayer, boxLayer, medianLayer);
 
     return spec;
-}
-
-/**
- * @template T
- * @param {T[]} data
- * @param {ResolvedBoxplotOptions} options
- * @returns {{ statsRows: BoxplotStatsRow[], outlierRows: BoxplotOutlierRow[] }}
- */
-function computeBoxplotData(data, options) {
-    const valueAccessor = field(options.valueField);
-    const groupAccessor = field(options.groupField);
-
-    /** @type {Map<import("@genome-spy/core/spec/channel.js").Scalar, T[]>} */
-    const groups = new Map();
-
-    for (const datum of data) {
-        const group = groupAccessor(datum);
-        let entries = groups.get(group);
-        if (!entries) {
-            entries = [];
-            groups.set(group, entries);
-        }
-        entries.push(datum);
-    }
-
-    /** @type {BoxplotStatsRow[]} */
-    const statsRows = [];
-    /** @type {BoxplotOutlierRow[]} */
-    const outlierRows = [];
-
-    for (const [group, groupData] of groups) {
-        const { statistics, outliers } = boxplotStats(
-            groupData,
-            valueAccessor,
-            {
-                coef: options.coef,
-                dropNaN: options.dropNaN,
-            }
-        );
-
-        if (statistics) {
-            statsRows.push({
-                [options.groupField]: group,
-                ...statistics,
-            });
-        }
-
-        for (const outlier of outliers) {
-            const row = { ...outlier };
-            row[options.groupField] = group;
-            row[options.valueField] = valueAccessor(outlier);
-            outlierRows.push(row);
-        }
-    }
-
-    return { statsRows, outlierRows };
-}
-
-/**
- * @template T
- * @param {HTMLElement | string} el
- * @param {T[]} data
- * @param {BoxplotChartOptions} [options]
- * @returns {Promise<{
- *   api: import("@genome-spy/core/types/embedApi.js").EmbedResult,
- *   updateData: (nextData: T[]) => void
- * }>}
- */
-export async function createBoxplotChart(el, data, options = {}) {
-    const resolved = resolveOptions(options);
-    const spec = buildBoxplotSpec(resolved);
-
-    let embedOptions = resolved.embedOptions;
-    if (!embedOptions) {
-        embedOptions = {};
-    }
-
-    const api = await embed(el, spec, embedOptions);
-
-    /**
-     * @param {T[]} nextData
-     */
-    const updateData = (nextData) => {
-        if (!Array.isArray(nextData)) {
-            throw new Error("Boxplot chart expects an array of data.");
-        }
-
-        const { statsRows, outlierRows } = computeBoxplotData(
-            nextData,
-            resolved
-        );
-
-        api.updateNamedData(resolved.statsName, statsRows);
-        api.updateNamedData(resolved.outliersName, outlierRows);
-    };
-
-    updateData(data);
-
-    return { api, updateData };
 }
 
 /**
