@@ -2,6 +2,7 @@ import { embed } from "@genome-spy/core";
 import { field } from "@genome-spy/core/utils/field.js";
 import { boxplotStats } from "../utils/statistics/boxplot.js";
 
+/** @type {BoxplotChartOptions} */
 const DEFAULT_OPTIONS = Object.freeze({
     statsName: "boxplot_stats",
     outliersName: "boxplot_outliers",
