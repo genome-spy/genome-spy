@@ -55,7 +55,6 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @returns {ResolvedBoxplotOptions}
  */
 function resolveOptions(options = {}) {
-    /** @type {ResolvedBoxplotOptions} */
     const resolved = { ...DEFAULT_OPTIONS, ...options };
 
     if (resolved.groupTitle === undefined) {
@@ -66,7 +65,7 @@ function resolveOptions(options = {}) {
         resolved.valueTitle = resolved.valueField;
     }
 
-    return resolved;
+    return /** @type {ResolvedBoxplotOptions} */ (resolved);
 }
 
 /**
