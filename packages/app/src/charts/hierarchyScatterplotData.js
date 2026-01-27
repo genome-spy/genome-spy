@@ -10,6 +10,7 @@ const DEFAULT_OPTIONS = Object.freeze({
     groupField: "group",
     xField: "x",
     yField: "y",
+    sampleField: "sample",
     groupLabelSeparator: " / ",
 });
 
@@ -18,6 +19,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @prop {string} [groupField]
  * @prop {string} [xField]
  * @prop {string} [yField]
+ * @prop {string} [sampleField]
  * @prop {string} [groupLabelSeparator]
  */
 
@@ -26,6 +28,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  *   groupField: string,
  *   xField: string,
  *   yField: string,
+ *   sampleField: string,
  *   groupLabelSeparator: string
  * }} ResolvedHierarchyScatterplotOptions
  */
@@ -36,7 +39,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo
  * @param {HierarchyScatterplotOptions} [options]
  * @returns {{
- *   rows: (Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number> & { sampleId: string })[],
+ *   rows: Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number>[],
  *   groupDomain: string[]
  * }}
  */
@@ -111,7 +114,7 @@ export function buildHierarchyScatterplotData(
             }
 
             rows.push({
-                sampleId: sampleIds[i],
+                [resolved.sampleField]: sampleIds[i],
                 [resolved.xField]: x,
                 [resolved.yField]: y,
                 [resolved.groupField]: groupLabel,

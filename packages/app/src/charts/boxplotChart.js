@@ -4,6 +4,7 @@ const DEFAULT_OPTIONS = Object.freeze({
     outliersName: "boxplot_outliers",
     groupField: "group",
     valueField: "value",
+    sampleField: "sample",
     groupType: "nominal",
     bandPadding: 0.3,
     groupTitle: undefined,
@@ -21,6 +22,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @prop {string} [outliersName]
  * @prop {string} [groupField]
  * @prop {string} [valueField]
+ * @prop {string} [sampleField]
  * @prop {import("@genome-spy/core/spec/channel.js").Type} [groupType]
  * @prop {number} [bandPadding]
  * @prop {string} [groupTitle]
@@ -43,6 +45,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  *   outliersName: string,
  *   groupField: string,
  *   valueField: string,
+ *   sampleField: string,
  *   groupType: import("@genome-spy/core/spec/channel.js").Type,
  *   bandPadding: number,
  *   groupTitle: string,

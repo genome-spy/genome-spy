@@ -9,3 +9,7 @@ export type BoxplotStatistics = NonNullable<
 export type BoxplotStatsRow = BoxplotStatistics & Record<string, Scalar>;
 
 export type BoxplotOutlierRow = Record<string, any>;
+
+export type BoxplotFieldKey = "groupField" | "valueField" | "sampleField";
+
+export type BoxplotFieldNames = Record<BoxplotFieldKey, string>;

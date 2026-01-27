@@ -83,9 +83,9 @@ describe("buildHierarchyScatterplotData", () => {
 
         expect(groupDomain).toEqual(["Group A", "Group B"]);
         expect(rows).toEqual([
-            { sampleId: "s1", x: 1, y: 10, group: "Group A" },
-            { sampleId: "s2", x: 2, y: 11, group: "Group A" },
-            { sampleId: "s4", x: 4, y: 13, group: "Group B" },
+            { sample: "s1", x: 1, y: 10, group: "Group A" },
+            { sample: "s2", x: 2, y: 11, group: "Group A" },
+            { sample: "s4", x: 4, y: 13, group: "Group B" },
         ]);
     });
 

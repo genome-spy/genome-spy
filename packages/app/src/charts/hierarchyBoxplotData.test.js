@@ -92,7 +92,7 @@ describe("buildHierarchyBoxplotData", () => {
 
         expect(outlierRows).toEqual([
             {
-                sampleId: "s5",
+                sample: "s5",
                 group: "Group A / Sub A",
                 value: 100,
             },

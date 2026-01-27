@@ -10,6 +10,7 @@ import {
 const DEFAULT_OPTIONS = Object.freeze({
     groupField: "group",
     valueField: "value",
+    sampleField: "sample",
     groupLabelSeparator: " / ",
     coef: undefined,
     dropNaN: undefined,
@@ -19,6 +20,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @typedef {object} HierarchyBoxplotOptions
  * @prop {string} [groupField]
  * @prop {string} [valueField]
+ * @prop {string} [sampleField]
  * @prop {string} [groupLabelSeparator]
  * @prop {number} [coef]
  * @prop {boolean} [dropNaN]
@@ -28,6 +30,7 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @typedef {HierarchyBoxplotOptions & {
  *   groupField: string,
  *   valueField: string,
+ *   sampleField: string,
  *   groupLabelSeparator: string
  * }} ResolvedHierarchyBoxplotOptions
  */
@@ -87,8 +90,8 @@ export function buildHierarchyBoxplotData(
         }
 
         const sampleRows = sampleIds.map((sampleId, index) => ({
-            sampleId,
-            value: values[index],
+            [resolved.sampleField]: sampleId,
+            [resolved.valueField]: values[index],
         }));
 
         if (sampleRows.length === 0) {
@@ -97,7 +100,7 @@ export function buildHierarchyBoxplotData(
 
         const { statistics, outliers } = boxplotStats(
             sampleRows,
-            (datum) => datum.value,
+            (datum) => datum[resolved.valueField],
             {
                 coef: resolved.coef,
                 dropNaN: resolved.dropNaN,
@@ -114,9 +117,9 @@ export function buildHierarchyBoxplotData(
 
         for (const outlier of outliers) {
             outlierRows.push({
-                sampleId: outlier.sampleId,
                 [resolved.groupField]: groupLabel,
-                [resolved.valueField]: outlier.value,
+                [resolved.sampleField]: outlier[resolved.sampleField],
+                [resolved.valueField]: outlier[resolved.valueField],
             });
         }
     }

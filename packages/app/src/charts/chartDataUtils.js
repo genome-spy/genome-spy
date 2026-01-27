@@ -1,3 +1,5 @@
+import templateResultToString from "../utils/templateResultToString.js";
+
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
  * @returns {Pick<import("../sampleView/types.js").AttributeValuesScope, "interval" | "aggregation">}
@@ -47,4 +49,39 @@ export function getGroupSamples(path) {
     }
 
     return leaf.samples;
+}
+
+/**
+ * @param {string} field
+ * @returns {string}
+ */
+export function escapeFieldName(field) {
+    return field
+        .replaceAll("\\", "\\\\")
+        .replaceAll(".", "\\.")
+        .replaceAll("[", "\\[")
+        .replaceAll("]", "\\]");
+}
+
+/**
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
+ * @param {import("../sampleView/state/sampleState.js").GroupMetadata[]} groupMetadata
+ * @param {string} [separator]
+ * @returns {string | null}
+ */
+export function resolveGroupTitle(
+    attributeInfoSource,
+    groupMetadata,
+    separator = " / "
+) {
+    if (groupMetadata.length === 0) {
+        return null;
+    }
+
+    const labels = groupMetadata.map((entry) => {
+        const info = attributeInfoSource.getAttributeInfo(entry.attribute);
+        return templateResultToString(info.title);
+    });
+
+    return labels.join(separator);
 }

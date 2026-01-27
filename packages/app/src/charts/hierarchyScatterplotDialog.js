@@ -2,12 +2,10 @@ import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
+import { escapeFieldName, resolveGroupTitle } from "./chartDataUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
 
 const DATA_NAME = "hierarchy_scatterplot_points";
-const GROUP_FIELD = "group";
-const X_FIELD = "x";
-const Y_FIELD = "y";
 
 export class HierarchyScatterplotDialog extends BaseDialog {
     static properties = {
@@ -96,33 +94,44 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             this.yAttributeInfo.attribute
         );
 
+        const xTitle = templateResultToString(xInfo.emphasizedName);
+        const yTitle = templateResultToString(yInfo.emphasizedName);
+        const groupTitle = resolveGroupTitle(
+            this.attributeInfoSource,
+            this.sampleHierarchy.groupMetadata
+        );
+        const groupFieldName = groupTitle ?? "Group";
+
         const { rows, groupDomain } = buildHierarchyScatterplotData(
             this.sampleHierarchy,
             this.xAttributeInfo,
             this.yAttributeInfo,
             {
-                groupField: GROUP_FIELD,
-                xField: X_FIELD,
-                yField: Y_FIELD,
+                groupField: groupFieldName,
+                xField: xTitle,
+                yField: yTitle,
+                sampleField: "sample",
             }
         );
 
         /** @type {import("@genome-spy/core/spec/channel.js").Encoding} */
         const encoding = {
             x: {
-                field: X_FIELD,
+                field: escapeFieldName(xTitle),
                 type: "quantitative",
-                title: templateResultToString(xInfo.emphasizedName),
+                title: xTitle,
             },
             y: {
-                field: Y_FIELD,
+                field: escapeFieldName(yTitle),
                 type: "quantitative",
-                title: templateResultToString(yInfo.emphasizedName),
+                title: yTitle,
             },
         };
 
         const colorEncoding = buildColorEncoding(
             groupDomain,
+            groupFieldName,
+            groupTitle ?? "Group",
             this.colorScaleRange
         );
 
@@ -163,17 +172,24 @@ customElements.define(
 
 /**
  * @param {string[]} groupDomain
+ * @param {string} groupField
+ * @param {string} groupTitle
  * @param {string[] | null} colorScaleRange
  * @returns {import("@genome-spy/core/spec/channel.js").ColorDef | undefined}
  */
-function buildColorEncoding(groupDomain, colorScaleRange) {
+function buildColorEncoding(
+    groupDomain,
+    groupField,
+    groupTitle,
+    colorScaleRange
+) {
     if (groupDomain.length === 0) {
         return undefined;
     } else {
         return {
-            field: GROUP_FIELD,
+            field: escapeFieldName(groupField),
             type: "nominal",
-            title: "Group",
+            title: groupTitle,
             scale: {
                 domain: groupDomain,
                 ...(colorScaleRange ? { range: colorScaleRange } : {}),

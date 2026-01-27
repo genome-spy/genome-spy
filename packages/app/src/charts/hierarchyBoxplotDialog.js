@@ -3,12 +3,11 @@ import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
 import { createBoxplotSpec } from "./boxplotChart.js";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
+import { escapeFieldName, resolveGroupTitle } from "./chartDataUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
 
 const STATS_NAME = "hierarchy_boxplot_stats";
 const OUTLIERS_NAME = "hierarchy_boxplot_outliers";
-const GROUP_FIELD = "group";
-const VALUE_FIELD = "value";
 
 export class HierarchyBoxplotDialog extends BaseDialog {
     static properties = {
@@ -90,22 +89,26 @@ export class HierarchyBoxplotDialog extends BaseDialog {
         );
 
         const axisTitle = templateResultToString(info.emphasizedName);
+        const groupFieldName = groupTitle ?? "Group";
+        const valueFieldName = axisTitle;
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
                 this.sampleHierarchy,
                 this.attributeInfo,
                 {
-                    groupField: GROUP_FIELD,
-                    valueField: VALUE_FIELD,
+                    groupField: groupFieldName,
+                    valueField: valueFieldName,
+                    sampleField: "sample",
                 }
             );
 
         const spec = createBoxplotSpec({
             statsName: STATS_NAME,
             outliersName: OUTLIERS_NAME,
-            groupField: GROUP_FIELD,
-            valueField: VALUE_FIELD,
+            groupField: escapeFieldName(groupFieldName),
+            valueField: escapeFieldName(valueFieldName),
+            sampleField: "sample",
             groupTitle: groupTitle ?? "Group",
             valueTitle: axisTitle,
             height: 260,
@@ -131,24 +134,6 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 }
 
 customElements.define("gs-hierarchy-boxplot-dialog", HierarchyBoxplotDialog);
-
-/**
- * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
- * @param {import("../sampleView/state/sampleState.js").GroupMetadata[]} groupMetadata
- * @returns {string | null}
- */
-function resolveGroupTitle(attributeInfoSource, groupMetadata) {
-    if (groupMetadata.length === 0) {
-        return null;
-    }
-
-    const labels = groupMetadata.map((entry) => {
-        const info = attributeInfoSource.getAttributeInfo(entry.attribute);
-        return templateResultToString(info.title);
-    });
-
-    return labels.join(" / ");
-}
 
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
