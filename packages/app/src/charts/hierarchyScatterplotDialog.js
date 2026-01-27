@@ -1,8 +1,10 @@
 import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
 import { escapeFieldName, resolveGroupTitle } from "./chartDataUtils.js";
+import { downloadChartPng } from "./chartDialogUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
 
 const DATA_NAME = "hierarchy_scatterplot_points";
@@ -73,6 +75,24 @@ export class HierarchyScatterplotDialog extends BaseDialog {
 
     renderBody() {
         return html`<div class="chart-container"></div>`;
+    }
+
+    renderButtons() {
+        return [
+            this.makeButton(
+                "Save PNG",
+                () => {
+                    downloadChartPng(
+                        this.renderRoot,
+                        this._api,
+                        "genomespy-scatterplot.png"
+                    );
+                    return true;
+                },
+                faDownload
+            ),
+            this.makeCloseButton(),
+        ];
     }
 
     async #initializeChart() {

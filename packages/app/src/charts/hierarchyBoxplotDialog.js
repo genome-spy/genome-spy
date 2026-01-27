@@ -1,9 +1,11 @@
 import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
 import { embed } from "@genome-spy/core";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { createBoxplotSpec } from "./boxplotChart.js";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
 import { escapeFieldName, resolveGroupTitle } from "./chartDataUtils.js";
+import { downloadChartPng } from "./chartDialogUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
 
 const STATS_NAME = "hierarchy_boxplot_stats";
@@ -67,6 +69,24 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
     renderBody() {
         return html`<div class="chart-container"></div>`;
+    }
+
+    renderButtons() {
+        return [
+            this.makeButton(
+                "Save PNG",
+                () => {
+                    downloadChartPng(
+                        this.renderRoot,
+                        this._api,
+                        "genomespy-boxplot.png"
+                    );
+                    return true;
+                },
+                faDownload
+            ),
+            this.makeCloseButton(),
+        ];
     }
 
     async #initializeChart() {
