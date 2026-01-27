@@ -32,14 +32,14 @@ export class SampleLabelView extends UnitView {
 
     /**
      * @param {import("./sampleView.js").default} sampleView
-     * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
+     * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
-    constructor(sampleView, dataParent) {
+    constructor(sampleView, sidebarView) {
         super(
             createLabelViewSpec(sampleView.spec.samples),
             sampleView.context,
-            sampleView,
-            dataParent,
+            sidebarView,
+            sidebarView,
             "metadata-sample-label"
         );
 

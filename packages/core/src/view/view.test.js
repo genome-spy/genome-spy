@@ -1,12 +1,20 @@
 import { describe, expect, test } from "vitest";
 import UnitView from "./unitView.js";
 
-import { create, createAndInitialize } from "./testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createTestViewContext,
+} from "./testUtils.js";
 import { toRegularArray as r } from "../utils/domainArray.js";
 import ConcatView from "./concatView.js";
 import PointMark from "../marks/point.js";
 import View from "./view.js";
 import LayerView from "./layerView.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
@@ -196,6 +204,131 @@ describe("Test domain handling", () => {
             },
             LayerView
         ).then((view) => expect(view.children[0].isDomainInert()).toBe(true)));
+});
+
+describe("Step sizing and domain updates", () => {
+    test("Layer view width updates when discrete domain grows", async () => {
+        // Non-obvious: step sizing depends on the x-scale domain, which is owned
+        // by a child unit view. Ensure the parent layer size updates on data changes.
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [{ x: "a" }, { x: "b" }];
+
+        const spec = {
+            width: { step: 10 },
+            height: 10,
+            data: { name: "data" },
+            layer: [
+                {
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "x", type: "nominal" },
+                        y: { value: 0 },
+                        y2: { value: 1 },
+                    },
+                },
+            ],
+        };
+
+        const view = await context.createOrImportView(spec, null, null, "root");
+        expect(view).toBeInstanceOf(LayerView);
+
+        view.visit((v) => {
+            if (v instanceof UnitView) {
+                v.mark.initializeEncoders();
+            }
+        });
+
+        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
+        await loadViewSubtreeData(view, dataSources);
+
+        const initialWidth = view.getSize().width.px;
+        const named = context.dataFlow.findNamedDataSource("data");
+        named.dataSource.updateDynamicData([
+            { x: "a" },
+            { x: "b" },
+            { x: "c" },
+        ]);
+
+        const updatedWidth = view.getSize().width.px;
+        expect(updatedWidth).toBeGreaterThan(initialWidth);
+    });
+
+    test("Layer view width updates when group depth changes", async () => {
+        // Non-obvious: mirrors SampleGroupView (encoding on LayerView, data via named source).
+        const context = createTestViewContext();
+        context.getNamedDataFromProvider = () => [
+            { _index: 0, _depth: 1, name: "A", title: "A" },
+            { _index: 1, _depth: 2, name: "B", title: "B" },
+        ];
+
+        const spec = {
+            width: { step: 22 },
+            height: 10,
+            data: { name: "groups" },
+            transform: [
+                { type: "filter", expr: "datum._depth > 0" },
+                { type: "formula", as: "_y1", expr: "datum._index * 2" },
+                { type: "formula", as: "_y2", expr: "datum._index * 2 + 1" },
+                {
+                    type: "formula",
+                    as: "_title",
+                    expr: "datum.title || datum.name",
+                },
+                { type: "formula", as: "_NA", expr: "datum._title === null" },
+                {
+                    type: "formula",
+                    as: "_title",
+                    expr: "datum._title !== null ? datum._title: 'NA'",
+                },
+            ],
+            encoding: {
+                x: {
+                    field: "_depth",
+                    type: "ordinal",
+                    scale: { align: 0, padding: 0.2272727 },
+                    axis: null,
+                },
+                y: {
+                    field: "_y1",
+                    type: "nominal",
+                    scale: { type: "ordinal", domain: [0, 1, 2, 3] },
+                    axis: null,
+                },
+                y2: { field: "_y2" },
+            },
+            layer: [
+                { mark: { type: "rect" } },
+                {
+                    mark: { type: "text" },
+                    encoding: { text: { field: "_title" } },
+                },
+            ],
+        };
+
+        const view = await context.createOrImportView(spec, null, null, "root");
+        expect(view).toBeInstanceOf(LayerView);
+
+        view.visit((v) => {
+            if (v instanceof UnitView) {
+                v.mark.initializeEncoders();
+            }
+        });
+
+        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
+        await loadViewSubtreeData(view, dataSources);
+
+        const initialWidth = view.getSize().width.px;
+
+        const named = context.dataFlow.findNamedDataSource("groups");
+        named.dataSource.updateDynamicData([
+            { _index: 0, _depth: 1, name: "A", title: "A" },
+            { _index: 1, _depth: 2, name: "B", title: "B" },
+            { _index: 2, _depth: 3, name: "C", title: "C" },
+        ]);
+
+        const updatedWidth = view.getSize().width.px;
+        expect(updatedWidth).toBeGreaterThan(initialWidth);
+    });
 });
 
 describe("Utility methods", () => {

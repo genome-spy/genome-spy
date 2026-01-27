@@ -70,9 +70,9 @@ export class MetadataView extends ConcatView {
 
     /**
      * @param {import("../sampleView.js").default} sampleView
-     * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
+     * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
-    constructor(sampleView, dataParent) {
+    constructor(sampleView, sidebarView) {
         super(
             {
                 title: "Sample metadata",
@@ -86,8 +86,8 @@ export class MetadataView extends ConcatView {
                 },
             },
             sampleView.context,
-            sampleView,
-            dataParent,
+            sidebarView,
+            sidebarView,
             "sample-metadata"
         );
 

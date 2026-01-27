@@ -359,7 +359,7 @@ export default class ScaleResolution {
         }
 
         const listener = () => {
-            this.reconfigureDomain();
+            this.reconfigureDomain(true);
         };
 
         /** @type {(() => void)[]} */
@@ -521,8 +521,10 @@ export default class ScaleResolution {
      * Reconfigures only the effective domain (configured + data-derived).
      *
      * Use this when data changes but the scale membership and properties are stable.
+     *
+     * @param {boolean} [forceNotify]
      */
-    reconfigureDomain() {
+    reconfigureDomain(forceNotify = false) {
         const state = this.#computeScaleState(true, true);
         if (!state) {
             return;
@@ -543,6 +545,14 @@ export default class ScaleResolution {
                     );
                 }
             });
+        }
+        if (
+            forceNotify &&
+            targetDomain != null &&
+            domainMatches &&
+            state.domainWasInitialized
+        ) {
+            this.#notifyListeners("domain");
         }
         this.#finalizeReconfigure(state);
     }

@@ -1,6 +1,4 @@
 import { range } from "d3-array";
-import { peek } from "@genome-spy/core/utils/arrayUtils.js";
-import { invalidatePrefix } from "@genome-spy/core/utils/propertyCacher.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
 import { contextMenu } from "../utils/ui/contextMenu.js";
 import { iterateGroupHierarchy } from "./state/sampleSlice.js";
@@ -10,9 +8,9 @@ import { render } from "lit";
 export default class SampleGroupView extends LayerView {
     /**
      * @param {import("./sampleView.js").default} sampleView
-     * @param {import("@genome-spy/core/view/containerView.js").default} dataParent
+     * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
-    constructor(sampleView, dataParent) {
+    constructor(sampleView, sidebarView) {
         super(
             {
                 title: {
@@ -119,8 +117,8 @@ export default class SampleGroupView extends LayerView {
                 ],
             },
             sampleView.context,
-            sampleView,
-            dataParent,
+            sidebarView,
+            sidebarView,
             "sample-groups"
         );
 
@@ -231,11 +229,6 @@ export default class SampleGroupView extends LayerView {
         if (groupLocations.length) {
             this.updateRange();
         }
-
-        // TODO: Get rid of the following. Should happen automatically:
-        peek([...this.getLayoutAncestors()]).visit((view) =>
-            invalidatePrefix(view, "size")
-        );
     }
 
     #getAttributeTitles() {

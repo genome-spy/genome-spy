@@ -130,6 +130,7 @@ export default class GridView extends ContainerView {
         const gridChild = new GridChild(view, this, this.#childSerial);
         this.#childSerial++;
         this.#children.splice(index, 0, gridChild);
+        this.invalidateSizeCache();
         return gridChild;
     }
 
@@ -162,6 +163,7 @@ export default class GridView extends ContainerView {
         }
         this.#disposeGridChild(gridChild);
         this.#children.splice(index, 1);
+        this.invalidateSizeCache();
     }
 
     get #visibleChildren() {
@@ -188,6 +190,7 @@ export default class GridView extends ContainerView {
         for (const view of views) {
             this.appendChild(view);
         }
+        this.invalidateSizeCache();
     }
 
     /**

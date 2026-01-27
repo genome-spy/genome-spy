@@ -78,6 +78,9 @@ export default class View {
     /** @type {(value: number) => void} */
     #heightSetter;
 
+    /** @type {Map<string, function():void> | undefined} */
+    #sizeInvalidationUnsub;
+
     /** @type {boolean} */
     #hasRendered = false;
 
@@ -264,11 +267,12 @@ export default class View {
      */
     #getDimensionSize(dimension) {
         let value = this.spec[dimension];
+        const needsStepInvalidation = isStepSize(value);
 
         const viewport =
             dimension == "viewportWidth" || dimension == "viewportHeight";
 
-        if (isStepSize(value)) {
+        if (needsStepInvalidation) {
             if (viewport) {
                 throw new ViewError(
                     `Cannot use step-based size with "${dimension}"!`,
@@ -283,6 +287,24 @@ export default class View {
             )?.getScale();
 
             if (scale) {
+                const key = dimension;
+                if (!this.#sizeInvalidationUnsub?.has(key)) {
+                    const invalidate = () => this.invalidateSizeCache();
+                    const resolution = this.getScaleResolution(
+                        dimension == "width" ? "x" : "y"
+                    );
+                    if (resolution) {
+                        resolution.addEventListener("domain", invalidate);
+                        this.registerDisposer(() =>
+                            resolution.removeEventListener("domain", invalidate)
+                        );
+                        if (!this.#sizeInvalidationUnsub) {
+                            this.#sizeInvalidationUnsub = new Map();
+                        }
+                        this.#sizeInvalidationUnsub.set(key, invalidate);
+                    }
+                }
+
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
                 let steps = 0;
                 if (isDiscrete(scale.type)) {
@@ -855,7 +877,9 @@ export default class View {
     }
 
     invalidateSizeCache() {
-        this._invalidateCacheByPrefix("size/", "ancestors");
+        // Clear both "size" and "size/*" cache keys.
+        invalidatePrefix(this, "size");
+        this._invalidateCacheByPrefix("size", "ancestors");
     }
 
     /**
