@@ -198,6 +198,9 @@ function buildBoxplotSpec(options) {
                 type: options.groupType,
                 band: 0,
                 title: options.groupTitle,
+                axis: {
+                    labelAngle: 0,
+                },
             },
             x2: {
                 field: groupField,
