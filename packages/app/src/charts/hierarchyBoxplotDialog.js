@@ -13,7 +13,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         attributeInfo: {},
-        sampleView: {},
+        sampleHierarchy: {},
     };
 
     static styles = [
@@ -35,8 +35,8 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
         /** @type {import("../sampleView/types.js").AttributeInfo | null} */
         this.attributeInfo = null;
-        /** @type {import("../sampleView/sampleView.js").default | null} */
-        this.sampleView = null;
+        /** @type {import("../sampleView/state/sampleState.js").SampleHierarchy | null} */
+        this.sampleHierarchy = null;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -65,9 +65,9 @@ export class HierarchyBoxplotDialog extends BaseDialog {
     }
 
     async #initializeChart() {
-        if (!this.attributeInfo || !this.sampleView) {
+        if (!this.attributeInfo || !this.sampleHierarchy) {
             throw new Error(
-                "Boxplot dialog requires attribute and sample view."
+                "Boxplot dialog requires attribute and sample hierarchy."
             );
         }
 
@@ -86,7 +86,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(
-                this.sampleView.sampleHierarchy,
+                this.sampleHierarchy,
                 this.attributeInfo,
                 {
                     groupField: GROUP_FIELD,
@@ -129,15 +129,15 @@ customElements.define("gs-hierarchy-boxplot-dialog", HierarchyBoxplotDialog);
 
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
- * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
-export default function hierarchyBoxplotDialog(attributeInfo, sampleView) {
+export default function hierarchyBoxplotDialog(attributeInfo, sampleHierarchy) {
     return showDialog(
         "gs-hierarchy-boxplot-dialog",
         (/** @type {HierarchyBoxplotDialog} */ el) => {
             el.attributeInfo = attributeInfo;
-            el.sampleView = sampleView;
+            el.sampleHierarchy = sampleHierarchy;
         }
     );
 }

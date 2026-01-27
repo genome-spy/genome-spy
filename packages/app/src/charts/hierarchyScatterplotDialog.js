@@ -13,7 +13,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         ...super.properties,
         xAttributeInfo: {},
         yAttributeInfo: {},
-        sampleView: {},
+        sampleHierarchy: {},
     };
 
     static styles = [
@@ -37,8 +37,8 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         this.xAttributeInfo = null;
         /** @type {import("../sampleView/types.js").AttributeInfo | null} */
         this.yAttributeInfo = null;
-        /** @type {import("../sampleView/sampleView.js").default | null} */
-        this.sampleView = null;
+        /** @type {import("../sampleView/state/sampleState.js").SampleHierarchy | null} */
+        this.sampleHierarchy = null;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -67,9 +67,13 @@ export class HierarchyScatterplotDialog extends BaseDialog {
     }
 
     async #initializeChart() {
-        if (!this.xAttributeInfo || !this.yAttributeInfo || !this.sampleView) {
+        if (
+            !this.xAttributeInfo ||
+            !this.yAttributeInfo ||
+            !this.sampleHierarchy
+        ) {
             throw new Error(
-                "Scatterplot dialog requires x/y attributes and sample view."
+                "Scatterplot dialog requires x/y attributes and sample hierarchy."
             );
         }
 
@@ -94,7 +98,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         this.dialogTitle = html`Scatterplot of ${dialogLabel}`;
 
         const { rows } = buildHierarchyScatterplotData(
-            this.sampleView.sampleHierarchy,
+            this.sampleHierarchy,
             this.xAttributeInfo,
             this.yAttributeInfo,
             {
@@ -158,20 +162,20 @@ customElements.define(
 /**
  * @param {import("../sampleView/types.js").AttributeInfo} xAttributeInfo
  * @param {import("../sampleView/types.js").AttributeInfo} yAttributeInfo
- * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
 export default function hierarchyScatterplotDialog(
     xAttributeInfo,
     yAttributeInfo,
-    sampleView
+    sampleHierarchy
 ) {
     return showDialog(
         "gs-hierarchy-scatterplot-dialog",
         (/** @type {HierarchyScatterplotDialog} */ el) => {
             el.xAttributeInfo = xAttributeInfo;
             el.yAttributeInfo = yAttributeInfo;
-            el.sampleView = sampleView;
+            el.sampleHierarchy = sampleHierarchy;
         }
     );
 }

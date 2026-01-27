@@ -26,7 +26,11 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
 
     items.push(DIVIDER, {
         label: "Show a boxplot",
-        callback: () => showHierarchyBoxplotDialog(attributeInfo, sampleView),
+        callback: () =>
+            showHierarchyBoxplotDialog(
+                attributeInfo,
+                sampleView.sampleHierarchy
+            ),
     });
 
     if (metadataAttributeInfos.length === 0) {
@@ -38,7 +42,11 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
         submenu: metadataAttributeInfos.map((info) => ({
             label: info.emphasizedName ?? info.name,
             callback: () =>
-                showHierarchyScatterplotDialog(attributeInfo, info, sampleView),
+                showHierarchyScatterplotDialog(
+                    attributeInfo,
+                    info,
+                    sampleView.sampleHierarchy
+                ),
         })),
     });
 }
