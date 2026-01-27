@@ -940,6 +940,12 @@ export default class Mark {
      * initiated. The idea is to allow for parallel background compilation.
      */
     finalizeGraphicsInitialization() {
+        if (!this.programStatus) {
+            throw new Error(
+                "No program status found! " + this.unitView.getPathString()
+            );
+        }
+
         const error = this.programStatus.getProgramErrors();
         if (error) {
             if (error.detail) {

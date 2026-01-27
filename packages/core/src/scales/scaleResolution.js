@@ -521,6 +521,7 @@ export default class ScaleResolution {
      * Reconfigures only the effective domain (configured + data-derived).
      *
      * Use this when data changes but the scale membership and properties are stable.
+     *
      */
     reconfigureDomain() {
         const state = this.#computeScaleState(true, true);

@@ -264,11 +264,12 @@ export default class View {
      */
     #getDimensionSize(dimension) {
         let value = this.spec[dimension];
+        const needsStepInvalidation = isStepSize(value);
 
         const viewport =
             dimension == "viewportWidth" || dimension == "viewportHeight";
 
-        if (isStepSize(value)) {
+        if (needsStepInvalidation) {
             if (viewport) {
                 throw new ViewError(
                     `Cannot use step-based size with "${dimension}"!`,
@@ -312,7 +313,7 @@ export default class View {
                 return { px: steps * stepSize, grow: 0 };
             } else {
                 throw new ViewError(
-                    "Cannot use 'step' size with missing scale!",
+                    `Cannot use step-based size with "${dimension}"!`,
                     this
                 );
             }
@@ -322,6 +323,36 @@ export default class View {
                 (viewport ? undefined : { px: 0, grow: 1 })
             );
         }
+    }
+
+    registerStepSizeInvalidation() {
+        this.#registerStepSizeInvalidationFor("width", "x");
+        this.#registerStepSizeInvalidationFor("height", "y");
+    }
+
+    /**
+     * @param {"width" | "height"} dimension
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    #registerStepSizeInvalidationFor(dimension, channel) {
+        const value = this.spec[dimension];
+        if (!isStepSize(value)) {
+            return;
+        }
+
+        const resolution = this.getScaleResolution(channel);
+        if (!resolution) {
+            throw new ViewError(
+                "Cannot use 'step' size without a scale!",
+                this
+            );
+        }
+
+        const listener = () => this.invalidateSizeCache();
+        resolution.addEventListener("domain", listener);
+        this.registerDisposer(() =>
+            resolution.removeEventListener("domain", listener)
+        );
     }
 
     isConfiguredVisible() {
@@ -855,7 +886,9 @@ export default class View {
     }
 
     invalidateSizeCache() {
-        this._invalidateCacheByPrefix("size/", "ancestors");
+        // Clear both "size" and "size/*" cache keys.
+        invalidatePrefix(this, "size");
+        this._invalidateCacheByPrefix("size", "ancestors");
     }
 
     /**

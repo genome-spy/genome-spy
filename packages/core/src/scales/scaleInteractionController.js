@@ -11,7 +11,7 @@ import {
     zoomLog,
     zoomPow,
 } from "vega-util";
-import { isContinuous } from "vega-scale";
+import { isContinuous, isDiscrete } from "vega-scale";
 import { easeCubicInOut } from "d3-ease";
 
 import eerp from "../utils/eerp.js";
@@ -91,7 +91,8 @@ export default class ScaleInteractionController {
     }
 
     isZoomingSupported() {
-        return isContinuous(this.#getScale().type);
+        const type = this.#getScale().type;
+        return isContinuous(type) && !isDiscrete(type);
     }
 
     /**

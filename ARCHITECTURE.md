@@ -37,6 +37,16 @@ design patterns.
 - `UnitView` (`packages/core/src/view/unitView.js`) instantiates a `Mark`
   (rect/point/rule/link/text) and connects encodings to scales, selections, and
   axes. It also unregisters scale/axis resolution members on dispose.
+- Layout sizing uses `View.getSize()`/`getViewportSize()` with a cached
+  `size/*` property cache:
+  - Sizes can be fixed (`px`), grow (`grow`), or step-based (`{ step }`).
+  - Step-based sizing depends on scale domains; when the domain changes, cached
+    sizes must be invalidated so parent layout recomputes correctly.
+  - Step-size invalidation is registered eagerly for views created via
+    `createOrImportView`, and must be registered manually for views constructed
+    directly (e.g., app-side `SampleGroupView`).
+  - Invalidating size clears the `size` cache for the view and its layout
+    ancestors so layouts upstream recalculate.
 
 ## Dataflow Architecture
 
