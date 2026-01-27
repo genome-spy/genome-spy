@@ -213,6 +213,7 @@ describe("Step sizing and domain updates", () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: "a" }, { x: "b" }];
 
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             width: { step: 10 },
             height: 10,
@@ -261,6 +262,7 @@ describe("Step sizing and domain updates", () => {
             { _index: 1, _depth: 2, name: "B", title: "B" },
         ];
 
+        /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             width: { step: 22 },
             height: 10,
