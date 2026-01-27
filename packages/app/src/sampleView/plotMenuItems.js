@@ -71,7 +71,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
     const groupColorRange = getGroupColorRange(sampleView);
 
     items.push(DIVIDER, {
-        label: "Show boxplot",
+        label: "Show boxplot...",
         callback: () =>
             showHierarchyBoxplotDialog(
                 attributeInfo,
