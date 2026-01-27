@@ -10,8 +10,8 @@ export function resolveAttributeText(attributeInfoSource, attributeInfo) {
         attributeInfo.attribute
     );
 
-    const labelSource = resolvedInfo.emphasizedName ?? resolvedInfo.name;
-    const titleSource = resolvedInfo.title ?? resolvedInfo.name;
+    const labelSource = resolvedInfo.title ?? resolvedInfo.name;
+    const titleSource = resolvedInfo.emphasizedName ?? resolvedInfo.name;
 
     return {
         label: templateResultToString(labelSource),
