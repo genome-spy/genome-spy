@@ -343,7 +343,7 @@ export default class View {
         const resolution = this.getScaleResolution(channel);
         if (!resolution) {
             throw new ViewError(
-                `Cannot use step-based size with "${dimension}"!`,
+                "Cannot use 'step' size without a scale!",
                 this
             );
         }
