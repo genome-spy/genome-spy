@@ -94,8 +94,10 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             this.yAttributeInfo.attribute
         );
 
-        const xTitle = templateResultToString(xInfo.emphasizedName);
-        const yTitle = templateResultToString(yInfo.emphasizedName);
+        const xFieldName = templateResultToString(xInfo.title);
+        const yFieldName = templateResultToString(yInfo.title);
+        const xAxisTitle = templateResultToString(xInfo.emphasizedName);
+        const yAxisTitle = templateResultToString(yInfo.emphasizedName);
         const groupTitle = resolveGroupTitle(
             this.attributeInfoSource,
             this.sampleHierarchy.groupMetadata
@@ -108,8 +110,8 @@ export class HierarchyScatterplotDialog extends BaseDialog {
             this.yAttributeInfo,
             {
                 groupField: groupFieldName,
-                xField: xTitle,
-                yField: yTitle,
+                xField: xFieldName,
+                yField: yFieldName,
                 sampleField: "sample",
             }
         );
@@ -117,14 +119,14 @@ export class HierarchyScatterplotDialog extends BaseDialog {
         /** @type {import("@genome-spy/core/spec/channel.js").Encoding} */
         const encoding = {
             x: {
-                field: escapeFieldName(xTitle),
+                field: escapeFieldName(xFieldName),
                 type: "quantitative",
-                title: xTitle,
+                title: xAxisTitle,
             },
             y: {
-                field: escapeFieldName(yTitle),
+                field: escapeFieldName(yFieldName),
                 type: "quantitative",
-                title: yTitle,
+                title: yAxisTitle,
             },
         };
 

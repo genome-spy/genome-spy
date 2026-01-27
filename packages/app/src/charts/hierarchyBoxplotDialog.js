@@ -90,7 +90,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
 
         const axisTitle = templateResultToString(info.emphasizedName);
         const groupFieldName = groupTitle ?? "Group";
-        const valueFieldName = axisTitle;
+        const valueFieldName = templateResultToString(info.title);
 
         const { statsRows, outlierRows, groupDomain } =
             buildHierarchyBoxplotData(

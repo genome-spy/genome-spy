@@ -1,5 +1,6 @@
 import { DIVIDER } from "../utils/ui/contextMenu.js";
 import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
+import showHierarchyBarplotDialog from "../charts/hierarchyBarplotDialog.js";
 import showHierarchyScatterplotDialog from "../charts/hierarchyScatterplotDialog.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -38,6 +39,22 @@ function getGroupColorRange(sampleView) {
  * @param {import("./sampleView.js").default} sampleView
  */
 export function appendPlotMenuItems(items, attributeInfo, sampleView) {
+    const isCategorical =
+        attributeInfo.type === "nominal" || attributeInfo.type === "ordinal";
+
+    if (isCategorical) {
+        items.push(DIVIDER, {
+            label: "Show bar plot...",
+            callback: () =>
+                showHierarchyBarplotDialog(
+                    attributeInfo,
+                    sampleView.sampleHierarchy,
+                    sampleView.compositeAttributeInfoSource
+                ),
+        });
+        return;
+    }
+
     if (attributeInfo.type !== "quantitative") {
         return;
     }
