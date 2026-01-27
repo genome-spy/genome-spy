@@ -72,7 +72,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
         submenu: [
             { label: "Choose the secondary attribute", type: "header" },
             ...metadataAttributeInfos.map((info) => ({
-                label: info.emphasizedName ?? info.name,
+                label: info.emphasizedName,
                 callback: () =>
                     showHierarchyScatterplotDialog(
                         attributeInfo,

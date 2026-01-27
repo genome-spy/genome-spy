@@ -146,7 +146,7 @@ function resolveGroupTitle(attributeInfoSource, groupMetadata) {
 
     const labels = groupMetadata.map((entry) => {
         const info = attributeInfoSource.getAttributeInfo(entry.attribute);
-        return templateResultToString(info.title ?? info.name);
+        return templateResultToString(info.title);
     });
 
     return labels.join(" / ");
