@@ -1,6 +1,11 @@
 import { boxplotStats } from "../utils/statistics/boxplot.js";
 import { getFlattenedGroupHierarchy } from "../sampleView/state/sampleSlice.js";
 import { extractAttributeValues } from "../sampleView/attributeValues.js";
+import {
+    getAttributeScope,
+    getGroupLabel,
+    getGroupSamples,
+} from "./chartDataUtils.js";
 
 const DEFAULT_OPTIONS = Object.freeze({
     groupField: "group",
@@ -26,30 +31,6 @@ const DEFAULT_OPTIONS = Object.freeze({
  *   groupLabelSeparator: string
  * }} ResolvedHierarchyBoxplotOptions
  */
-
-/**
- * @param {import("../sampleView/types.js").AttributeInfo} attributeInfo
- * @returns {Pick<import("../sampleView/types.js").AttributeValuesScope, "interval" | "aggregation">}
- */
-function getAttributeScope(attributeInfo) {
-    const specifier = attributeInfo.attribute.specifier;
-    if (!specifier || typeof specifier !== "object") {
-        return {};
-    }
-
-    if ("interval" in specifier) {
-        const intervalSpecifier =
-            /** @type {import("../sampleView/sampleViewTypes.d.ts").IntervalSpecifier} */ (
-                specifier
-            );
-        return {
-            interval: intervalSpecifier.interval,
-            aggregation: intervalSpecifier.aggregation,
-        };
-    }
-
-    return {};
-}
 
 /**
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
@@ -91,18 +72,8 @@ export function buildHierarchyBoxplotData(
     const attributeScope = getAttributeScope(attributeInfo);
 
     for (const path of getFlattenedGroupHierarchy(sampleHierarchy)) {
-        const leaf = path[path.length - 1];
-        if (!("samples" in leaf)) {
-            throw new Error("Expected a sample group leaf node.");
-        }
-
-        const labelParts =
-            path.length > 1
-                ? path.slice(1).map((group) => group.title || group.name)
-                : [leaf.title || leaf.name];
-        const groupLabel = labelParts.join(resolved.groupLabelSeparator);
-
-        const sampleIds = leaf.samples;
+        const groupLabel = getGroupLabel(path, resolved.groupLabelSeparator);
+        const sampleIds = getGroupSamples(path);
         const values = extractAttributeValues(
             attributeInfo,
             sampleIds,
