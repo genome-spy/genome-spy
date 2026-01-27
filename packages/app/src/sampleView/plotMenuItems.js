@@ -54,7 +54,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
     const groupColorRange = getGroupColorRange(sampleView);
 
     items.push(DIVIDER, {
-        label: "Show a boxplot",
+        label: "Show boxplot",
         callback: () =>
             showHierarchyBoxplotDialog(
                 attributeInfo,
@@ -68,17 +68,20 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
     }
 
     items.push({
-        label: "Create a scatterplot",
-        submenu: metadataAttributeInfos.map((info) => ({
-            label: info.emphasizedName ?? info.name,
-            callback: () =>
-                showHierarchyScatterplotDialog(
-                    attributeInfo,
-                    info,
-                    sampleView.sampleHierarchy,
-                    sampleView.compositeAttributeInfoSource,
-                    groupColorRange
-                ),
-        })),
+        label: "Create scatterplot against...",
+        submenu: [
+            { label: "Choose the secondary attribute", type: "header" },
+            ...metadataAttributeInfos.map((info) => ({
+                label: info.emphasizedName ?? info.name,
+                callback: () =>
+                    showHierarchyScatterplotDialog(
+                        attributeInfo,
+                        info,
+                        sampleView.sampleHierarchy,
+                        sampleView.compositeAttributeInfoSource,
+                        groupColorRange
+                    ),
+            })),
+        ],
     });
 }
