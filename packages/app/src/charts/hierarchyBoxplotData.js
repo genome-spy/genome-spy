@@ -58,9 +58,13 @@ function getAttributeScope(attributeInfo) {
     }
 
     if ("interval" in specifier) {
+        const intervalSpecifier =
+            /** @type {import("../sampleView/sampleViewTypes.d.ts").IntervalSpecifier} */ (
+                specifier
+            );
         return {
-            interval: specifier.interval,
-            aggregation: specifier.aggregation,
+            interval: intervalSpecifier.interval,
+            aggregation: intervalSpecifier.aggregation,
         };
     }
 
