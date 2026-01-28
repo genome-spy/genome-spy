@@ -210,13 +210,12 @@ export function buildIntervalAggregationMenu({
                 attributeValue,
                 sampleView
             );
-            appendAddToMetadataMenuItem(
+            appendDerivedAndPlotMenuItems(
                 submenuItems,
                 attributeInfo,
                 sampleHierarchy,
                 sampleView
             );
-            appendPlotMenuItems(submenuItems, attributeInfo, sampleView);
 
             return {
                 label: opLabel,
@@ -270,13 +269,12 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
-    appendAddToMetadataMenuItem(
+    appendDerivedAndPlotMenuItems(
         items,
         attributeInfo,
         sampleHierarchy,
         sampleView
     );
-    appendPlotMenuItems(items, attributeInfo, sampleView);
 
     return items;
 }
@@ -301,7 +299,7 @@ function appendAddToMetadataMenuItem(
         return;
     }
 
-    items.push(DIVIDER, {
+    items.push({
         label: "Add to metadata",
         callback: () => {
             void handleAddToMetadata(
@@ -310,6 +308,40 @@ function appendAddToMetadataMenuItem(
                 sampleView
             );
         },
+    });
+}
+
+/**
+ * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */
+function appendDerivedAndPlotMenuItems(
+    items,
+    attributeInfo,
+    sampleHierarchy,
+    sampleView
+) {
+    const canAddToMetadata = attributeInfo.attribute.type !== SAMPLE_ATTRIBUTE;
+    const hasPlots =
+        attributeInfo.type === "quantitative" ||
+        attributeInfo.type === "nominal" ||
+        attributeInfo.type === "ordinal";
+
+    if (!canAddToMetadata && !hasPlots) {
+        return;
+    }
+
+    items.push(DIVIDER);
+    appendAddToMetadataMenuItem(
+        items,
+        attributeInfo,
+        sampleHierarchy,
+        sampleView
+    );
+    appendPlotMenuItems(items, attributeInfo, sampleView, {
+        includeDivider: false,
     });
 }
 

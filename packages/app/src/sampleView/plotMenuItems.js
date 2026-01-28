@@ -37,13 +37,29 @@ function getGroupColorRange(sampleView) {
  * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
  * @param {import("./types.js").AttributeInfo} attributeInfo
  * @param {import("./sampleView.js").default} sampleView
+ * @param {{ includeDivider?: boolean }} [options]
  */
-export function appendPlotMenuItems(items, attributeInfo, sampleView) {
+export function appendPlotMenuItems(
+    items,
+    attributeInfo,
+    sampleView,
+    options = {}
+) {
+    const { includeDivider = true } = options;
     const isCategorical =
         attributeInfo.type === "nominal" || attributeInfo.type === "ordinal";
+    const isQuantitative = attributeInfo.type === "quantitative";
+
+    if (!isCategorical && !isQuantitative) {
+        return;
+    }
+
+    if (includeDivider) {
+        items.push(DIVIDER);
+    }
 
     if (isCategorical) {
-        items.push(DIVIDER, {
+        items.push({
             label: "Show bar plot...",
             callback: () =>
                 showHierarchyBarplotDialog(
@@ -55,7 +71,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
         return;
     }
 
-    if (attributeInfo.type !== "quantitative") {
+    if (!isQuantitative) {
         return;
     }
 
@@ -70,7 +86,7 @@ export function appendPlotMenuItems(items, attributeInfo, sampleView) {
             .filter((info) => info.type === "quantitative");
     const groupColorRange = getGroupColorRange(sampleView);
 
-    items.push(DIVIDER, {
+    items.push({
         label: "Show boxplot...",
         callback: () =>
             showHierarchyBoxplotDialog(
