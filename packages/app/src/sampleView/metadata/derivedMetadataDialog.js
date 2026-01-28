@@ -8,6 +8,7 @@ import {
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
+import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import {
     applyGroupToAttributeDefs,
     applyGroupToColumnarMetadata,
@@ -38,15 +39,14 @@ export class DerivedMetadataDialog extends BaseDialog {
                 width: 520px;
             }
 
-            .scale-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: var(--gs-basic-spacing, 10px);
-            }
-
             .scale-summary {
+                display: flex;
+                gap: var(--gs-basic-spacing);
                 color: var(--gs-muted-color, #666);
+
+                img {
+                    display: block;
+                }
             }
         `,
     ];
@@ -139,9 +139,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             <div class="gs-form-group">
                 <label>Scale</label>
                 <div class="input-group">
-                    <div class="fake-input scale-row">
-                        <div class="scale-summary">${scaleSummary}</div>
-                    </div>
+                    <div class="fake-input">${scaleSummary}</div>
                     <button
                         class="btn"
                         type="button"
@@ -389,16 +387,34 @@ function computeObservedDomain(dataType, values) {
 
 /**
  * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
- * @returns {string}
  */
 function describeScale(scale) {
+    if (!scale) {
+        return html`Default`;
+    }
+
+    /** @type {import("lit").TemplateResult<1>[]} */
+    const parts = [];
+
     if (scale.scheme) {
-        return "Scheme: " + scale.scheme;
+        const schemeName =
+            typeof scale.scheme === "string" ? scale.scheme : scale.scheme.name;
+        parts.push(
+            html`<img
+                src=${schemeToDataUrl(schemeName)}
+                alt=${schemeName}
+                title=${schemeName}
+            />`
+        );
     }
 
     if (scale.type) {
-        return "Type: " + scale.type;
+        parts.push(html`<div class="badge">${scale.type}</div>`);
     }
 
-    return "Custom";
+    if (parts.length === 0) {
+        parts.push(html`Default`);
+    }
+
+    return html`<div class="scale-summary">${parts}</div>`;
 }

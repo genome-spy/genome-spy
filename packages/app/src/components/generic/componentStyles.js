@@ -250,6 +250,16 @@ export const formStyles = css`
         }
     }
 
+    .badge {
+        display: inline-block;
+        padding: 0.25em 0.5em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        background-color: #d0d0d0;
+        border-radius: 0.25rem;
+    }
+
     .gs-tabs {
         margin: 0;
 
