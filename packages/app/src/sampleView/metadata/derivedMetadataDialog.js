@@ -345,7 +345,8 @@ export function showDerivedMetadataDialog({
             dialog.values = values;
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
-            dialog._scale = attributeInfo.scale ?? null;
+            // Scale props are embedded in the d3 scale function
+            dialog._scale = attributeInfo.scale?.props ?? null;
         }
     );
 }
