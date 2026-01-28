@@ -173,6 +173,19 @@ export const formStyles = css`
             color: #606060;
         }
 
+        :is(input, select, textarea).is-invalid,
+        .fake-input.is-invalid {
+            border-color: var(--danger-color, #dc3545);
+            box-shadow: 0 0 0 0.2rem rgb(220 53 69 / 25%);
+        }
+
+        .invalid-feedback {
+            display: block;
+            margin-top: 0.25em;
+            color: var(--danger-color, #dc3545);
+            font-size: 0.875em;
+        }
+
         .threshold-flex {
             display: flex;
             gap: var(--basic-spacing);
