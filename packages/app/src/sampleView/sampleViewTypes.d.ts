@@ -72,3 +72,11 @@ export interface IntervalSpecifier {
 }
 
 export type ViewAttributeSpecifier = LocusSpecifier | IntervalSpecifier;
+
+/**
+ * @param {ViewAttributeSpecifier} specifier
+ * @returns {specifier is IntervalSpecifier}
+ */
+export function isIntervalSpecifier(
+    specifier: ViewAttributeSpecifier
+): specifier is IntervalSpecifier;

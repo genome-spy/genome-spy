@@ -2,7 +2,15 @@
  * @typedef {import("../types.js").AggregationOp} AggregationOp
  */
 
-/** @typedef {{ op: AggregationOp, label: string, description: string }} AggregationOpInfo */
+import { isIntervalSpecifier } from "../sampleViewTypes.js";
+
+/**
+ * @typedef {object} AggregationOpInfo
+ * @property {AggregationOp} op
+ * @property {string} label
+ * @property {string} description
+ * @property {boolean} preservesScaleDomain
+ */
 
 /** @type {AggregationOpInfo[]} */
 export const aggregationOps = [
@@ -10,19 +18,32 @@ export const aggregationOps = [
         op: "count",
         label: "Item count",
         description: "Number of overlapping items (ignores field values)",
+        preservesScaleDomain: false,
     },
-    { op: "min", label: "Min", description: "Smallest value in the interval" },
-    { op: "max", label: "Max", description: "Largest value in the interval" },
+    {
+        op: "min",
+        label: "Min",
+        description: "Smallest value in the interval",
+        preservesScaleDomain: true,
+    },
+    {
+        op: "max",
+        label: "Max",
+        description: "Largest value in the interval",
+        preservesScaleDomain: true,
+    },
     {
         op: "weightedMean",
         label: "Weighted mean",
         description:
             "Mean weighted by clipped overlap length (or 1 for points)",
+        preservesScaleDomain: true,
     },
     {
         op: "variance",
         label: "Variance",
         description: "Population variance weighted by clipped overlap length",
+        preservesScaleDomain: false,
     },
 ];
 
@@ -32,14 +53,38 @@ const aggregationOpsById = new Map(
 
 /**
  * @param {AggregationOp} op
- * @returns {string}
+ * @returns {AggregationOpInfo}
  */
-export function formatAggregationLabel(op) {
+export function getAggregationOpInfo(op) {
     const entry = aggregationOpsById.get(op);
     if (!entry) {
         throw new Error("Unknown aggregation op: " + op);
     }
-    return entry.label.toLowerCase();
+    return entry;
+}
+
+/**
+ * @param {AggregationOp} op
+ * @returns {string}
+ */
+export function formatAggregationLabel(op) {
+    return getAggregationOpInfo(op).label.toLowerCase();
+}
+
+/**
+ * @param {import("../types.js").AttributeIdentifier} attributeIdentifier
+ * @returns {boolean}
+ */
+export function preservesScaleDomainForAttribute(attributeIdentifier) {
+    const specifier = attributeIdentifier.specifier;
+    if (!specifier || typeof specifier !== "object") {
+        return true;
+    }
+    if (!isIntervalSpecifier(specifier)) {
+        return true;
+    }
+
+    return getAggregationOpInfo(specifier.aggregation.op).preservesScaleDomain;
 }
 
 /**

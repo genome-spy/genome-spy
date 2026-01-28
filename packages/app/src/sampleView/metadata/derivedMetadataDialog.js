@@ -9,6 +9,7 @@ import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
+import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
 import {
     applyGroupToAttributeDefs,
     applyGroupToColumnarMetadata,
@@ -346,7 +347,10 @@ export function showDerivedMetadataDialog({
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
             // Scale props are embedded in the d3 scale function
-            dialog._scale = attributeInfo.scale?.props ?? null;
+            dialog._scale =
+                (preservesScaleDomainForAttribute(attributeInfo.attribute)
+                    ? structuredClone(attributeInfo.scale?.props)
+                    : null) ?? null;
         }
     );
 }
