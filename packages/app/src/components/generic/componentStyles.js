@@ -169,7 +169,7 @@ export const formStyles = css`
 
         :is(input, select, textarea, div) + small {
             display: block;
-            margin-top: 0.5em;
+            margin-top: 0.3em;
             color: #606060;
         }
 
