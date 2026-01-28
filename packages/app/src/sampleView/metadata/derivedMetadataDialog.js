@@ -1,6 +1,10 @@
 import { html, css } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faPenToSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+    faExclamationCircle,
+    faPenToSquare,
+    faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
@@ -43,13 +47,6 @@ export class DerivedMetadataDialog extends BaseDialog {
 
             .scale-summary {
                 color: var(--gs-muted-color, #666);
-                font-size: 90%;
-            }
-
-            .hint {
-                color: var(--gs-muted-color, #666);
-                font-size: 85%;
-                margin-top: 2px;
             }
         `,
     ];
@@ -97,9 +94,16 @@ export class DerivedMetadataDialog extends BaseDialog {
             : "Default";
 
         return html`
-            <div class="gs-form-group">
-                <label>Source attribute</label>
-                <div>${this.attributeInfo.title}</div>
+            <div class="gs-alert info">
+                ${icon(faExclamationCircle).node[0]}
+                <div>
+                    <p>
+                        You are creating a new metadata attribute derived
+                        from:<br />
+                        ${this.attributeInfo.title}.
+                    </p>
+                    <p>Data type: ${dataType}</p>
+                </div>
             </div>
 
             <div class="gs-form-group">
@@ -112,9 +116,7 @@ export class DerivedMetadataDialog extends BaseDialog {
                         this.attributeName = input.value;
                     })}
                 />
-                <div class="hint">
-                    Keep names concise (around 20 characters).
-                </div>
+                <small>Keep names concise (around 20 characters).</small>
             </div>
 
             <div class="gs-form-group">
@@ -123,27 +125,23 @@ export class DerivedMetadataDialog extends BaseDialog {
                     id="derivedAttributeGroup"
                     type="text"
                     .value=${this.groupPath}
-                    placeholder="Group"
+                    placeholder="A new or existing metadata group path"
                     @input=${createInputListener((input) => {
                         this.groupPath = input.value;
                     })}
                 />
-                <div class="hint">
-                    ${'Use "' +
-                    METADATA_PATH_SEPARATOR +
-                    '" to create hierarchy levels.'}
-                </div>
-            </div>
-
-            <div class="gs-form-group">
-                <label>Data type</label>
-                <div class="scale-summary">${dataType}</div>
+                <small
+                    >Use ${METADATA_PATH_SEPARATOR} to create hierarchy
+                    levels.</small
+                >
             </div>
 
             <div class="gs-form-group">
                 <label>Scale</label>
-                <div class="scale-row">
-                    <div class="scale-summary">${scaleSummary}</div>
+                <div class="input-group">
+                    <div class="fake-input scale-row">
+                        <div class="scale-summary">${scaleSummary}</div>
+                    </div>
                     <button
                         class="btn"
                         type="button"
