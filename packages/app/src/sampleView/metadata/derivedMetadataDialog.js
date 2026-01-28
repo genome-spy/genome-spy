@@ -6,7 +6,8 @@ import {
     faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
+import { FormController } from "../../components/forms/formController.js";
+import { formField } from "../../components/forms/formField.js";
 import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
 import { computeObservedDomain } from "./scaleUtils.js";
@@ -31,7 +32,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         attributeName: { state: true },
         groupPath: { state: true },
         _scale: { state: true },
-        _errors: { state: true },
     };
 
     static styles = [
@@ -77,8 +77,17 @@ export class DerivedMetadataDialog extends BaseDialog {
         /** @type {import("@genome-spy/core/spec/scale.js").Scale | null} */
         this._scale = null;
 
-        /** @type {Map<string, string>} */
-        this._errors = new Map();
+        /** @type {FormController} */
+        this._form = new FormController(this);
+        this._form.defineField("name", {
+            valueKey: "attributeName",
+            validate: () => this.#validateName(),
+        });
+        this._form.defineField("group", {
+            valueKey: "groupPath",
+            validate: () => null,
+            affects: ["name"],
+        });
 
         this.dialogTitle = "Add to metadata";
 
@@ -97,8 +106,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         const scaleSummary = this._scale
             ? describeScale(this._scale)
             : "Default";
-        const nameError = this._errors.get("name") ?? null;
-        const showNameError = Boolean(nameError);
 
         return html`
             <div class="gs-alert info">
@@ -118,22 +125,9 @@ export class DerivedMetadataDialog extends BaseDialog {
                 <input
                     id="derivedAttributeName"
                     type="text"
-                    class=${getInvalidClass(nameError, showNameError)}
-                    aria-invalid=${nameError && showNameError
-                        ? "true"
-                        : "false"}
-                    .value=${this.attributeName}
-                    @input=${createInputListener((input) => {
-                        this.attributeName = input.value;
-                        if (this._errors.has("name")) {
-                            this.#validateOnChange("name");
-                        }
-                    })}
-                    @blur=${() => {
-                        this.#handleBlur("name");
-                    }}
+                    ${formField(this._form, "name")}
                 />
-                ${renderInvalidFeedback(nameError, showNameError)}
+                ${this._form.feedback("name")}
                 <small>Keep names concise (around 20 characters).</small>
             </div>
 
@@ -142,17 +136,8 @@ export class DerivedMetadataDialog extends BaseDialog {
                 <input
                     id="derivedAttributeGroup"
                     type="text"
-                    .value=${this.groupPath}
                     placeholder="A new or existing metadata group path"
-                    @input=${createInputListener((input) => {
-                        this.groupPath = input.value;
-                        if (this._errors.has("name")) {
-                            this.#validateOnChange("name");
-                        }
-                    })}
-                    @blur=${() => {
-                        this.#handleBlur("name");
-                    }}
+                    ${formField(this._form, "group")}
                 />
                 <small
                     >Use ${METADATA_PATH_SEPARATOR} to create hierarchy
@@ -178,7 +163,7 @@ export class DerivedMetadataDialog extends BaseDialog {
     }
 
     renderButtons() {
-        const hasErrors = this.#hasErrors();
+        const hasErrors = this._form.hasErrors();
         return [
             this.makeButton("Cancel", () => this.finish({ ok: false })),
             this.makeButton("Add", () => this.#onAdd(), faPlus, hasErrors),
@@ -221,7 +206,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             );
         }
 
-        if (this.#validateAll()) {
+        if (this._form.validateAll()) {
             return true;
         }
 
@@ -322,79 +307,6 @@ export class DerivedMetadataDialog extends BaseDialog {
     }
 
     /**
-     * @param {string} field
-     * @returns {string | null}
-     */
-    #validateField(field) {
-        if (field === "name") {
-            return this.#validateName();
-        } else {
-            throw new Error("Unknown field: " + field);
-        }
-    }
-
-    /**
-     * @param {string} field
-     */
-    #handleBlur(field) {
-        const error = this.#validateField(field);
-        this.#setFieldError(field, error);
-    }
-
-    /**
-     * @param {string} field
-     */
-    #validateOnChange(field) {
-        const error = this.#validateField(field);
-        this.#setFieldError(field, error);
-    }
-
-    /**
-     * @returns {boolean}
-     */
-    #hasErrors() {
-        return this.#collectValidationErrors().size > 0;
-    }
-
-    /**
-     * @returns {boolean}
-     */
-    #validateAll() {
-        const errors = this.#collectValidationErrors();
-        this._errors = errors;
-        return errors.size > 0;
-    }
-
-    /**
-     * @returns {Map<string, string>}
-     */
-    #collectValidationErrors() {
-        /** @type {Map<string, string>} */
-        const errors = new Map();
-        for (const field of ["name"]) {
-            const error = this.#validateField(field);
-            if (error) {
-                errors.set(field, error);
-            }
-        }
-        return errors;
-    }
-
-    /**
-     * @param {string} field
-     * @param {string | null} error
-     */
-    #setFieldError(field, error) {
-        const next = new Map(this._errors);
-        if (error) {
-            next.set(field, error);
-        } else {
-            next.delete(field);
-        }
-        this._errors = next;
-    }
-
-    /**
      * @param {string} attributeName
      * @param {string} groupPath
      * @returns {string}
@@ -472,7 +384,7 @@ export function showDerivedMetadataDialog({
             dialog.values = values;
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
-            dialog._errors = new Map();
+            dialog._form.reset();
             // Scale props are embedded in the d3 scale function
             dialog._scale =
                 (preservesScaleDomainForAttribute(attributeInfo.attribute)
@@ -480,32 +392,6 @@ export function showDerivedMetadataDialog({
                     : null) ?? null;
         }
     );
-}
-
-/**
- * @param {string | null} error
- * @param {boolean} show
- * @returns {string}
- */
-function getInvalidClass(error, show) {
-    if (show && error) {
-        return "is-invalid";
-    } else {
-        return "";
-    }
-}
-
-/**
- * @param {string | null} error
- * @param {boolean} show
- * @returns {import("lit").TemplateResult<1> | null}
- */
-function renderInvalidFeedback(error, show) {
-    if (show && error) {
-        return html`<div class="invalid-feedback">${error}</div>`;
-    } else {
-        return null;
-    }
 }
 
 /**
