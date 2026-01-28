@@ -11,6 +11,7 @@ import { formField } from "../../components/forms/formField.js";
 import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
 import { computeObservedDomain } from "./scaleUtils.js";
+import { color as d3color } from "d3-color";
 import {
     applyGroupToAttributeDefs,
     applyGroupToColumnarMetadata,
@@ -386,10 +387,11 @@ export function showDerivedMetadataDialog({
             dialog.attributeName = defaultName;
             dialog._form.reset();
             // Scale props are embedded in the d3 scale function
-            dialog._scale =
-                (preservesScaleDomainForAttribute(attributeInfo.attribute)
-                    ? structuredClone(attributeInfo.scale?.props)
-                    : null) ?? null;
+            dialog._scale = preservesScaleDomainForAttribute(
+                attributeInfo.attribute
+            )
+                ? sanitizeScaleForDerivedMetadata(attributeInfo.scale?.props)
+                : null;
         }
     );
 }
@@ -426,4 +428,38 @@ function describeScale(scale) {
     }
 
     return html`<div class="scale-summary">${parts}</div>`;
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/scale.js").Scale | null | undefined} scale
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+ */
+function sanitizeScaleForDerivedMetadata(scale) {
+    if (!scale) {
+        return null;
+    }
+
+    const clone = structuredClone(scale);
+    const range = clone.range;
+    if (!range) {
+        return clone;
+    }
+
+    if (!Array.isArray(range) || !range.every((value) => isCssColor(value))) {
+        delete clone.range;
+    }
+
+    return clone;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isCssColor(value) {
+    if (typeof value !== "string") {
+        return false;
+    }
+
+    return d3color(value) != null;
 }
