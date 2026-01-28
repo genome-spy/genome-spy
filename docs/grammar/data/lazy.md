@@ -821,3 +821,286 @@ SCHEMA AxisGenomeData
 ```
 
 </div></genome-spy-doc-embed>
+
+## Axis measure
+
+The `"axisMeasure"` data source generates coordinates for a "measure" 
+for the specified channel, which can be used to create a visual clue ("measure") 
+for the current zoom level.
+
+This is particularly useful for genome axes, where the measure size, 
+combined with the measure label (e.g. "10kb") gives a sense of the zoom level
+for the current view, even when other features (e.g. genes, exons) are absent
+and the axis ticks labels are long, multiple digits numbers.
+
+The data source generates data objects with these fields:
+
+ - `startPos`: start coordinate of the measure, useful for "rule" or "rect" marks,
+ - `centerPos`: center coordinate of the measure, useful for "text" marks showing the measureLabel
+ - `endPos`: end coordinate of the measure, useful for "rule" or "rect" marks,
+ - `measureDomainSize`: size of the measure in domain units (e.g. linearized chromosomal coordinates),
+ - `measurePixelsSize`: size of the measure in pixels, useful for sizing other elements when embedded
+ - `measureLabel`: label for the measure, e.g. "10kb"
+
+### Parameters
+
+SCHEMA AxisMeasureData
+
+### Example 1
+
+The example below generates a discreet measure, centered on the `x` axis.
+
+<div><genome-spy-doc-embed height="120" spechidden="true">
+
+```json
+{
+  "genome": {
+    "name": "hg38"
+  },
+  "vconcat": [
+    {
+      "height": 40,
+      "data": {
+        "values": [
+          {
+            "chrom": "chr3",
+            "pos": 134567890
+          },
+          {
+            "chrom": "chr4",
+            "pos": 123456789
+          },
+          {
+            "chrom": "chr9",
+            "pos": 34567890
+          }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus",
+          "scale": {
+            "name": "genomeScale",
+            "domain": [
+              {
+                "chrom": "chr3"
+              },
+              {
+                "chrom": "chr9"
+              }
+            ]
+          }
+        },
+        "size": {
+          "value": 200
+        }
+      }
+    },
+    {
+      "name": "axis_measure",
+      "height": 20,
+      "data": {
+        "lazy": {
+          "type": "axisMeasure"
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "startPos",
+              "type": "locus",
+              "axis": null
+            },
+            "y": {
+              "value": 0.2
+            },
+            "y2": {
+              "value": 0.8
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "endPos",
+              "type": "locus",
+              "axis": null
+            },
+            "y": {
+              "value": 0.2
+            },
+            "y2": {
+              "value": 0.8
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "rule"
+          },
+          "encoding": {
+            "x": {
+              "field": "startPos",
+              "type": "locus",
+              "axis": null
+            },
+            "x2": {
+              "field": "endPos",
+              "type": "locus",
+              "axis": null
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "bottom",
+            "y": 0.5
+          },
+          "encoding": {
+            "x" : { 
+              "field": "centerPos",
+              "type": "locus",
+              "axis": null
+            },
+            "text": {
+              "field": "measureLabel"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>
+
+### Example 2
+
+The example below generates a "bold" measure, aligned to the right edge of the `x` axis 
+and with a custom set of measures (5b, 50b, 500b, 5kb, 50kb, etc.).
+
+<div><genome-spy-doc-embed height="120" spechidden="true">
+
+```json
+{
+  "genome": {
+    "name": "hg38"
+  },
+  "vconcat": [
+    {
+      "height": 40,
+      "data": {
+        "values": [
+          {
+            "chrom": "chr3",
+            "pos": 134567890
+          },
+          {
+            "chrom": "chr4",
+            "pos": 123456789
+          },
+          {
+            "chrom": "chr9",
+            "pos": 34567890
+          }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus",
+          "scale": {
+            "name": "genomeScale",
+            "domain": [
+              {
+                "chrom": "chr3"
+              },
+              {
+                "chrom": "chr9"
+              }
+            ]
+          }
+        },
+        "size": {
+          "value": 200
+        }
+      }
+    },
+    {
+      "name": "axis_measure",
+      "height": 20,
+      "data": {
+        "lazy": {
+          "type": "axisMeasure",
+          "multiplierValue": 5,
+          "hideMeasureThreshold": 10,
+          "alignMeasure": "right"
+        }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "rect",
+            "fill": "salmon",
+            "opacity": 0.75
+          },
+          "encoding": {
+            "x": {
+              "field": "startPos",
+              "type": "locus",
+              "axis": null
+            },
+            "x2": {
+              "field": "endPos",
+              "type": "locus",
+              "axis": null
+            },
+            "y": {
+              "value": 0.1
+            },
+            "y2": {
+              "value": 0.9
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "align": "center",
+            "baseline": "bottom",
+            "opacity": 0.75,
+            "y": 0.2
+          },
+          "encoding": {
+            "x" : { 
+              "field": "centerPos",
+              "type": "locus",
+              "axis": null
+            },
+            "text": {
+              "field": "measureLabel"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+</genome-spy-doc-embed></div>

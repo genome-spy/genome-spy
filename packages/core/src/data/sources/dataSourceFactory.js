@@ -2,6 +2,7 @@ import InlineSource, { isInlineData } from "./inlineSource.js";
 import UrlSource, { isUrlData } from "./urlSource.js";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource.js";
 import AxisTickSource from "./lazy/axisTickSource.js";
+import AxisMeasureSource from "./lazy/axisMeasureSource.js";
 import AxisGenomeSource from "./lazy/axisGenomeSource.js";
 import IndexedFastaSource from "./lazy/indexedFastaSource.js";
 import BigWigSource from "./lazy/bigWigSource.js";
@@ -46,6 +47,15 @@ function isLazyData(params) {
  */
 function isAxisTickSource(params) {
     return params?.type == "axisTicks";
+}
+
+/**
+ *
+ * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").AxisMeasureData}
+ */
+function isAxisMeasureSource(params) {
+    return params?.type == "axisMeasure";
 }
 
 /**
@@ -116,6 +126,8 @@ function isVcfSource(params) {
 function createLazyDataSource(params, view) {
     if (isAxisTickSource(params)) {
         return new AxisTickSource(params, view);
+    } else if (isAxisMeasureSource(params)) {
+        return new AxisMeasureSource(params, view);
     } else if (isAxisGenomeSource(params)) {
         return new AxisGenomeSource(params, view);
     } else if (isIndexedFastaSource(params)) {
