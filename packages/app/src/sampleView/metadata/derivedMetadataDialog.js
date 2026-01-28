@@ -10,6 +10,7 @@ import { createInputListener } from "../../components/dialogs/saveImageDialog.js
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
+import { computeObservedDomain } from "./scaleUtils.js";
 import {
     applyGroupToAttributeDefs,
     applyGroupToColumnarMetadata,
@@ -353,41 +354,6 @@ export function showDerivedMetadataDialog({
                     : null) ?? null;
         }
     );
-}
-
-/**
- * @param {SampleAttributeType} dataType
- * @param {any[]} values
- * @returns {(string | number)[]}
- */
-function computeObservedDomain(dataType, values) {
-    if (dataType === "quantitative") {
-        let min = Number.POSITIVE_INFINITY;
-        let max = Number.NEGATIVE_INFINITY;
-        for (const value of values) {
-            const num = Number(value);
-            if (Number.isFinite(num)) {
-                if (num < min) {
-                    min = num;
-                }
-                if (num > max) {
-                    max = num;
-                }
-            }
-        }
-        if (min === Number.POSITIVE_INFINITY) {
-            return [];
-        }
-        return [min, max];
-    } else {
-        const unique = new Set();
-        for (const value of values) {
-            if (value != null) {
-                unique.add(String(value));
-            }
-        }
-        return Array.from(unique);
-    }
 }
 
 /**
