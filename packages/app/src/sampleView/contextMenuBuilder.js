@@ -7,6 +7,7 @@ import {
     findEncodedFields,
     findUniqueViewNames,
 } from "@genome-spy/core/view/viewUtils.js";
+import { DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
@@ -206,6 +207,12 @@ export function buildIntervalAggregationMenu({
                 attributeValue,
                 sampleView
             );
+            appendAddToMetadataMenuItem(
+                submenuItems,
+                attributeInfo,
+                sampleHierarchy,
+                sampleView
+            );
             appendPlotMenuItems(submenuItems, attributeInfo, sampleView);
 
             return {
@@ -260,7 +267,116 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
+    appendAddToMetadataMenuItem(
+        items,
+        attributeInfo,
+        sampleHierarchy,
+        sampleView
+    );
     appendPlotMenuItems(items, attributeInfo, sampleView);
 
     return items;
+}
+
+/**
+ * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */
+function appendAddToMetadataMenuItem(
+    items,
+    attributeInfo,
+    sampleHierarchy,
+    sampleView
+) {
+    if (!sampleHierarchy.sampleData) {
+        throw new Error("Sample data has not been initialized.");
+    }
+
+    items.push(DIVIDER, {
+        label: "Add to metadata",
+        callback: () => {
+            const attributeName = createDerivedAttributeName(
+                attributeInfo,
+                sampleHierarchy.sampleMetadata.attributeNames
+            );
+            const sampleIds = sampleHierarchy.sampleData.ids;
+            const values = attributeInfo.valuesProvider({
+                sampleIds,
+                sampleHierarchy,
+            });
+
+            if (values.length !== sampleIds.length) {
+                throw new Error(
+                    "Derived metadata values length does not match sample ids."
+                );
+            }
+
+            const columnarMetadata = {
+                sample: sampleIds,
+                [attributeName]: values,
+            };
+
+            sampleView.intentExecutor.dispatch(
+                sampleView.actions.addMetadata({
+                    columnarMetadata,
+                })
+            );
+        },
+    });
+}
+
+/**
+ * Builds a unique derived attribute name within the length limit.
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {string[]} existingNames
+ * @returns {string}
+ */
+function createDerivedAttributeName(attributeInfo, existingNames) {
+    const maxLength = 20;
+    const existing = new Set(existingNames);
+    const base =
+        attributeInfo.name && attributeInfo.name.length > 0
+            ? attributeInfo.name.trim()
+            : "Derived";
+
+    const baseName = clampName(base, maxLength);
+    if (!existing.has(baseName)) {
+        return baseName;
+    } else {
+        for (let counter = 2; counter < Number.MAX_SAFE_INTEGER; counter += 1) {
+            const suffix = "-" + String(counter);
+            const candidate = clampName(base, maxLength, suffix);
+            if (!existing.has(candidate)) {
+                return candidate;
+            }
+        }
+        throw new Error("Unable to generate a unique metadata attribute name.");
+    }
+}
+
+/**
+ * Truncates a name to the target length and appends an optional suffix.
+ * @param {string} name
+ * @param {number} maxLength
+ * @param {string} [suffix]
+ * @returns {string}
+ */
+function clampName(name, maxLength, suffix = "") {
+    const targetLength = maxLength - suffix.length;
+    let trimmed = name;
+
+    if (trimmed.length > targetLength) {
+        if (targetLength > 3) {
+            trimmed =
+                trimmed.slice(0, targetLength - 3).trimEnd() + "..." + suffix;
+        } else {
+            trimmed = trimmed.slice(0, targetLength) + suffix;
+        }
+    } else {
+        trimmed = trimmed + suffix;
+    }
+
+    return trimmed;
 }
