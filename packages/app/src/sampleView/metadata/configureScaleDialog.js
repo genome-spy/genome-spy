@@ -171,7 +171,7 @@ export function normalizeQuantDomainRange(
     const defaultMin = hasObserved ? Number(observedDomain[0]) : 0;
     const defaultMax = hasObserved ? Number(observedDomain[1]) : 1;
 
-    const domain = [...quantDomain];
+    const domain = Array.isArray(quantDomain) ? [...quantDomain] : [];
     if (domain.length === 0) {
         domain.push(defaultMin, defaultMax);
     } else if (domain.length === 1) {
@@ -183,7 +183,7 @@ export function normalizeQuantDomainRange(
     const normalizedDomain = [min, max];
 
     const desiredRangeLength = getExpectedQuantRangeLength(domainMid);
-    let range = [...quantRange];
+    let range = Array.isArray(quantRange) ? [...quantRange] : [];
     if (range.length < desiredRangeLength) {
         const last = range[range.length - 1] ?? DEFAULT_COLOR;
         while (range.length < desiredRangeLength) {

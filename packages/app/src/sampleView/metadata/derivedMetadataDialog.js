@@ -345,7 +345,7 @@ export function showDerivedMetadataDialog({
             dialog.values = values;
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
-            dialog._scale = null;
+            dialog._scale = attributeInfo.scale ?? null;
         }
     );
 }
