@@ -12,6 +12,9 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
+import { showDerivedMetadataDialog } from "./metadata/derivedMetadataDialog.js";
+
+const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
  * @typedef {Object} FieldInfo
@@ -294,37 +297,65 @@ function appendAddToMetadataMenuItem(
         throw new Error("Sample data has not been initialized.");
     }
 
+    if (attributeInfo.attribute.type === SAMPLE_ATTRIBUTE) {
+        return;
+    }
+
     items.push(DIVIDER, {
         label: "Add to metadata",
         callback: () => {
-            const attributeName = createDerivedAttributeName(
+            void handleAddToMetadata(
                 attributeInfo,
-                sampleHierarchy.sampleMetadata.attributeNames
-            );
-            const sampleIds = sampleHierarchy.sampleData.ids;
-            const values = attributeInfo.valuesProvider({
-                sampleIds,
                 sampleHierarchy,
-            });
-
-            if (values.length !== sampleIds.length) {
-                throw new Error(
-                    "Derived metadata values length does not match sample ids."
-                );
-            }
-
-            const columnarMetadata = {
-                sample: sampleIds,
-                [attributeName]: values,
-            };
-
-            sampleView.intentExecutor.dispatch(
-                sampleView.actions.addMetadata({
-                    columnarMetadata,
-                })
+                sampleView
             );
         },
     });
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */
+async function handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView) {
+    if (!sampleHierarchy.sampleData) {
+        throw new Error("Sample data has not been initialized.");
+    }
+
+    const attributeName = createDerivedAttributeName(
+        attributeInfo,
+        sampleHierarchy.sampleMetadata.attributeNames
+    );
+    const sampleIds = sampleHierarchy.sampleData.ids;
+    const values = attributeInfo.valuesProvider({
+        sampleIds,
+        sampleHierarchy,
+    });
+
+    if (values.length !== sampleIds.length) {
+        throw new Error(
+            "Derived metadata values length does not match sample ids."
+        );
+    }
+
+    const result = await showDerivedMetadataDialog({
+        attributeInfo,
+        sampleIds,
+        values,
+        existingAttributeNames: sampleHierarchy.sampleMetadata.attributeNames,
+        defaultName: attributeName,
+    });
+
+    if (result.ok) {
+        sampleView.intentExecutor.dispatch(
+            sampleView.actions.addMetadata(
+                /** @type {import("./state/payloadTypes.js").SetMetadata} */ (
+                    result.data
+                )
+            )
+        );
+    }
 }
 
 /**
