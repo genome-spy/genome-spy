@@ -300,7 +300,7 @@ function appendAddToMetadataMenuItem(
     }
 
     items.push({
-        label: "Add to metadata",
+        label: "Add to sample metadata...",
         callback: () => {
             void handleAddToMetadata(
                 attributeInfo,
