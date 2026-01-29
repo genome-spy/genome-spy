@@ -380,14 +380,29 @@ async function handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView) {
     });
 
     if (result.ok) {
+        const config =
+            /** @type {{ name: string, groupPath: string, scale?: import("@genome-spy/core/spec/scale.js").Scale }} */ (
+                result.data
+            );
+        const payload = {
+            attribute: attributeInfo.attribute,
+            name: config.name,
+            groupPath: emptyToUndefined(config.groupPath),
+            scale: emptyToUndefined(config.scale),
+        };
         sampleView.intentExecutor.dispatch(
-            sampleView.actions.addMetadata(
-                /** @type {import("./state/payloadTypes.js").SetMetadata} */ (
-                    result.data
-                )
-            )
+            sampleView.actions.deriveMetadata(payload)
         );
     }
+}
+
+/**
+ * @template T
+ * @param {T | null | undefined} value
+ * @returns {T | undefined}
+ */
+function emptyToUndefined(value) {
+    return value ?? undefined;
 }
 
 /**

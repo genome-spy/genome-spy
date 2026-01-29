@@ -19,6 +19,8 @@ import {
 } from "./sampleOperations.js";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import {
+    applyGroupToAttributeDefs,
+    applyGroupToColumnarMetadata,
     combineSampleMetadata,
     computeAttributeDefs,
     METADATA_PATH_SEPARATOR,
@@ -73,6 +75,49 @@ function createObjectAccessor(action) {
         );
     }
     return (sampleId) => obj[sampleId];
+}
+
+/**
+ * @param {SampleHierarchy} state
+ * @param {import("./payloadTypes.js").SetMetadata} payload
+ */
+function applyMetadataPayload(state, payload) {
+    if (!state.sampleData) {
+        throw new Error("Samples must be set before setting metadata!");
+    }
+
+    const columnarMetadata = payload.columnarMetadata;
+
+    const attributeNames =
+        /** @type {import("./payloadTypes.js").AttributeName[]} */ (
+            Object.keys(columnarMetadata).filter((k) => k !== "sample")
+        );
+
+    const entities = Object.fromEntries(
+        columnsToRows(columnarMetadata).map((record) => {
+            const { sample, ...rest } = record;
+            return [String(sample), rest];
+        })
+    );
+
+    /** @type {import("./sampleState.js").SampleMetadata} */
+    const sampleMetadata = { entities, attributeNames };
+
+    // Complete attribute definitions by inferring missing fields.
+    const completedAttributeDefs = computeAttributeDefs(
+        sampleMetadata,
+        payload.attributeDefs,
+        METADATA_PATH_SEPARATOR
+    );
+
+    const newMetadata = {
+        ...sampleMetadata,
+        attributeDefs: completedAttributeDefs,
+    };
+
+    state.sampleMetadata = payload.replace
+        ? newMetadata
+        : combineSampleMetadata(state.sampleMetadata, newMetadata);
 }
 
 /**
@@ -134,42 +179,21 @@ export const sampleSlice = createSlice({
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
         ) => {
-            if (!state.sampleData) {
-                throw new Error("Samples must be set before setting metadata!");
+            applyMetadataPayload(state, action.payload);
+        },
+
+        deriveMetadata: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} */ action
+        ) => {
+            const metadata = action.payload[AUGMENTED_KEY]?.metadata;
+            if (!metadata) {
+                throw new Error(
+                    "Derived metadata payload is missing. Did you remember to use IntentExecutor.dispatch()?"
+                );
             }
 
-            const columnarMetadata = action.payload.columnarMetadata;
-
-            const attributeNames =
-                /** @type {import("./payloadTypes.js").AttributeName[]} */ (
-                    Object.keys(columnarMetadata).filter((k) => k !== "sample")
-                );
-
-            const entities = Object.fromEntries(
-                columnsToRows(columnarMetadata).map((record) => {
-                    const { sample, ...rest } = record;
-                    return [String(sample), rest];
-                })
-            );
-
-            /** @type {import("./sampleState.js").SampleMetadata} */
-            const sampleMetadata = { entities, attributeNames };
-
-            // Complete attribute definitions by inferring missing fields.
-            const completedAttributeDefs = computeAttributeDefs(
-                sampleMetadata,
-                action.payload.attributeDefs,
-                METADATA_PATH_SEPARATOR
-            );
-
-            const newMetadata = {
-                ...sampleMetadata,
-                attributeDefs: completedAttributeDefs,
-            };
-
-            state.sampleMetadata = action.payload.replace
-                ? newMetadata
-                : combineSampleMetadata(state.sampleMetadata, newMetadata);
+            applyMetadataPayload(state, metadata);
         },
 
         sortBy: (
@@ -497,6 +521,16 @@ export function augmentAttributeAction(
         throw new Error(`Invalid action type: ${actionType}`);
     }
 
+    if (actionType === "deriveMetadata") {
+        return augmentDerivedMetadataAction(
+            /** @type {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} */ (
+                /** @type {unknown} */ (action)
+            ),
+            sampleHierarchy,
+            attributeInfo
+        );
+    }
+
     const accessor = attributeInfo.accessor;
 
     const wrappedAccessor =
@@ -526,6 +560,83 @@ export function augmentAttributeAction(
         payload: {
             ...action.payload,
             [AUGMENTED_KEY]: accessed,
+        },
+    };
+}
+
+/**
+ * @param {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} action
+ * @param {SampleHierarchy} sampleHierarchy
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ */
+function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
+    if (!sampleHierarchy.sampleData) {
+        throw new Error("Sample data has not been initialized.");
+    }
+
+    const attributeName = action.payload.name.trim();
+    if (attributeName.length === 0) {
+        throw new Error("Derived metadata name is missing.");
+    }
+
+    const sampleIds = sampleHierarchy.sampleData.ids;
+    const values = attributeInfo.valuesProvider({
+        sampleIds,
+        sampleHierarchy,
+    });
+
+    if (values.length !== sampleIds.length) {
+        throw new Error(
+            "Derived metadata values length does not match sample ids."
+        );
+    }
+
+    /** @type {import("./payloadTypes.js").ColumnarMetadata} */
+    const columnarMetadata = {
+        sample: sampleIds,
+        [attributeName]: values,
+    };
+
+    /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | null} */
+    let resolvedType = null;
+    if (
+        attributeInfo.type === "nominal" ||
+        attributeInfo.type === "ordinal" ||
+        attributeInfo.type === "quantitative"
+    ) {
+        resolvedType = attributeInfo.type;
+    }
+
+    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    const attributeDefs = {
+        [attributeName]: {
+            ...(resolvedType ? { type: resolvedType } : {}),
+            ...(action.payload.scale ? { scale: action.payload.scale } : {}),
+        },
+    };
+
+    const groupPath = action.payload.groupPath?.trim() ?? "";
+    const payload =
+        groupPath.length > 0
+            ? {
+                  columnarMetadata: applyGroupToColumnarMetadata(
+                      columnarMetadata,
+                      groupPath
+                  ),
+                  attributeDefs: applyGroupToAttributeDefs(
+                      attributeDefs,
+                      groupPath
+                  ),
+              }
+            : { columnarMetadata, attributeDefs };
+
+    return {
+        ...action,
+        payload: {
+            ...action.payload,
+            [AUGMENTED_KEY]: {
+                metadata: payload,
+            },
         },
     };
 }

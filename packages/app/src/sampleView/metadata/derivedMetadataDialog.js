@@ -14,13 +14,18 @@ import { computeObservedDomain } from "./scaleUtils.js";
 import { color as d3color } from "d3-color";
 import {
     applyGroupToAttributeDefs,
-    applyGroupToColumnarMetadata,
     METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
 import "./configureScaleDialog.js";
 
 /**
  * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} SampleAttributeType
+ */
+/**
+ * @typedef {object} DerivedMetadataConfig
+ * @property {string} name
+ * @property {string} groupPath
+ * @property {import("@genome-spy/core/spec/scale.js").Scale} [scale]
  */
 
 export class DerivedMetadataDialog extends BaseDialog {
@@ -33,6 +38,7 @@ export class DerivedMetadataDialog extends BaseDialog {
         attributeName: { state: true },
         groupPath: { state: true },
         _scale: { state: true },
+        _scaleConfigured: { state: true },
     };
 
     static styles = [
@@ -78,6 +84,9 @@ export class DerivedMetadataDialog extends BaseDialog {
         /** @type {import("@genome-spy/core/spec/scale.js").Scale | null} */
         this._scale = null;
 
+        /** @type {boolean} */
+        this._scaleConfigured = false;
+
         /** @type {FormController} */
         this._form = new FormController(this);
         this._form.defineField("name", {
@@ -104,9 +113,10 @@ export class DerivedMetadataDialog extends BaseDialog {
         }
 
         const dataType = this.#getDataType();
-        const scaleSummary = this._scale
-            ? describeScale(this._scale)
-            : "Default";
+        const scaleSummary =
+            this._scaleConfigured && this._scale
+                ? describeScale(this._scale)
+                : "Default";
 
         return html`
             <div class="gs-alert info">
@@ -197,6 +207,7 @@ export class DerivedMetadataDialog extends BaseDialog {
                 /** @type {import("@genome-spy/core/spec/scale.js").Scale} */ (
                     result.data
                 );
+            this._scaleConfigured = true;
         }
     }
 
@@ -213,33 +224,14 @@ export class DerivedMetadataDialog extends BaseDialog {
 
         const attributeName = this.attributeName.trim();
         const groupPath = this.groupPath.trim();
-        const dataType = this.#getDataType();
-
-        if (this.values.length !== this.sampleIds.length) {
-            throw new Error(
-                "Derived metadata values length does not match sample ids."
-            );
-        }
-
-        /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */
-        const columnarMetadata = {
-            sample: this.sampleIds,
-            [attributeName]: this.values,
+        /** @type {DerivedMetadataConfig} */
+        const payload = {
+            name: attributeName,
+            groupPath,
+            ...(this._scaleConfigured && this._scale
+                ? { scale: this._scale }
+                : {}),
         };
-
-        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
-        const attributeDefs = {
-            [attributeName]: {
-                type: dataType,
-                ...(this._scale ? { scale: this._scale } : {}),
-            },
-        };
-
-        const payload = this.#buildPayload(
-            columnarMetadata,
-            attributeDefs,
-            groupPath
-        );
 
         this.finish({ ok: true, data: payload });
         return false;
@@ -330,32 +322,6 @@ export class DerivedMetadataDialog extends BaseDialog {
             return Object.keys(groupedDefs)[0];
         }
     }
-
-    /**
-     * @param {import("../state/payloadTypes.js").ColumnarMetadata} columnarMetadata
-     * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
-     * @param {string} groupPath
-     * @returns {import("../state/payloadTypes.js").SetMetadata}
-     */
-    #buildPayload(columnarMetadata, attributeDefs, groupPath) {
-        if (groupPath.length === 0) {
-            return {
-                columnarMetadata,
-                attributeDefs,
-            };
-        } else {
-            return {
-                columnarMetadata: applyGroupToColumnarMetadata(
-                    columnarMetadata,
-                    groupPath
-                ),
-                attributeDefs: applyGroupToAttributeDefs(
-                    attributeDefs,
-                    groupPath
-                ),
-            };
-        }
-    }
 }
 
 customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
@@ -386,6 +352,7 @@ export function showDerivedMetadataDialog({
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
             dialog._form.reset();
+            dialog._scaleConfigured = false;
             // Scale props are embedded in the d3 scale function
             dialog._scale = preservesScaleDomainForAttribute(
                 attributeInfo.attribute
