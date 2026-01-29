@@ -6,8 +6,9 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../generic/baseDialog.js";
-import { createInputListener } from "./saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
+import { FormController } from "../forms/formController.js";
+import { formField } from "../forms/formField.js";
 
 /** @param {unknown} str */
 function trimString(str) {
@@ -25,6 +26,8 @@ export default class EnterBookmarkDialog extends BaseDialog {
         bookmark: {},
         mode: { type: String },
         originalName: {},
+        bookmarkName: { state: true },
+        bookmarkNotes: { state: true },
     };
 
     static styles = [
@@ -43,7 +46,20 @@ export default class EnterBookmarkDialog extends BaseDialog {
         /** @type {"add" | "edit" | "share"} */
         this.mode = "add";
         this.originalName = undefined;
+        this.bookmarkName = "";
+        this.bookmarkNotes = "";
         this.dialogTitle = "";
+
+        /** @type {FormController} */
+        this._form = new FormController(this);
+        this._form.defineField("name", {
+            valueKey: "bookmarkName",
+            validate: () => this.#validateName(),
+        });
+        this._form.defineField("notes", {
+            valueKey: "bookmarkNotes",
+            validate: () => null,
+        });
     }
 
     /**
@@ -61,8 +77,6 @@ export default class EnterBookmarkDialog extends BaseDialog {
     }
 
     renderBody() {
-        /** @type {any} */
-        const bookmark = this.bookmark ?? {};
         const mode = this.mode;
 
         return html`
@@ -89,27 +103,21 @@ export default class EnterBookmarkDialog extends BaseDialog {
                     autofocus
                     id="bookmark-title"
                     type="text"
-                    ?required=${mode == "add" || mode == "edit"}
-                    .value=${bookmark.name ?? ""}
+                    ${formField(this._form, "name")}
                     .placeholder=${mode == "share"
                         ? "Add an optional title"
                         : ""}
-                    @change=${createInputListener((input) => {
-                        this.bookmark.name = trimString(input.value);
-                    })}
                 />
+                ${this._form.feedback("name")}
             </div>
 
             <div class="gs-form-group">
-                <label for="bookmark-notes">Notes</label>
+                <label for="bookmark-notes">Notes (optional)</label>
                 <textarea
                     id="bookmark-notes"
                     rows="4"
-                    .value=${bookmark.notes ?? ""}
+                    ${formField(this._form, "notes")}
                     .placeholder=${mode == "share" ? "... and notes" : ""}
-                    @change=${createInputListener((input) => {
-                        this.bookmark.notes = trimString(input.value);
-                    })}
                 ></textarea>
                 <small
                     >Notes will be shown when the bookmark is loaded. You can
@@ -127,11 +135,22 @@ export default class EnterBookmarkDialog extends BaseDialog {
     }
 
     renderButtons() {
+        const hasErrors = this._form.hasErrors();
         return [
             this.makeButton("Cancel", () => this.onCloseButtonClick()),
             this.mode == "share"
-                ? this.makeButton("Make a link", () => this.#onOk(), faShare)
-                : this.makeButton("Save", () => this.#onOk()),
+                ? this.makeButton(
+                      "Make a link",
+                      () => this.#onOk(),
+                      faShare,
+                      hasErrors
+                  )
+                : this.makeButton(
+                      "Save",
+                      () => this.#onOk(),
+                      undefined,
+                      hasErrors
+                  ),
         ];
     }
 
@@ -139,10 +158,16 @@ export default class EnterBookmarkDialog extends BaseDialog {
         const bookmark = this.bookmark;
         const mode = this.mode;
 
-        if (mode != "share" && !bookmark.name) {
-            await showMessageDialog("Name is missing!", { type: "warning" });
+        if (this._form.validateAll()) {
             return true;
         }
+
+        if (!bookmark) {
+            throw new Error("Bookmark data is missing.");
+        }
+
+        bookmark.name = trimString(this.bookmarkName);
+        bookmark.notes = trimString(this.bookmarkNotes);
 
         let ok = true;
         try {
@@ -172,6 +197,22 @@ export default class EnterBookmarkDialog extends BaseDialog {
             return true;
         }
     }
+
+    /**
+     * @returns {string | null}
+     */
+    #validateName() {
+        if (this.mode == "share") {
+            return null;
+        }
+
+        const name = this.bookmarkName.trim();
+        if (name.length === 0) {
+            return "Name is required.";
+        }
+
+        return null;
+    }
 }
 
 customElements.define("gs-enter-bookmark-dialog", EnterBookmarkDialog);
@@ -191,6 +232,9 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
             el.bookmark = bookmark;
             el.mode = mode;
             el.originalName = bookmark.name;
+            el.bookmarkName = bookmark.name ?? "";
+            el.bookmarkNotes = bookmark.notes ?? "";
+            el._form.reset();
         }
     ).then(
         (
