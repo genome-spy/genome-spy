@@ -133,7 +133,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             </div>
 
             <div class="gs-form-group">
-                <label for="derivedAttributeName">Attribute name</label>
+                <label for="derivedAttributeName">Derived attribute name</label>
                 <input
                     id="derivedAttributeName"
                     type="text"
