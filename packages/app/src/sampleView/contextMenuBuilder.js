@@ -12,8 +12,7 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
-import { showDerivedMetadataDialog } from "./metadata/derivedMetadataDialog.js";
-import emptyToUndefined from "../utils/emptyToUndefined.js";
+import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -351,102 +350,3 @@ function appendDerivedAndPlotMenuItems(
  * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @param {import("./sampleView.js").default} sampleView
  */
-async function handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView) {
-    if (!sampleHierarchy.sampleData) {
-        throw new Error("Sample data has not been initialized.");
-    }
-
-    const attributeName = createDerivedAttributeName(
-        attributeInfo,
-        sampleHierarchy.sampleMetadata.attributeNames
-    );
-    const sampleIds = sampleHierarchy.sampleData.ids;
-    const values = attributeInfo.valuesProvider({
-        sampleIds,
-        sampleHierarchy,
-    });
-
-    if (values.length !== sampleIds.length) {
-        throw new Error(
-            "Derived metadata values length does not match sample ids."
-        );
-    }
-
-    const result = await showDerivedMetadataDialog({
-        attributeInfo,
-        sampleIds,
-        values,
-        existingAttributeNames: sampleHierarchy.sampleMetadata.attributeNames,
-        defaultName: attributeName,
-    });
-
-    if (result.ok) {
-        const config =
-            /** @type {{ name: string, groupPath: string, scale?: import("@genome-spy/core/spec/scale.js").Scale }} */ (
-                result.data
-            );
-        const payload = {
-            attribute: attributeInfo.attribute,
-            name: config.name,
-            groupPath: emptyToUndefined(config.groupPath),
-            scale: emptyToUndefined(config.scale),
-        };
-        sampleView.intentExecutor.dispatch(
-            sampleView.actions.deriveMetadata(payload)
-        );
-    }
-}
-
-/**
- * Builds a unique derived attribute name within the length limit.
- * @param {import("./types.js").AttributeInfo} attributeInfo
- * @param {string[]} existingNames
- * @returns {string}
- */
-function createDerivedAttributeName(attributeInfo, existingNames) {
-    const maxLength = 20;
-    const existing = new Set(existingNames);
-    const base =
-        attributeInfo.name && attributeInfo.name.length > 0
-            ? attributeInfo.name.trim()
-            : "Derived";
-
-    const baseName = clampName(base, maxLength);
-    if (!existing.has(baseName)) {
-        return baseName;
-    } else {
-        for (let counter = 2; counter < Number.MAX_SAFE_INTEGER; counter += 1) {
-            const suffix = "-" + String(counter);
-            const candidate = clampName(base, maxLength, suffix);
-            if (!existing.has(candidate)) {
-                return candidate;
-            }
-        }
-        throw new Error("Unable to generate a unique metadata attribute name.");
-    }
-}
-
-/**
- * Truncates a name to the target length and appends an optional suffix.
- * @param {string} name
- * @param {number} maxLength
- * @param {string} [suffix]
- * @returns {string}
- */
-function clampName(name, maxLength, suffix = "") {
-    const targetLength = maxLength - suffix.length;
-    let trimmed = name;
-
-    if (trimmed.length > targetLength) {
-        if (targetLength > 3) {
-            trimmed =
-                trimmed.slice(0, targetLength - 3).trimEnd() + "..." + suffix;
-        } else {
-            trimmed = trimmed.slice(0, targetLength) + suffix;
-        }
-    } else {
-        trimmed = trimmed + suffix;
-    }
-
-    return trimmed;
-}

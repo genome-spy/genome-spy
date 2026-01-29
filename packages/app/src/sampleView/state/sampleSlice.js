@@ -25,6 +25,7 @@ import {
     computeAttributeDefs,
     METADATA_PATH_SEPARATOR,
 } from "../metadata/metadataUtils.js";
+import { resolveDataType } from "../metadata/deriveMetadataUtils.js";
 import { columnsToRows } from "../../utils/dataLayout.js";
 import emptyToUndefined from "../../utils/emptyToUndefined.js";
 
@@ -639,26 +640,3 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
  * @param {{ strict?: boolean }} [options]
  * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | null}
  */
-export function resolveDataType(attributeInfo, options = {}) {
-    if (!attributeInfo) {
-        throw new Error("Attribute info is missing.");
-    }
-
-    const dataType =
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
-            attributeInfo.type
-        );
-    if (
-        dataType === "nominal" ||
-        dataType === "ordinal" ||
-        dataType === "quantitative"
-    ) {
-        return dataType;
-    }
-
-    if (options.strict === false) {
-        return null;
-    }
-
-    throw new Error("Unsupported data type: " + dataType);
-}
