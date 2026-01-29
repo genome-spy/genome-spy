@@ -940,6 +940,11 @@ export default class Mark {
      * initiated. The idea is to allow for parallel background compilation.
      */
     finalizeGraphicsInitialization() {
+        // Allow duplicate finalization calls when multiple init paths overlap.
+        if (this.programInfo) {
+            return;
+        }
+
         if (!this.programStatus) {
             throw new Error(
                 "No program status found! " + this.unitView.getPathString()
