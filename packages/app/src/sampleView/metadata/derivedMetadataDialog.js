@@ -12,6 +12,7 @@ import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
 import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
 import { computeObservedDomain } from "./scaleUtils.js";
 import { color as d3color } from "d3-color";
+import { resolveDataType } from "../state/sampleSlice.js";
 import {
     applyGroupToAttributeDefs,
     METADATA_PATH_SEPARATOR,
@@ -269,27 +270,6 @@ export class DerivedMetadataDialog extends BaseDialog {
 }
 
 customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
-
-/**
- * @param {import("../types.js").AttributeInfo | null} attributeInfo
- * @returns {SampleAttributeType}
- */
-function resolveDataType(attributeInfo) {
-    if (!attributeInfo) {
-        throw new Error("Attribute info is missing.");
-    }
-
-    const dataType = /** @type {SampleAttributeType} */ (attributeInfo.type);
-    if (
-        dataType === "nominal" ||
-        dataType === "ordinal" ||
-        dataType === "quantitative"
-    ) {
-        return dataType;
-    }
-
-    throw new Error("Unsupported data type: " + dataType);
-}
 
 /**
  * @param {string} attributeNameRaw

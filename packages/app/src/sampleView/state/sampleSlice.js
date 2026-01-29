@@ -598,15 +598,7 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
         [attributeName]: values,
     };
 
-    /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | null} */
-    let resolvedType = null;
-    if (
-        attributeInfo.type === "nominal" ||
-        attributeInfo.type === "ordinal" ||
-        attributeInfo.type === "quantitative"
-    ) {
-        resolvedType = attributeInfo.type;
-    }
+    const resolvedType = resolveDataType(attributeInfo, { strict: false });
 
     /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
     const attributeDefs = {
@@ -640,4 +632,33 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
             },
         },
     };
+}
+
+/**
+ * @param {import("../types.js").AttributeInfo | null} attributeInfo
+ * @param {{ strict?: boolean }} [options]
+ * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | null}
+ */
+export function resolveDataType(attributeInfo, options = {}) {
+    if (!attributeInfo) {
+        throw new Error("Attribute info is missing.");
+    }
+
+    const dataType =
+        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+            attributeInfo.type
+        );
+    if (
+        dataType === "nominal" ||
+        dataType === "ordinal" ||
+        dataType === "quantitative"
+    ) {
+        return dataType;
+    }
+
+    if (options.strict === false) {
+        return null;
+    }
+
+    throw new Error("Unsupported data type: " + dataType);
 }
