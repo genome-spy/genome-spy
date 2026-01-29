@@ -14,7 +14,7 @@ import {
  * @prop {"nominal" | "ordinal" | "quantitative"} dataType
  * @prop {"scheme" | "manual"} colorMode
  * @prop {"observed" | "explicit"} domainMode
- * @prop {"linear" | "log" | "pow" | "sqrt" | "symlog"} scaleType
+ * @prop {"linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} scaleType
  * @prop {string} scheme
  * @prop {number[]} quantDomain
  * @prop {string[]} quantRange
@@ -22,6 +22,7 @@ import {
  * @prop {{ domain: string, range: string }[]} domainPairs
  * @prop {number[]} thresholds
  * @prop {string[]} thresholdRange
+ * @prop {boolean} unsupportedPiecewise
  */
 
 /** @type {ScaleDialogState} */
@@ -37,6 +38,7 @@ const BASE_STATE = {
     domainPairs: [],
     thresholds: [],
     thresholdRange: [],
+    unsupportedPiecewise: false,
 };
 
 /**
@@ -127,6 +129,20 @@ describe("buildQuantitativeScaleSpec", () => {
 
         expect(scale).toBeNull();
     });
+
+    it("rejects unsupported piecewise scales", () => {
+        const scale = buildQuantitativeScaleSpec(
+            makeState({
+                colorMode: "manual",
+                domainMode: "explicit",
+                quantDomain: [-2, -1, 0, 1],
+                quantRange: ["#000000", "#333333", "#cccccc", "#ffffff"],
+                unsupportedPiecewise: true,
+            })
+        );
+
+        expect(scale).toBeNull();
+    });
 });
 
 describe("buildDiscreteScaleSpec", () => {
@@ -190,6 +206,22 @@ describe("validateScaleState", () => {
 
         expect(error).toBe(
             "Threshold scales require one more color than thresholds."
+        );
+    });
+
+    it("rejects unsupported piecewise quantitative scales", () => {
+        const error = validateScaleState(
+            makeState({
+                colorMode: "manual",
+                domainMode: "explicit",
+                quantDomain: [-2, -1, 0, 1],
+                quantRange: ["#000000", "#333333", "#cccccc", "#ffffff"],
+                unsupportedPiecewise: true,
+            })
+        );
+
+        expect(error).toBe(
+            "Piecewise quantitative scales support up to three domain stops."
         );
     });
 });
@@ -256,5 +288,39 @@ describe("parseScaleSpec", () => {
             "#ffffff",
             "#ff0000",
         ]);
+    });
+
+    it("normalizes 3-stop piecewise to midpoint", () => {
+        const parsed = parseScaleSpec(
+            {
+                type: "linear",
+                domain: [-2.5, 0, 2.5],
+                range: ["#0050f8", "#f6f6f6", "#ff3000"],
+            },
+            "quantitative",
+            [],
+            { scheme: "viridis", scaleType: "linear" }
+        );
+
+        expect(parsed.domainMid).toBe(0);
+        expect(parsed.quantDomain).toEqual([-2.5, 2.5]);
+        expect(parsed.quantRange).toEqual(["#0050f8", "#f6f6f6", "#ff3000"]);
+        expect(parsed.unsupportedPiecewise).toBe(false);
+    });
+
+    it("flags unsupported piecewise scales with more than three stops", () => {
+        // Non-obvious setup: explicit 4-stop piecewise domain should be rejected.
+        const parsed = parseScaleSpec(
+            {
+                type: "linear",
+                domain: [-2, -1, 0, 1],
+                range: ["#000000", "#333333", "#cccccc", "#ffffff"],
+            },
+            "quantitative",
+            [],
+            { scheme: "viridis", scaleType: "linear" }
+        );
+
+        expect(parsed.unsupportedPiecewise).toBe(true);
     });
 });
