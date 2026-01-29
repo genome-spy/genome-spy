@@ -349,6 +349,24 @@ export class MetadataView extends ConcatView {
 
         dynamicSource.updateDynamicData(metadataTable);
 
+        // The following hack is band-aid to fix inconsistent order of operations.
+        // #setMetadata is called synchronously when the state changes, but data
+        // updates may happen asynchronously.
+        // TODO: Fix the root cause properly.
+        /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
+        const resolutions = new Set();
+        this.visit((view) => {
+            if (view instanceof UnitView) {
+                const resolution = view.getScaleResolution("color");
+                if (resolution) {
+                    resolutions.add(resolution);
+                }
+            }
+        });
+        for (const resolution of resolutions) {
+            resolution.reconfigureDomain();
+        }
+
         // Load all subtree sources so that decorations (titles, axes) are ready.
         const dataSources = collectViewSubtreeDataSources(this, viewPredicate);
         dataSources.delete(dynamicSource);
