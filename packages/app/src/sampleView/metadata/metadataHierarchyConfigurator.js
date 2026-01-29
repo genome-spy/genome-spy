@@ -16,6 +16,7 @@ import { faPenToSquare } from "@fortawesome/free-solid-svg-icons";
 import { formStyles } from "../../components/generic/componentStyles.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { classMap } from "lit/directives/class-map.js";
+import { computeObservedDomain } from "./scaleUtils.js";
 
 // TODO: Validate scale configured without an effective type, and warn.
 // TODO: Warn when root type/scale is set but no inherit leaves and no group target.
@@ -271,20 +272,9 @@ export default class MetadataHierarchyConfigurator extends LitElement {
             }
         }
 
-        /** @type {any[]} */
-        let observed = [];
-        if (vals.length > 0) {
-            if (dataType === "quantitative") {
-                const nums = vals
-                    .map((v) => Number(v))
-                    .filter((n) => Number.isFinite(n));
-                if (nums.length > 0) {
-                    observed = [Math.min(...nums), Math.max(...nums)];
-                }
-            } else {
-                observed = Array.from(new Set(vals.map((v) => String(v))));
-            }
-        }
+        /** @type {(string | number)[]} */
+        const observed =
+            vals.length > 0 ? computeObservedDomain(dataType, vals) : [];
 
         const existing = this._scales.get(node.path);
 

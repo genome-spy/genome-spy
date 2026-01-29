@@ -98,6 +98,13 @@ aware interactions.
 - An example message: `feat(app): cool new feature`.
 - When working in a feature branch, it's okay to use more casual commit messages; scope can be omitted.
 
+## PR notes
+
+- Provide a PR title in Conventional Commits style.
+- Notes should be Markdown.
+- Start with a brief prose-style rationale paragraph.
+- Follow with concise key points focused on user-visible benefits; skip minor refactors.
+
 ## Architecture pointers
 
 Essential architectural topics live in `ARCHITECTURE.md`. Refer to that file for the details listed below:

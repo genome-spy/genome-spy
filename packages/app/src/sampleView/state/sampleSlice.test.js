@@ -82,4 +82,42 @@ describe("augmentAttributeAction", () => {
 
         expect(augmented.payload[AUGMENTED_KEY].domain).toEqual(["A", "B"]);
     });
+
+    it("adds derived metadata payload for deriveMetadata actions", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: { type: "VALUE_AT_LOCUS", specifier: "x" },
+                name: "derived",
+                groupPath: "group/sub",
+                scale: { scheme: "viridis" },
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () => ({
+                name: "x",
+                type: "quantitative",
+                valuesProvider: ({ sampleIds }) =>
+                    sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+            })
+        );
+
+        expect(augmented.payload[AUGMENTED_KEY].metadata).toEqual({
+            columnarMetadata: {
+                sample: ["s1", "s2"],
+                "group/sub/derived": [1, 2],
+            },
+            attributeDefs: {
+                "group/sub/derived": {
+                    type: "quantitative",
+                    scale: { scheme: "viridis" },
+                },
+            },
+        });
+    });
 });

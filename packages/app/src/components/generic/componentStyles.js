@@ -77,11 +77,8 @@ export const formStyles = css`
     .btn-group {
         display: flex;
 
-        // TODO: Extract to another class
+        /* TODO: Extract to another class */
         font-size: 1.3em;
-
-        // TODO: This too
-        margin-bottom: var(--basic-spacing);
 
         .btn {
             flex-grow: 1;
@@ -112,6 +109,10 @@ export const formStyles = css`
             margin-top: 0.5em;
         }
 
+        &:not(:last-child) {
+            margin-bottom: var(--basic-spacing);
+        }
+
         label,
         div.label {
             display: inline-block;
@@ -126,7 +127,8 @@ export const formStyles = css`
         input[type="text"],
         input[type="number"],
         select,
-        textarea {
+        textarea,
+        .fake-input {
             display: block;
             width: 100%;
             box-sizing: border-box;
@@ -151,17 +153,13 @@ export const formStyles = css`
         }
         */
 
-            &:not(:last-child) {
-                margin-bottom: 10px;
-            }
-
             &::placeholder {
                 color: #a0a0a0;
             }
         }
 
         select {
-            // Copy-pasted from Bootstrap 5.1
+            /* Copy-pasted from Bootstrap 5.1 */
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
             background-repeat: no-repeat;
             background-position: right 0.75rem center;
@@ -169,10 +167,23 @@ export const formStyles = css`
             appearance: none;
         }
 
-        small {
+        :is(input, select, textarea, div) + small {
             display: block;
-            margin-top: 0.25rem;
+            margin-top: 0.3em;
             color: #606060;
+        }
+
+        :is(input, select, textarea).is-invalid,
+        .fake-input.is-invalid {
+            border-color: var(--danger-color, #dc3545);
+            box-shadow: 0 0 0 0.2rem rgb(220 53 69 / 25%);
+        }
+
+        .invalid-feedback {
+            display: block;
+            margin-top: 0.25em;
+            color: var(--danger-color, #dc3545);
+            font-size: 0.875em;
         }
 
         .threshold-flex {
@@ -184,7 +195,7 @@ export const formStyles = css`
             }
 
             * {
-                margin-bottom: 0 !important; // TODO: without important
+                margin-bottom: 0 !important; /* TODO: without important */
             }
 
             > :first-child {
@@ -194,6 +205,11 @@ export const formStyles = css`
             > :last-child {
                 padding: 0 var(--basic-spacing);
             }
+        }
+
+        .input-group {
+            display: flex;
+            gap: var(--basic-spacing);
         }
     }
 
@@ -245,6 +261,16 @@ export const formStyles = css`
         ol {
             padding-inline-start: 2em;
         }
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.25em 0.5em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        background-color: #d0d0d0;
+        border-radius: 0.25rem;
     }
 
     .gs-tabs {

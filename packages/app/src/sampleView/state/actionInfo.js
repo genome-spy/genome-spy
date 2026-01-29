@@ -64,6 +64,20 @@ const actionHandlers = {
         icon: faTable,
     }),
 
+    deriveMetadata: ({ template, payload, attributeTitle }) => {
+        const name = payload.groupPath
+            ? payload.groupPath + "/" + payload.name
+            : payload.name;
+        const source = attributeTitle ?? "attribute";
+        return {
+            ...template,
+            title: "Add derived metadata",
+            provenanceTitle: html`Add derived metadata
+                <strong>${name}</strong> from ${source}`,
+            icon: faTable,
+        };
+    },
+
     sortBy: ({ template, attributeTitle }) => ({
         ...template,
         title: "Sort by",

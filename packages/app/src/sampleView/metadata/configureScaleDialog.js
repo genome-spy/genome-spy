@@ -34,6 +34,7 @@ export const DEFAULT_COLOR = "#808080";
  * @prop {DomainRangePair[]} domainPairs
  * @prop {number[]} thresholds
  * @prop {string[]} thresholdRange
+ * @prop {boolean} unsupportedPiecewise
  */
 
 /**
@@ -75,6 +76,7 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
         domainPairs: [],
         thresholds: [],
         thresholdRange: [],
+        unsupportedPiecewise: false,
     };
 
     if (!scale) {
@@ -114,6 +116,29 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
         state.domainMode = "explicit";
         state.thresholds = /** @type {number[]} */ (scale.domain ?? []);
         state.thresholdRange = /** @type {string[]} */ (scale.range ?? []);
+        return state;
+    }
+
+    if (!isDiscrete && Array.isArray(scale.domain) && scale.domain.length > 2) {
+        const domainValues = /** @type {number[]} */ (scale.domain);
+        const rangeValues = Array.isArray(scale.range)
+            ? /** @type {string[]} */ (scale.range)
+            : null;
+        const hasValidRange =
+            scale.range == null || rangeValues?.length === domainValues.length;
+        if (domainValues.length === 3 && hasValidRange) {
+            state.domainMid = domainValues[1];
+            state.quantDomain = [domainValues[0], domainValues[2]];
+            if (rangeValues) {
+                state.quantRange = rangeValues;
+            }
+        } else {
+            state.unsupportedPiecewise = true;
+            state.quantDomain = domainValues;
+            if (rangeValues) {
+                state.quantRange = rangeValues;
+            }
+        }
         return state;
     }
 
@@ -171,7 +196,7 @@ export function normalizeQuantDomainRange(
     const defaultMin = hasObserved ? Number(observedDomain[0]) : 0;
     const defaultMax = hasObserved ? Number(observedDomain[1]) : 1;
 
-    const domain = [...quantDomain];
+    const domain = Array.isArray(quantDomain) ? [...quantDomain] : [];
     if (domain.length === 0) {
         domain.push(defaultMin, defaultMax);
     } else if (domain.length === 1) {
@@ -183,7 +208,7 @@ export function normalizeQuantDomainRange(
     const normalizedDomain = [min, max];
 
     const desiredRangeLength = getExpectedQuantRangeLength(domainMid);
-    let range = [...quantRange];
+    let range = Array.isArray(quantRange) ? [...quantRange] : [];
     if (range.length < desiredRangeLength) {
         const last = range[range.length - 1] ?? DEFAULT_COLOR;
         while (range.length < desiredRangeLength) {
@@ -244,6 +269,10 @@ export function validateScaleState(state) {
             return null;
         }
 
+        if (state.unsupportedPiecewise) {
+            return "Piecewise quantitative scales support up to three domain stops.";
+        }
+
         if (state.domainMode === "explicit" && state.quantDomain.length !== 2) {
             return "Explicit quantitative domains require min and max values.";
         }
@@ -285,6 +314,10 @@ export function buildQuantitativeScaleSpec(state) {
     const scale = {
         type: state.scaleType,
     };
+
+    if (state.unsupportedPiecewise) {
+        return null;
+    }
 
     if (state.scaleType === "threshold") {
         if (state.colorMode !== "manual" || state.domainMode !== "explicit") {
@@ -390,6 +423,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
         domainMid: { type: Number, state: true },
         thresholds: { type: Array, state: true },
         thresholdRange: { type: Array, state: true },
+        unsupportedPiecewise: { type: Boolean, state: true },
     };
 
     constructor() {
@@ -422,6 +456,8 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.thresholds = [];
         /** @type {string[]} */
         this.thresholdRange = [];
+        /** @type {boolean} */
+        this.unsupportedPiecewise = false;
     }
 
     connectedCallback() {
@@ -447,6 +483,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.domainPairs = parsed.domainPairs;
         this.thresholds = parsed.thresholds;
         this.thresholdRange = parsed.thresholdRange;
+        this.unsupportedPiecewise = parsed.unsupportedPiecewise;
         if (this.scaleType === "threshold") {
             this.#ensureThresholdRangeLengths();
         }
@@ -639,6 +676,9 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     #ensureQuantDomainRangeLengths() {
+        if (this.unsupportedPiecewise) {
+            return;
+        }
         const normalized = normalizeQuantDomainRange(
             this.quantDomain,
             this.quantRange,
@@ -732,6 +772,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
             domainPairs: this.domainPairs,
             thresholds: this.thresholds,
             thresholdRange: this.thresholdRange,
+            unsupportedPiecewise: this.unsupportedPiecewise,
         };
     }
 
@@ -1228,6 +1269,15 @@ export default class ConfigureScaleDialog extends BaseDialog {
             const isThreshold = this.scaleType === "threshold";
             return html`
                 ${this.#renderQuantitativeConfig()} ${this.#renderDomainMode()}
+                ${this.unsupportedPiecewise
+                    ? html`
+                          <div class="gs-alert info">
+                              This dialog supports up to three domain stops for
+                              quantitative piecewise scales. Edit the spec
+                              manually to use more.
+                          </div>
+                      `
+                    : ""}
                 ${isThreshold
                     ? ""
                     : this.#renderQuantDomainInputs(
@@ -1248,6 +1298,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
                 </button>
                 <button
                     class="btn btn-primary"
+                    ?disabled=${this.unsupportedPiecewise}
                     @click=${() => this.#validateAndSubmit()}
                 >
                     Apply

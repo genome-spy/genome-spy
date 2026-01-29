@@ -7,10 +7,14 @@ import {
     findEncodedFields,
     findUniqueViewNames,
 } from "@genome-spy/core/view/viewUtils.js";
+import { DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
+import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
+
+const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
  * @typedef {Object} FieldInfo
@@ -206,7 +210,12 @@ export function buildIntervalAggregationMenu({
                 attributeValue,
                 sampleView
             );
-            appendPlotMenuItems(submenuItems, attributeInfo, sampleView);
+            appendDerivedAndPlotMenuItems(
+                submenuItems,
+                attributeInfo,
+                sampleHierarchy,
+                sampleView
+            );
 
             return {
                 label: opLabel,
@@ -260,7 +269,84 @@ export function buildPointQueryMenu({
         scalarX,
         sampleView
     );
-    appendPlotMenuItems(items, attributeInfo, sampleView);
+    appendDerivedAndPlotMenuItems(
+        items,
+        attributeInfo,
+        sampleHierarchy,
+        sampleView
+    );
 
     return items;
 }
+
+/**
+ * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */
+function appendAddToMetadataMenuItem(
+    items,
+    attributeInfo,
+    sampleHierarchy,
+    sampleView
+) {
+    if (!sampleHierarchy.sampleData) {
+        throw new Error("Sample data has not been initialized.");
+    }
+
+    if (attributeInfo.attribute.type === SAMPLE_ATTRIBUTE) {
+        return;
+    }
+
+    items.push({
+        label: "Add to sample metadata...",
+        callback: () => {
+            void handleAddToMetadata(
+                attributeInfo,
+                sampleHierarchy,
+                sampleView
+            );
+        },
+    });
+}
+
+/**
+ * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */
+function appendDerivedAndPlotMenuItems(
+    items,
+    attributeInfo,
+    sampleHierarchy,
+    sampleView
+) {
+    const canAddToMetadata = attributeInfo.attribute.type !== SAMPLE_ATTRIBUTE;
+    const hasPlots =
+        attributeInfo.type === "quantitative" ||
+        attributeInfo.type === "nominal" ||
+        attributeInfo.type === "ordinal";
+
+    if (!canAddToMetadata && !hasPlots) {
+        return;
+    }
+
+    items.push(DIVIDER);
+    appendAddToMetadataMenuItem(
+        items,
+        attributeInfo,
+        sampleHierarchy,
+        sampleView
+    );
+    appendPlotMenuItems(items, attributeInfo, sampleView, {
+        includeDivider: false,
+    });
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("./sampleView.js").default} sampleView
+ */

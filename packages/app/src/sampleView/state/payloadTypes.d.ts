@@ -70,6 +70,12 @@ export interface SetMetadata {
     replace?: boolean;
 }
 
+export interface DeriveMetadata extends PayloadWithAttribute {
+    name: string;
+    groupPath?: string;
+    scale?: SampleAttributeDef["scale"];
+}
+
 export type ThresholdOperator = "lt" | "lte";
 
 export interface Threshold {
@@ -90,6 +96,8 @@ export interface AugmentedAttribute {
     values: Record<string, any>;
     /** Domain of the accessed attribute, if needed */
     domain?: Scalar[];
+    /** Derived metadata payload computed prior to dispatch */
+    metadata?: SetMetadata;
 }
 
 /**
