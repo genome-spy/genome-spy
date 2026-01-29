@@ -112,7 +112,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             );
         }
 
-        const dataType = this.#getDataType();
+        const dataType = resolveDataType(this.attributeInfo);
         const scaleSummary =
             this._scaleConfigured && this._scale
                 ? describeScale(this._scale)
@@ -186,7 +186,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             throw new Error("Scale configuration requires attribute data.");
         }
 
-        const dataType = this.#getDataType();
+        const dataType = resolveDataType(this.attributeInfo);
         const observedDomain = this.#getObservedDomain();
 
         const result = await showDialog(
@@ -238,29 +238,6 @@ export class DerivedMetadataDialog extends BaseDialog {
     }
 
     /**
-     * @returns {SampleAttributeType}
-     */
-    #getDataType() {
-        if (!this.attributeInfo) {
-            throw new Error("Attribute info is missing.");
-        }
-
-        const dataType = /** @type {SampleAttributeType} */ (
-            this.attributeInfo.type
-        );
-
-        if (
-            dataType === "nominal" ||
-            dataType === "ordinal" ||
-            dataType === "quantitative"
-        ) {
-            return dataType;
-        } else {
-            throw new Error("Unsupported data type: " + dataType);
-        }
-    }
-
-    /**
      * @returns {(string | number)[]}
      */
     #getObservedDomain() {
@@ -270,7 +247,7 @@ export class DerivedMetadataDialog extends BaseDialog {
 
         if (!this._observedDomain) {
             this._observedDomain = computeObservedDomain(
-                this.#getDataType(),
+                resolveDataType(this.attributeInfo),
                 this.values
             );
         }
@@ -282,49 +259,90 @@ export class DerivedMetadataDialog extends BaseDialog {
      * @returns {string | null}
      */
     #validateName() {
-        const attributeName = this.attributeName.trim();
-        if (attributeName.length === 0) {
-            return "Attribute name is required.";
-        } else {
-            const groupPath = this.groupPath.trim();
-            const derivedName = this.#getDerivedAttributeName(
-                attributeName,
-                groupPath
-            );
-            if (this.existingAttributeNames.includes(derivedName)) {
-                return "Name already exists. Choose another name or group.";
-            } else {
-                return null;
-            }
-        }
-    }
-
-    /**
-     * @param {string} attributeName
-     * @param {string} groupPath
-     * @returns {string}
-     */
-    #getDerivedAttributeName(attributeName, groupPath) {
-        /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
-        const attributeDefs = {
-            [attributeName]: {
-                type: this.#getDataType(),
-            },
-        };
-
-        if (groupPath.length === 0) {
-            return Object.keys(attributeDefs)[0];
-        } else {
-            const groupedDefs = applyGroupToAttributeDefs(
-                attributeDefs,
-                groupPath
-            );
-            return Object.keys(groupedDefs)[0];
-        }
+        return validateDerivedMetadataName(
+            this.attributeName,
+            this.groupPath,
+            this.existingAttributeNames,
+            this.attributeInfo
+        );
     }
 }
 
 customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
+
+/**
+ * @param {import("../types.js").AttributeInfo | null} attributeInfo
+ * @returns {SampleAttributeType}
+ */
+function resolveDataType(attributeInfo) {
+    if (!attributeInfo) {
+        throw new Error("Attribute info is missing.");
+    }
+
+    const dataType = /** @type {SampleAttributeType} */ (attributeInfo.type);
+    if (
+        dataType === "nominal" ||
+        dataType === "ordinal" ||
+        dataType === "quantitative"
+    ) {
+        return dataType;
+    }
+
+    throw new Error("Unsupported data type: " + dataType);
+}
+
+/**
+ * @param {string} attributeNameRaw
+ * @param {string} groupPathRaw
+ * @param {string[]} existingNames
+ * @param {import("../types.js").AttributeInfo | null} attributeInfo
+ * @returns {string | null}
+ */
+function validateDerivedMetadataName(
+    attributeNameRaw,
+    groupPathRaw,
+    existingNames,
+    attributeInfo
+) {
+    const attributeName = attributeNameRaw.trim();
+    if (attributeName.length === 0) {
+        return "Attribute name is required.";
+    }
+
+    const groupPath = groupPathRaw.trim();
+    const derivedName = deriveAttributeName(
+        attributeName,
+        groupPath,
+        resolveDataType(attributeInfo)
+    );
+    if (existingNames.includes(derivedName)) {
+        return "Name already exists. Choose another name or group.";
+    }
+
+    return null;
+}
+
+/**
+ * @param {string} attributeName
+ * @param {string} groupPath
+ * @param {SampleAttributeType} dataType
+ * @returns {string}
+ */
+function deriveAttributeName(attributeName, groupPath, dataType) {
+    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    const attributeDefs = {
+        [attributeName]: {
+            type: dataType,
+        },
+    };
+
+    if (groupPath.length === 0) {
+        return Object.keys(attributeDefs)[0];
+    }
+
+    const groupedDefs = applyGroupToAttributeDefs(attributeDefs, groupPath);
+    return Object.keys(groupedDefs)[0];
+}
 
 /**
  * @param {{
