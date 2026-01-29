@@ -282,18 +282,14 @@ class UploadMetadataDialog extends BaseDialog {
 
         return [
             this.makeCloseButton("Cancel"),
-            this.makeButton(
-                "Previous",
-                () => this.#changePage(-1),
-                faCaretLeft,
-                this._page === 0
-            ),
-            this.makeButton(
-                next.label,
-                () => this.#changePage(1),
-                next.icon,
-                !this.#canAdvancePage()
-            ),
+            this.makeButton("Previous", () => this.#changePage(-1), {
+                iconDef: faCaretLeft,
+                disabled: this._page === 0,
+            }),
+            this.makeButton(next.label, () => this.#changePage(1), {
+                iconDef: next.icon ?? undefined,
+                disabled: !this.#canAdvancePage(),
+            }),
         ];
     }
 }

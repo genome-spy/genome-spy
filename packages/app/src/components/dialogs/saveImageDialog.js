@@ -172,7 +172,7 @@ export default class SaveImageDialog extends BaseDialog {
 
     renderButtons() {
         return [
-            this.makeButton("Cancel", () => this.onCloseButtonClick()),
+            this.makeCloseButton("Cancel"),
             this.makeButton(
                 "Save PNG",
                 () => {
@@ -180,7 +180,7 @@ export default class SaveImageDialog extends BaseDialog {
                     this.finish({ ok: true });
                     this.triggerClose();
                 },
-                faDownload
+                { iconDef: faDownload }
             ),
         ];
     }

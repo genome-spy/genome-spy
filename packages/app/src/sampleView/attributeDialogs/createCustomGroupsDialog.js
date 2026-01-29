@@ -335,10 +335,12 @@ class CreateCustomGroupsDialog extends BaseDialog {
                     this.#pasteCategoriesModal(types);
                     return true;
                 },
-                faPaste
+                { iconDef: faPaste }
             ),
             this.makeButton("Cancel", () => this.finish({ ok: false })),
-            this.makeButton("Group", () => this.#onGroup(), faObjectGroup),
+            this.makeButton("Group", () => this.#onGroup(), {
+                iconDef: faObjectGroup,
+            }),
         ];
     }
 

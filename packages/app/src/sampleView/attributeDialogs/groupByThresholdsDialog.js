@@ -269,7 +269,9 @@ class GroupByThresholdsDialog extends BaseDialog {
     renderButtons() {
         return [
             this.makeButton("Cancel", () => this.finish({ ok: false })),
-            this.makeButton("Group", () => this.#onGroup(), faObjectGroup),
+            this.makeButton("Group", () => this.#onGroup(), {
+                iconDef: faObjectGroup,
+            }),
         ];
     }
 

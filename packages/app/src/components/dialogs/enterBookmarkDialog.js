@@ -137,20 +137,15 @@ export default class EnterBookmarkDialog extends BaseDialog {
     renderButtons() {
         const hasErrors = this._form.hasErrors();
         return [
-            this.makeButton("Cancel", () => this.onCloseButtonClick()),
+            this.makeCloseButton("Cancel"),
             this.mode == "share"
-                ? this.makeButton(
-                      "Make a link",
-                      () => this.#onOk(),
-                      faShare,
-                      hasErrors
-                  )
-                : this.makeButton(
-                      "Save",
-                      () => this.#onOk(),
-                      undefined,
-                      hasErrors
-                  ),
+                ? this.makeButton("Make a link", () => this.#onOk(), {
+                      iconDef: faShare,
+                      disabled: hasErrors,
+                  })
+                : this.makeButton("Save", () => this.#onOk(), {
+                      disabled: hasErrors,
+                  }),
         ];
     }
 

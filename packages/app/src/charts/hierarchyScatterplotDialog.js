@@ -89,7 +89,7 @@ export class HierarchyScatterplotDialog extends BaseDialog {
                     );
                     return true;
                 },
-                faDownload
+                { iconDef: faDownload }
             ),
             this.makeCloseButton(),
         ];

@@ -229,7 +229,7 @@ export default class BookmarkInfoBox extends BaseDialog {
                           );
                           return true;
                       },
-                      faBookmark
+                      { iconDef: faBookmark }
                   )
                 : html``,
             this.makeCloseButton(this.mode == "tour" ? "End tour" : "Close"),

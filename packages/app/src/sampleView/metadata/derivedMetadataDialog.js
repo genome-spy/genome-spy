@@ -177,8 +177,11 @@ export class DerivedMetadataDialog extends BaseDialog {
     renderButtons() {
         const hasErrors = this._form.hasErrors();
         return [
-            this.makeButton("Cancel", () => this.finish({ ok: false })),
-            this.makeButton("Add", () => this.#onAdd(), faPlus, hasErrors),
+            this.makeCloseButton(),
+            this.makeButton("Add", () => this.#onAdd(), {
+                iconDef: faPlus,
+                disabled: hasErrors,
+            }),
         ];
     }
 

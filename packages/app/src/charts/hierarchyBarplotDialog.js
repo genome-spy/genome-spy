@@ -81,7 +81,7 @@ export class HierarchyBarplotDialog extends BaseDialog {
                     );
                     return true;
                 },
-                faDownload
+                { iconDef: faDownload }
             ),
             this.makeCloseButton(),
         ];

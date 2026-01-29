@@ -83,7 +83,7 @@ export class HierarchyBoxplotDialog extends BaseDialog {
                     );
                     return true;
                 },
-                faDownload
+                { iconDef: faDownload }
             ),
             this.makeCloseButton(),
         ];

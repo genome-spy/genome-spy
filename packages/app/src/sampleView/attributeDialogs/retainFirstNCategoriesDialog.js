@@ -51,7 +51,9 @@ export class RetainFirstNCategoriesDialog extends BaseDialog {
             this.makeButton("Cancel", () => {
                 this.finish({ ok: false });
             }),
-            this.makeButton("Retain", () => this.#onRetain(), faFilter),
+            this.makeButton("Retain", () => this.#onRetain(), {
+                iconDef: faFilter,
+            }),
         ];
     }
 

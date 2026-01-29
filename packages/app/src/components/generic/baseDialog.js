@@ -223,11 +223,15 @@ export default class BaseDialog extends LitElement {
      *
      * @param {string} title
      * @param {(() => boolean) | (() => void)} callback If returns truthy value, dialog closing is canceled
-     * @param {import("@fortawesome/fontawesome-svg-core").IconDefinition} [iconDef]
-
+     * @param {{
+     *  iconDef?: import("@fortawesome/fontawesome-svg-core").IconDefinition,
+     *  disabled?: boolean,
+     *  preventMouseDown?: boolean,
+     * }} [options]
      * @protected
      */
-    makeButton(title, callback, iconDef, disabled = false) {
+    makeButton(title, callback, options = {}) {
+        const { iconDef, disabled = false, preventMouseDown = false } = options;
         // Ugly hack. TODO: Allow defining icon position in the future
         const reverse = title == "Next";
         return html`<button
@@ -235,6 +239,9 @@ export default class BaseDialog extends LitElement {
             type="button"
             title=${title}
             ?disabled=${disabled}
+            @mousedown=${preventMouseDown
+                ? (/** @type {MouseEvent} */ event) => event.preventDefault()
+                : undefined}
             @click=${async () => {
                 const cancelClose = !!(await callback());
                 if (!cancelClose) {
@@ -250,7 +257,9 @@ export default class BaseDialog extends LitElement {
      * @protected
      */
     makeCloseButton(label = "Close") {
-        return this.makeButton(label, () => this.onCloseButtonClick());
+        return this.makeButton(label, () => this.onCloseButtonClick(), {
+            preventMouseDown: true,
+        });
     }
 
     render() {
