@@ -26,6 +26,7 @@ import {
     METADATA_PATH_SEPARATOR,
 } from "../metadata/metadataUtils.js";
 import { columnsToRows } from "../../utils/dataLayout.js";
+import emptyToUndefined from "../../utils/emptyToUndefined.js";
 
 /**
  * @typedef {import("./sampleState.js").SampleHierarchy} SampleHierarchy
@@ -610,8 +611,8 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
     /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
     const attributeDefs = {
         [attributeName]: {
-            ...(resolvedType ? { type: resolvedType } : {}),
-            ...(action.payload.scale ? { scale: action.payload.scale } : {}),
+            type: emptyToUndefined(resolvedType),
+            scale: emptyToUndefined(action.payload.scale),
         },
     };
 

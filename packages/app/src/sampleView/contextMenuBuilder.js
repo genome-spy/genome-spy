@@ -13,6 +13,7 @@ import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
 import { showDerivedMetadataDialog } from "./metadata/derivedMetadataDialog.js";
+import emptyToUndefined from "../utils/emptyToUndefined.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -394,15 +395,6 @@ async function handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView) {
             sampleView.actions.deriveMetadata(payload)
         );
     }
-}
-
-/**
- * @template T
- * @param {T | null | undefined} value
- * @returns {T | undefined}
- */
-function emptyToUndefined(value) {
-    return value ?? undefined;
 }
 
 /**
