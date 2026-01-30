@@ -12,6 +12,14 @@
  */
 
 /**
+ * @typedef {object} QueueEntry
+ * @prop {Action[]} actions
+ * @prop {SubmitOptions | undefined} options
+ * @prop {() => void} resolve
+ * @prop {(error: Error) => void} reject
+ */
+
+/**
  * @typedef {object} SubmitOptions
  * @prop {AbortSignal} [signal]
  * @prop {string} [batchId]
@@ -33,6 +41,12 @@ export default class IntentPipeline {
 
     /** @type {import("./intentExecutor.js").default<any>} */
     #intentExecutor;
+
+    /** @type {QueueEntry[]} */
+    #queue = [];
+
+    #isRunning = false;
+    #isBatchRunning = false;
 
     /**
      * @param {object} deps Dependencies used to build the shared intent context.
@@ -72,7 +86,63 @@ export default class IntentPipeline {
      * @returns {Promise<void>}
      */
     async submit(_actions, options) {
-        void this.createContext(options);
-        throw new Error("Async intent pipeline is not implemented yet.");
+        const actions = Array.isArray(_actions) ? _actions : [_actions];
+        const isBatch = actions.length > 1;
+        if (this.#isBatchRunning) {
+            throw new Error("Cannot submit actions while a batch is running.");
+        }
+        if (isBatch && this.#isRunning) {
+            throw new Error("Cannot submit a batch while actions are running.");
+        }
+
+        return new Promise((resolve, reject) => {
+            this.#queue.push({ actions, options, resolve, reject });
+            if (!this.#isRunning) {
+                void this.#drainQueue();
+            }
+        });
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async #drainQueue() {
+        if (this.#isRunning) {
+            return;
+        }
+        this.#isRunning = true;
+
+        try {
+            while (this.#queue.length) {
+                const entry = /** @type {QueueEntry} */ (this.#queue.shift());
+                const isBatch = entry.actions.length > 1;
+                if (isBatch) {
+                    this.#isBatchRunning = true;
+                }
+
+                try {
+                    for (const action of entry.actions) {
+                        void this.createContext(entry.options);
+                        this.#intentExecutor.dispatch(action);
+                    }
+                    entry.resolve();
+                } catch (error) {
+                    entry.reject(
+                        error instanceof Error
+                            ? error
+                            : new Error(String(error))
+                    );
+                    this.#queue = [];
+                    throw error;
+                }
+
+                if (isBatch) {
+                    this.#isBatchRunning = false;
+                }
+            }
+        } finally {
+            this.#isRunning = false;
+            this.#isBatchRunning = false;
+        }
     }
 }
