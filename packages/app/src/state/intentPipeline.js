@@ -17,6 +17,13 @@
  * @prop {string} [batchId]
  */
 
+/**
+ * Async intent orchestrator for sequential action processing.
+ *
+ * It provides a shared context for ensure/processed hooks and will eventually
+ * handle queueing, batch execution, and failure signaling while keeping the
+ * synchronous intent executor unchanged.
+ */
 export default class IntentPipeline {
     /** @type {AppStore} */
     #store;
@@ -28,7 +35,7 @@ export default class IntentPipeline {
     #intentExecutor;
 
     /**
-     * @param {object} deps
+     * @param {object} deps Dependencies used to build the shared intent context.
      * @param {AppStore} deps.store
      * @param {import("./provenance.js").default} deps.provenance
      * @param {import("./intentExecutor.js").default<any>} deps.intentExecutor
@@ -40,6 +47,9 @@ export default class IntentPipeline {
     }
 
     /**
+     * Returns a shared context object for ensure/processed hooks.
+     * The context keeps dependencies together and carries cancellation signals.
+     *
      * @param {SubmitOptions} [options]
      * @returns {IntentContext}
      */
@@ -54,6 +64,8 @@ export default class IntentPipeline {
 
     /**
      * Submit a single action or a batch of actions for asynchronous processing.
+     * The pipeline will ensure data availability before augmentation/dispatch
+     * and will process batches sequentially.
      *
      * @param {Action | Action[]} _actions
      * @param {SubmitOptions} [options]
