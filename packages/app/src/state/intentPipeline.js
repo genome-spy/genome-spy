@@ -37,9 +37,9 @@
 /**
  * Async intent orchestrator for sequential action processing.
  *
- * It provides a shared context for ensure/processed hooks and will eventually
- * handle queueing, batch execution, and failure signaling while keeping the
- * synchronous intent executor unchanged.
+ * It coordinates attribute-availability checks, action hooks, and dispatching
+ * while preserving the synchronous intent executor. Submissions are serialized
+ * and batches are rejected if other work is already running.
  */
 export default class IntentPipeline {
     /** @type {AppStore} */
@@ -59,9 +59,6 @@ export default class IntentPipeline {
 
     /** @type {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource | undefined} */
     #getAttributeInfo;
-
-    /** @type {(signal?: AbortSignal) => Promise<void> | undefined} */
-    #awaitMetadataReady;
 
     /** @type {ActionHook[]} */
     #actionHooks = [];
@@ -101,11 +98,9 @@ export default class IntentPipeline {
      *
      * @param {object} resolvers
      * @param {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [resolvers.getAttributeInfo]
-     * @param {(signal?: AbortSignal) => Promise<void>} [resolvers.awaitMetadataReady]
      */
-    setResolvers({ getAttributeInfo, awaitMetadataReady }) {
+    setResolvers({ getAttributeInfo }) {
         this.#getAttributeInfo = getAttributeInfo;
-        this.#awaitMetadataReady = awaitMetadataReady;
     }
 
     /**
@@ -123,12 +118,14 @@ export default class IntentPipeline {
      * The pipeline will ensure data availability before augmentation/dispatch
      * and will process batches sequentially.
      *
-     * @param {Action | Action[]} _actions
+     * @param {Action | Action[]} actionsInput
      * @param {SubmitOptions} [options]
      * @returns {Promise<void>}
      */
-    async submit(_actions, options) {
-        const actions = Array.isArray(_actions) ? _actions : [_actions];
+    async submit(actionsInput, options) {
+        const actions = Array.isArray(actionsInput)
+            ? actionsInput
+            : [actionsInput];
         const isBatch = actions.length > 1;
         if (this.#isBatchRunning) {
             throw new Error("Cannot submit actions while a batch is running.");
@@ -197,6 +194,8 @@ export default class IntentPipeline {
      */
     async #processAction(action, options) {
         const context = this.createContext(options);
+        // Extract attribute identifiers from payloads that follow the
+        // sample action shape: payload.attribute.type.
         const payload = "payload" in action ? action.payload : undefined;
         const attribute =
             payload &&
@@ -212,6 +211,7 @@ export default class IntentPipeline {
                 ? context.getAttributeInfo(attribute)
                 : undefined;
 
+        // Ensure required data before dispatch so action augmenters can rely on it.
         if (attributeInfo?.ensureAvailability) {
             await attributeInfo.ensureAvailability({
                 signal: context.signal,
@@ -220,12 +220,14 @@ export default class IntentPipeline {
 
         context.intentExecutor.dispatch(action);
 
+        // Await any post-dispatch processing that feeds back into state or data.
         if (attributeInfo?.awaitProcessed) {
             await attributeInfo.awaitProcessed({
                 signal: context.signal,
             });
         }
 
+        // Run additional hooks for actions that don't use AttributeInfo.
         for (const hook of this.#actionHooks) {
             if (!hook.predicate(action)) {
                 continue;

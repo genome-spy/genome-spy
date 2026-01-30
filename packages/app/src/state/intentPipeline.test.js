@@ -243,4 +243,53 @@ describe("IntentPipeline", () => {
         await batchPromise;
         expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(2);
     });
+
+    it("awaits action hooks before resolving submissions", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const ensureDeferred = createDeferred();
+        const processedDeferred = createDeferred();
+        // Track hook ordering relative to dispatch and submission resolution.
+        /** @type {string[]} */
+        const steps = [];
+
+        pipeline.registerActionHook({
+            predicate: (action) => action.type === "sample/hook",
+            ensure: async () => {
+                steps.push("ensure-start");
+                await ensureDeferred.promise;
+                steps.push("ensure-end");
+            },
+            awaitProcessed: async () => {
+                steps.push("processed-start");
+                await processedDeferred.promise;
+                steps.push("processed-end");
+            },
+        });
+
+        const submitPromise = pipeline.submit({ type: "sample/hook" }, {});
+
+        await Promise.resolve();
+        expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(1);
+        expect(steps).toEqual(["ensure-start"]);
+
+        ensureDeferred.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(steps).toEqual([
+            "ensure-start",
+            "ensure-end",
+            "processed-start",
+        ]);
+
+        processedDeferred.resolve();
+        await submitPromise;
+        expect(steps).toEqual([
+            "ensure-start",
+            "ensure-end",
+            "processed-start",
+            "processed-end",
+        ]);
+    });
 });
