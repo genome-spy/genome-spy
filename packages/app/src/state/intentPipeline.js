@@ -8,6 +8,7 @@
  * @prop {AppStore} store
  * @prop {import("./provenance.js").default} provenance
  * @prop {import("./intentExecutor.js").default<any>} intentExecutor
+ * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource | undefined} getAttributeInfo
  * @prop {AbortSignal | undefined} signal
  */
 
@@ -23,6 +24,7 @@
  * @typedef {object} SubmitOptions
  * @prop {AbortSignal} [signal]
  * @prop {string} [batchId]
+ * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [getAttributeInfo]
  */
 
 /**
@@ -72,6 +74,7 @@ export default class IntentPipeline {
             store: this.#store,
             provenance: this.#provenance,
             intentExecutor: this.#intentExecutor,
+            getAttributeInfo: options?.getAttributeInfo,
             signal: options?.signal,
         };
     }
@@ -122,8 +125,7 @@ export default class IntentPipeline {
 
                 try {
                     for (const action of entry.actions) {
-                        void this.createContext(entry.options);
-                        this.#intentExecutor.dispatch(action);
+                        await this.#processAction(action, entry.options);
                     }
                     entry.resolve();
                 } catch (error) {
@@ -143,6 +145,42 @@ export default class IntentPipeline {
         } finally {
             this.#isRunning = false;
             this.#isBatchRunning = false;
+        }
+    }
+
+    /**
+     * @param {Action} action
+     * @param {SubmitOptions} [options]
+     */
+    async #processAction(action, options) {
+        const context = this.createContext(options);
+        const payload = "payload" in action ? action.payload : undefined;
+        const attribute =
+            payload &&
+            typeof payload === "object" &&
+            "attribute" in payload &&
+            /** @type {any} */ (payload).attribute?.type
+                ? /** @type {import("../sampleView/types.js").AttributeIdentifier} */ (
+                      /** @type {any} */ (payload).attribute
+                  )
+                : undefined;
+        const attributeInfo =
+            attribute && context.getAttributeInfo
+                ? context.getAttributeInfo(attribute)
+                : undefined;
+
+        if (attributeInfo?.ensureAvailability) {
+            await attributeInfo.ensureAvailability({
+                signal: context.signal,
+            });
+        }
+
+        context.intentExecutor.dispatch(action);
+
+        if (attributeInfo?.awaitProcessed) {
+            await attributeInfo.awaitProcessed({
+                signal: context.signal,
+            });
         }
     }
 }
