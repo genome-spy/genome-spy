@@ -3,6 +3,7 @@ import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { lifecycleSlice } from "../lifecycleSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { intentStatusSlice } from "./intentStatusSlice.js";
 
 /**
  * Setup the Redux store for the application.
@@ -15,15 +16,14 @@ export default function setupStore() {
         [sampleSlice.name]: sampleSlice.reducer,
     });
 
-    const reducer = combineReducers({
-        lifecycle: lifecycleSlice.reducer,
-        viewSettings: viewSettingsSlice.reducer,
-        provenance: provenanceReducer,
-    });
-
     return configureStore({
-        reducer,
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware({ serializableCheck: false }),
+        reducer: combineReducers({
+            lifecycle: lifecycleSlice.reducer,
+            viewSettings: viewSettingsSlice.reducer,
+            intentStatus: intentStatusSlice.reducer,
+            provenance: provenanceReducer,
+        }),
     });
 }

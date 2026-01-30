@@ -12,5 +12,11 @@ export interface ViewSettings {
 
 export interface State {
     viewSettings: ViewSettings;
+    intentStatus?: {
+        status: "idle" | "running" | "error" | "canceled";
+        batchId?: string;
+        startIndex?: number;
+        error?: string;
+    };
     provenance?: StateWithHistory<SampleHierarchy>;
 }
