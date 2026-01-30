@@ -232,6 +232,8 @@ export default class IntentPipeline {
         }
 
         // Run additional hooks for actions that don't use AttributeInfo.
+        // TODO: If a hook needs pre-dispatch work, split hooks into explicit
+        // before/after phases instead of assuming post-dispatch execution.
         for (const hook of this.#actionHooks) {
             if (!hook.predicate(action)) {
                 continue;

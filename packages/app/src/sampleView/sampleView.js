@@ -220,6 +220,8 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     awaitSubtreeDataReady(subtreeRoot, signal) {
+        // TODO: Add a fast-path when the subtree is already loaded to avoid
+        // waiting for a new broadcast.
         const ancestors = subtreeRoot.getDataAncestors();
         return this.#subtreeDataReadyWaiters.wait(
             (readyRoot) =>
@@ -240,6 +242,67 @@ export default class SampleView extends ContainerView {
             throw new Error(`Cannot find view: ${specifier.view}`);
         }
         return view;
+    }
+
+    /**
+     * Ensures the view is visible so dataflow wiring is active.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} view
+     */
+    #ensureViewVisible(view) {
+        this.provenance.store.dispatch(
+            viewSettingsSlice.actions.setVisibility({
+                name: view.name,
+                visibility: true,
+            })
+        );
+    }
+
+    /**
+     * Resolves the x-domain to zoom to for a view-backed attribute.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @returns {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain}
+     */
+    #resolveViewAttributeDomain(specifier) {
+        const domain =
+            specifier.domainAtActionTime ??
+            ("interval" in specifier
+                ? specifier.interval
+                : [specifier.locus, specifier.locus]);
+
+        if (
+            typeof domain[0] === "string" ||
+            typeof domain[1] === "string" ||
+            typeof domain[0] === "boolean" ||
+            typeof domain[1] === "boolean"
+        ) {
+            throw new Error(
+                "Cannot zoom x scale using a non-numeric or non-locus domain."
+            );
+        }
+
+        return /** @type {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} */ (
+            domain
+        );
+    }
+
+    /**
+     * Zooms the view's x scale to a target domain.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} view
+     * @param {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} domain
+     * @returns {Promise<void>}
+     */
+    async #zoomToDomain(view, domain) {
+        const resolution = view.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error(
+                `No x scale resolution found for view: ${view.name}`
+            );
+        }
+
+        await resolution.zoomTo(domain);
     }
 
     /**
@@ -277,42 +340,9 @@ export default class SampleView extends ContainerView {
     async ensureViewAttributeAvailability(specifier, context = {}) {
         const view = this.#resolveViewForSpecifier(specifier);
 
-        this.provenance.store.dispatch(
-            viewSettingsSlice.actions.setVisibility({
-                name: view.name,
-                visibility: true,
-            })
-        );
-
-        const resolution = view.getScaleResolution("x");
-        if (!resolution) {
-            throw new Error(
-                `No x scale resolution found for view: ${specifier.view}`
-            );
-        }
-
-        const domain =
-            specifier.domainAtActionTime ??
-            ("interval" in specifier
-                ? specifier.interval
-                : [specifier.locus, specifier.locus]);
-
-        if (
-            typeof domain[0] === "string" ||
-            typeof domain[1] === "string" ||
-            typeof domain[0] === "boolean" ||
-            typeof domain[1] === "boolean"
-        ) {
-            throw new Error(
-                "Cannot zoom x scale using a non-numeric or non-locus domain."
-            );
-        }
-
-        await resolution.zoomTo(
-            /** @type {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} */ (
-                domain
-            )
-        );
+        this.#ensureViewVisible(view);
+        const domain = this.#resolveViewAttributeDomain(specifier);
+        await this.#zoomToDomain(view, domain);
         await this.awaitSubtreeDataReady(view, context.signal);
     }
 
