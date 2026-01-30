@@ -44,22 +44,11 @@ export function resetToDefaultState(app) {
 export async function restoreBookmark(entry, app) {
     try {
         if (entry.actions) {
-            const sampleView = app.getSampleView();
-            const getAttributeInfo =
-                sampleView?.compositeAttributeInfoSource?.getAttributeInfo?.bind(
-                    sampleView.compositeAttributeInfoSource
-                );
-            const awaitMetadataReady = sampleView
-                ? sampleView.awaitMetadataReady.bind(sampleView)
-                : undefined;
             if (app.provenance.isUndoable()) {
                 app.store.dispatch(ActionCreators.jumpToPast(0));
             }
             if (app.intentPipeline) {
-                await app.intentPipeline.submit(entry.actions, {
-                    getAttributeInfo,
-                    awaitMetadataReady,
-                });
+                await app.intentPipeline.submit(entry.actions);
             } else {
                 app.provenance.dispatchBookmark(entry.actions);
             }

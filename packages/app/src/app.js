@@ -113,6 +113,17 @@ export default class App {
                     this.intentExecutor
                 )
         );
+        const sampleView = this.getSampleView();
+        if (sampleView) {
+            this.intentPipeline.setResolvers({
+                getAttributeInfo:
+                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
+                        sampleView.compositeAttributeInfoSource
+                    ),
+                awaitMetadataReady:
+                    sampleView.awaitMetadataReady.bind(sampleView),
+            });
+        }
 
         this.#setupViewVisibilityHandling();
     }

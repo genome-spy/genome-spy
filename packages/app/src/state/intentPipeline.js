@@ -51,6 +51,12 @@ export default class IntentPipeline {
     #isRunning = false;
     #isBatchRunning = false;
 
+    /** @type {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource | undefined} */
+    #getAttributeInfo;
+
+    /** @type {(signal?: AbortSignal) => Promise<void> | undefined} */
+    #awaitMetadataReady;
+
     /**
      * @param {object} deps Dependencies used to build the shared intent context.
      * @param {AppStore} deps.store
@@ -75,9 +81,22 @@ export default class IntentPipeline {
             store: this.#store,
             provenance: this.#provenance,
             intentExecutor: this.#intentExecutor,
-            getAttributeInfo: options?.getAttributeInfo,
+            getAttributeInfo:
+                options?.getAttributeInfo ?? this.#getAttributeInfo,
             signal: options?.signal,
         };
+    }
+
+    /**
+     * Registers default resolver hooks that are reused for submissions.
+     *
+     * @param {object} resolvers
+     * @param {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [resolvers.getAttributeInfo]
+     * @param {(signal?: AbortSignal) => Promise<void>} [resolvers.awaitMetadataReady]
+     */
+    setResolvers({ getAttributeInfo, awaitMetadataReady }) {
+        this.#getAttributeInfo = getAttributeInfo;
+        this.#awaitMetadataReady = awaitMetadataReady;
     }
 
     /**
@@ -188,11 +207,10 @@ export default class IntentPipeline {
             });
         }
 
-        if (
-            options?.awaitMetadataReady &&
-            action.type === "sampleView/addMetadata"
-        ) {
-            await options.awaitMetadataReady(context.signal);
+        const awaitMetadataReady =
+            options?.awaitMetadataReady ?? this.#awaitMetadataReady;
+        if (awaitMetadataReady && action.type === "sampleView/addMetadata") {
+            await awaitMetadataReady(context.signal);
         }
     }
 }
