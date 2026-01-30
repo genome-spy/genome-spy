@@ -101,7 +101,7 @@ export default class IntentPipeline {
         return new Promise((resolve, reject) => {
             this.#queue.push({ actions, options, resolve, reject });
             if (!this.#isRunning) {
-                void this.#drainQueue();
+                void this.#drainQueue().catch(/** @returns {void} */ () => {});
             }
         });
     }
@@ -129,13 +129,17 @@ export default class IntentPipeline {
                     }
                     entry.resolve();
                 } catch (error) {
-                    entry.reject(
+                    const failure =
                         error instanceof Error
                             ? error
-                            : new Error(String(error))
-                    );
+                            : new Error(String(error));
+                    entry.reject(failure);
+                    const remaining = this.#queue;
                     this.#queue = [];
-                    throw error;
+                    for (const queuedEntry of remaining) {
+                        queuedEntry.reject(failure);
+                    }
+                    throw failure;
                 }
 
                 if (isBatch) {

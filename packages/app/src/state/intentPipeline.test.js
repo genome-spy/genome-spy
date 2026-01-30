@@ -148,4 +148,99 @@ describe("IntentPipeline", () => {
         ensureDeferred.resolve();
         await batchPromise;
     });
+
+    it("rejects queued submissions after a processing failure", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const ensureDeferred = createDeferred();
+        /** @type {import("../sampleView/types.js").AttributeInfo} */
+        const attributeInfo = {
+            name: "Test",
+            attribute: { type: "test" },
+            title: "Test",
+            emphasizedName: "Test",
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: "nominal",
+            ensureAvailability: () => ensureDeferred.promise,
+        };
+        const getAttributeInfo = () => attributeInfo;
+
+        const first = pipeline.submit(
+            { type: "sample/one", payload: { attribute: { type: "test" } } },
+            { getAttributeInfo }
+        );
+        const second = pipeline.submit(
+            { type: "sample/two", payload: { attribute: { type: "test" } } },
+            { getAttributeInfo }
+        );
+
+        ensureDeferred.reject(new Error("Boom"));
+
+        await expect(first).rejects.toThrow("Boom");
+        await expect(second).rejects.toThrow("Boom");
+    });
+
+    it("dispatches actions without attributes", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const submitPromise = pipeline.submit({ type: "sample/no-attr" }, {});
+
+        await submitPromise;
+        expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(1);
+    });
+
+    it("processes batch actions sequentially with ensure ordering", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const firstEnsure = createDeferred();
+        const secondEnsure = createDeferred();
+        /** @type {number} */
+        let ensureCalls = 0;
+
+        /** @type {import("../sampleView/types.js").AttributeInfo} */
+        const attributeInfo = {
+            name: "Test",
+            attribute: { type: "test" },
+            title: "Test",
+            emphasizedName: "Test",
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: "nominal",
+            ensureAvailability: () => {
+                ensureCalls += 1;
+                // Non-obvious: staged promises ensure the second action waits.
+                return ensureCalls === 1
+                    ? firstEnsure.promise
+                    : secondEnsure.promise;
+            },
+        };
+        const getAttributeInfo = () => attributeInfo;
+
+        const batchPromise = pipeline.submit(
+            [
+                {
+                    type: "sample/one",
+                    payload: { attribute: { type: "test" } },
+                },
+                {
+                    type: "sample/two",
+                    payload: { attribute: { type: "test" } },
+                },
+            ],
+            { getAttributeInfo }
+        );
+
+        expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
+        firstEnsure.resolve();
+        await Promise.resolve();
+        expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(1);
+
+        secondEnsure.resolve();
+        await batchPromise;
+        expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(2);
+    });
 });
