@@ -123,6 +123,10 @@ export class ReadyGate {
 /**
  * Creates a finalize helper that resolves or rejects a readiness handle once.
  *
+ * Promises ignore extra resolve/reject calls, but callers may have additional
+ * side effects tied to finalization. This guard keeps those side effects
+ * single-shot even if multiple code paths attempt to finalize.
+ *
  * @param {{resolve: (value?: void) => void, reject: (error: Error) => void}} ready
  * @returns {(error?: Error) => void}
  */
