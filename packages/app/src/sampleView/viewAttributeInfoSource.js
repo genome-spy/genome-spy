@@ -106,12 +106,17 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 
     /** @type {(context: import("./types.js").AttributeEnsureContext) => Promise<void>} */
     let ensureAvailability;
+
+    /** @type {(context: import("./types.js").AttributeEnsureContext) => Promise<void>} */
+    let awaitProcessed;
     if ("ensureViewAttributeAvailability" in rootView) {
         const sampleView = /** @type {import("./sampleView.js").default} */ (
             rootView
         );
         ensureAvailability = (context) =>
             sampleView.ensureViewAttributeAvailability(specifier, context);
+        awaitProcessed = (context) =>
+            sampleView.awaitViewAttributeProcessed(specifier, context);
     }
 
     /** @type {import("./types.js").AttributeInfo} */
@@ -135,6 +140,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         // TODO: Ensure that there's a type even if it's missing from spec
         type: resolvedType,
         ensureAvailability,
+        awaitProcessed,
         scale,
         emphasizedName,
     };

@@ -69,5 +69,11 @@ export interface AttributeInfo {
      */
     ensureAvailability?: (context: AttributeEnsureContext) => Promise<void>;
 
+    /**
+     * Optional hook for awaiting post-dispatch readiness.
+     * Used by async intent processing to guarantee that state and data are ready.
+     */
+    awaitProcessed?: (context: AttributeEnsureContext) => Promise<void>;
+
     scale?: any;
 }

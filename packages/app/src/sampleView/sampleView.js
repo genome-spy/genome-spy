@@ -251,6 +251,22 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Waits for the view subtree to signal readiness after an action.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./types.js").AttributeEnsureContext} [context]
+     * @returns {Promise<void>}
+     */
+    async awaitViewAttributeProcessed(specifier, context = {}) {
+        const view = this.findDescendantByName(specifier.view);
+        if (!view) {
+            throw new Error(`Cannot find view: ${specifier.view}`);
+        }
+
+        await this.awaitSubtreeDataReady(view, context.signal);
+    }
+
+    /**
      * Ensures that a view-backed attribute is available for access.
      *
      * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
