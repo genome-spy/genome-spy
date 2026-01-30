@@ -25,6 +25,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
 import { createDefaultValuesProvider } from "../attributeValues.js";
+import { ReadyGate } from "../../utils/readyGate.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -55,12 +56,8 @@ export class MetadataView extends ConcatView {
 
     #metadataGeneration = 0;
 
-    /** @type {{ promise: Promise<void>, resolve: () => void, reject: (error: Error) => void }} */
-    #metadataReady = {
-        promise: Promise.resolve(),
-        resolve: () => undefined,
-        reject: () => undefined,
-    };
+    /** @type {ReadyGate} */
+    #metadataReady = new ReadyGate("Metadata readiness was aborted.");
 
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
@@ -311,7 +308,7 @@ export class MetadataView extends ConcatView {
         const flow = this.context.dataFlow;
 
         const metadataGeneration = ++this.#metadataGeneration;
-        const ready = this.#createMetadataReadyPromise();
+        const ready = this.#metadataReady.reset();
         let finalized = false;
 
         /** @param {Error} [error] */
@@ -403,23 +400,6 @@ export class MetadataView extends ConcatView {
         }
     }
 
-    #createMetadataReadyPromise() {
-        /** @type {(value?: void) => void} */
-        let resolve;
-        /** @type {(error: Error) => void} */
-        let reject;
-        const promise = new Promise((res, rej) => {
-            resolve = res;
-            reject = rej;
-        });
-        this.#metadataReady = {
-            promise,
-            resolve,
-            reject,
-        };
-        return this.#metadataReady;
-    }
-
     /**
      * Waits until the latest metadata update has finished applying data and domains.
      *
@@ -427,32 +407,7 @@ export class MetadataView extends ConcatView {
      * @returns {Promise<void>}
      */
     awaitMetadataReady(signal) {
-        if (!signal) {
-            return this.#metadataReady.promise;
-        }
-
-        return new Promise((resolve, reject) => {
-            const abortHandler = () => {
-                reject(new Error("Metadata readiness was aborted."));
-            };
-
-            if (signal.aborted) {
-                abortHandler();
-                return;
-            }
-
-            signal.addEventListener("abort", abortHandler, { once: true });
-            this.#metadataReady.promise.then(
-                () => {
-                    signal.removeEventListener("abort", abortHandler);
-                    resolve();
-                },
-                (error) => {
-                    signal.removeEventListener("abort", abortHandler);
-                    reject(error);
-                }
-            );
-        });
+        return this.#metadataReady.wait(signal);
     }
 
     #createViews() {

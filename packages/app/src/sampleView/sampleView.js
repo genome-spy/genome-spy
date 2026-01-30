@@ -55,6 +55,7 @@ import {
     getContextMenuFieldInfos,
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
+import { ReadyWaiterSet } from "../utils/readyGate.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 
@@ -84,8 +85,10 @@ export default class SampleView extends ContainerView {
 
     #stickySummaries = false;
 
-    /** @type {Set<{subtreeRoot: import("@genome-spy/core/view/view.js").default, resolve: () => void, reject: (error: Error) => void, signal?: AbortSignal}>} */
-    #subtreeDataReadyWaiters = new Set();
+    /** @type {ReadyWaiterSet<import("@genome-spy/core/view/view.js").default>} */
+    #subtreeDataReadyWaiters = new ReadyWaiterSet(
+        "Subtree data readiness was aborted."
+    );
 
     /** @type {(param: any) => void} */
     #sampleHeightParam;
@@ -206,20 +209,7 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
      */
     #resolveSubtreeReadyWaiters(subtreeRoot) {
-        if (!this.#subtreeDataReadyWaiters.size) {
-            return;
-        }
-
-        for (const waiter of this.#subtreeDataReadyWaiters) {
-            const target = waiter.subtreeRoot;
-            if (
-                subtreeRoot === target ||
-                target.getDataAncestors().includes(subtreeRoot)
-            ) {
-                this.#subtreeDataReadyWaiters.delete(waiter);
-                waiter.resolve();
-            }
-        }
+        this.#subtreeDataReadyWaiters.resolveMatching(subtreeRoot);
     }
 
     /**
@@ -230,24 +220,12 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     awaitSubtreeDataReady(subtreeRoot, signal) {
-        return new Promise((resolve, reject) => {
-            const waiter = { subtreeRoot, resolve, reject, signal };
-            this.#subtreeDataReadyWaiters.add(waiter);
-
-            if (signal) {
-                const abortHandler = () => {
-                    this.#subtreeDataReadyWaiters.delete(waiter);
-                    reject(new Error("Subtree data readiness was aborted."));
-                };
-                if (signal.aborted) {
-                    abortHandler();
-                } else {
-                    signal.addEventListener("abort", abortHandler, {
-                        once: true,
-                    });
-                }
-            }
-        });
+        const ancestors = subtreeRoot.getDataAncestors();
+        return this.#subtreeDataReadyWaiters.wait(
+            (readyRoot) =>
+                readyRoot === subtreeRoot || ancestors.includes(readyRoot),
+            signal
+        );
     }
 
     /**

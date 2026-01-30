@@ -43,6 +43,10 @@ action sequences (e.g., future LLM tool calls).
 8) **Metadata readiness gating**
    - Metadata update awaits data flow completion; manual domain reconfigure removed.
 
+9) **Shared readiness helper**
+   - Added `ReadyGate`/`ReadyWaiterSet` to shrink readiness boilerplate.
+   - Used for subtree data readiness and metadata readiness.
+
 ### Next
 
 1) **Refactor pipeline wiring to reduce smells**
@@ -57,23 +61,20 @@ action sequences (e.g., future LLM tool calls).
    - Register metadata actions to await `awaitMetadataReady` without embedding
      `"sampleView/addMetadata"` in the pipeline.
 
-3) **Shared readiness helper**
-   - Introduce a small `ReadyGate` helper (or similar) to shrink the promise +
-     abort boilerplate in MetadataView and SampleView.
-   - Use it for subtree data readiness and metadata readiness.
-   - Add a fast-path for “already ready” to avoid hanging waits.
+1) **Ready fast-path**
+   - Add a fast-path for “already ready” subtrees to avoid hanging waits.
 
-4) **Intent status integration**
+2) **Intent status integration**
    - Have the pipeline set `intentStatus` to running/error/canceled and store
      `startIndex` before batch execution.
    - Implement a recovery action (e.g., `intent/recoverFromError`) to combine
      rollback/clear in one dispatch.
 
-5) **Bookmark restore error handling**
+3) **Bookmark restore error handling**
    - Ensure errors from async bookmark restore are surfaced to the user
      (dialog/toast), not just logged or swallowed.
 
-6) **UI update debouncing (last)**
+4) **UI update debouncing (last)**
    - Add a render gate/debouncer after bookmark replay is verified.
 
 ## Risks
