@@ -219,7 +219,7 @@ export default class SampleView extends ContainerView {
      * @param {AbortSignal} [signal]
      * @returns {Promise<void>}
      */
-    awaitSubtreeDataReady(subtreeRoot, signal) {
+    #awaitSubtreeDataReady(subtreeRoot, signal) {
         // TODO: Add a fast-path when the subtree is already loaded to avoid
         // waiting for a new broadcast.
         const ancestors = subtreeRoot.getDataAncestors();
@@ -315,7 +315,7 @@ export default class SampleView extends ContainerView {
     async awaitViewAttributeProcessed(specifier, context = {}) {
         const view = this.#resolveViewForSpecifier(specifier);
 
-        await this.awaitSubtreeDataReady(view, context.signal);
+        await this.#awaitSubtreeDataReady(view, context.signal);
     }
 
     /**
@@ -343,7 +343,7 @@ export default class SampleView extends ContainerView {
         this.#ensureViewVisible(view);
         const domain = this.#resolveViewAttributeDomain(specifier);
         await this.#zoomToDomain(view, domain);
-        await this.awaitSubtreeDataReady(view, context.signal);
+        await this.#awaitSubtreeDataReady(view, context.signal);
     }
 
     /**
