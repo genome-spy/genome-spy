@@ -392,8 +392,6 @@ export class MetadataView extends ConcatView {
                 return;
             }
 
-            this.#reconfigureColorDomains();
-
             this.context.requestLayoutReflow();
         } catch (error) {
             finalizeReady(
@@ -455,22 +453,6 @@ export class MetadataView extends ConcatView {
                 }
             );
         });
-    }
-
-    #reconfigureColorDomains() {
-        /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
-        const resolutions = new Set();
-        this.visit((view) => {
-            if (view instanceof UnitView) {
-                const resolution = view.getScaleResolution("color");
-                if (resolution) {
-                    resolutions.add(resolution);
-                }
-            }
-        });
-        for (const resolution of resolutions) {
-            resolution.reconfigureDomain();
-        }
     }
 
     #createViews() {
