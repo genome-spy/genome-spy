@@ -63,6 +63,7 @@ action sequences (e.g., future LLM tool calls).
 
 1) **Ready fast-path**
    - Add a fast-path for “already ready” subtrees to avoid hanging waits.
+   - Open question: how to reliably detect “already ready” for a subtree.
 
 2) **Intent status integration**
    - Have the pipeline set `intentStatus` to running/error/canceled and store

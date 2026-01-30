@@ -1,4 +1,11 @@
 /**
+ * Readiness helpers for async workflows.
+ *
+ * These helpers standardize "wait until ready" flows with optional AbortSignal
+ * support, so callers don't repeat promise/abort boilerplate. Use ReadyGate for
+ * a single readiness cycle that can be reset, and ReadyWaiterSet when multiple
+ * concurrent waiters need to resolve based on a matching predicate.
+ *
  * @template T
  * @returns {{promise: Promise<T>, resolve: (value?: T) => void, reject: (error: Error) => void}}
  */
@@ -26,6 +33,8 @@ function createResolvedDeferred() {
 }
 
 /**
+ * Wraps a promise with AbortSignal handling.
+ *
  * @template T
  * @param {Promise<T>} promise
  * @param {string} abortMessage
@@ -67,6 +76,9 @@ function awaitWithAbort(promise, abortMessage, signal, onAbort) {
 
 /**
  * Tracks a single readiness promise and provides abort-aware awaiting.
+ *
+ * Use this when you have a single "ready" cycle at a time (e.g. metadata
+ * updates) and want to reset the gate whenever a new cycle starts.
  */
 export class ReadyGate {
     /** @type {string} */
@@ -109,8 +121,12 @@ export class ReadyGate {
 }
 
 /**
- * @template T
  * Coordinates multiple readiness waiters keyed by a predicate.
+ *
+ * Use this when callers wait for a specific readiness event (e.g. subtree
+ * data-ready broadcasts) and the resolver can identify matching events.
+ *
+ * @template T
  */
 export class ReadyWaiterSet {
     /** @type {Set<{predicate: (value: T) => boolean, resolve: () => void}>} */
