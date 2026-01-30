@@ -122,12 +122,14 @@ export default class App {
                         sampleView.compositeAttributeInfoSource
                     ),
             });
-            this.intentPipeline.registerActionHook({
-                predicate: (action) =>
-                    action.type === sampleSlice.actions.addMetadata.type,
-                awaitProcessed: (context) =>
-                    sampleView.awaitMetadataReady(context.signal),
-            });
+            const unregisterMetadataHook =
+                this.intentPipeline.registerActionHook({
+                    predicate: (action) =>
+                        action.type === sampleSlice.actions.addMetadata.type,
+                    awaitProcessed: (context) =>
+                        sampleView.awaitMetadataReady(context.signal),
+                });
+            sampleView.registerDisposer(unregisterMetadataHook);
         }
 
         this.#setupViewVisibilityHandling();

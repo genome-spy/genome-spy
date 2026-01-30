@@ -60,8 +60,8 @@ export default class IntentPipeline {
     /** @type {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource | undefined} */
     #getAttributeInfo;
 
-    /** @type {ActionHook[]} */
-    #actionHooks = [];
+    /** @type {Set<ActionHook>} */
+    #actionHooks = new Set();
 
     /**
      * @param {object} deps Dependencies used to build the shared intent context.
@@ -108,9 +108,13 @@ export default class IntentPipeline {
      * Use this for actions that must wait for readiness signals (e.g. metadata).
      *
      * @param {ActionHook} hook
+     * @returns {() => void}
      */
     registerActionHook(hook) {
-        this.#actionHooks.push(hook);
+        this.#actionHooks.add(hook);
+        return () => {
+            this.#actionHooks.delete(hook);
+        };
     }
 
     /**
