@@ -43,13 +43,18 @@ export interface LocationContext {
     isStickySummaries: () => boolean;
 }
 
-export interface LocusSpecifier {
+export interface BaseSpecifier {
     /** A uniuque name of the view */
     view: string;
 
     /** Attribute, e.g., the name of the field where a value is stored */
     field: string;
 
+    /** The x-scale domain that was visible when the action was triggered */
+    domainAtActionTime?: Interval;
+}
+
+export interface LocusSpecifier extends BaseSpecifier {
     /**
      * Coordinate on the `x` axis. May be a number of locus on a chromosome.
      * Alternatively, a scalar if a categorical scale is used.
@@ -57,13 +62,7 @@ export interface LocusSpecifier {
     locus: Scalar | ChromosomalLocus;
 }
 
-export interface IntervalSpecifier {
-    /** A uniuque name of the view */
-    view: string;
-
-    /** Attribute, e.g., the name of the field where a value is stored */
-    field: string;
-
+export interface IntervalSpecifier extends BaseSpecifier {
     /** Interval on the x axis */
     interval: Interval;
 
