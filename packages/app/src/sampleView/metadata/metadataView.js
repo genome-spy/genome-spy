@@ -310,6 +310,9 @@ export class MetadataView extends ConcatView {
         const metadataGeneration = ++this.#metadataGeneration;
         const ready = this.#metadataReady.reset();
         const finalizeReady = createFinalizeOnce(ready);
+        // Each metadata update starts a new readiness cycle. finalizeReady is
+        // a single-shot completion hook so overlapping updates can exit early
+        // without double-resolving when stale generations bail out.
 
         try {
             this.#createViews();
