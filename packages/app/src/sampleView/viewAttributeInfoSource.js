@@ -104,6 +104,16 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         channelDef && "type" in channelDef ? channelDef.type : undefined;
     const resolvedType = "aggregation" in specifier ? "quantitative" : baseType;
 
+    /** @type {(context: import("./types.js").AttributeEnsureContext) => Promise<void>} */
+    let ensureAvailability;
+    if ("ensureViewAttributeAvailability" in rootView) {
+        const sampleView = /** @type {import("./sampleView.js").default} */ (
+            rootView
+        );
+        ensureAvailability = (context) =>
+            sampleView.ensureViewAttributeAvailability(specifier, context);
+    }
+
     /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: attributeLabel,
@@ -124,6 +134,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         valuesProvider,
         // TODO: Ensure that there's a type even if it's missing from spec
         type: resolvedType,
+        ensureAvailability,
         scale,
         emphasizedName,
     };

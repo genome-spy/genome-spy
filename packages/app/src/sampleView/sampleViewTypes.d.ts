@@ -3,6 +3,7 @@ import { Group } from "./state/sampleState.js";
 import { LocSize } from "@genome-spy/core/view/layout/flexLayout.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import { Scalar } from "@genome-spy/core/spec/channel.js";
+import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
 
@@ -51,7 +52,7 @@ export interface BaseSpecifier {
     field: string;
 
     /** The x-scale domain that was visible when the action was triggered */
-    domainAtActionTime?: Interval;
+    domainAtActionTime?: NumericDomain | ComplexDomain;
 }
 
 export interface LocusSpecifier extends BaseSpecifier {

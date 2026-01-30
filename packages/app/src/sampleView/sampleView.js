@@ -47,6 +47,7 @@ import {
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import {
     buildIntervalAggregationMenu,
     buildPointQueryMenu,
@@ -82,6 +83,9 @@ export default class SampleView extends ContainerView {
     #lastMouseY = -1;
 
     #stickySummaries = false;
+
+    /** @type {Set<{subtreeRoot: import("@genome-spy/core/view/view.js").default, resolve: () => void, reject: (error: Error) => void, signal?: AbortSignal}>} */
+    #subtreeDataReadyWaiters = new Set();
 
     /** @type {(param: any) => void} */
     #sampleHeightParam;
@@ -178,6 +182,7 @@ export default class SampleView extends ContainerView {
             if (!this.#gridChild?.view) {
                 return;
             }
+            this.#resolveSubtreeReadyWaiters(subtreeRoot);
             if (
                 subtreeRoot === this.#gridChild.view ||
                 this.#gridChild.view.getDataAncestors().includes(subtreeRoot)
@@ -193,6 +198,108 @@ export default class SampleView extends ContainerView {
         this._addBroadcastHandler("layout", () => {
             this.locationManager.resetLocations();
         });
+    }
+
+    /**
+     * Resolves any waiters whose subtree is covered by the ready message.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     */
+    #resolveSubtreeReadyWaiters(subtreeRoot) {
+        if (!this.#subtreeDataReadyWaiters.size) {
+            return;
+        }
+
+        for (const waiter of this.#subtreeDataReadyWaiters) {
+            const target = waiter.subtreeRoot;
+            if (
+                subtreeRoot === target ||
+                target.getDataAncestors().includes(subtreeRoot)
+            ) {
+                this.#subtreeDataReadyWaiters.delete(waiter);
+                waiter.resolve();
+            }
+        }
+    }
+
+    /**
+     * Waits for a subtree data-ready broadcast for the given view.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    awaitSubtreeDataReady(subtreeRoot, signal) {
+        return new Promise((resolve, reject) => {
+            const waiter = { subtreeRoot, resolve, reject, signal };
+            this.#subtreeDataReadyWaiters.add(waiter);
+
+            if (signal) {
+                const abortHandler = () => {
+                    this.#subtreeDataReadyWaiters.delete(waiter);
+                    reject(new Error("Subtree data readiness was aborted."));
+                };
+                if (signal.aborted) {
+                    abortHandler();
+                } else {
+                    signal.addEventListener("abort", abortHandler, {
+                        once: true,
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Ensures that a view-backed attribute is available for access.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./types.js").AttributeEnsureContext} [context]
+     * @returns {Promise<void>}
+     */
+    async ensureViewAttributeAvailability(specifier, context = {}) {
+        const view = this.findDescendantByName(specifier.view);
+        if (!view) {
+            throw new Error(`Cannot find view: ${specifier.view}`);
+        }
+
+        this.provenance.store.dispatch(
+            viewSettingsSlice.actions.setVisibility({
+                name: view.name,
+                visibility: true,
+            })
+        );
+
+        const resolution = view.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error(
+                `No x scale resolution found for view: ${specifier.view}`
+            );
+        }
+
+        const domain =
+            specifier.domainAtActionTime ??
+            ("interval" in specifier
+                ? specifier.interval
+                : [specifier.locus, specifier.locus]);
+
+        if (
+            typeof domain[0] === "string" ||
+            typeof domain[1] === "string" ||
+            typeof domain[0] === "boolean" ||
+            typeof domain[1] === "boolean"
+        ) {
+            throw new Error(
+                "Cannot zoom x scale using a non-numeric or non-locus domain."
+            );
+        }
+
+        await resolution.zoomTo(
+            /** @type {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} */ (
+                domain
+            )
+        );
+        await this.awaitSubtreeDataReady(view, context.signal);
     }
 
     /**
