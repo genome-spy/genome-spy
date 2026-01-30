@@ -52,7 +52,7 @@ export async function restoreBookmark(entry, app) {
             if (app.provenance.isUndoable()) {
                 app.store.dispatch(ActionCreators.jumpToPast(0));
             }
-            if (app.intentPipeline && getAttributeInfo) {
+            if (app.intentPipeline) {
                 await app.intentPipeline.submit(entry.actions, {
                     getAttributeInfo,
                 });
