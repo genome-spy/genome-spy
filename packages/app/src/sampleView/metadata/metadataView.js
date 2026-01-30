@@ -55,6 +55,13 @@ export class MetadataView extends ConcatView {
 
     #metadataGeneration = 0;
 
+    /** @type {{ promise: Promise<void>, resolve: () => void, reject: (error: Error) => void }} */
+    #metadataReady = {
+        promise: Promise.resolve(),
+        resolve: () => undefined,
+        reject: () => undefined,
+    };
+
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
 
@@ -304,55 +311,153 @@ export class MetadataView extends ConcatView {
         const flow = this.context.dataFlow;
 
         const metadataGeneration = ++this.#metadataGeneration;
+        const ready = this.#createMetadataReadyPromise();
+        let finalized = false;
 
-        this.#createViews();
-        await this.createAxes();
-        // Opacity may depend on resolved scales; configure after the subtree exists.
-        configureViewOpacity(this);
+        /** @param {Error} [error] */
+        const finalizeReady = (error) => {
+            if (finalized) {
+                return;
+            }
+            finalized = true;
+            if (error) {
+                ready.reject(error);
+            } else {
+                ready.resolve();
+            }
+        };
 
-        const viewPredicate = (
-            /** @type {import("@genome-spy/core/view/view.js").default} */ view
-        ) => view.isConfiguredVisible();
-        const { graphicsPromises } = initializeViewSubtree(
-            this,
-            flow,
-            viewPredicate
-        );
-        const dynamicSource =
-            /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                this.flowHandle?.dataSource
+        try {
+            this.#createViews();
+            await this.createAxes();
+            if (metadataGeneration !== this.#metadataGeneration) {
+                finalizeReady();
+                return;
+            }
+            // Opacity may depend on resolved scales; configure after the subtree exists.
+            configureViewOpacity(this);
+
+            const viewPredicate = (
+                /** @type {import("@genome-spy/core/view/view.js").default} */ view
+            ) => view.isConfiguredVisible();
+            const { graphicsPromises } = initializeViewSubtree(
+                this,
+                flow,
+                viewPredicate
+            );
+            const dynamicSource =
+                /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
+                    this.flowHandle?.dataSource
+                );
+
+            if (!dynamicSource) {
+                throw new Error("Cannot find metadata data source handle!");
+            }
+
+            finalizeSubtreeGraphics(
+                graphicsPromises,
+                () => metadataGeneration === this.#metadataGeneration
             );
 
-        if (!dynamicSource) {
-            throw new Error("Cannot find metadata data source handle!");
+            const sampleEntities =
+                this.#sampleView.sampleHierarchy.sampleData.entities;
+
+            const metadataTable = Object.entries(sampleMetadata.entities).map(
+                ([sample, metadatum]) => ({
+                    sample,
+                    indexNumber: sampleEntities[sample]?.indexNumber,
+                    ...metadatum,
+                })
+            );
+
+            if (
+                metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0
+            ) {
+                console.warn(
+                    "Some metadata entries do not match any sample data"
+                );
+            }
+
+            dynamicSource.updateDynamicData(metadataTable);
+
+            // Load all subtree sources so that decorations (titles, axes) are ready.
+            const dataSources = collectViewSubtreeDataSources(
+                this,
+                viewPredicate
+            );
+            dataSources.delete(dynamicSource);
+            await loadViewSubtreeData(this, dataSources);
+            if (metadataGeneration !== this.#metadataGeneration) {
+                finalizeReady();
+                return;
+            }
+
+            this.#reconfigureColorDomains();
+
+            this.context.requestLayoutReflow();
+        } catch (error) {
+            finalizeReady(
+                error instanceof Error ? error : new Error(String(error))
+            );
+            throw error;
+        } finally {
+            finalizeReady();
+        }
+    }
+
+    #createMetadataReadyPromise() {
+        /** @type {(value?: void) => void} */
+        let resolve;
+        /** @type {(error: Error) => void} */
+        let reject;
+        const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        this.#metadataReady = {
+            promise,
+            resolve,
+            reject,
+        };
+        return this.#metadataReady;
+    }
+
+    /**
+     * Waits until the latest metadata update has finished applying data and domains.
+     *
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    awaitMetadataReady(signal) {
+        if (!signal) {
+            return this.#metadataReady.promise;
         }
 
-        finalizeSubtreeGraphics(
-            graphicsPromises,
-            () => metadataGeneration === this.#metadataGeneration
-        );
+        return new Promise((resolve, reject) => {
+            const abortHandler = () => {
+                reject(new Error("Metadata readiness was aborted."));
+            };
 
-        const sampleEntities =
-            this.#sampleView.sampleHierarchy.sampleData.entities;
+            if (signal.aborted) {
+                abortHandler();
+                return;
+            }
 
-        const metadataTable = Object.entries(sampleMetadata.entities).map(
-            ([sample, metadatum]) => ({
-                sample,
-                indexNumber: sampleEntities[sample]?.indexNumber,
-                ...metadatum,
-            })
-        );
+            signal.addEventListener("abort", abortHandler, { once: true });
+            this.#metadataReady.promise.then(
+                () => {
+                    signal.removeEventListener("abort", abortHandler);
+                    resolve();
+                },
+                (error) => {
+                    signal.removeEventListener("abort", abortHandler);
+                    reject(error);
+                }
+            );
+        });
+    }
 
-        if (metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0) {
-            console.warn("Some metadata entries do not match any sample data");
-        }
-
-        dynamicSource.updateDynamicData(metadataTable);
-
-        // The following hack is band-aid to fix inconsistent order of operations.
-        // #setMetadata is called synchronously when the state changes, but data
-        // updates may happen asynchronously.
-        // TODO: Fix the root cause properly.
+    #reconfigureColorDomains() {
         /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
         const resolutions = new Set();
         this.visit((view) => {
@@ -366,13 +471,6 @@ export class MetadataView extends ConcatView {
         for (const resolution of resolutions) {
             resolution.reconfigureDomain();
         }
-
-        // Load all subtree sources so that decorations (titles, axes) are ready.
-        const dataSources = collectViewSubtreeDataSources(this, viewPredicate);
-        dataSources.delete(dynamicSource);
-        await loadViewSubtreeData(this, dataSources);
-
-        this.context.requestLayoutReflow();
     }
 
     #createViews() {

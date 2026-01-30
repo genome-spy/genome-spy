@@ -25,6 +25,7 @@
  * @prop {AbortSignal} [signal]
  * @prop {string} [batchId]
  * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [getAttributeInfo]
+ * @prop {(signal?: AbortSignal) => Promise<void>} [awaitMetadataReady]
  */
 
 /**
@@ -185,6 +186,13 @@ export default class IntentPipeline {
             await attributeInfo.awaitProcessed({
                 signal: context.signal,
             });
+        }
+
+        if (
+            options?.awaitMetadataReady &&
+            action.type === "sampleView/addMetadata"
+        ) {
+            await options.awaitMetadataReady(context.signal);
         }
     }
 }

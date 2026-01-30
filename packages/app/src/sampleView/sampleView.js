@@ -267,6 +267,18 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Waits until metadata updates have applied data and domains.
+     *
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    awaitMetadataReady(signal) {
+        return (
+            this.metadataView?.awaitMetadataReady(signal) ?? Promise.resolve()
+        );
+    }
+
+    /**
      * Ensures that a view-backed attribute is available for access.
      *
      * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
