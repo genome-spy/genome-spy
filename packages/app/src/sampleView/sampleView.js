@@ -229,6 +229,20 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Resolves a view for a view-backed attribute specifier.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @returns {import("@genome-spy/core/view/view.js").default}
+     */
+    #resolveViewForSpecifier(specifier) {
+        const view = this.findDescendantByName(specifier.view);
+        if (!view) {
+            throw new Error(`Cannot find view: ${specifier.view}`);
+        }
+        return view;
+    }
+
+    /**
      * Waits for the view subtree to signal readiness after an action.
      *
      * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
@@ -236,10 +250,7 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     async awaitViewAttributeProcessed(specifier, context = {}) {
-        const view = this.findDescendantByName(specifier.view);
-        if (!view) {
-            throw new Error(`Cannot find view: ${specifier.view}`);
-        }
+        const view = this.#resolveViewForSpecifier(specifier);
 
         await this.awaitSubtreeDataReady(view, context.signal);
     }
@@ -264,10 +275,7 @@ export default class SampleView extends ContainerView {
      * @returns {Promise<void>}
      */
     async ensureViewAttributeAvailability(specifier, context = {}) {
-        const view = this.findDescendantByName(specifier.view);
-        if (!view) {
-            throw new Error(`Cannot find view: ${specifier.view}`);
-        }
+        const view = this.#resolveViewForSpecifier(specifier);
 
         this.provenance.store.dispatch(
             viewSettingsSlice.actions.setVisibility({
