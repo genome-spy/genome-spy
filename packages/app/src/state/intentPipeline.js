@@ -21,11 +21,17 @@
  */
 
 /**
+ * @typedef {object} ActionHook
+ * @prop {(action: Action) => boolean} predicate
+ * @prop {(context: IntentContext, action: Action) => Promise<void>} [ensure]
+ * @prop {(context: IntentContext, action: Action) => Promise<void>} [awaitProcessed]
+ */
+
+/**
  * @typedef {object} SubmitOptions
  * @prop {AbortSignal} [signal]
  * @prop {string} [batchId]
  * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [getAttributeInfo]
- * @prop {(signal?: AbortSignal) => Promise<void>} [awaitMetadataReady]
  */
 
 /**
@@ -56,6 +62,9 @@ export default class IntentPipeline {
 
     /** @type {(signal?: AbortSignal) => Promise<void> | undefined} */
     #awaitMetadataReady;
+
+    /** @type {ActionHook[]} */
+    #actionHooks = [];
 
     /**
      * @param {object} deps Dependencies used to build the shared intent context.
@@ -97,6 +106,16 @@ export default class IntentPipeline {
     setResolvers({ getAttributeInfo, awaitMetadataReady }) {
         this.#getAttributeInfo = getAttributeInfo;
         this.#awaitMetadataReady = awaitMetadataReady;
+    }
+
+    /**
+     * Registers an action hook for non-attribute async dependencies.
+     * Use this for actions that must wait for readiness signals (e.g. metadata).
+     *
+     * @param {ActionHook} hook
+     */
+    registerActionHook(hook) {
+        this.#actionHooks.push(hook);
     }
 
     /**
@@ -207,10 +226,16 @@ export default class IntentPipeline {
             });
         }
 
-        const awaitMetadataReady =
-            options?.awaitMetadataReady ?? this.#awaitMetadataReady;
-        if (awaitMetadataReady && action.type === "sampleView/addMetadata") {
-            await awaitMetadataReady(context.signal);
+        for (const hook of this.#actionHooks) {
+            if (!hook.predicate(action)) {
+                continue;
+            }
+            if (hook.ensure) {
+                await hook.ensure(context, action);
+            }
+            if (hook.awaitProcessed) {
+                await hook.awaitProcessed(context, action);
+            }
         }
     }
 }

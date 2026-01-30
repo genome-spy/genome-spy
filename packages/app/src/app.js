@@ -29,6 +29,7 @@ import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
+import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -120,8 +121,12 @@ export default class App {
                     sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
                         sampleView.compositeAttributeInfoSource
                     ),
-                awaitMetadataReady:
-                    sampleView.awaitMetadataReady.bind(sampleView),
+            });
+            this.intentPipeline.registerActionHook({
+                predicate: (action) =>
+                    action.type === sampleSlice.actions.addMetadata.type,
+                awaitProcessed: (context) =>
+                    sampleView.awaitMetadataReady(context.signal),
             });
         }
 
