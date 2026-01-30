@@ -121,6 +121,28 @@ export class ReadyGate {
 }
 
 /**
+ * Creates a finalize helper that resolves or rejects a readiness handle once.
+ *
+ * @param {{resolve: (value?: void) => void, reject: (error: Error) => void}} ready
+ * @returns {(error?: Error) => void}
+ */
+export function createFinalizeOnce(ready) {
+    let finalized = false;
+
+    return (error) => {
+        if (finalized) {
+            return;
+        }
+        finalized = true;
+        if (error) {
+            ready.reject(error);
+        } else {
+            ready.resolve();
+        }
+    };
+}
+
+/**
  * Coordinates multiple readiness waiters keyed by a predicate.
  *
  * Use this when callers wait for a specific readiness event (e.g. subtree

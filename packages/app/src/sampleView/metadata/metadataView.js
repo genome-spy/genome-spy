@@ -25,7 +25,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
 import { createDefaultValuesProvider } from "../attributeValues.js";
-import { ReadyGate } from "../../utils/readyGate.js";
+import { ReadyGate, createFinalizeOnce } from "../../utils/readyGate.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -309,20 +309,7 @@ export class MetadataView extends ConcatView {
 
         const metadataGeneration = ++this.#metadataGeneration;
         const ready = this.#metadataReady.reset();
-        let finalized = false;
-
-        /** @param {Error} [error] */
-        const finalizeReady = (error) => {
-            if (finalized) {
-                return;
-            }
-            finalized = true;
-            if (error) {
-                ready.reject(error);
-            } else {
-                ready.resolve();
-            }
-        };
+        const finalizeReady = createFinalizeOnce(ready);
 
         try {
             this.#createViews();
