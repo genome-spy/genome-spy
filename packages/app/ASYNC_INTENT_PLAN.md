@@ -15,73 +15,66 @@ In interactive usage, the data and visibility are typically already in place,
 so the async path primarily targets batch replays (bookmarks) and automated
 action sequences (e.g., future LLM tool calls).
 
-## Step-by-Step Plan
+## Step-by-Step Plan (Updated)
+
+### Completed
 
 1) **Types and specifiers**
-   - Add a `BaseSpecifier` with `view`, `field`, and `domainAtActionTime`.
-   - `LocusSpecifier` / `IntervalSpecifier` extend it and use x-scale domain.
+   - `BaseSpecifier` now carries `view`, `field`, and `domainAtActionTime`.
 
 2) **Async intent contracts**
-   - Add a small `IntentPipeline` interface (or `AsyncIntentExecutor`) that
-     accepts `submit(action|action[], options?) -> Promise`.
-   - Define a minimal context object with access to `store`, `provenance`,
-     `intentExecutor`, and a cancel signal.
+   - `IntentPipeline` exists with queueing and sequential processing.
 
 3) **Intent status slice**
-   - Add a Redux slice that tracks `status` (`idle`/`running`/`error`/`canceled`),
-     `batchId`, `startIndex`, and `error`.
-   - This enables the UI to offer "keep current state" or "rollback to
-     pre-batch state" on failure.
-   - Prefer a single top-level recovery action (e.g., `intent/recoverFromError`)
-     whose payload chooses the behavior (`accept`, `rollback`). The root reducer
-     can apply rollback via `jumpToPast(startIndex)` and clear the error status
-     in one dispatch.
+   - Slice added with `idle`/`running`/`error`/`canceled`.
 
 4) **Ensure by AttributeInfo**
-   - Attribute availability is determined by `AttributeInfo` (SampleView-only).
-     For view-backed attributes, use `ViewAttributeSpecifier` with
-     `domainAtActionTime` (x-scale domain) and a `view` reference.
-   - The intent pipeline resolves the attribute using the same resolver used by
-     the action augmenter, then `await`s `ensureAvailability` when present.
-   - Ensure semantics for view-backed attributes:
-     1) make the view visible so its dataflow is wired,
-     2) zoom the **x** scale to `domainAtActionTime` (or to a locus/interval
-        derived domain if missing),
-     3) wait for a data-ready signal (e.g., subtree data ready).
-   - If an action has no attribute, it bypasses the ensure step.
+   - `ensureAvailability` and view-backed attribute ensure implemented.
 
 5) **Processed/ready signals**
-   - Implement a minimal "processed" awaiter: after dispatching an action, wait
-     for a view/dataflow signal that indicates the action’s effects are applied
-     and data are ready.
-   - Start with a simple hook per view (e.g., `ensureAttribute` / `awaitReady`)
-     that resolves when the relevant subtree has loaded.
+   - `awaitProcessed` hook added and used for view-backed attributes.
 
 6) **Queue and batch execution**
-   - Ensure batches run strictly sequentially and stop on first error.
-   - On error:
-     - record `startIndex` from provenance,
-     - update intent status to `error`,
-     - allow the user to keep partial state or rollback to `startIndex`.
-   - Concurrency rules:
-     - If a single action is submitted while another single action is still
-       processing, queue it (FIFO).
-     - If a batch is processing, reject new submissions to avoid interleaving
-       and preserve batch rollback semantics.
+   - Queueing, batch rejection, and failure propagation implemented.
 
 7) **Bookmark integration**
-   - Continue to record intent actions in provenance (stripped of augmentation).
-   - Bookmark restore runs through the async pipeline:
-     - ensures lazy data,
-     - replays actions sequentially,
-     - yields to UI when appropriate.
+   - Bookmark restore runs through the async pipeline.
 
-8) **UI update debouncing (last)**
-   - Implement only after bookmark replay is verified.
-   - Add a render gate or debounced scheduler so UI updates are coalesced during
-     batches while data loading proceeds immediately.
-   - Default strategy: `queueMicrotask` for same-tick merges and
-     `requestAnimationFrame` for frame-level coalescing.
+8) **Metadata readiness gating**
+   - Metadata update awaits data flow completion; manual domain reconfigure removed.
+
+### Next
+
+1) **Refactor pipeline wiring to reduce smells**
+   - Add `IntentPipeline.setResolvers({ getAttributeInfo, awaitMetadataReady })`
+     and call it once in `App` after `SampleView` is created.
+   - `restoreBookmark` should only call `intentPipeline.submit(...)`, with no
+     direct SampleView access or `bind(...)` plumbing.
+
+2) **Action hook registry**
+   - Replace hard-coded action-type checks in the pipeline with a registry:
+     `registerActionHook({ predicate, ensure, awaitProcessed })`.
+   - Register metadata actions to await `awaitMetadataReady` without embedding
+     `"sampleView/addMetadata"` in the pipeline.
+
+3) **Shared readiness helper**
+   - Introduce a small `ReadyGate` helper (or similar) to shrink the promise +
+     abort boilerplate in MetadataView and SampleView.
+   - Use it for subtree data readiness and metadata readiness.
+   - Add a fast-path for “already ready” to avoid hanging waits.
+
+4) **Intent status integration**
+   - Have the pipeline set `intentStatus` to running/error/canceled and store
+     `startIndex` before batch execution.
+   - Implement a recovery action (e.g., `intent/recoverFromError`) to combine
+     rollback/clear in one dispatch.
+
+5) **Bookmark restore error handling**
+   - Ensure errors from async bookmark restore are surfaced to the user
+     (dialog/toast), not just logged or swallowed.
+
+6) **UI update debouncing (last)**
+   - Add a render gate/debouncer after bookmark replay is verified.
 
 ## Risks
 
@@ -121,8 +114,4 @@ action sequences (e.g., future LLM tool calls).
 
 ## Midpoint Review Checkpoint
 
-After steps (1) Types and (2) Async pipeline are in place (but before wiring
-ensure/processed hooks to SampleView), pause for a review:
-- verify the queue/batch semantics,
-- review the error state/rollback flow,
-- confirm the testing strategy and readiness signal approach.
+Midpoint review was completed after the pipeline and ensure/processed hooks.
