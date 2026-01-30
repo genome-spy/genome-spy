@@ -327,7 +327,7 @@ export class MetadataView extends ConcatView {
         try {
             this.#createViews();
             await this.createAxes();
-            if (metadataGeneration !== this.#metadataGeneration) {
+            if (this.#isMetadataStale(metadataGeneration)) {
                 finalizeReady();
                 return;
             }
@@ -337,54 +337,18 @@ export class MetadataView extends ConcatView {
             const viewPredicate = (
                 /** @type {import("@genome-spy/core/view/view.js").default} */ view
             ) => view.isConfiguredVisible();
-            const { graphicsPromises } = initializeViewSubtree(
-                this,
+            const dynamicSource = this.#initializeMetadataSubtree(
                 flow,
-                viewPredicate
-            );
-            const dynamicSource =
-                /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
-                    this.flowHandle?.dataSource
-                );
-
-            if (!dynamicSource) {
-                throw new Error("Cannot find metadata data source handle!");
-            }
-
-            finalizeSubtreeGraphics(
-                graphicsPromises,
-                () => metadataGeneration === this.#metadataGeneration
+                viewPredicate,
+                metadataGeneration
             );
 
-            const sampleEntities =
-                this.#sampleView.sampleHierarchy.sampleData.entities;
-
-            const metadataTable = Object.entries(sampleMetadata.entities).map(
-                ([sample, metadatum]) => ({
-                    sample,
-                    indexNumber: sampleEntities[sample]?.indexNumber,
-                    ...metadatum,
-                })
+            dynamicSource.updateDynamicData(
+                this.#buildMetadataTable(sampleMetadata)
             );
 
-            if (
-                metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0
-            ) {
-                console.warn(
-                    "Some metadata entries do not match any sample data"
-                );
-            }
-
-            dynamicSource.updateDynamicData(metadataTable);
-
-            // Load all subtree sources so that decorations (titles, axes) are ready.
-            const dataSources = collectViewSubtreeDataSources(
-                this,
-                viewPredicate
-            );
-            dataSources.delete(dynamicSource);
-            await loadViewSubtreeData(this, dataSources);
-            if (metadataGeneration !== this.#metadataGeneration) {
+            await this.#loadMetadataSubtree(dynamicSource, viewPredicate);
+            if (this.#isMetadataStale(metadataGeneration)) {
                 finalizeReady();
                 return;
             }
@@ -398,6 +362,83 @@ export class MetadataView extends ConcatView {
         } finally {
             finalizeReady();
         }
+    }
+
+    /**
+     * @param {number} metadataGeneration
+     * @returns {boolean}
+     */
+    #isMetadataStale(metadataGeneration) {
+        return metadataGeneration !== this.#metadataGeneration;
+    }
+
+    /**
+     * Initializes the metadata subtree and returns the dynamic data source.
+     *
+     * @param {import("@genome-spy/core/data/dataFlow.js").default} flow
+     * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
+     * @param {number} metadataGeneration
+     * @returns {import("@genome-spy/core/data/sources/namedSource.js").default}
+     */
+    #initializeMetadataSubtree(flow, viewPredicate, metadataGeneration) {
+        const { graphicsPromises } = initializeViewSubtree(
+            this,
+            flow,
+            viewPredicate
+        );
+        const dynamicSource =
+            /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
+                this.flowHandle?.dataSource
+            );
+
+        if (!dynamicSource) {
+            throw new Error("Cannot find metadata data source handle!");
+        }
+
+        finalizeSubtreeGraphics(
+            graphicsPromises,
+            () => metadataGeneration === this.#metadataGeneration
+        );
+
+        return dynamicSource;
+    }
+
+    /**
+     * Builds a metadata table with sample index numbers for sorting.
+     *
+     * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
+     * @returns {Array<Record<string, unknown>>}
+     */
+    #buildMetadataTable(sampleMetadata) {
+        const sampleEntities =
+            this.#sampleView.sampleHierarchy.sampleData.entities;
+
+        const metadataTable = Object.entries(sampleMetadata.entities).map(
+            ([sample, metadatum]) => ({
+                sample,
+                indexNumber: sampleEntities[sample]?.indexNumber,
+                ...metadatum,
+            })
+        );
+
+        if (metadataTable.findIndex((d) => d.indexNumber === undefined) >= 0) {
+            console.warn("Some metadata entries do not match any sample data");
+        }
+
+        return metadataTable;
+    }
+
+    /**
+     * Loads non-metadata sources so axes/titles can resolve domains.
+     *
+     * @param {import("@genome-spy/core/data/sources/namedSource.js").default} dynamicSource
+     * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
+     * @returns {Promise<void[]>}
+     */
+    #loadMetadataSubtree(dynamicSource, viewPredicate) {
+        const dataSources = collectViewSubtreeDataSources(this, viewPredicate);
+        dataSources.delete(dynamicSource);
+        return loadViewSubtreeData(this, dataSources);
     }
 
     /**
