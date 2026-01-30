@@ -44,7 +44,21 @@ export function resetToDefaultState(app) {
 export async function restoreBookmark(entry, app) {
     try {
         if (entry.actions) {
-            app.provenance.dispatchBookmark(entry.actions);
+            const sampleView = app.getSampleView();
+            const getAttributeInfo =
+                sampleView?.compositeAttributeInfoSource?.getAttributeInfo?.bind(
+                    sampleView.compositeAttributeInfoSource
+                );
+            if (app.provenance.isUndoable()) {
+                app.store.dispatch(ActionCreators.jumpToPast(0));
+            }
+            if (app.intentPipeline && getAttributeInfo) {
+                await app.intentPipeline.submit(entry.actions, {
+                    getAttributeInfo,
+                });
+            } else {
+                app.provenance.dispatchBookmark(entry.actions);
+            }
         }
 
         app.store.dispatch(

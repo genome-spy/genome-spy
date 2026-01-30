@@ -28,6 +28,7 @@ import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
+import IntentPipeline from "./state/intentPipeline.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -120,6 +121,11 @@ export default class App {
         this.store = setupStore();
         this.intentExecutor = new IntentExecutor(this.store);
         this.provenance = new Provenance(this.store, this.intentExecutor);
+        this.intentPipeline = new IntentPipeline({
+            store: this.store,
+            provenance: this.provenance,
+            intentExecutor: this.intentExecutor,
+        });
     }
 
     #setupBookmarkDatabases() {
