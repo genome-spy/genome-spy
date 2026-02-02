@@ -163,6 +163,8 @@ export default class IntentPipeline {
     }
 
     abortCurrent() {
+        // Only aborts pipeline-created signals; externally provided signals
+        // must be managed by their owners.
         if (this.#currentAbortController) {
             this.#currentAbortController.abort();
         }

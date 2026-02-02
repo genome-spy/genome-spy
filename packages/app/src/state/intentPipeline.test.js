@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import IntentPipeline from "./intentPipeline.js";
+import { intentStatusSlice } from "./intentStatusSlice.js";
 
 /**
  * @returns {{resolve: () => void, reject: (error: Error) => void, promise: Promise<void>}}
@@ -306,5 +307,57 @@ describe("IntentPipeline", () => {
             "processed-start",
             "processed-end",
         ]);
+    });
+
+    it("aborts in-flight work when abortCurrent is called", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const ensureStarted = createDeferred();
+        const ensureDeferred = createDeferred();
+
+        /** @type {import("../sampleView/types.js").AttributeInfo} */
+        const attributeInfo = {
+            name: "Test",
+            attribute: { type: "test" },
+            title: "Test",
+            emphasizedName: "Test",
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: "nominal",
+            ensureAvailability: ({ signal }) => {
+                if (!signal) {
+                    throw new Error("Missing abort signal");
+                }
+                signal.addEventListener(
+                    "abort",
+                    () => {
+                        ensureDeferred.reject(new Error("Aborted by user"));
+                    },
+                    { once: true }
+                );
+                ensureStarted.resolve();
+                return ensureDeferred.promise;
+            },
+        };
+        const getAttributeInfo = () => attributeInfo;
+
+        const submitPromise = pipeline.submit(
+            { type: "sample/one", payload: { attribute: { type: "test" } } },
+            { getAttributeInfo }
+        );
+
+        // Non-obvious: wait until ensureAvailability hooks the abort listener.
+        await ensureStarted.promise;
+        pipeline.abortCurrent();
+
+        await expect(submitPromise).rejects.toThrow("Aborted by user");
+        const errorActions = deps.store.dispatch.mock.calls
+            .map(([action]) => action)
+            .filter(
+                (action) =>
+                    action.type === intentStatusSlice.actions.setError.type
+            );
+        expect(errorActions).toHaveLength(1);
     });
 });

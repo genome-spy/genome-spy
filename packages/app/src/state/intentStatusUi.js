@@ -1,8 +1,8 @@
 import { html } from "lit";
 import { subscribeTo } from "./subscribeTo.js";
-import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
 import { showIntentStatusDialog } from "../components/dialogs/intentStatusDialog.js";
+import { showIntentErrorDialog } from "../components/dialogs/intentErrorDialog.js";
 
 /**
  * @typedef {object} IntentStatusUiOptions
@@ -69,25 +69,22 @@ export function attachIntentStatusUi({
             actionInfo?.title ??
             failedAction?.type ??
             "action";
-        const ok = await showMessageDialog(
-            html`<div>
-                <div>Could not complete: ${actionTitle}</div>
-                ${errorMessage ? html`<div>${errorMessage}</div>` : ""}
-                <div>The failed action was rolled back.</div>
-                <div>
-                    Roll back the entire batch, or keep the current state?
-                </div>
-            </div>`,
-            {
-                title: "Action interrupted",
-                type: "error",
-                confirm: true,
-            }
-        );
+        const message = html`<div>
+            <div>Failed to perform: ${actionTitle}</div>
+            ${errorMessage ? html`<div>Details: ${errorMessage}</div>` : ""}
+            <div>The failed action was rolled back.</div>
+            <div>Roll back the entire batch, or keep the current state?</div>
+        </div>`;
+        const decision = await showIntentErrorDialog({
+            title: "Action interrupted",
+            message,
+            rollbackLabel: "Rollback entire batch",
+            keepLabel: "Keep current state",
+        });
 
         store.dispatch(
             intentStatusSlice.actions.resolveError({
-                decision: ok ? "rollbackBatch" : "accept",
+                decision,
             })
         );
     };
