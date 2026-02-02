@@ -679,13 +679,16 @@ export function computeAttributeDefs(
  */
 export function combineSampleMetadata(a, b) {
     // a and b are required and expected to be valid SampleMetadata objects
-    const aNames = a.attributeNames;
-    const bNames = b.attributeNames;
+    const aNames = new Set(a.attributeNames);
+    const bNames = new Set(b.attributeNames);
 
     // Check for duplicate attribute names
-    const dupNames = aNames.filter((n) => bNames.includes(n));
-    if (dupNames.length > 0) {
-        throw new Error(`Duplicate attribute names: ${dupNames.join(", ")}`);
+    const dupNames = aNames.intersection(bNames);
+
+    if (dupNames.size > 0) {
+        throw new Error(
+            `Duplicate attribute names: ${Array.from(dupNames).join(", ")}`
+        );
     }
 
     const attributeNames = [...aNames, ...bNames];
@@ -717,7 +720,7 @@ export function combineSampleMetadata(a, b) {
         const combined = {};
 
         for (const attr of attributeNames) {
-            if (aNames.includes(attr)) {
+            if (aNames.has(attr)) {
                 combined[attr] = aEnt[attr];
             } else {
                 combined[attr] = bEnt[attr];
