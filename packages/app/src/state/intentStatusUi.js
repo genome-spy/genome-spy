@@ -71,13 +71,15 @@ export function attachIntentStatusUi({
             "action";
         const ok = await showMessageDialog(
             html`<div>
-                <div>Failed to perform: ${actionTitle}</div>
+                <div>Could not complete: ${actionTitle}</div>
                 ${errorMessage ? html`<div>${errorMessage}</div>` : ""}
                 <div>The failed action was rolled back.</div>
-                <div>Roll back the entire batch?</div>
+                <div>
+                    Roll back the entire batch, or keep the current state?
+                </div>
             </div>`,
             {
-                title: "Action failed",
+                title: "Action interrupted",
                 type: "error",
                 confirm: true,
             }
