@@ -343,6 +343,13 @@ export class MetadataView extends ConcatView {
                 return;
             }
 
+            // Metadata updates can finish before all color scale domains have
+            // reconfigured from the new data, which leaves bookmark capture or
+            // subsequent actions reading stale domains. As a pragmatic fix,
+            // force a domain refresh here. Option two would be to await domain
+            // change events instead, but that adds more complexity and edge cases.
+            this.#refreshMetadataDomains();
+
             this.context.requestLayoutReflow();
         } catch (error) {
             finalizeReady(
@@ -416,6 +423,26 @@ export class MetadataView extends ConcatView {
         }
 
         return metadataTable;
+    }
+
+    /**
+     * Forces metadata color scale resolutions to reconfigure their domains
+     * after a metadata update.
+     */
+    #refreshMetadataDomains() {
+        /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
+        const resolutions = new Set();
+        this.visit((view) => {
+            if (view instanceof UnitView) {
+                const resolution = view.getScaleResolution("color");
+                if (resolution) {
+                    resolutions.add(resolution);
+                }
+            }
+        });
+        for (const resolution of resolutions) {
+            resolution.reconfigureDomain();
+        }
     }
 
     /**
