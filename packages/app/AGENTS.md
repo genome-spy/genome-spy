@@ -1,5 +1,10 @@
 # GenomeSpy App
 
+## Architecture reference
+
+- See `APP_ARCHITECTURE.md` for Redux/provenance, async intent processing, and
+  bookmark restoration details specific to the app package.
+
 ## Form validation
 
 - Prefer `FormController` + `formField` (from `src/components/forms/`) for new forms.
