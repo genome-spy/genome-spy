@@ -355,6 +355,8 @@ export default class SampleView extends ContainerView {
         this.#ensureViewVisible(view);
         const domain = this.#resolveViewAttributeDomain(specifier);
         await this.#zoomToDomain(view, domain);
+        // Assumes the main sample subtree shares the x-scale resolution; if
+        // that changes, switch to per-view readiness requests.
         await this.#awaitSubtreeDataReady(
             view,
             context.signal,
