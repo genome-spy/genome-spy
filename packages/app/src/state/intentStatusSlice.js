@@ -1,6 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 /**
+ * Tracks async intent execution status for UI feedback and rollback decisions.
+ */
+
+/**
  * @typedef {"idle" | "running" | "error" | "canceled"} IntentStatusType
  *
  * @typedef {object} IntentStatus
@@ -73,7 +77,10 @@ export const intentStatusSlice = createSlice({
         resolveError: (
             /** @type {IntentStatus} */ state,
             /** @type {import("@reduxjs/toolkit").PayloadAction<{decision: "rollbackBatch" | "accept"}>} */ action
-        ) => initialState,
+        ) =>
+            // The actual rollback decision is handled by the root reducer in
+            // setupStore; this slice only clears the status.
+            initialState,
 
         clearStatus: () => initialState,
     },

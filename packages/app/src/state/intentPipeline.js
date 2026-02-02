@@ -40,9 +40,20 @@ const ENABLE_INTENT_ERROR_SIMULATION = true;
 /**
  * Async intent orchestrator for sequential action processing.
  *
- * It coordinates attribute-availability checks, action hooks, and dispatching
- * while preserving the synchronous intent executor. Submissions are serialized
- * and batches are rejected if other work is already running.
+ * Key points:
+ * - Preserves the existing synchronous IntentExecutor by wrapping it with
+ *   async pre/post steps (ensuring availability, waiting for processing).
+ * - Serializes submissions: actions run one at a time; batches are exclusive.
+ * - Tracks provenance indices so failures can roll back the failed action or
+ *   an entire batch while keeping state consistent.
+ * - Supports additional async dependencies via action hooks that run alongside
+ *   AttributeInfo-derived ensures.
+ * - Uses AbortSignals to allow cancellation; only pipeline-created signals are
+ *   aborted by abortCurrent().
+ *
+ * The pipeline is intended to be the single entry point for async-capable
+ * actions (bookmarks, tools, and UI) so that ordering and error handling
+ * remain predictable.
  */
 export default class IntentPipeline {
     /** @type {AppStore} */
