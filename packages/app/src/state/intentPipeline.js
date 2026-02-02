@@ -279,16 +279,7 @@ export default class IntentPipeline {
         }
         // Extract attribute identifiers from payloads that follow the
         // sample action shape: payload.attribute.type.
-        const payload = "payload" in action ? action.payload : undefined;
-        const attribute =
-            payload &&
-            typeof payload === "object" &&
-            "attribute" in payload &&
-            /** @type {any} */ (payload).attribute?.type
-                ? /** @type {import("../sampleView/types.js").AttributeIdentifier} */ (
-                      /** @type {any} */ (payload).attribute
-                  )
-                : undefined;
+        const attribute = resolveAttributeIdentifier(action);
         const attributeInfo =
             attribute && context.getAttributeInfo
                 ? context.getAttributeInfo(attribute)
@@ -325,6 +316,36 @@ export default class IntentPipeline {
             }
         }
     }
+}
+
+/**
+ * Extracts attribute identifiers from actions that use the
+ * payload.attribute.type convention.
+ *
+ * @param {Action} action
+ * @returns {import("../sampleView/types.js").AttributeIdentifier | undefined}
+ */
+function resolveAttributeIdentifier(action) {
+    if (!("payload" in action)) {
+        return;
+    }
+    const payload = action.payload;
+    if (!payload || typeof payload !== "object") {
+        return;
+    }
+    if (!("attribute" in payload)) {
+        return;
+    }
+    const attribute = payload.attribute;
+    if (!attribute || typeof attribute !== "object") {
+        return;
+    }
+    if (!("type" in attribute)) {
+        return;
+    }
+    return /** @type {import("../sampleView/types.js").AttributeIdentifier} */ (
+        attribute
+    );
 }
 
 /**
