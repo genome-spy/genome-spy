@@ -13,6 +13,13 @@ import { showIntentErrorDialog } from "../components/dialogs/intentErrorDialog.j
  */
 
 /**
+ * @typedef {object} IntentStatusSnapshot
+ * @prop {number} [currentIndex]
+ * @prop {number} [totalActions]
+ * @prop {import("@reduxjs/toolkit").Action} [currentAction]
+ */
+
+/**
  * Wires intent status changes to user-facing dialogs.
  *
  * @param {IntentStatusUiOptions} options
@@ -39,13 +46,41 @@ export function attachIntentStatusUi({
         runningDialog = undefined;
     };
 
+    /**
+     * @param {IntentStatusSnapshot | undefined} status
+     * @returns {string}
+     */
+    const buildRunningMessage = (status) => {
+        const actionTitle = status?.currentAction
+            ? getActionTitleText(provenance, status.currentAction)
+            : undefined;
+        const progressText =
+            typeof status?.currentIndex === "number" &&
+            typeof status?.totalActions === "number"
+                ? "(" +
+                  String(status.currentIndex + 1) +
+                  " of " +
+                  String(status.totalActions) +
+                  ")"
+                : undefined;
+        const actionLine = actionTitle
+            ? "Performing: " + actionTitle
+            : "Processing actions.";
+        return (
+            actionLine +
+            (progressText ? " " + progressText : "") +
+            ". Cancel if it takes too long."
+        );
+    };
+
     const showRunningDialog = () => {
         if (runningDialog) {
             return;
         }
+        const status = store.getState().intentStatus;
         const { element, promise } = showIntentStatusDialog({
             title: "Working…",
-            message: "Processing actions. Cancel if it takes too long.",
+            message: buildRunningMessage(status),
             cancelLabel: "Cancel",
         });
         runningDialog = element;
@@ -61,14 +96,9 @@ export function attachIntentStatusUi({
      * @param {string | undefined} errorMessage
      */
     const showErrorDialog = async (failedAction, errorMessage) => {
-        const actionInfo = failedAction
-            ? provenance.getActionInfo(failedAction)
-            : undefined;
-        const actionTitle =
-            actionInfo?.provenanceTitle ??
-            actionInfo?.title ??
-            failedAction?.type ??
-            "action";
+        const actionTitle = failedAction
+            ? getActionTitle(provenance, failedAction)
+            : "action";
         const isAbort = isAbortMessage(errorMessage);
         const message = html`<div>
             <div>
@@ -107,6 +137,9 @@ export function attachIntentStatusUi({
                         }
                     }, delayMs);
                 }
+                if (runningDialog) {
+                    runningDialog.message = buildRunningMessage(next);
+                }
                 return;
             }
 
@@ -141,4 +174,35 @@ function isAbortMessage(errorMessage) {
     return (
         typeof errorMessage === "string" && /abort|cancel/i.test(errorMessage)
     );
+}
+
+/**
+ * @param {import("./provenance.js").default} provenance
+ * @param {import("@reduxjs/toolkit").Action} action
+ * @returns {string | import("lit").TemplateResult}
+ */
+function getActionTitle(provenance, action) {
+    const actionInfo = provenance.getActionInfo(action);
+    return (
+        actionInfo?.provenanceTitle ??
+        actionInfo?.title ??
+        action.type ??
+        "action"
+    );
+}
+
+/**
+ * @param {import("./provenance.js").default} provenance
+ * @param {import("@reduxjs/toolkit").Action} action
+ * @returns {string}
+ */
+function getActionTitleText(provenance, action) {
+    const title = getActionTitle(provenance, action);
+    if (typeof title === "string") {
+        return title;
+    }
+    if (title && Array.isArray(title.strings)) {
+        return title.strings.join("").trim();
+    }
+    return action.type ?? "action";
 }

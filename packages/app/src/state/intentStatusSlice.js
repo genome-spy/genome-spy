@@ -7,6 +7,9 @@ import { createSlice } from "@reduxjs/toolkit";
  * @prop {IntentStatusType} status
  * @prop {number} [startIndex]
  * @prop {number} [lastSuccessfulIndex]
+ * @prop {number} [totalActions]
+ * @prop {number} [currentIndex]
+ * @prop {import("@reduxjs/toolkit").Action} [currentAction]
  * @prop {import("@reduxjs/toolkit").Action} [failedAction]
  * @prop {string} [error]
  */
@@ -22,15 +25,30 @@ export const intentStatusSlice = createSlice({
     reducers: {
         setRunning: (
             state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number}>} */
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, totalActions?: number}>} */
             action
         ) => ({
             ...state,
             status: "running",
             startIndex: action.payload.startIndex,
             lastSuccessfulIndex: action.payload.startIndex,
+            totalActions: action.payload.totalActions,
+            currentIndex: 0,
+            currentAction: undefined,
             failedAction: undefined,
             error: undefined,
+        }),
+
+        setProgress: (
+            state,
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{currentIndex?: number, totalActions?: number, currentAction?: import("@reduxjs/toolkit").Action}>} */ action
+        ) => ({
+            ...state,
+            status: "running",
+            currentIndex:
+                action.payload.currentIndex ?? state.currentIndex ?? 0,
+            totalActions: action.payload.totalActions ?? state.totalActions,
+            currentAction: action.payload.currentAction ?? state.currentAction,
         }),
 
         setError: (

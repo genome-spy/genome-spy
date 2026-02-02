@@ -7,6 +7,7 @@ describe("intentStatusSlice", () => {
             undefined,
             intentStatusSlice.actions.setRunning({
                 startIndex: 3,
+                totalActions: 5,
             })
         );
 
@@ -14,6 +15,9 @@ describe("intentStatusSlice", () => {
             status: "running",
             startIndex: 3,
             lastSuccessfulIndex: 3,
+            totalActions: 5,
+            currentIndex: 0,
+            currentAction: undefined,
             failedAction: undefined,
             error: undefined,
         });
@@ -24,6 +28,7 @@ describe("intentStatusSlice", () => {
             undefined,
             intentStatusSlice.actions.setRunning({
                 startIndex: 2,
+                totalActions: 2,
             })
         );
         const errored = intentStatusSlice.reducer(
@@ -37,8 +42,40 @@ describe("intentStatusSlice", () => {
             status: "error",
             startIndex: 2,
             lastSuccessfulIndex: 2,
+            totalActions: 2,
+            currentIndex: 0,
+            currentAction: undefined,
             failedAction: undefined,
             error: "Boom",
+        });
+    });
+
+    it("updates progress while running", () => {
+        const running = intentStatusSlice.reducer(
+            undefined,
+            intentStatusSlice.actions.setRunning({
+                startIndex: 1,
+                totalActions: 3,
+            })
+        );
+        const action = { type: "sample/progress" };
+        const progress = intentStatusSlice.reducer(
+            running,
+            intentStatusSlice.actions.setProgress({
+                currentIndex: 1,
+                currentAction: action,
+            })
+        );
+
+        expect(progress).toEqual({
+            status: "running",
+            startIndex: 1,
+            lastSuccessfulIndex: 1,
+            totalActions: 3,
+            currentIndex: 1,
+            currentAction: action,
+            failedAction: undefined,
+            error: undefined,
         });
     });
 

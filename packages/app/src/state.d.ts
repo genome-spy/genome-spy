@@ -19,6 +19,9 @@ export interface State {
         status: "idle" | "running" | "error" | "canceled";
         startIndex?: number;
         lastSuccessfulIndex?: number;
+        totalActions?: number;
+        currentIndex?: number;
+        currentAction?: import("@reduxjs/toolkit").Action;
         failedAction?: import("@reduxjs/toolkit").Action;
         error?: string;
     };

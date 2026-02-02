@@ -196,6 +196,7 @@ export default class IntentPipeline {
                 this.#store.dispatch(
                     intentStatusSlice.actions.setRunning({
                         startIndex,
+                        totalActions: entry.actions.length,
                     })
                 );
 
@@ -203,8 +204,14 @@ export default class IntentPipeline {
 
                 let currentAction;
                 try {
-                    for (const action of entry.actions) {
+                    for (const [index, action] of entry.actions.entries()) {
                         currentAction = action;
+                        this.#store.dispatch(
+                            intentStatusSlice.actions.setProgress({
+                                currentIndex: index,
+                                currentAction: action,
+                            })
+                        );
                         await this.#processAction(action, entry.options);
                         lastSuccessfulIndex =
                             this.#store.getState().provenance.past.length;
