@@ -69,9 +69,7 @@ export function attachIntentStatusUi({
             actionInfo?.title ??
             failedAction?.type ??
             "action";
-        const isAbort =
-            typeof errorMessage === "string" &&
-            /abort|cancel/i.test(errorMessage);
+        const isAbort = isAbortMessage(errorMessage);
         const message = html`<div>
             <div>
                 ${isAbort ? "Canceled while performing:" : "Failed to perform:"}
@@ -133,4 +131,14 @@ export function attachIntentStatusUi({
         closeRunningDialog();
         unsubscribe();
     };
+}
+
+/**
+ * @param {string | undefined} errorMessage
+ * @returns {boolean}
+ */
+function isAbortMessage(errorMessage) {
+    return (
+        typeof errorMessage === "string" && /abort|cancel/i.test(errorMessage)
+    );
 }
