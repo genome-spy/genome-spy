@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { css, html } from "lit";
 import BaseDialog from "../generic/baseDialog.js";
 
 export default class IntentStatusDialog extends BaseDialog {
@@ -7,6 +7,15 @@ export default class IntentStatusDialog extends BaseDialog {
         message: {},
         cancelLabel: { type: String },
     };
+
+    static styles = [
+        ...super.styles,
+        css`
+            dialog {
+                width: 450px;
+            }
+        `,
+    ];
 
     constructor() {
         super();
@@ -17,7 +26,7 @@ export default class IntentStatusDialog extends BaseDialog {
     }
 
     renderBody() {
-        return html`<div>${this.message}</div>`;
+        return html`${this.message}`;
     }
 
     renderButtons() {

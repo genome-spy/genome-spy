@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { subscribeTo } from "./subscribeTo.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
 import { showIntentStatusDialog } from "../components/dialogs/intentStatusDialog.js";
@@ -48,29 +48,25 @@ export function attachIntentStatusUi({
 
     /**
      * @param {IntentStatusSnapshot | undefined} status
-     * @returns {string}
      */
     const buildRunningMessage = (status) => {
         const actionTitle = status?.currentAction
-            ? getActionTitleText(provenance, status.currentAction)
-            : undefined;
+            ? getActionTitle(provenance, status.currentAction)
+            : nothing;
+
         const progressText =
             typeof status?.currentIndex === "number" &&
             typeof status?.totalActions === "number"
-                ? "(" +
-                  String(status.currentIndex + 1) +
-                  " of " +
-                  String(status.totalActions) +
-                  ")"
-                : undefined;
+                ? html` (${status.currentIndex + 1} of ${status.totalActions})`
+                : nothing;
+
         const actionLine = actionTitle
-            ? "Performing: " + actionTitle
-            : "Processing actions.";
-        return (
-            actionLine +
-            (progressText ? " " + progressText : "") +
-            ". Cancel if it takes too long."
-        );
+            ? html`<div>Performing${progressText}:</div>
+                  <div class="action-title">${actionTitle}</div>`
+            : html`<div>Processing actions${progressText}.</div>`;
+
+        return html` ${actionLine}
+            <p>Cancel if it takes too long.</p>`;
     };
 
     const showRunningDialog = () => {
@@ -100,15 +96,21 @@ export function attachIntentStatusUi({
             ? getActionTitle(provenance, failedAction)
             : "action";
         const isAbort = isAbortMessage(errorMessage);
-        const message = html`<div>
-            <div>
+        const message = html`
+            <p>
                 ${isAbort ? "Canceled while performing:" : "Failed to perform:"}
                 ${actionTitle}
-            </div>
-            ${errorMessage ? html`<div>Details: ${errorMessage}</div>` : ""}
-            <div>The failed action was rolled back.</div>
-            <div>Roll back the entire batch, or keep the current state?</div>
-        </div>`;
+            </p>
+            <p>
+                ${errorMessage
+                    ? html`<p>Details:<br />${errorMessage}</p>`
+                    : nothing}
+            </p>
+            <p>
+                The failed action was rolled back.<br />
+                Roll back the entire batch, or keep the current state?
+            </p>
+        `;
         const decision = await showIntentErrorDialog({
             title: isAbort ? "Action canceled" : "Action interrupted",
             message,
@@ -189,20 +191,4 @@ function getActionTitle(provenance, action) {
         action.type ??
         "action"
     );
-}
-
-/**
- * @param {import("./provenance.js").default} provenance
- * @param {import("@reduxjs/toolkit").Action} action
- * @returns {string}
- */
-function getActionTitleText(provenance, action) {
-    const title = getActionTitle(provenance, action);
-    if (typeof title === "string") {
-        return title;
-    }
-    if (title && Array.isArray(title.strings)) {
-        return title.strings.join("").trim();
-    }
-    return action.type ?? "action";
 }

@@ -1,4 +1,4 @@
-import { html } from "lit";
+import { css, html } from "lit";
 import BaseDialog from "../generic/baseDialog.js";
 
 export default class IntentErrorDialog extends BaseDialog {
@@ -8,6 +8,15 @@ export default class IntentErrorDialog extends BaseDialog {
         rollbackLabel: { type: String },
         keepLabel: { type: String },
     };
+
+    static styles = [
+        ...super.styles,
+        css`
+            dialog {
+                max-width: 600px;
+            }
+        `,
+    ];
 
     constructor() {
         super();
@@ -19,7 +28,7 @@ export default class IntentErrorDialog extends BaseDialog {
     }
 
     renderBody() {
-        return html`<div>${this.message}</div>`;
+        return html`${this.message}`;
     }
 
     renderButtons() {
