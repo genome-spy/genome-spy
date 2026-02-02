@@ -4,7 +4,7 @@
  */
 import { intentStatusSlice } from "./intentStatusSlice.js";
 
-const ENABLE_INTENT_ERROR_SIMULATION = true;
+const ENABLE_INTENT_ERROR_SIMULATION = false;
 
 /**
  * @typedef {object} IntentContext
