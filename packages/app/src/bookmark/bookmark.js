@@ -77,6 +77,9 @@ export async function restoreBookmark(entry, app) {
         await Promise.all(promises);
     } catch (e) {
         console.error(e);
+        if (app.store.getState().intentStatus?.status === "error") {
+            return;
+        }
         showMessageDialog(
             html`<p>Cannot restore the state:</p>
                 <p>${e}</p>`,
