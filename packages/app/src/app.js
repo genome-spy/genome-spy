@@ -30,7 +30,7 @@ import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
-import { intentStatusSlice } from "./state/intentStatusSlice.js";
+import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -38,6 +38,8 @@ transforms.mergeFacets = MergeSampleFacets;
  * A wrapper for the GenomeSpy core. Provides SampleView, provenance, a toolbar, etc.
  */
 export default class App {
+    /** @type {(() => void) | undefined} */
+    #intentStatusDisposer;
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
@@ -147,46 +149,6 @@ export default class App {
         });
     }
 
-    #setupIntentStatusHandling() {
-        subscribeTo(
-            this.store,
-            (state) => state.intentStatus,
-            (next, prev) => {
-                if (!next || next.status !== "error") {
-                    return;
-                }
-                if (prev?.status === "error") {
-                    return;
-                }
-                void this.#handleIntentError(next.error);
-            }
-        );
-    }
-
-    /**
-     * @param {string} [errorMessage]
-     */
-    async #handleIntentError(errorMessage) {
-        const ok = await showMessageDialog(
-            html`<div>
-                <div>Action processing failed.</div>
-                ${errorMessage ? html`<div>${errorMessage}</div>` : ""}
-                <div>Roll back to the previous state?</div>
-            </div>`,
-            {
-                title: "Action failed",
-                type: "error",
-                confirm: true,
-            }
-        );
-
-        this.store.dispatch(
-            intentStatusSlice.actions.resolveError({
-                decision: ok ? "rollback" : "accept",
-            })
-        );
-    }
-
     #setupBookmarkDatabases() {
         // TODO: A registry for different types of bookmark sources
 
@@ -290,7 +252,10 @@ export default class App {
                 context.animator.requestRender();
             })
         );
-        this.#setupIntentStatusHandling();
+        this.#intentStatusDisposer = attachIntentStatusUi({
+            store: this.store,
+            intentPipeline: this.intentPipeline,
+        });
 
         try {
             await this.#ensureRemoteBookmarks(remoteBookmarkPromise);

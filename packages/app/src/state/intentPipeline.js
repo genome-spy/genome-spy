@@ -19,6 +19,7 @@ import { intentStatusSlice } from "./intentStatusSlice.js";
  * @prop {SubmitOptions | undefined} options
  * @prop {() => void} resolve
  * @prop {(error: Error) => void} reject
+ * @prop {AbortController | undefined} abortController
  */
 
 /**
@@ -62,6 +63,9 @@ export default class IntentPipeline {
 
     /** @type {Set<ActionHook>} */
     #actionHooks = new Set();
+
+    /** @type {AbortController | undefined} */
+    #currentAbortController;
 
     /**
      * @param {object} deps Dependencies used to build the shared intent context.
@@ -139,11 +143,29 @@ export default class IntentPipeline {
         }
 
         return new Promise((resolve, reject) => {
-            this.#queue.push({ actions, options, resolve, reject });
+            const abortController = options?.signal
+                ? undefined
+                : new AbortController();
+            const resolvedOptions = abortController
+                ? { ...options, signal: abortController.signal }
+                : options;
+            this.#queue.push({
+                actions,
+                options: resolvedOptions,
+                resolve,
+                reject,
+                abortController,
+            });
             if (!this.#isRunning) {
                 void this.#drainQueue().catch(/** @returns {void} */ () => {});
             }
         });
+    }
+
+    abortCurrent() {
+        if (this.#currentAbortController) {
+            this.#currentAbortController.abort();
+        }
     }
 
     /**
@@ -171,6 +193,8 @@ export default class IntentPipeline {
                         startIndex,
                     })
                 );
+
+                this.#currentAbortController = entry.abortController;
 
                 try {
                     for (const action of entry.actions) {
@@ -205,6 +229,7 @@ export default class IntentPipeline {
         } finally {
             this.#isRunning = false;
             this.#isBatchRunning = false;
+            this.#currentAbortController = undefined;
             if (!failed) {
                 this.#store.dispatch(intentStatusSlice.actions.clearStatus());
             }
@@ -217,6 +242,9 @@ export default class IntentPipeline {
      */
     async #processAction(action, options) {
         const context = this.createContext(options);
+        if (context.signal?.aborted) {
+            throw new Error("Action processing was aborted.");
+        }
         // Extract attribute identifiers from payloads that follow the
         // sample action shape: payload.attribute.type.
         const payload = "payload" in action ? action.payload : undefined;
