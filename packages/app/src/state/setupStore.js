@@ -15,11 +15,15 @@ export default function setupStore() {
         [sampleSlice.name]: sampleSlice.reducer,
     });
 
+    const reducer = combineReducers({
+        lifecycle: lifecycleSlice.reducer,
+        viewSettings: viewSettingsSlice.reducer,
+        provenance: provenanceReducer,
+    });
+
     return configureStore({
-        reducer: combineReducers({
-            lifecycle: lifecycleSlice.reducer,
-            viewSettings: viewSettingsSlice.reducer,
-            provenance: provenanceReducer,
-        }),
+        reducer,
+        middleware: (getDefaultMiddleware) =>
+            getDefaultMiddleware({ serializableCheck: false }),
     });
 }

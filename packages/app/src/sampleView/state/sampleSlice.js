@@ -1,4 +1,4 @@
-import { createSelector, createSlice } from "@reduxjs/toolkit";
+import { createSelector, createSlice, freeze, original } from "@reduxjs/toolkit";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import {
     groupSamplesByAccessor,
@@ -117,9 +117,15 @@ function applyMetadataPayload(state, payload) {
         attributeDefs: completedAttributeDefs,
     };
 
-    state.sampleMetadata = payload.replace
+    const baseSampleMetadata =
+        original(state.sampleMetadata) ?? state.sampleMetadata;
+    const combinedMetadata = payload.replace
         ? newMetadata
-        : combineSampleMetadata(state.sampleMetadata, newMetadata);
+        : combineSampleMetadata(baseSampleMetadata, newMetadata);
+
+    state.sampleMetadata = payload.replace
+        ? freeze(newMetadata)
+        : freeze(combinedMetadata);
 }
 
 /**
