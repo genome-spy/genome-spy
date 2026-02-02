@@ -4,6 +4,8 @@
  */
 import { intentStatusSlice } from "./intentStatusSlice.js";
 
+const ENABLE_INTENT_ERROR_SIMULATION = true;
+
 /**
  * @typedef {object} IntentContext
  * @prop {AppStore} store
@@ -254,6 +256,9 @@ export default class IntentPipeline {
         if (context.signal?.aborted) {
             throw new Error("Action processing was aborted.");
         }
+        if (ENABLE_INTENT_ERROR_SIMULATION) {
+            await simulateIntentError();
+        }
         // Extract attribute identifiers from payloads that follow the
         // sample action shape: payload.attribute.type.
         const payload = "payload" in action ? action.payload : undefined;
@@ -301,5 +306,23 @@ export default class IntentPipeline {
                 await hook.awaitProcessed(context, action);
             }
         }
+    }
+}
+
+/**
+ * Simulate asynchronous action processing with random delay and failure.
+ * This is a temporary manual-testing aid.
+ *
+ * @returns {Promise<void>}
+ */
+async function simulateIntentError() {
+    const delayMs = Math.random() * 3000;
+    if (delayMs > 0) {
+        await new Promise((resolve) => {
+            setTimeout(resolve, delayMs);
+        });
+    }
+    if (Math.random() < 0.1) {
+        throw new Error("Intent action failed (simulated).");
     }
 }
