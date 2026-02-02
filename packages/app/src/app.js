@@ -128,7 +128,8 @@ export default class App {
             const unregisterMetadataHook =
                 this.intentPipeline.registerActionHook({
                     predicate: (action) =>
-                        action.type === sampleSlice.actions.addMetadata.type,
+                        action.type === sampleSlice.actions.addMetadata.type ||
+                        action.type === sampleSlice.actions.deriveMetadata.type,
                     awaitProcessed: (context) =>
                         sampleView.awaitMetadataReady(context.signal),
                 });
