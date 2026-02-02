@@ -17,7 +17,6 @@ export interface State {
      */
     intentStatus?: {
         status: "idle" | "running" | "error" | "canceled";
-        batchId?: string;
         startIndex?: number;
         error?: string;
     };

@@ -2,6 +2,7 @@
  * @typedef {import("@reduxjs/toolkit").Action} Action
  * @typedef {import("@reduxjs/toolkit").EnhancedStore<import("./setupStore.js").AppState>} AppStore
  */
+import { intentStatusSlice } from "./intentStatusSlice.js";
 
 /**
  * @typedef {object} IntentContext
@@ -30,7 +31,6 @@
 /**
  * @typedef {object} SubmitOptions
  * @prop {AbortSignal} [signal]
- * @prop {string} [batchId]
  * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [getAttributeInfo]
  */
 
@@ -154,6 +154,7 @@ export default class IntentPipeline {
             return;
         }
         this.#isRunning = true;
+        let failed = false;
 
         try {
             while (this.#queue.length) {
@@ -163,16 +164,31 @@ export default class IntentPipeline {
                     this.#isBatchRunning = true;
                 }
 
+                const startIndex =
+                    this.#store.getState().provenance.past.length;
+                this.#store.dispatch(
+                    intentStatusSlice.actions.setRunning({
+                        startIndex,
+                    })
+                );
+
                 try {
                     for (const action of entry.actions) {
                         await this.#processAction(action, entry.options);
                     }
                     entry.resolve();
                 } catch (error) {
+                    failed = true;
                     const failure =
                         error instanceof Error
                             ? error
                             : new Error(String(error));
+                    this.#store.dispatch(
+                        intentStatusSlice.actions.setError({
+                            startIndex,
+                            error: failure.message,
+                        })
+                    );
                     entry.reject(failure);
                     const remaining = this.#queue;
                     this.#queue = [];
@@ -189,6 +205,9 @@ export default class IntentPipeline {
         } finally {
             this.#isRunning = false;
             this.#isBatchRunning = false;
+            if (!failed) {
+                this.#store.dispatch(intentStatusSlice.actions.clearStatus());
+            }
         }
     }
 

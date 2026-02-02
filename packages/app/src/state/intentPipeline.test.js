@@ -21,7 +21,12 @@ function createDeferred() {
  */
 function createDeps() {
     return {
-        store: {},
+        store: {
+            getState: () => ({
+                provenance: { past: [] },
+            }),
+            dispatch: vi.fn(),
+        },
         provenance: {},
         intentExecutor: {
             dispatch: vi.fn((action) => action),

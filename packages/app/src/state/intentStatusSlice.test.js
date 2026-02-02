@@ -2,18 +2,16 @@ import { describe, expect, it } from "vitest";
 import { intentStatusSlice } from "./intentStatusSlice.js";
 
 describe("intentStatusSlice", () => {
-    it("sets running state with batch metadata", () => {
+    it("sets running state with start index", () => {
         const next = intentStatusSlice.reducer(
             undefined,
             intentStatusSlice.actions.setRunning({
-                batchId: "b1",
                 startIndex: 3,
             })
         );
 
         expect(next).toEqual({
             status: "running",
-            batchId: "b1",
             startIndex: 3,
             error: undefined,
         });
@@ -23,7 +21,6 @@ describe("intentStatusSlice", () => {
         const running = intentStatusSlice.reducer(
             undefined,
             intentStatusSlice.actions.setRunning({
-                batchId: "b2",
                 startIndex: 2,
             })
         );
@@ -36,7 +33,6 @@ describe("intentStatusSlice", () => {
 
         expect(errored).toEqual({
             status: "error",
-            batchId: "b2",
             startIndex: 2,
             error: "Boom",
         });
@@ -45,12 +41,11 @@ describe("intentStatusSlice", () => {
     it("sets canceled state and clears on reset", () => {
         const canceled = intentStatusSlice.reducer(
             undefined,
-            intentStatusSlice.actions.setCanceled({ batchId: "b3" })
+            intentStatusSlice.actions.setCanceled()
         );
 
         expect(canceled).toEqual({
             status: "canceled",
-            batchId: "b3",
         });
 
         const cleared = intentStatusSlice.reducer(
@@ -59,5 +54,22 @@ describe("intentStatusSlice", () => {
         );
 
         expect(cleared).toEqual({ status: "idle" });
+    });
+
+    it("clears error state via resolveError", () => {
+        const errored = intentStatusSlice.reducer(
+            undefined,
+            intentStatusSlice.actions.setError({
+                error: "Boom",
+                startIndex: 1,
+            })
+        );
+
+        const resolved = intentStatusSlice.reducer(
+            errored,
+            intentStatusSlice.actions.resolveError({ decision: "accept" })
+        );
+
+        expect(resolved).toEqual({ status: "idle" });
     });
 });

@@ -5,7 +5,6 @@ import { createSlice } from "@reduxjs/toolkit";
  *
  * @typedef {object} IntentStatus
  * @prop {IntentStatusType} status
- * @prop {string} [batchId]
  * @prop {number} [startIndex]
  * @prop {string} [error]
  */
@@ -21,37 +20,35 @@ export const intentStatusSlice = createSlice({
     reducers: {
         setRunning: (
             state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{batchId?: string, startIndex?: number}>} */
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number}>} */
             action
         ) => ({
             ...state,
             status: "running",
-            batchId: action.payload.batchId,
             startIndex: action.payload.startIndex,
             error: undefined,
         }),
 
         setError: (
             state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{batchId?: string, startIndex?: number, error: string}>} */
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, error: string}>} */
             action
         ) => ({
             ...state,
             status: "error",
-            batchId: action.payload.batchId ?? state.batchId,
             startIndex: action.payload.startIndex ?? state.startIndex,
             error: action.payload.error,
         }),
 
-        setCanceled: (
-            state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{batchId?: string}>} */
-            action
-        ) => ({
+        setCanceled: (state) => ({
             ...state,
             status: "canceled",
-            batchId: action.payload.batchId ?? state.batchId,
         }),
+
+        resolveError: (
+            /** @type {IntentStatus} */ state,
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{decision: "rollback" | "accept"}>} */ action
+        ) => initialState,
 
         clearStatus: () => initialState,
     },
