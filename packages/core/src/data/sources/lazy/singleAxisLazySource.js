@@ -2,6 +2,10 @@ import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
 
 /**
+ * @typedef {Partial<Record<import("../../../spec/channel.js").PrimaryPositionalChannel, number[]>>} DataReadinessRequest
+ */
+
+/**
  * Base class for data sources that listen a domain and propagate data lazily.
  *
  * @abstract
@@ -12,6 +16,12 @@ export default class SingleAxisLazySource extends DataSource {
      * @protected
      */
     initializedPromise = Promise.resolve();
+
+    /**
+     * @type {number[] | undefined}
+     * @protected
+     */
+    _lastLoadedDomain;
 
     /**
      * @param {import("../../../view/view.js").default} view
@@ -118,6 +128,7 @@ export default class SingleAxisLazySource extends DataSource {
      * @protected
      */
     publishData(chunks) {
+        this._lastLoadedDomain = Array.from(this.scaleResolution.getDomain());
         this.reset();
         this.beginBatch({ type: "file" });
 
@@ -128,5 +139,24 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         this.complete();
+    }
+
+    /**
+     * @param {DataReadinessRequest} request
+     * @returns {boolean}
+     */
+    isDataReadyForDomain(request) {
+        const domain = request[this.channel];
+        if (!domain || !this._lastLoadedDomain) {
+            return false;
+        }
+
+        const [min, max] =
+            domain[0] <= domain[1] ? domain : [domain[1], domain[0]];
+        const [loadedMin, loadedMax] =
+            this._lastLoadedDomain[0] <= this._lastLoadedDomain[1]
+                ? this._lastLoadedDomain
+                : [this._lastLoadedDomain[1], this._lastLoadedDomain[0]];
+        return min >= loadedMin && max <= loadedMax;
     }
 }

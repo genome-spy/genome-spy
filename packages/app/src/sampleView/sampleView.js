@@ -38,6 +38,10 @@ import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import {
+    buildReadinessRequest,
+    isSubtreeReady,
+} from "@genome-spy/core/view/dataReadiness.js";
+import {
     asSelectionConfig,
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
@@ -72,6 +76,7 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
      * @typedef {import("@genome-spy/core/view/concatView.js").default} ConcatView
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
+     * @typedef {import("@genome-spy/core/data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
      */
 
     /** @type {SampleGridChild} */
@@ -217,11 +222,18 @@ export default class SampleView extends ContainerView {
      *
      * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
      * @param {AbortSignal} [signal]
+     * @param {DataReadinessRequest} [readinessRequest]
      * @returns {Promise<void>}
      */
-    #awaitSubtreeDataReady(subtreeRoot, signal) {
-        // TODO: Add a fast-path when the subtree is already loaded to avoid
-        // waiting for a new broadcast.
+    #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
+        if (
+            readinessRequest &&
+            isSubtreeReady(subtreeRoot, readinessRequest, (view) =>
+                view.isConfiguredVisible()
+            )
+        ) {
+            return Promise.resolve();
+        }
         const ancestors = subtreeRoot.getDataAncestors();
         return this.#subtreeDataReadyWaiters.wait(
             (readyRoot) =>
@@ -343,7 +355,11 @@ export default class SampleView extends ContainerView {
         this.#ensureViewVisible(view);
         const domain = this.#resolveViewAttributeDomain(specifier);
         await this.#zoomToDomain(view, domain);
-        await this.#awaitSubtreeDataReady(view, context.signal);
+        await this.#awaitSubtreeDataReady(
+            view,
+            context.signal,
+            buildReadinessRequest(view, ["x"])
+        );
     }
 
     /**

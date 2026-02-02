@@ -56,6 +56,7 @@ describe("SampleView ensureViewAttributeAvailability", () => {
         // Non-obvious: patch zoomTo to control the async sequence.
         target.getScaleResolution = () =>
             /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").default} */ ({
+                getDomain: () => [0, 10],
                 zoomTo,
             });
 
@@ -75,12 +76,13 @@ describe("SampleView ensureViewAttributeAvailability", () => {
         expect(resolved).toBe(false);
 
         zoomDeferred.resolve();
+        await zoomDeferred.promise;
         await Promise.resolve();
         expect(resolved).toBe(false);
 
         view.handleBroadcast({
             type: "subtreeDataReady",
-            payload: { subtreeRoot: target },
+            payload: { subtreeRoot: view },
         });
 
         await ensurePromise;
