@@ -18,6 +18,8 @@ export interface State {
     intentStatus?: {
         status: "idle" | "running" | "error" | "canceled";
         startIndex?: number;
+        lastSuccessfulIndex?: number;
+        failedAction?: import("@reduxjs/toolkit").Action;
         error?: string;
     };
     provenance?: StateWithHistory<SampleHierarchy>;

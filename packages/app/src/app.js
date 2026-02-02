@@ -255,6 +255,7 @@ export default class App {
         this.#intentStatusDisposer = attachIntentStatusUi({
             store: this.store,
             intentPipeline: this.intentPipeline,
+            provenance: this.provenance,
         });
 
         try {

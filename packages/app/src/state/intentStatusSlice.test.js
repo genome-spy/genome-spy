@@ -13,6 +13,8 @@ describe("intentStatusSlice", () => {
         expect(next).toEqual({
             status: "running",
             startIndex: 3,
+            lastSuccessfulIndex: 3,
+            failedAction: undefined,
             error: undefined,
         });
     });
@@ -34,6 +36,8 @@ describe("intentStatusSlice", () => {
         expect(errored).toEqual({
             status: "error",
             startIndex: 2,
+            lastSuccessfulIndex: 2,
+            failedAction: undefined,
             error: "Boom",
         });
     });

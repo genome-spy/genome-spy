@@ -20,12 +20,22 @@ function createDeferred() {
  * @returns {{store: any, provenance: any, intentExecutor: any}}
  */
 function createDeps() {
+    /** @type {any[]} */
+    const past = [];
     return {
         store: {
             getState: () => ({
-                provenance: { past: [] },
+                provenance: { past },
             }),
-            dispatch: vi.fn(),
+            dispatch: vi.fn((action) => {
+                if (
+                    action.type.startsWith("sample/") ||
+                    action.type === "sample/no-attr"
+                ) {
+                    past.push(action);
+                }
+                return action;
+            }),
         },
         provenance: {},
         intentExecutor: {

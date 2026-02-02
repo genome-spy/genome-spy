@@ -80,6 +80,8 @@ export async function restoreBookmark(entry, app) {
         if (app.store.getState().intentStatus?.status === "error") {
             return;
         }
+        // Non-pipeline restore failures (view settings/scale domains) are
+        // reported here; pipeline errors are handled via intent status UI.
         showMessageDialog(
             html`<p>Cannot restore the state:</p>
                 <p>${e}</p>`,

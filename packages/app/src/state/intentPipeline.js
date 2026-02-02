@@ -188,6 +188,7 @@ export default class IntentPipeline {
 
                 const startIndex =
                     this.#store.getState().provenance.past.length;
+                let lastSuccessfulIndex = startIndex;
                 this.#store.dispatch(
                     intentStatusSlice.actions.setRunning({
                         startIndex,
@@ -196,9 +197,13 @@ export default class IntentPipeline {
 
                 this.#currentAbortController = entry.abortController;
 
+                let currentAction;
                 try {
                     for (const action of entry.actions) {
+                        currentAction = action;
                         await this.#processAction(action, entry.options);
+                        lastSuccessfulIndex =
+                            this.#store.getState().provenance.past.length;
                     }
                     entry.resolve();
                 } catch (error) {
@@ -210,6 +215,8 @@ export default class IntentPipeline {
                     this.#store.dispatch(
                         intentStatusSlice.actions.setError({
                             startIndex,
+                            lastSuccessfulIndex,
+                            failedAction: currentAction,
                             error: failure.message,
                         })
                     );
