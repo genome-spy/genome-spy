@@ -69,14 +69,20 @@ export function attachIntentStatusUi({
             actionInfo?.title ??
             failedAction?.type ??
             "action";
+        const isAbort =
+            typeof errorMessage === "string" &&
+            /abort|cancel/i.test(errorMessage);
         const message = html`<div>
-            <div>Failed to perform: ${actionTitle}</div>
+            <div>
+                ${isAbort ? "Canceled while performing:" : "Failed to perform:"}
+                ${actionTitle}
+            </div>
             ${errorMessage ? html`<div>Details: ${errorMessage}</div>` : ""}
             <div>The failed action was rolled back.</div>
             <div>Roll back the entire batch, or keep the current state?</div>
         </div>`;
         const decision = await showIntentErrorDialog({
-            title: "Action interrupted",
+            title: isAbort ? "Action canceled" : "Action interrupted",
             message,
             rollbackLabel: "Rollback entire batch",
             keepLabel: "Keep current state",
