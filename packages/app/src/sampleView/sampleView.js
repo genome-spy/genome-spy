@@ -268,12 +268,17 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/view.js").default} view
      */
     #ensureViewVisible(view) {
-        this.provenance.store.dispatch(
-            viewSettingsSlice.actions.setVisibility({
-                name: view.name,
-                visibility: true,
-            })
-        );
+        for (const ancestor of view.getLayoutAncestors()) {
+            if (!ancestor.name) {
+                continue;
+            }
+            this.provenance.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    name: ancestor.name,
+                    visibility: true,
+                })
+            );
+        }
     }
 
     /**
