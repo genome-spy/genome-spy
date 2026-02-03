@@ -37,10 +37,7 @@ import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js"
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
-import {
-    buildReadinessRequest,
-    isSubtreeReady,
-} from "@genome-spy/core/view/dataReadiness.js";
+import { buildReadinessRequest } from "@genome-spy/core/view/dataReadiness.js";
 import {
     asSelectionConfig,
     isActiveIntervalSelection,
@@ -62,6 +59,15 @@ import {
 import { ReadyWaiterSet } from "../utils/readyGate.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
+const ENABLE_READINESS_DEBUG = false;
+
+/** @type {(...args: unknown[]) => void} */
+const logReadinessDebug = (...args) => {
+    if (!ENABLE_READINESS_DEBUG) {
+        return;
+    }
+    console.debug("[SampleView readiness]", ...args);
+};
 
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -228,11 +234,16 @@ export default class SampleView extends ContainerView {
     #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
         if (
             readinessRequest &&
-            isSubtreeReady(subtreeRoot, readinessRequest, (view) =>
-                view.isConfiguredVisible()
-            )
+            this.#isLazyReadinessSatisfied(subtreeRoot, readinessRequest)
         ) {
             return Promise.resolve();
+        }
+        if (readinessRequest) {
+            return this.#awaitSubtreeReadinessRequest(
+                subtreeRoot,
+                readinessRequest,
+                signal
+            );
         }
         const ancestors = subtreeRoot.getDataAncestors();
         return this.#subtreeDataReadyWaiters.wait(
@@ -240,6 +251,213 @@ export default class SampleView extends ContainerView {
                 readyRoot === subtreeRoot || ancestors.includes(readyRoot),
             signal
         );
+    }
+
+    /**
+     * Waits for data readiness by re-checking after collector completions.
+     * Lazy sources do not broadcast subtree readiness events, so we listen to
+     * dataflow completions and resolve once the request is satisfied.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     * @param {DataReadinessRequest} readinessRequest
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    #awaitSubtreeReadinessRequest(subtreeRoot, readinessRequest, signal) {
+        return new Promise((resolve, reject) => {
+            /** @type {Set<() => void>} */
+            const unregisters = new Set();
+            /** @type {Set<import("@genome-spy/core/data/collector.js").default>} */
+            const observedCollectors = new Set();
+
+            /** @type {(message: import("@genome-spy/core/view/view.js").BroadcastMessage) => void} */
+            const broadcastListener = () => {
+                logReadinessDebug("Broadcast received", {
+                    subtree: subtreeRoot.name,
+                });
+                attachCollectors();
+                checkReady();
+            };
+
+            const cleanup = () => {
+                logReadinessDebug("Cleaning up readiness listeners", {
+                    subtree: subtreeRoot.name,
+                });
+                for (const unregister of unregisters) {
+                    unregister();
+                }
+                unregisters.clear();
+                this.context.removeBroadcastListener(
+                    "subtreeDataReady",
+                    broadcastListener
+                );
+                if (signal) {
+                    signal.removeEventListener("abort", abortHandler);
+                }
+            };
+
+            const checkReady = () => {
+                const ready = this.#isLazyReadinessSatisfied(
+                    subtreeRoot,
+                    readinessRequest
+                );
+                logReadinessDebug("Readiness check", {
+                    subtree: subtreeRoot.name,
+                    ready,
+                });
+                if (ready) {
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const attachCollectors = () => {
+                subtreeRoot.visit((view) => {
+                    if (!(view instanceof UnitView)) {
+                        return;
+                    }
+                    if (!view.isConfiguredVisible()) {
+                        return;
+                    }
+                    const collector = view.flowHandle?.collector;
+                    if (!collector) {
+                        return;
+                    }
+                    if (observedCollectors.has(collector)) {
+                        return;
+                    }
+                    observedCollectors.add(collector);
+                    unregisters.add(collector.observe(checkReady));
+                    logReadinessDebug("Collector observed", {
+                        subtree: subtreeRoot.name,
+                        view: view.name,
+                    });
+                });
+            };
+
+            const abortHandler = () => {
+                logReadinessDebug("Readiness aborted", {
+                    subtree: subtreeRoot.name,
+                });
+                cleanup();
+                reject(new Error("Subtree readiness was aborted."));
+            };
+
+            attachCollectors();
+            checkReady();
+
+            logReadinessDebug("Readiness wait started", {
+                subtree: subtreeRoot.name,
+                request: readinessRequest,
+            });
+            this.context.addBroadcastListener(
+                "subtreeDataReady",
+                broadcastListener
+            );
+
+            if (signal) {
+                if (signal.aborted) {
+                    abortHandler();
+                    return;
+                }
+                signal.addEventListener("abort", abortHandler, { once: true });
+            }
+        });
+    }
+
+    /**
+     * Checks readiness for lazy data sources under a subtree.
+     * Non-lazy sources are ignored so unrelated views do not block readiness.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     * @param {DataReadinessRequest} readinessRequest
+     * @returns {boolean}
+     */
+    #isLazyReadinessSatisfied(subtreeRoot, readinessRequest) {
+        /** @type {Set<import("@genome-spy/core/data/sources/dataSource.js").default>} */
+        const dataSources = new Set();
+        /** @type {Map<import("@genome-spy/core/data/sources/dataSource.js").default, string[]> | undefined} */
+        const sourceViews = ENABLE_READINESS_DEBUG ? new Map() : undefined;
+
+        subtreeRoot.visit((view) => {
+            if (!(view instanceof UnitView)) {
+                return;
+            }
+            if (!view.isConfiguredVisible()) {
+                return;
+            }
+            /** @type {import("@genome-spy/core/view/view.js").default | null} */
+            let current = view;
+            while (current) {
+                if (current.flowHandle && current.flowHandle.dataSource) {
+                    break;
+                }
+                current = current.dataParent;
+            }
+            if (!current || !current.flowHandle) {
+                return;
+            }
+            const dataSource = current.flowHandle.dataSource;
+            if (!("isDataReadyForDomain" in dataSource)) {
+                return;
+            }
+            dataSources.add(dataSource);
+            if (sourceViews) {
+                let views = sourceViews.get(dataSource);
+                if (!views) {
+                    views = [];
+                    sourceViews.set(dataSource, views);
+                }
+                views.push(view.name);
+            }
+        });
+
+        if (!dataSources.size) {
+            logReadinessDebug("No lazy data sources found", {
+                subtree: subtreeRoot.name,
+            });
+            return true;
+        }
+
+        if (!ENABLE_READINESS_DEBUG) {
+            for (const dataSource of dataSources) {
+                const checkReady =
+                    /** @type {(request: DataReadinessRequest) => boolean} */ (
+                        /** @type {any} */ (dataSource).isDataReadyForDomain
+                    );
+                if (!checkReady.call(dataSource, readinessRequest)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        const pendingSources = [];
+        const readySources = [];
+        for (const dataSource of dataSources) {
+            const checkReady =
+                /** @type {(request: DataReadinessRequest) => boolean} */ (
+                    /** @type {any} */ (dataSource).isDataReadyForDomain
+                );
+            const ready = checkReady.call(dataSource, readinessRequest);
+            const views = sourceViews ? sourceViews.get(dataSource) : undefined;
+            const sourceLabel =
+                (views && views.length ? views.join(", ") + ": " : "") +
+                dataSource.constructor.name;
+            if (ready) {
+                readySources.push(sourceLabel);
+            } else {
+                pendingSources.push(sourceLabel);
+            }
+        }
+
+        logReadinessDebug("Lazy source readiness", {
+            subtree: subtreeRoot.name,
+            ready: readySources,
+            pending: pendingSources,
+        });
+
+        return pendingSources.length === 0;
     }
 
     /**
@@ -318,7 +536,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * Waits for the view subtree to signal readiness after an action.
+     * Waits for the view subtree to satisfy the current x-domain readiness after
+     * an action. Uses lazy-source readiness checks so it does not depend on
+     * subtreeDataReady broadcasts.
      *
      * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
      * @param {import("./types.js").AttributeEnsureContext} [context]
@@ -327,7 +547,11 @@ export default class SampleView extends ContainerView {
     async awaitViewAttributeProcessed(specifier, context = {}) {
         const view = this.#resolveViewForSpecifier(specifier);
 
-        await this.#awaitSubtreeDataReady(view, context.signal);
+        await this.#awaitSubtreeDataReady(
+            view,
+            context.signal,
+            buildReadinessRequest(view, ["x"])
+        );
     }
 
     /**
