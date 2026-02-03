@@ -10,6 +10,7 @@ import { showIntentErrorDialog } from "../components/dialogs/intentErrorDialog.j
  * @prop {import("./intentPipeline.js").default} intentPipeline
  * @prop {import("./provenance.js").default} provenance
  * @prop {number} [delayMs]
+ * @prop {number} [minVisibleMs]
  */
 
 /**
@@ -29,7 +30,8 @@ export function attachIntentStatusUi({
     store,
     intentPipeline,
     provenance,
-    delayMs = 500,
+    delayMs = 800,
+    minVisibleMs = 400,
 }) {
     let runningTimer =
         /** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined);
@@ -37,13 +39,40 @@ export function attachIntentStatusUi({
         /** @type {import("../components/dialogs/intentStatusDialog.js").default | undefined} */ (
             undefined
         );
+    let runningDialogOpenedAt = /** @type {number | undefined} */ (undefined);
+    let runningDialogCloseTimer =
+        /** @type {ReturnType<typeof setTimeout> | undefined} */ (undefined);
 
-    const closeRunningDialog = () => {
+    const closeRunningDialog = (force = false) => {
         if (!runningDialog) {
             return;
         }
-        runningDialog.closeDialog();
-        runningDialog = undefined;
+        if (runningDialogCloseTimer) {
+            clearTimeout(runningDialogCloseTimer);
+            runningDialogCloseTimer = undefined;
+        }
+        if (force || !runningDialogOpenedAt) {
+            runningDialog.closeDialog();
+            runningDialog = undefined;
+            runningDialogOpenedAt = undefined;
+            return;
+        }
+        const elapsed = Date.now() - runningDialogOpenedAt;
+        if (elapsed >= minVisibleMs) {
+            runningDialog.closeDialog();
+            runningDialog = undefined;
+            runningDialogOpenedAt = undefined;
+            return;
+        }
+        runningDialogCloseTimer = setTimeout(() => {
+            if (!runningDialog) {
+                return;
+            }
+            runningDialog.closeDialog();
+            runningDialog = undefined;
+            runningDialogOpenedAt = undefined;
+            runningDialogCloseTimer = undefined;
+        }, minVisibleMs - elapsed);
     };
 
     /**
@@ -80,9 +109,12 @@ export function attachIntentStatusUi({
             cancelLabel: "Cancel",
         });
         runningDialog = element;
+        runningDialogOpenedAt = Date.now();
         promise.then((detail) => {
             if (detail.ok) {
-                intentPipeline.abortCurrent();
+                if (store.getState().intentStatus?.status === "running") {
+                    intentPipeline.abortCurrent();
+                }
             }
         });
     };
@@ -139,6 +171,10 @@ export function attachIntentStatusUi({
                         }
                     }, delayMs);
                 }
+                if (runningDialogCloseTimer) {
+                    clearTimeout(runningDialogCloseTimer);
+                    runningDialogCloseTimer = undefined;
+                }
                 if (runningDialog) {
                     runningDialog.message = buildRunningMessage(next);
                 }
@@ -150,7 +186,11 @@ export function attachIntentStatusUi({
                 runningTimer = undefined;
             }
 
-            closeRunningDialog();
+            if (next?.status === "error") {
+                closeRunningDialog(true);
+            } else {
+                closeRunningDialog();
+            }
 
             if (next?.status === "error" && prev?.status !== "error") {
                 void showErrorDialog(next.failedAction, next.error);
@@ -162,6 +202,10 @@ export function attachIntentStatusUi({
         if (runningTimer) {
             clearTimeout(runningTimer);
             runningTimer = undefined;
+        }
+        if (runningDialogCloseTimer) {
+            clearTimeout(runningDialogCloseTimer);
+            runningDialogCloseTimer = undefined;
         }
         closeRunningDialog();
         unsubscribe();
