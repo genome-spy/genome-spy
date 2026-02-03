@@ -69,13 +69,13 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
 
         if ("isDataReadyForDomain" in dataSource) {
             // It's available in SingleAxisLazySource and its subclasses
-            const checkReady =
-                /** @type {(request: DataReadinessRequest) => boolean} */ (
-                    /** @type {any} */ (dataSource).isDataReadyForDomain
+            const checkableSource =
+                /** @type {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessCheckable} */ (
+                    dataSource
                 );
             if (
                 !readinessRequest ||
-                !checkReady.call(dataSource, readinessRequest)
+                !checkableSource.isDataReadyForDomain(readinessRequest)
             ) {
                 return false;
             }

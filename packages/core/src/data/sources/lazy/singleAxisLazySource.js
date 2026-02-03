@@ -6,9 +6,14 @@ import DataSource from "../dataSource.js";
  */
 
 /**
+ * @typedef {{isDataReadyForDomain: (request: DataReadinessRequest) => boolean}} DataReadinessCheckable
+ */
+
+/**
  * Base class for data sources that listen a domain and propagate data lazily.
  *
  * @abstract
+ * @implements {DataReadinessCheckable}
  */
 export default class SingleAxisLazySource extends DataSource {
     /**
