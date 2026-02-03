@@ -10,9 +10,15 @@ vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
     ...(await importOriginal()),
 }));
 
+import {
+    buildReadinessRequest,
+    isSubtreeLazyReady,
+} from "@genome-spy/core/view/dataReadiness.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
 describe("SampleView lazy readiness", () => {
+    // This test is intentionally headless: it validates the async readiness
+    // contract without spinning up the full app or rendering pipeline.
     it("waits for mock lazy data before resolving ensureViewAttributeAvailability", async () => {
         vi.useFakeTimers();
 
@@ -52,6 +58,11 @@ describe("SampleView lazy readiness", () => {
                 disableGroupUpdates: true,
             });
 
+            const trackView = view.findDescendantByName("beta-values");
+            expect(trackView).toBeDefined();
+
+            // This asserts the integration between SampleView's ensure step
+            // (view visibility + zoom) and the lazy source readiness wait.
             const ensurePromise = view.ensureViewAttributeAvailability({
                 view: "beta-values",
                 field: "beta",
@@ -63,12 +74,25 @@ describe("SampleView lazy readiness", () => {
                 resolved = true;
             });
 
+            const readinessRequest = buildReadinessRequest(trackView, ["x"]);
+            expect(readinessRequest).toBeDefined();
+            expect(isSubtreeLazyReady(trackView, readinessRequest)).toBe(false);
+
+            // Before the mock lazy delay elapses, readiness should not resolve.
             await vi.advanceTimersByTimeAsync(49);
             await Promise.resolve();
             expect(resolved).toBe(false);
 
+            // After the delay, the lazy source publishes data and readiness resolves.
             await vi.advanceTimersByTimeAsync(1);
             await expect(ensurePromise).resolves.toBeUndefined();
+
+            // After readiness resolves, the collector has completed and the
+            // subtree is ready for the current x-domain.
+            const collector = trackView.getCollector();
+            expect(collector).toBeDefined();
+            expect(collector.completed).toBe(true);
+            expect(isSubtreeLazyReady(trackView, readinessRequest)).toBe(true);
         } finally {
             vi.useRealTimers();
         }
