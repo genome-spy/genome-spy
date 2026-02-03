@@ -172,6 +172,21 @@ export function awaitSubtreeLazyReady(
         viewFilter ??
         ((/** @type {View} */ view) => view.isConfiguredVisible());
 
+    if (!readinessRequest) {
+        if (
+            isSubtreeLazyReady(
+                subtreeRoot,
+                readinessRequest,
+                shouldConsiderView
+            )
+        ) {
+            return Promise.resolve();
+        }
+        return Promise.reject(
+            new Error("Lazy subtree readiness requires a readiness request.")
+        );
+    }
+
     return new Promise((resolve, reject) => {
         /** @type {Set<() => void>} */
         const unregisters = new Set();

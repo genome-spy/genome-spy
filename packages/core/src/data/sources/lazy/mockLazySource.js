@@ -15,6 +15,13 @@ export default class MockLazySource extends SingleAxisLazySource {
         this.delay = params.delay ?? 0;
         /** @type {ReturnType<typeof setTimeout> | undefined} */
         this.pendingTimer = undefined;
+
+        this.view.registerDisposer(() => {
+            if (this.pendingTimer) {
+                clearTimeout(this.pendingTimer);
+                this.pendingTimer = undefined;
+            }
+        });
     }
 
     /**
