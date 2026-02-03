@@ -63,6 +63,66 @@ describe("Accessors for different encoding types", () => {
     });
 });
 
+describe("Accessor equality", () => {
+    const paramMediator = new ParamMediator(() => undefined);
+
+    test("Field accessors with the same field are equal", () => {
+        const a = createAccessor("x", { field: "a" }, paramMediator);
+        const b = createAccessor("x", { field: "a" }, paramMediator);
+        expect(a.equals(b)).toBeTruthy();
+    });
+
+    test("Field accessors with different fields are not equal", () => {
+        const a = createAccessor("x", { field: "a" }, paramMediator);
+        const b = createAccessor("x", { field: "b" }, paramMediator);
+        expect(a.equals(b)).toBeFalsy();
+    });
+
+    test("Expression accessors with the same expression are equal", () => {
+        const a = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
+        const b = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
+        expect(a.equals(b)).toBeTruthy();
+    });
+
+    test("Expression accessors with different expressions are not equal", () => {
+        const a = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
+        const b = createAccessor("x", { expr: "datum.a + 2" }, paramMediator);
+        expect(a.equals(b)).toBeFalsy();
+    });
+
+    test("Constant accessors with the same literal are equal", () => {
+        const a = createAccessor("x", { datum: 5 }, paramMediator);
+        const b = createAccessor("x", { value: 5 }, paramMediator);
+        expect(a.equals(b)).toBeTruthy();
+    });
+
+    test("Constant accessors with different literals are not equal", () => {
+        const a = createAccessor("x", { datum: 5 }, paramMediator);
+        const b = createAccessor("x", { value: 6 }, paramMediator);
+        expect(a.equals(b)).toBeFalsy();
+    });
+
+    test("Expression references compare by expression string", () => {
+        const a = createAccessor(
+            "x",
+            { datum: { expr: "1 + 1" } },
+            paramMediator
+        );
+        const b = createAccessor(
+            "x",
+            { value: { expr: "1 + 1" } },
+            paramMediator
+        );
+        const c = createAccessor(
+            "x",
+            { value: { expr: "1 + 2" } },
+            paramMediator
+        );
+        expect(a.equals(b)).toBeTruthy();
+        expect(a.equals(c)).toBeFalsy();
+    });
+});
+
 test("Throws on incomplete encoding spec", () => {
     expect(() =>
         createAccessor("x", {}, new ParamMediator(() => undefined))

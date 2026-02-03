@@ -38,6 +38,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
         a.constant = a.fields.length === 0;
         a.channelDef = channelDef;
         a.channel = channel;
+        a.sourceKey = buildAccessorSourceKey(channelDef);
 
         a.scaleChannel =
             ((isChannelDefWithScale(channelDef) &&
@@ -68,6 +69,18 @@ export function createAccessor(channel, channelDef, paramMediator) {
             a.predicate = makeConstantExprRef(true); // Always true (default accessor)
             a.predicate.empty = false;
         }
+
+        a.equals = (other) => {
+            if (!other) {
+                return false;
+            } else {
+                return (
+                    a === other ||
+                    (a.sourceKey !== undefined &&
+                        a.sourceKey === other.sourceKey)
+                );
+            }
+        };
 
         a.asNumberAccessor = () =>
             /** @type {import("../types/encoder.js").Accessor<number>} */ (a);
@@ -209,6 +222,22 @@ function getDomainKeySource(channelDef) {
         "Cannot derive a domain key from channel definition: " +
             JSON.stringify(channelDef)
     );
+}
+
+/**
+ * Builds a key for accessor equality. This is a structural heuristic based on
+ * the data source definition and ignores channel, predicate, and scale.
+ *
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {string}
+ */
+function buildAccessorSourceKey(channelDef) {
+    const source = getDomainKeySource(channelDef);
+    if (source.kind === "datum" || source.kind === "value") {
+        return "constant|" + stringifyDomainValue(source.value);
+    }
+
+    return source.kind + "|" + stringifyDomainSource(source);
 }
 
 /**

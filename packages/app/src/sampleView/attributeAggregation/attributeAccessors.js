@@ -72,6 +72,9 @@ export function createViewAttributeAccessor(view, specifier) {
     const xAccessor = view.getDataAccessor("x");
     const x2Accessor = view.getDataAccessor("x2");
     const hitTestMode = view.mark?.defaultHitTestMode ?? "intersects";
+    // Missing x2 or equal accessors imply point features, so treat x and x2 as the same value.
+    const isPointFeature =
+        !x2Accessor || (xAccessor && xAccessor.equals(x2Accessor));
 
     if (!collector || !xAccessor) {
         return () => undefined;
@@ -103,7 +106,18 @@ export function createViewAttributeAccessor(view, specifier) {
         /** @type {number[]} */
         const weights = [];
 
-        if (x2Accessor) {
+        if (isPointFeature) {
+            for (let i = 0; i < data.length; i++) {
+                const datum = data[i];
+                const x = /** @type {number} */ (xAccessor(datum));
+                if (x >= start && x <= end) {
+                    values.push(valueAccessor(datum));
+                    if (needsWeights) {
+                        weights.push(1);
+                    }
+                }
+            }
+        } else {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
                 const x = /** @type {number} */ (xAccessor(datum));
@@ -126,24 +140,14 @@ export function createViewAttributeAccessor(view, specifier) {
                         }
                     }
                 } else {
-                    const overlapStart = x > start ? x : start;
-                    const overlapEnd = x2 < end ? x2 : end;
+                    // intersects
+                    const overlapStart = Math.max(x, start);
+                    const overlapEnd = Math.min(x2, end);
                     if (overlapEnd > overlapStart) {
                         values.push(valueAccessor(datum));
                         if (needsWeights) {
                             weights.push(overlapEnd - overlapStart);
                         }
-                    }
-                }
-            }
-        } else {
-            for (let i = 0; i < data.length; i++) {
-                const datum = data[i];
-                const x = /** @type {number} */ (xAccessor(datum));
-                if (x >= start && x <= end) {
-                    values.push(valueAccessor(datum));
-                    if (needsWeights) {
-                        weights.push(1);
                     }
                 }
             }

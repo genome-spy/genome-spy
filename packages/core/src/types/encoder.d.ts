@@ -37,6 +37,13 @@ export interface Accessor<T = Scalar> {
     asNumberAccessor(): Accessor<number>;
 
     /**
+     * Returns true if this accessor appears to return the same value as the
+     * other accessor for the same datum. Structural comparison based on the
+     * data source (ignores channel/predicate/scale).
+     */
+    equals(other: Accessor): boolean;
+
+    /**
      * True if the accessor returns the same value for all objects
      */
     constant: boolean;
@@ -62,6 +69,11 @@ export interface Accessor<T = Scalar> {
      * The ChannelDef that the accessor is based on
      */
     channelDef: ChannelDef;
+
+    /**
+     * A stable key derived from the accessor's data source. Used for equality.
+     */
+    sourceKey?: string;
 
     /**
      * A domain key base derived from the channel definition and scale channel.
