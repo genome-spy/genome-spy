@@ -38,6 +38,7 @@ import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import {
+    awaitSubtreeLazyReady,
     buildReadinessRequest,
     isSubtreeLazyReady,
 } from "@genome-spy/core/view/dataReadiness.js";
@@ -62,16 +63,6 @@ import {
 import { ReadyWaiterSet } from "../utils/readyGate.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
-const ENABLE_READINESS_DEBUG = false;
-
-/** @type {(...args: unknown[]) => void} */
-const logReadinessDebug = (...args) => {
-    if (!ENABLE_READINESS_DEBUG) {
-        return;
-    }
-    console.debug("[SampleView readiness]", ...args);
-};
-
 /**
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
@@ -242,7 +233,8 @@ export default class SampleView extends ContainerView {
             return Promise.resolve();
         }
         if (readinessRequest) {
-            return this.#awaitSubtreeReadinessRequest(
+            return awaitSubtreeLazyReady(
+                this.context,
                 subtreeRoot,
                 readinessRequest,
                 signal
@@ -254,115 +246,6 @@ export default class SampleView extends ContainerView {
                 readyRoot === subtreeRoot || ancestors.includes(readyRoot),
             signal
         );
-    }
-
-    /**
-     * Waits for data readiness by re-checking after collector completions.
-     * Lazy sources do not broadcast subtree readiness events, so we listen to
-     * dataflow completions and resolve once the request is satisfied.
-     *
-     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
-     * @param {DataReadinessRequest} readinessRequest
-     * @param {AbortSignal} [signal]
-     * @returns {Promise<void>}
-     */
-    #awaitSubtreeReadinessRequest(subtreeRoot, readinessRequest, signal) {
-        return new Promise((resolve, reject) => {
-            /** @type {Set<() => void>} */
-            const unregisters = new Set();
-            /** @type {Set<import("@genome-spy/core/data/collector.js").default>} */
-            const observedCollectors = new Set();
-
-            /** @type {(message: import("@genome-spy/core/view/view.js").BroadcastMessage) => void} */
-            const broadcastListener = () => {
-                logReadinessDebug("Broadcast received", {
-                    subtree: subtreeRoot.name,
-                });
-                attachCollectors();
-                checkReady();
-            };
-
-            const cleanup = () => {
-                logReadinessDebug("Cleaning up readiness listeners", {
-                    subtree: subtreeRoot.name,
-                });
-                for (const unregister of unregisters) {
-                    unregister();
-                }
-                unregisters.clear();
-                this.context.removeBroadcastListener(
-                    "subtreeDataReady",
-                    broadcastListener
-                );
-                if (signal) {
-                    signal.removeEventListener("abort", abortHandler);
-                }
-            };
-
-            const checkReady = () => {
-                const ready = isSubtreeLazyReady(subtreeRoot, readinessRequest);
-                logReadinessDebug("Readiness check", {
-                    subtree: subtreeRoot.name,
-                    ready,
-                });
-                if (ready) {
-                    cleanup();
-                    resolve();
-                }
-            };
-
-            const attachCollectors = () => {
-                subtreeRoot.visit((view) => {
-                    if (!(view instanceof UnitView)) {
-                        return;
-                    }
-                    if (!view.isConfiguredVisible()) {
-                        return;
-                    }
-                    const collector = view.flowHandle?.collector;
-                    if (!collector) {
-                        return;
-                    }
-                    if (observedCollectors.has(collector)) {
-                        return;
-                    }
-                    observedCollectors.add(collector);
-                    unregisters.add(collector.observe(checkReady));
-                    logReadinessDebug("Collector observed", {
-                        subtree: subtreeRoot.name,
-                        view: view.name,
-                    });
-                });
-            };
-
-            const abortHandler = () => {
-                logReadinessDebug("Readiness aborted", {
-                    subtree: subtreeRoot.name,
-                });
-                cleanup();
-                reject(new Error("Subtree readiness was aborted."));
-            };
-
-            attachCollectors();
-            checkReady();
-
-            logReadinessDebug("Readiness wait started", {
-                subtree: subtreeRoot.name,
-                request: readinessRequest,
-            });
-            this.context.addBroadcastListener(
-                "subtreeDataReady",
-                broadcastListener
-            );
-
-            if (signal) {
-                if (signal.aborted) {
-                    abortHandler();
-                    return;
-                }
-                signal.addEventListener("abort", abortHandler, { once: true });
-            }
-        });
     }
 
     /**

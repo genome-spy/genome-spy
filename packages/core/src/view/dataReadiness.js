@@ -149,3 +149,104 @@ export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
 
     return true;
 }
+
+/**
+ * Waits until lazy data sources under the subtree satisfy the readiness request.
+ * Non-lazy sources are ignored so they do not block readiness checks.
+ *
+ * @param {import("../types/viewContext.js").default} context
+ * @param {View} subtreeRoot
+ * @param {DataReadinessRequest} readinessRequest
+ * @param {AbortSignal} [signal]
+ * @param {(view: View) => boolean} [viewFilter]
+ * @returns {Promise<void>}
+ */
+export function awaitSubtreeLazyReady(
+    context,
+    subtreeRoot,
+    readinessRequest,
+    signal,
+    viewFilter
+) {
+    const shouldConsiderView =
+        viewFilter ??
+        ((/** @type {View} */ view) => view.isConfiguredVisible());
+
+    return new Promise((resolve, reject) => {
+        /** @type {Set<() => void>} */
+        const unregisters = new Set();
+        /** @type {Set<import("../data/collector.js").default>} */
+        const observedCollectors = new Set();
+
+        /** @type {(message: import("./view.js").BroadcastMessage) => void} */
+        const broadcastListener = () => {
+            attachCollectors();
+            checkReady();
+        };
+
+        const cleanup = () => {
+            for (const unregister of unregisters) {
+                unregister();
+            }
+            unregisters.clear();
+            context.removeBroadcastListener(
+                "subtreeDataReady",
+                broadcastListener
+            );
+            if (signal) {
+                signal.removeEventListener("abort", abortHandler);
+            }
+        };
+
+        const checkReady = () => {
+            if (
+                isSubtreeLazyReady(
+                    subtreeRoot,
+                    readinessRequest,
+                    shouldConsiderView
+                )
+            ) {
+                cleanup();
+                resolve();
+            }
+        };
+
+        const attachCollectors = () => {
+            subtreeRoot.visit((view) => {
+                if (!(view instanceof UnitView)) {
+                    return;
+                }
+                if (!shouldConsiderView(view)) {
+                    return;
+                }
+                const collector = view.flowHandle?.collector;
+                if (!collector) {
+                    return;
+                }
+                if (observedCollectors.has(collector)) {
+                    return;
+                }
+                observedCollectors.add(collector);
+                unregisters.add(collector.observe(checkReady));
+            });
+        };
+
+        const abortHandler = () => {
+            cleanup();
+            reject(new Error("Lazy subtree readiness was aborted."));
+        };
+
+        attachCollectors();
+        checkReady();
+
+        context.addBroadcastListener("subtreeDataReady", broadcastListener);
+
+        if (signal) {
+            if (signal.aborted) {
+                abortHandler();
+                return;
+            }
+            signal.addEventListener("abort", abortHandler, { once: true });
+        }
+    });
+}
