@@ -14,6 +14,8 @@ import {
     buildReadinessRequest,
     isSubtreeLazyReady,
 } from "@genome-spy/core/view/dataReadiness.js";
+import { registerLazyDataSource } from "@genome-spy/core/data/sources/dataSourceFactory.js";
+import MockLazySource from "@genome-spy/core/data/sources/lazy/mockLazySource.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
 describe("SampleView lazy readiness", () => {
@@ -21,9 +23,27 @@ describe("SampleView lazy readiness", () => {
     // contract without spinning up the full app or rendering pipeline.
     it("waits for mock lazy data before resolving ensureViewAttributeAvailability", async () => {
         vi.useFakeTimers();
+        /** @type {() => void} */
+        let unregister;
 
         try {
             // Non-obvious: use fake timers to control the mock lazy delay.
+            unregister = registerLazyDataSource(
+                (params) => params?.type === "mockLazy",
+                MockLazySource
+            );
+
+            /** @type {import("@genome-spy/core/spec/testing.js").MockLazyData} */
+            const lazySource = {
+                type: "mockLazy",
+                channel: "x",
+                delay: 50,
+                data: [
+                    { sample: "A", x: 1, beta: 1 },
+                    { sample: "B", x: 2, beta: 2 },
+                ],
+            };
+
             /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
             const spec = {
                 samples: {
@@ -32,15 +52,9 @@ describe("SampleView lazy readiness", () => {
                     },
                 },
                 data: {
-                    lazy: {
-                        type: "mockLazy",
-                        channel: "x",
-                        delay: 50,
-                        data: [
-                            { sample: "A", x: 1, beta: 1 },
-                            { sample: "B", x: 2, beta: 2 },
-                        ],
-                    },
+                    lazy: /** @type {import("@genome-spy/core/spec/data.js").LazyDataParams} */ (
+                        /** @type {unknown} */ (lazySource)
+                    ),
                 },
                 spec: {
                     name: "beta-values",
@@ -94,6 +108,9 @@ describe("SampleView lazy readiness", () => {
             expect(collector.completed).toBe(true);
             expect(isSubtreeLazyReady(trackView, readinessRequest)).toBe(true);
         } finally {
+            if (unregister) {
+                unregister();
+            }
             vi.useRealTimers();
         }
     });

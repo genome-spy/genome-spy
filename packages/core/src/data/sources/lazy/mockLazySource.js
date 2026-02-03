@@ -2,10 +2,11 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
  * Testing-only lazy data source that delays data publishing.
+ * Register via registerLazyDataSource in tests to avoid production exposure.
  */
 export default class MockLazySource extends SingleAxisLazySource {
     /**
-     * @param {import("../../../spec/data.js").MockLazyData} params
+     * @param {{ channel?: import("../../../spec/channel.js").PrimaryPositionalChannel, delay?: number, data?: import("../../flowNode.js").Datum[] }} params
      * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
