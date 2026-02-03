@@ -9,6 +9,7 @@ import BigBedSource from "./lazy/bigBedSource.js";
 import BamSource from "./lazy/bamSource.js";
 import Gff3Source from "./lazy/gff3Source.js";
 import VcfSource from "./lazy/vcfSource.js";
+import MockLazySource from "./lazy/mockLazySource.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} params
@@ -111,6 +112,14 @@ function isVcfSource(params) {
 
 /**
  * @param {import("../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../spec/data.js").MockLazyData}
+ */
+function isMockLazySource(params) {
+    return params?.type == "mockLazy";
+}
+
+/**
+ * @param {import("../../spec/data.js").LazyDataParams} params
  * @param {import("../../view/view.js").default} view
  */
 function createLazyDataSource(params, view) {
@@ -130,6 +139,8 @@ function createLazyDataSource(params, view) {
         return new Gff3Source(params, view);
     } else if (isVcfSource(params)) {
         return new VcfSource(params, view);
+    } else if (isMockLazySource(params)) {
+        return new MockLazySource(params, view);
     }
 
     throw new Error(

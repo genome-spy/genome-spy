@@ -219,7 +219,8 @@ export type LazyDataParams =
     | BigBedData
     | BamData
     | Gff3Data
-    | VcfData;
+    | VcfData
+    | MockLazyData;
 
 export interface DebouncedData {
     /**
@@ -413,4 +414,20 @@ export interface Gff3Data extends TabixData {
 
 export interface VcfData extends TabixData {
     type: "vcf";
+}
+
+/**
+ * Testing-only lazy data source. Not intended for production use.
+ */
+export interface MockLazyData extends DebouncedData {
+    type: "mockLazy";
+
+    /** Which channel's scale domain to use */
+    channel?: PrimaryPositionalChannel;
+
+    /** Artificial delay before publishing data, in milliseconds. */
+    delay?: number;
+
+    /** Inline data to publish when the domain changes. */
+    data?: any[];
 }
