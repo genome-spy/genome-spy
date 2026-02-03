@@ -84,3 +84,68 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
 
     return true;
 }
+
+/**
+ * Checks readiness for lazy data sources under the subtree. Non-lazy sources
+ * are ignored so they do not block readiness checks.
+ *
+ * @param {View} subtreeRoot
+ * @param {DataReadinessRequest | undefined} readinessRequest
+ * @param {(view: View) => boolean} [viewFilter]
+ * @returns {boolean}
+ */
+export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
+    const shouldConsiderView =
+        viewFilter ??
+        ((/** @type {View} */ view) => view.isConfiguredVisible());
+
+    /** @type {Set<DataSource>} */
+    const dataSources = new Set();
+
+    subtreeRoot.visit((view) => {
+        if (!(view instanceof UnitView)) {
+            return;
+        }
+        if (!shouldConsiderView(view)) {
+            return;
+        }
+
+        /** @type {View | null} */
+        let current = view;
+        while (current) {
+            if (current.flowHandle && current.flowHandle.dataSource) {
+                break;
+            }
+            current = current.dataParent;
+        }
+
+        if (!current || !current.flowHandle) {
+            return;
+        }
+        const dataSource = current.flowHandle.dataSource;
+        if (!("isDataReadyForDomain" in dataSource)) {
+            return;
+        }
+        dataSources.add(dataSource);
+    });
+
+    if (!dataSources.size) {
+        return true;
+    }
+
+    if (!readinessRequest) {
+        return false;
+    }
+
+    for (const dataSource of dataSources) {
+        const checkReady =
+            /** @type {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessCheckable["isDataReadyForDomain"]} */ (
+                /** @type {any} */ (dataSource).isDataReadyForDomain
+            );
+        if (!checkReady.call(dataSource, readinessRequest)) {
+            return false;
+        }
+    }
+
+    return true;
+}

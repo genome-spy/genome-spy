@@ -37,7 +37,10 @@ import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js"
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
-import { buildReadinessRequest } from "@genome-spy/core/view/dataReadiness.js";
+import {
+    buildReadinessRequest,
+    isSubtreeLazyReady,
+} from "@genome-spy/core/view/dataReadiness.js";
 import {
     asSelectionConfig,
     isActiveIntervalSelection,
@@ -234,7 +237,7 @@ export default class SampleView extends ContainerView {
     #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
         if (
             readinessRequest &&
-            this.#isLazyReadinessSatisfied(subtreeRoot, readinessRequest)
+            isSubtreeLazyReady(subtreeRoot, readinessRequest)
         ) {
             return Promise.resolve();
         }
@@ -297,10 +300,7 @@ export default class SampleView extends ContainerView {
             };
 
             const checkReady = () => {
-                const ready = this.#isLazyReadinessSatisfied(
-                    subtreeRoot,
-                    readinessRequest
-                );
+                const ready = isSubtreeLazyReady(subtreeRoot, readinessRequest);
                 logReadinessDebug("Readiness check", {
                     subtree: subtreeRoot.name,
                     ready,
@@ -363,101 +363,6 @@ export default class SampleView extends ContainerView {
                 signal.addEventListener("abort", abortHandler, { once: true });
             }
         });
-    }
-
-    /**
-     * Checks readiness for lazy data sources under a subtree.
-     * Non-lazy sources are ignored so unrelated views do not block readiness.
-     *
-     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
-     * @param {DataReadinessRequest} readinessRequest
-     * @returns {boolean}
-     */
-    #isLazyReadinessSatisfied(subtreeRoot, readinessRequest) {
-        /** @type {Set<import("@genome-spy/core/data/sources/dataSource.js").default>} */
-        const dataSources = new Set();
-        /** @type {Map<import("@genome-spy/core/data/sources/dataSource.js").default, string[]> | undefined} */
-        const sourceViews = ENABLE_READINESS_DEBUG ? new Map() : undefined;
-
-        subtreeRoot.visit((view) => {
-            if (!(view instanceof UnitView)) {
-                return;
-            }
-            if (!view.isConfiguredVisible()) {
-                return;
-            }
-            /** @type {import("@genome-spy/core/view/view.js").default | null} */
-            let current = view;
-            while (current) {
-                if (current.flowHandle && current.flowHandle.dataSource) {
-                    break;
-                }
-                current = current.dataParent;
-            }
-            if (!current || !current.flowHandle) {
-                return;
-            }
-            const dataSource = current.flowHandle.dataSource;
-            if (!("isDataReadyForDomain" in dataSource)) {
-                return;
-            }
-            dataSources.add(dataSource);
-            if (sourceViews) {
-                let views = sourceViews.get(dataSource);
-                if (!views) {
-                    views = [];
-                    sourceViews.set(dataSource, views);
-                }
-                views.push(view.name);
-            }
-        });
-
-        if (!dataSources.size) {
-            logReadinessDebug("No lazy data sources found", {
-                subtree: subtreeRoot.name,
-            });
-            return true;
-        }
-
-        if (!ENABLE_READINESS_DEBUG) {
-            for (const dataSource of dataSources) {
-                const checkReady =
-                    /** @type {(request: DataReadinessRequest) => boolean} */ (
-                        /** @type {any} */ (dataSource).isDataReadyForDomain
-                    );
-                if (!checkReady.call(dataSource, readinessRequest)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        const pendingSources = [];
-        const readySources = [];
-        for (const dataSource of dataSources) {
-            const checkReady =
-                /** @type {(request: DataReadinessRequest) => boolean} */ (
-                    /** @type {any} */ (dataSource).isDataReadyForDomain
-                );
-            const ready = checkReady.call(dataSource, readinessRequest);
-            const views = sourceViews ? sourceViews.get(dataSource) : undefined;
-            const sourceLabel =
-                (views && views.length ? views.join(", ") + ": " : "") +
-                dataSource.constructor.name;
-            if (ready) {
-                readySources.push(sourceLabel);
-            } else {
-                pendingSources.push(sourceLabel);
-            }
-        }
-
-        logReadinessDebug("Lazy source readiness", {
-            subtree: subtreeRoot.name,
-            ready: readySources,
-            pending: pendingSources,
-        });
-
-        return pendingSources.length === 0;
     }
 
     /**
