@@ -123,7 +123,7 @@ export default class App {
     #setupStoreAndProvenance() {
         this.store = setupStore();
         this.intentExecutor = new IntentExecutor(this.store);
-        this.provenance = new Provenance(this.store, this.intentExecutor);
+        this.provenance = new Provenance(this.store);
         this.intentPipeline = new IntentPipeline({
             store: this.store,
             provenance: this.provenance,

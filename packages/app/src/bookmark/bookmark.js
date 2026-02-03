@@ -47,11 +47,12 @@ export async function restoreBookmark(entry, app) {
             if (app.provenance.isUndoable()) {
                 app.store.dispatch(ActionCreators.jumpToPast(0));
             }
-            if (app.intentPipeline) {
-                await app.intentPipeline.submit(entry.actions);
-            } else {
-                app.provenance.dispatchBookmark(entry.actions);
+            if (!app.intentPipeline) {
+                throw new Error(
+                    "Intent pipeline is required to restore bookmarks."
+                );
             }
+            await app.intentPipeline.submit(entry.actions);
         }
 
         app.store.dispatch(
