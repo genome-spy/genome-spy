@@ -38,6 +38,11 @@ import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import { ActionCreators } from "redux-undo";
 import {
+    awaitSubtreeLazyReady,
+    buildReadinessRequest,
+    isSubtreeLazyReady,
+} from "@genome-spy/core/view/dataReadiness.js";
+import {
     asSelectionConfig,
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
@@ -47,6 +52,7 @@ import {
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import {
     buildIntervalAggregationMenu,
     buildPointQueryMenu,
@@ -54,9 +60,9 @@ import {
     getContextMenuFieldInfos,
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
+import { ReadyWaiterSet } from "../utils/readyGate.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
-
 /**
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
@@ -70,6 +76,7 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/view/layerView.js").default} LayerView
      * @typedef {import("@genome-spy/core/view/concatView.js").default} ConcatView
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
+     * @typedef {import("@genome-spy/core/data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
      */
 
     /** @type {SampleGridChild} */
@@ -82,6 +89,11 @@ export default class SampleView extends ContainerView {
     #lastMouseY = -1;
 
     #stickySummaries = false;
+
+    /** @type {ReadyWaiterSet<import("@genome-spy/core/view/view.js").default>} */
+    #subtreeDataReadyWaiters = new ReadyWaiterSet(
+        "Subtree data readiness was aborted."
+    );
 
     /** @type {(param: any) => void} */
     #sampleHeightParam;
@@ -178,6 +190,7 @@ export default class SampleView extends ContainerView {
             if (!this.#gridChild?.view) {
                 return;
             }
+            this.#resolveSubtreeReadyWaiters(subtreeRoot);
             if (
                 subtreeRoot === this.#gridChild.view ||
                 this.#gridChild.view.getDataAncestors().includes(subtreeRoot)
@@ -193,6 +206,179 @@ export default class SampleView extends ContainerView {
         this._addBroadcastHandler("layout", () => {
             this.locationManager.resetLocations();
         });
+    }
+
+    /**
+     * Resolves any waiters whose subtree is covered by the ready message.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     */
+    #resolveSubtreeReadyWaiters(subtreeRoot) {
+        this.#subtreeDataReadyWaiters.resolveMatching(subtreeRoot);
+    }
+
+    /**
+     * Waits for a subtree data-ready broadcast for the given view.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} subtreeRoot
+     * @param {AbortSignal} [signal]
+     * @param {DataReadinessRequest} [readinessRequest]
+     * @returns {Promise<void>}
+     */
+    #awaitSubtreeDataReady(subtreeRoot, signal, readinessRequest) {
+        if (
+            readinessRequest &&
+            isSubtreeLazyReady(subtreeRoot, readinessRequest)
+        ) {
+            return Promise.resolve();
+        }
+        if (readinessRequest) {
+            return awaitSubtreeLazyReady(
+                this.context,
+                subtreeRoot,
+                readinessRequest,
+                signal
+            );
+        }
+        const ancestors = subtreeRoot.getDataAncestors();
+        return this.#subtreeDataReadyWaiters.wait(
+            (readyRoot) =>
+                readyRoot === subtreeRoot || ancestors.includes(readyRoot),
+            signal
+        );
+    }
+
+    /**
+     * Resolves a view for a view-backed attribute specifier.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @returns {import("@genome-spy/core/view/view.js").default}
+     */
+    #resolveViewForSpecifier(specifier) {
+        const view = this.findDescendantByName(specifier.view);
+        if (!view) {
+            throw new Error(`Cannot find view: ${specifier.view}`);
+        }
+        return view;
+    }
+
+    /**
+     * Ensures the view is visible so dataflow wiring is active.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} view
+     */
+    #ensureViewVisible(view) {
+        for (const ancestor of view.getLayoutAncestors()) {
+            if (!ancestor.name) {
+                continue;
+            }
+            this.provenance.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    name: ancestor.name,
+                    visibility: true,
+                })
+            );
+        }
+    }
+
+    /**
+     * Resolves the x-domain to zoom to for a view-backed attribute.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @returns {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain}
+     */
+    #resolveViewAttributeDomain(specifier) {
+        const domain =
+            specifier.domainAtActionTime ??
+            ("interval" in specifier
+                ? specifier.interval
+                : [specifier.locus, specifier.locus]);
+
+        if (
+            typeof domain[0] === "string" ||
+            typeof domain[1] === "string" ||
+            typeof domain[0] === "boolean" ||
+            typeof domain[1] === "boolean"
+        ) {
+            throw new Error(
+                "Cannot zoom x scale using a non-numeric or non-locus domain."
+            );
+        }
+
+        return /** @type {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} */ (
+            domain
+        );
+    }
+
+    /**
+     * Zooms the view's x scale to a target domain.
+     *
+     * @param {import("@genome-spy/core/view/view.js").default} view
+     * @param {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain} domain
+     * @returns {Promise<void>}
+     */
+    async #zoomToDomain(view, domain) {
+        const resolution = view.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error(
+                `No x scale resolution found for view: ${view.name}`
+            );
+        }
+
+        await resolution.zoomTo(domain);
+    }
+
+    /**
+     * Waits for the view subtree to satisfy the current x-domain readiness after
+     * an action. Uses lazy-source readiness checks so it does not depend on
+     * subtreeDataReady broadcasts.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./types.js").AttributeEnsureContext} [context]
+     * @returns {Promise<void>}
+     */
+    async awaitViewAttributeProcessed(specifier, context = {}) {
+        const view = this.#resolveViewForSpecifier(specifier);
+
+        await this.#awaitSubtreeDataReady(
+            view,
+            context.signal,
+            buildReadinessRequest(view, ["x"])
+        );
+    }
+
+    /**
+     * Waits until metadata updates have applied data and domains.
+     *
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    awaitMetadataReady(signal) {
+        return (
+            this.metadataView?.awaitMetadataReady(signal) ?? Promise.resolve()
+        );
+    }
+
+    /**
+     * Ensures that a view-backed attribute is available for access.
+     *
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./types.js").AttributeEnsureContext} [context]
+     * @returns {Promise<void>}
+     */
+    async ensureViewAttributeAvailability(specifier, context = {}) {
+        const view = this.#resolveViewForSpecifier(specifier);
+
+        this.#ensureViewVisible(view);
+        const domain = this.#resolveViewAttributeDomain(specifier);
+        await this.#zoomToDomain(view, domain);
+        // Assumes the main sample subtree shares the x-scale resolution; if
+        // that changes, switch to per-view readiness requests.
+        await this.#awaitSubtreeDataReady(
+            view,
+            context.signal,
+            buildReadinessRequest(view, ["x"])
+        );
     }
 
     /**

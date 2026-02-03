@@ -83,6 +83,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
         this.#lastDomain = [0, 0];
         this.#lastQuantizedInterval = [0, 0];
+        this._lastLoadedDomain = undefined;
 
         this.onDomainChanged(domain);
     }
@@ -95,6 +96,19 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      */
     async loadInterval(interval) {
         // Override me if needed
+    }
+
+    /**
+     * @param {import("../../flowNode.js").Datum[][]} chunks
+     * @protected
+     */
+    publishData(chunks) {
+        // Preserve window coverage; base publishData would overwrite it with the current scale domain.
+        const loadedDomain = this._lastLoadedDomain;
+        super.publishData(chunks);
+        if (loadedDomain) {
+            this._lastLoadedDomain = loadedDomain;
+        }
     }
 
     /**
@@ -134,6 +148,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
             if (!signal.aborted) {
                 this.setLoadingStatus("complete");
+                this._lastLoadedDomain = Array.from(interval);
                 return resultByChrom;
             }
         } catch (e) {

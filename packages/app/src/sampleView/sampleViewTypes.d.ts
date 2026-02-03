@@ -3,6 +3,7 @@ import { Group } from "./state/sampleState.js";
 import { LocSize } from "@genome-spy/core/view/layout/flexLayout.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import { Scalar } from "@genome-spy/core/spec/channel.js";
+import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
 
@@ -43,13 +44,18 @@ export interface LocationContext {
     isStickySummaries: () => boolean;
 }
 
-export interface LocusSpecifier {
+export interface BaseSpecifier {
     /** A uniuque name of the view */
     view: string;
 
     /** Attribute, e.g., the name of the field where a value is stored */
     field: string;
 
+    /** The x-scale domain that was visible when the action was triggered */
+    domainAtActionTime?: NumericDomain | ComplexDomain;
+}
+
+export interface LocusSpecifier extends BaseSpecifier {
     /**
      * Coordinate on the `x` axis. May be a number of locus on a chromosome.
      * Alternatively, a scalar if a categorical scale is used.
@@ -57,13 +63,7 @@ export interface LocusSpecifier {
     locus: Scalar | ChromosomalLocus;
 }
 
-export interface IntervalSpecifier {
-    /** A uniuque name of the view */
-    view: string;
-
-    /** Attribute, e.g., the name of the field where a value is stored */
-    field: string;
-
+export interface IntervalSpecifier extends BaseSpecifier {
     /** Interval on the x axis */
     interval: Interval;
 

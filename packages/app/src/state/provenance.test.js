@@ -1,6 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { describe, expect, it, vi } from "vitest";
-import { ActionCreators } from "redux-undo";
+import { describe, expect, it } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
 import Provenance from "./provenance.js";
 import {
@@ -45,47 +44,10 @@ function createStore() {
 }
 
 describe("Provenance", () => {
-    it("replays bookmarks through the intent executor", () => {
-        const store = createStore();
-        const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store, intentExecutor);
-
-        intentExecutor.addActionAugmenter((action) => ({
-            ...action,
-            payload: { ...action.payload, augmented: true },
-        }));
-
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 1 },
-        });
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 2 },
-        });
-
-        const dispatchSpy = vi.spyOn(store, "dispatch");
-
-        provenance.dispatchBookmark([
-            { type: "sample/add", payload: { value: 3 } },
-        ]);
-
-        const hasJump = dispatchSpy.mock.calls.some(
-            (call) => call[0].type == ActionCreators.jumpToPast(0).type
-        );
-        expect(hasJump).toBe(true);
-
-        const sampleState = store.getState().provenance.present.sample;
-        expect(sampleState.lastPayload).toEqual({
-            value: 3,
-            augmented: true,
-        });
-    });
-
     it("exposes action history in order", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store, intentExecutor);
+        const provenance = new Provenance(store);
 
         intentExecutor.dispatch({
             type: "sample/add",
@@ -105,7 +67,7 @@ describe("Provenance", () => {
     it("serializes bookmark actions without augmentation data", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store, intentExecutor);
+        const provenance = new Provenance(store);
 
         // Use two actions so bookmarkable history isn't empty (it skips the first).
         intentExecutor.dispatch({
@@ -130,7 +92,7 @@ describe("Provenance", () => {
     it("activates past and future states by index", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store, intentExecutor);
+        const provenance = new Provenance(store);
 
         intentExecutor.dispatch({
             type: "sample/add",
@@ -151,20 +113,5 @@ describe("Provenance", () => {
 
         provenance.activateState(2);
         expect(store.getState().provenance.present.sample.count).toBe(3);
-    });
-
-    it("does not jump when dispatching an empty bookmark at initial state", () => {
-        const store = createStore();
-        const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store, intentExecutor);
-
-        const dispatchSpy = vi.spyOn(store, "dispatch");
-
-        provenance.dispatchBookmark([]);
-
-        const hasJump = dispatchSpy.mock.calls.some(
-            (call) => call[0].type == ActionCreators.jumpToPast(0).type
-        );
-        expect(hasJump).toBe(false);
     });
 });

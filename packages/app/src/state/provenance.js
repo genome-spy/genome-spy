@@ -19,16 +19,11 @@ export default class Provenance {
     /** @type {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} */
     #store;
 
-    /** @type {import("./intentExecutor.js").default<any>} */
-    #intentExecutor;
-
     /**
      * @param {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} store
-     * @param {import("./intentExecutor.js").default<any>} intentExecutor
      */
-    constructor(store, intentExecutor) {
+    constructor(store) {
         this.#store = store;
-        this.#intentExecutor = intentExecutor;
 
         /** @type {((action: Action) => ActionInfo)[]} */
         this.actionInfoSources = [];
@@ -77,20 +72,6 @@ export default class Provenance {
             if (info) {
                 return info;
             }
-        }
-    }
-
-    /**
-     * Returns to the initial state and batches the bookmarked actions
-     *
-     * @param {Action[]} actions Bookmarked actions
-     */
-    dispatchBookmark(actions) {
-        if (this.isUndoable()) {
-            this.#intentExecutor.dispatch(ActionCreators.jumpToPast(0));
-        }
-        for (const action of actions) {
-            this.#intentExecutor.dispatch(action);
         }
     }
 

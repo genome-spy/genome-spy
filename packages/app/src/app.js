@@ -28,6 +28,9 @@ import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
+import IntentPipeline from "./state/intentPipeline.js";
+import { sampleSlice } from "./sampleView/state/sampleSlice.js";
+import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -35,6 +38,8 @@ transforms.mergeFacets = MergeSampleFacets;
  * A wrapper for the GenomeSpy core. Provides SampleView, provenance, a toolbar, etc.
  */
 export default class App {
+    /** @type {(() => void) | undefined} */
+    #intentStatusDisposer;
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
@@ -112,14 +117,18 @@ export default class App {
                     this.intentExecutor
                 )
         );
-
         this.#setupViewVisibilityHandling();
     }
 
     #setupStoreAndProvenance() {
         this.store = setupStore();
         this.intentExecutor = new IntentExecutor(this.store);
-        this.provenance = new Provenance(this.store, this.intentExecutor);
+        this.provenance = new Provenance(this.store);
+        this.intentPipeline = new IntentPipeline({
+            store: this.store,
+            provenance: this.provenance,
+            intentExecutor: this.intentExecutor,
+        });
     }
 
     #setupBookmarkDatabases() {
@@ -204,6 +213,25 @@ export default class App {
             return;
         }
 
+        const sampleView = this.getSampleView();
+        if (sampleView) {
+            this.intentPipeline.setResolvers({
+                getAttributeInfo:
+                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
+                        sampleView.compositeAttributeInfoSource
+                    ),
+            });
+            const unregisterMetadataHook =
+                this.intentPipeline.registerActionHook({
+                    predicate: (action) =>
+                        action.type === sampleSlice.actions.addMetadata.type ||
+                        action.type === sampleSlice.actions.deriveMetadata.type,
+                    awaitProcessed: (context) =>
+                        sampleView.awaitMetadataReady(context.signal),
+                });
+            sampleView.registerDisposer(unregisterMetadataHook);
+        }
+
         // Make it focusable so that keyboard shortcuts can be caught
         this.appContainer
             .querySelector("canvas")
@@ -225,6 +253,11 @@ export default class App {
                 context.animator.requestRender();
             })
         );
+        this.#intentStatusDisposer = attachIntentStatusUi({
+            store: this.store,
+            intentPipeline: this.intentPipeline,
+            provenance: this.provenance,
+        });
 
         try {
             await this.#ensureRemoteBookmarks(remoteBookmarkPromise);

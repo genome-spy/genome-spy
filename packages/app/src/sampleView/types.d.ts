@@ -32,6 +32,10 @@ export interface AttributeValuesScope {
     aggregation?: AggregationSpec;
 }
 
+export interface AttributeEnsureContext {
+    signal?: AbortSignal;
+}
+
 export interface AttributeInfo {
     /**
      * A concise name of the attribute: TODO: Used for what?
@@ -58,6 +62,18 @@ export interface AttributeInfo {
 
     /** e.g., "quantitative" */
     type: string;
+
+    /**
+     * Optional hook for ensuring attribute availability before access.
+     * Used by async intent processing to resolve lazy data dependencies.
+     */
+    ensureAvailability?: (context: AttributeEnsureContext) => Promise<void>;
+
+    /**
+     * Optional hook for awaiting post-dispatch readiness.
+     * Used by async intent processing to guarantee that state and data are ready.
+     */
+    awaitProcessed?: (context: AttributeEnsureContext) => Promise<void>;
 
     scale?: any;
 }

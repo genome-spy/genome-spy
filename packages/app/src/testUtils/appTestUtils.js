@@ -40,7 +40,7 @@ export function createAppTestContext(options = {}) {
     const context = options.context ?? createTestViewContext();
     const store = setupStore();
     const intentExecutor = new IntentExecutor(store);
-    const provenance = new Provenance(store, intentExecutor);
+    const provenance = new Provenance(store);
 
     context.animator =
         /** @type {import("@genome-spy/core/utils/animator.js").default} */ (

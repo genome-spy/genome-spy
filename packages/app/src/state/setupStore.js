@@ -1,8 +1,10 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { ActionCreators } from "redux-undo";
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { lifecycleSlice } from "../lifecycleSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { intentStatusSlice } from "./intentStatusSlice.js";
 
 /**
  * Setup the Redux store for the application.
@@ -15,15 +17,57 @@ export default function setupStore() {
         [sampleSlice.name]: sampleSlice.reducer,
     });
 
-    const reducer = combineReducers({
+    const combinedReducer = combineReducers({
         lifecycle: lifecycleSlice.reducer,
         viewSettings: viewSettingsSlice.reducer,
+        intentStatus: intentStatusSlice.reducer,
         provenance: provenanceReducer,
     });
 
+    /**
+     * @param {ReturnType<typeof combinedReducer> | undefined} state
+     * @param {import("@reduxjs/toolkit").AnyAction} action
+     */
+    const rootReducer = (state, action) => {
+        const nextState = combinedReducer(state, action);
+
+        if (action.type === intentStatusSlice.actions.setError.type) {
+            const lastSuccessfulIndex =
+                action.payload?.lastSuccessfulIndex ??
+                state?.intentStatus?.lastSuccessfulIndex;
+            if (typeof lastSuccessfulIndex === "number") {
+                return {
+                    ...nextState,
+                    provenance: provenanceReducer(
+                        nextState.provenance,
+                        ActionCreators.jumpToPast(lastSuccessfulIndex)
+                    ),
+                };
+            }
+        }
+
+        if (action.type === intentStatusSlice.actions.resolveError.type) {
+            const decision = action.payload.decision;
+            if (decision === "rollbackBatch") {
+                const startIndex = state?.intentStatus?.startIndex;
+                if (typeof startIndex === "number") {
+                    return {
+                        ...nextState,
+                        provenance: provenanceReducer(
+                            nextState.provenance,
+                            ActionCreators.jumpToPast(startIndex)
+                        ),
+                    };
+                }
+            }
+        }
+
+        return nextState;
+    };
+
     return configureStore({
-        reducer,
         middleware: (getDefaultMiddleware) =>
             getDefaultMiddleware({ serializableCheck: false }),
+        reducer: rootReducer,
     });
 }

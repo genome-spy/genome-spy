@@ -11,6 +11,37 @@ import Gff3Source from "./lazy/gff3Source.js";
 import VcfSource from "./lazy/vcfSource.js";
 
 /**
+ * @template {import("../../spec/data.js").LazyDataParams} P
+ * @typedef {{
+ *   guard: (params: import("../../spec/data.js").LazyDataParams) => params is P,
+ *   Source: new (params: P, view: import("../../view/view.js").default) => import("./dataSource.js").default
+ * }} LazySourceEntry
+ */
+
+/** @type {LazySourceEntry<any>[]} */
+const customLazySources = [];
+
+/**
+ * Registers a lazy data source for a custom type.
+ *
+ * @template {import("../../spec/data.js").LazyDataParams} P
+ * @param {LazySourceEntry<P>["guard"]} guard
+ * @param {LazySourceEntry<P>["Source"]} Source
+ * @returns {() => void}
+ */
+export function registerLazyDataSource(guard, Source) {
+    /** @type {LazySourceEntry<any>} */
+    const entry = { guard, Source };
+    customLazySources.push(entry);
+    return () => {
+        const index = customLazySources.indexOf(entry);
+        if (index >= 0) {
+            customLazySources.splice(index, 1);
+        }
+    };
+}
+
+/**
  * @param {Partial<import("../../spec/data.js").Data>} params
  * @param {import("../../view/view.js").default} view
  */
@@ -109,27 +140,32 @@ function isVcfSource(params) {
     return params?.type == "vcf";
 }
 
+/** @type {LazySourceEntry<any>[]} */
+const builtinLazySources = [
+    { guard: isAxisTickSource, Source: AxisTickSource },
+    { guard: isAxisGenomeSource, Source: AxisGenomeSource },
+    { guard: isIndexedFastaSource, Source: IndexedFastaSource },
+    { guard: isBigWigSource, Source: BigWigSource },
+    { guard: isBigBedSource, Source: BigBedSource },
+    { guard: isBamSource, Source: BamSource },
+    { guard: isGff3Source, Source: Gff3Source },
+    { guard: isVcfSource, Source: VcfSource },
+];
+
 /**
  * @param {import("../../spec/data.js").LazyDataParams} params
  * @param {import("../../view/view.js").default} view
  */
 function createLazyDataSource(params, view) {
-    if (isAxisTickSource(params)) {
-        return new AxisTickSource(params, view);
-    } else if (isAxisGenomeSource(params)) {
-        return new AxisGenomeSource(params, view);
-    } else if (isIndexedFastaSource(params)) {
-        return new IndexedFastaSource(params, view);
-    } else if (isBigWigSource(params)) {
-        return new BigWigSource(params, view);
-    } else if (isBigBedSource(params)) {
-        return new BigBedSource(params, view);
-    } else if (isBamSource(params)) {
-        return new BamSource(params, view);
-    } else if (isGff3Source(params)) {
-        return new Gff3Source(params, view);
-    } else if (isVcfSource(params)) {
-        return new VcfSource(params, view);
+    for (const entry of customLazySources) {
+        if (entry.guard(params)) {
+            return new entry.Source(/** @type {any} */ (params), view);
+        }
+    }
+    for (const entry of builtinLazySources) {
+        if (entry.guard(params)) {
+            return new entry.Source(/** @type {any} */ (params), view);
+        }
     }
 
     throw new Error(

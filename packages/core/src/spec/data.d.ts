@@ -414,3 +414,7 @@ export interface Gff3Data extends TabixData {
 export interface VcfData extends TabixData {
     type: "vcf";
 }
+
+/**
+ * Testing-only lazy data source. Not intended for production use.
+ */

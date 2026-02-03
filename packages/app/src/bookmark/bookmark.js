@@ -44,7 +44,15 @@ export function resetToDefaultState(app) {
 export async function restoreBookmark(entry, app) {
     try {
         if (entry.actions) {
-            app.provenance.dispatchBookmark(entry.actions);
+            if (app.provenance.isUndoable()) {
+                app.store.dispatch(ActionCreators.jumpToPast(0));
+            }
+            if (!app.intentPipeline) {
+                throw new Error(
+                    "Intent pipeline is required to restore bookmarks."
+                );
+            }
+            await app.intentPipeline.submit(entry.actions);
         }
 
         app.store.dispatch(
@@ -70,6 +78,11 @@ export async function restoreBookmark(entry, app) {
         await Promise.all(promises);
     } catch (e) {
         console.error(e);
+        if (app.store.getState().intentStatus?.status === "error") {
+            return;
+        }
+        // Non-pipeline restore failures (view settings/scale domains) are
+        // reported here; pipeline errors are handled via intent status UI.
         showMessageDialog(
             html`<p>Cannot restore the state:</p>
                 <p>${e}</p>`,

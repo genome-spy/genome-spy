@@ -12,5 +12,18 @@ export interface ViewSettings {
 
 export interface State {
     viewSettings: ViewSettings;
+    /**
+     * Tracks async intent status and records provenance indices for rollback.
+     */
+    intentStatus?: {
+        status: "idle" | "running" | "error" | "canceled";
+        startIndex?: number;
+        lastSuccessfulIndex?: number;
+        totalActions?: number;
+        currentIndex?: number;
+        currentAction?: import("@reduxjs/toolkit").Action;
+        failedAction?: import("@reduxjs/toolkit").Action;
+        error?: string;
+    };
     provenance?: StateWithHistory<SampleHierarchy>;
 }

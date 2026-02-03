@@ -25,6 +25,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
 import { createDefaultValuesProvider } from "../attributeValues.js";
+import { ReadyGate, createFinalizeOnce } from "../../utils/readyGate.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -54,6 +55,9 @@ export class MetadataView extends ConcatView {
     #attributeViews = new Map();
 
     #metadataGeneration = 0;
+
+    /** @type {ReadyGate} */
+    #metadataReady = new ReadyGate("Metadata readiness was aborted.");
 
     /** @type {WeakMap<View, string>} */
     #viewToAttribute = new WeakMap();
@@ -304,15 +308,76 @@ export class MetadataView extends ConcatView {
         const flow = this.context.dataFlow;
 
         const metadataGeneration = ++this.#metadataGeneration;
+        const ready = this.#metadataReady.reset();
+        const finalizeReady = createFinalizeOnce(ready);
+        // Each metadata update starts a new readiness cycle. finalizeReady is
+        // a single-shot completion hook so overlapping updates can exit early
+        // without double-resolving when stale generations bail out.
 
-        this.#createViews();
-        await this.createAxes();
-        // Opacity may depend on resolved scales; configure after the subtree exists.
-        configureViewOpacity(this);
+        try {
+            this.#createViews();
+            await this.createAxes();
+            if (this.#isMetadataStale(metadataGeneration)) {
+                finalizeReady();
+                return;
+            }
+            // Opacity may depend on resolved scales; configure after the subtree exists.
+            configureViewOpacity(this);
 
-        const viewPredicate = (
-            /** @type {import("@genome-spy/core/view/view.js").default} */ view
-        ) => view.isConfiguredVisible();
+            const viewPredicate = (
+                /** @type {import("@genome-spy/core/view/view.js").default} */ view
+            ) => view.isConfiguredVisible();
+            const dynamicSource = this.#initializeMetadataSubtree(
+                flow,
+                viewPredicate,
+                metadataGeneration
+            );
+
+            dynamicSource.updateDynamicData(
+                this.#buildMetadataTable(sampleMetadata)
+            );
+
+            await this.#loadMetadataSubtree(dynamicSource, viewPredicate);
+            if (this.#isMetadataStale(metadataGeneration)) {
+                finalizeReady();
+                return;
+            }
+
+            // Metadata updates can finish before all color scale domains have
+            // reconfigured from the new data, which leaves bookmark capture or
+            // subsequent actions reading stale domains. As a pragmatic fix,
+            // force a domain refresh here. Option two would be to await domain
+            // change events instead, but that adds more complexity and edge cases.
+            this.#refreshMetadataDomains();
+
+            this.context.requestLayoutReflow();
+        } catch (error) {
+            finalizeReady(
+                error instanceof Error ? error : new Error(String(error))
+            );
+            throw error;
+        } finally {
+            finalizeReady();
+        }
+    }
+
+    /**
+     * @param {number} metadataGeneration
+     * @returns {boolean}
+     */
+    #isMetadataStale(metadataGeneration) {
+        return metadataGeneration !== this.#metadataGeneration;
+    }
+
+    /**
+     * Initializes the metadata subtree and returns the dynamic data source.
+     *
+     * @param {import("@genome-spy/core/data/dataFlow.js").default} flow
+     * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
+     * @param {number} metadataGeneration
+     * @returns {import("@genome-spy/core/data/sources/namedSource.js").default}
+     */
+    #initializeMetadataSubtree(flow, viewPredicate, metadataGeneration) {
         const { graphicsPromises } = initializeViewSubtree(
             this,
             flow,
@@ -332,6 +397,16 @@ export class MetadataView extends ConcatView {
             () => metadataGeneration === this.#metadataGeneration
         );
 
+        return dynamicSource;
+    }
+
+    /**
+     * Builds a metadata table with sample index numbers for sorting.
+     *
+     * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
+     * @returns {Array<Record<string, unknown>>}
+     */
+    #buildMetadataTable(sampleMetadata) {
         const sampleEntities =
             this.#sampleView.sampleHierarchy.sampleData.entities;
 
@@ -347,12 +422,14 @@ export class MetadataView extends ConcatView {
             console.warn("Some metadata entries do not match any sample data");
         }
 
-        dynamicSource.updateDynamicData(metadataTable);
+        return metadataTable;
+    }
 
-        // The following hack is band-aid to fix inconsistent order of operations.
-        // #setMetadata is called synchronously when the state changes, but data
-        // updates may happen asynchronously.
-        // TODO: Fix the root cause properly.
+    /**
+     * Forces metadata color scale resolutions to reconfigure their domains
+     * after a metadata update.
+     */
+    #refreshMetadataDomains() {
         /** @type {Set<import("@genome-spy/core/scales/scaleResolution.js").default>} */
         const resolutions = new Set();
         this.visit((view) => {
@@ -366,13 +443,29 @@ export class MetadataView extends ConcatView {
         for (const resolution of resolutions) {
             resolution.reconfigureDomain();
         }
+    }
 
-        // Load all subtree sources so that decorations (titles, axes) are ready.
+    /**
+     * Loads non-metadata sources so axes/titles can resolve domains.
+     *
+     * @param {import("@genome-spy/core/data/sources/namedSource.js").default} dynamicSource
+     * @param {(view: import("@genome-spy/core/view/view.js").default) => boolean} viewPredicate
+     * @returns {Promise<void[]>}
+     */
+    #loadMetadataSubtree(dynamicSource, viewPredicate) {
         const dataSources = collectViewSubtreeDataSources(this, viewPredicate);
         dataSources.delete(dynamicSource);
-        await loadViewSubtreeData(this, dataSources);
+        return loadViewSubtreeData(this, dataSources);
+    }
 
-        this.context.requestLayoutReflow();
+    /**
+     * Waits until the latest metadata update has finished applying data and domains.
+     *
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<void>}
+     */
+    awaitMetadataReady(signal) {
+        return this.#metadataReady.wait(signal);
     }
 
     #createViews() {

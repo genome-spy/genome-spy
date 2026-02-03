@@ -66,6 +66,10 @@ design patterns.
 - Subtree initialization (`initializeViewSubtree`) can be applied to newly
   added view subtrees, and subtree data loading (`loadViewSubtreeData`) emits
   a `subtreeDataReady` broadcast after sources resolve.
+- Data readiness helpers in `packages/core/src/view/dataReadiness.js` provide
+  scale-domain requests (`buildReadinessRequest`), subtree checks
+  (`isSubtreeReady`, `isSubtreeLazyReady`), and async waiting for lazy sources
+  (`awaitSubtreeLazyReady`) that re-checks after collector completion.
 - Initialization is visibility-aware: hidden subtrees skip dataflow + mark
   wiring at startup and are initialized later via
   `initializeVisibleViewData` when visibility changes.
@@ -263,63 +267,7 @@ The detailed plan now lives in
 - `packages/app`: GenomeSpy Application
 - `docs`: Documentation site source files
 
-## App State and Provenance (packages/app)
-
-This section summarizes the Redux/provenance architecture in the app package.
-
-### Store setup and slices
-
-- The Redux store is created in `packages/app/src/state/setupStore.js`.
-- Slices are split into:
-  - `provenance`: an undoable slice that wraps the sample view state only
-    (see `packages/app/src/state/provenanceReducerBuilder.js`).
-  - `viewSettings` and `lifecycle`: non-undoable app state.
-- This separation is intentional so users can keep a stable "scene" (view
-  visibility and zoom) while undoing or redoing sample-set operations.
-
-### Intent dispatching and action augmentation
-
-- `IntentExecutor` (`packages/app/src/state/intentExecutor.js`) wraps store
-  dispatch and allows registering action augmenters.
-- `SampleView` registers an augmenter that enriches attribute-related actions
-  with precomputed attribute values before dispatch.
-- Augmented data is stored under `_augmented` and stripped from provenance
-  history to keep the recorded actions serializable and intent-only.
-
-### Action info and provenance UI
-
-- `Provenance` (`packages/app/src/state/provenance.js`) is a thin helper over
-  redux-undo (undo/redo, history, bookmark replay).
-- `ActionInfo` sources map actions to titles/icons for provenance UI and
-  context menus (see `packages/app/src/sampleView/state/actionInfo.js`).
-- `ProvenanceToolbar` renders the history using these `ActionInfo` entries.
-
-### Bookmarks and URL state
-
-- Bookmarks capture:
-  - Provenance actions (sample operations)
-  - Scale domains (zoom/pan state)
-  - View settings (visibility overrides)
-- Restoring a bookmark resets provenance to the initial state and replays the
-  actions through `IntentExecutor`, then applies scale domains and view
-  settings.
-- The same data structure is used for shareable URL hashes to keep bookmark
-  and sharing workflows consistent.
-
-## Sample view UI & helpers (packages/app/src/sampleView)
-
-- `SampleView` orchestrates the sample tracks: it composes segmenting subviews,
-  wires metadata panels, handles attribute context menus, and bridges the Core
-  layout helpers with Redux and provenance via `IntentExecutor`
-  (`packages/app/src/sampleView/sampleView.js#L1`).
-- Attribute metadata and dialogs live alongside the main view (`attributeContextMenu.js#L1`,
-  `attributeDialogs/*`), while `SampleGroupView`, `SampleLabelView`, and the
-  metadata sources (`metadata/*`, `compositeAttributeInfoSource.js`) capture how
-  the UI displays grouped samples, labels, and metadata-driven controls.
-- Context menus, scrollbars, location tracking, and grouping utilities are housed
-  under `packages/app/src/sampleView` (`locationManager.js`, `mergeFacets.js`,
-  `state/`, `viewAttributeInfoSource.js`), giving a focused developer entry point
-  for sample collection interactions beyond the Redux provenance slice.
+App-specific architecture now lives in `packages/app/APP_ARCHITECTURE.md`.
 
 ## Embedding & example frontends
 
