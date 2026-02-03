@@ -32,6 +32,15 @@ explore a stable "scene" while undoing or redoing edits to the sample set.
 - Augmented data is stored under `_augmented` and stripped from provenance
   history so recorded actions remain serializable and intent-only.
 
+### What "intents" mean here
+
+In GenomeSpy App, an "intent" is a user-driven action expressed as a plain
+Redux action that describes *what* should happen (e.g., "sort by this
+attribute" or "filter by this interval"), without embedding transient runtime
+data. Intents can be enriched at dispatch time (augmentation) and then replayed
+later (bookmarks), which is why they remain serializable and are processed
+through the intent pipeline when async data readiness is involved.
+
 ## Async intent pipeline
 
 `IntentPipeline` (`packages/app/src/state/intentPipeline.js`) is the async
