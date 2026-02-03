@@ -66,6 +66,10 @@ design patterns.
 - Subtree initialization (`initializeViewSubtree`) can be applied to newly
   added view subtrees, and subtree data loading (`loadViewSubtreeData`) emits
   a `subtreeDataReady` broadcast after sources resolve.
+- Data readiness helpers in `packages/core/src/view/dataReadiness.js` provide
+  scale-domain requests (`buildReadinessRequest`), subtree checks
+  (`isSubtreeReady`, `isSubtreeLazyReady`), and async waiting for lazy sources
+  (`awaitSubtreeLazyReady`) that re-checks after collector completion.
 - Initialization is visibility-aware: hidden subtrees skip dataflow + mark
   wiring at startup and are initialized later via
   `initializeVisibleViewData` when visibility changes.

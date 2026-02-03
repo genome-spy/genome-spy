@@ -82,9 +82,12 @@ pipeline ensures availability using AttributeInfo hooks:
 - `awaitProcessed`: wait for post-dispatch updates (e.g., metadata updates that
   reconfigure scales).
 
-Readiness signaling is handled via Core dataflow collectors and app-level
-gates (e.g., ReadyGate) so that attribute domains and sample metadata are
-consistent before augmenters run.
+Readiness signaling is handled via Core dataflow collectors and Core helpers
+(`buildReadinessRequest`, `isSubtreeLazyReady`, `awaitSubtreeLazyReady` in
+`packages/core/src/view/dataReadiness.js`). SampleView uses these to wait for
+lazy sources without relying on `subtreeDataReady` broadcasts; broadcasts still
+drive non-lazy readiness and sample extraction. App-level gates (e.g., ReadyGate)
+ensure metadata updates and scale domains are consistent before augmenters run.
 
 ## Key entry points
 
