@@ -44,12 +44,12 @@ export default class ConcatView extends GridView {
 
         this.setChildren(
             await Promise.all(
-                childSpecs.map((childSpec, i) =>
+                childSpecs.map((childSpec) =>
                     this.context.createOrImportView(
                         childSpec,
                         this,
                         this,
-                        "grid" + i
+                        this.getNextAutoName("grid")
                     )
                 )
             )
@@ -151,7 +151,7 @@ export default class ConcatView extends GridView {
             afterRemove: async () => {
                 await this.syncSharedAxes();
             },
-            defaultName: (_index) => "grid" + this.childCount,
+            defaultName: () => this.getNextAutoName("grid"),
         });
     }
 }

@@ -55,7 +55,7 @@ export default class ContainerMutationHelper {
         const insertIndex = index ?? specs.length;
         const name =
             this.options.defaultName?.(insertIndex, childSpec) ??
-            "child" + specs.length;
+            this.container.getNextAutoName("child");
 
         const childView = await this.container.context.createOrImportView(
             childSpec,

@@ -60,7 +60,7 @@ export class ViewFactory {
                         context,
                         layoutParent,
                         dataParent,
-                        spec.name ?? defaultName
+                        defaultName
                     )
                 );
 
