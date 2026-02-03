@@ -117,25 +117,6 @@ export default class App {
                     this.intentExecutor
                 )
         );
-        const sampleView = this.getSampleView();
-        if (sampleView) {
-            this.intentPipeline.setResolvers({
-                getAttributeInfo:
-                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-                        sampleView.compositeAttributeInfoSource
-                    ),
-            });
-            const unregisterMetadataHook =
-                this.intentPipeline.registerActionHook({
-                    predicate: (action) =>
-                        action.type === sampleSlice.actions.addMetadata.type ||
-                        action.type === sampleSlice.actions.deriveMetadata.type,
-                    awaitProcessed: (context) =>
-                        sampleView.awaitMetadataReady(context.signal),
-                });
-            sampleView.registerDisposer(unregisterMetadataHook);
-        }
-
         this.#setupViewVisibilityHandling();
     }
 
@@ -230,6 +211,25 @@ export default class App {
         const result = await this.genomeSpy.launch();
         if (!result) {
             return;
+        }
+
+        const sampleView = this.getSampleView();
+        if (sampleView) {
+            this.intentPipeline.setResolvers({
+                getAttributeInfo:
+                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
+                        sampleView.compositeAttributeInfoSource
+                    ),
+            });
+            const unregisterMetadataHook =
+                this.intentPipeline.registerActionHook({
+                    predicate: (action) =>
+                        action.type === sampleSlice.actions.addMetadata.type ||
+                        action.type === sampleSlice.actions.deriveMetadata.type,
+                    awaitProcessed: (context) =>
+                        sampleView.awaitMetadataReady(context.signal),
+                });
+            sampleView.registerDisposer(unregisterMetadataHook);
         }
 
         // Make it focusable so that keyboard shortcuts can be caught
