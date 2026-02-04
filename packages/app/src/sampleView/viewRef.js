@@ -6,9 +6,6 @@ import {
 
 /**
  * @typedef {import("./sampleViewTypes.js").ViewRef} ViewRef
- */
-
-/**
  * @typedef {import("./sampleViewTypes.js").ViewSelector} ViewSelector
  */
 
