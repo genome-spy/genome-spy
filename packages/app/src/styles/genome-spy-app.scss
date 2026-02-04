@@ -1,9 +1,11 @@
-@use "sass:math";
-@use "sass:color";
-
 @use "generic";
 
 $basic-spacing: generic.$basic-spacing;
+
+:root {
+    --gs-theme-primary: #6c82ab;
+    --gs-theme-on-primary: #ffffff;
+}
 
 .genome-spy-app {
     position: absolute;
@@ -19,7 +21,8 @@ $basic-spacing: generic.$basic-spacing;
     }
 
     // https://css-tricks.com/snippets/css/system-font-stack/
-    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+    font-family:
+        system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
         "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
     font-size: 14px;
@@ -39,16 +42,19 @@ $basic-spacing: generic.$basic-spacing;
 }
 
 .gs-toolbar {
-    $background: #6c82ab;
-    $foreground: white;
+    --gs-toolbar-bg: var(--gs-theme-primary);
+    --gs-toolbar-fg: var(--gs-theme-on-primary);
+    --gs-toolbar-bg-hi: oklch(from var(--gs-toolbar-bg) calc(l + 0.06) c h);
+    --gs-toolbar-bg-lo: oklch(from var(--gs-toolbar-bg) calc(l - 0.06) c h);
+    --gs-toolbar-bg-dim: oklch(from var(--gs-toolbar-bg) calc(l - 0.05) c h);
 
     height: 38px;
 
-    background-color: $background;
+    background-color: var(--gs-toolbar-bg);
     box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 
-    border-top: 1px solid color.adjust($background, $lightness: 15%);
-    border-bottom: 1px solid color.adjust($background, $lightness: -15%);
+    border-top: 1px solid var(--gs-toolbar-bg-hi);
+    border-bottom: 1px solid var(--gs-toolbar-bg-lo);
 
     .spacer {
         flex-grow: 1;
@@ -65,7 +71,7 @@ $basic-spacing: generic.$basic-spacing;
 
     .vis-title,
     .version {
-        color: $foreground;
+        color: var(--gs-toolbar-fg);
         font-weight: normal;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
@@ -75,15 +81,15 @@ $basic-spacing: generic.$basic-spacing;
         font-size: 80%;
         opacity: 50%;
         &:visited {
-            color: $foreground;
+            color: var(--gs-toolbar-fg);
         }
     }
 
     .search-input {
         font-size: 1em;
-        background-color: color.adjust($background, $lightness: -5%);
-        color: $foreground;
-        border: 1px solid color.adjust($background, $lightness: -10%);
+        background-color: var(--gs-toolbar-bg-dim);
+        color: var(--gs-toolbar-fg);
+        border: 1px solid oklch(from var(--gs-toolbar-bg) calc(l - 0.1) c h);
         width: 260px;
         padding: 3px 6px;
         outline: none;
@@ -91,7 +97,7 @@ $basic-spacing: generic.$basic-spacing;
         position: relative;
         box-shadow:
             0px 1px 3px rgba(0, 0, 0, 0.1) inset,
-            1px 1px 0px color.adjust($background, $lightness: 4%);
+            1px 1px 0px oklch(from var(--gs-toolbar-bg) calc(l + 0.04) c h);
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 
@@ -158,24 +164,36 @@ $basic-spacing: generic.$basic-spacing;
 
         transition: color 0.15s;
 
-        $color: color.adjust($background, $lightness: 5%);
-        background-color: $color;
+        --gs-toolbar-btn-bg: oklch(
+            from var(--gs-toolbar-bg) calc(l + 0.03) c h
+        );
+        background-color: var(--gs-toolbar-btn-bg);
         background-image: linear-gradient(
             to bottom,
-            color.adjust($color, $lightness: 3%),
-            color.adjust($color, $lightness: -3%)
+            oklch(
+                from var(--gs-toolbar-btn-bg) calc(l + 0.05) calc(c - 0.005) h
+            ),
+            oklch(from var(--gs-toolbar-btn-bg) calc(l - 0.02) c h)
         );
-        color: $foreground;
+        color: var(--gs-toolbar-fg);
         height: 26px;
         width: 30px;
 
         border: 1px solid;
 
-        border-top-color: color.adjust($color, $lightness: 10%);
-        border-left-color: color.adjust($color, $lightness: 2%);
+        border-top-color: oklch(
+            from var(--gs-toolbar-btn-bg) calc(l + 0.08) c h
+        );
+        border-left-color: oklch(
+            from var(--gs-toolbar-btn-bg) calc(l + 0.03) c h
+        );
 
-        border-right-color: color.adjust($color, $lightness: -10%);
-        border-bottom-color: color.adjust($color, $lightness: -20%);
+        border-right-color: oklch(
+            from var(--gs-toolbar-btn-bg) calc(l - 0.08) c h
+        );
+        border-bottom-color: oklch(
+            from var(--gs-toolbar-btn-bg) calc(l - 0.12) c h
+        );
 
         box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
         border-radius: 2px;
@@ -197,14 +215,14 @@ $basic-spacing: generic.$basic-spacing;
         }
 
         &:disabled {
-            color: color.mix($background, $foreground, $weight: 50%);
+            color: oklch(from var(--gs-toolbar-fg) l c h / 0.5);
         }
 
         &:hover:not(:disabled) {
             background-image: linear-gradient(
                 to bottom,
-                color.adjust($color, $lightness: 5%),
-                color.adjust($color, $lightness: 0%)
+                oklch(from var(--gs-toolbar-btn-bg) calc(l + 0.07) c h),
+                oklch(from var(--gs-toolbar-btn-bg) calc(l + 0.01) c h)
             );
 
             > svg {
@@ -240,8 +258,8 @@ $basic-spacing: generic.$basic-spacing;
             > button {
                 background-image: linear-gradient(
                     to bottom,
-                    color.adjust($background, $lightness: 12%),
-                    color.adjust($background, $lightness: 8%)
+                    oklch(from var(--gs-toolbar-bg) calc(l + 0.09) c h),
+                    oklch(from var(--gs-toolbar-bg) calc(l + 0.06) c h)
                 );
             }
         }

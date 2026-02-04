@@ -116,12 +116,36 @@ export default class BaseDialog extends LitElement {
             }
 
             footer .btn.btn-primary {
-                background-image: linear-gradient(to bottom, #f2f8ff, #dbe9f6);
-                border-color: #8fa8c2;
+                --gs-dialog-primary-bg: var(--gs-theme-primary, #6c82ab);
+                --gs-dialog-primary-bg-hi: oklch(
+                    from var(--gs-dialog-primary-bg) calc(l + 0.07) c h
+                );
+                --gs-dialog-primary-bg-lo: oklch(
+                    from var(--gs-dialog-primary-bg) calc(l - 0.07) c h
+                );
+                background-color: var(--gs-dialog-primary-bg);
+                background-image: linear-gradient(
+                    to bottom,
+                    var(--gs-dialog-primary-bg-hi),
+                    var(--gs-dialog-primary-bg-lo)
+                );
+                border-color: oklch(
+                    from var(--gs-dialog-primary-bg) calc(l - 0.08) c h
+                );
+                color: var(--gs-theme-on-primary, #ffffff);
+                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             }
 
             footer .btn.btn-primary:hover:not(:disabled) {
-                background-image: linear-gradient(to bottom, #e8f2ff, #cbdff1);
+                background-image: linear-gradient(
+                    to bottom,
+                    oklch(from var(--gs-dialog-primary-bg) calc(l + 0.1) c h),
+                    oklch(from var(--gs-dialog-primary-bg) calc(l - 0.04) c h)
+                );
+            }
+
+            footer .btn.btn-primary svg {
+                filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
             }
         `,
     ];
