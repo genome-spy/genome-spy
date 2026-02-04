@@ -59,6 +59,30 @@ Recent discussion and implementation work clarified that “name” mixes two co
 
 Auto-generated names should be produced by a per-container monotonic counter (e.g. `ContainerView.getNextAutoName(prefix)`), to avoid collisions during dynamic mutations. However, these names remain non-contractual and must not be used in bookmarks/selectors.
 
+### App: `ViewAttributeSpecifier` currently relies on global name lookup
+
+The App’s SampleView attribute system currently uses view names as if they were globally unique identifiers.
+
+- Type definition: [packages/app/src/sampleView/sampleViewTypes.d.ts](../app/src/sampleView/sampleViewTypes.d.ts)
+  - `BaseSpecifier.view: string`
+- Resolution call sites:
+  - [packages/app/src/sampleView/sampleView.js](../app/src/sampleView/sampleView.js)
+    - resolves via `rootView.findDescendantByName(specifier.view)`
+  - [packages/app/src/sampleView/viewAttributeInfoSource.js](../app/src/sampleView/viewAttributeInfoSource.js)
+    - resolves via `rootView.findDescendantByName(specifier.view)` when constructing accessors
+
+This breaks under template/import reuse for the same reasons as visibility persistence: multiple imported instances naturally produce duplicate explicit names (and auto-generated names are not stable/contracts).
+
+Planned change (App-facing): evolve `ViewAttributeSpecifier.view` to accept either:
+
+- legacy `string` (backward compatibility), or
+- a structured selector object (not JSON-serialized) that matches explicit names only, e.g. `ViewSelector` `{ scope: string[], view: string }`.
+
+Resolution semantics for attribute specifiers should be stricter than legacy visibility restore:
+
+- Selector object: must resolve to exactly one addressable spec-authored view (typically a `UnitView`); error if not found.
+- Legacy string: resolve by explicit name within the addressable tree; error if ambiguous (multiple matches) and recommend naming imports or updating the specifier to a selector object.
+
 ## Proposed Model: Import Scopes + Local Uniqueness
 
 ### Core idea
@@ -120,10 +144,10 @@ Example:
 
 - `scope: ["patientPanel", "cnvTracks"], view: "coverage"`
 
-Serialization (bookmark key):
+Representation guidance:
 
-- `JSON.stringify({ s: scopeArray, v: viewName })`
-- Optional prefix: `"v:" + JSON.stringify({ s, v })`
+- Bookmark / wire format: store the selector object as data (see “Persistence & Migration”).
+- Internal representation: use a canonical string key for fast lookup (e.g. `"v:" + JSON.stringify({ s, v })`).
 
 Resolution requirements:
 
@@ -141,10 +165,10 @@ Example:
 
 - `scope: ["patientPanel", "cnvTracks"], param: "brush"`
 
-Serialization:
+Representation guidance:
 
-- `JSON.stringify({ s: scopeArray, p: paramName })`
-- Optional prefix: `"p:" + JSON.stringify({ s, p })`
+- Bookmark / wire format: store the selector object as data (see “Persistence & Migration”).
+- Internal representation: use a canonical string key for fast lookup (e.g. `"p:" + JSON.stringify({ s, p })`).
 
 ### Addressable tree and import boundaries
 
@@ -159,6 +183,15 @@ The selector system should introduce a dedicated traversal/resolution helper (ra
 
 ## Persistence & Migration (Bookmarks, URL Hash)
 
+### Wire format vs internal representation
+
+Use different shapes for:
+
+- **Bookmark / URL payloads (wire format):** prefer arrays of entries with structured selector objects.
+- **In-memory state / Redux (internal representation):** prefer maps/records keyed by a canonical string for fast lookup.
+
+Rationale: JSON-string-as-object-key is convenient internally, but it is an awkward public/wire contract and makes it harder to extend payloads with additional fields.
+
 ### New bookmarks should always use selectors
 
 The App currently stores `viewSettings.visibilities` keyed by `view.name` and includes this in shareable links/bookmarks.
@@ -168,6 +201,13 @@ Target behavior:
 - When saving/sharing state, always write selector keys for:
   - configurable visibilities
   - bookmarkable parameter state
+
+Recommended bookmark payload shapes:
+
+- Visibilities: `[{ s: string[], v: string, on: boolean }]`
+- Parameter state: `[{ s: string[], p: string, value: unknown }]` (exact `value` shape depends on the parameter type)
+
+On restore, build internal lookup maps once (e.g. `Map` keyed by canonical string) and apply them efficiently.
 
 ### Legacy restore must still work
 
@@ -212,6 +252,14 @@ The App performs an “early restore” of view visibility before initial data/s
 
 - Align type comments and end-user docs with the terminology and scoped-uniqueness contract.
 
+### Phase 0.5 — Legacy-compat test gate (do this early)
+
+Legacy bookmarks (plain view-name keyed visibilities) must remain supported throughout the refactor. Add App tests first so later phases cannot regress compatibility.
+
+- Add/lock in tests for legacy restore of visibilities keyed by plain strings.
+- Include an ambiguity case (same explicit view name exists in multiple imported instances) and assert the documented behavior (apply to all matches and optionally warn).
+- Keep these tests green as a gate for all later phases.
+
 ### Phase 1 — Core selector utilities (Core package)
 
 Add utilities that:
@@ -255,6 +303,12 @@ Optional lightweight validation in Core (even without App) can still be benefici
 - Keep legacy restore compatibility.
 - Update the visibility predicate and UI toggle logic to consult selector keys.
 
+In the same App integration effort (or immediately after Phase 1 core utilities exist), migrate SampleView attribute specifiers to be selector-aware:
+
+- Update `ViewAttributeSpecifier.view` to accept `string | ViewSelector` (object form, no JSON serialization).
+- Replace `findDescendantByName`-based resolution with selector-based resolution on the addressable tree.
+- Keep string support as a legacy compatibility path, but fail fast on ambiguity.
+
 ### Phase 4 — Parameter state persistence
 
 - Define what parameter state is persisted:
@@ -291,9 +345,15 @@ Add tests near relevant code (Core package) for:
 
 Add tests for:
 
-- Legacy bookmark restore still applies visibilities keyed by plain `view.name`.
+- Legacy bookmark restore still applies visibilities keyed by a plain view name string.
+  - These tests should be implemented in Phase 0.5 (early) and treated as a compatibility gate.
 - New bookmark save emits selector keys.
 - Round-trip: save → restore yields same visible views and parameter states.
+
+Add tests for `ViewAttributeSpecifier` resolution:
+
+- Selector object resolves to the intended view under repeated template imports.
+- Legacy string resolution errors on ambiguity and suggests using import names / selector object.
 
 ## Documentation
 
