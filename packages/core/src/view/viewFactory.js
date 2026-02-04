@@ -10,6 +10,10 @@ import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import { isSelectionParameter } from "./paramMediator.js";
 import { asSelectionConfig } from "../selection/selection.js";
+import {
+    markViewAsNonAddressable,
+    registerImportInstance,
+} from "./viewSelectors.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
 
@@ -148,6 +152,9 @@ export class ViewFactory {
     ) {
         /** @type {ViewSpec} */
         let viewSpec;
+        const importScopeName = isImportSpec(spec)
+            ? (spec.name ?? null)
+            : undefined;
 
         if (isImportSpec(spec)) {
             /** @type {ViewSpec} */
@@ -190,6 +197,7 @@ export class ViewFactory {
             );
 
         // Wrap a unit spec at root into a grid view to get axes, etc.
+        let isImplicitRoot = false;
         if (
             !dataParent &&
             this.options.wrapRoot &&
@@ -202,6 +210,7 @@ export class ViewFactory {
                 name: "implicitRoot",
                 vconcat: [viewSpec],
             };
+            isImplicitRoot = true;
         }
 
         const view = this.createView(
@@ -211,6 +220,14 @@ export class ViewFactory {
             dataParent,
             defaultName
         );
+
+        if (importScopeName !== undefined) {
+            registerImportInstance(view, importScopeName);
+        }
+
+        if (isImplicitRoot) {
+            markViewAsNonAddressable(view);
+        }
 
         if (view instanceof ContainerView) {
             await view.initializeChildren();

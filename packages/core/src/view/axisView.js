@@ -1,5 +1,6 @@
 import LayerView from "./layerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
+import { markViewAsNonAddressable } from "./viewSelectors.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -98,6 +99,8 @@ export default class AxisView extends LayerView {
         );
 
         this.axisProps = fullAxisProps;
+
+        markViewAsNonAddressable(this, { skipSubtree: true });
     }
 
     getSize() {

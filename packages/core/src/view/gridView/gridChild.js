@@ -14,6 +14,7 @@ import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import createTitle from "../title.js";
 import UnitView from "../unitView.js";
+import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
 
@@ -76,6 +77,9 @@ export default class GridChild {
                         blockEncodingInheritance: true,
                     }
                 );
+                markViewAsNonAddressable(this.background, {
+                    skipSubtree: true,
+                });
             }
 
             const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
@@ -90,6 +94,9 @@ export default class GridChild {
                         blockEncodingInheritance: true,
                     }
                 );
+                markViewAsNonAddressable(this.backgroundStroke, {
+                    skipSubtree: true,
+                });
             }
 
             const title = createTitle(view.spec.title);
@@ -105,6 +112,7 @@ export default class GridChild {
                     }
                 );
                 this.title = unitView;
+                markViewAsNonAddressable(this.title, { skipSubtree: true });
             }
         }
 

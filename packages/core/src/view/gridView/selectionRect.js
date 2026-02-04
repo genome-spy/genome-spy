@@ -1,5 +1,6 @@
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import LayerView from "../layerView.js";
+import { markViewAsNonAddressable } from "../viewSelectors.js";
 
 export default class SelectionRect extends LayerView {
     /**
@@ -152,6 +153,8 @@ export default class SelectionRect extends LayerView {
                 blockEncodingInheritance: true,
             }
         );
+
+        markViewAsNonAddressable(this, { skipSubtree: true });
 
         /** @type {import("../paramMediator.js").ExprRefFunction} */
         this._selectionExpr = selectionExpr;

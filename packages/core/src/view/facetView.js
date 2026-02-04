@@ -12,6 +12,7 @@ import coalesce from "../utils/coalesce.js";
 import { field as vegaField } from "vega-util";
 import DecoratorView from "./decoratorView.js";
 import Padding from "./layout/padding.js";
+import { markViewAsNonAddressable } from "./viewSelectors.js";
 
 const DEFAULT_SPACING = 20;
 
@@ -95,15 +96,16 @@ export default class FacetView extends ContainerView {
          * @type {Record<FacetChannel, UnitView>}
          */
         this._labelViews = Object.fromEntries(
-            FACET_CHANNELS.map((channel) => [
-                channel,
-                new UnitView(
+            FACET_CHANNELS.map((channel) => {
+                const labelView = new UnitView(
                     createLabelViewSpec(headerConfigs[channel]),
                     this.context,
                     this,
                     `facetLabel-${channel}`
-                ),
-            ])
+                );
+                markViewAsNonAddressable(labelView, { skipSubtree: true });
+                return [channel, labelView];
+            })
         );
 
         /**  @type {Record<FacetChannel, FacetDimension>} */
