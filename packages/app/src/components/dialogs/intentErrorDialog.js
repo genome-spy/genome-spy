@@ -1,5 +1,5 @@
 import { css, html } from "lit";
-import BaseDialog from "../generic/baseDialog.js";
+import BaseDialog, { showDialogAndMap } from "../generic/baseDialog.js";
 
 export default class IntentErrorDialog extends BaseDialog {
     static properties = {
@@ -63,40 +63,24 @@ customElements.define("gs-intent-error-dialog", IntentErrorDialog);
  * @returns {Promise<"rollbackBatch" | "accept">}
  */
 export function showIntentErrorDialog(options) {
-    /** @type {IntentErrorDialog} */
-    const el = /** @type {IntentErrorDialog} */ (
-        document.createElement("gs-intent-error-dialog")
+    return showDialogAndMap(
+        "gs-intent-error-dialog",
+        (/** @type {IntentErrorDialog} */ el) => {
+            el.message = options.message;
+            el.dialogTitle = options.title ?? el.dialogTitle;
+            if (options.rollbackLabel) {
+                el.rollbackLabel = options.rollbackLabel;
+            }
+            if (options.keepLabel) {
+                el.keepLabel = options.keepLabel;
+            }
+        },
+        (detail) => {
+            const decision =
+                /** @type {{ decision?: "rollbackBatch" | "accept" }} */ (
+                    detail?.data
+                )?.decision;
+            return decision ?? "accept";
+        }
     );
-    el.message = options.message;
-    el.dialogTitle = options.title ?? el.dialogTitle;
-    if (options.rollbackLabel) {
-        el.rollbackLabel = options.rollbackLabel;
-    }
-    if (options.keepLabel) {
-        el.keepLabel = options.keepLabel;
-    }
-
-    const promise = new Promise((resolve) => {
-        el.addEventListener(
-            "gs-dialog-finished",
-            (
-                /** @type {CustomEvent<import("../generic/baseDialog.js").DialogFinishDetail>} */ e
-            ) => {
-                const decision =
-                    /** @type {{ decision?: "rollbackBatch" | "accept" }} */ (
-                        e.detail?.data
-                    )?.decision;
-                resolve(decision ?? "accept");
-            },
-            { once: true }
-        );
-    });
-
-    el.addEventListener("gs-dialog-closed", () => {
-        el.remove();
-    });
-
-    document.body.appendChild(el);
-
-    return promise;
 }

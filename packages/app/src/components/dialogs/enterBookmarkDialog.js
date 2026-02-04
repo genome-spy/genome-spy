@@ -5,7 +5,7 @@ import {
     faInfoCircle,
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
-import BaseDialog, { showDialog } from "../generic/baseDialog.js";
+import BaseDialog, { showDialogOk } from "../generic/baseDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 import { FormController } from "../forms/formController.js";
 import { formField } from "../forms/formField.js";
@@ -222,7 +222,7 @@ customElements.define("gs-enter-bookmark-dialog", EnterBookmarkDialog);
  * @returns {Promise<boolean>}
  */
 export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
-    return showDialog(
+    return showDialogOk(
         "gs-enter-bookmark-dialog",
         /** @param {EnterBookmarkDialog} el */ (el) => {
             el.bookmarkDatabase = bookmarkDatabase;
@@ -232,12 +232,6 @@ export function showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, mode) {
             el.bookmarkName = bookmark.name ?? "";
             el.bookmarkNotes = bookmark.notes ?? "";
             el._form.reset();
-        }
-    ).then(
-        (
-            /** @type {import("../generic/baseDialog.js").DialogFinishDetail} */ e
-        ) => {
-            return !!e.ok;
         }
     );
 }

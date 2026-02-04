@@ -7,7 +7,9 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { html, css } from "lit";
-import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import BaseDialog, {
+    showDialogAndMap,
+} from "../../components/generic/baseDialog.js";
 import "../../components/generic/dataGrid.js";
 import "../../components/generic/uploadDropZone.js";
 import "../../components/generic/customSelect.js";
@@ -317,28 +319,29 @@ const INTRO_TEXT = html`<p>
  * @param {import("../sampleView.js").default} sampleView
  */
 export function showUploadMetadataDialog(sampleView) {
-    return showDialog(
+    return showDialogAndMap(
         "gs-upload-metadata-dialog",
         (/** @type {UploadMetadataDialog} */ el) => {
             el.existingSampleIds = new Set(
                 sampleView.sampleHierarchy.sampleData.ids
             );
-        }
-    ).then((result) => {
-        if (!result.ok) {
-            return false;
-        }
+        },
+        (result) => {
+            if (!result.ok) {
+                return false;
+            }
 
-        const uploadResult =
-            /** @type {import("../state/payloadTypes.js").SetMetadata} */ (
-                result.data
+            const uploadResult =
+                /** @type {import("../state/payloadTypes.js").SetMetadata} */ (
+                    result.data
+                );
+            sampleView.intentExecutor.dispatch(
+                sampleView.actions.addMetadata(uploadResult)
             );
-        sampleView.intentExecutor.dispatch(
-            sampleView.actions.addMetadata(uploadResult)
-        );
 
-        return true;
-    });
+            return true;
+        }
+    );
 }
 
 /**

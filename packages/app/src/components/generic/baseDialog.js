@@ -416,13 +416,51 @@ export default class BaseDialog extends LitElement {
  * @returns {Promise<DialogFinishDetail>}
  */
 export function showDialog(tagName, configure) {
-    return new Promise((resolve) => {
-        const el = /** @type {T} */ (document.createElement(tagName));
+    return showDialogWithElement(tagName, configure).promise;
+}
 
-        if (configure) {
-            configure(el);
-        }
+/**
+ * Open any dialog element that extends BaseDialog and map the result.
+ *
+ * @template {BaseDialog} T
+ * @template R
+ * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
+ * @param {((el: T) => void) | undefined} configure - Optional function to configure props.
+ * @param {(detail: DialogFinishDetail) => R | Promise<R>} map
+ * @returns {Promise<R>}
+ */
+export function showDialogAndMap(tagName, configure, map) {
+    return showDialog(tagName, configure).then(map);
+}
 
+/**
+ * Open any dialog element that extends BaseDialog and resolve to a boolean.
+ *
+ * @template {BaseDialog} T
+ * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
+ * @param {(el: T) => void} [configure] - Optional function to configure props.
+ * @returns {Promise<boolean>}
+ */
+export function showDialogOk(tagName, configure) {
+    return showDialogAndMap(tagName, configure, (detail) => !!detail.ok);
+}
+
+/**
+ * Open any dialog element that extends BaseDialog and return the element.
+ *
+ * @template {BaseDialog} T
+ * @param {string} tagName - Custom element name, e.g. "gs-upload-dialog".
+ * @param {(el: T) => void} [configure] - Optional function to configure props.
+ * @returns {{element: T, promise: Promise<DialogFinishDetail>}}
+ */
+export function showDialogWithElement(tagName, configure) {
+    const el = /** @type {T} */ (document.createElement(tagName));
+
+    if (configure) {
+        configure(el);
+    }
+
+    const promise = new Promise((resolve) => {
         el.addEventListener(
             "gs-dialog-finished",
             (/** @type {CustomEvent<DialogFinishDetail>} */ e) => {
@@ -430,11 +468,13 @@ export function showDialog(tagName, configure) {
             },
             { once: true }
         );
-
-        el.addEventListener("gs-dialog-closed", () => {
-            el.remove();
-        });
-
-        document.body.appendChild(el);
     });
+
+    el.addEventListener("gs-dialog-closed", () => {
+        el.remove();
+    });
+
+    document.body.appendChild(el);
+
+    return { element: el, promise };
 }

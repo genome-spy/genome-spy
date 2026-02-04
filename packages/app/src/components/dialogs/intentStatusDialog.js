@@ -1,5 +1,5 @@
 import { css, html } from "lit";
-import BaseDialog from "../generic/baseDialog.js";
+import BaseDialog, { showDialogWithElement } from "../generic/baseDialog.js";
 
 export default class IntentStatusDialog extends BaseDialog {
     static properties = {
@@ -58,33 +58,14 @@ customElements.define("gs-intent-status-dialog", IntentStatusDialog);
  * @returns {{element: IntentStatusDialog, promise: Promise<import("../generic/baseDialog.js").DialogFinishDetail>}}
  */
 export function showIntentStatusDialog(options) {
-    /** @type {IntentStatusDialog} */
-    const el = /** @type {IntentStatusDialog} */ (
-        document.createElement("gs-intent-status-dialog")
+    return showDialogWithElement(
+        "gs-intent-status-dialog",
+        (/** @type {IntentStatusDialog} */ el) => {
+            el.message = options.message;
+            el.dialogTitle = options.title ?? el.dialogTitle;
+            if (options.cancelLabel) {
+                el.cancelLabel = options.cancelLabel;
+            }
+        }
     );
-    el.message = options.message;
-    el.dialogTitle = options.title ?? el.dialogTitle;
-    if (options.cancelLabel) {
-        el.cancelLabel = options.cancelLabel;
-    }
-
-    const promise = new Promise((resolve) => {
-        el.addEventListener(
-            "gs-dialog-finished",
-            (
-                /** @type {CustomEvent<import("../generic/baseDialog.js").DialogFinishDetail>} */ e
-            ) => {
-                resolve(e.detail);
-            },
-            { once: true }
-        );
-    });
-
-    el.addEventListener("gs-dialog-closed", () => {
-        el.remove();
-    });
-
-    document.body.appendChild(el);
-
-    return { element: el, promise };
 }

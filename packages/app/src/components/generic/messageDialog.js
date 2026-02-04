@@ -5,7 +5,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import BaseDialog, { showDialog } from "./baseDialog.js";
+import BaseDialog, { showDialogOk } from "./baseDialog.js";
 
 /**
  * @type {Record<string, import("@fortawesome/fontawesome-svg-core").IconDefinition>}
@@ -100,7 +100,7 @@ customElements.define("gs-message-dialog", MessageDialog);
  * @returns {Promise<boolean>} Resolves to true if OK was clicked
  */
 export function showMessageDialog(message, options = {}) {
-    return showDialog(
+    return showDialogOk(
         "gs-message-dialog",
         (/** @type {MessageDialog} */ el) => {
             el.message = message;
@@ -108,7 +108,5 @@ export function showMessageDialog(message, options = {}) {
             el.type = options.type;
             el.confirm = options.confirm;
         }
-    ).then((result) => {
-        return result.ok;
-    });
+    );
 }
