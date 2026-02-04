@@ -132,14 +132,6 @@ export default class ContainerView extends View {
      *
      * @param {string} name
      */
-    findChildByName(name) {
-        return this.#findImmediateChildByName(name);
-    }
-
-    /**
-     *
-     * @param {string} name
-     */
     findDescendantByName(name) {
         /** @type {View} */
         let view;
