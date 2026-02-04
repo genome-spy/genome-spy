@@ -222,6 +222,8 @@ export const formStyles = css`
         margin-bottom: var(--basic-spacing);
         border: 1px solid transparent;
         border-radius: var(--form-control-border-radius);
+        contain: inline-size;
+        max-width: 100%;
 
         > svg:first-child {
             width: 2em;
@@ -245,6 +247,12 @@ export const formStyles = css`
             color: #055160;
             background-color: #cff4fc;
             border-color: #b6effb;
+        }
+
+        > div,
+        > span {
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         > div {

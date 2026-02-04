@@ -1,5 +1,10 @@
-import { faObjectGroup, faPaste } from "@fortawesome/free-solid-svg-icons";
+import {
+    faInfoCircle,
+    faObjectGroup,
+    faPaste,
+} from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
+import { icon } from "@fortawesome/fontawesome-svg-core";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { makeCustomGroupAccessor } from "../state/groupOperations.js";
@@ -310,17 +315,27 @@ class CreateCustomGroupsDialog extends BaseDialog {
             </tr>`;
         };
 
-        return html`<div class="gs-form-group group-arbitrarily-form">
-            <div class="table">
-                <table>
-                    <tr>
-                        <th>${type}</th>
-                        <th>Group</th>
-                    </tr>
-                    ${map(this.values, makeTableRow)}
-                </table>
+        return html`
+            <div class="gs-alert info">
+                ${icon(faInfoCircle).node[0]}
+                <span>
+                    Define custom groups by collecting multiple categories or
+                    identifiers under a single label. Each category or
+                    identifier you assign determines how samples are grouped.
+                </span>
             </div>
-        </div>`;
+            <div class="gs-form-group group-arbitrarily-form">
+                <div class="table">
+                    <table>
+                        <tr>
+                            <th>${type}</th>
+                            <th>Group</th>
+                        </tr>
+                        ${map(this.values, makeTableRow)}
+                    </table>
+                </div>
+            </div>
+        `;
     }
 
     renderButtons() {
