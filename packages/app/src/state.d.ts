@@ -10,8 +10,8 @@ export interface ViewSettings {
 }
 
 export interface ViewVisibilityEntry {
-    s: string[];
-    v: string;
+    scope: string[];
+    view: string;
     on: boolean;
 }
 

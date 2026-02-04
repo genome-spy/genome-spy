@@ -12,7 +12,7 @@ export const VIEW_SELECTOR_KEY_PREFIX = "v:";
 export function makeViewSelectorKey(selector) {
     return (
         VIEW_SELECTOR_KEY_PREFIX +
-        JSON.stringify({ s: selector.scope, v: selector.view })
+        JSON.stringify({ scope: selector.scope, view: selector.view })
     );
 }
 
@@ -34,13 +34,17 @@ export function parseViewSelectorKey(key) {
         return;
     }
 
-    if (!parsed || !Array.isArray(parsed.s) || typeof parsed.v !== "string") {
+    if (
+        !parsed ||
+        !Array.isArray(parsed.scope) ||
+        typeof parsed.view !== "string"
+    ) {
         return;
     }
 
     return {
-        scope: parsed.s,
-        view: parsed.v,
+        scope: parsed.scope,
+        view: parsed.view,
     };
 }
 
@@ -91,8 +95,8 @@ export function normalizeViewSettingsPayload(payload) {
         for (const entry of visibilities) {
             if (
                 !entry ||
-                !Array.isArray(entry.s) ||
-                typeof entry.v !== "string"
+                !Array.isArray(entry.scope) ||
+                typeof entry.view !== "string"
             ) {
                 continue;
             }
@@ -101,8 +105,12 @@ export function normalizeViewSettingsPayload(payload) {
                 continue;
             }
 
-            normalized[makeViewSelectorKey({ scope: entry.s, view: entry.v })] =
-                entry.on;
+            normalized[
+                makeViewSelectorKey({
+                    scope: entry.scope,
+                    view: entry.view,
+                })
+            ] = entry.on;
         }
 
         return { visibilities: normalized };
@@ -185,8 +193,8 @@ export function buildViewVisibilityEntries(viewRoot, visibilities) {
         }
 
         entries.push({
-            s: selector.scope,
-            v: selector.view,
+            scope: selector.scope,
+            view: selector.view,
             on: value,
         });
     }
