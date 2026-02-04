@@ -243,34 +243,6 @@ The App performs an “early restore” of view visibility before initial data/s
 
 ## Implementation Plan (Phased)
 
-### Already done (groundwork)
-
-- Clarified runtime naming semantics: explicit vs auto-generated vs effective name.
-- Stabilized auto-generated names under dynamic mutations (per-container monotonic counters).
-
-### Phase 0 — Spec contract and documentation alignment
-
-- Align type comments and end-user docs with the terminology and scoped-uniqueness contract.
-
-### Phase 0.5 — Legacy-compat test gate (do this early)
-
-Legacy bookmarks (plain view-name keyed visibilities) must remain supported throughout the refactor. Add App tests first so later phases cannot regress compatibility.
-
-- Add/lock in tests for legacy restore of visibilities keyed by plain strings.
-- Include an ambiguity case (same explicit view name exists in multiple imported instances) and assert the documented behavior (apply to all matches and optionally warn).
-- Keep these tests green as a gate for all later phases.
-
-### Phase 1 — Core selector utilities (Core package)
-
-Add utilities that:
-
-- build scope-chain information for views created via `ImportSpec`
-- enumerate “addressable” views (exclude decoration/internal nodes)
-- resolve a selector `{s, v}` to a unique runtime view
-- resolve a selector `{s, p}` to a unique bookmarkable parameter within the scope
-
-These utilities should be pure and testable without App.
-
 ### Phase 2 — Validation of naming constraints
 
 Validation is required for the App’s bookmarking/UI features, but it is not strictly required for Core’s rendering/dataflow. The recommended split is:
@@ -297,18 +269,6 @@ Validation should fail fast with actionable error messages:
 
 Optional lightweight validation in Core (even without App) can still be beneficial for earlier feedback, e.g. checking for duplicate explicit names among sibling views in the same container when those views are intended to be addressable.
 
-### Phase 3 — App integration (persistence)
-
-- Change bookmark/URL serialization to emit selector keys for new bookmarks.
-- Keep legacy restore compatibility.
-- Update the visibility predicate and UI toggle logic to consult selector keys.
-
-In the same App integration effort (or immediately after Phase 1 core utilities exist), migrate SampleView attribute specifiers to be selector-aware:
-
-- Update `ViewAttributeSpecifier.view` to accept `string | ViewSelector` (object form, no JSON serialization).
-- Replace `findDescendantByName`-based resolution with selector-based resolution on the addressable tree.
-- Keep string support as a legacy compatibility path, but fail fast on ambiguity.
-
 ### Phase 4 — Parameter state persistence
 
 - Define what parameter state is persisted:
@@ -328,9 +288,6 @@ In the same App integration effort (or immediately after Phase 1 core utilities 
 
 Add tests near relevant code (Core package) for:
 
-- Template import scoping:
-  - import the same template twice with different `ImportSpec.name`
-  - ensure selectors resolve to different instances
 - Unnamed import instance behavior:
   - single instance without addressable features → allowed
   - multiple instances with addressable features → error
@@ -345,8 +302,6 @@ Add tests near relevant code (Core package) for:
 
 Add tests for:
 
-- Legacy bookmark restore still applies visibilities keyed by a plain view name string.
-  - These tests should be implemented in Phase 0.5 (early) and treated as a compatibility gate.
 - New bookmark save emits selector keys.
 - Round-trip: save → restore yields same visible views and parameter states.
 
@@ -359,14 +314,6 @@ Add tests for `ViewAttributeSpecifier` resolution:
 
 Update docs to match the new contract:
 
-- [docs/grammar/import.md](../../docs/grammar/import.md)
-  - Clarify that `ImportSpec.name` names the imported instance and participates in bookmark addressing.
-  - Recommend naming imports when importing the same template multiple times and exposing bookmarkable state.
-- [docs/grammar/parameters.md](../../docs/grammar/parameters.md)
-  - Explain bookmarkability expectations for bound/selection parameters.
-  - Describe scoping/override implications for persisted state.
-- [docs/sample-collections/visualizing.md](../../docs/sample-collections/visualizing.md)
-  - Update the “unique within the view specification” statement to “unique within the import scope instance”.
 - Type comments in [packages/core/src/spec/view.d.ts](src/spec/view.d.ts)
   - Update `ViewSpecBase.name` and `configurableVisibility` docs to mention scoped uniqueness.
   - Optionally add clarifying notes to `ImportSpec.name` about scope/instance naming.
@@ -388,14 +335,6 @@ Update docs to match the new contract:
 
 A successful outcome looks like:
 
-- New shareable URLs and saved bookmarks persist state using selector keys that remain stable under template reuse.
-- The same template can be imported multiple times without requiring globally-unique names throughout the imported subtree.
-- Naming constraints are minimal but strict where needed:
-  - configurable visibility and user-facing parameters are always unambiguous.
-  - importing the same bookmark-relevant subtree multiple times requires explicit import instance names.
-- Legacy bookmarks that store visibilities keyed by plain `view.name` still restore sensibly.
-- Tests cover:
-  - nested imports
-  - import-site name overrides
-  - scoped uniqueness enforcement
-  - bookmark round-trips for both visibilities and parameter states
+- Validation utilities catch ambiguous addressable names and sibling import instances with clear errors.
+- Parameter state is persisted via scoped selectors and round-trips correctly.
+- Tests cover scoped uniqueness enforcement and bookmark round-trips for both visibilities and parameter states.
