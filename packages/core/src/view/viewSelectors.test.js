@@ -172,4 +172,65 @@ describe("view selectors", () => {
         expect(rootParam.view).toBe(root);
         expect(rootParam.view).not.toBe(panelParam.view);
     });
+
+    test("resolveViewSelector handles nested import scopes", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                inner: makeTemplate(),
+                outer: {
+                    vconcat: [
+                        {
+                            import: { template: "inner" },
+                            name: "innerA",
+                        },
+                        {
+                            import: { template: "inner" },
+                            name: "innerB",
+                        },
+                    ],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "outer" },
+                    name: "panelA",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const viewA = resolveViewSelector(root, {
+            scope: ["panelA", "innerA"],
+            view: "coverage",
+        });
+        const viewB = resolveViewSelector(root, {
+            scope: ["panelA", "innerB"],
+            view: "coverage",
+        });
+
+        expect(viewA).toBeDefined();
+        expect(viewB).toBeDefined();
+        expect(viewA).not.toBe(viewB);
+        expect(getViewScopeChain(viewA)).toEqual(["panelA", "innerA"]);
+        expect(getViewScopeChain(viewB)).toEqual(["panelA", "innerB"]);
+
+        expect(
+            resolveViewSelector(root, { scope: ["panelA"], view: "coverage" })
+        ).toBeUndefined();
+
+        const innerRoot = resolveViewSelector(root, {
+            scope: ["panelA"],
+            view: "innerA",
+        });
+        expect(innerRoot).toBeDefined();
+        expect(getViewScopeChain(innerRoot)).toEqual(["panelA", "innerA"]);
+    });
 });
