@@ -301,13 +301,15 @@ export function showDerivedMetadataDialog({
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
             dialog._form.reset();
-            dialog._scaleConfigured = false;
             // Scale props are embedded in the d3 scale function
-            dialog._scale = preservesScaleDomainForAttribute(
+            const initialScale = preservesScaleDomainForAttribute(
                 attributeInfo.attribute
             )
                 ? sanitizeScaleForDerivedMetadata(attributeInfo.scale?.props)
                 : null;
+            dialog._scale = initialScale;
+            // Treat extracted scale as configured so it is applied on submit.
+            dialog._scaleConfigured = Boolean(initialScale);
         }
     );
 }
