@@ -1,6 +1,5 @@
 import { VISIT_SKIP, VISIT_STOP } from "./view.js";
 import { isSelectionParameter, isVariableParameter } from "./paramMediator.js";
-import LayerView from "./layerView.js";
 
 /**
  * Selectors identify views and parameters in a way that stays stable when the
@@ -290,7 +289,11 @@ function isConfigurableVisibility(view) {
         return explicit;
     }
 
-    return !(view.layoutParent && view.layoutParent instanceof LayerView);
+    return !(
+        view.layoutParent &&
+        view.layoutParent.spec &&
+        "layer" in view.layoutParent.spec
+    );
 }
 
 /**
