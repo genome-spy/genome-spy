@@ -27,6 +27,7 @@ import {
     getViewVisibilityOverride,
     normalizeViewSettingsPayload,
 } from "./viewSettingsUtils.js";
+import { validateSelectorConstraints } from "@genome-spy/core/view/viewSelectors.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
@@ -192,6 +193,38 @@ export default class App {
         };
     }
 
+    #showSelectorConstraintWarnings() {
+        const viewRoot = this.genomeSpy.viewRoot;
+        if (!viewRoot) {
+            return;
+        }
+
+        const issues = validateSelectorConstraints(viewRoot);
+        if (!issues.length) {
+            return;
+        }
+
+        const issueList = issues.map(
+            (issue) => html`<li>${issue.message}</li>`
+        );
+
+        showMessageDialog(
+            html`<p>
+                    The visualization loaded, but the view specification has
+                    addressing problems. View visibility toggles, bookmarks, and
+                    parameter bindings may be disabled or behave incorrectly
+                    until these issues are fixed.
+                </p>
+                <ul>
+                    ${issueList}
+                </ul>`,
+            {
+                title: "View specification warnings",
+                type: "warning",
+            }
+        );
+    }
+
     toggleFullScreen() {
         if (!document.fullscreenElement) {
             this.appContainer.requestFullscreen();
@@ -225,6 +258,7 @@ export default class App {
         if (!result) {
             return;
         }
+        this.#showSelectorConstraintWarnings();
 
         const sampleView = this.getSampleView();
         if (sampleView) {
