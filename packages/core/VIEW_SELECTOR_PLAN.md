@@ -243,32 +243,6 @@ The App performs an “early restore” of view visibility before initial data/s
 
 ## Implementation Plan (Phased)
 
-### Phase 2 — Validation of naming constraints
-
-Validation is required for the App’s bookmarking/UI features, but it is not strictly required for Core’s rendering/dataflow. The recommended split is:
-
-- Core provides reusable _validation utilities_ (pure functions) that can detect ambiguity and produce actionable messages.
-- App invokes these utilities and treats violations as fatal errors (or warnings, depending on UX).
-- Other Core consumers may opt in to the validation, but are not forced to.
-
-Introduce validation (ideally as a Core utility, invoked by the App at a spec boundary):
-
-- For each scope instance:
-  - detect addressable features
-  - if addressable and ambiguous:
-    - require unique `ImportSpec.name` for sibling instances
-  - ensure uniqueness of:
-    - configurable view names within scope
-    - bookmarkable parameter names within scope
-
-Validation should fail fast with actionable error messages:
-
-- “Multiple imported instances with configurable visibility require distinct import names”
-- “View with configurableVisibility must have an explicit name”
-- “Bookmarkable parameter ‘brush’ must be unique within the import scope”
-
-Optional lightweight validation in Core (even without App) can still be beneficial for earlier feedback, e.g. checking for duplicate explicit names among sibling views in the same container when those views are intended to be addressable.
-
 ### Phase 4 — Parameter state persistence
 
 - Define what parameter state is persisted:
@@ -288,12 +262,6 @@ Optional lightweight validation in Core (even without App) can still be benefici
 
 Add tests near relevant code (Core package) for:
 
-- Unnamed import instance behavior:
-  - single instance without addressable features → allowed
-  - multiple instances with addressable features → error
-- Scoped uniqueness:
-  - duplicate view names across different import scopes → allowed
-  - duplicate configurable view names within same scope → error
 - Parameter selectors:
   - bound param and selection param are uniquely resolvable by `(scope, param)`
   - override via `ImportSpec.params` still yields stable identity
@@ -319,9 +287,6 @@ Update docs to match the new contract:
   - Optionally add clarifying notes to `ImportSpec.name` about scope/instance naming.
 
 ## Risks & Mitigations
-
-- **Ambiguity when imports are unnamed**
-  - Mitigation: require import instance naming only when multiple addressable instances exist.
 - **Refactors that rename import instance names or view names break bookmarks**
   - Mitigation: treat these names as part of a public contract; document clearly; provide actionable error/warning messages.
 - **Runtime tree contains implementation nodes that shift with refactors**
