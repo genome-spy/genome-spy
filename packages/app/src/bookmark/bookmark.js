@@ -121,11 +121,19 @@ export async function importBookmark(entry, app) {
  */
 export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
     await restoreBookmark(entry, app);
-    if (
+    const shouldShow =
         entry.notes ||
-        (options.mode == "shared" && (entry.name || entry.notes))
-    ) {
+        (options.mode == "shared" && (entry.name || entry.notes));
+    if (shouldShow) {
         await showBookmarkInfoBox(entry, app, options);
+        return;
+    }
+    const existingDialog =
+        /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */ (
+            document.body.querySelector("gs-bookmark-info-box")
+        );
+    if (existingDialog) {
+        existingDialog.closeDialog();
     }
 }
 

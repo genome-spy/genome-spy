@@ -258,6 +258,10 @@ export default class BookmarkInfoBox extends BaseDialog {
                 : html``,
         ];
     }
+
+    closeDialog() {
+        this.triggerClose();
+    }
 }
 
 customElements.define("gs-bookmark-info-box", BookmarkInfoBox);
