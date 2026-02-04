@@ -40,7 +40,7 @@ export const formStyles = css`
             inset 0 1px 0 rgb(255 255 255 / 20%),
             0 1px 2px rgb(0 0 0 / 5%);
 
-        transition: color 0.15s;
+        transition: all 0.015s;
 
         &:hover:not(:disabled) {
             background-image: linear-gradient(to bottom, #f8f8f8, #d8d8d8);

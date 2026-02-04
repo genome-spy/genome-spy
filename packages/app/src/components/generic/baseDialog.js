@@ -147,6 +147,24 @@ export default class BaseDialog extends LitElement {
             footer .btn.btn-primary svg {
                 filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
             }
+
+            footer .btn.btn-primary:disabled {
+                background-color: oklch(
+                    from var(--gs-dialog-primary-bg) calc(l + 0.08) c h
+                );
+                background-image: none;
+                border-color: oklch(
+                    from var(--gs-dialog-primary-bg) calc(l - 0.02) c h
+                );
+                color: oklch(
+                    from var(--gs-theme-on-primary, #ffffff) l c h / 0.6
+                );
+                text-shadow: none;
+            }
+
+            footer .btn.btn-primary:disabled svg {
+                filter: none;
+            }
         `,
     ];
 
