@@ -369,8 +369,8 @@ function formatScope(scope) {
  * @param {SelectorValidationIssue[]} issues
  */
 function validateViewNamesInScope(scopeRoot, scope, issues) {
-    /** @type {Set<string>} */
-    const names = new Set();
+    /** @type {Map<string, import("./view.js").default[]>} */
+    const names = new Map();
 
     visitViewsInScope(
         scopeRoot,
@@ -399,22 +399,35 @@ function validateViewNamesInScope(scopeRoot, scope, issues) {
                 return;
             }
 
-            if (names.has(explicitName)) {
-                issues.push({
-                    message:
-                        'Configurable view name "' +
-                        explicitName +
-                        '" is not unique within ' +
-                        formatScope(scope) +
-                        ".",
-                    scope,
-                });
+            const matches = names.get(explicitName);
+            if (matches) {
+                matches.push(view);
             } else {
-                names.add(explicitName);
+                names.set(explicitName, [view]);
             }
         },
         { includeNamedImportRoots: true }
     );
+
+    for (const [name, matches] of names) {
+        if (matches.length <= 1) {
+            continue;
+        }
+
+        const paths = matches.map((view) => view.getPathString()).join(", ");
+
+        issues.push({
+            message:
+                'Configurable view name "' +
+                name +
+                '" is not unique within ' +
+                formatScope(scope) +
+                ". Found in: " +
+                paths +
+                ".",
+            scope,
+        });
+    }
 }
 
 /**
@@ -425,8 +438,8 @@ function validateViewNamesInScope(scopeRoot, scope, issues) {
  * @param {SelectorValidationIssue[]} issues
  */
 function validateParamNamesInScope(scopeRoot, scope, issues) {
-    /** @type {Set<string>} */
-    const names = new Set();
+    /** @type {Map<string, import("./view.js").default[]>} */
+    const names = new Map();
 
     visitViewsInScope(scopeRoot, (view) => {
         for (const [name, param] of view.paramMediator.paramConfigs) {
@@ -434,21 +447,34 @@ function validateParamNamesInScope(scopeRoot, scope, issues) {
                 continue;
             }
 
-            if (names.has(name)) {
-                issues.push({
-                    message:
-                        'Bookmarkable parameter "' +
-                        name +
-                        '" is not unique within ' +
-                        formatScope(scope) +
-                        ".",
-                    scope,
-                });
+            const matches = names.get(name);
+            if (matches) {
+                matches.push(view);
             } else {
-                names.add(name);
+                names.set(name, [view]);
             }
         }
     });
+
+    for (const [name, matches] of names) {
+        if (matches.length <= 1) {
+            continue;
+        }
+
+        const paths = matches.map((view) => view.getPathString()).join(", ");
+
+        issues.push({
+            message:
+                'Bookmarkable parameter "' +
+                name +
+                '" is not unique within ' +
+                formatScope(scope) +
+                ". Found in: " +
+                paths +
+                ".",
+            scope,
+        });
+    }
 }
 
 /**
@@ -474,27 +500,15 @@ function validateImportInstanceNames(scopeRoot, scope, issues) {
 
     /** @type {Map<string, number>} */
     const counts = new Map();
-    let missingName = false;
 
     for (const view of addressableRoots) {
         const info = importScopes.get(view);
         const name = info ? info.name : undefined;
         if (typeof name !== "string" || !name.length) {
-            missingName = true;
             continue;
         }
 
         counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-
-    if (missingName) {
-        issues.push({
-            message:
-                "Multiple import instances with addressable features require unique names in " +
-                formatScope(scope) +
-                ".",
-            scope,
-        });
     }
 
     for (const [name, count] of counts) {

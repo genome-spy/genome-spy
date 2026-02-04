@@ -295,7 +295,7 @@ describe("view selectors", () => {
         expect(issues.length).toBe(0);
     });
 
-    test("validateSelectorConstraints flags missing import names", async () => {
+    test("validateSelectorConstraints flags duplicate view names in root scope", async () => {
         const context = createTestViewContext();
 
         // Two unnamed imports with addressable content must be named.
@@ -322,8 +322,41 @@ describe("view selectors", () => {
 
         const issues = validateSelectorConstraints(root);
         expect(
-            issues.some((issue) => issue.message.includes("import instances"))
+            issues.some((issue) => issue.message.includes("coverage"))
         ).toBeTruthy();
+    });
+
+    test("validateSelectorConstraints allows unnamed imports with unique names", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                panelA: {
+                    vconcat: [makeUnitSpec("coverageA")],
+                },
+                panelB: {
+                    vconcat: [makeUnitSpec("coverageB")],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panelA" },
+                },
+                {
+                    import: { template: "panelB" },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(issues.length).toBe(0);
     });
 
     test("validateSelectorConstraints flags duplicate bookmarkable params", async () => {
