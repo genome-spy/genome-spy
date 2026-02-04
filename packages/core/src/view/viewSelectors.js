@@ -1,27 +1,22 @@
 import { VISIT_SKIP, VISIT_STOP } from "./view.js";
 import { isSelectionParameter, isVariableParameter } from "./paramMediator.js";
+import LayerView from "./layerView.js";
+
+/**
+ * Selectors identify views and parameters in a way that stays stable when the
+ * same template/import is instantiated multiple times. They combine a chain of
+ * named import instances (scope) with an explicit view or parameter name so
+ * bookmarkable state and visibility toggles do not rely on globally-unique
+ * names or runtime-only nodes.
+ */
 
 /**
  * @typedef {{ scope: string[], view: string }} ViewSelector
- */
-
-/**
  * @typedef {{ scope: string[], param: string }} ParamSelector
- */
-
-/**
+ * @typedef {{ message: string, scope: string[] }} SelectorValidationIssue
  * @typedef {{ name: string | null }} ImportScopeInfo
- */
-
-/**
  * @typedef {"exclude" | "excludeSubtree"} AddressableOverride
- */
-
-/**
  * @typedef {{ skipSubtree?: boolean }} AddressableOptions
- */
-
-/**
  * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter }} ResolvedParam
  */
 
@@ -234,6 +229,28 @@ export function resolveParamSelector(root, selector) {
 }
 
 /**
+ * Validates naming and scoping constraints for addressable views and parameters.
+ *
+ * @param {import("./view.js").default} root
+ * @returns {SelectorValidationIssue[]}
+ */
+export function validateSelectorConstraints(root) {
+    /** @type {SelectorValidationIssue[]} */
+    const issues = [];
+
+    for (const scopeRoot of collectScopeRoots(root)) {
+        const scope = getScopeChainForRoot(scopeRoot);
+        validateViewNamesInScope(scopeRoot, scope, issues);
+        validateParamNamesInScope(scopeRoot, scope, issues);
+        validateImportInstanceNames(scopeRoot, scope, issues);
+    }
+
+    return issues;
+}
+
+/**
+ * Validates the structural shape of a parameter selector.
+ *
  * @param {ParamSelector} selector
  */
 function validateParamSelector(selector) {
@@ -247,6 +264,8 @@ function validateParamSelector(selector) {
 }
 
 /**
+ * Validates the structural shape of a view selector.
+ *
  * @param {ViewSelector} selector
  */
 function validateViewSelector(selector) {
@@ -260,6 +279,23 @@ function validateViewSelector(selector) {
 }
 
 /**
+ * Returns the effective configurableVisibility value for a view.
+ *
+ * @param {import("./view.js").default} view
+ * @returns {boolean}
+ */
+function isConfigurableVisibility(view) {
+    const explicit = view.spec.configurableVisibility;
+    if (explicit !== undefined) {
+        return explicit;
+    }
+
+    return !(view.layoutParent && view.layoutParent instanceof LayerView);
+}
+
+/**
+ * Returns true for parameters that are persisted in bookmarks.
+ *
  * @param {import("../spec/parameter.js").Parameter} param
  * @returns {boolean}
  */
@@ -276,6 +312,275 @@ function isBookmarkableParam(param) {
 }
 
 /**
+ * Collects scope roots for all named import instances and the top-level root.
+ *
+ * @param {import("./view.js").default} root
+ * @returns {import("./view.js").default[]}
+ */
+function collectScopeRoots(root) {
+    /** @type {Set<import("./view.js").default>} */
+    const roots = new Set([root]);
+
+    root.visit((view) => {
+        const info = importScopes.get(view);
+        if (info && typeof info.name === "string") {
+            roots.add(view);
+        }
+    });
+
+    return Array.from(roots);
+}
+
+/**
+ * Builds the full scope chain for a scope root, including its own name.
+ *
+ * @param {import("./view.js").default} scopeRoot
+ * @returns {string[]}
+ */
+function getScopeChainForRoot(scopeRoot) {
+    const chain = getViewScopeChain(scopeRoot);
+    const info = importScopes.get(scopeRoot);
+    if (info && typeof info.name === "string") {
+        return [...chain, info.name];
+    }
+
+    return chain;
+}
+
+/**
+ * Formats a scope chain for diagnostics.
+ *
+ * @param {string[]} scope
+ * @returns {string}
+ */
+function formatScope(scope) {
+    return JSON.stringify(scope);
+}
+
+/**
+ * Checks configurable view names for required explicit and unique naming.
+ *
+ * @param {import("./view.js").default} scopeRoot
+ * @param {string[]} scope
+ * @param {SelectorValidationIssue[]} issues
+ */
+function validateViewNamesInScope(scopeRoot, scope, issues) {
+    /** @type {Set<string>} */
+    const names = new Set();
+
+    visitViewsInScope(
+        scopeRoot,
+        (view) => {
+            const explicitName = view.explicitName;
+            const isConfigurable = isConfigurableVisibility(view);
+            const isExplicitlyConfigurable =
+                view.spec.configurableVisibility === true;
+
+            if (!isConfigurable) {
+                return;
+            }
+
+            if (!explicitName) {
+                if (!isExplicitlyConfigurable) {
+                    return;
+                }
+
+                issues.push({
+                    message:
+                        "Configurable view must have an explicit name in scope " +
+                        formatScope(scope) +
+                        ".",
+                    scope,
+                });
+                return;
+            }
+
+            if (names.has(explicitName)) {
+                issues.push({
+                    message:
+                        'Configurable view name "' +
+                        explicitName +
+                        '" is not unique within scope ' +
+                        formatScope(scope) +
+                        ".",
+                    scope,
+                });
+            } else {
+                names.add(explicitName);
+            }
+        },
+        { includeNamedImportRoots: true }
+    );
+}
+
+/**
+ * Checks bookmarkable parameter names for uniqueness within a scope.
+ *
+ * @param {import("./view.js").default} scopeRoot
+ * @param {string[]} scope
+ * @param {SelectorValidationIssue[]} issues
+ */
+function validateParamNamesInScope(scopeRoot, scope, issues) {
+    /** @type {Set<string>} */
+    const names = new Set();
+
+    visitViewsInScope(scopeRoot, (view) => {
+        for (const [name, param] of view.paramMediator.paramConfigs) {
+            if (!isBookmarkableParam(param)) {
+                continue;
+            }
+
+            if (names.has(name)) {
+                issues.push({
+                    message:
+                        'Bookmarkable parameter "' +
+                        name +
+                        '" is not unique within scope ' +
+                        formatScope(scope) +
+                        ".",
+                    scope,
+                });
+            } else {
+                names.add(name);
+            }
+        }
+    });
+}
+
+/**
+ * Ensures addressable import instances are uniquely named in a scope.
+ *
+ * @param {import("./view.js").default} scopeRoot
+ * @param {string[]} scope
+ * @param {SelectorValidationIssue[]} issues
+ */
+function validateImportInstanceNames(scopeRoot, scope, issues) {
+    const importRoots = collectImmediateImportRoots(scopeRoot);
+    if (!importRoots.length) {
+        return;
+    }
+
+    const addressableRoots = importRoots.filter((view) =>
+        hasAddressableFeatures(view)
+    );
+
+    if (addressableRoots.length <= 1) {
+        return;
+    }
+
+    /** @type {Map<string, number>} */
+    const counts = new Map();
+    let missingName = false;
+
+    for (const view of addressableRoots) {
+        const info = importScopes.get(view);
+        const name = info ? info.name : undefined;
+        if (typeof name !== "string" || !name.length) {
+            missingName = true;
+            continue;
+        }
+
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+
+    if (missingName) {
+        issues.push({
+            message:
+                "Multiple import instances with addressable features require unique names in scope " +
+                formatScope(scope) +
+                ".",
+            scope,
+        });
+    }
+
+    for (const [name, count] of counts) {
+        if (count > 1) {
+            issues.push({
+                message:
+                    'Import instance name "' +
+                    name +
+                    '" is used multiple times for addressable instances in scope ' +
+                    formatScope(scope) +
+                    ".",
+                scope,
+            });
+        }
+    }
+}
+
+/**
+ * Collects direct import roots under a scope root.
+ *
+ * @param {import("./view.js").default} scopeRoot
+ * @returns {import("./view.js").default[]}
+ */
+function collectImmediateImportRoots(scopeRoot) {
+    /** @type {import("./view.js").default[]} */
+    const roots = [];
+
+    scopeRoot.visit((view) => {
+        if (view === scopeRoot) {
+            return;
+        }
+
+        const behavior = addressableOverrides.get(view);
+        if (behavior === "excludeSubtree") {
+            return VISIT_SKIP;
+        }
+
+        const info = importScopes.get(view);
+        if (info) {
+            roots.push(view);
+            return VISIT_SKIP;
+        }
+    });
+
+    return roots;
+}
+
+/**
+ * Detects whether a subtree exposes configurable views or bookmarkable params.
+ *
+ * @param {import("./view.js").default} root
+ * @returns {boolean}
+ */
+function hasAddressableFeatures(root) {
+    let found = false;
+
+    root.visit((view) => {
+        const behavior = addressableOverrides.get(view);
+        if (behavior === "excludeSubtree") {
+            return VISIT_SKIP;
+        }
+
+        if (behavior !== "exclude") {
+            const isConfigurable = isConfigurableVisibility(view);
+            const isExplicitlyConfigurable =
+                view.spec.configurableVisibility === true;
+
+            if (
+                isConfigurable &&
+                (view.explicitName || isExplicitlyConfigurable)
+            ) {
+                found = true;
+                return VISIT_STOP;
+            }
+
+            for (const param of view.paramMediator.paramConfigs.values()) {
+                if (isBookmarkableParam(param)) {
+                    found = true;
+                    return VISIT_STOP;
+                }
+            }
+        }
+    });
+
+    return found;
+}
+
+/**
+ * Resolves a scope chain to its scope root.
+ *
  * @param {import("./view.js").default} root
  * @param {string[]} scope
  * @returns {import("./view.js").default | undefined}
@@ -325,6 +630,8 @@ function resolveScopeRoot(root, scope) {
 }
 
 /**
+ * Visits addressable views within a scope, skipping nested named import roots.
+ *
  * @param {import("./view.js").default} scopeRoot
  * @param {import("./view.js").Visitor} visitor
  * @param {{ includeNamedImportRoots?: boolean }} [options]

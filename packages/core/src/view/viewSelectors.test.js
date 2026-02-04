@@ -6,6 +6,7 @@ import {
     getViewScopeChain,
     resolveParamSelector,
     resolveViewSelector,
+    validateSelectorConstraints,
 } from "./viewSelectors.js";
 
 /**
@@ -34,6 +35,16 @@ const makeUnitSpec = (name) => ({
  */
 const makeTemplate = () => ({
     vconcat: [makeUnitSpec("coverage")],
+});
+
+/**
+ * @param {string} name
+ * @param {import("../spec/parameter.js").Parameter[]} params
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+const makeUnitSpecWithParams = (name, params) => ({
+    ...makeUnitSpec(name),
+    params,
 });
 
 describe("view selectors", () => {
@@ -232,5 +243,126 @@ describe("view selectors", () => {
         });
         expect(innerRoot).toBeDefined();
         expect(getViewScopeChain(innerRoot)).toEqual(["panelA", "innerA"]);
+    });
+
+    test("validateSelectorConstraints reports duplicate configurable view names", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            vconcat: [makeUnitSpec("coverage"), makeUnitSpec("coverage")],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(
+            issues.some((issue) => issue.message.includes("coverage"))
+        ).toBeTruthy();
+    });
+
+    test("validateSelectorConstraints ignores duplicates across named scopes", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                panel: makeTemplate(),
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+                {
+                    import: { template: "panel" },
+                    name: "panelB",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(issues.length).toBe(0);
+    });
+
+    test("validateSelectorConstraints flags missing import names", async () => {
+        const context = createTestViewContext();
+
+        // Two unnamed imports with addressable content must be named.
+        const spec = {
+            templates: {
+                panel: makeTemplate(),
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                },
+                {
+                    import: { template: "panel" },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(
+            issues.some((issue) => issue.message.includes("import instances"))
+        ).toBeTruthy();
+    });
+
+    test("validateSelectorConstraints flags duplicate bookmarkable params", async () => {
+        const context = createTestViewContext();
+
+        const rangeBind =
+            /** @type {import("../spec/parameter.js").BindRange} */ ({
+                input: "range",
+            });
+
+        const spec = {
+            vconcat: [
+                makeUnitSpecWithParams("coverage", [
+                    {
+                        name: "threshold",
+                        value: 0,
+                        bind: rangeBind,
+                    },
+                ]),
+                makeUnitSpecWithParams("coverageB", [
+                    {
+                        name: "threshold",
+                        value: 1,
+                        bind: rangeBind,
+                    },
+                ]),
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(
+            issues.some((issue) => issue.message.includes("threshold"))
+        ).toBeTruthy();
     });
 });
