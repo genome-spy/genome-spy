@@ -54,6 +54,7 @@ import {
 } from "./metadata/metadataUtils.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { getViewVisibilityKey } from "../viewSettingsUtils.js";
+import { resolveViewRef } from "./viewRef.js";
 import {
     buildIntervalAggregationMenu,
     buildPointQueryMenu,
@@ -256,11 +257,7 @@ export default class SampleView extends ContainerView {
      * @returns {import("@genome-spy/core/view/view.js").default}
      */
     #resolveViewForSpecifier(specifier) {
-        const view = this.findDescendantByName(specifier.view);
-        if (!view) {
-            throw new Error(`Cannot find view: ${specifier.view}`);
-        }
-        return view;
+        return resolveViewRef(this, specifier.view);
     }
 
     /**

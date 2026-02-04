@@ -3,16 +3,18 @@ import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { selectionContainsPoint } from "@genome-spy/core/selection/selection.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
-import {
-    findEncodedFields,
-    findUniqueViewNames,
-} from "@genome-spy/core/view/viewUtils.js";
+import { findEncodedFields } from "@genome-spy/core/view/viewUtils.js";
 import { DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
 import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
+import {
+    createViewRef,
+    getUniqueViewRefKeys,
+    getViewRefKey,
+} from "./viewRef.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -91,7 +93,7 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
  * @returns {FieldInfo[]}
  */
 export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
-    const uniqueViewNames = findUniqueViewNames(layoutRoot);
+    const uniqueViewKeys = getUniqueViewRefKeys(layoutRoot);
 
     /** @type {import("@genome-spy/core/view/unitView.js").default[]} */
     const unitViews = [];
@@ -103,8 +105,11 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
 
     let fieldInfos = findEncodedFields(view)
         .filter((d) => !["sample", "x", "x2"].includes(d.channel))
-        // TODO: Log a warning if the view name is not unique
-        .filter((info) => info.view.name && uniqueViewNames.has(info.view.name))
+        // TODO: Log a warning if the view reference is not unique.
+        .filter((info) => {
+            const viewKey = getViewRefKey(info.view);
+            return viewKey && uniqueViewKeys.has(viewKey);
+        })
         .filter((info) => info.view.isVisible());
 
     if (hasInterval) {
@@ -113,7 +118,8 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
                 continue;
             }
 
-            if (!unitView.name || !uniqueViewNames.has(unitView.name)) {
+            const viewKey = getViewRefKey(unitView);
+            if (!viewKey || !uniqueViewKeys.has(viewKey)) {
                 continue;
             }
 
@@ -144,10 +150,13 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
     // The same field may be used on multiple channels.
     return Array.from(
         new Map(
-            fieldInfos.map((info) => [
-                JSON.stringify([info.view.name, info.field]),
-                info,
-            ])
+            fieldInfos.map((info) => {
+                const viewKey = getViewRefKey(info.view);
+                return [
+                    JSON.stringify([viewKey ?? info.view.name, info.field]),
+                    info,
+                ];
+            })
         ).values()
     );
 }
@@ -172,6 +181,7 @@ export function buildIntervalAggregationMenu({
     attributeType,
     sampleView,
 }) {
+    const viewRef = createViewRef(fieldInfo.view);
     const availableOps =
         fieldInfo.type === "quantitative"
             ? aggregationOps
@@ -190,7 +200,7 @@ export function buildIntervalAggregationMenu({
 
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
             const specifier = {
-                view: fieldInfo.view.name,
+                view: viewRef,
                 field: fieldInfo.field,
                 interval: selectionIntervalComplex,
                 aggregation: { op: op.op },
@@ -245,9 +255,10 @@ export function buildPointQueryMenu({
     attributeType,
     sampleView,
 }) {
+    const viewRef = createViewRef(fieldInfo.view);
     /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
     const specifier = {
-        view: fieldInfo.view.name,
+        view: viewRef,
         field: fieldInfo.field,
         locus: complexX,
     };
