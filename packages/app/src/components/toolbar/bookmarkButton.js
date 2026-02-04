@@ -17,6 +17,7 @@ import { queryDependency } from "../../utils/dependency.js";
 import { restoreBookmarkAndShowInfoBox } from "../../bookmark/bookmark.js";
 import { showEnterBookmarkInfoDialog } from "../dialogs/enterBookmarkDialog.js";
 import { showShareBookmarkDialog } from "../dialogs/shareBookmarkDialog.js";
+import { buildViewSettingsPayload } from "../../viewSettingsUtils.js";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -53,8 +54,15 @@ class BookmarkButton extends LitElement {
         };
 
         const viewSettings = this.app.store.getState().viewSettings;
-        if (Object.keys(viewSettings.visibilities).length) {
-            bookmark.viewSettings = viewSettings;
+        const viewRoot = this.app.genomeSpy.viewRoot;
+        if (viewRoot) {
+            const viewSettingsPayload = buildViewSettingsPayload(
+                viewRoot,
+                viewSettings
+            );
+            if (viewSettingsPayload) {
+                bookmark.viewSettings = viewSettingsPayload;
+            }
         }
 
         for (const [scaleName, scaleResolution] of this.app.genomeSpy

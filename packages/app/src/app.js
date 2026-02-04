@@ -22,6 +22,11 @@ import {
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
+import {
+    buildViewSettingsPayload,
+    getViewVisibilityOverride,
+    normalizeViewSettingsPayload,
+} from "./viewSettingsUtils.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
@@ -174,9 +179,17 @@ export default class App {
         ) => state.viewSettings?.visibilities ?? EMPTY_VISIBILITIES;
 
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
-        this.genomeSpy.viewVisibilityPredicate = (view) =>
-            visibilitiesSelector(this.store.getState())[view.name] ??
-            originalPredicate(view);
+        this.genomeSpy.viewVisibilityPredicate = (view) => {
+            const override = getViewVisibilityOverride(
+                visibilitiesSelector(this.store.getState()),
+                view
+            );
+            if (override !== undefined) {
+                return override;
+            }
+
+            return originalPredicate(view);
+        };
     }
 
     toggleFullScreen() {
@@ -321,10 +334,11 @@ export default class App {
                 remoteBookmarkPromise
             );
             if (entry?.viewSettings) {
+                const normalized = normalizeViewSettingsPayload(
+                    entry.viewSettings
+                );
                 this.store.dispatch(
-                    viewSettingsSlice.actions.setViewSettings(
-                        entry.viewSettings
-                    )
+                    viewSettingsSlice.actions.setViewSettings(normalized)
                 );
             }
         } catch (e) {
@@ -390,8 +404,15 @@ export default class App {
         }
 
         const viewSettings = this.store.getState().viewSettings;
-        if (Object.keys(viewSettings.visibilities).length) {
-            hashData.viewSettings = viewSettings;
+        const viewRoot = this.genomeSpy.viewRoot;
+        if (viewRoot) {
+            const viewSettingsPayload = buildViewSettingsPayload(
+                viewRoot,
+                viewSettings
+            );
+            if (viewSettingsPayload) {
+                hashData.viewSettings = viewSettingsPayload;
+            }
         }
 
         const hash =

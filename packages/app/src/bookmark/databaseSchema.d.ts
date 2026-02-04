@@ -1,6 +1,6 @@
 import { DBSchema } from "idb";
 import { ChromosomalLocus } from "@genome-spy/core/genome/genome.js";
-import { ViewSettings } from "../state.js";
+import { ViewSettingsPayload } from "../state.js";
 import { Action } from "../state/provenance.js";
 
 export interface BookmarkEntry {
@@ -22,7 +22,7 @@ export interface BookmarkEntry {
     /**
      * Settings such as view visibilities
      */
-    viewSettings?: ViewSettings;
+    viewSettings?: ViewSettingsPayload;
 }
 
 export interface BookmarkDB extends DBSchema {

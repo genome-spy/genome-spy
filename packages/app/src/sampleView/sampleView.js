@@ -53,6 +53,7 @@ import {
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 import {
     buildIntervalAggregationMenu,
     buildPointQueryMenu,
@@ -269,12 +270,13 @@ export default class SampleView extends ContainerView {
      */
     #ensureViewVisible(view) {
         for (const ancestor of view.getLayoutAncestors()) {
-            if (!ancestor.name) {
+            const selectorKey = getViewVisibilityKey(ancestor);
+            if (!selectorKey) {
                 continue;
             }
             this.provenance.store.dispatch(
                 viewSettingsSlice.actions.setVisibility({
-                    name: ancestor.name,
+                    key: selectorKey,
                     visibility: true,
                 })
             );

@@ -16,9 +16,9 @@ export const viewSettingsSlice = createSlice({
     reducers: {
         setVisibility: (
             state,
-            /** @type {PayloadAction<{name: string, visibility: boolean}>} */ action
+            /** @type {PayloadAction<{key: string, visibility: boolean}>} */ action
         ) => {
-            state.visibilities[action.payload.name] = action.payload.visibility;
+            state.visibilities[action.payload.key] = action.payload.visibility;
         },
 
         restoreDefaultVisibility: (
