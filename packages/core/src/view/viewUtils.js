@@ -208,26 +208,6 @@ export function stackifyVisitor(visitor) {
 }
 
 /**
- * Finds the descendants having the given name. The root is included in the search.
- *
- * @param {View} root
- * @param {string} name View name
- * @returns {View[]}
- */
-export function findDescendantsByPath(root, name) {
-    /** @type {View[]} */
-    const descendants = [];
-
-    root.visit((view) => {
-        if (view.name == name) {
-            descendants.push(view);
-        }
-    });
-
-    return descendants;
-}
-
-/**
  *
  * @param {View} root
  */
