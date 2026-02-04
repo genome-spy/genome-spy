@@ -289,6 +289,7 @@ class UploadMetadataDialog extends BaseDialog {
             this.makeButton(next.label, () => this.#changePage(1), {
                 iconDef: next.icon ?? undefined,
                 disabled: !this.#canAdvancePage(),
+                isPrimary: true,
             }),
         ];
     }

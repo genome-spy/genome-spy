@@ -55,10 +55,14 @@ export default class MessageDialog extends BaseDialog {
         if (this.confirm) {
             return [
                 this.makeCloseButton("Cancel"),
-                this.makeButton("OK", () => {
-                    this.finish({ ok: true });
-                    this.triggerClose();
-                }),
+                this.makeButton(
+                    "OK",
+                    () => {
+                        this.finish({ ok: true });
+                        this.triggerClose();
+                    },
+                    { isPrimary: true }
+                ),
             ];
         } else {
             return super.renderButtons();

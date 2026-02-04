@@ -340,6 +340,7 @@ class CreateCustomGroupsDialog extends BaseDialog {
             this.makeButton("Cancel", () => this.finish({ ok: false })),
             this.makeButton("Group", () => this.#onGroup(), {
                 iconDef: faObjectGroup,
+                isPrimary: true,
             }),
         ];
     }

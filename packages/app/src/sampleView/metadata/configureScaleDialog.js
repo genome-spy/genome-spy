@@ -1291,20 +1291,13 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     renderFooter() {
-        return html`
-            <div>
-                <button class="btn" @click=${() => this.triggerClose()}>
-                    Cancel
-                </button>
-                <button
-                    class="btn btn-primary"
-                    ?disabled=${this.unsupportedPiecewise}
-                    @click=${() => this.#validateAndSubmit()}
-                >
-                    Apply
-                </button>
-            </div>
-        `;
+        return html`<div>
+            ${this.makeButton("Cancel", () => this.triggerClose())}
+            ${this.makeButton("Apply", () => this.#validateAndSubmit(), {
+                disabled: this.unsupportedPiecewise,
+                isPrimary: true,
+            })}
+        </div>`;
     }
 }
 

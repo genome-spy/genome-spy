@@ -181,6 +181,7 @@ export class DerivedMetadataDialog extends BaseDialog {
             this.makeButton("Add", () => this.#onAdd(), {
                 iconDef: faPlus,
                 disabled: hasErrors,
+                isPrimary: true,
             }),
         ];
     }

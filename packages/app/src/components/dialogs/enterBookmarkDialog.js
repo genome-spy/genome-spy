@@ -142,9 +142,11 @@ export default class EnterBookmarkDialog extends BaseDialog {
                 ? this.makeButton("Make a link", () => this.#onOk(), {
                       iconDef: faShare,
                       disabled: hasErrors,
+                      isPrimary: true,
                   })
                 : this.makeButton("Save", () => this.#onOk(), {
                       disabled: hasErrors,
+                      isPrimary: true,
                   }),
         ];
     }

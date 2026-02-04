@@ -2,6 +2,21 @@ import { LitElement, html, css, nothing } from "lit";
 import { faStyles, formStyles } from "./componentStyles.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 
+const DEFAULT_ACTION_INPUT_TYPES = new Set([
+    "text",
+    "search",
+    "email",
+    "url",
+    "password",
+    "tel",
+    "number",
+    "date",
+    "time",
+    "datetime-local",
+    "month",
+    "week",
+]);
+
 /**
  * @typedef {object} DialogFinishDetail
  * @property {boolean} ok
@@ -99,6 +114,15 @@ export default class BaseDialog extends LitElement {
                     gap: var(--gs-basic-spacing, 10px);
                 }
             }
+
+            footer .btn.btn-primary {
+                background-image: linear-gradient(to bottom, #f2f8ff, #dbe9f6);
+                border-color: #8fa8c2;
+            }
+
+            footer .btn.btn-primary:hover:not(:disabled) {
+                background-image: linear-gradient(to bottom, #e8f2ff, #cbdff1);
+            }
         `,
     ];
 
@@ -111,8 +135,72 @@ export default class BaseDialog extends LitElement {
         this.modal = true;
 
         this.addEventListener("keydown", (/** @type {KeyboardEvent} */ e) => {
+            this.#handleKeyDown(e);
             e.stopPropagation();
         });
+    }
+
+    /**
+     * @param {KeyboardEvent} event
+     */
+    #handleKeyDown(event) {
+        if (event.defaultPrevented) {
+            return;
+        }
+
+        const isPlainEnter =
+            event.key == "Enter" &&
+            !event.isComposing &&
+            !event.altKey &&
+            !event.ctrlKey &&
+            !event.metaKey;
+
+        if (isPlainEnter) {
+            const target = /** @type {HTMLElement | null} */ (
+                event
+                    .composedPath()
+                    .find((entry) => entry instanceof HTMLElement)
+            );
+            if (this.#canTriggerDefaultAction(target)) {
+                const primaryButton = this.#getPrimaryButton();
+                if (primaryButton) {
+                    event.preventDefault();
+                    primaryButton.click();
+                }
+            }
+        }
+    }
+
+    /**
+     * @param {HTMLElement | null} target
+     * @returns {boolean}
+     */
+    #canTriggerDefaultAction(target) {
+        const root =
+            this.renderRoot instanceof ShadowRoot ? this.renderRoot : null;
+        const element =
+            target ?? /** @type {HTMLElement | null} */ (root?.activeElement);
+        if (!element) {
+            return true;
+        }
+
+        const input = /** @type {HTMLInputElement | null} */ (
+            element.closest("input")
+        );
+        if (!input) {
+            return false;
+        }
+
+        const type = (input.type || "text").toLowerCase();
+        return DEFAULT_ACTION_INPUT_TYPES.has(type);
+    }
+
+    #getPrimaryButton() {
+        return /** @type {HTMLButtonElement | null} */ (
+            this.renderRoot.querySelector(
+                "footer button[data-primary]:not(:disabled)"
+            )
+        );
     }
 
     firstUpdated() {
@@ -227,18 +315,32 @@ export default class BaseDialog extends LitElement {
      *  iconDef?: import("@fortawesome/fontawesome-svg-core").IconDefinition,
      *  disabled?: boolean,
      *  preventMouseDown?: boolean,
+     *  isPrimary?: boolean,
      * }} [options]
      * @protected
      */
     makeButton(title, callback, options = {}) {
-        const { iconDef, disabled = false, preventMouseDown = false } = options;
+        const {
+            iconDef,
+            disabled = false,
+            preventMouseDown = false,
+            isPrimary = false,
+        } = options;
         // Ugly hack. TODO: Allow defining icon position in the future
         const reverse = title == "Next";
+        const classNames = ["btn"];
+        if (reverse) {
+            classNames.push("reverse");
+        }
+        if (isPrimary) {
+            classNames.push("btn-primary");
+        }
         return html`<button
-            class=${reverse ? "btn reverse" : "btn"}
+            class=${classNames.join(" ")}
             type="button"
             title=${title}
             ?disabled=${disabled}
+            ?data-primary=${isPrimary}
             @mousedown=${preventMouseDown
                 ? (/** @type {MouseEvent} */ event) => event.preventDefault()
                 : undefined}

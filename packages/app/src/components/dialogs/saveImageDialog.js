@@ -180,7 +180,7 @@ export default class SaveImageDialog extends BaseDialog {
                     this.finish({ ok: true });
                     this.triggerClose();
                 },
-                { iconDef: faDownload }
+                { iconDef: faDownload, isPrimary: true }
             ),
         ];
     }

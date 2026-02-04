@@ -270,11 +270,12 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
     renderButtons() {
         return [
             this.makeButton("Cancel", () => this.finish({ ok: false })),
-            this.makeButton("Retain", () => this.#onRetain(false), {
-                iconDef: faFilter,
-            }),
             this.makeButton("Remove", () => this.#onRetain(true), {
                 iconDef: faTrashAlt,
+            }),
+            this.makeButton("Retain", () => this.#onRetain(false), {
+                iconDef: faFilter,
+                isPrimary: true,
             }),
         ];
     }
@@ -422,6 +423,7 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
             this.makeButton("Cancel", () => this.finish({ ok: false })),
             this.makeButton("Retain", () => this.#onRetain(), {
                 iconDef: faFilter,
+                isPrimary: true,
             }),
         ];
     }

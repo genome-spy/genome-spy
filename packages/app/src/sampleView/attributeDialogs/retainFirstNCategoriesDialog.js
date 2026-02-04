@@ -53,6 +53,7 @@ export class RetainFirstNCategoriesDialog extends BaseDialog {
             }),
             this.makeButton("Retain", () => this.#onRetain(), {
                 iconDef: faFilter,
+                isPrimary: true,
             }),
         ];
     }
