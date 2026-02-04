@@ -171,11 +171,26 @@ Target behavior:
 
 ### Legacy restore must still work
 
-Restoration must accept legacy `{ [name: string]: boolean }` (view name keys).
+"Legacy" refers to bookmarks / URL hashes created before selectors existed. Those payloads store view visibility state as a plain mapping keyed by a view name string (the historical `view.name` contract), e.g.:
+
+```json
+{
+  "viewSettings": {
+    "visibilities": {
+      "coverage": true,
+      "variants": false
+    }
+  }
+}
+```
+
+Restoration must continue to accept this legacy shape: `{ [viewName: string]: boolean }`.
 
 - On restore:
   - If a key parses as a selector → resolve it.
-  - Else treat as legacy name → apply legacy behavior.
+  - Else treat as a legacy view name → apply legacy behavior (best-effort):
+    - find all addressable views whose **explicit name** equals the legacy key and apply the boolean.
+    - if the legacy key matches multiple views (possible with template reuse), apply it to all matches and optionally emit a warning that the legacy bookmark is ambiguous.
 
 This approach does not require migrating legacy keys in Redux state.
 
