@@ -354,7 +354,11 @@ function getScopeChainForRoot(scopeRoot) {
  * @returns {string}
  */
 function formatScope(scope) {
-    return JSON.stringify(scope);
+    if (!scope.length) {
+        return "import scope (root)";
+    }
+
+    return "import scope [" + scope.join(" / ") + "]";
 }
 
 /**
@@ -387,7 +391,7 @@ function validateViewNamesInScope(scopeRoot, scope, issues) {
 
                 issues.push({
                     message:
-                        "Configurable view must have an explicit name in scope " +
+                        "Configurable view must have an explicit name in " +
                         formatScope(scope) +
                         ".",
                     scope,
@@ -400,7 +404,7 @@ function validateViewNamesInScope(scopeRoot, scope, issues) {
                     message:
                         'Configurable view name "' +
                         explicitName +
-                        '" is not unique within scope ' +
+                        '" is not unique within ' +
                         formatScope(scope) +
                         ".",
                     scope,
@@ -435,7 +439,7 @@ function validateParamNamesInScope(scopeRoot, scope, issues) {
                     message:
                         'Bookmarkable parameter "' +
                         name +
-                        '" is not unique within scope ' +
+                        '" is not unique within ' +
                         formatScope(scope) +
                         ".",
                     scope,
@@ -486,7 +490,7 @@ function validateImportInstanceNames(scopeRoot, scope, issues) {
     if (missingName) {
         issues.push({
             message:
-                "Multiple import instances with addressable features require unique names in scope " +
+                "Multiple import instances with addressable features require unique names in " +
                 formatScope(scope) +
                 ".",
             scope,
@@ -499,7 +503,7 @@ function validateImportInstanceNames(scopeRoot, scope, issues) {
                 message:
                     'Import instance name "' +
                     name +
-                    '" is used multiple times for addressable instances in scope ' +
+                    '" is used multiple times for addressable instances in ' +
                     formatScope(scope) +
                     ".",
                 scope,
