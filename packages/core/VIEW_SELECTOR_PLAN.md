@@ -27,7 +27,7 @@ Add parameter payload to `viewSettings` (bookmark/URL payload only):
 
 ```
 viewSettings: {
-  visibilities: [{ scope, view, on }],
+  visibilities: [{ scope, view, visible }],
   params: [{ scope, param, value }]
 }
 ```

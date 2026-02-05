@@ -101,7 +101,7 @@ export function normalizeViewSettingsPayload(payload) {
                 continue;
             }
 
-            if (typeof entry.on !== "boolean") {
+            if (typeof entry.visible !== "boolean") {
                 continue;
             }
 
@@ -110,7 +110,7 @@ export function normalizeViewSettingsPayload(payload) {
                     scope: entry.scope,
                     view: entry.view,
                 })
-            ] = entry.on;
+            ] = entry.visible;
         }
 
         return { visibilities: normalized };
@@ -195,7 +195,7 @@ export function buildViewVisibilityEntries(viewRoot, visibilities) {
         entries.push({
             scope: selector.scope,
             view: selector.view,
-            on: value,
+            visible: value,
         });
     }
 

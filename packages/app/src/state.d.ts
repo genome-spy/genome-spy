@@ -12,7 +12,7 @@ export interface ViewSettings {
 export interface ViewVisibilityEntry {
     scope: string[];
     view: string;
-    on: boolean;
+    visible: boolean;
 }
 
 export type ViewVisibilityWire =

@@ -67,8 +67,8 @@ describe("view visibility entries", () => {
         expect(entries).toHaveLength(2);
         expect(entries).toEqual(
             expect.arrayContaining([
-                { scope: ["panelA"], view: "coverage", on: false },
-                { scope: ["panelB"], view: "coverage", on: false },
+                { scope: ["panelA"], view: "coverage", visible: false },
+                { scope: ["panelB"], view: "coverage", visible: false },
             ])
         );
         expect(warn).toHaveBeenCalled();
