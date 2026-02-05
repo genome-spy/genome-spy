@@ -222,7 +222,12 @@ export default class ParamProvenanceBridge {
             return false;
         }
 
-        const lastAction = this.#store.getState().provenance.present.lastAction;
+        const { past, present } = this.#store.getState().provenance;
+        if (past.length === 0) {
+            return false;
+        }
+
+        const lastAction = present.lastAction;
         if (!lastAction) {
             return false;
         }
