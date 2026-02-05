@@ -284,7 +284,7 @@ export default class ParamProvenanceBridge {
             if (isIntervalSelectionConfig(select)) {
                 if (!isIntervalSelection(value)) {
                     this.#queueWarning(
-                        `Cannot persist interval selection "${param.name}". The selection value is missing.`
+                        `Cannot persist interval selection "${param.name}" because the selection has no value yet.`
                     );
                     return;
                 }
@@ -350,7 +350,7 @@ export default class ParamProvenanceBridge {
                     this.#queueWarning(
                         `Cannot restore parameter "${paramName}" in import scope ${JSON.stringify(
                             scope
-                        )}. Ensure the parameter exists and has a unique name in that scope.`
+                        )}. The parameter is missing or no longer unique in that scope. Check import names and parameter names.`
                     );
                 }
             }
@@ -376,7 +376,7 @@ export default class ParamProvenanceBridge {
             if (isPointSelectionConfig(select)) {
                 if (storedValue.type !== "point") {
                     this.#queueWarning(
-                        `Cannot restore selection "${param.name}" because the stored value is not a point selection.`
+                        `Cannot restore selection "${param.name}" because the bookmark stored a different selection type.`
                     );
                     return getDefaultParamValue(
                         param,
@@ -394,7 +394,7 @@ export default class ParamProvenanceBridge {
 
                 if (storedValue.keyField !== keyFields[0]) {
                     this.#queueWarning(
-                        `Cannot restore selection "${param.name}" because the key field does not match the current encoding.`
+                        `Cannot restore selection "${param.name}" because the bookmark uses key field "${storedValue.keyField}" but the view now uses "${keyFields[0]}". Update encoding.key or recreate the bookmark.`
                     );
                     return getDefaultParamValue(
                         param,
@@ -414,7 +414,7 @@ export default class ParamProvenanceBridge {
                     : null;
                 if (!collector) {
                     this.#queueWarning(
-                        `Cannot restore selection "${param.name}" because no data collector is available.`
+                        `Cannot restore selection "${param.name}" because the view does not expose data for key lookup.`
                     );
                     return getDefaultParamValue(
                         param,
@@ -442,7 +442,7 @@ export default class ParamProvenanceBridge {
                     );
                 } catch (error) {
                     this.#queueWarning(
-                        `Cannot restore selection "${param.name}": ${error}`
+                        `Cannot restore selection "${param.name}" due to an error: ${error}`
                     );
                     return getDefaultParamValue(
                         param,
@@ -452,7 +452,7 @@ export default class ParamProvenanceBridge {
 
                 if (resolved.unresolved.length) {
                     this.#queueWarning(
-                        `Some selected points for "${param.name}" could not be resolved. Ensure that the key field is unique and present in the data.`
+                        `Some selected points for "${param.name}" could not be resolved. Ensure encoding.key is unique and present in the data.`
                     );
                 }
 
@@ -462,7 +462,7 @@ export default class ParamProvenanceBridge {
             if (isIntervalSelectionConfig(select)) {
                 if (storedValue.type !== "interval") {
                     this.#queueWarning(
-                        `Cannot restore selection "${param.name}" because the stored value is not an interval selection.`
+                        `Cannot restore selection "${param.name}" because the bookmark stored a different selection type.`
                     );
                     return getDefaultParamValue(
                         param,
@@ -506,7 +506,7 @@ export default class ParamProvenanceBridge {
         if (isVariableParameter(param)) {
             if (storedValue.type !== "value") {
                 this.#queueWarning(
-                    `Cannot restore parameter "${param.name}" because the stored value type does not match.`
+                    `Cannot restore parameter "${param.name}" because the bookmark stored a different value type.`
                 );
                 return getDefaultParamValue(param, entry.view.paramMediator);
             }
@@ -549,7 +549,7 @@ export default class ParamProvenanceBridge {
         const originView = resolveViewSelector(this.#root, origin.view);
         if (!originView) {
             this.#queueWarning(
-                "Cannot resolve selection origin because the source view is missing."
+                "Cannot resolve selection origin because the source view is missing. Using stored coordinates instead."
             );
             return;
         }
@@ -562,7 +562,7 @@ export default class ParamProvenanceBridge {
         const collector = getCollector ? getCollector.call(originView) : null;
         if (!collector) {
             this.#queueWarning(
-                "Cannot resolve selection origin because no data collector is available."
+                "Cannot resolve selection origin because the source view does not expose data. Using stored coordinates instead."
             );
             return;
         }
@@ -571,13 +571,15 @@ export default class ParamProvenanceBridge {
         try {
             datum = collector.findDatumByKey([origin.keyField], [origin.key]);
         } catch (error) {
-            this.#queueWarning(`Cannot resolve selection origin: ${error}`);
+            this.#queueWarning(
+                `Cannot resolve selection origin due to an error: ${error}`
+            );
             return;
         }
 
         if (!datum) {
             this.#queueWarning(
-                "Cannot resolve selection origin because the origin datum is missing."
+                "Cannot resolve selection origin because the origin datum is missing. Using stored coordinates instead."
             );
             return;
         }
@@ -642,7 +644,9 @@ export default class ParamProvenanceBridge {
         try {
             keyFields = getEncodingKeyFields(entry.view.getEncoding());
         } catch (error) {
-            this.#queueWarning(String(error));
+            this.#queueWarning(
+                `Cannot use encoding.key for selection "${entry.param.name}": ${error}`
+            );
             return;
         }
 
@@ -697,8 +701,9 @@ export default class ParamProvenanceBridge {
             const items = messages.map((msg) => html`<li>${msg}</li>`);
             showMessageDialog(
                 html`<p>
-                        The visualization loaded, but some parameter state could
-                        not be restored.
+                        The visualization loaded, but some parameter state from
+                        the bookmark could not be restored. Selections and bound
+                        inputs may differ from the saved state.
                     </p>
                     <ul>
                         ${items}
