@@ -12,12 +12,15 @@ import { isSelectionParameter, isVariableParameter } from "./paramMediator.js";
 /**
  * @typedef {{ scope: string[], view: string }} ViewSelector
  * @typedef {{ scope: string[], param: string }} ParamSelector
+ * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter, selector: ParamSelector }} BookmarkableParamEntry
  * @typedef {{ message: string, scope: string[] }} SelectorValidationIssue
  * @typedef {{ name: string | null }} ImportScopeInfo
  * @typedef {"exclude" | "excludeSubtree"} AddressableOverride
  * @typedef {{ skipSubtree?: boolean }} AddressableOptions
  * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter }} ResolvedParam
  */
+
+export const PARAM_SELECTOR_KEY_PREFIX = "p:";
 
 /** @type {WeakMap<import("./view.js").default, ImportScopeInfo>} */
 const importScopes = new WeakMap();
@@ -99,6 +102,40 @@ export function getViewSelector(view) {
         scope: getViewScopeChain(view),
         view: explicitName,
     };
+}
+
+/**
+ * Returns a parameter selector for a parameter registered in a view.
+ *
+ * @param {import("./view.js").default} view
+ * @param {string} paramName
+ * @returns {ParamSelector}
+ */
+export function getParamSelector(view, paramName) {
+    if (!paramName) {
+        throw new Error(
+            "Cannot build a selector for a parameter without a name."
+        );
+    }
+
+    return {
+        scope: getViewScopeChain(view),
+        param: paramName,
+    };
+}
+
+/**
+ * Returns a stable key for a parameter selector.
+ *
+ * @param {ParamSelector} selector
+ * @returns {string}
+ */
+export function makeParamSelectorKey(selector) {
+    validateParamSelector(selector);
+    return (
+        PARAM_SELECTOR_KEY_PREFIX +
+        JSON.stringify({ scope: selector.scope, param: selector.param })
+    );
 }
 
 /**
@@ -225,6 +262,50 @@ export function resolveParamSelector(root, selector) {
             '" in scope ' +
             JSON.stringify(selector.scope)
     );
+}
+
+/**
+ * Visits bookmarkable parameters in the view hierarchy.
+ *
+ * @param {import("./view.js").default} root
+ * @param {(entry: BookmarkableParamEntry) => void} visitor
+ */
+export function visitBookmarkableParams(root, visitor) {
+    root.visit((view) => {
+        const behavior = addressableOverrides.get(view);
+        if (behavior === "excludeSubtree") {
+            return VISIT_SKIP;
+        }
+
+        if (behavior === "exclude") {
+            return;
+        }
+
+        for (const [name, param] of view.paramMediator.paramConfigs) {
+            if (!isBookmarkableParam(param)) {
+                continue;
+            }
+
+            visitor({
+                view,
+                param,
+                selector: getParamSelector(view, name),
+            });
+        }
+    });
+}
+
+/**
+ * Returns bookmarkable parameters in the view hierarchy.
+ *
+ * @param {import("./view.js").default} root
+ * @returns {BookmarkableParamEntry[]}
+ */
+export function getBookmarkableParams(root) {
+    /** @type {BookmarkableParamEntry[]} */
+    const entries = [];
+    visitBookmarkableParams(root, (entry) => entries.push(entry));
+    return entries;
 }
 
 /**

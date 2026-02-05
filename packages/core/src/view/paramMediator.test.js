@@ -17,6 +17,26 @@ describe("Single-level ParamMediator", () => {
         expect(pm.getValue("foo")).toBe(43);
     });
 
+    test("Subscribe notifies on value changes", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+
+        let calls = 0;
+        const unsubscribe = pm.subscribe("foo", () => {
+            calls++;
+        });
+
+        setter(2);
+        setter(2);
+        setter(3);
+
+        expect(calls).toBe(2);
+
+        unsubscribe();
+        setter(4);
+        expect(calls).toBe(2);
+    });
+
     test("Expressions have access to parameters", () => {
         const pm = new ParamMediator();
         pm.registerParam({ name: "foo", value: 42 });
@@ -124,6 +144,22 @@ describe("Single-level ParamMediator", () => {
 
         setter(52);
         expect(result).toBe(55);
+    });
+
+    test("Subscribe tracks expression parameter changes", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+        pm.registerParam({ name: "bar", expr: "foo + 1" });
+
+        let calls = 0;
+        pm.subscribe("bar", () => {
+            calls++;
+        });
+
+        setter(2);
+        setter(2);
+
+        expect(calls).toBe(1);
     });
 
     test("Throws if both value and expr are provided", () => {

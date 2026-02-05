@@ -3,7 +3,10 @@ import { describe, expect, test } from "vitest";
 import { createTestViewContext } from "./testUtils.js";
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import {
+    getBookmarkableParams,
+    getParamSelector,
     getViewScopeChain,
+    makeParamSelectorKey,
     resolveParamSelector,
     resolveViewSelector,
     validateSelectorConstraints,
@@ -182,6 +185,73 @@ describe("view selectors", () => {
         expect(panelParam).toBeDefined();
         expect(rootParam.view).toBe(root);
         expect(rootParam.view).not.toBe(panelParam.view);
+    });
+
+    test("visitBookmarkableParams yields scoped selectors", async () => {
+        const context = createTestViewContext();
+
+        const rangeBind =
+            /** @type {import("../spec/parameter.js").BindRange} */ ({
+                input: "range",
+            });
+
+        const spec = {
+            params: [
+                {
+                    name: "threshold",
+                    value: 0,
+                    bind: rangeBind,
+                },
+            ],
+            templates: {
+                panel: {
+                    params: [
+                        {
+                            name: "threshold",
+                            value: 1,
+                            bind: rangeBind,
+                        },
+                    ],
+                    vconcat: [makeUnitSpec("coverage")],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const entries = getBookmarkableParams(root);
+        const selectors = entries.map((entry) => entry.selector);
+
+        expect(selectors).toEqual(
+            expect.arrayContaining([
+                getParamSelector(root, "threshold"),
+                { scope: ["panelA"], param: "threshold" },
+            ])
+        );
+    });
+
+    test("makeParamSelectorKey is stable", () => {
+        const selector = { scope: ["panelA"], param: "threshold" };
+        const key = makeParamSelectorKey(selector);
+
+        expect(key).toBe(
+            "p:" +
+                JSON.stringify({
+                    scope: ["panelA"],
+                    param: "threshold",
+                })
+        );
     });
 
     test("resolveViewSelector handles nested import scopes", async () => {
