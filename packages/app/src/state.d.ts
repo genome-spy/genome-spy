@@ -1,5 +1,55 @@
 import { StateWithHistory } from "redux-undo";
 import { SampleHierarchy } from "./sampleView/state/sampleState.js";
+import {
+    ParamSelector,
+    ViewSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
+import { Scalar } from "@genome-spy/core/spec/channel.js";
+import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+
+export interface ParamValueLiteral {
+    type: "value";
+    value: any;
+}
+
+export interface ParamValueInterval {
+    type: "interval";
+    intervals: Partial<
+        Record<
+            "x" | "y",
+            [number, number] | [ChromosomalLocus, ChromosomalLocus] | null
+        >
+    >;
+}
+
+export interface ParamValuePoint {
+    type: "point";
+    keyField: string;
+    keys: Scalar[];
+}
+
+export type ParamValue =
+    | ParamValueLiteral
+    | ParamValueInterval
+    | ParamValuePoint;
+
+export interface ParamOrigin {
+    type: "datum";
+    view: ViewSelector;
+    keyField: string;
+    key: Scalar;
+    intervalSources?: Record<string, { start?: string; end?: string }>;
+}
+
+export interface ParamProvenanceEntry {
+    selector: ParamSelector;
+    value: ParamValue;
+    origin?: ParamOrigin;
+}
+
+export interface ParamProvenanceState {
+    entries: Record<string, ParamProvenanceEntry>;
+}
 
 export interface ViewSettings {
     /**
@@ -38,5 +88,9 @@ export interface State {
         failedAction?: import("@reduxjs/toolkit").Action;
         error?: string;
     };
-    provenance?: StateWithHistory<SampleHierarchy>;
+    provenance?: StateWithHistory<{
+        sampleView: SampleHierarchy;
+        paramProvenance: ParamProvenanceState;
+        lastAction: import("@reduxjs/toolkit").Action;
+    }>;
 }

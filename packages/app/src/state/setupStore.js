@@ -5,6 +5,10 @@ import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import { lifecycleSlice } from "../lifecycleSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
+import {
+    getParamChangeGroupKey,
+    paramProvenanceSlice,
+} from "./paramProvenanceSlice.js";
 
 /**
  * Setup the Redux store for the application.
@@ -13,9 +17,15 @@ import { intentStatusSlice } from "./intentStatusSlice.js";
  * @typedef {ReturnType<AppStore['getState']>} AppState
  */
 export default function setupStore() {
-    const provenanceReducer = createProvenanceReducer({
-        [sampleSlice.name]: sampleSlice.reducer,
-    });
+    const provenanceReducer = createProvenanceReducer(
+        {
+            [sampleSlice.name]: sampleSlice.reducer,
+            [paramProvenanceSlice.name]: paramProvenanceSlice.reducer,
+        },
+        {
+            groupBy: getParamChangeGroupKey,
+        }
+    );
 
     const combinedReducer = combineReducers({
         lifecycle: lifecycleSlice.reducer,
