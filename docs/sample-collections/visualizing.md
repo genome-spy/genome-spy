@@ -453,8 +453,12 @@ Views have two properties for controlling the visibility:
 `configurableVisibility` (boolean)
 : If true, the visibility is configurable from a menu in the app
 
-    Configurability requires that the view has an explicitly specified `name`
-    that is *unique* within the view specification.
+    Configurability requires an explicitly specified `name`. Views are
+    addressed by name within their
+    [import scope](../grammar/import.md#repeating-with-named-templates),
+    so if you instantiate the same template multiple times, give each
+    import instance a unique `name` to make its descendants addressable
+    for visibility toggles and bookmarks.
 
     **Default:** `false` for children of `layer`, `true` for others
 

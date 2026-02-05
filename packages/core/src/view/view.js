@@ -63,6 +63,9 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  *      coordinates as their parent.
  */
 export default class View {
+    /** @type {string | undefined} */
+    #defaultName;
+
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
     #broadcastHandlers = {};
 
@@ -122,7 +125,7 @@ export default class View {
         this.context = context;
         this.layoutParent = layoutParent;
         this.dataParent = dataParent;
-        this.name = spec.name || name;
+        this.#defaultName = name;
         this.spec = spec;
 
         this.resolutions = {
@@ -181,6 +184,29 @@ export default class View {
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }
+    }
+
+    /**
+     * Effective view name. Equals the explicit name (`spec.name`) when provided,
+     * otherwise falls back to an auto-generated default name.
+     */
+    get name() {
+        return this.spec.name ?? this.#defaultName;
+    }
+
+    /**
+     * The explicit name from the spec (`spec.name`), if any.
+     */
+    get explicitName() {
+        return this.spec.name;
+    }
+
+    /**
+     * The auto-generated default name that was assigned by the parent/factory.
+     * Intended for debugging only.
+     */
+    get defaultName() {
+        return this.#defaultName;
     }
 
     /**

@@ -20,8 +20,12 @@ Parameters can be bound to input elements, such as sliders, dropdowns, and
 checkboxes. The GenomeSpy Core library shows the input elements below the
 visualization. In the GenomeSpy App, the input elements are shown in the [_View
 visibility_ menu](../sample-collections/analyzing.md), allowing the
-visualization author to provide sophisticated configuration options to the end
+visualization author to provide configuration options to the end
 user.
+
+Parameters with input bindings should have a unique `name` within the [import
+scope](./import.md#repeating-with-named-templates). While not enforced in core,
+this is necessary for bookmarkable state in the GenomeSpy App.
 
 The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.

@@ -4,6 +4,9 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view.js";
  * Compositor view represents a non-leaf node in the view hierarchy.
  */
 export default class ContainerView extends View {
+    /** @type {Map<string, number>} */
+    #autoNameCounters = new Map();
+
     /**
      *
      * @param {import("../spec/view.js").ContainerSpec} spec
@@ -21,6 +24,19 @@ export default class ContainerView extends View {
 
     async initializeChildren() {
         // override
+    }
+
+    /**
+     * Generates an auto name that is guaranteed to be unique within this container
+     * for the given prefix. Intended for debugging-only default names.
+     *
+     * @param {string} prefix
+     * @returns {string}
+     */
+    getNextAutoName(prefix) {
+        const counter = this.#autoNameCounters.get(prefix) ?? 0;
+        this.#autoNameCounters.set(prefix, counter + 1);
+        return prefix + counter;
     }
 
     /**
@@ -80,22 +96,31 @@ export default class ContainerView extends View {
      * @returns {View}
      */
     findDescendantByPath(path) {
-        for (const child of this) {
-            if (child.name === path[0]) {
-                if (path.length == 1) {
-                    return child;
-                } else if (child instanceof ContainerView) {
-                    return child.findDescendantByPath(path.slice(1));
-                }
+        /** @type {View | ContainerView} */
+        let current = this;
+
+        for (let i = 0; i < path.length; i++) {
+            if (!(current instanceof ContainerView)) {
+                return;
             }
+
+            const next = current.#findImmediateChildByName(path[i]);
+            if (!next) {
+                return;
+            }
+
+            if (i === path.length - 1) {
+                return next;
+            }
+
+            current = next;
         }
     }
 
     /**
-     *
      * @param {string} name
      */
-    findChildByName(name) {
+    #findImmediateChildByName(name) {
         for (const child of this) {
             if (child.name === name) {
                 return child;

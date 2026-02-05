@@ -5,11 +5,15 @@ import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import LayerView from "@genome-spy/core/view/layerView.js";
-import { findUniqueViewNames } from "@genome-spy/core/view/viewUtils.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { queryDependency } from "../../utils/dependency.js";
 import { nestPaths } from "../../utils/nestPaths.js";
 import { viewSettingsSlice } from "../../viewSettingsSlice.js";
+import {
+    getUniqueViewSelectorKeys,
+    getViewVisibilityKey,
+    getViewVisibilityOverride,
+} from "../../viewSettingsUtils.js";
 import {
     nodesToTreesWithAccessor,
     visitTree,
@@ -79,9 +83,7 @@ class ViewSettingsButton extends LitElement {
         if (appInitialized) {
             this.#updateNestedPaths();
             this.requestUpdate();
-            this.style.display = this.#nestedPaths.children.length
-                ? "block"
-                : "none";
+            this.style.display = this.#nestedPaths ? "block" : "none";
         }
     }
 
@@ -91,14 +93,22 @@ class ViewSettingsButton extends LitElement {
      */
     #handleCheckboxClick(event, view) {
         const checked = /** @type {HTMLInputElement} */ (event.target).checked;
+        const selectorKey = getViewVisibilityKey(view);
+        if (!selectorKey) {
+            throw new Error(
+                "Cannot toggle view visibility without an explicit name."
+            );
+        }
 
         this.#app.store.dispatch(
             checked != view.isVisibleInSpec()
                 ? viewSettingsSlice.actions.setVisibility({
-                      name: view.name,
+                      key: selectorKey,
                       visibility: checked,
                   })
-                : viewSettingsSlice.actions.restoreDefaultVisibility(view.name)
+                : viewSettingsSlice.actions.restoreDefaultVisibility(
+                      selectorKey
+                  )
         );
 
         // Just to be sure...
@@ -146,8 +156,18 @@ class ViewSettingsButton extends LitElement {
         const paths = nodes
             .filter(isIncluded)
             .map((view) =>
-                [...view.getDataAncestors()].filter(isIncluded).reverse()
+                [...view.getDataAncestors()]
+                    .filter(
+                        (ancestor) =>
+                            ancestor === viewRoot || isIncluded(ancestor)
+                    )
+                    .reverse()
             );
+
+        if (!paths.length) {
+            this.#nestedPaths = undefined;
+            return;
+        }
 
         this.#nestedPaths = nestPaths(paths);
     }
@@ -156,7 +176,9 @@ class ViewSettingsButton extends LitElement {
         const visibilities = this.getVisibilities();
 
         const viewRoot = this.#app.genomeSpy.viewRoot;
-        const uniqueNames = findUniqueViewNames(viewRoot);
+        const uniqueSelectorKeys = viewRoot
+            ? getUniqueViewSelectorKeys(viewRoot)
+            : new Set();
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
@@ -167,7 +189,15 @@ class ViewSettingsButton extends LitElement {
          */
         const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
-            const checked = visibilities[view.name] ?? view.isVisibleInSpec();
+            const visibilityOverride = getViewVisibilityOverride(
+                visibilities,
+                view
+            );
+            const checked =
+                visibilityOverride !== undefined
+                    ? visibilityOverride
+                    : view.isVisibleInSpec();
+            const selectorKey = getViewVisibilityKey(view);
 
             /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
             const submenuItems = [];
@@ -223,8 +253,9 @@ class ViewSettingsButton extends LitElement {
                     <input
                         style=${`margin-left: ${depth * 1.5}em;`}
                         type="checkbox"
-                        ?disabled=${!uniqueNames.has(view.name) ||
-                        !isConfigurable(view)}
+                        ?disabled=${!selectorKey ||
+                        !uniqueSelectorKeys.has(selectorKey) ||
+                        !isVisibilityConfigurable(view)}
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.#handleCheckboxClick(event, view)}
@@ -247,7 +278,12 @@ class ViewSettingsButton extends LitElement {
             }
         };
 
-        nestedItemToHtml(this.#nestedPaths);
+        if (!this.#nestedPaths) {
+            return items;
+        }
+
+        const startDepth = this.#nestedPaths.children.length ? -1 : 0;
+        nestedItemToHtml(this.#nestedPaths, startDepth);
 
         return items;
     }
@@ -320,7 +356,7 @@ class ViewSettingsButton extends LitElement {
     }
 }
 
-const isConfigurable = (/** @type {View} */ view) =>
+const isVisibilityConfigurable = (/** @type {View} */ view) =>
     view.spec.configurableVisibility ??
     !(view.layoutParent && view.layoutParent instanceof LayerView);
 
@@ -330,7 +366,7 @@ const hasVariableBindings = (/** @type {View} */ view) =>
     );
 
 const isIncluded = (/** @type {View} */ view) =>
-    isConfigurable(view) ||
+    (isVisibilityConfigurable(view) && Boolean(view.explicitName)) ||
     hasVariableBindings(view) ||
     view instanceof MetadataView;
 

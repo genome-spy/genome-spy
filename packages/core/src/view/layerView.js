@@ -37,13 +37,13 @@ export default class LayerView extends ContainerView {
     async initializeChildren() {
         this.#children = await Promise.all(
             this.spec.layer.map(
-                (childSpec, i) =>
+                (childSpec) =>
                     /** @type {(Promise<LayerView | import("./unitView.js").default>)} */ (
                         this.context.createOrImportView(
                             childSpec,
                             this,
                             this,
-                            "grid" + i,
+                            this.getNextAutoName("layer"),
                             (importedSpec) => {
                                 if (
                                     !isLayerSpec(importedSpec) &&
@@ -123,7 +123,7 @@ export default class LayerView extends ContainerView {
                 view.disposeSubtree();
                 this.#children.splice(index, 1);
             },
-            defaultName: (index) => "layer" + index,
+            defaultName: () => this.getNextAutoName("layer"),
         });
     }
 

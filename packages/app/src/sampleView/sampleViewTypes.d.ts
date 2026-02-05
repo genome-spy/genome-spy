@@ -7,6 +7,18 @@ import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
 
+/**
+ * Structured view address used by selectors (import scope + view name).
+ */
+export type ViewSelector =
+    import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
+
+/**
+ * View reference used in SampleView actions. Legacy values may be a view name
+ * string, but selectors are the unambiguous, bookmark-friendly form.
+ */
+export type ViewRef = string | ViewSelector;
+
 export interface KeyAndLocation<T> {
     key: T;
     locSize: LocSize;
@@ -45,8 +57,10 @@ export interface LocationContext {
 }
 
 export interface BaseSpecifier {
-    /** A uniuque name of the view */
-    view: string;
+    /**
+     * A unique view reference. Legacy values may be a view name string.
+     */
+    view: ViewRef;
 
     /** Attribute, e.g., the name of the field where a value is stored */
     field: string;

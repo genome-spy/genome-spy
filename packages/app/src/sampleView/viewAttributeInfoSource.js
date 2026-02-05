@@ -9,6 +9,7 @@ import {
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
+import { resolveViewRef } from "./viewRef.js";
 
 /**
  *
@@ -23,7 +24,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         );
     const view =
         /** @type {import("@genome-spy/core/view/unitView.js").default} */ (
-            rootView.findDescendantByName(specifier.view)
+            resolveViewRef(rootView, specifier.view)
         );
 
     const attributeLabel =

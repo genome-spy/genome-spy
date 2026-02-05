@@ -85,8 +85,10 @@ export type ViewBackground = Pick<
 
 export interface ViewSpecBase extends ResolveSpec {
     /**
-     * An internal name that can be used for referring the view. For referencing
-     * purposes, the name should be unique within the view hierarchy.
+     * An explicit name used to address the view. It is recommended to keep
+     * names unique among siblings. In the App (where view state is
+     * bookmarkable), the name must be unique within its import scope for
+     * views with configurable visibility, etc.
      */
     name?: string;
 
@@ -209,7 +211,7 @@ export interface ViewSpecBase extends ResolveSpec {
      * Is the visibility configurable interactively from the [GenomeSpy
      * App](https://genomespy.app/docs/sample-collections/).
      * Configurability requires that the view has an explicitly specified name
-     * that is *unique* in within the view hierarchy.
+     * that is unique within its import scope.
      *
      * **Default:** `false` for children of `layer`, `true` for others.
      */
@@ -336,7 +338,8 @@ export interface TemplateImport {
 export interface ImportSpec {
     /**
      * The name given to the imported view. This property overrides the name
-     * specified in the imported specification.
+     * specified in the imported specification and defines an import scope that
+     * is used for bookmarkable view visibility and parameter addressing.
      */
     name?: string;
 

@@ -35,6 +35,7 @@ import {
     configureViewOpacity,
 } from "./genomeSpy/viewHierarchyConfig.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
+import { validateSelectorConstraints } from "./view/viewSelectors.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -385,6 +386,7 @@ export default class GenomeSpy {
 
         configureViewHierarchy(this.viewRoot);
         configureViewOpacity(this.viewRoot);
+        this.#logSelectorConstraintWarnings();
 
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
@@ -403,6 +405,17 @@ export default class GenomeSpy {
         context.requestLayoutReflow = this.computeLayout.bind(this);
 
         this.#setupDpr();
+    }
+
+    #logSelectorConstraintWarnings() {
+        const issues = validateSelectorConstraints(this.viewRoot);
+        if (!issues.length) {
+            return;
+        }
+
+        for (const issue of issues) {
+            console.warn("Selector constraints warning:", issue.message);
+        }
     }
 
     /**

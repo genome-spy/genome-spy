@@ -53,6 +53,8 @@ import {
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { getViewVisibilityKey } from "../viewSettingsUtils.js";
+import { resolveViewRef } from "./viewRef.js";
 import {
     buildIntervalAggregationMenu,
     buildPointQueryMenu,
@@ -255,11 +257,7 @@ export default class SampleView extends ContainerView {
      * @returns {import("@genome-spy/core/view/view.js").default}
      */
     #resolveViewForSpecifier(specifier) {
-        const view = this.findDescendantByName(specifier.view);
-        if (!view) {
-            throw new Error(`Cannot find view: ${specifier.view}`);
-        }
-        return view;
+        return resolveViewRef(this, specifier.view);
     }
 
     /**
@@ -269,12 +267,13 @@ export default class SampleView extends ContainerView {
      */
     #ensureViewVisible(view) {
         for (const ancestor of view.getLayoutAncestors()) {
-            if (!ancestor.name) {
+            const selectorKey = getViewVisibilityKey(ancestor);
+            if (!selectorKey) {
                 continue;
             }
             this.provenance.store.dispatch(
                 viewSettingsSlice.actions.setVisibility({
-                    name: ancestor.name,
+                    key: selectorKey,
                     visibility: true,
                 })
             );
@@ -556,7 +555,9 @@ export default class SampleView extends ContainerView {
         this.#sidebarView = /** @type {ConcatView} */ (
             await this.context.createOrImportView(
                 {
+                    name: "sample-sidebar",
                     title: "Sidebar",
+                    configurableVisibility: true,
                     resolve: {
                         scale: { default: "independent" },
                         axis: { default: "independent" },

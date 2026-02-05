@@ -79,7 +79,9 @@ export class MetadataView extends ConcatView {
     constructor(sampleView, sidebarView) {
         super(
             {
+                name: "sample-metadata",
                 title: "Sample metadata",
+                configurableVisibility: true,
                 data: { name: null },
                 hconcat: [], // Contents are added dynamically
                 spacing: sampleView.spec.samples.attributeSpacing ?? 1,

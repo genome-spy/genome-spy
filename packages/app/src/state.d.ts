@@ -3,11 +3,24 @@ import { SampleHierarchy } from "./sampleView/state/sampleState.js";
 
 export interface ViewSettings {
     /**
-     * Visibilities of views keyed by the view name. The view names must be
-     * unique within the whole view specification. Only entries that differ
-     * from the configured default visibility should be included.
+     * Visibilities of views keyed by selector keys. The keys are derived from
+     * view selectors and may also include legacy view names from old bookmarks.
      */
     visibilities: Record<string, boolean>;
+}
+
+export interface ViewVisibilityEntry {
+    scope: string[];
+    view: string;
+    visible: boolean;
+}
+
+export type ViewVisibilityWire =
+    | ViewVisibilityEntry[]
+    | Record<string, boolean>;
+
+export interface ViewSettingsPayload {
+    visibilities?: ViewVisibilityWire;
 }
 
 export interface State {

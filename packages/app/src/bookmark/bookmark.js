@@ -2,6 +2,7 @@ import { html } from "lit";
 import { ActionCreators } from "redux-undo";
 import "../components/dialogs/bookmarkInfoBox.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { normalizeViewSettingsPayload } from "../viewSettingsUtils.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showDialog } from "../components/generic/baseDialog.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
@@ -55,8 +56,9 @@ export async function restoreBookmark(entry, app) {
             await app.intentPipeline.submit(entry.actions);
         }
 
+        const normalized = normalizeViewSettingsPayload(entry.viewSettings);
         app.store.dispatch(
-            viewSettingsSlice.actions.setViewSettings(entry.viewSettings)
+            viewSettingsSlice.actions.setViewSettings(normalized)
         );
 
         /** @type {Promise<void>[]} */

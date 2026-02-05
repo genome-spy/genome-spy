@@ -57,6 +57,14 @@ visual elements through parameter changes, streamlining the creation of varied
 visualizations from a single template without the need to duplicate the base
 specification fragment.
 
+Naming an import instance (`name` on the import spec) overrides the imported
+view's own name and creates a _scope_ for addressing descendant views. This is
+used in the [App](../sample-collections/visualizing.md) for
+[bookmarkable](../sample-collections/analyzing.md#bookmarking-and-sharing) state
+like view visibility. When repeating templates, give each import instance a
+unique `name` so that descendants with the same internal names remain
+unambiguous.
+
 <div><genome-spy-doc-embed height="250">
 
 ```json
@@ -66,12 +74,14 @@ specification fragment.
       "import": {
         "template": "myTrack"
       },
+      "name": "trackA",
       "params": [{ "name": "size", "value": 5 }]
     },
     {
       "import": {
         "template": "myTrack"
       },
+      "name": "trackB",
       "params": { "offset": 3.141, "size": 20 }
     }
   ],

@@ -49,6 +49,13 @@ aware interactions.
 - TypeScript checks for workspaces (if present): `npm -ws run test:tsc --if-present`
 - Lint the workspace sources: `npm run lint`
 
+## Workflow expectations
+
+- By default, make a plan first; don't start editing code when the user is asking
+  a random question and hasn't explicitly asked for editing work to start.
+- When planning, consider documentation in `docs/` for user-visible changes. New
+  features in Core or App may need docs, while refactors typically do not.
+
 ## Project and code guidelines
 
 - Always use type hints in any language which supports them
