@@ -34,6 +34,12 @@ export default class Collector extends FlowNode {
      */
     #uniqueIdIndex = [];
 
+    /** @type {Map<string, Datum> | null} */
+    #keyIndex = null;
+
+    /** @type {string[] | null} */
+    #keyIndexFields = null;
+
     /**
      * Start and end indices of all facets if they are concatenated into a single array.
      * Used together with the uniqueIdIndex for looking up data items by their unique id.
@@ -80,6 +86,7 @@ export default class Collector extends FlowNode {
     #init() {
         this.#buffer = [];
         this.#uniqueIdIndex = [];
+        this.#invalidateKeyIndex();
 
         this.facetBatches.clear();
         this.facetBatches.set(undefined, this.#buffer);
@@ -101,6 +108,8 @@ export default class Collector extends FlowNode {
      * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        this.#invalidateKeyIndex();
+
         if (isFacetBatch(flowBatch)) {
             this.#buffer = [];
             this.facetBatches.set(asArray(flowBatch.facetId), this.#buffer);
@@ -331,6 +340,76 @@ export default class Collector extends FlowNode {
     }
 
     /**
+     * @param {string[]} keyFields
+     */
+    #buildKeyIndex(keyFields) {
+        /** @type {(datum: Datum) => import("../spec/channel.js").Scalar}[] */
+        const accessors = keyFields.map((fieldName) => field(fieldName));
+
+        /** @type {Map<string, Datum>} */
+        const index = new Map();
+
+        for (const data of this.facetBatches.values()) {
+            for (let i = 0, n = data.length; i < n; i++) {
+                const datum = data[i];
+                const keyTuple = accessors.map((accessor) => accessor(datum));
+                const key = JSON.stringify(keyTuple);
+
+                if (index.has(key)) {
+                    throw new Error(
+                        `Duplicate key detected for fields [${keyFields.join(
+                            ", "
+                        )}]: ${key}`
+                    );
+                }
+
+                index.set(key, datum);
+            }
+        }
+
+        this.#keyIndex = index;
+        this.#keyIndexFields = [...keyFields];
+    }
+
+    /**
+     * @param {string[]} keyFields
+     * @returns {Map<string, Datum>}
+     */
+    #getKeyIndex(keyFields) {
+        if (!this.#keyIndex || !this.#matchesKeyFields(keyFields)) {
+            this.#buildKeyIndex(keyFields);
+        }
+
+        return this.#keyIndex;
+    }
+
+    /**
+     * @param {string[]} keyFields
+     */
+    #matchesKeyFields(keyFields) {
+        if (!this.#keyIndexFields) {
+            return false;
+        }
+
+        if (this.#keyIndexFields.length !== keyFields.length) {
+            return false;
+        }
+
+        for (let i = 0; i < keyFields.length; i++) {
+            if (this.#keyIndexFields[i] !== keyFields[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    #invalidateKeyIndex() {
+        this.#keyIndex = null;
+        this.#keyIndexFields = null;
+    }
+
+    /**
      * Use an index to find a datum by its unique id.
      *
      * @param {number} uniqueId
@@ -361,6 +440,31 @@ export default class Collector extends FlowNode {
                 return datum;
             }
         }
+    }
+
+    /**
+     * Uses a lazy index to find a datum by its key fields.
+     *
+     * @param {string[]} keyFields
+     * @param {import("../spec/channel.js").Scalar[]} keyTuple
+     */
+    findDatumByKey(keyFields, keyTuple) {
+        this.#checkStatus();
+
+        if (!keyFields || keyFields.length === 0) {
+            return;
+        }
+
+        if (keyFields.length !== keyTuple.length) {
+            throw new Error(
+                `Key tuple length ${keyTuple.length} does not match fields [${keyFields.join(
+                    ", "
+                )}]`
+            );
+        }
+
+        const index = this.#getKeyIndex(keyFields);
+        return index.get(JSON.stringify(keyTuple));
     }
 }
 

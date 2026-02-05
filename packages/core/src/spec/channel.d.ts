@@ -510,6 +510,13 @@ export interface Encoding {
     sample?: FieldDefWithoutScale;
 
     /**
+     * A data field that uniquely identifies tuples for stable point selections
+     * and bookmarking across sessions. Unlike `_uniqueId`, the key must be
+     * stable in the source data.
+     */
+    key?: FieldDefWithoutScale;
+
+    /**
      * For internal use
      */
     // TODO: proper type
