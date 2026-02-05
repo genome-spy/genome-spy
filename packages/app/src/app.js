@@ -38,6 +38,7 @@ import IntentPipeline from "./state/intentPipeline.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
+import { getParamActionInfo } from "./state/paramActionInfo.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -270,6 +271,9 @@ export default class App {
             this.genomeSpy.viewRoot.registerDisposer(() => {
                 this.paramProvenanceBridge.dispose();
             });
+            this.provenance.addActionInfoSource((action) =>
+                getParamActionInfo(action, this.genomeSpy.viewRoot)
+            );
         }
 
         const sampleView = this.getSampleView();
