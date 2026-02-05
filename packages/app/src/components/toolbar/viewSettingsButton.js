@@ -83,9 +83,7 @@ class ViewSettingsButton extends LitElement {
         if (appInitialized) {
             this.#updateNestedPaths();
             this.requestUpdate();
-            this.style.display = this.#nestedPaths.children.length
-                ? "block"
-                : "none";
+            this.style.display = this.#nestedPaths ? "block" : "none";
         }
     }
 
@@ -158,8 +156,18 @@ class ViewSettingsButton extends LitElement {
         const paths = nodes
             .filter(isIncluded)
             .map((view) =>
-                [...view.getDataAncestors()].filter(isIncluded).reverse()
+                [...view.getDataAncestors()]
+                    .filter(
+                        (ancestor) =>
+                            ancestor === viewRoot || isIncluded(ancestor)
+                    )
+                    .reverse()
             );
+
+        if (!paths.length) {
+            this.#nestedPaths = undefined;
+            return;
+        }
 
         this.#nestedPaths = nestPaths(paths);
     }
@@ -270,7 +278,12 @@ class ViewSettingsButton extends LitElement {
             }
         };
 
-        nestedItemToHtml(this.#nestedPaths);
+        if (!this.#nestedPaths) {
+            return items;
+        }
+
+        const startDepth = this.#nestedPaths.children.length ? -1 : 0;
+        nestedItemToHtml(this.#nestedPaths, startDepth);
 
         return items;
     }
