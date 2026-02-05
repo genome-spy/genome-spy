@@ -37,6 +37,7 @@ import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
+import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -259,6 +260,17 @@ export default class App {
             return;
         }
         this.#showSelectorConstraintWarnings();
+
+        if (this.genomeSpy.viewRoot) {
+            this.paramProvenanceBridge = new ParamProvenanceBridge({
+                root: this.genomeSpy.viewRoot,
+                store: this.store,
+                intentExecutor: this.intentExecutor,
+            });
+            this.genomeSpy.viewRoot.registerDisposer(() => {
+                this.paramProvenanceBridge.dispose();
+            });
+        }
 
         const sampleView = this.getSampleView();
         if (sampleView) {
