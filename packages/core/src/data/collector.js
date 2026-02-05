@@ -345,7 +345,7 @@ export default class Collector extends FlowNode {
      * @param {string[]} keyFields
      */
     #buildKeyIndex(keyFields) {
-        /** @type {(datum: Datum) => import("../spec/channel.js").Scalar}[] */
+        /** @type {Array<(datum: Datum) => import("../spec/channel.js").Scalar>} */
         const accessors = keyFields.map((fieldName) => field(fieldName));
 
         /** @type {Map<import("../spec/channel.js").Scalar | string, Datum>} */
@@ -381,7 +381,7 @@ export default class Collector extends FlowNode {
 
     /**
      * @param {string[]} keyFields
-     * @returns {Map<string, Datum>}
+     * @returns {Map<import("../spec/channel.js").Scalar | string, Datum>}
      */
     #getKeyIndex(keyFields) {
         if (!this.#keyIndex || !this.#matchesKeyFields(keyFields)) {

@@ -46,8 +46,13 @@ describe("key-based selection helpers", () => {
 
     it("resolves key tuples back to point selections", () => {
         const datum = { id: "a", _uniqueId: 1 };
+        /** @type {Map<import("../spec/channel.js").Scalar, typeof datum>} */
         const byKey = new Map([["a", datum]]);
-        const resolveDatum = (_fields, tuple) => byKey.get(tuple[0]);
+        /** @type {(fields: string[], tuple: import("../spec/channel.js").Scalar[]) => any} */
+        const resolveDatum = (_fields, tuple) =>
+            byKey.get(
+                /** @type {import("../spec/channel.js").Scalar} */ (tuple[0])
+            );
 
         const single = resolvePointSelectionFromKeyTuples(
             "single",

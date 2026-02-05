@@ -46,6 +46,7 @@ export type ChannelWithoutScale =
     | "uniqueId"
     | "search"
     | "text"
+    | "key"
     | "facetIndex"
     | "semanticScore"
     | "uniqueId"

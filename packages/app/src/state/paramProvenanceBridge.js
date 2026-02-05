@@ -211,7 +211,14 @@ export default class ParamProvenanceBridge {
             return false;
         }
 
-        if (!this.#isSelectionCleared(entry.param, value)) {
+        if (
+            !this.#isSelectionCleared(
+                /** @type {import("@genome-spy/core/spec/parameter.js").SelectionParameter} */ (
+                    entry.param
+                ),
+                value
+            )
+        ) {
             return false;
         }
 
@@ -280,7 +287,9 @@ export default class ParamProvenanceBridge {
                 /** @type {ParamValue} */
                 return {
                     type: "interval",
-                    intervals: this.#copyIntervals(value.intervals),
+                    intervals: this.#copyIntervals(
+                        /** @type {any} */ (value.intervals)
+                    ),
                 };
             }
 
@@ -389,10 +398,15 @@ export default class ParamProvenanceBridge {
                 }
 
                 const keyTuples = storedValue.keys.map((key) => [key]);
-                const collector =
-                    "getCollector" in entry.view
-                        ? entry.view.getCollector()
-                        : null;
+                /** @type {(() => import("@genome-spy/core/data/collector.js").default) | undefined} */
+                const getCollector =
+                    typeof (/** @type {any} */ (entry.view).getCollector) ===
+                    "function"
+                        ? /** @type {any} */ (entry.view).getCollector
+                        : undefined;
+                const collector = getCollector
+                    ? getCollector.call(entry.view)
+                    : null;
                 if (!collector) {
                     this.#queueWarning(
                         `Cannot restore selection "${param.name}" because no data collector is available.`
@@ -451,7 +465,9 @@ export default class ParamProvenanceBridge {
                     );
                 }
 
-                const selection = createIntervalSelection(select.encodings);
+                const selection = /** @type {any} */ (
+                    createIntervalSelection(select.encodings)
+                );
                 for (const [channel, interval] of Object.entries(
                     storedValue.intervals
                 )) {
@@ -498,7 +514,7 @@ export default class ParamProvenanceBridge {
     /**
      * Re-applies provenance once data collection completes.
      *
-     * @param {object} collector
+     * @param {import("@genome-spy/core/data/collector.js").default} collector
      */
     #scheduleReapply(collector) {
         if (this.#pendingCollectors.has(collector)) {
@@ -533,8 +549,12 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        const collector =
-            "getCollector" in originView ? originView.getCollector() : null;
+        /** @type {(() => import("@genome-spy/core/data/collector.js").default) | undefined} */
+        const getCollector =
+            typeof (/** @type {any} */ (originView).getCollector) === "function"
+                ? /** @type {any} */ (originView).getCollector
+                : undefined;
+        const collector = getCollector ? getCollector.call(originView) : null;
         if (!collector) {
             this.#queueWarning(
                 "Cannot resolve selection origin because no data collector is available."
@@ -570,7 +590,9 @@ export default class ParamProvenanceBridge {
                 continue;
             }
 
+            /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => any} */
             const startAccessor = field(startField);
+            /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => any} */
             const endAccessor = field(endField);
             intervals[channel] = [startAccessor(datum), endAccessor(datum)];
         }
@@ -581,7 +603,7 @@ export default class ParamProvenanceBridge {
     /**
      * Checks whether a selection is cleared/empty.
      *
-     * @param {Parameter} param
+     * @param {import("@genome-spy/core/spec/parameter.js").SelectionParameter} param
      * @param {any} value
      * @returns {boolean}
      */
@@ -632,7 +654,7 @@ export default class ParamProvenanceBridge {
     /**
      * Copies intervals to ensure we do not leak internal references.
      *
-     * @param {Partial<Record<string, [any, any]>>} intervals
+     * @param {Partial<Record<string, any[] | null>>} intervals
      * @returns {Partial<Record<string, [any, any]>>}
      */
     #copyIntervals(intervals) {
