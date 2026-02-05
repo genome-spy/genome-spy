@@ -44,6 +44,23 @@ import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
  */
 
 export default class ParamProvenanceBridge {
+    /**
+     * Bridges Core param state (ParamMediator) with App provenance.
+     *
+     * Rationale:
+     * - Params live in the view hierarchy, not in Redux, so provenance needs a
+     *   dedicated adapter to serialize param changes into actions and replay
+     *   them back into ParamMediators.
+     * - This keeps the Core lean while still allowing undo/redo and bookmarks
+     *   to capture user-adjustable params (selection and bound inputs).
+     * - Suppression is necessary to avoid feedback loops when replaying history.
+     *
+     * Constraints:
+     * - Only bookmarkable params are tracked (selection + bound variable params).
+     * - Point selections use stable data keys (`encoding.key`), not `_uniqueId`.
+     * - If resolution fails (missing params/keys/data), warn and fall back to
+     *   defaults so the visualization remains usable.
+     */
     /** @type {View} */
     #root;
 
@@ -97,6 +114,9 @@ export default class ParamProvenanceBridge {
         this.#disposers.length = 0;
     }
 
+    /**
+     * Captures bookmarkable params and precomputes selector keys for lookups.
+     */
     #initEntries() {
         this.#entries = getBookmarkableParams(this.#root);
         this.#entriesByKey.clear();
@@ -107,6 +127,9 @@ export default class ParamProvenanceBridge {
         }
     }
 
+    /**
+     * Subscribes to ParamMediator changes and forwards them into provenance.
+     */
     #registerParamListeners() {
         for (const entry of this.#entries) {
             const paramName = entry.selector.param;
@@ -141,6 +164,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Serializes a param change into a provenance action unless suppressed.
+     *
      * @param {BookmarkableParamEntry} entry
      */
     #handleParamChange(entry) {
@@ -174,6 +199,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Returns true when a clear should undo the last matching selection action.
+     *
      * @param {BookmarkableParamEntry} entry
      * @param {any} value
      * @param {string} selectorKey
@@ -206,6 +233,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Converts a live param value to a bookmark-friendly payload.
+     *
      * @param {BookmarkableParamEntry} entry
      * @param {any} value
      * @returns {ParamValue | undefined}
@@ -268,6 +297,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Applies provenance entries to ParamMediators, falling back to defaults.
+     *
      * @param {Record<string, ParamProvenanceEntry>} entries
      */
     #applyProvenanceEntries(entries) {
@@ -315,6 +346,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Resolves a stored provenance entry to a runtime param value.
+     *
      * @param {BookmarkableParamEntry} entry
      * @param {ParamProvenanceEntry} storedEntry
      * @returns {any}
@@ -463,6 +496,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Re-applies provenance once data collection completes.
+     *
      * @param {object} collector
      */
     #scheduleReapply(collector) {
@@ -480,6 +515,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Rehydrates interval selections using an origin datum when available.
+     *
      * @param {ParamOrigin | undefined} origin
      * @returns {Partial<Record<string, [any, any]>> | undefined}
      */
@@ -542,6 +579,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Checks whether a selection is cleared/empty.
+     *
      * @param {Parameter} param
      * @param {any} value
      * @returns {boolean}
@@ -566,6 +605,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Reads key fields from encoding and warns when unavailable.
+     *
      * @param {BookmarkableParamEntry} entry
      * @returns {string[] | undefined}
      */
@@ -589,6 +630,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Copies intervals to ensure we do not leak internal references.
+     *
      * @param {Partial<Record<string, [any, any]>>} intervals
      * @returns {Partial<Record<string, [any, any]>>}
      */
@@ -604,6 +647,8 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * Coalesces warnings so restore errors show a single dialog.
+     *
      * @param {string} message
      */
     #queueWarning(message) {
