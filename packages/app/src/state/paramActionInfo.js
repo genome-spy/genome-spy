@@ -35,12 +35,7 @@ export function getParamActionInfo(action, root) {
     const value = /** @type {ParamValue} */ (payload.value);
     const origin = /** @type {ParamOrigin | undefined} */ (payload.origin);
 
-    let resolved;
-    try {
-        resolved = resolveParamSelector(root, selector);
-    } catch (error) {
-        resolved = undefined;
-    }
+    const resolved = safeResolve(resolveParamSelector, root, selector);
     const view = resolved ? resolved.view : undefined;
     const viewLabel = view ? formatViewLabel(view) : null;
     const title = formatParamActionTitle(view, selector, value, origin, root);
@@ -118,14 +113,9 @@ function formatOriginSuffix(origin, root) {
         return html``;
     }
 
-    let originView = null;
-    if (root) {
-        try {
-            originView = resolveViewSelector(root, origin.view);
-        } catch (error) {
-            originView = null;
-        }
-    }
+    const originView = root
+        ? safeResolve(resolveViewSelector, root, origin.view)
+        : null;
     if (!originView) {
         return html``;
     }
@@ -172,4 +162,20 @@ function formatRange(interval) {
         return null;
     }
     return `${interval[0]} \u2013 ${interval[1]}`;
+}
+
+/**
+ * Resolves values and returns undefined when resolution fails.
+ *
+ * @template T
+ * @param {(...args: any[]) => T} resolver
+ * @param {...any} args
+ * @returns {T | undefined}
+ */
+function safeResolve(resolver, ...args) {
+    try {
+        return resolver(...args);
+    } catch (error) {
+        return undefined;
+    }
 }

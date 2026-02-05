@@ -10,6 +10,7 @@ import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import ParamProvenanceBridge from "./paramProvenanceBridge.js";
 import IntentExecutor from "./intentExecutor.js";
 import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
+import { flushMicrotasks } from "./testUtils.js";
 
 vi.mock("../components/generic/messageDialog.js", () => ({
     showMessageDialog: vi.fn(),
@@ -135,7 +136,7 @@ describe("ParamProvenanceBridge", () => {
         store.dispatch(action);
 
         // Non-obvious: bridge applies values on a microtask tick.
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         expect(view.paramMediator.getValue("alpha")).toBe(0.75);
     });
@@ -168,7 +169,7 @@ describe("ParamProvenanceBridge", () => {
             keys: ["A"],
         });
 
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
     });
 
     it("warns and skips point selections when encoding.key is missing", async () => {
@@ -190,7 +191,7 @@ describe("ParamProvenanceBridge", () => {
         });
 
         setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         expect(showMessageDialog).toHaveBeenCalled();
         expect(
@@ -234,7 +235,7 @@ describe("ParamProvenanceBridge", () => {
             })
         );
 
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         const selection = view.paramMediator.getValue("selection");
         expect(selection.data.size).toBe(1);
@@ -263,7 +264,7 @@ describe("ParamProvenanceBridge", () => {
             })
         );
 
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         const selection = view.paramMediator.getValue("brush");
         expect(selection.intervals.x).toEqual([10, 20]);
@@ -291,13 +292,13 @@ describe("ParamProvenanceBridge", () => {
         });
 
         otherSetter(2);
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         setter(createMultiPointSelection());
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         const entries =
             store.getState().provenance.present.paramProvenance.entries;
@@ -337,12 +338,12 @@ describe("ParamProvenanceBridge", () => {
             })
         );
 
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
         expect(view.paramMediator.getValue("selection").data.size).toBe(0);
 
         collector.completed = true;
         collector.notify();
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         expect(view.paramMediator.getValue("selection").data.has(1)).toBe(true);
     });
@@ -370,7 +371,7 @@ describe("ParamProvenanceBridge", () => {
             })
         );
 
-        await new Promise((resolve) => queueMicrotask(resolve));
+        await flushMicrotasks();
 
         expect(store.getState().provenance.past.length).toBe(0);
         expect(view.paramMediator.getValue("alpha")).toBe(1);
