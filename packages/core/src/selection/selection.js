@@ -3,6 +3,7 @@ import {
     getSecondaryChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
+import { isFieldDef } from "../encoder/encoder.js";
 import { validateParameterName } from "../view/paramMediator.js";
 import { field } from "../utils/field.js";
 
@@ -42,7 +43,7 @@ export function getEncodingKeyFields(encoding) {
         return;
     }
 
-    if (!("field" in keyDef) || typeof keyDef.field !== "string") {
+    if (!isFieldDef(keyDef)) {
         throw new Error("The key channel must be a field definition.");
     }
 

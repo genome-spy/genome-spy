@@ -34,12 +34,14 @@ export default class Collector extends FlowNode {
      */
     #uniqueIdIndex = [];
 
-    /** @type {Map<string, Datum> | null} */
+    /** @type {Map<import("../spec/channel.js").Scalar | string, Datum> | null} */
     #keyIndex = null;
 
     /** @type {string[] | null} */
     #keyIndexFields = null;
 
+    /** @type {boolean} */
+    #keyIndexUsesTuple = false;
     /**
      * Start and end indices of all facets if they are concatenated into a single array.
      * Used together with the uniqueIdIndex for looking up data items by their unique id.
@@ -346,20 +348,25 @@ export default class Collector extends FlowNode {
         /** @type {(datum: Datum) => import("../spec/channel.js").Scalar}[] */
         const accessors = keyFields.map((fieldName) => field(fieldName));
 
-        /** @type {Map<string, Datum>} */
+        /** @type {Map<import("../spec/channel.js").Scalar | string, Datum>} */
         const index = new Map();
+
+        const useTuple = keyFields.length !== 1;
 
         for (const data of this.facetBatches.values()) {
             for (let i = 0, n = data.length; i < n; i++) {
                 const datum = data[i];
-                const keyTuple = accessors.map((accessor) => accessor(datum));
-                const key = JSON.stringify(keyTuple);
+                const key = useTuple
+                    ? JSON.stringify(
+                          accessors.map((accessor) => accessor(datum))
+                      )
+                    : accessors[0](datum);
 
                 if (index.has(key)) {
                     throw new Error(
                         `Duplicate key detected for fields [${keyFields.join(
                             ", "
-                        )}]: ${key}`
+                        )}]: ${JSON.stringify(key)}`
                     );
                 }
 
@@ -369,6 +376,7 @@ export default class Collector extends FlowNode {
 
         this.#keyIndex = index;
         this.#keyIndexFields = [...keyFields];
+        this.#keyIndexUsesTuple = useTuple;
     }
 
     /**
@@ -407,6 +415,7 @@ export default class Collector extends FlowNode {
     #invalidateKeyIndex() {
         this.#keyIndex = null;
         this.#keyIndexFields = null;
+        this.#keyIndexUsesTuple = false;
     }
 
     /**
@@ -464,7 +473,10 @@ export default class Collector extends FlowNode {
         }
 
         const index = this.#getKeyIndex(keyFields);
-        return index.get(JSON.stringify(keyTuple));
+        const key = this.#keyIndexUsesTuple
+            ? JSON.stringify(keyTuple)
+            : keyTuple[0];
+        return index.get(key);
     }
 }
 
