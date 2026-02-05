@@ -555,7 +555,9 @@ export default class SampleView extends ContainerView {
         this.#sidebarView = /** @type {ConcatView} */ (
             await this.context.createOrImportView(
                 {
+                    name: "sample-sidebar",
                     title: "Sidebar",
+                    configurableVisibility: true,
                     resolve: {
                         scale: { default: "independent" },
                         axis: { default: "independent" },

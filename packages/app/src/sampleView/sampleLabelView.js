@@ -140,6 +140,7 @@ function createLabelViewSpec(sampleDef) {
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
     const labelSpec = {
+        name: "sample-labels",
         data: { name: null },
         title: {
             text: sampleDef.labelTitleText ?? "Sample name",
@@ -152,6 +153,7 @@ function createLabelViewSpec(sampleDef) {
             fontWeight: sampleDef.attributeLabelFontWeight,
         },
         width: sampleDef.labelLength ?? 140,
+        configurableVisibility: true,
         mark: {
             type: "text",
             baseline: "middle",

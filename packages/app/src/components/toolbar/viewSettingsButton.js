@@ -255,7 +255,7 @@ class ViewSettingsButton extends LitElement {
                         type="checkbox"
                         ?disabled=${!selectorKey ||
                         !uniqueSelectorKeys.has(selectorKey) ||
-                        !isConfigurable(view)}
+                        !isVisibilityConfigurable(view)}
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.#handleCheckboxClick(event, view)}
@@ -356,13 +356,9 @@ class ViewSettingsButton extends LitElement {
     }
 }
 
-const isConfigurable = (/** @type {View} */ view) => {
-    const configurable =
-        view.spec.configurableVisibility ??
-        !(view.layoutParent && view.layoutParent instanceof LayerView);
-
-    return configurable && Boolean(view.explicitName);
-};
+const isVisibilityConfigurable = (/** @type {View} */ view) =>
+    view.spec.configurableVisibility ??
+    !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 const hasVariableBindings = (/** @type {View} */ view) =>
     [...view.paramMediator.paramConfigs.values()].some(
@@ -370,7 +366,7 @@ const hasVariableBindings = (/** @type {View} */ view) =>
     );
 
 const isIncluded = (/** @type {View} */ view) =>
-    isConfigurable(view) ||
+    (isVisibilityConfigurable(view) && Boolean(view.explicitName)) ||
     hasVariableBindings(view) ||
     view instanceof MetadataView;
 

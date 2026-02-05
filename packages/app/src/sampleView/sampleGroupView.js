@@ -13,10 +13,12 @@ export default class SampleGroupView extends LayerView {
     constructor(sampleView, sidebarView) {
         super(
             {
+                name: "sample-groups",
                 title: {
                     text: "Groups",
                     orient: "none",
                 },
+                configurableVisibility: true,
 
                 padding: { right: 0 },
 
