@@ -85,29 +85,15 @@ export interface SelectionIntervalSource {
     selector: ParamSelector;
 }
 
-export interface IntervalLiteralSpecifier extends BaseSpecifier {
-    /** Interval on the x axis */
-    interval: Interval;
+export type IntervalReference = Interval | SelectionIntervalSource;
+
+export interface IntervalSpecifier extends BaseSpecifier {
+    /** Literal interval or a selection source resolved at action execution time */
+    interval: IntervalReference;
 
     /** Aggregation operation to apply over the interval */
     aggregation: AggregationSpec;
-
-    intervalSource?: never;
 }
-
-export interface IntervalSourceSpecifier extends BaseSpecifier {
-    /** A dynamic interval source resolved at action execution time */
-    intervalSource: SelectionIntervalSource;
-
-    /** Aggregation operation to apply over the interval */
-    aggregation: AggregationSpec;
-
-    interval?: never;
-}
-
-export type IntervalSpecifier =
-    | IntervalLiteralSpecifier
-    | IntervalSourceSpecifier;
 
 export type ViewAttributeSpecifier = LocusSpecifier | IntervalSpecifier;
 
@@ -120,17 +106,9 @@ export function isIntervalSpecifier(
 ): specifier is IntervalSpecifier;
 
 export function hasLiteralInterval(
-    specifier:
-        | ViewAttributeSpecifier
-        | { interval: Interval }
-        | { intervalSource: SelectionIntervalSource }
-): specifier is IntervalLiteralSpecifier | { interval: Interval };
+    specifier: ViewAttributeSpecifier | { interval: IntervalReference }
+): specifier is { interval: Interval };
 
 export function hasIntervalSource(
-    specifier:
-        | ViewAttributeSpecifier
-        | { interval: Interval }
-        | { intervalSource: SelectionIntervalSource }
-): specifier is
-    | IntervalSourceSpecifier
-    | { intervalSource: SelectionIntervalSource };
+    specifier: ViewAttributeSpecifier | { interval: IntervalReference }
+): specifier is { interval: SelectionIntervalSource };

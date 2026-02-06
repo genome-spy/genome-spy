@@ -205,7 +205,7 @@ export function buildIntervalAggregationMenu({
                 ? {
                       view: viewRef,
                       field: fieldInfo.field,
-                      intervalSource: selectionIntervalSource,
+                      interval: selectionIntervalSource,
                       aggregation: { op: op.op },
                   }
                 : {

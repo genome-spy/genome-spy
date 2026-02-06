@@ -130,13 +130,15 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         } else if (hasIntervalSource(specifier)) {
             return html`in
                 <span class="interval"
-                    >selection ${specifier.intervalSource.selector.param}</span
+                    >selection ${specifier.interval.selector.param}</span
                 >`;
-        } else {
+        } else if ("locus" in specifier) {
             return html`at
                 <span class="locus"
                     >${formatLocusValue(specifier.locus)}</span
                 >`;
+        } else {
+            throw new Error("Unsupported view attribute specifier.");
         }
     })();
 

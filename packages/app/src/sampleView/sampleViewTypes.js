@@ -10,17 +10,17 @@ export function isIntervalSpecifier(specifier) {
 }
 
 /**
- * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | { interval: import("./types.js").Interval } | { intervalSource: import("./sampleViewTypes.js").SelectionIntervalSource }} specifier
- * @returns {specifier is import("./sampleViewTypes.js").IntervalLiteralSpecifier | { interval: import("./types.js").Interval }}
+ * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | { interval: import("./sampleViewTypes.js").IntervalReference }} specifier
+ * @returns {specifier is import("./sampleViewTypes.js").IntervalSpecifier | { interval: import("./types.js").Interval }}
  */
 export function hasLiteralInterval(specifier) {
-    return "interval" in specifier;
+    return "interval" in specifier && Array.isArray(specifier.interval);
 }
 
 /**
- * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | { interval: import("./types.js").Interval } | { intervalSource: import("./sampleViewTypes.js").SelectionIntervalSource }} specifier
- * @returns {specifier is import("./sampleViewTypes.js").IntervalSourceSpecifier | { intervalSource: import("./sampleViewTypes.js").SelectionIntervalSource }}
+ * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | { interval: import("./sampleViewTypes.js").IntervalReference }} specifier
+ * @returns {specifier is import("./sampleViewTypes.js").IntervalSpecifier | { interval: import("./sampleViewTypes.js").SelectionIntervalSource }}
  */
 export function hasIntervalSource(specifier) {
-    return "intervalSource" in specifier;
+    return "interval" in specifier && !Array.isArray(specifier.interval);
 }

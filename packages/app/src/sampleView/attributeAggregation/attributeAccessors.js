@@ -44,9 +44,11 @@ function normalizeInterval(scaleResolution, specifier) {
         ];
     } else if (hasIntervalSource(specifier)) {
         throw new Error("Interval source specifiers are not supported yet.");
-    } else {
+    } else if ("locus" in specifier) {
         const scalar = toScalar(scaleResolution, specifier.locus);
         return [scalar, scalar];
+    } else {
+        throw new Error("Unsupported view attribute specifier.");
     }
 }
 

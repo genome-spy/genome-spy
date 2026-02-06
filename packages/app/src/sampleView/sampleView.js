@@ -303,8 +303,10 @@ export default class SampleView extends ContainerView {
                 throw new Error(
                     "Interval source specifiers are not supported yet."
                 );
-            } else {
+            } else if ("locus" in specifier) {
                 domain = [specifier.locus, specifier.locus];
+            } else {
+                throw new Error("Unsupported view attribute specifier.");
             }
         }
 
