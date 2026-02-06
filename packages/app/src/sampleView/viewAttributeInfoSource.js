@@ -9,6 +9,7 @@ import {
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
+import { isIntervalSpecifier } from "./sampleViewTypes.js";
 import { resolveViewRef } from "./viewRef.js";
 
 /**
@@ -120,6 +121,25 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             sampleView.awaitViewAttributeProcessed(specifier, context);
     }
 
+    const locationLabel = (() => {
+        if ("interval" in specifier) {
+            return html`in
+                <span class="interval"
+                    >${formatInterval(view, specifier.interval)}</span
+                >`;
+        } else if (isIntervalSpecifier(specifier)) {
+            return html`in
+                <span class="interval"
+                    >selection ${specifier.intervalSource.selector.param}</span
+                >`;
+        } else {
+            return html`at
+                <span class="locus"
+                    >${formatLocusValue(specifier.locus)}</span
+                >`;
+        }
+    })();
+
     /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: attributeLabel,
@@ -127,15 +147,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
         title: html`${attributeTitle}
             <span class="viewTitle">(${view.getTitleText() ?? view.name})</span>
-            ${"interval" in specifier
-                ? html`in
-                      <span class="interval"
-                          >${formatInterval(view, specifier.interval)}</span
-                      >`
-                : html`at
-                      <span class="locus"
-                          >${formatLocusValue(specifier.locus)}</span
-                      >`}`,
+            ${locationLabel}`,
         accessor,
         valuesProvider,
         // TODO: Ensure that there's a type even if it's missing from spec

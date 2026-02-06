@@ -1,6 +1,7 @@
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
+import { isIntervalSpecifier } from "../sampleViewTypes.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -41,10 +42,12 @@ function normalizeInterval(scaleResolution, specifier) {
             toScalar(scaleResolution, specifier.interval[0]),
             toScalar(scaleResolution, specifier.interval[1]),
         ];
+    } else if (isIntervalSpecifier(specifier)) {
+        throw new Error("Interval source specifiers are not supported yet.");
+    } else {
+        const scalar = toScalar(scaleResolution, specifier.locus);
+        return [scalar, scalar];
     }
-
-    const scalar = toScalar(scaleResolution, specifier.locus);
-    return [scalar, scalar];
 }
 
 /**

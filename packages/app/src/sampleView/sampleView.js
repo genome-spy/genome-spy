@@ -63,6 +63,7 @@ import {
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
+import { isIntervalSpecifier } from "./sampleViewTypes.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -287,11 +288,21 @@ export default class SampleView extends ContainerView {
      * @returns {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain}
      */
     #resolveViewAttributeDomain(specifier) {
-        const domain =
-            specifier.domainAtActionTime ??
-            ("interval" in specifier
-                ? specifier.interval
-                : [specifier.locus, specifier.locus]);
+        /** @type {[any, any]} */
+        let domain;
+        if (specifier.domainAtActionTime) {
+            domain = /** @type {[any, any]} */ (specifier.domainAtActionTime);
+        } else {
+            if ("interval" in specifier) {
+                domain = /** @type {[any, any]} */ (specifier.interval);
+            } else if (isIntervalSpecifier(specifier)) {
+                throw new Error(
+                    "Interval source specifiers are not supported yet."
+                );
+            } else {
+                domain = [specifier.locus, specifier.locus];
+            }
+        }
 
         if (
             typeof domain[0] === "string" ||
