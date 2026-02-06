@@ -3,6 +3,7 @@ import ParamMediator from "@genome-spy/core/view/paramMediator.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 class FakeView {
     /** @type {string | undefined} */
@@ -82,48 +83,11 @@ class FakeView {
 }
 
 /**
- * @param {any} value
- * @returns {string}
- */
-function templateToString(value) {
-    if (value === null || value === undefined) {
-        return "";
-    }
-
-    if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-    ) {
-        return String(value);
-    }
-
-    if (Array.isArray(value)) {
-        return value.map((item) => templateToString(item)).join("");
-    }
-
-    if (typeof value === "object" && "strings" in value && "values" in value) {
-        const strings = /** @type {any} */ (value).strings;
-        const values = /** @type {any} */ (value).values;
-        let text = "";
-        for (let i = 0; i < strings.length; i += 1) {
-            text += strings[i];
-            if (i < values.length) {
-                text += templateToString(values[i]);
-            }
-        }
-        return text;
-    }
-
-    return String(value);
-}
-
-/**
  * @param {import("./provenance.js").ActionInfo} info
  * @returns {string}
  */
 function normalizeTitle(info) {
-    return templateToString(info.title).replace(/\s+/g, " ").trim();
+    return templateResultToString(info.title);
 }
 
 describe("getParamActionInfo", () => {

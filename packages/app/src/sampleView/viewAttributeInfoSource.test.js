@@ -18,45 +18,7 @@ vi.mock("./attributeAggregation/intervalFormatting.js", () => ({
 
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { resolveViewRef } from "./viewRef.js";
-
-/**
- * @param {any} value
- * @returns {string}
- */
-function templateToText(value) {
-    if (value == null) {
-        return "";
-    }
-
-    if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-    ) {
-        return String(value);
-    }
-
-    if (Array.isArray(value)) {
-        return value.map((entry) => templateToText(entry)).join("");
-    }
-
-    if (
-        typeof value === "object" &&
-        "strings" in value &&
-        "values" in value &&
-        Array.isArray(value.strings) &&
-        Array.isArray(value.values)
-    ) {
-        let text = value.strings[0] ?? "";
-        for (let i = 0; i < value.values.length; i++) {
-            text +=
-                templateToText(value.values[i]) + (value.strings[i + 1] ?? "");
-        }
-        return text;
-    }
-
-    return "";
-}
+import templateResultToString from "../utils/templateResultToString.js";
 
 /**
  * @returns {import("@genome-spy/core/view/unitView.js").default}
@@ -97,7 +59,7 @@ describe("getViewAttributeInfo", () => {
             },
         });
 
-        const title = templateToText(info.title).replace(/\s+/g, " ").trim();
+        const title = templateResultToString(info.title);
         expect(title).toContain("selection brush");
     });
 
@@ -115,7 +77,7 @@ describe("getViewAttributeInfo", () => {
             },
         });
 
-        const title = templateToText(info.title).replace(/\s+/g, " ").trim();
+        const title = templateResultToString(info.title);
         expect(title).toContain("chr1:1-2");
     });
 });
