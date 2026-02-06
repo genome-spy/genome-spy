@@ -58,8 +58,10 @@ export function getParamActionInfo(action, root) {
 function formatParamActionTitle(view, selector, value, origin, root) {
     if (value.type === "value") {
         return html`Set <strong>${selector.param}</strong> =
-            <strong>${formatScalar(value.value)}</strong>
-            ${formatOriginSuffix(origin, root)}`;
+            <strong>${formatScalar(value.value)}</strong>${formatOriginSuffix(
+                origin,
+                root
+            )}`;
     }
 
     if (value.type === "point") {
@@ -72,12 +74,13 @@ function formatParamActionTitle(view, selector, value, origin, root) {
         }
         if (value.keys.length === 1) {
             return html`Select <strong>${selector.param}</strong> =
-                <strong>${formatScalar(value.keys[0])}</strong>
-                ${formatOriginSuffix(origin, root)}`;
+                <strong>${formatScalar(value.keys[0])}</strong
+                >${formatOriginSuffix(origin, root)}`;
         }
-        return html`Select <strong>${selector.param}</strong> (
-            <strong>${value.keys.length}</strong> points)
-            ${formatOriginSuffix(origin, root)}`;
+        return html`Select <strong>${selector.param}</strong> (<strong
+                >${value.keys.length}</strong
+            >
+            points)${formatOriginSuffix(origin, root)}`;
     }
 
     if (value.type === "interval") {
@@ -86,8 +89,9 @@ function formatParamActionTitle(view, selector, value, origin, root) {
         const y = intervals.y;
         const xLabel = x && view ? formatInterval(view, x) : formatRange(x);
         const yLabel = y ? formatRange(y) : null;
+        const intervalLabel = formatIntervalSummary(xLabel, yLabel);
 
-        if (!xLabel && !yLabel) {
+        if (!intervalLabel) {
             return html`Clear selection
                 <strong>${selector.param}</strong> ${formatOriginSuffix(
                     origin,
@@ -95,11 +99,9 @@ function formatParamActionTitle(view, selector, value, origin, root) {
                 )}`;
         }
 
-        return html`Brush <strong>${selector.param}</strong> ${xLabel
-                ? html`(x: ${xLabel}`
-                : html`(`}
-            ${yLabel ? html`, y: ${yLabel}` : html``} )
-            ${formatOriginSuffix(origin, root)}`;
+        return html`Brush
+            <strong>${selector.param}</strong>
+            ${intervalLabel}${formatOriginSuffix(origin, root)}`;
     }
 
     return html`Update <strong>${selector.param}</strong>`;
@@ -122,7 +124,7 @@ function formatOriginSuffix(origin, root) {
         return html``;
     }
 
-    return html`from ${formatViewLabel(originView)}`;
+    return html` from ${formatViewLabel(originView)}`;
 }
 
 /**
@@ -164,6 +166,27 @@ function formatRange(interval) {
         return null;
     }
     return `${interval[0]} \u2013 ${interval[1]}`;
+}
+
+/**
+ * @param {string | null} xLabel
+ * @param {string | null} yLabel
+ * @returns {string | null}
+ */
+function formatIntervalSummary(xLabel, yLabel) {
+    if (xLabel && yLabel) {
+        return "(x: " + xLabel + ", y: " + yLabel + ")";
+    }
+
+    if (xLabel) {
+        return "(" + xLabel + ")";
+    }
+
+    if (yLabel) {
+        return "(y: " + yLabel + ")";
+    }
+
+    return null;
 }
 
 /**
