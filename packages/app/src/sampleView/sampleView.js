@@ -63,7 +63,7 @@ import {
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
-import { hasIntervalSource, hasLiteralInterval } from "./sampleViewTypes.js";
+import { isIntervalSource, isLiteralInterval } from "./sampleViewTypes.js";
 import {
     getParamSelector,
     resolveParamSelector,
@@ -288,21 +288,29 @@ export default class SampleView extends ContainerView {
     /**
      * Resolves the x-domain to zoom to for a view-backed attribute.
      *
-     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | import("./sampleViewTypes.js").IntervalCarrier} specifier
      * @returns {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain}
      */
     #resolveViewAttributeDomain(specifier) {
         /** @type {[any, any]} */
         let domain;
-        if (specifier.domainAtActionTime) {
-            domain = /** @type {[any, any]} */ (specifier.domainAtActionTime);
+        const domainAtActionTime =
+            "domainAtActionTime" in specifier
+                ? specifier.domainAtActionTime
+                : undefined;
+        if (domainAtActionTime) {
+            domain = /** @type {[any, any]} */ (domainAtActionTime);
         } else {
-            if (hasLiteralInterval(specifier)) {
-                domain = /** @type {[any, any]} */ (specifier.interval);
-            } else if (hasIntervalSource(specifier)) {
-                throw new Error(
-                    "Interval source specifiers are not supported yet."
-                );
+            if ("interval" in specifier) {
+                if (isLiteralInterval(specifier.interval)) {
+                    domain = /** @type {[any, any]} */ (specifier.interval);
+                } else if (isIntervalSource(specifier.interval)) {
+                    throw new Error(
+                        "Interval source specifiers are not supported yet."
+                    );
+                } else {
+                    throw new Error("Unsupported interval reference.");
+                }
             } else if ("locus" in specifier) {
                 domain = [specifier.locus, specifier.locus];
             } else {

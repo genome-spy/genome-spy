@@ -86,6 +86,7 @@ export interface SelectionIntervalSource {
 }
 
 export type IntervalReference = Interval | SelectionIntervalSource;
+export type IntervalCarrier = { interval: IntervalReference };
 
 export interface IntervalSpecifier extends BaseSpecifier {
     /** Literal interval or a selection source resolved at action execution time */
@@ -105,10 +106,10 @@ export function isIntervalSpecifier(
     specifier: ViewAttributeSpecifier
 ): specifier is IntervalSpecifier;
 
-export function hasLiteralInterval(
-    specifier: ViewAttributeSpecifier | { interval: IntervalReference }
-): specifier is { interval: Interval };
+export function isLiteralInterval(
+    interval: IntervalReference
+): interval is Interval;
 
-export function hasIntervalSource(
-    specifier: ViewAttributeSpecifier | { interval: IntervalReference }
-): specifier is { interval: SelectionIntervalSource };
+export function isIntervalSource(
+    interval: IntervalReference
+): interval is SelectionIntervalSource;

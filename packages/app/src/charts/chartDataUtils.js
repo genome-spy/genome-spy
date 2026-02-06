@@ -1,6 +1,6 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import {
-    hasLiteralInterval,
+    isLiteralInterval,
     isIntervalSpecifier,
 } from "../sampleView/sampleViewTypes.js";
 
@@ -14,7 +14,10 @@ export function getAttributeScope(attributeInfo) {
         return {};
     }
 
-    if (hasLiteralInterval(specifier) && isIntervalSpecifier(specifier)) {
+    if (
+        isIntervalSpecifier(specifier) &&
+        isLiteralInterval(specifier.interval)
+    ) {
         return {
             interval: specifier.interval,
             aggregation: specifier.aggregation,

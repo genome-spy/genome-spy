@@ -9,7 +9,11 @@ import {
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
-import { hasIntervalSource, hasLiteralInterval } from "./sampleViewTypes.js";
+import {
+    isIntervalSource,
+    isIntervalSpecifier,
+    isLiteralInterval,
+} from "./sampleViewTypes.js";
 import { resolveViewRef } from "./viewRef.js";
 
 /**
@@ -122,16 +126,20 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     }
 
     const locationLabel = (() => {
-        if (hasLiteralInterval(specifier)) {
-            return html`in
-                <span class="interval"
-                    >${formatInterval(view, specifier.interval)}</span
-                >`;
-        } else if (hasIntervalSource(specifier)) {
-            return html`in
-                <span class="interval"
-                    >selection ${specifier.interval.selector.param}</span
-                >`;
+        if (isIntervalSpecifier(specifier)) {
+            if (isLiteralInterval(specifier.interval)) {
+                return html`in
+                    <span class="interval"
+                        >${formatInterval(view, specifier.interval)}</span
+                    >`;
+            } else if (isIntervalSource(specifier.interval)) {
+                return html`in
+                    <span class="interval"
+                        >selection ${specifier.interval.selector.param}</span
+                    >`;
+            } else {
+                throw new Error("Unsupported interval reference.");
+            }
         } else if ("locus" in specifier) {
             return html`at
                 <span class="locus"
