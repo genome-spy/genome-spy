@@ -86,9 +86,20 @@ export default class ParamProvenanceBridge {
     #disposers = [];
 
     /** @type {Set<string>} */
-    #pendingWarnings = new Set();
+    #pendingPersistWarnings = new Set();
 
-    #warningsScheduled = false;
+    /** @type {Set<string>} */
+    #pendingRestoreWarnings = new Set();
+
+    /** @type {Set<string>} */
+    #persistWarningsSeen = new Set();
+
+    /** @type {Set<string>} */
+    #unpersistableKeys = new Set();
+
+    #persistWarningsScheduled = false;
+
+    #restoreWarningsScheduled = false;
 
     /** @type {WeakSet<object>} */
     #pendingCollectors = new WeakSet();
@@ -127,10 +138,12 @@ export default class ParamProvenanceBridge {
     #initEntries() {
         this.#entries = getBookmarkableParams(this.#root);
         this.#entriesByKey.clear();
+        this.#unpersistableKeys.clear();
 
         for (const entry of this.#entries) {
             const key = makeParamSelectorKey(entry.selector);
             this.#entriesByKey.set(key, entry);
+            this.#markUnpersistable(entry, key);
         }
     }
 
@@ -180,6 +193,11 @@ export default class ParamProvenanceBridge {
             return;
         }
 
+        const selectorKey = makeParamSelectorKey(entry.selector);
+        if (this.#unpersistableKeys.has(selectorKey)) {
+            return;
+        }
+
         const paramName = entry.selector.param;
         const value = entry.view.paramMediator.getValue(paramName);
         if (value === undefined) {
@@ -191,7 +209,6 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        const selectorKey = makeParamSelectorKey(entry.selector);
         if (this.#shouldUndoOnClear(entry, value, selectorKey)) {
             this.#cancelThrottledDispatch(selectorKey);
             this.#store.dispatch(ActionCreators.undo());
@@ -332,7 +349,7 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
-                const keyFields = this.#getKeyFieldsForEntry(entry);
+                const keyFields = this.#getKeyFieldsForPersist(entry);
                 if (!keyFields) {
                     return;
                 }
@@ -357,9 +374,9 @@ export default class ParamProvenanceBridge {
 
             if (isIntervalSelectionConfig(select)) {
                 if (!isIntervalSelection(value)) {
-                    this.#warnSelection(
+                    this.#warnPersistSelection(
                         param,
-                        "cannot be persisted because it has no value yet."
+                        "has no value yet and will not be saved."
                     );
                     return;
                 }
@@ -399,6 +416,9 @@ export default class ParamProvenanceBridge {
             for (const entry of this.#entries) {
                 const selectorKey = makeParamSelectorKey(entry.selector);
                 unusedKeys.delete(selectorKey);
+                if (this.#unpersistableKeys.has(selectorKey)) {
+                    continue;
+                }
 
                 const storedEntry = entries[selectorKey];
                 const value = storedEntry
@@ -456,7 +476,7 @@ export default class ParamProvenanceBridge {
                     );
                 }
 
-                const keyFields = this.#getKeyFieldsForEntry(entry);
+                const keyFields = this.#getKeyFieldsForRestore(entry);
                 if (!keyFields) {
                     return getDefaultParamValue(
                         param,
@@ -699,17 +719,27 @@ export default class ParamProvenanceBridge {
      * @param {string} message
      */
     #warnParam(param, message) {
-        this.#queueWarning(`Parameter "${param.name}" ${message}`);
+        this.#queueRestoreWarning(`Parameter "${param.name}" ${message}`);
     }
 
     /**
-     * Queues a warning message for a selection parameter.
+     * Queues a warning message for a selection parameter during restore.
      *
      * @param {Parameter} param
      * @param {string} message
      */
     #warnSelection(param, message) {
-        this.#queueWarning(`Selection "${param.name}" ${message}`);
+        this.#queueRestoreWarning(`Selection "${param.name}" ${message}`);
+    }
+
+    /**
+     * Queues a warning message for a selection parameter during persistence.
+     *
+     * @param {Parameter} param
+     * @param {string} message
+     */
+    #warnPersistSelection(param, message) {
+        this.#queuePersistWarning(`Selection "${param.name}" ${message}`);
     }
 
     /**
@@ -718,7 +748,9 @@ export default class ParamProvenanceBridge {
      * @param {string} message
      */
     #warnOrigin(message) {
-        this.#queueWarning(`Cannot resolve selection origin: ${message}`);
+        this.#queueRestoreWarning(
+            `Cannot resolve selection origin: ${message}`
+        );
     }
 
     /**
@@ -728,11 +760,49 @@ export default class ParamProvenanceBridge {
      * @param {string[] | undefined} scope
      */
     #warnMissingParamInScope(paramName, scope) {
-        this.#queueWarning(
+        this.#queueRestoreWarning(
             `Cannot restore parameter "${paramName}" in import scope ${this.#formatScope(
                 scope
             )}. The parameter is missing or no longer unique in that scope. Check import names and parameter names.`
         );
+    }
+
+    /**
+     * Marks a parameter as unpersistable and queues a warning when needed.
+     *
+     * @param {BookmarkableParamEntry} entry
+     * @param {string} selectorKey
+     */
+    #markUnpersistable(entry, selectorKey) {
+        const param = entry.param;
+        if (!isSelectionParameter(param)) {
+            return;
+        }
+
+        const select = asSelectionConfig(param.select);
+        if (!isPointSelectionConfig(select)) {
+            return;
+        }
+
+        let keyFields;
+        try {
+            keyFields = getEncodingKeyFields(entry.view.getEncoding());
+        } catch (error) {
+            this.#unpersistableKeys.add(selectorKey);
+            this.#warnPersistSelection(
+                param,
+                `will not be saved because encoding.key is invalid: ${error}`
+            );
+            return;
+        }
+
+        if (!keyFields) {
+            this.#unpersistableKeys.add(selectorKey);
+            this.#warnPersistSelection(
+                param,
+                "will not be saved to bookmarks because encoding.key is missing on the owning view. Add encoding.key or set persist: false."
+            );
+        }
     }
 
     /**
@@ -767,14 +837,43 @@ export default class ParamProvenanceBridge {
      * @param {BookmarkableParamEntry} entry
      * @returns {string[] | undefined}
      */
-    #getKeyFieldsForEntry(entry) {
+    #getKeyFieldsForPersist(entry) {
+        let keyFields;
+        try {
+            keyFields = getEncodingKeyFields(entry.view.getEncoding());
+        } catch (error) {
+            this.#warnPersistSelection(
+                entry.param,
+                `cannot be saved because encoding.key is invalid: ${error}`
+            );
+            return;
+        }
+
+        if (!keyFields) {
+            this.#warnPersistSelection(
+                entry.param,
+                "will not be saved to bookmarks because encoding.key is missing on the owning view. Add encoding.key or set persist: false."
+            );
+            return;
+        }
+
+        return keyFields;
+    }
+
+    /**
+     * Reads key fields from encoding for restore warnings.
+     *
+     * @param {BookmarkableParamEntry} entry
+     * @returns {string[] | undefined}
+     */
+    #getKeyFieldsForRestore(entry) {
         let keyFields;
         try {
             keyFields = getEncodingKeyFields(entry.view.getEncoding());
         } catch (error) {
             this.#warnSelection(
                 entry.param,
-                `cannot use encoding.key: ${error}`
+                `cannot be restored because encoding.key is invalid: ${error}`
             );
             return;
         }
@@ -782,7 +881,7 @@ export default class ParamProvenanceBridge {
         if (!keyFields) {
             this.#warnSelection(
                 entry.param,
-                "cannot be persisted because encoding.key is missing on the owning view."
+                "cannot be restored because encoding.key is missing on the owning view."
             );
             return;
         }
@@ -812,17 +911,65 @@ export default class ParamProvenanceBridge {
      *
      * @param {string} message
      */
-    #queueWarning(message) {
-        this.#pendingWarnings.add(message);
-        if (this.#warningsScheduled) {
+    #queuePersistWarning(message) {
+        if (this.#persistWarningsSeen.has(message)) {
             return;
         }
 
-        this.#warningsScheduled = true;
+        this.#persistWarningsSeen.add(message);
+        this.#pendingPersistWarnings.add(message);
+        if (this.#persistWarningsScheduled) {
+            return;
+        }
+
+        this.#persistWarningsScheduled = true;
         queueMicrotask(() => {
-            this.#warningsScheduled = false;
-            const messages = Array.from(this.#pendingWarnings);
-            this.#pendingWarnings.clear();
+            this.#persistWarningsScheduled = false;
+            const messages = Array.from(this.#pendingPersistWarnings);
+            this.#pendingPersistWarnings.clear();
+
+            if (!messages.length) {
+                return;
+            }
+
+            const items = messages.map((msg) => html`<li>${msg}</li>`);
+            showMessageDialog(
+                html`<p>
+                        Some interactive parameters cannot be saved to bookmarks
+                        or provenance. The visualization is still usable, but
+                        those selections will not be preserved.
+                    </p>
+                    <p>
+                        To fix this, add <code>encoding.key</code> or set
+                        <code>persist: false</code> on ephemeral params.
+                    </p>
+                    <ul>
+                        ${items}
+                    </ul>`,
+                {
+                    title: "Bookmark persistence warnings",
+                    type: "warning",
+                }
+            );
+        });
+    }
+
+    /**
+     * Coalesces restore warnings so failures show a single dialog.
+     *
+     * @param {string} message
+     */
+    #queueRestoreWarning(message) {
+        this.#pendingRestoreWarnings.add(message);
+        if (this.#restoreWarningsScheduled) {
+            return;
+        }
+
+        this.#restoreWarningsScheduled = true;
+        queueMicrotask(() => {
+            this.#restoreWarningsScheduled = false;
+            const messages = Array.from(this.#pendingRestoreWarnings);
+            this.#pendingRestoreWarnings.clear();
 
             if (!messages.length) {
                 return;
