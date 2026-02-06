@@ -28,64 +28,47 @@ User-facing impact:
 regardless of the current selection state. This breaks the intent chain when
 selections are persisted independently in provenance.
 
-## Proposed Design
+## Implemented Design
 
-### 1) Data Model: interval vs. intervalSource (exclusive)
+### 1) Data Model: single `interval` field with interval references
 
-Replace `IntervalSpecifier` with a union where **only one** of `interval` or
-`intervalSource` is present.
+`IntervalSpecifier` now uses a single `interval` field with union type:
 
 ```
-type IntervalLiteralSpecifier = {
-  view: ViewRef;
-  field: string;
-  aggregation: AggregationSpec;
-  interval: Interval;
-  intervalSource?: never;
-};
-
-type IntervalSourceSpecifier = {
-  view: ViewRef;
-  field: string;
-  aggregation: AggregationSpec;
-  interval?: never;
-  intervalSource: {
-    type: "selection";
-    selector: ParamSelector;
-  };
-};
+type IntervalReference = Interval | SelectionIntervalSource;
 ```
 
-### 2) Capture: build intervalSource when possible
+This keeps payload shape stable while still allowing source-based intervals.
+
+### 2) Capture: build selection interval references when possible
 
 When the context menu is built:
 - Detect active interval selection (x-encoding) in ancestor chain.
 - If the selection param is bookmarkable and addressable, use
   `getParamSelector(view, paramName)` to build `intervalSource`.
-- Do **not** record `interval` in this case.
-- If not resolvable/addressable, fall back to `interval` (current behavior).
+- Record `interval` as a `SelectionIntervalSource` in this case.
+- If not resolvable/addressable, fall back to literal `interval`.
 
-### 3) Resolve at Action Execution Time
+### 3) Resolve at action execution time
 
 When building attribute accessors:
-- If `intervalSource` is present:
-  - Resolve the selector via `resolveParamSelector(rootView, selector)`.
-  - Read the interval selection from ParamMediator.
-  - Use the **numeric domain** interval directly (no chrom/pos conversion).
-  - If resolution fails or the selection is empty, **throw** to abort replay
-    and avoid inconsistent state.
-- If `interval` is present, use it directly.
+- If `interval` is a `SelectionIntervalSource`:
+  - Resolve selector via `resolveParamSelector(rootView, selector)`.
+  - Read selection from `ParamMediator`.
+  - Use numeric x-interval directly.
+  - Throw on unresolved/empty/invalid selection to abort replay and avoid inconsistent state.
+- If `interval` is literal, use it directly.
 
-### 4) Action Info (Provenance Labels)
+### 4) Action info (provenance labels)
 
-If `intervalSource` is present, label actions using the selection param name
+If `interval` is a selection reference, label actions using the selection param name
 instead of coordinates. Example:
 
 ```
 Sort by count in selection <param>
 ```
 
-If `interval` is present, keep existing coordinate-based labels.
+If `interval` is literal, keep coordinate-based labels.
 
 ## File Pointers
 
@@ -107,55 +90,31 @@ If `interval` is present, keep existing coordinate-based labels.
 ### Unit tests
 
 - `viewAttributeInfoSource`:
-  - `intervalSource` yields titles referencing selection param (no coordinates).
+  - selection interval references yield titles referencing selection param (no coordinates).
   - `interval` yields existing coordinate-based titles.
 - `attributeAccessors` / resolver:
-  - `intervalSource` resolves numeric interval from selection param.
+  - selection interval references resolve numeric interval from selection param.
   - Throws when selector cannot resolve or selection is empty.
   - `interval` still works as before.
 
 ### Integration tests
 
 - `sampleView/state/actionInfo.test.js`:
-  - Action label uses selection param for source-based interval.
+  - Action label uses selection param wording for source-based interval.
 - `sampleView/attributeAggregation/attributeAccessors.test.js`:
   - Accessor reads selection interval from ParamMediator at execution time.
+- `sampleView/sampleViewLazyReady.test.js`:
+  - `ensureViewAttributeAvailability` rejects on unresolved/empty selection source.
 
-## Step-by-Step Plan
+## Status
 
-### Step 1: Types and specifier helpers
+Completed:
+- Step 1: types/guards migrated to single `interval` field (`IntervalReference`).
+- Step 2: context menu captures selection references and falls back to literal intervals.
+- Step 3: selection references resolve at execution time; failures abort replay.
+- Step 4: attribute titles show selection param names for source-based intervals.
+- Step 5: unit/integration coverage added for resolver, accessors, titles, and ensure-path failures.
 
-- Update `IntervalSpecifier` types to the union described above.
-- Update `isIntervalSpecifier` helper to recognize both forms.
-
-Commit: `refactor(app): split interval specifiers by source`
-
-### Step 2: Capture intervalSource in context menu
-
-- Extend `#getActiveIntervalSelection` to return `paramName`.
-- Build `intervalSource` using `getParamSelector` when possible.
-- Keep literal `interval` fallback when not resolvable.
-
-Commit: `feat(app): capture interval source selections`
-
-### Step 3: Resolve intervalSource in accessors
-
-- Add resolver that maps `intervalSource` -> numeric interval from ParamMediator.
-- Throw on resolution failure / empty selection.
-- Keep literal `interval` support unchanged.
-
-Commit: `feat(app): resolve interval sources in accessors`
-
-### Step 4: Action info and titles
-
-- If `intervalSource` exists, show param-based title (no coordinates).
-- Keep existing labels for literal intervals.
-
-Commit: `feat(app): label interval actions by selection source`
-
-### Step 5: Tests
-
-- Add/adjust tests for the new union, resolution behavior, and labels.
-- Ensure failures throw and abort replay (test via thrown error).
-
-Commit: `test(app): cover interval source specifiers`
+Remaining:
+- Run full app test suite (`npm test`) before merge.
+- Optional: add end-to-end intent pipeline test asserting no dispatch on selection-source resolution failure.

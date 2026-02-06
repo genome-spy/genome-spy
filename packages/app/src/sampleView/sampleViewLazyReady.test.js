@@ -114,4 +114,90 @@ describe("SampleView lazy readiness", () => {
             vi.useRealTimers();
         }
     });
+
+    it("rejects ensureViewAttributeAvailability when interval source selector cannot be resolved", async () => {
+        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            samples: {
+                data: {
+                    values: [{ sample: "A" }],
+                },
+            },
+            data: {
+                values: [{ sample: "A", x: 1, beta: 1 }],
+            },
+            spec: {
+                name: "beta-values",
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "beta", type: "quantitative" },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({
+            spec,
+            disableGroupUpdates: true,
+        });
+
+        await expect(
+            view.ensureViewAttributeAvailability({
+                view: "beta-values",
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: { scope: [], param: "brush" },
+                },
+                aggregation: { op: "count" },
+            })
+        ).rejects.toThrow('Cannot resolve interval source selection "brush"');
+    });
+
+    it("rejects ensureViewAttributeAvailability when interval source selection is empty", async () => {
+        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            samples: {
+                data: {
+                    values: [{ sample: "A" }],
+                },
+            },
+            data: {
+                values: [{ sample: "A", x: 1, beta: 1 }],
+            },
+            spec: {
+                name: "beta-values",
+                params: [
+                    {
+                        name: "brush",
+                        select: { type: "interval", encodings: ["x"] },
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "beta", type: "quantitative" },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({
+            spec,
+            disableGroupUpdates: true,
+        });
+
+        await expect(
+            view.ensureViewAttributeAvailability({
+                view: "beta-values",
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: { scope: [], param: "brush" },
+                },
+                aggregation: { op: "count" },
+            })
+        ).rejects.toThrow('Interval source selection "brush" is empty');
+    });
 });

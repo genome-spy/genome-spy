@@ -107,9 +107,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain(
-            "Set <strong>threshold</strong> = <strong>5</strong> in <strong>Overview</strong>"
-        );
+        expect(title).toContain("Set threshold = 5 in Overview");
     });
 
     it("formats point selection titles for clear and multi selections", () => {
@@ -126,9 +124,7 @@ describe("getParamActionInfo", () => {
         const clearInfo = getParamActionInfo(clearAction, view);
         const clearTitle = normalizeTitle(clearInfo);
 
-        expect(clearTitle).toContain(
-            "Clear selection <strong>selected</strong> in <strong>points</strong>"
-        );
+        expect(clearTitle).toContain("Clear selection selected in points");
 
         const multiAction = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "selected" },
@@ -137,9 +133,7 @@ describe("getParamActionInfo", () => {
         const multiInfo = getParamActionInfo(multiAction, view);
         const multiTitle = normalizeTitle(multiInfo);
 
-        expect(multiTitle).toContain(
-            "Select <strong>selected</strong> (<strong>2</strong> points) in <strong>points</strong>"
-        );
+        expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
     it("formats interval selections with x and y ranges", () => {
@@ -160,7 +154,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("Brush <strong>brush</strong>");
+        expect(title).toContain("Brush brush");
         expect(title).toContain("x: 1 \u2013 2");
         expect(title).toContain("y: 3 \u2013 4");
     });
@@ -208,8 +202,8 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, root);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("from <strong>Origin</strong>");
-        expect(title).toContain("in <strong>Main</strong>");
+        expect(title).toContain("from Origin");
+        expect(title).toContain("in Main");
     });
 
     it("falls back to explicit view names when titles are missing", () => {
@@ -231,7 +225,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("in <strong>ExplicitView</strong>");
+        expect(title).toContain("in ExplicitView");
         expect(title).not.toContain("SpecName");
     });
 });

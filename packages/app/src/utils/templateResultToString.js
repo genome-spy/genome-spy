@@ -11,7 +11,9 @@ export default function templateResultToString(templateResult) {
         return normalizeWhitespace(container.textContent ?? "");
     }
 
-    return normalizeWhitespace(stringifyTemplateValue(templateResult));
+    return normalizeWhitespace(
+        stripHtmlTags(stringifyTemplateValue(templateResult))
+    );
 }
 
 /**
@@ -70,4 +72,12 @@ function stringifyTemplateValue(value) {
  */
 function normalizeWhitespace(text) {
     return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * @param {string} text
+ * @returns {string}
+ */
+function stripHtmlTags(text) {
+    return text.replace(/<[^>]*>/g, "");
 }
