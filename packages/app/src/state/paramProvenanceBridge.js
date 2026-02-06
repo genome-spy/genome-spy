@@ -458,7 +458,8 @@ export default class ParamProvenanceBridge {
                 /** @type {ParamValue} */
                 return {
                     type: "interval",
-                    intervals: this.#copyIntervals(
+                    intervals: this.#serializeIntervals(
+                        entry,
                         /** @type {any} */ (value.intervals)
                     ),
                 };
@@ -644,13 +645,21 @@ export default class ParamProvenanceBridge {
                 const selection = /** @type {any} */ (
                     createIntervalSelection(select.encodings)
                 );
-                this.#applyIntervals(selection, storedValue.intervals);
+                this.#applyIntervals(
+                    entry.view,
+                    selection,
+                    storedValue.intervals
+                );
 
                 const originIntervals = this.#resolveOriginIntervals(
                     storedEntry.origin
                 );
                 if (originIntervals) {
-                    this.#applyIntervals(selection, originIntervals);
+                    this.#applyIntervals(
+                        entry.view,
+                        selection,
+                        originIntervals
+                    );
                 }
 
                 return selection;
@@ -695,13 +704,29 @@ export default class ParamProvenanceBridge {
     /**
      * Applies interval values to a selection object.
      *
+     * @param {View} view
      * @param {{ intervals: Record<string, [any, any] | null> }} selection
      * @param {Partial<Record<string, [any, any]>>} intervals
      */
-    #applyIntervals(selection, intervals) {
+    #applyIntervals(view, selection, intervals) {
         for (const [channel, interval] of Object.entries(intervals)) {
             if (interval) {
-                selection.intervals[channel] = [interval[0], interval[1]];
+                const channelWithScale =
+                    /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
+                        channel
+                    );
+                const resolution =
+                    "getScaleResolution" in view
+                        ? view.getScaleResolution(channelWithScale)
+                        : null;
+                selection.intervals[channel] = [
+                    resolution && typeof resolution.fromComplex === "function"
+                        ? resolution.fromComplex(interval[0])
+                        : interval[0],
+                    resolution && typeof resolution.fromComplex === "function"
+                        ? resolution.fromComplex(interval[1])
+                        : interval[1],
+                ];
             }
         }
     }
@@ -966,15 +991,31 @@ export default class ParamProvenanceBridge {
     /**
      * Copies intervals to ensure we do not leak internal references.
      *
+     * @param {BookmarkableParamEntry} entry
      * @param {Partial<Record<string, any[] | null>>} intervals
      * @returns {Partial<Record<string, [any, any]>>}
      */
-    #copyIntervals(intervals) {
+    #serializeIntervals(entry, intervals) {
         /** @type {Partial<Record<string, [any, any]>>} */
         const copy = {};
         for (const [channel, interval] of Object.entries(intervals)) {
             if (interval) {
-                copy[channel] = [interval[0], interval[1]];
+                const channelWithScale =
+                    /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
+                        channel
+                    );
+                const resolution =
+                    "getScaleResolution" in entry.view
+                        ? entry.view.getScaleResolution(channelWithScale)
+                        : null;
+                copy[channel] = [
+                    resolution && resolution.type === "locus"
+                        ? resolution.toComplex(interval[0])
+                        : interval[0],
+                    resolution && resolution.type === "locus"
+                        ? resolution.toComplex(interval[1])
+                        : interval[1],
+                ];
             }
         }
         return copy;

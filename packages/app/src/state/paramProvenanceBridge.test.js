@@ -113,6 +113,49 @@ describe("ParamProvenanceBridge", () => {
         expect(entry.value).toEqual({ type: "value", value: 5 });
     });
 
+    it("serializes locus interval selections using complex domains", async () => {
+        vi.useFakeTimers();
+        try {
+            const view = new FakeView();
+            view.getScaleResolution = () => ({
+                type: "locus",
+                toComplex: (value) => ({ chrom: "chr1", pos: value }),
+                fromComplex: (value) => value,
+            });
+            const setter = view.paramMediator.registerParam({
+                name: "brush",
+                select: { type: "interval", encodings: ["x"] },
+            });
+
+            const store = createStore();
+            const intentExecutor = new IntentExecutor(store);
+            new ParamProvenanceBridge({
+                root: view,
+                store,
+                intentExecutor,
+            });
+
+            const selection = createIntervalSelection(["x"]);
+            selection.intervals.x = [10, 20];
+            setter(selection);
+
+            vi.runAllTimers();
+            await flushMicrotasks();
+
+            const key = makeParamSelectorKey({ scope: [], param: "brush" });
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    key
+                ];
+            expect(entry.value.intervals.x).toEqual([
+                { chrom: "chr1", pos: 10 },
+                { chrom: "chr1", pos: 20 },
+            ]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("throttles rapid updates for bound parameters", async () => {
         vi.useFakeTimers();
         try {
