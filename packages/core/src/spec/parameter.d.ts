@@ -20,9 +20,22 @@ export interface ParameterBase {
     push?: "outer";
 }
 
+export interface PersistedParameter {
+    /**
+     * Whether the parameter should be persisted in bookmarks and provenance.
+     *
+     * This primarily affects GenomeSpy App behavior.
+     * Set to `false` for ephemeral params (e.g., hover selections) or when the
+     * selection cannot be persisted due to missing `encoding.key`.
+     *
+     * __Default value:__ `true`
+     */
+    persist?: boolean;
+}
+
 // Adapted from: https://github.com/vega/vega-lite/blob/main/src/parameter.ts
 
-export interface VariableParameter extends ParameterBase {
+export interface VariableParameter extends ParameterBase, PersistedParameter {
     /**
      * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
      *
@@ -219,17 +232,9 @@ export interface PointSelectionConfig extends BaseSelectionConfig<"point"> {
      * __Default value:__ `true`
      */
     toggle?: boolean;
-    /**
-     * A set of fields that uniquely identify a tuple. Used for bookmarking point selections
-     * in the GenomeSpy App. Still work in progress.
-     *
-     * TODO: Or maybe use the `key` channel? https://vega.github.io/vega-lite/docs/encoding.html#key
-     */
-    //keyFields?: string[];
 }
 
-export interface IntervalSelectionConfig
-    extends BaseSelectionConfig<"interval"> {
+export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval"> {
     type: "interval";
 
     /**
@@ -294,7 +299,7 @@ export interface BrushConfig extends ShadowProps {
 }
 
 export interface SelectionParameter<T extends SelectionType = SelectionType>
-    extends ParameterBase {
+    extends ParameterBase, PersistedParameter {
     /**
      * Determines the default event processing and data query for the selection. Vega-Lite currently supports two selection types:
      *

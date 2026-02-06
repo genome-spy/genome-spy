@@ -257,6 +257,10 @@ export default class UnitView extends View {
         const encoding = super.getEncoding();
         const supportedChannels = this.mark.getSupportedChannels();
         for (const channel of Object.keys(encoding)) {
+            if (channel === "key") {
+                continue;
+            }
+
             if (!supportedChannels.includes(channel)) {
                 delete encoding[channel];
             }

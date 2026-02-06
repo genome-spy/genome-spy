@@ -3,7 +3,9 @@ import {
     getSecondaryChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
+import { isFieldDef } from "../encoder/encoder.js";
 import { validateParameterName } from "../view/paramMediator.js";
+import { field } from "../utils/field.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -27,6 +29,106 @@ export function createMultiPointSelection(data) {
         type: "multi",
         data: new Map(data.map((d) => [d[UNIQUE_ID_KEY], d])),
     };
+}
+
+/**
+ * Returns key fields used for point selections, if configured.
+ *
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @returns {string[] | undefined}
+ */
+export function getEncodingKeyFields(encoding) {
+    const keyDef = encoding && encoding.key;
+    if (!keyDef) {
+        return;
+    }
+
+    if (!isFieldDef(keyDef)) {
+        throw new Error("The key channel must be a field definition.");
+    }
+
+    return [keyDef.field];
+}
+
+/**
+ * Returns key tuples for a point selection.
+ *
+ * @param {import("../types/selectionTypes.js").SinglePointSelection | import("../types/selectionTypes.js").MultiPointSelection} selection
+ * @param {string[]} keyFields
+ * @returns {import("../spec/channel.js").Scalar[][] | undefined}
+ */
+export function getPointSelectionKeyTuples(selection, keyFields) {
+    if (!keyFields || keyFields.length === 0) {
+        return;
+    }
+
+    const accessors = keyFields.map((fieldName) => field(fieldName));
+    const toTuple = (
+        /** @type {import("../data/flowNode.js").Datum} */ datum
+    ) => accessors.map((accessor) => accessor(datum));
+
+    if (isSinglePointSelection(selection)) {
+        if (!selection.datum) {
+            return [];
+        }
+
+        return [toTuple(selection.datum)];
+    }
+
+    if (isMultiPointSelection(selection)) {
+        return [...selection.data.values()].map(toTuple);
+    }
+
+    throw new Error(
+        `Expected a point selection, got: ${JSON.stringify(selection)}`
+    );
+}
+
+/**
+ * Resolves key tuples to a point selection value object.
+ *
+ * @param {"single" | "multi"} type
+ * @param {string[]} keyFields
+ * @param {import("../spec/channel.js").Scalar[][]} keyTuples
+ * @param {(keyFields: string[], keyTuple: import("../spec/channel.js").Scalar[]) => import("../data/flowNode.js").Datum | undefined} resolveDatum
+ * @returns {{ selection: import("../types/selectionTypes.js").SinglePointSelection | import("../types/selectionTypes.js").MultiPointSelection, unresolved: import("../spec/channel.js").Scalar[][] } | undefined}
+ */
+export function resolvePointSelectionFromKeyTuples(
+    type,
+    keyFields,
+    keyTuples,
+    resolveDatum
+) {
+    if (!keyFields || keyFields.length === 0) {
+        return;
+    }
+
+    if (type === "single" && keyTuples.length > 1) {
+        throw new Error(
+            "Single point selections expect at most one key tuple."
+        );
+    }
+
+    /** @type {import("../data/flowNode.js").Datum[]} */
+    const datums = [];
+    /** @type {import("../spec/channel.js").Scalar[][]} */
+    const unresolved = [];
+
+    for (const tuple of keyTuples) {
+        const datum = resolveDatum(keyFields, tuple);
+        if (datum) {
+            datums.push(datum);
+        } else {
+            unresolved.push(tuple);
+        }
+    }
+
+    const selection =
+        type === "single"
+            ? createSinglePointSelection(datums[0] ?? null)
+            : createMultiPointSelection(datums);
+
+    return { selection, unresolved };
 }
 
 /**

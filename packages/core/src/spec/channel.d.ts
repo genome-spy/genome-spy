@@ -46,6 +46,7 @@ export type ChannelWithoutScale =
     | "uniqueId"
     | "search"
     | "text"
+    | "key"
     | "facetIndex"
     | "semanticScore"
     | "uniqueId"
@@ -510,7 +511,15 @@ export interface Encoding {
     sample?: FieldDefWithoutScale;
 
     /**
+     * A data field that uniquely identifies data objects for stable point
+     * selections and bookmarking across sessions. Unlike `uniqueId` (an implicit
+     * surrogate key), the key must be stable in the source data.
+     */
+    key?: FieldDefWithoutScale;
+
+    /**
      * For internal use
+     * @internal
      */
     // TODO: proper type
     uniqueId?: FieldDefWithoutScale;

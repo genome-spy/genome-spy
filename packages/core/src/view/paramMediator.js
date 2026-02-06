@@ -73,6 +73,7 @@ export default class ParamMediator {
 
         /** @type {ParameterSetter} */
         let setter;
+        let defaultValue;
 
         if (param.push == "outer") {
             const outerMediator = this.findMediatorForParam(name);
@@ -93,36 +94,26 @@ export default class ParamMediator {
             // support mutation (i.e. adding/removing children) in future.
             this.#allocatedSetters.set(name, setter);
         } else if ("value" in param) {
-            setter = this.allocateSetter(name, param.value);
+            defaultValue = getDefaultParamValue(param, this);
+            setter = this.allocateSetter(name, defaultValue);
         } else if ("expr" in param) {
             const expr = this.createExpression(param.expr);
             // TODO: getSetter(param) should return a setter that throws if
             // modifying the value is attempted.
-            const realSetter = this.allocateSetter(name, expr(null));
+            defaultValue = getDefaultParamValue(param, this, expr);
+            const realSetter = this.allocateSetter(name, defaultValue);
             expr.addListener(() => realSetter(expr(null)));
             // NOP
             setter = (_) => undefined;
         } else {
-            setter = this.allocateSetter(name, null);
+            defaultValue = getDefaultParamValue(param, this);
+            setter = this.allocateSetter(name, defaultValue);
         }
 
         if ("select" in param) {
-            const select = asSelectionConfig(param.select);
-            if (isPointSelectionConfig(select)) {
-                // Set initial value so that production rules in shaders can be generated, etc.
-                setter(
-                    select.toggle
-                        ? createMultiPointSelection()
-                        : createSinglePointSelection(null)
-                );
-            } else if (isIntervalSelectionConfig(select)) {
-                if (!select.encodings) {
-                    throw new Error(
-                        `Interval selection "${name}" must have encodings defined!`
-                    );
-                }
-                setter(createIntervalSelection(select.encodings));
-            }
+            defaultValue ??= getDefaultParamValue(param, this);
+            // Set initial value so that production rules in shaders can be generated, etc.
+            setter(defaultValue);
         }
 
         this.#paramConfigs.set(name, param);
@@ -187,6 +178,34 @@ export default class ParamMediator {
      */
     getValue(paramName) {
         return this.#paramValues.get(paramName);
+    }
+
+    /**
+     * Subscribe to changes of a parameter's value. The listener is called only
+     * when the stored value changes. For expression parameters, the listener is
+     * called when upstream changes re-evaluate to a different value.
+     *
+     * @param {string} paramName
+     * @param {() => void} listener
+     * @returns {() => void}
+     */
+    subscribe(paramName, listener) {
+        validateParameterName(paramName);
+        const mediator = this.findMediatorForParam(paramName);
+        if (!mediator) {
+            throw new Error("Parameter not found: " + paramName);
+        }
+
+        const listeners = mediator.paramListeners.get(paramName) ?? new Set();
+        mediator.paramListeners.set(paramName, listeners);
+        listeners.add(listener);
+
+        return () => {
+            listeners.delete(listener);
+            if (!listeners.size) {
+                mediator.paramListeners.delete(paramName);
+            }
+        };
     }
 
     /**
@@ -389,6 +408,54 @@ export function isVariableParameter(param) {
  */
 export function isSelectionParameter(param) {
     return !("expr" in param || "bind" in param) && "select" in param;
+}
+
+/**
+ * Computes the default value for a parameter specification.
+ *
+ * @param {Parameter} param
+ * @param {ParamMediator} [paramMediator]
+ * @param {ExprRefFunction} [exprFn]
+ * @returns {any}
+ */
+export function getDefaultParamValue(param, paramMediator, exprFn) {
+    if ("select" in param) {
+        const select = asSelectionConfig(param.select);
+        if (isPointSelectionConfig(select)) {
+            return select.toggle
+                ? createMultiPointSelection()
+                : createSinglePointSelection(null);
+        }
+        if (isIntervalSelectionConfig(select)) {
+            if (!select.encodings) {
+                throw new Error(
+                    `Interval selection "${param.name}" must have encodings defined!`
+                );
+            }
+            return createIntervalSelection(select.encodings);
+        }
+        throw new Error(
+            `Unknown selection config for parameter "${param.name}".`
+        );
+    }
+
+    if ("expr" in param) {
+        const expr =
+            exprFn ??
+            paramMediator?.createExpression(/** @type {string} */ (param.expr));
+        if (!expr) {
+            throw new Error(
+                `Cannot evaluate expression for parameter "${param.name}".`
+            );
+        }
+        return expr(null);
+    }
+
+    if ("value" in param) {
+        return param.value;
+    }
+
+    return null;
 }
 
 /**

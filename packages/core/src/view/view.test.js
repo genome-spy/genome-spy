@@ -68,6 +68,20 @@ describe("Trivial creations and initializations", () => {
                 View
             )
         ).resolves.toBeInstanceOf(UnitView));
+
+    test("Preserves inherited key channel in unit views", async () => {
+        const view = await create(
+            {
+                encoding: { key: { field: "id" } },
+                layer: [{ mark: "point" }],
+            },
+            LayerView
+        );
+
+        const unitView = view.children[0];
+        expect(unitView).toBeInstanceOf(UnitView);
+        expect(unitView.getEncoding().key).toEqual({ field: "id" });
+    });
 });
 
 describe("Test domain handling", () => {

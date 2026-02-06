@@ -27,6 +27,11 @@ Parameters with input bindings should have a unique `name` within the [import
 scope](./import.md#repeating-with-named-templates). While not enforced in core,
 this is necessary for bookmarkable state in the GenomeSpy App.
 
+By default, selection parameters and parameters with input bindings are
+persisted in the GenomeSpy App's bookmarks and provenance history. Use
+`persist: false` to opt out of persistence for ephemeral params (such as hover
+selections) or when `encoding.key` is not defined for point selections.
+
 The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.
 

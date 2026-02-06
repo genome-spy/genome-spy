@@ -18,6 +18,8 @@ aware interactions.
 - JavaScript (Modern ESNext) typed with JSDoc
 - TypeScript for more complex type definitions and JSON Schema generation
 - Monorepo managed with lerna-lite
+- TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
+- When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
 
 ### Core
 

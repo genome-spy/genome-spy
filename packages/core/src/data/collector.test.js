@@ -138,6 +138,63 @@ describe("Indexing unique ids", () => {
     });
 });
 
+describe("Indexing key fields", () => {
+    test("Collector finds data by key tuples", () => {
+        const collector = new Collector();
+        const data = [
+            { id: "a", x: 1 },
+            { id: "b", x: 2 },
+        ];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(collector.findDatumByKey(["id"], ["a"])).toEqual(data[0]);
+        expect(collector.findDatumByKey(["id"], ["missing"])).toBeUndefined();
+    });
+
+    test("Collector throws on duplicate keys when index is built", () => {
+        const collector = new Collector();
+        const data = [
+            { id: "a", x: 1 },
+            { id: "a", x: 2 },
+        ];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(() => collector.findDatumByKey(["id"], ["a"])).toThrow(
+            /Duplicate key/
+        );
+    });
+
+    test("Collector rebuilds key index after reset", () => {
+        const collector = new Collector();
+        const data = [{ id: "a", x: 1 }];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(collector.findDatumByKey(["id"], ["a"])).toEqual(data[0]);
+
+        collector.reset();
+
+        const data2 = [{ id: "a", x: 2 }];
+        for (const d of data2) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(collector.findDatumByKey(["id"], ["a"])).toEqual(data2[0]);
+    });
+});
+
 describe("Domain caching and notifications", () => {
     test("Collector caches domains by key", () => {
         const collector = new Collector();
