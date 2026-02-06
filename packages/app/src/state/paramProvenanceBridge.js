@@ -266,7 +266,51 @@ export default class ParamProvenanceBridge {
             return false;
         }
 
-        return makeParamSelectorKey(lastSelector) === selectorKey;
+        if (makeParamSelectorKey(lastSelector) !== selectorKey) {
+            return false;
+        }
+
+        const previous = past[past.length - 1];
+        const previousEntry =
+            previous &&
+            previous.paramProvenance &&
+            previous.paramProvenance.entries &&
+            previous.paramProvenance.entries[selectorKey];
+        if (!previousEntry) {
+            return true;
+        }
+
+        return this.#isSerializedSelectionCleared(
+            entry.param,
+            previousEntry.value
+        );
+    }
+
+    /**
+     * @param {Parameter} param
+     * @param {ParamValue | undefined} value
+     * @returns {boolean}
+     */
+    #isSerializedSelectionCleared(param, value) {
+        if (!value || !isSelectionParameter(param)) {
+            return true;
+        }
+
+        if (value.type === "point") {
+            return value.keys.length === 0;
+        }
+
+        if (value.type === "interval") {
+            const intervals = value.intervals ?? {};
+            for (const interval of Object.values(intervals)) {
+                if (interval && interval[0] != null && interval[1] != null) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        return true;
     }
 
     /**

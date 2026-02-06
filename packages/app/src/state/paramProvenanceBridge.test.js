@@ -351,6 +351,63 @@ describe("ParamProvenanceBridge", () => {
         ).toBeUndefined();
     });
 
+    it("clears without undo when previous selection was non-empty", async () => {
+        vi.useFakeTimers();
+        try {
+            const view = new FakeView();
+            view.encoding = { key: { field: "id" } };
+            view.paramMediator.registerParam({
+                name: "other",
+                value: 1,
+                bind: { input: "range" },
+            });
+            const setter = view.paramMediator.registerParam({
+                name: "selection",
+                select: { type: "point" },
+            });
+
+            const store = createStore();
+            const intentExecutor = new IntentExecutor(store);
+            new ParamProvenanceBridge({
+                root: view,
+                store,
+                intentExecutor,
+            });
+
+            setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
+            await flushMicrotasks();
+
+            store.dispatch(
+                paramProvenanceSlice.actions.paramChange({
+                    selector: { scope: [], param: "other" },
+                    value: { type: "value", value: 2 },
+                })
+            );
+            await flushMicrotasks();
+
+            setter(createMultiPointSelection([{ id: "B", _uniqueId: 2 }]));
+            await flushMicrotasks();
+
+            setter(createMultiPointSelection());
+            await flushMicrotasks();
+
+            vi.advanceTimersByTime(200);
+            await flushMicrotasks();
+
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    makeParamSelectorKey({ scope: [], param: "selection" })
+                ];
+            expect(entry.value).toEqual({
+                type: "point",
+                keyField: "id",
+                keys: [],
+            });
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("reapplies selections when data becomes available", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
