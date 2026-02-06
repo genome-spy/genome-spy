@@ -191,8 +191,14 @@ export default class Tooltip {
                     Promise.resolve(html` ${JSON.stringify(d)} `);
             }
 
+            const requestedDatum = datum;
             converter(datum)
-                .then((result) => this.setContent(result))
+                .then((result) => {
+                    if (this.#previousTooltipDatum !== requestedDatum) {
+                        return;
+                    }
+                    this.setContent(result);
+                })
                 .catch((error) => {
                     if (error !== "debounced") {
                         throw error;
