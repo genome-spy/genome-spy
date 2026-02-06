@@ -204,6 +204,22 @@ export default class ParamProvenanceBridge {
             return;
         }
 
+        // Skip redundant clear events: interaction handlers emit clears even
+        // when selection is already empty, so if both live and stored selections
+        // are empty, there is nothing to record in provenance.
+        if (
+            isSelectionParameter(entry.param) &&
+            this.#isSelectionCleared(
+                /** @type {import("@genome-spy/core/spec/parameter.js").SelectionParameter} */ (
+                    entry.param
+                ),
+                value
+            ) &&
+            this.#isSelectionClearedInProvenance(entry, selectorKey)
+        ) {
+            return;
+        }
+
         const serialized = this.#serializeParamValue(entry, value);
         if (!serialized) {
             return;
@@ -310,7 +326,21 @@ export default class ParamProvenanceBridge {
             return true;
         }
 
-        return true;
+        return false;
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {string} selectorKey
+     * @returns {boolean}
+     */
+    #isSelectionClearedInProvenance(entry, selectorKey) {
+        const stored = this.#getPresentEntries()[selectorKey];
+        if (!stored) {
+            return true;
+        }
+
+        return this.#isSerializedSelectionCleared(entry.param, stored.value);
     }
 
     /**

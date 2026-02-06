@@ -313,6 +313,32 @@ describe("ParamProvenanceBridge", () => {
         expect(selection.intervals.x).toEqual([10, 20]);
     });
 
+    it("skips clear actions when the selection is already empty", async () => {
+        const view = new FakeView();
+        view.encoding = { key: { field: "id" } };
+        const setter = view.paramMediator.registerParam({
+            name: "selection",
+            select: { type: "point" },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        setter(createMultiPointSelection());
+        await flushMicrotasks();
+
+        expect(
+            Object.keys(
+                store.getState().provenance.present.paramProvenance.entries
+            )
+        ).toHaveLength(0);
+    });
+
     it("undoes when clearing the last selection action", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
