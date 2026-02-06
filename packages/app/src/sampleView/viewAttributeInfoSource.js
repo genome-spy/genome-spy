@@ -135,7 +135,10 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             } else if (isIntervalSource(specifier.interval)) {
                 return html`in
                     <span class="interval"
-                        >selection ${specifier.interval.selector.param}</span
+                        >selection
+                        <strong
+                            >${specifier.interval.selector.param}</strong
+                        ></span
                     >`;
             } else {
                 throw new Error("Unsupported interval reference.");
