@@ -468,4 +468,39 @@ describe("view selectors", () => {
             issues.some((issue) => issue.message.includes("threshold"))
         ).toBeTruthy();
     });
+
+    test("validateSelectorConstraints ignores non-persisted params", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            vconcat: [
+                makeUnitSpecWithParams("coverage", [
+                    {
+                        name: "hover",
+                        select: { type: "point" },
+                        persist: false,
+                    },
+                ]),
+                makeUnitSpecWithParams("coverageB", [
+                    {
+                        name: "hover",
+                        select: { type: "point" },
+                        persist: false,
+                    },
+                ]),
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(
+            issues.some((issue) => issue.message.includes("hover"))
+        ).toBeFalsy();
+    });
 });

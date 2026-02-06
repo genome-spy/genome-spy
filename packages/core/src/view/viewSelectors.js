@@ -384,6 +384,10 @@ function isConfigurableVisibility(view) {
  * @returns {boolean}
  */
 function isBookmarkableParam(param) {
+    if (param.persist === false) {
+        return false;
+    }
+
     if (isSelectionParameter(param)) {
         return true;
     }
