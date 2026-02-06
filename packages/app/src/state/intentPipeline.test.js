@@ -198,6 +198,41 @@ describe("IntentPipeline", () => {
         await expect(second).rejects.toThrow("Boom");
     });
 
+    it("rejects and skips dispatch when ensureAvailability fails", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        /** @type {import("../sampleView/types.js").AttributeInfo} */
+        const attributeInfo = {
+            name: "Test",
+            attribute: { type: "test" },
+            title: "Test",
+            emphasizedName: "Test",
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: "nominal",
+            ensureAvailability: () =>
+                Promise.reject(
+                    new Error(
+                        'Cannot resolve interval source selection "brush".'
+                    )
+                ),
+        };
+        const getAttributeInfo = () => attributeInfo;
+
+        await expect(
+            pipeline.submit(
+                {
+                    type: "sample/sortBy",
+                    payload: { attribute: { type: "test" } },
+                },
+                { getAttributeInfo }
+            )
+        ).rejects.toThrow('Cannot resolve interval source selection "brush".');
+
+        expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
+    });
+
     it("dispatches actions without attributes", async () => {
         const deps = createDeps();
         const pipeline = new IntentPipeline(deps);

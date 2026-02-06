@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { html } from "lit";
 import {
     faCheck,
     faCircle,
@@ -6,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getActionInfo } from "./actionInfo.js";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
+import templateResultToString from "../../utils/templateResultToString.js";
 
 describe("getActionInfo", () => {
     it("returns info for known sample actions", () => {
@@ -34,6 +36,35 @@ describe("getActionInfo", () => {
         expect(info.title).toBe("Sort by");
         expect(info.provenanceTitle).toBeDefined();
         expect(info.icon).toBe(faSortAmountDown);
+    });
+
+    it("keeps selection-source wording in sort provenance titles", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/sortBy`,
+            payload: {
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: "track",
+                        field: "value",
+                        aggregation: { op: "count" },
+                        interval: {
+                            type: "selection",
+                            selector: { scope: [], param: "brush" },
+                        },
+                    },
+                },
+            },
+        };
+
+        const info = getActionInfo(action, () => ({
+            name: "count(value)",
+            title: html`count(value) in selection <strong>brush</strong>`,
+        }));
+
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+        expect(provenanceTitle).toContain("selection brush");
+        expect(provenanceTitle).not.toContain("chr");
     });
 
     it("returns undefined for non-sample actions", () => {

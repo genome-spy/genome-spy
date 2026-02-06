@@ -13,6 +13,9 @@ import ViewContext from "@genome-spy/core/types/viewContext.js";
 export type ViewSelector =
     import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
 
+export type ParamSelector =
+    import("@genome-spy/core/view/viewSelectors.js").ParamSelector;
+
 /**
  * View reference used in SampleView actions. Legacy values may be a view name
  * string, but selectors are the unambiguous, bookmark-friendly form.
@@ -77,9 +80,17 @@ export interface LocusSpecifier extends BaseSpecifier {
     locus: Scalar | ChromosomalLocus;
 }
 
+export interface SelectionIntervalSource {
+    type: "selection";
+    selector: ParamSelector;
+}
+
+export type IntervalReference = Interval | SelectionIntervalSource;
+export type IntervalCarrier = { interval: IntervalReference };
+
 export interface IntervalSpecifier extends BaseSpecifier {
-    /** Interval on the x axis */
-    interval: Interval;
+    /** Literal interval or a selection source resolved at action execution time */
+    interval: IntervalReference;
 
     /** Aggregation operation to apply over the interval */
     aggregation: AggregationSpec;
@@ -94,3 +105,11 @@ export type ViewAttributeSpecifier = LocusSpecifier | IntervalSpecifier;
 export function isIntervalSpecifier(
     specifier: ViewAttributeSpecifier
 ): specifier is IntervalSpecifier;
+
+export function isLiteralInterval(
+    interval: IntervalReference
+): interval is Interval;
+
+export function isIntervalSource(
+    interval: IntervalReference
+): interval is SelectionIntervalSource;

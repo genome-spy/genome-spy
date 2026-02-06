@@ -63,6 +63,11 @@ import {
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
+import { resolveIntervalReference } from "./intervalReferenceResolver.js";
+import {
+    getParamSelector,
+    resolveParamSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -283,15 +288,29 @@ export default class SampleView extends ContainerView {
     /**
      * Resolves the x-domain to zoom to for a view-backed attribute.
      *
-     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier} specifier
+     * @param {import("./sampleViewTypes.js").ViewAttributeSpecifier | import("./sampleViewTypes.js").IntervalCarrier} specifier
      * @returns {import("@genome-spy/core/spec/scale.js").NumericDomain | import("@genome-spy/core/spec/scale.js").ComplexDomain}
      */
     #resolveViewAttributeDomain(specifier) {
-        const domain =
-            specifier.domainAtActionTime ??
-            ("interval" in specifier
-                ? specifier.interval
-                : [specifier.locus, specifier.locus]);
+        /** @type {[any, any]} */
+        let domain;
+        const domainAtActionTime =
+            "domainAtActionTime" in specifier
+                ? specifier.domainAtActionTime
+                : undefined;
+        if (domainAtActionTime) {
+            domain = /** @type {[any, any]} */ (domainAtActionTime);
+        } else {
+            if ("interval" in specifier) {
+                domain = /** @type {[any, any]} */ (
+                    resolveIntervalReference(this, specifier.interval)
+                );
+            } else if ("locus" in specifier) {
+                domain = [specifier.locus, specifier.locus];
+            } else {
+                throw new Error("Unsupported view attribute specifier.");
+            }
+        }
 
         if (
             typeof domain[0] === "string" ||
@@ -1051,7 +1070,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * Finds an active interval selection in the layout ancestor chain.
-     * @returns {{ selection: import("@genome-spy/core/types/selectionTypes.js").IntervalSelection, view: View }}
+     * @returns {{ selection: import("@genome-spy/core/types/selectionTypes.js").IntervalSelection, view: View, paramName: string, bookmarkable: boolean }}
      */
     #getActiveIntervalSelection() {
         const ancestors = this.#gridChild.view.getLayoutAncestors();
@@ -1073,7 +1092,12 @@ export default class SampleView extends ContainerView {
 
                 const selection = view.paramMediator.getValue(name);
                 if (selection && isActiveIntervalSelection(selection)) {
-                    return { selection, view };
+                    return {
+                        selection,
+                        view,
+                        paramName: name,
+                        bookmarkable: param.persist !== false,
+                    };
                 }
             }
         }
@@ -1149,6 +1173,24 @@ export default class SampleView extends ContainerView {
             selectionIntervalComplex,
             selectionIntervalLabel,
         } = resolveIntervalSelection(selectionInfo, selectionPoint);
+        /** @type {import("./sampleViewTypes.js").SelectionIntervalSource | undefined} */
+        let selectionIntervalSource;
+        if (selectionInfo && selectionInfo.bookmarkable) {
+            try {
+                const selector = getParamSelector(
+                    selectionInfo.view,
+                    selectionInfo.paramName
+                );
+                // Validate that selector resolution is unambiguous in this tree.
+                resolveParamSelector(this, selector);
+                selectionIntervalSource = {
+                    type: "selection",
+                    selector,
+                };
+            } catch (error) {
+                selectionIntervalSource = undefined;
+            }
+        }
 
         const uniqueFieldInfos = getContextMenuFieldInfos(
             view,
@@ -1191,6 +1233,7 @@ export default class SampleView extends ContainerView {
                     submenu: buildIntervalAggregationMenu({
                         fieldInfo,
                         selectionIntervalComplex,
+                        selectionIntervalSource,
                         sample,
                         sampleHierarchy: this.sampleHierarchy,
                         attributeInfoSource: this.compositeAttributeInfoSource,

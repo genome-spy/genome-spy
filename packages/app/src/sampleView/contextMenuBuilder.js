@@ -165,6 +165,7 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
  * @param {Object} params
  * @param {FieldInfo} params.fieldInfo
  * @param {import("./types.js").Interval} params.selectionIntervalComplex
+ * @param {import("./sampleViewTypes.js").SelectionIntervalSource} [params.selectionIntervalSource]
  * @param {import("./state/sampleState.js").Sample} params.sample
  * @param {import("./state/sampleState.js").SampleHierarchy} params.sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").default} params.attributeInfoSource
@@ -175,6 +176,7 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
 export function buildIntervalAggregationMenu({
     fieldInfo,
     selectionIntervalComplex,
+    selectionIntervalSource,
     sample,
     sampleHierarchy,
     attributeInfoSource,
@@ -199,12 +201,19 @@ export function buildIntervalAggregationMenu({
                           >) over interval...`;
 
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
-            const specifier = {
-                view: viewRef,
-                field: fieldInfo.field,
-                interval: selectionIntervalComplex,
-                aggregation: { op: op.op },
-            };
+            const specifier = selectionIntervalSource
+                ? {
+                      view: viewRef,
+                      field: fieldInfo.field,
+                      interval: selectionIntervalSource,
+                      aggregation: { op: op.op },
+                  }
+                : {
+                      view: viewRef,
+                      field: fieldInfo.field,
+                      interval: selectionIntervalComplex,
+                      aggregation: { op: op.op },
+                  };
 
             const attributeInfo = attributeInfoSource.getAttributeInfo({
                 type: attributeType,

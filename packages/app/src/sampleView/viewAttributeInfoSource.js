@@ -9,6 +9,11 @@ import {
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
+import {
+    isIntervalSource,
+    isIntervalSpecifier,
+    isLiteralInterval,
+} from "./sampleViewTypes.js";
 import { resolveViewRef } from "./viewRef.js";
 
 /**
@@ -120,6 +125,34 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             sampleView.awaitViewAttributeProcessed(specifier, context);
     }
 
+    const locationLabel = (() => {
+        if (isIntervalSpecifier(specifier)) {
+            if (isLiteralInterval(specifier.interval)) {
+                return html`in
+                    <span class="interval"
+                        >${formatInterval(view, specifier.interval)}</span
+                    >`;
+            } else if (isIntervalSource(specifier.interval)) {
+                return html`in
+                    <span class="interval"
+                        >selection
+                        <strong
+                            >${specifier.interval.selector.param}</strong
+                        ></span
+                    >`;
+            } else {
+                throw new Error("Unsupported interval reference.");
+            }
+        } else if ("locus" in specifier) {
+            return html`at
+                <span class="locus"
+                    >${formatLocusValue(specifier.locus)}</span
+                >`;
+        } else {
+            throw new Error("Unsupported view attribute specifier.");
+        }
+    })();
+
     /** @type {import("./types.js").AttributeInfo} */
     const attributeInfo = {
         name: attributeLabel,
@@ -127,15 +160,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
         title: html`${attributeTitle}
             <span class="viewTitle">(${view.getTitleText() ?? view.name})</span>
-            ${"interval" in specifier
-                ? html`in
-                      <span class="interval"
-                          >${formatInterval(view, specifier.interval)}</span
-                      >`
-                : html`at
-                      <span class="locus"
-                          >${formatLocusValue(specifier.locus)}</span
-                      >`}`,
+            ${locationLabel}`,
         accessor,
         valuesProvider,
         // TODO: Ensure that there's a type even if it's missing from spec

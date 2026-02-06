@@ -3,6 +3,7 @@ import ParamMediator from "@genome-spy/core/view/paramMediator.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 class FakeView {
     /** @type {string | undefined} */
@@ -82,48 +83,11 @@ class FakeView {
 }
 
 /**
- * @param {any} value
- * @returns {string}
- */
-function templateToString(value) {
-    if (value === null || value === undefined) {
-        return "";
-    }
-
-    if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-    ) {
-        return String(value);
-    }
-
-    if (Array.isArray(value)) {
-        return value.map((item) => templateToString(item)).join("");
-    }
-
-    if (typeof value === "object" && "strings" in value && "values" in value) {
-        const strings = /** @type {any} */ (value).strings;
-        const values = /** @type {any} */ (value).values;
-        let text = "";
-        for (let i = 0; i < strings.length; i += 1) {
-            text += strings[i];
-            if (i < values.length) {
-                text += templateToString(values[i]);
-            }
-        }
-        return text;
-    }
-
-    return String(value);
-}
-
-/**
  * @param {import("./provenance.js").ActionInfo} info
  * @returns {string}
  */
 function normalizeTitle(info) {
-    return templateToString(info.title).replace(/\s+/g, " ").trim();
+    return templateResultToString(info.title);
 }
 
 describe("getParamActionInfo", () => {
@@ -143,9 +107,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain(
-            "Set <strong>threshold</strong> = <strong>5</strong> in <strong>Overview</strong>"
-        );
+        expect(title).toContain("Set threshold = 5 in Overview");
     });
 
     it("formats point selection titles for clear and multi selections", () => {
@@ -162,9 +124,7 @@ describe("getParamActionInfo", () => {
         const clearInfo = getParamActionInfo(clearAction, view);
         const clearTitle = normalizeTitle(clearInfo);
 
-        expect(clearTitle).toContain(
-            "Clear selection <strong>selected</strong> in <strong>points</strong>"
-        );
+        expect(clearTitle).toContain("Clear selection selected in points");
 
         const multiAction = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "selected" },
@@ -173,9 +133,7 @@ describe("getParamActionInfo", () => {
         const multiInfo = getParamActionInfo(multiAction, view);
         const multiTitle = normalizeTitle(multiInfo);
 
-        expect(multiTitle).toContain(
-            "Select <strong>selected</strong> (<strong>2</strong> points) in <strong>points</strong>"
-        );
+        expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
     it("formats interval selections with x and y ranges", () => {
@@ -196,7 +154,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("Brush <strong>brush</strong>");
+        expect(title).toContain("Brush brush");
         expect(title).toContain("x: 1 \u2013 2");
         expect(title).toContain("y: 3 \u2013 4");
     });
@@ -244,8 +202,8 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, root);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("from <strong>Origin</strong>");
-        expect(title).toContain("in <strong>Main</strong>");
+        expect(title).toContain("from Origin");
+        expect(title).toContain("in Main");
     });
 
     it("falls back to explicit view names when titles are missing", () => {
@@ -267,7 +225,7 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, view);
         const title = normalizeTitle(info);
 
-        expect(title).toContain("in <strong>ExplicitView</strong>");
+        expect(title).toContain("in ExplicitView");
         expect(title).not.toContain("SpecName");
     });
 });

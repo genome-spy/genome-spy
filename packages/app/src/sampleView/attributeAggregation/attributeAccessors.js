@@ -1,6 +1,7 @@
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
+import { resolveIntervalReference } from "../intervalReferenceResolver.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -32,19 +33,23 @@ function toScalar(scaleResolution, value) {
 
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
- * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
+ * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier | import("../sampleViewTypes.js").IntervalCarrier} specifier
+ * @param {import("@genome-spy/core/view/view.js").default | undefined} root
  * @returns {[import("@genome-spy/core/spec/channel.js").Scalar, import("@genome-spy/core/spec/channel.js").Scalar]}
  */
-function normalizeInterval(scaleResolution, specifier) {
+function normalizeInterval(scaleResolution, specifier, root) {
     if ("interval" in specifier) {
+        const interval = resolveIntervalReference(root, specifier.interval);
         return [
-            toScalar(scaleResolution, specifier.interval[0]),
-            toScalar(scaleResolution, specifier.interval[1]),
+            toScalar(scaleResolution, interval[0]),
+            toScalar(scaleResolution, interval[1]),
         ];
+    } else if ("locus" in specifier) {
+        const scalar = toScalar(scaleResolution, specifier.locus);
+        return [scalar, scalar];
+    } else {
+        throw new Error("Unsupported view attribute specifier.");
     }
-
-    const scalar = toScalar(scaleResolution, specifier.locus);
-    return [scalar, scalar];
 }
 
 /**
@@ -67,7 +72,7 @@ export function createViewAttributeAccessor(view, specifier) {
         );
     }
     const scaleResolution = view.getScaleResolution("x");
-    const interval = normalizeInterval(scaleResolution, specifier);
+    const root = view.getLayoutAncestors().at(-1);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
     const x2Accessor = view.getDataAccessor("x2");
@@ -80,22 +85,55 @@ export function createViewAttributeAccessor(view, specifier) {
         return () => undefined;
     }
 
+    /** @type {[import("@genome-spy/core/spec/channel.js").Scalar, import("@genome-spy/core/spec/channel.js").Scalar] | undefined} */
+    let cachedInterval;
+
+    const getInterval = () => {
+        if (!cachedInterval) {
+            cachedInterval = normalizeInterval(
+                scaleResolution,
+                specifier,
+                root
+            );
+        }
+        return cachedInterval;
+    };
+
     if (!("aggregation" in specifier)) {
         const datumAt = createDatumAtAccessor(view, collector);
-        return (sampleId) => datumAt(sampleId, interval[0])?.[specifier.field];
+        return (sampleId) => {
+            const interval = getInterval();
+            return datumAt(sampleId, interval[0])?.[specifier.field];
+        };
     }
 
     const valueAccessor = (/** @type {any} */ datum) => datum[specifier.field];
-    if (typeof interval[0] !== "number" || typeof interval[1] !== "number") {
-        throw new Error("Interval aggregation requires numeric coordinates!");
-    }
-    const [start, end] = /** @type {[number, number]} */ (
-        interval[0] <= interval[1] ? interval : [interval[1], interval[0]]
-    );
+    /** @type {[number, number] | undefined} */
+    let numericBounds;
+    const getNumericBounds = () => {
+        if (!numericBounds) {
+            const interval = getInterval();
+            if (
+                typeof interval[0] !== "number" ||
+                typeof interval[1] !== "number"
+            ) {
+                throw new Error(
+                    "Interval aggregation requires numeric coordinates!"
+                );
+            }
+            numericBounds = /** @type {[number, number]} */ (
+                interval[0] <= interval[1]
+                    ? interval
+                    : [interval[1], interval[0]]
+            );
+        }
+        return numericBounds;
+    };
     const op = specifier.aggregation.op;
     const needsWeights = op === "weightedMean" || op === "variance";
 
     return (sampleId) => {
+        const [start, end] = getNumericBounds();
         const data = collector.facetBatches.get(asArray(sampleId));
         if (!data?.length) {
             return op === "count" ? 0 : undefined;
