@@ -715,15 +715,12 @@ export default class ParamProvenanceBridge {
                     /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
                         channel
                     );
-                const resolution =
-                    "getScaleResolution" in view
-                        ? view.getScaleResolution(channelWithScale)
-                        : null;
+                const resolution = view.getScaleResolution(channelWithScale);
                 selection.intervals[channel] = [
-                    resolution && typeof resolution.fromComplex === "function"
+                    resolution?.fromComplex
                         ? resolution.fromComplex(interval[0])
                         : interval[0],
-                    resolution && typeof resolution.fromComplex === "function"
+                    resolution?.fromComplex
                         ? resolution.fromComplex(interval[1])
                         : interval[1],
                 ];
@@ -791,9 +788,7 @@ export default class ParamProvenanceBridge {
                 continue;
             }
 
-            /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => any} */
             const startAccessor = field(startField);
-            /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => any} */
             const endAccessor = field(endField);
             intervals[channel] = [startAccessor(datum), endAccessor(datum)];
         }
