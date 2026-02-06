@@ -277,21 +277,14 @@ export default class ParamProvenanceBridge {
             return false;
         }
 
-        const lastSelector = lastAction.payload && lastAction.payload.selector;
-        if (!lastSelector) {
-            return false;
-        }
+        const lastSelector = lastAction.payload.selector;
 
         if (makeParamSelectorKey(lastSelector) !== selectorKey) {
             return false;
         }
 
         const previous = past[past.length - 1];
-        const previousEntry =
-            previous &&
-            previous.paramProvenance &&
-            previous.paramProvenance.entries &&
-            previous.paramProvenance.entries[selectorKey];
+        const previousEntry = previous.paramProvenance.entries[selectorKey];
         if (!previousEntry) {
             return true;
         }
@@ -512,12 +505,11 @@ export default class ParamProvenanceBridge {
             for (const key of unusedKeys) {
                 if (!knownKeys.has(key)) {
                     const missing = entries[key];
-                    const selector = missing && missing.selector;
-                    const paramName =
-                        selector && selector.param ? selector.param : "unknown";
-                    const scope =
-                        selector && selector.scope ? selector.scope : [];
-                    this.#warnMissingParamInScope(paramName, scope);
+                    const selector = missing.selector;
+                    this.#warnMissingParamInScope(
+                        selector.param,
+                        selector.scope
+                    );
                 }
             }
         } finally {
