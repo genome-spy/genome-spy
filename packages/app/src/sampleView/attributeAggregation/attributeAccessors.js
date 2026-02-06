@@ -73,7 +73,6 @@ export function createViewAttributeAccessor(view, specifier) {
     }
     const scaleResolution = view.getScaleResolution("x");
     const root = view.getLayoutAncestors().at(-1);
-    const interval = normalizeInterval(scaleResolution, specifier, root);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
     const x2Accessor = view.getDataAccessor("x2");
@@ -86,22 +85,55 @@ export function createViewAttributeAccessor(view, specifier) {
         return () => undefined;
     }
 
+    /** @type {[import("@genome-spy/core/spec/channel.js").Scalar, import("@genome-spy/core/spec/channel.js").Scalar] | undefined} */
+    let cachedInterval;
+
+    const getInterval = () => {
+        if (!cachedInterval) {
+            cachedInterval = normalizeInterval(
+                scaleResolution,
+                specifier,
+                root
+            );
+        }
+        return cachedInterval;
+    };
+
     if (!("aggregation" in specifier)) {
         const datumAt = createDatumAtAccessor(view, collector);
-        return (sampleId) => datumAt(sampleId, interval[0])?.[specifier.field];
+        return (sampleId) => {
+            const interval = getInterval();
+            return datumAt(sampleId, interval[0])?.[specifier.field];
+        };
     }
 
     const valueAccessor = (/** @type {any} */ datum) => datum[specifier.field];
-    if (typeof interval[0] !== "number" || typeof interval[1] !== "number") {
-        throw new Error("Interval aggregation requires numeric coordinates!");
-    }
-    const [start, end] = /** @type {[number, number]} */ (
-        interval[0] <= interval[1] ? interval : [interval[1], interval[0]]
-    );
+    /** @type {[number, number] | undefined} */
+    let numericBounds;
+    const getNumericBounds = () => {
+        if (!numericBounds) {
+            const interval = getInterval();
+            if (
+                typeof interval[0] !== "number" ||
+                typeof interval[1] !== "number"
+            ) {
+                throw new Error(
+                    "Interval aggregation requires numeric coordinates!"
+                );
+            }
+            numericBounds = /** @type {[number, number]} */ (
+                interval[0] <= interval[1]
+                    ? interval
+                    : [interval[1], interval[0]]
+            );
+        }
+        return numericBounds;
+    };
     const op = specifier.aggregation.op;
     const needsWeights = op === "weightedMean" || op === "variance";
 
     return (sampleId) => {
+        const [start, end] = getNumericBounds();
         const data = collector.facetBatches.get(asArray(sampleId));
         if (!data?.length) {
             return op === "count" ? 0 : undefined;

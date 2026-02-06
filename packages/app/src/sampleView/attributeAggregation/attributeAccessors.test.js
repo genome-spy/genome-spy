@@ -113,7 +113,7 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBe(1);
     });
 
-    test("throws for selection-backed intervals when selection is empty", () => {
+    test("throws on accessor call for selection-backed intervals when selection is empty", () => {
         const rootParamMediator = new ParamMediator(() => undefined);
         rootParamMediator.registerParam({
             name: "brush",
@@ -140,16 +140,16 @@ describe("createViewAttributeAccessor", () => {
             root,
         });
 
-        expect(() =>
-            createViewAttributeAccessor(view, {
-                view: "test",
-                field: "value",
-                interval: {
-                    type: "selection",
-                    selector: { scope: [], param: "brush" },
-                },
-                aggregation: { op: "count" },
-            })
-        ).toThrow("is empty");
+        const accessor = createViewAttributeAccessor(view, {
+            view: "test",
+            field: "value",
+            interval: {
+                type: "selection",
+                selector: { scope: [], param: "brush" },
+            },
+            aggregation: { op: "count" },
+        });
+
+        expect(() => accessor("sample-1")).toThrow("is empty");
     });
 });
