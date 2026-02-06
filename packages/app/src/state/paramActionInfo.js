@@ -74,12 +74,13 @@ function formatParamActionTitle(view, selector, value, origin, root) {
         }
         if (value.keys.length === 1) {
             return html`Select <strong>${selector.param}</strong> =
-                <strong>${formatScalar(value.keys[0])}</strong
-                >${formatOriginSuffix(origin, root)}`;
+                ${formatStrong(
+                    formatScalar(value.keys[0])
+                )}${formatOriginSuffix(origin, root)}`;
         }
-        return html`Select <strong>${selector.param}</strong> (<strong
-                >${value.keys.length}</strong
-            >
+        return html`Select <strong>${selector.param}</strong> (${formatStrong(
+                value.keys.length
+            )}
             points)${formatOriginSuffix(origin, root)}`;
     }
 
@@ -155,6 +156,14 @@ function formatScalar(value) {
         return String(value);
     }
     return JSON.stringify(value);
+}
+
+/**
+ * @param {any} value
+ * @returns {import("lit").TemplateResult}
+ */
+function formatStrong(value) {
+    return html`<strong>${value}</strong>`;
 }
 
 /**
