@@ -1,5 +1,6 @@
 import { html } from "lit";
 import { isString } from "vega-util";
+import { faArrowPointer, faBrush } from "@fortawesome/free-solid-svg-icons";
 import { formatInterval } from "../sampleView/attributeAggregation/intervalFormatting.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import {
@@ -42,6 +43,7 @@ export function getParamActionInfo(action, root) {
 
     return {
         title: viewLabel ? html`${title} in ${viewLabel}` : title,
+        icon: getParamActionIcon(value),
     };
 }
 
@@ -162,6 +164,22 @@ function formatRange(interval) {
         return null;
     }
     return `${interval[0]} \u2013 ${interval[1]}`;
+}
+
+/**
+ * @param {ParamValue} value
+ * @returns {import("@fortawesome/free-solid-svg-icons").IconDefinition | undefined}
+ */
+function getParamActionIcon(value) {
+    if (value.type === "point") {
+        return faArrowPointer;
+    }
+
+    if (value.type === "interval") {
+        return faBrush;
+    }
+
+    return undefined;
 }
 
 /**
