@@ -118,3 +118,19 @@ export type ViewAttributeSpecifier = LocusSpecifier | IntervalSpecifier;
 export function isIntervalSpecifier(
     specifier: ViewAttributeSpecifier
 ): specifier is IntervalSpecifier;
+
+export function hasLiteralInterval(
+    specifier:
+        | ViewAttributeSpecifier
+        | { interval: Interval }
+        | { intervalSource: SelectionIntervalSource }
+): specifier is IntervalLiteralSpecifier | { interval: Interval };
+
+export function hasIntervalSource(
+    specifier:
+        | ViewAttributeSpecifier
+        | { interval: Interval }
+        | { intervalSource: SelectionIntervalSource }
+): specifier is
+    | IntervalSourceSpecifier
+    | { intervalSource: SelectionIntervalSource };

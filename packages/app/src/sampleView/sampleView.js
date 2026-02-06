@@ -63,7 +63,11 @@ import {
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
-import { isIntervalSpecifier } from "./sampleViewTypes.js";
+import { hasIntervalSource, hasLiteralInterval } from "./sampleViewTypes.js";
+import {
+    getParamSelector,
+    resolveParamSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -293,9 +297,9 @@ export default class SampleView extends ContainerView {
         if (specifier.domainAtActionTime) {
             domain = /** @type {[any, any]} */ (specifier.domainAtActionTime);
         } else {
-            if ("interval" in specifier) {
+            if (hasLiteralInterval(specifier)) {
                 domain = /** @type {[any, any]} */ (specifier.interval);
-            } else if (isIntervalSpecifier(specifier)) {
+            } else if (hasIntervalSource(specifier)) {
                 throw new Error(
                     "Interval source specifiers are not supported yet."
                 );
@@ -1062,7 +1066,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * Finds an active interval selection in the layout ancestor chain.
-     * @returns {{ selection: import("@genome-spy/core/types/selectionTypes.js").IntervalSelection, view: View }}
+     * @returns {{ selection: import("@genome-spy/core/types/selectionTypes.js").IntervalSelection, view: View, paramName: string, bookmarkable: boolean }}
      */
     #getActiveIntervalSelection() {
         const ancestors = this.#gridChild.view.getLayoutAncestors();
@@ -1084,7 +1088,12 @@ export default class SampleView extends ContainerView {
 
                 const selection = view.paramMediator.getValue(name);
                 if (selection && isActiveIntervalSelection(selection)) {
-                    return { selection, view };
+                    return {
+                        selection,
+                        view,
+                        paramName: name,
+                        bookmarkable: param.persist !== false,
+                    };
                 }
             }
         }
@@ -1160,6 +1169,24 @@ export default class SampleView extends ContainerView {
             selectionIntervalComplex,
             selectionIntervalLabel,
         } = resolveIntervalSelection(selectionInfo, selectionPoint);
+        /** @type {import("./sampleViewTypes.js").SelectionIntervalSource | undefined} */
+        let selectionIntervalSource;
+        if (selectionInfo && selectionInfo.bookmarkable) {
+            try {
+                const selector = getParamSelector(
+                    selectionInfo.view,
+                    selectionInfo.paramName
+                );
+                // Validate that selector resolution is unambiguous in this tree.
+                resolveParamSelector(this, selector);
+                selectionIntervalSource = {
+                    type: "selection",
+                    selector,
+                };
+            } catch (error) {
+                selectionIntervalSource = undefined;
+            }
+        }
 
         const uniqueFieldInfos = getContextMenuFieldInfos(
             view,
@@ -1202,6 +1229,7 @@ export default class SampleView extends ContainerView {
                     submenu: buildIntervalAggregationMenu({
                         fieldInfo,
                         selectionIntervalComplex,
+                        selectionIntervalSource,
                         sample,
                         sampleHierarchy: this.sampleHierarchy,
                         attributeInfoSource: this.compositeAttributeInfoSource,

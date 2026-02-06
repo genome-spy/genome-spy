@@ -9,7 +9,7 @@ import {
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
-import { isIntervalSpecifier } from "./sampleViewTypes.js";
+import { hasIntervalSource, hasLiteralInterval } from "./sampleViewTypes.js";
 import { resolveViewRef } from "./viewRef.js";
 
 /**
@@ -122,12 +122,12 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     }
 
     const locationLabel = (() => {
-        if ("interval" in specifier) {
+        if (hasLiteralInterval(specifier)) {
             return html`in
                 <span class="interval"
                     >${formatInterval(view, specifier.interval)}</span
                 >`;
-        } else if (isIntervalSpecifier(specifier)) {
+        } else if (hasIntervalSource(specifier)) {
             return html`in
                 <span class="interval"
                     >selection ${specifier.intervalSource.selector.param}</span
