@@ -1000,9 +1000,7 @@ export default class ParamProvenanceBridge {
                         channel
                     );
                 const resolution =
-                    "getScaleResolution" in entry.view
-                        ? entry.view.getScaleResolution(channelWithScale)
-                        : null;
+                    entry.view.getScaleResolution(channelWithScale);
                 copy[channel] = [
                     resolution && resolution.type === "locus"
                         ? resolution.toComplex(interval[0])

@@ -69,6 +69,10 @@ class FakeView {
     getEncoding() {
         return this.encoding ?? {};
     }
+
+    getScaleResolution() {
+        return this.scaleResolution ?? null;
+    }
 }
 
 /**

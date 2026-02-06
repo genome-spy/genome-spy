@@ -174,7 +174,7 @@ describe("getParamActionInfo", () => {
         const multiTitle = normalizeTitle(multiInfo);
 
         expect(multiTitle).toContain(
-            "Select <strong>selected</strong> ( <strong>2</strong> points) in <strong>points</strong>"
+            "Select <strong>selected</strong> (<strong>2</strong> points) in <strong>points</strong>"
         );
     });
 
