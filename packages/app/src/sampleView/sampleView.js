@@ -63,7 +63,7 @@ import {
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
-import { isIntervalSource, isLiteralInterval } from "./sampleViewTypes.js";
+import { resolveIntervalReference } from "./intervalReferenceResolver.js";
 import {
     getParamSelector,
     resolveParamSelector,
@@ -302,15 +302,9 @@ export default class SampleView extends ContainerView {
             domain = /** @type {[any, any]} */ (domainAtActionTime);
         } else {
             if ("interval" in specifier) {
-                if (isLiteralInterval(specifier.interval)) {
-                    domain = /** @type {[any, any]} */ (specifier.interval);
-                } else if (isIntervalSource(specifier.interval)) {
-                    throw new Error(
-                        "Interval source specifiers are not supported yet."
-                    );
-                } else {
-                    throw new Error("Unsupported interval reference.");
-                }
+                domain = /** @type {[any, any]} */ (
+                    resolveIntervalReference(this, specifier.interval)
+                );
             } else if ("locus" in specifier) {
                 domain = [specifier.locus, specifier.locus];
             } else {

@@ -1,7 +1,7 @@
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
-import { isIntervalSource, isLiteralInterval } from "../sampleViewTypes.js";
+import { resolveIntervalReference } from "../intervalReferenceResolver.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -34,22 +34,16 @@ function toScalar(scaleResolution, value) {
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
  * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier | import("../sampleViewTypes.js").IntervalCarrier} specifier
+ * @param {import("@genome-spy/core/view/view.js").default | undefined} root
  * @returns {[import("@genome-spy/core/spec/channel.js").Scalar, import("@genome-spy/core/spec/channel.js").Scalar]}
  */
-function normalizeInterval(scaleResolution, specifier) {
+function normalizeInterval(scaleResolution, specifier, root) {
     if ("interval" in specifier) {
-        if (isLiteralInterval(specifier.interval)) {
-            return [
-                toScalar(scaleResolution, specifier.interval[0]),
-                toScalar(scaleResolution, specifier.interval[1]),
-            ];
-        } else if (isIntervalSource(specifier.interval)) {
-            throw new Error(
-                "Interval source specifiers are not supported yet."
-            );
-        } else {
-            throw new Error("Unsupported interval reference.");
-        }
+        const interval = resolveIntervalReference(root, specifier.interval);
+        return [
+            toScalar(scaleResolution, interval[0]),
+            toScalar(scaleResolution, interval[1]),
+        ];
     } else if ("locus" in specifier) {
         const scalar = toScalar(scaleResolution, specifier.locus);
         return [scalar, scalar];
@@ -78,7 +72,8 @@ export function createViewAttributeAccessor(view, specifier) {
         );
     }
     const scaleResolution = view.getScaleResolution("x");
-    const interval = normalizeInterval(scaleResolution, specifier);
+    const root = view.getLayoutAncestors().at(-1);
+    const interval = normalizeInterval(scaleResolution, specifier, root);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
     const x2Accessor = view.getDataAccessor("x2");
