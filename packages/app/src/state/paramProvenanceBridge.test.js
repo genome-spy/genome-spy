@@ -113,6 +113,49 @@ describe("ParamProvenanceBridge", () => {
         expect(entry.value).toEqual({ type: "value", value: 5 });
     });
 
+    it("throttles rapid updates for bound parameters", async () => {
+        vi.useFakeTimers();
+        try {
+            const view = new FakeView();
+            const setter = view.paramMediator.registerParam({
+                name: "alpha",
+                value: 0,
+                bind: { input: "range" },
+            });
+
+            const store = createStore();
+            const intentExecutor = new IntentExecutor(store);
+            const dispatchSpy = vi.spyOn(intentExecutor, "dispatch");
+            new ParamProvenanceBridge({
+                root: view,
+                store,
+                intentExecutor,
+            });
+
+            setter(1);
+            await flushMicrotasks();
+
+            setter(2);
+            setter(3);
+            await flushMicrotasks();
+
+            expect(dispatchSpy).toHaveBeenCalledTimes(1);
+
+            vi.advanceTimersByTime(200);
+            await flushMicrotasks();
+
+            expect(dispatchSpy).toHaveBeenCalledTimes(2);
+            expect(view.paramMediator.getValue("alpha")).toBe(3);
+            const entry =
+                store.getState().provenance.present.paramProvenance.entries[
+                    makeParamSelectorKey({ scope: [], param: "alpha" })
+                ];
+            expect(entry.value).toEqual({ type: "value", value: 3 });
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("applies stored param values to the mediator", async () => {
         const view = new FakeView();
         view.paramMediator.registerParam({

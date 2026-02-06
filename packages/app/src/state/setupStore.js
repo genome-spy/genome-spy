@@ -77,7 +77,10 @@ export default function setupStore() {
 
     return configureStore({
         middleware: (getDefaultMiddleware) =>
-            getDefaultMiddleware({ serializableCheck: false }),
+            getDefaultMiddleware({
+                serializableCheck: false,
+                immutableCheck: false,
+            }),
         reducer: rootReducer,
     });
 }

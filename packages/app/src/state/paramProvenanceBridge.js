@@ -24,9 +24,12 @@ import {
     isVariableParameter,
 } from "@genome-spy/core/view/paramMediator.js";
 import { field } from "@genome-spy/core/utils/field.js";
+import throttle from "@genome-spy/core/utils/throttle.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { subscribeTo, withMicrotask } from "./subscribeTo.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
+
+const THROTTLE_INTERVAL_MS = 150;
 
 /**
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} ParamSelector
@@ -90,6 +93,9 @@ export default class ParamProvenanceBridge {
     /** @type {WeakSet<object>} */
     #pendingCollectors = new WeakSet();
 
+    /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }>} */
+    #throttledDispatchers = new Map();
+
     /**
      * @param {object} options
      * @param {View} options.root
@@ -112,6 +118,7 @@ export default class ParamProvenanceBridge {
             disposer();
         }
         this.#disposers.length = 0;
+        this.#clearThrottledDispatchers();
     }
 
     /**
@@ -186,16 +193,17 @@ export default class ParamProvenanceBridge {
 
         const selectorKey = makeParamSelectorKey(entry.selector);
         if (this.#shouldUndoOnClear(entry, value, selectorKey)) {
+            this.#cancelThrottledDispatch(selectorKey);
             this.#store.dispatch(ActionCreators.undo());
             return;
         }
 
-        const action = paramProvenanceSlice.actions.paramChange({
-            selector: entry.selector,
-            value: serialized,
-        });
+        if (this.#shouldThrottle(entry.param)) {
+            this.#getThrottledDispatch(selectorKey)(entry, serialized);
+            return;
+        }
 
-        this.#intentExecutor.dispatch(action);
+        this.#dispatchParamChange(entry, serialized);
     }
 
     /**
@@ -242,6 +250,72 @@ export default class ParamProvenanceBridge {
         }
 
         return makeParamSelectorKey(lastSelector) === selectorKey;
+    }
+
+    /**
+     * @param {Parameter} param
+     * @returns {boolean}
+     */
+    #shouldThrottle(param) {
+        if (isSelectionParameter(param)) {
+            return true;
+        }
+
+        return isVariableParameter(param) && Boolean(param.bind);
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {ParamValue} serialized
+     */
+    #dispatchParamChange(entry, serialized) {
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: entry.selector,
+            value: serialized,
+        });
+
+        this.#intentExecutor.dispatch(action);
+    }
+
+    /**
+     * @param {string} selectorKey
+     * @returns {((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }}
+     */
+    #getThrottledDispatch(selectorKey) {
+        let throttled = this.#throttledDispatchers.get(selectorKey);
+        if (!throttled) {
+            /**
+             * @param {BookmarkableParamEntry} entry
+             * @param {ParamValue} value
+             */
+            const dispatchThrottled = (entry, value) => {
+                if (this.#suppressCapture) {
+                    return;
+                }
+                this.#dispatchParamChange(entry, value);
+            };
+            throttled = throttle(dispatchThrottled, THROTTLE_INTERVAL_MS);
+            this.#throttledDispatchers.set(selectorKey, throttled);
+        }
+        return throttled;
+    }
+
+    /**
+     * @param {string} selectorKey
+     */
+    #cancelThrottledDispatch(selectorKey) {
+        const throttled = this.#throttledDispatchers.get(selectorKey);
+        if (!throttled) {
+            return;
+        }
+        throttled.cancel();
+    }
+
+    #clearThrottledDispatchers() {
+        for (const throttled of this.#throttledDispatchers.values()) {
+            throttled.cancel();
+        }
+        this.#throttledDispatchers.clear();
     }
 
     /**
