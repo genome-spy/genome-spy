@@ -38,6 +38,8 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         ],
     });
 
+    const dataFlow = new DataFlow();
+
     // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
         createOrImportView: async function (
@@ -55,7 +57,7 @@ export function createTestViewContext(viewFactoryOptions = {}) {
             );
         },
 
-        dataFlow: new DataFlow(),
+        dataFlow,
         genomeStore,
 
         fontManager: new BmFontManager(),

@@ -5,6 +5,7 @@ import {
     createMessageBox,
 } from "./genomeSpy/containerUi.js";
 import LoadingIndicatorManager from "./genomeSpy/loadingIndicatorManager.js";
+import LoadingStatusRegistry from "./genomeSpy/loadingStatusRegistry.js";
 import { createViewHighlighter } from "./genomeSpy/viewHighlight.js";
 import KeyboardListenerManager from "./genomeSpy/keyboardListenerManager.js";
 import EventListenerRegistry from "./genomeSpy/eventListenerRegistry.js";
@@ -51,6 +52,8 @@ export default class GenomeSpy {
     #renderCoordinator;
     /** @type {LoadingIndicatorManager} */
     #loadingIndicatorManager;
+    /** @type {LoadingStatusRegistry} */
+    #loadingStatusRegistry;
     /** @type {InputBindingManager} */
     #inputBindingManager;
     /** @type {InteractionController} */
@@ -238,12 +241,8 @@ export default class GenomeSpy {
     }
 
     #prepareContainer() {
-        const {
-            canvasWrapper,
-            loadingMessageElement,
-            loadingIndicatorsElement,
-            tooltip,
-        } = createContainerUi(this.container);
+        const { canvasWrapper, loadingIndicatorsElement, tooltip } =
+            createContainerUi(this.container);
 
         this.#glHelper = new WebGLHelper(
             canvasWrapper,
@@ -254,16 +253,11 @@ export default class GenomeSpy {
             { powerPreference: this.options.powerPreference ?? "default" }
         );
 
-        // The initial loading message that is shown until the first frame is rendered
-        this.loadingMessageElement = loadingMessageElement;
-        // A container for loading indicators (for lazy data sources.)
-        // These could alternatively be included in the view hierarchy,
-        // but it's easier this way – particularly if we want to show
-        // some fancy animated spinners.
-        this.loadingIndicatorsElement = loadingIndicatorsElement;
         this.tooltip = tooltip;
+        this.#loadingStatusRegistry = new LoadingStatusRegistry();
         this.#loadingIndicatorManager = new LoadingIndicatorManager(
-            loadingIndicatorsElement
+            loadingIndicatorsElement,
+            this.#loadingStatusRegistry
         );
     }
 
@@ -285,6 +279,8 @@ export default class GenomeSpy {
         this.#glHelper.finalize();
 
         this.#inputBindingManager.remove();
+
+        this.#loadingIndicatorManager.destroy();
 
         while (this.container.firstChild) {
             this.container.firstChild.remove();
@@ -312,8 +308,11 @@ export default class GenomeSpy {
     }
 
     #createViewContext() {
+        const dataFlow = new DataFlow();
+        dataFlow.loadingStatusRegistry = this.#loadingStatusRegistry;
+
         return createViewContext({
-            dataFlow: new DataFlow(),
+            dataFlow,
             glHelper: this.#glHelper,
             animator: this.animator,
             genomeStore: this.genomeStore,
@@ -322,12 +321,6 @@ export default class GenomeSpy {
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
                 this.#interactionController.getCurrentHover(),
-            setDataLoadingStatus: (view, status, detail) =>
-                this.#loadingIndicatorManager.setDataLoadingStatus(
-                    view,
-                    status,
-                    detail
-                ),
             addKeyboardListener: (type, listener) => {
                 // TODO: Listeners should be called only when the mouse pointer is inside the
                 // container or the app covers the full document.
@@ -378,6 +371,8 @@ export default class GenomeSpy {
             null,
             VIEW_ROOT_NAME
         );
+
+        this.#loadingStatusRegistry.set(this.viewRoot, "loading");
 
         this.#canvasWrapper.style.flexGrow =
             this.viewRoot.getSize().height.grow > 0 ? "1" : "0";
@@ -448,6 +443,7 @@ export default class GenomeSpy {
      * @returns {Promise<boolean>} true if the launch was successful
      */
     async launch() {
+        let launched = false;
         try {
             this.#prepareContainer();
 
@@ -458,6 +454,7 @@ export default class GenomeSpy {
             this.computeLayout();
             this.animator.requestRender();
 
+            launched = true;
             return true;
         } catch (reason) {
             const message = `${
@@ -469,13 +466,20 @@ export default class GenomeSpy {
                 createMessageBox(this.container, message);
             }
 
+            if (this.viewRoot) {
+                this.#loadingStatusRegistry.set(
+                    this.viewRoot,
+                    "error",
+                    message
+                );
+            }
+
             return false;
         } finally {
             this.#canvasWrapper.classList.remove("loading");
-            // Transition listener doesn't appear to work on observablehq
-            window.setTimeout(() => {
-                this.loadingMessageElement.style.display = "none";
-            }, 2000);
+            if (launched && this.viewRoot) {
+                this.#loadingStatusRegistry.set(this.viewRoot, "complete");
+            }
         }
     }
 

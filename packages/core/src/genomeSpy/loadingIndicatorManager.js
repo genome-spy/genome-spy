@@ -5,45 +5,67 @@ import SPINNER from "../img/90-ring-with-bg.svg";
 export default class LoadingIndicatorManager {
     /** @type {HTMLElement} */
     #loadingIndicatorsElement;
+
     /**
-     * @type {Map<import("../view/view.js").default, { status: import("../types/viewContext.js").DataLoadingStatus, detail?: string }>}
+     * @type {import("./loadingStatusRegistry.js").default}
      */
-    #loadingViews;
+    #loadingStatusRegistry;
+
+    /** @type {(() => void) | null} */
+    #unsubscribe = null;
 
     /**
      * @param {HTMLElement} loadingIndicatorsElement
+     * @param {import("./loadingStatusRegistry.js").default} loadingStatusRegistry
      */
-    constructor(loadingIndicatorsElement) {
+    constructor(loadingIndicatorsElement, loadingStatusRegistry) {
         this.#loadingIndicatorsElement = loadingIndicatorsElement;
 
-        /**
-         * @type {Map<import("../view/view.js").default, { status: import("../types/viewContext.js").DataLoadingStatus, detail?: string }>}
-         */
-        this.#loadingViews = new Map();
+        this.#loadingStatusRegistry = loadingStatusRegistry;
+
+        this.#unsubscribe = this.#loadingStatusRegistry.subscribe(() =>
+            this.updateLayout()
+        );
+        this.updateLayout();
     }
 
-    /**
-     * @param {import("../view/view.js").default} view
-     * @param {import("../types/viewContext.js").DataLoadingStatus} status
-     * @param {string} [detail]
-     */
-    setDataLoadingStatus(view, status, detail) {
-        this.#loadingViews.set(view, { status, detail });
-        this.updateLayout();
+    destroy() {
+        if (this.#unsubscribe) {
+            this.#unsubscribe();
+            this.#unsubscribe = null;
+        }
     }
 
     updateLayout() {
         /** @type {import("lit").TemplateResult[]} */
         const indicators = [];
 
-        const isSomethingVisible = () =>
-            [...this.#loadingViews.values()].some(
-                (v) => v.status == "loading" || v.status == "error"
-            );
+        const isSomethingVisible = () => {
+            for (const [, status] of this.#loadingStatusRegistry.entries()) {
+                if (status.status == "loading" || status.status == "error") {
+                    return true;
+                }
+            }
+            return false;
+        };
 
-        for (const [view, status] of this.#loadingViews) {
+        /** @type {{ status: import("../types/viewContext.js").DataLoadingStatus, detail?: string } | undefined} */
+        let fallbackStatus;
+        let hasVisibleWithCoords = false;
+
+        for (const [view, status] of this.#loadingStatusRegistry.entries()) {
+            const isVisible =
+                status.status == "loading" || status.status == "error";
+
             const c = view.coords;
+            if (!c && isVisible && !fallbackStatus) {
+                fallbackStatus = status;
+            }
             if (c) {
+                if (isVisible) {
+                    hasVisibleWithCoords = true;
+                }
+
                 const style = {
                     left: `${c.x}px`,
                     top: `${c.y}px`,
@@ -68,6 +90,32 @@ export default class LoadingIndicatorManager {
                     </div>`
                 );
             }
+        }
+
+        if (fallbackStatus && !hasVisibleWithCoords) {
+            const style = {
+                left: "0px",
+                top: "0px",
+                width: "100%",
+                height: "100%",
+            };
+            indicators.push(
+                html`<div style=${styleMap(style)}>
+                    <div class=${fallbackStatus.status}>
+                        ${fallbackStatus.status == "error"
+                            ? html`<span
+                                  >Loading
+                                  failed${fallbackStatus.detail
+                                      ? html`: ${fallbackStatus.detail}`
+                                      : nothing}</span
+                              >`
+                            : html`
+                                  <img src="${SPINNER}" alt="" />
+                                  <span>Loading...</span>
+                              `}
+                    </div>
+                </div>`
+            );
         }
 
         // Do some hacks to stop css animations of the loading indicators.

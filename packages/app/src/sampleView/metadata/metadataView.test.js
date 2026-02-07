@@ -70,7 +70,6 @@ describe("MetadataView", () => {
         context.addKeyboardListener = () => undefined;
         context.addBroadcastListener = () => undefined;
         context.removeBroadcastListener = () => undefined;
-        context.setDataLoadingStatus = () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const dataFlow = context.dataFlow;

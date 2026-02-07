@@ -1,3 +1,4 @@
+import LoadingStatusRegistry from "../genomeSpy/loadingStatusRegistry.js";
 import DataSource from "./sources/dataSource.js";
 import NamedSource from "./sources/namedSource.js";
 
@@ -11,12 +12,21 @@ export default class DataFlow {
     /** @type {Set<import("./collector.js").default>} */
     #collectors;
 
+    /**
+     * Registry for per-view loading status. The host may replace this.
+     *
+     * @type {import("../genomeSpy/loadingStatusRegistry.js").default}
+     */
+    loadingStatusRegistry;
+
     constructor() {
         /** @type {Set<import("./sources/dataSource.js").default>} */
         this.#dataSources = new Set();
 
         /** @type {Set<import("./collector.js").default>} */
         this.#collectors = new Set();
+
+        this.loadingStatusRegistry = new LoadingStatusRegistry();
     }
 
     get dataSources() {

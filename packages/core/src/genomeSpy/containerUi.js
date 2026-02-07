@@ -18,12 +18,6 @@ export function createContainerUi(container) {
 
     canvasWrapper.classList.add("loading");
 
-    const loadingMessageElement = element("div", {
-        class: "loading-message",
-        innerHTML: `<div class="message">Loading<span class="ellipsis">...</span></div>`,
-    });
-    canvasWrapper.appendChild(loadingMessageElement);
-
     const loadingIndicatorsElement = element("div", {
         class: "loading-indicators",
     });
@@ -31,16 +25,8 @@ export function createContainerUi(container) {
 
     const tooltip = new Tooltip(container);
 
-    loadingMessageElement
-        .querySelector(".message")
-        .addEventListener("transitionend", () => {
-            /** @type {HTMLElement} */ (loadingMessageElement).style.display =
-                "none";
-        });
-
     return {
         canvasWrapper,
-        loadingMessageElement,
         loadingIndicatorsElement,
         tooltip,
         styleElement,

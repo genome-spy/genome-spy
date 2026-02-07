@@ -67,20 +67,6 @@ export default interface ViewContext {
     getNamedDataFromProvider: (name: string) => any[];
 
     /**
-     * Allows lazy data sources to signal that they are loading data.
-     * The status is shown in the UI somewhere within or near the view.
-     *
-     * @param view The view where the data source is located.
-     * @param status
-     * @param detail Details about the error, if any.
-     */
-    setDataLoadingStatus: (
-        view: View,
-        status: DataLoadingStatus,
-        detail?: string
-    ) => void;
-
-    /**
      * Highlights a view by adding a border around it. This is useful for debugging.
      *
      * @param view The view to highlight. Null to remove the highlight.

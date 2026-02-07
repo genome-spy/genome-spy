@@ -5,12 +5,6 @@ const css = `
 sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-@keyframes genome-spy-blinker {
-50% {
-opacity: 0;
-}
-}
-
 .genome-spy {
 font-family: var(--genome-spy-font-family);
 
@@ -39,33 +33,10 @@ outline: none;
 }
 }
 
-.loading-message {
-position: absolute;
-inset: 0;
-display: flex;
-
-align-items: center;
-justify-content: center;
-
-.message {
-color: #666;
-opacity: 0;
-transition: opacity 0.7s;
-}
-}
-
 .loading {
 > canvas {
 transform: scale(0.95, 0.95);
 opacity: 0;
-}
-
-> .loading-message .message {
-opacity: 1;
-
-.ellipsis {
-animation: genome-spy-blinker 1s linear infinite;
-}
 }
 }
 

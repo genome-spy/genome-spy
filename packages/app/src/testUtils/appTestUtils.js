@@ -57,7 +57,6 @@ export function createAppTestContext(options = {}) {
     context.addKeyboardListener = () => undefined;
     context.addBroadcastListener = () => undefined;
     context.removeBroadcastListener = () => undefined;
-    context.setDataLoadingStatus = () => undefined;
     context.glHelper = undefined;
 
     return {

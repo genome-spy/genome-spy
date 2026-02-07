@@ -33,7 +33,11 @@ export default class DataSource extends FlowNode {
      * @protected
      */
     setLoadingStatus(status, detail) {
-        this.view.context.setDataLoadingStatus(this.view, status, detail);
+        this.view.context.dataFlow.loadingStatusRegistry.set(
+            this.view,
+            status,
+            detail
+        );
     }
 
     get paramMediator() {
