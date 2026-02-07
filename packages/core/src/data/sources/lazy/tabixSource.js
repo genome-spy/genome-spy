@@ -34,7 +34,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.initializedPromise = new Promise((resolve) => {
+        this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([
                 import("@gmod/tabix"),
                 import("generic-filehandle2"),
@@ -55,10 +55,20 @@ export default class TabixSource extends SingleAxisWindowedSource {
                               : undefined,
                 });
 
-                const header = await this.#tbiIndex.getHeader();
-                await this._handleHeader(header);
-
-                resolve();
+                try {
+                    this.setLoadingStatus("loading");
+                    const header = await this.#tbiIndex.getHeader();
+                    await this._handleHeader(header);
+                    this.setLoadingStatus("complete");
+                    resolve();
+                } catch (e) {
+                    this.load();
+                    this.setLoadingStatus(
+                        "error",
+                        `${this.params.url}: ${e.message}`
+                    );
+                    reject(e);
+                }
             });
         });
     }
