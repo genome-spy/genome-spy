@@ -1,8 +1,32 @@
 import { describe, expect, test } from "vitest";
 
 import ConcatView from "../concatView.js";
+import Rectangle from "../layout/rectangle.js";
+import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import UnitView from "../unitView.js";
-import { createTestViewContext } from "../testUtils.js";
+import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+
+// Minimal context for layout-driven render calls without WebGL.
+class NoOpRenderingContext extends ViewRenderingContext {
+    /**
+     * @param {import("../../types/rendering.js").GlobalRenderingOptions} options
+     */
+    constructor(options) {
+        super(options);
+    }
+
+    pushView() {
+        //
+    }
+
+    popView() {
+        //
+    }
+
+    renderMark() {
+        //
+    }
+}
 
 /**
  * @returns {import("../../spec/view.js").UnitSpec}
@@ -107,5 +131,119 @@ describe("GridView incremental child management", () => {
 
         // Removing the child should dispose the collector subtree.
         expect(context.dataFlow.collectors.length).toBe(0);
+    });
+});
+
+describe("GridView separators", () => {
+    /**
+     * @param {import("../concatView.js").default} view
+     */
+    const getSeparatorViews = (view) => {
+        const separators = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.name.startsWith("separatorHorizontal") ||
+                    descendant.name.startsWith("separatorVertical")
+            );
+
+        return {
+            horizontal: separators.find((descendant) =>
+                descendant.name.startsWith("separatorHorizontal")
+            ),
+            vertical: separators.find((descendant) =>
+                descendant.name.startsWith("separatorVertical")
+            ),
+        };
+    };
+
+    /**
+     * @param {import("../concatView.js").default} view
+     */
+    const renderForLayout = (view) => {
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+    };
+
+    test("vconcat draws only horizontal separators", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+                separator: true,
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const { horizontal, vertical } = getSeparatorViews(view);
+        const horizontalCount = horizontal.flowHandle.collector.getItemCount();
+        const verticalCount = vertical
+            ? vertical.flowHandle.collector.getItemCount()
+            : 0;
+
+        expect(horizontalCount).toBe(1);
+        expect(verticalCount).toBe(0);
+    });
+
+    test("concat grid draws both horizontal and vertical separators", async () => {
+        const view = await createAndInitialize(
+            {
+                columns: 2,
+                concat: [
+                    makeUnitSpec(),
+                    makeUnitSpec(),
+                    makeUnitSpec(),
+                    makeUnitSpec(),
+                ],
+                separator: true,
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const { horizontal, vertical } = getSeparatorViews(view);
+        const horizontalCount = horizontal.flowHandle.collector.getItemCount();
+        const verticalCount = vertical
+            ? vertical.flowHandle.collector.getItemCount()
+            : 0;
+
+        expect(horizontalCount).toBe(1);
+        expect(verticalCount).toBe(1);
+    });
+
+    test("invisible children do not create extra separators", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    makeUnitSpec(),
+                    {
+                        ...makeUnitSpec(),
+                        visible: false,
+                    },
+                    makeUnitSpec(),
+                ],
+                separator: true,
+            },
+            ConcatView
+        );
+
+        // Respect spec-defined visibility for this test.
+        view.context.isViewConfiguredVisible = (candidate) =>
+            candidate.isVisibleInSpec();
+
+        renderForLayout(view);
+
+        const { horizontal, vertical } = getSeparatorViews(view);
+        const horizontalCount = horizontal.flowHandle.collector.getItemCount();
+        const verticalCount = vertical
+            ? vertical.flowHandle.collector.getItemCount()
+            : 0;
+
+        expect(horizontalCount).toBe(1);
+        expect(verticalCount).toBe(0);
     });
 });

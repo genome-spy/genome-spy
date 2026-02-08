@@ -80,6 +80,9 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 
         isViewConfiguredVisible: () => true,
 
+        addBroadcastListener: () => undefined,
+        removeBroadcastListener: () => undefined,
+
         //...partialContext,
     });
 

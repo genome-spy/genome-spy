@@ -11,6 +11,7 @@ import {
     MarkProps,
     MarkType,
     RectProps,
+    RuleProps,
     ShadowProps,
 } from "./mark.js";
 import { ExprRef } from "./parameter.js";
@@ -82,6 +83,18 @@ export type ViewBackground = Pick<
     "fill" | "fillOpacity" | "stroke" | "strokeWidth" | "strokeOpacity"
 > &
     ShadowProps;
+
+export interface SeparatorProps extends Omit<RuleProps, "type"> {
+    type?: "rule";
+
+    /**
+     * Whether separators extend into the plot margin (axes/padding) around
+     * the grid.
+     *
+     * __Default value:__ `true`
+     */
+    includePlotMargin?: boolean;
+}
 
 export interface ViewSpecBase extends ResolveSpec {
     /**
@@ -360,6 +373,19 @@ export interface ConcatBase extends ViewSpecBase {
      * The gap between the views, in pixels.
      */
     spacing?: number;
+
+    /**
+     * Draws separator rules between visible child views. The separators are
+     * centered within the spacing gaps and do not affect layout.
+     *
+     * If `true`, the defaults are equivalent to:
+     * `{"type":"rule","size":1,"color":"#ccc","opacity":1,"strokeDash":[4,4],"strokeCap":"butt"}`
+     * Use `includePlotMargin` to control whether the separators extend into the
+     * plot margin.
+     *
+     * __Default value:__ `false`
+     */
+    separator?: boolean | SeparatorProps;
 }
 
 export interface VConcatSpec extends ConcatBase {

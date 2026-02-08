@@ -1,0 +1,91 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "url": "../../data/sincos.csv"
+  },
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative"
+    },
+    "y": {
+      "field": "sin",
+      "type": "quantitative"
+    }
+  },
+
+  "spacing": 14,
+  "separator": {
+    "color": "#999",
+    "strokeDash": [6, 4],
+    "size": 1
+  },
+
+  "hconcat": [
+    {
+      "separator": true,
+      "vconcat": [
+        {
+          "view": { "stroke": "lightgray" },
+          "mark": "point"
+        },
+        {
+          "spacing": 18,
+          "separator": {
+            "color": "#666",
+            "strokeDash": [2, 3],
+            "size": 1
+          },
+          "hconcat": [
+            {
+              "width": 150,
+              "view": { "stroke": "lightgray" },
+              "mark": "point",
+
+              "encoding": {
+                "y": {
+                  "field": "sin",
+                  "type": "quantitative",
+                  "axis": { "offset": 10 }
+                }
+              }
+            },
+            {
+              "padding": { "top": 30, "left": 20, "right": 20 },
+              "title": {
+                "text": "Hello!",
+                "orient": "top",
+                "fontSize": 16,
+                "fontWeight": "bold"
+              },
+              "width": { "grow": 0.5 },
+              "view": { "stroke": "lightgray" },
+              "mark": "point"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "padding": { "left": 20, "right": 20 },
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    },
+    {
+      "spacing": 10,
+      "columns": 2,
+      "separator": {
+        "color": "#bbb",
+        "strokeDash": [3, 3],
+        "size": 1
+      },
+      "concat": [
+        { "mark": "point", "view": { "stroke": "lightgray" } },
+        { "mark": "point", "view": { "stroke": "lightgray" } },
+        { "mark": "point", "view": { "stroke": "lightgray" } },
+        { "mark": "point", "view": { "stroke": "lightgray" } }
+      ]
+    }
+  ]
+}

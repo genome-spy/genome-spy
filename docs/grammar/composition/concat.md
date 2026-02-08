@@ -106,6 +106,42 @@ visualization is used for all panels in the grid.
 
 </genome-spy-doc-embed></div>
 
+### Separators
+
+You can draw separators between child views using the `separator` property.
+Separators are centered within the spacing gaps and do not affect layout. Use
+`true` to enable the defaults or provide a
+[`rule` mark](../mark/rule.md) style object.
+Use `includePlotMargin: false` to keep the separators inside the plot area.
+
+<div><genome-spy-doc-embed height="280">
+
+```json
+{
+  "data": { "url": "sincos.csv" },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  },
+
+  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
+
+  "spacing": 29,
+
+  "separator": {
+    "color": "#bbb",
+    "strokeDash": [6, 4],
+    "size": 1,
+    "includePlotMargin": true
+  },
+
+  "vconcat": [{ "mark": "point" }, { "mark": "point" }, { "mark": "point" }]
+}
+```
+
+</genome-spy-doc-embed></div>
+
 ## Child sizing
 
 The concatenation operators mimic the behavior of the CSS

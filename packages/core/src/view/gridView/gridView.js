@@ -16,6 +16,7 @@ import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
+import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -69,6 +70,9 @@ export default class GridView extends ContainerView {
 
     #childSerial = 0;
 
+    /** @type {Partial<Record<"horizontal" | "vertical", SeparatorView>>} */
+    #separatorViews = {};
+
     /**
      *
      * @param {import("../../spec/view.js").AnyConcatSpec} spec
@@ -97,6 +101,20 @@ export default class GridView extends ContainerView {
         this.#children = [];
 
         this.wrappingFacet = false;
+
+        const separatorProps = resolveSeparatorProps(spec.separator);
+        if (separatorProps) {
+            for (const direction of getSeparatorDirections(spec)) {
+                this.#separatorViews[direction] = new SeparatorView({
+                    direction,
+                    props: separatorProps,
+                    context: this.context,
+                    layoutParent: this,
+                    dataParent: this,
+                    getName: (prefix) => this.getNextAutoName(prefix),
+                });
+            }
+        }
     }
 
     /**
@@ -274,6 +292,10 @@ export default class GridView extends ContainerView {
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
             yield* gridChild.getChildren();
+        }
+
+        for (const separatorView of Object.values(this.#separatorViews)) {
+            yield separatorView.view;
         }
 
         for (const axisView of Object.values(this.#sharedAxes)) {
@@ -522,8 +544,10 @@ export default class GridView extends ContainerView {
 
         context.pushView(this, coords);
 
+        const devicePixelRatio = context.getDevicePixelRatio();
+
         const flexOpts = {
-            devicePixelRatio: context.getDevicePixelRatio(),
+            devicePixelRatio,
         };
         const columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),
@@ -545,6 +569,10 @@ export default class GridView extends ContainerView {
         /** @param {number} x */
         const round = (x) =>
             Math.round(x * devicePixelRatio) / devicePixelRatio;
+
+        // Two-phase render: compute layout once, then render backgrounds/separators
+        // before gridlines/axes/marks without recomputing per-child coords.
+        const renderItems = [];
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
             const {
@@ -622,10 +650,79 @@ export default class GridView extends ContainerView {
                 ? viewportCoords.intersect(options.clipRect)
                 : viewportCoords;
 
-            background?.render(context, clippedChildCoords, {
+            renderItems.push({
+                col,
+                row,
+                view,
+                axes,
+                gridLines,
+                background,
+                backgroundStroke,
+                title,
+                selectionRect,
+                viewportCoords,
+                viewCoords,
+                clippedChildCoords,
+                viewWidth,
+                viewHeight,
+                scrollable,
+                gridChild,
+            });
+        }
+
+        for (const item of renderItems) {
+            item.background?.render(context, item.clippedChildCoords, {
                 ...options,
                 clipRect: undefined,
             });
+        }
+
+        const gridOverhang = this.#getGridOverhang();
+
+        const verticalSeparator = this.#separatorViews.vertical;
+        if (verticalSeparator) {
+            verticalSeparator.update(
+                columnFlexCoords,
+                grid.nCols,
+                coords,
+                (direction, index) => this.#getViewSlot(direction, index),
+                this.wrappingFacet,
+                gridOverhang
+            );
+            verticalSeparator.render(context, coords, options);
+        }
+
+        const horizontalSeparator = this.#separatorViews.horizontal;
+        if (horizontalSeparator) {
+            horizontalSeparator.update(
+                rowFlexCoords,
+                grid.nRows,
+                coords,
+                (direction, index) => this.#getViewSlot(direction, index),
+                this.wrappingFacet,
+                gridOverhang
+            );
+            horizontalSeparator.render(context, coords, options);
+        }
+
+        for (const item of renderItems) {
+            const {
+                view,
+                axes,
+                gridLines,
+                backgroundStroke,
+                title,
+                selectionRect,
+                viewportCoords,
+                viewCoords,
+                clippedChildCoords,
+                viewWidth,
+                viewHeight,
+                scrollable,
+                gridChild,
+                col,
+                row,
+            } = item;
 
             for (const gridLineView of Object.values(gridLines)) {
                 gridLineView.render(context, viewportCoords, options);
@@ -890,6 +987,23 @@ export function isClippedChildren(view) {
     });
 
     return clipped;
+}
+
+/**
+ * @param {import("../../spec/view.js").AnyConcatSpec} spec
+ * @returns {("horizontal" | "vertical")[]}
+ */
+function getSeparatorDirections(spec) {
+    // vconcat = horizontal separators, hconcat = vertical separators, concat = both
+    if ("vconcat" in spec) {
+        return ["horizontal"];
+    }
+
+    if ("hconcat" in spec) {
+        return ["vertical"];
+    }
+
+    return ["horizontal", "vertical"];
 }
 
 /**
