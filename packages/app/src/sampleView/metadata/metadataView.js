@@ -779,6 +779,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         throw new Error("No attribute definition for " + attributeName);
     }
 
+    const escapedEncodingField = escapeFieldName(attributeName);
     const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
@@ -808,7 +809,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
         encoding: {
             facetIndex: { field: "indexNumber" },
             color: {
-                field: attributeName,
+                field: escapedEncodingField,
                 type: attributeDef.type,
                 scale: attributeDef.scale,
             },
@@ -818,7 +819,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
 
     if (attributeDef.barScale && attributeDef.type == "quantitative") {
         attributeSpec.encoding.x = {
-            field: attributeName,
+            field: escapedEncodingField,
             type: attributeDef.type,
             scale: attributeDef.barScale,
             axis: null,
@@ -826,6 +827,21 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     }
 
     return attributeSpec;
+}
+
+/**
+ * Escapes special field path characters so dot-containing names are treated
+ * as literal keys in Vega field accessors.
+ *
+ * @param {string} fieldName
+ * @returns {string}
+ */
+function escapeFieldName(fieldName) {
+    return fieldName
+        .replaceAll("\\", "\\\\")
+        .replaceAll(".", "\\.")
+        .replaceAll("[", "\\[")
+        .replaceAll("]", "\\]");
 }
 
 /**

@@ -227,4 +227,107 @@ describe("MetadataView", () => {
                 .SAMPLE_ATTRIBUTE
         ).toBeUndefined();
     });
+
+    it("escapes dotted attribute names in encoding fields", async () => {
+        const { MetadataView } = await import("./metadataView.js");
+        const context = createTestViewContext();
+        context.animator = {
+            transition: () => Promise.resolve(),
+            requestRender: () => undefined,
+        };
+        context.requestLayoutReflow = () => undefined;
+        context.updateTooltip = () => undefined;
+        context.getCurrentHover = () => undefined;
+        context.addKeyboardListener = () => undefined;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+        context.getNamedDataFromProvider = () => [];
+
+        const store = createStoreStub({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata: {
+                            attributeNames: [],
+                            attributeDefs: {},
+                            entities: {},
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {SampleHierarchyStub} */
+        const sampleHierarchy = {
+            sampleMetadata: {
+                attributeNames: [],
+                attributeDefs: {},
+                entities: {},
+            },
+            sampleData: {
+                entities: {
+                    s1: { indexNumber: 0 },
+                    s2: { indexNumber: 1 },
+                },
+            },
+        };
+
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
+        const metadataView = new MetadataView(sampleView, sampleView);
+
+        const sampleMetadata = {
+            attributeNames: ["group1.foo", "plain"],
+            attributeDefs: {
+                "group1.foo": { type: "nominal" },
+                plain: { type: "nominal" },
+            },
+            entities: {
+                s1: { "group1.foo": "A", plain: "X" },
+                s2: { "group1.foo": "B", plain: "Y" },
+            },
+        };
+
+        sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+        await store.setState({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata,
+                    },
+                },
+            },
+        });
+
+        await waitForCondition(() => {
+            const unitViews = metadataView
+                .getDescendants()
+                .filter((view) => view instanceof UnitView);
+            return (
+                unitViews.length > 0 &&
+                unitViews.every((view) => view.flowHandle?.collector)
+            );
+        });
+
+        const unitViews = metadataView
+            .getDescendants()
+            .filter(
+                (view) => view instanceof UnitView && view.spec.encoding?.color
+            );
+
+        const dottedView = unitViews.find(
+            (view) => view.spec.encoding.color.field === "group1\\.foo"
+        );
+        expect(dottedView).toBeDefined();
+
+        const plainView = unitViews.find(
+            (view) => view.spec.encoding.color.field === "plain"
+        );
+        expect(plainView).toBeDefined();
+
+        metadataView.dispose();
+    });
 });
