@@ -50,8 +50,6 @@ export function getEncodingKeyFields(encoding) {
 
     /** @type {string[]} */
     const keyFields = [];
-    const uniqueFields = new Set();
-
     for (const definition of keyDefs) {
         if (!isFieldDef(definition)) {
             throw new Error(
@@ -65,13 +63,6 @@ export function getEncodingKeyFields(encoding) {
                 "The key channel field definition must include a string field name."
             );
         }
-        if (uniqueFields.has(fieldName)) {
-            throw new Error(
-                `Duplicate key field "${fieldName}" in the key channel.`
-            );
-        }
-
-        uniqueFields.add(fieldName);
         keyFields.push(fieldName);
     }
 

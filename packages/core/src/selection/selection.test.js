@@ -44,11 +44,11 @@ describe("key-based selection helpers", () => {
                 key: /** @type {any} */ ([{ field: "a" }, { value: 1 }]),
             })
         ).toThrow(/field definition/);
-        expect(() =>
+        expect(
             getEncodingKeyFields({
                 key: [{ field: "a" }, { field: "a" }],
             })
-        ).toThrow(/Duplicate key field/);
+        ).toEqual(["a", "a"]);
     });
 
     it("serializes point selections to key tuples", () => {
