@@ -41,32 +41,56 @@ function validateKeyComponent(value, keyFields, index) {
  * @returns {string}
  */
 function escapeKeyString(value) {
-    return value
-        .replaceAll(MULTI_KEY_ESCAPE, MULTI_KEY_ESCAPE + MULTI_KEY_ESCAPE)
-        .replaceAll(
-            MULTI_KEY_SEPARATOR,
-            MULTI_KEY_ESCAPE + MULTI_KEY_SEPARATOR
-        );
+    let needsEscaping = false;
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        if (char === MULTI_KEY_ESCAPE || char === MULTI_KEY_SEPARATOR) {
+            needsEscaping = true;
+            break;
+        }
+    }
+
+    if (!needsEscaping) {
+        return value;
+    }
+
+    let escaped = "";
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        if (char === MULTI_KEY_ESCAPE || char === MULTI_KEY_SEPARATOR) {
+            escaped += MULTI_KEY_ESCAPE;
+        }
+        escaped += char;
+    }
+
+    return escaped;
+}
+
+/**
+ * @param {import("../spec/channel.js").Scalar} scalar
+ * @returns {string}
+ */
+function encodeKeyPart(scalar) {
+    return escapeKeyString(String(scalar));
 }
 
 /**
  * @param {string[]} keyFields
- * @param {unknown[]} keyTuple
+ * @param {import("../spec/channel.js").Scalar[]} keyTuple
  * @returns {string}
  */
-function makeCompositeKey(keyFields, keyTuple) {
-    return keyTuple
-        .map((value, i) => {
-            const scalar = validateKeyComponent(value, keyFields, i);
-            if (typeof scalar === "string") {
-                return "s:" + escapeKeyString(scalar);
-            } else if (typeof scalar === "number") {
-                return "n:" + String(scalar);
-            } else {
-                return scalar ? "b:1" : "b:0";
-            }
-        })
-        .join(MULTI_KEY_SEPARATOR);
+function makeCompositeKeyFromTuple(keyFields, keyTuple) {
+    let compositeKey = "";
+    for (let i = 0; i < keyTuple.length; i++) {
+        if (i > 0) {
+            compositeKey += MULTI_KEY_SEPARATOR;
+        }
+
+        const scalar = validateKeyComponent(keyTuple[i], keyFields, i);
+        compositeKey += encodeKeyPart(scalar);
+    }
+
+    return compositeKey;
 }
 
 export default class KeyIndex {
@@ -115,7 +139,7 @@ export default class KeyIndex {
 
         const canonicalFields = /** @type {string[]} */ (this.#keyFields);
         const key = this.#usesCompositeKey
-            ? makeCompositeKey(canonicalFields, keyTuple)
+            ? makeCompositeKeyFromTuple(canonicalFields, keyTuple)
             : validateKeyComponent(keyTuple[0], canonicalFields, 0);
 
         return this.#index.get(key);
@@ -133,24 +157,61 @@ export default class KeyIndex {
 
         const usesCompositeKey = keyFields.length !== 1;
 
-        for (const data of facetBatches) {
-            for (let i = 0, n = data.length; i < n; i++) {
-                const datum = data[i];
-                const keyTuple = accessors.map((accessor) => accessor(datum));
-                const key = usesCompositeKey
-                    ? makeCompositeKey(keyFields, keyTuple)
-                    : validateKeyComponent(keyTuple[0], keyFields, 0);
-
-                if (index.has(key)) {
-                    const duplicateValue = usesCompositeKey ? keyTuple : key;
-                    throw new Error(
-                        `Duplicate key detected for fields [${keyFields.join(
-                            ", "
-                        )}]: ${JSON.stringify(duplicateValue)}`
+        if (!usesCompositeKey) {
+            const accessor = accessors[0];
+            for (const data of facetBatches) {
+                for (let i = 0, n = data.length; i < n; i++) {
+                    const datum = data[i];
+                    const key = validateKeyComponent(
+                        accessor(datum),
+                        keyFields,
+                        0
                     );
-                }
 
-                index.set(key, datum);
+                    const previous = index.get(key);
+                    if (previous !== undefined) {
+                        throw new Error(
+                            `Duplicate key detected for fields [${keyFields.join(
+                                ", "
+                            )}]: ${JSON.stringify(key)}`
+                        );
+                    }
+
+                    index.set(key, datum);
+                }
+            }
+        } else {
+            for (const data of facetBatches) {
+                for (let i = 0, n = data.length; i < n; i++) {
+                    const datum = data[i];
+                    let compositeKey = "";
+                    for (let j = 0; j < accessors.length; j++) {
+                        if (j > 0) {
+                            compositeKey += MULTI_KEY_SEPARATOR;
+                        }
+
+                        const scalar = validateKeyComponent(
+                            accessors[j](datum),
+                            keyFields,
+                            j
+                        );
+                        compositeKey += encodeKeyPart(scalar);
+                    }
+
+                    const previous = index.get(compositeKey);
+                    if (previous !== undefined) {
+                        const duplicateTuple = accessors.map((accessor) =>
+                            accessor(datum)
+                        );
+                        throw new Error(
+                            `Duplicate key detected for fields [${keyFields.join(
+                                ", "
+                            )}]: ${JSON.stringify(duplicateTuple)}`
+                        );
+                    }
+
+                    index.set(compositeKey, datum);
+                }
             }
         }
 
