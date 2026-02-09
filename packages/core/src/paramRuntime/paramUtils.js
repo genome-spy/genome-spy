@@ -83,11 +83,11 @@ export function validateParameterName(name) {
  * Computes the default value for a parameter specification.
  *
  * @param {import("../spec/parameter.js").Parameter} param
- * @param {{ createExpression: (expr: string) => ExprRefFunction }} [paramMediator]
+ * @param {{ createExpression: (expr: string) => ExprRefFunction }} [paramRuntime]
  * @param {ExprRefFunction} [exprFn]
  * @returns {any}
  */
-export function getDefaultParamValue(param, paramMediator, exprFn) {
+export function getDefaultParamValue(param, paramRuntime, exprFn) {
     if ("select" in param) {
         const select = asSelectionConfig(param.select);
         if (isPointSelectionConfig(select)) {
@@ -113,7 +113,7 @@ export function getDefaultParamValue(param, paramMediator, exprFn) {
     if ("expr" in param) {
         const expr =
             exprFn ??
-            paramMediator?.createExpression(/** @type {string} */ (param.expr));
+            paramRuntime?.createExpression(/** @type {string} */ (param.expr));
         if (!expr) {
             throw new Error(
                 'Cannot evaluate expression for parameter "' + param.name + '".'
@@ -134,13 +134,13 @@ export function getDefaultParamValue(param, paramMediator, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction }} paramMediator
+ * @param {{ createExpression: (expr: string) => ExprRefFunction }} paramRuntime
  * @param {T} props The properties object
  * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
  * @returns T
  * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
  */
-export function activateExprRefProps(paramMediator, props, listener) {
+export function activateExprRefProps(paramRuntime, props, listener) {
     /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const activatedProps = { ...props };
 
@@ -159,7 +159,7 @@ export function activateExprRefProps(paramMediator, props, listener) {
 
     for (const [key, value] of Object.entries(props)) {
         if (isExprRef(value)) {
-            const fn = paramMediator.createExpression(value.expr);
+            const fn = paramRuntime.createExpression(value.expr);
             if (listener) {
                 fn.addListener(() => batchPropertyChange(key));
             }

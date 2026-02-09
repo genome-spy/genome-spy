@@ -4,7 +4,11 @@ import { tickStep } from "d3-array";
 import { isVariableParameter } from "../paramRuntime/paramUtils.js";
 
 /**
- * @param {import("../view/paramMediator.js").default} mediator
+ * @param {{
+ *   paramConfigs: ReadonlyMap<string, import("../spec/parameter.js").Parameter>,
+ *   getSetter: (name: string) => (value: any) => void,
+ *   getValue: (name: string) => any
+ * }} mediator
  */
 export default function createBindingInputs(mediator) {
     const random = Math.floor(Math.random() * 0xffffff).toString(16);
