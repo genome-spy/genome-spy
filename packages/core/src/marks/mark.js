@@ -99,11 +99,6 @@ export default class Mark {
     #callAfterShaderCompilation = [];
 
     /**
-     * @type {{expr: import("../paramRuntime/types.js").ExprRefFunction, listener: () => void}[]}
-     */
-    #exprListeners = [];
-
-    /**
      * @param {import("../view/unitView.js").default} unitView
      */
     constructor(unitView) {
@@ -307,13 +302,13 @@ export default class Mark {
         for (const key of props) {
             const prop = this.properties[key];
             if (prop && isExprRef(prop)) {
-                const fn = this.unitView.paramRuntime.createExpression(
-                    prop.expr
+                const fn = this.unitView.paramRuntime.watchExpression(
+                    prop.expr,
+                    () => {
+                        this.updateGraphicsData();
+                        this.unitView.context.animator.requestRender();
+                    }
                 );
-                this.registerExpressionListener(fn, () => {
-                    this.updateGraphicsData();
-                    this.unitView.context.animator.requestRender();
-                });
                 // @ts-ignore
                 if (!channels.includes(key)) {
                     Object.defineProperty(exprProps, key, {
@@ -572,11 +567,10 @@ export default class Mark {
                     // Create the initial texture
                     glHelper.createSelectionTexture(selection);
 
-                    const fn = paramRuntime.createExpression(param);
-                    this.registerExpressionListener(fn, () => {
+                    paramRuntime.watchExpression(param, () => {
                         const selection =
                             /** @type {import("../types/selectionTypes.js").MultiPointSelection} */ (
-                                fn(null)
+                                paramRuntime.getValue(param)
                             );
                         glHelper.createSelectionTexture(selection);
                         this.getContext().animator.requestRender();
@@ -1047,31 +1041,19 @@ export default class Mark {
         };
 
         if (isExprRef(propValue)) {
-            const fn = this.unitView.paramRuntime.createExpression(
-                propValue.expr
+            /** @type {import("../paramRuntime/types.js").ExprRefFunction} */
+            let fn;
+            const set = () => setter(adjuster(fn(null)));
+            fn = this.unitView.paramRuntime.watchExpression(
+                propValue.expr,
+                set
             );
 
-            const set = () => setter(adjuster(fn(null)));
-
-            // Register a listener ...
-            this.registerExpressionListener(fn, set);
             // ... and set the initial value
             set();
         } else {
             setter(adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue)));
         }
-    }
-
-    /**
-     * Registers an expression listener and tracks it for mark disposal.
-     *
-     * @protected
-     * @param {import("../paramRuntime/types.js").ExprRefFunction} expr
-     * @param {() => void} listener
-     */
-    registerExpressionListener(expr, listener) {
-        expr.addListener(listener);
-        this.#exprListeners.push({ expr, listener });
     }
 
     /**
@@ -1111,10 +1093,6 @@ export default class Mark {
     }
 
     dispose() {
-        for (const { expr, listener } of this.#exprListeners) {
-            expr.removeListener(listener);
-        }
-        this.#exprListeners.length = 0;
         this.deleteGraphicsData();
     }
 

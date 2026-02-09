@@ -242,6 +242,24 @@ describe("Single-level ParamMediator", () => {
         expect(pm.getValue("foo")).toBeUndefined();
         expect(() => setter(2)).toThrow();
     });
+
+    test("watchExpression notifies on upstream changes", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+
+        let calls = 0;
+        const expr = pm.watchExpression("foo + 1", () => {
+            calls += 1;
+        });
+
+        expect(expr()).toBe(2);
+
+        setter(2);
+        setter(2);
+
+        expect(calls).toBe(1);
+        expect(expr()).toBe(3);
+    });
 });
 
 describe("Nested ParamMediators", () => {
@@ -320,6 +338,24 @@ describe("Nested ParamMediators", () => {
 
         expect(parent.findValue("foo")).toBe(2);
         expect(child.findValue("foo")).toBe(2);
+    });
+
+    test("watchExpression listener is detached when child scope is disposed", () => {
+        const parent = new ParamMediator();
+        const child = new ParamMediator(() => parent);
+
+        const setter = parent.registerParam({ name: "foo", value: 1 });
+        let calls = 0;
+        child.watchExpression("foo + 1", () => {
+            calls += 1;
+        });
+
+        setter(2);
+        expect(calls).toBe(1);
+
+        child.dispose();
+        setter(3);
+        expect(calls).toBe(1);
     });
 });
 

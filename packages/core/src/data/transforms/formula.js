@@ -23,10 +23,9 @@ export default class FormulaTransform extends Transform {
     }
 
     initialize() {
-        this.fn = this.paramRuntime.createExpression(this.params.expr);
-        const listener = () => this.repropagate();
-        this.fn.addListener(listener);
-        this.registerDisposer(() => this.fn.removeListener(listener));
+        this.fn = this.paramRuntime.watchExpression(this.params.expr, () =>
+            this.repropagate()
+        );
     }
 
     /**

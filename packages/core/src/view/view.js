@@ -986,10 +986,9 @@ function createViewOpacityFunction(view) {
                 return interpolate(unitsPerPixel) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramRuntime.createExpression(opacityDef.expr);
-            const listener = () => view.context.animator.requestRender();
-            fn.addListener(listener);
-            view.registerDisposer(() => fn.removeListener(listener));
+            const fn = view.paramRuntime.watchExpression(opacityDef.expr, () =>
+                view.context.animator.requestRender()
+            );
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }

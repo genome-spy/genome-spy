@@ -32,17 +32,14 @@ export default class MeasureTextTransform extends Transform {
 
         // TODO: Refactor this into reusable code.
         if (isExprRef(params.fontSize)) {
-            const sizeExpr =
-                paramMediatorProvider.paramRuntime.createExpression(
-                    params.fontSize.expr
-                );
+            const sizeExpr = paramMediatorProvider.paramRuntime.watchExpression(
+                params.fontSize.expr,
+                () => {
+                    size = sizeExpr();
+                    this.repropagate();
+                }
+            );
             size = sizeExpr();
-            const listener = () => {
-                size = sizeExpr();
-                this.repropagate();
-            };
-            sizeExpr.addListener(listener);
-            this.registerDisposer(() => sizeExpr.removeListener(listener));
         } else {
             size = params.fontSize;
         }

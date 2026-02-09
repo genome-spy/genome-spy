@@ -281,6 +281,23 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Creates an expression and subscribes a listener that is automatically
+     * removed when this runtime scope is disposed.
+     *
+     * @param {string} expr
+     * @param {() => void} listener
+     * @returns {ExprRefFunction}
+     */
+    watchExpression(expr, listener) {
+        const fn = this.createExpression(expr);
+        fn.addListener(listener);
+        this.#runtime.addScopeDisposer(this.#scopeId, () => {
+            fn.removeListener(listener);
+        });
+        return fn;
+    }
+
+    /**
      * @template T
      * @param {string} name
      * @param {T} defaultValue

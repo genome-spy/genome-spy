@@ -43,6 +43,17 @@ export default class ParamRuntime {
     }
 
     /**
+     * Registers a disposer that is bound to the scope lifecycle.
+     *
+     * @param {string} scope
+     * @param {() => void} disposer
+     */
+    addScopeDisposer(scope, disposer) {
+        const ownerId = this.#paramStore.getOwnerId(scope);
+        this.#lifecycleRegistry.addDisposer(ownerId, disposer);
+    }
+
+    /**
      * @template T
      * @param {string} scope
      * @param {string} name

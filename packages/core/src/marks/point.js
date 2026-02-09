@@ -58,11 +58,9 @@ export default class PointMark extends Mark {
         const szf = this.properties.semanticZoomFraction;
         if (szf != null) {
             if (isExprRef(szf)) {
-                const fn = this.unitView.paramRuntime.createExpression(
-                    szf.expr
-                );
-                this.registerExpressionListener(fn, () =>
-                    this.getContext().animator.requestRender()
+                const fn = this.unitView.paramRuntime.watchExpression(
+                    szf.expr,
+                    () => this.getContext().animator.requestRender()
                 );
                 this.#semanticZoomFraction = fn;
             } else {

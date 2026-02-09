@@ -134,7 +134,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction }} paramRuntime
+ * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void) => ExprRefFunction }} paramRuntime
  * @param {T} props The properties object
  * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
@@ -165,23 +165,38 @@ export function activateExprRefProps(
 
     for (const [key, value] of Object.entries(props)) {
         if (isExprRef(value)) {
-            const fn = paramRuntime.createExpression(value.expr);
             if (listener) {
                 const expressionListener = () => batchPropertyChange(key);
-                fn.addListener(expressionListener);
+                const fn = paramRuntime.watchExpression
+                    ? paramRuntime.watchExpression(
+                          value.expr,
+                          expressionListener
+                      )
+                    : paramRuntime.createExpression(value.expr);
+                if (!paramRuntime.watchExpression) {
+                    fn.addListener(expressionListener);
+                }
                 if (registerDisposer) {
                     registerDisposer(() =>
                         fn.removeListener(expressionListener)
                     );
                 }
-            }
 
-            Object.defineProperty(activatedProps, key, {
-                enumerable: true,
-                get() {
-                    return fn();
-                },
-            });
+                Object.defineProperty(activatedProps, key, {
+                    enumerable: true,
+                    get() {
+                        return fn();
+                    },
+                });
+            } else {
+                const fn = paramRuntime.createExpression(value.expr);
+                Object.defineProperty(activatedProps, key, {
+                    enumerable: true,
+                    get() {
+                        return fn();
+                    },
+                });
+            }
         } else {
             activatedProps[key] = value;
         }
