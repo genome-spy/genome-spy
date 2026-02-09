@@ -240,7 +240,7 @@ export function resolveParamSelector(root, selector) {
     const matches = [];
 
     visitViewsInScope(scopeRoot, (view) => {
-        for (const [name, param] of view.paramMediator.paramConfigs) {
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (name !== selector.param) {
                 continue;
             }
@@ -284,7 +284,7 @@ export function visitBookmarkableParams(root, visitor) {
             return;
         }
 
-        for (const [name, param] of view.paramMediator.paramConfigs) {
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (!isBookmarkableParam(param)) {
                 continue;
             }
@@ -533,7 +533,7 @@ function validateParamNamesInScope(scopeRoot, scope, issues) {
     const names = new Map();
 
     visitViewsInScope(scopeRoot, (view) => {
-        for (const [name, param] of view.paramMediator.paramConfigs) {
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (!isBookmarkableParam(param)) {
                 continue;
             }
@@ -675,7 +675,7 @@ function hasAddressableFeatures(root) {
                 return VISIT_STOP;
             }
 
-            for (const param of view.paramMediator.paramConfigs.values()) {
+            for (const param of view.paramRuntime.paramConfigs.values()) {
                 if (isBookmarkableParam(param)) {
                     found = true;
                     return VISIT_STOP;

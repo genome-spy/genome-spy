@@ -307,7 +307,7 @@ export default class Mark {
         for (const key of props) {
             const prop = this.properties[key];
             if (prop && isExprRef(prop)) {
-                const fn = this.unitView.paramMediator.createExpression(
+                const fn = this.unitView.paramRuntime.createExpression(
                     prop.expr
                 );
                 fn.addListener(() => {
@@ -490,7 +490,7 @@ export default class Mark {
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
-            const paramMediator = this.unitView.paramMediator;
+            const paramMediator = this.unitView.paramRuntime;
             const selection = paramMediator.findValue(param);
 
             // The selection is supposed to have an empty value at this point
@@ -1047,7 +1047,7 @@ export default class Mark {
         };
 
         if (isExprRef(propValue)) {
-            const fn = this.unitView.paramMediator.createExpression(
+            const fn = this.unitView.paramRuntime.createExpression(
                 propValue.expr
             );
 
@@ -1180,7 +1180,7 @@ export default class Mark {
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&
-            !this.unitView.paramMediator.hasPointSelections()
+            !this.unitView.paramRuntime.hasPointSelections()
         ) {
             // Disabled
             return false;

@@ -95,7 +95,7 @@ export default class UnitView extends View {
 
         this.resolve();
 
-        this.#zoomLevelSetter = this.paramMediator.allocateSetter(
+        this.#zoomLevelSetter = this.paramRuntime.allocateSetter(
             "zoomLevel",
             1.0
         );
@@ -122,7 +122,7 @@ export default class UnitView extends View {
     }
 
     #setupPointSelection() {
-        for (const [name, param] of this.paramMediator.paramConfigs) {
+        for (const [name, param] of this.paramRuntime.paramConfigs) {
             if (!("select" in param)) {
                 continue;
             }
@@ -145,7 +145,7 @@ export default class UnitView extends View {
                 const none = 0;
                 let lastId = none;
 
-                const setter = this.paramMediator.getSetter(name);
+                const setter = this.paramRuntime.getSetter(name);
 
                 const getHoveredDatum = () => {
                     const h = this.context.getCurrentHover();
@@ -175,7 +175,7 @@ export default class UnitView extends View {
                         if (toggle) {
                             if (datum) {
                                 const previousSelection =
-                                    this.paramMediator.getValue(name);
+                                    this.paramRuntime.getValue(name);
                                 selection = updateMultiPointSelection(
                                     previousSelection,
                                     {

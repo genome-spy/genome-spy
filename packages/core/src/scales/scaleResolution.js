@@ -132,7 +132,7 @@ export default class ScaleResolution {
         });
 
         this.#scaleManager = new ScaleInstanceManager({
-            getParamMediator: () => this.#firstMemberView.paramMediator,
+            getParamMediator: () => this.#firstMemberView.paramRuntime,
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,

@@ -94,7 +94,7 @@ export default function createEncoders(unitView, encoding) {
             createConditionalAccessors(
                 typedChannel,
                 typedChannelDef,
-                unitView.paramMediator
+                unitView.paramRuntime
             ),
             scaleSource
         );

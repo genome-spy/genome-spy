@@ -162,14 +162,21 @@ export default class View {
         this.needsAxes = { x: false, y: false };
 
         /** @type {ParamMediator} */
-        this.paramMediator = new ParamMediator(
-            () => this.dataParent?.paramMediator
+        this.paramRuntime = new ParamMediator(
+            () => this.dataParent?.paramRuntime
         );
+
+        /**
+         * Temporary alias while call sites migrate to `paramRuntime`.
+         *
+         * @type {ParamMediator}
+         */
+        this.paramMediator = this.paramRuntime;
 
         if (spec.params) {
             for (const param of spec.params) {
                 // TODO: If interval selection, validate `encodings` or provides defaults
-                this.paramMediator.registerParam(param);
+                this.paramRuntime.registerParam(param);
             }
         }
 
@@ -179,9 +186,9 @@ export default class View {
             // doesn't make much sense, but it's used in the App's SampleView
             // to set the height to sample facets' height.
             const allocateIfFree = (/** @type {string} */ name) =>
-                this.paramMediator.findMediatorForParam(name)
+                this.paramRuntime.findMediatorForParam(name)
                     ? undefined
-                    : this.paramMediator.allocateSetter(name, 0);
+                    : this.paramRuntime.allocateSetter(name, 0);
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }
@@ -876,7 +883,7 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                  ? this.paramMediator.evaluateAndGet(title.text.expr)
+                  ? this.paramRuntime.evaluateAndGet(title.text.expr)
                   : title.text;
         }
     }
@@ -984,7 +991,7 @@ function createViewOpacityFunction(view) {
                 return interpolate(unitsPerPixel) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramMediator.createExpression(opacityDef.expr);
+            const fn = view.paramRuntime.createExpression(opacityDef.expr);
             fn.addListener(() => view.context.animator.requestRender());
             return (parentOpacity) => fn(null) * parentOpacity;
         }

@@ -137,7 +137,7 @@ export default class GridChild {
         };
 
         // TODO: If the child is a LayerView, selection params should be pulled from its children as well
-        for (const [name, param] of view.paramMediator.paramConfigs) {
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (!("select" in param)) {
                 continue;
             }
@@ -199,8 +199,8 @@ export default class GridChild {
                     ])
                 );
 
-            const selectionExpr = view.paramMediator.createExpression(name);
-            const setter = view.paramMediator.getSetter(name);
+            const selectionExpr = view.paramRuntime.createExpression(name);
+            const setter = view.paramRuntime.getSetter(name);
 
             if (param.value) {
                 setter({ type: "interval", intervals: param.value });

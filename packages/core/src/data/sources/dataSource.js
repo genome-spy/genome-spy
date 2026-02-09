@@ -41,7 +41,7 @@ export default class DataSource extends FlowNode {
     }
 
     get paramMediator() {
-        return this.view.paramMediator;
+        return this.view.paramRuntime;
     }
 
     /**

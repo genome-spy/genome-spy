@@ -30,7 +30,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         };
 
         const activatedParams = activateExprRefProps(
-            view.paramMediator,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.includes("url")) {

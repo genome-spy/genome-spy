@@ -7,8 +7,10 @@ import FlowNode from "./flowNode.js";
  * @returns {import("./flowNode.js").ParamMediatorProvider}
  */
 export function makeParamMediatorProvider() {
+    const runtime = new ParamMediator();
     return {
-        paramMediator: new ParamMediator(),
+        paramRuntime: runtime,
+        paramMediator: runtime,
     };
 }
 

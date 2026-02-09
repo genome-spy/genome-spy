@@ -30,7 +30,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         };
 
         const activatedParams = activateExprRefProps(
-            view.paramMediator,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
                 if (props.includes("url")) {
