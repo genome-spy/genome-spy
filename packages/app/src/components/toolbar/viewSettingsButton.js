@@ -211,7 +211,7 @@ class ViewSettingsButton extends LitElement {
                     { type: "divider" },
                     {
                         customContent: html`<div class="gs-input-binding">
-                            ${createBindingInputs(view.paramMediator)}
+                            ${createBindingInputs(view.paramRuntime)}
                         </div>`,
                     }
                 );
@@ -361,7 +361,7 @@ const isVisibilityConfigurable = (/** @type {View} */ view) =>
     !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 const hasVariableBindings = (/** @type {View} */ view) =>
-    [...view.paramMediator.paramConfigs.values()].some(
+    [...view.paramRuntime.paramConfigs.values()].some(
         (param) => isVariableParameter(param) && param.bind
     );
 

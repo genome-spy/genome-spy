@@ -55,6 +55,7 @@ class FakeCollector {
 class FakeView {
     constructor() {
         this.paramMediator = new ParamMediator();
+        this.paramRuntime = this.paramMediator;
         this.explicitName = "root";
         this.spec = {};
     }

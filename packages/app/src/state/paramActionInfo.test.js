@@ -24,6 +24,9 @@ class FakeView {
     /** @type {ParamMediator} */
     paramMediator;
 
+    /** @type {ParamMediator} */
+    paramRuntime;
+
     /** @type {{ getScale: () => object }} */
     #scaleResolution;
 
@@ -42,6 +45,7 @@ class FakeView {
         this.#title = options.title;
         this.#children = options.children ? [...options.children] : [];
         this.paramMediator = new ParamMediator();
+        this.paramRuntime = this.paramMediator;
         this.#scaleResolution = { getScale: () => ({}) };
     }
 

@@ -48,12 +48,12 @@ const THROTTLE_INTERVAL_MS = 150;
 
 export default class ParamProvenanceBridge {
     /**
-     * Bridges Core param state (ParamMediator) with App provenance.
+     * Bridges Core param state (param runtime) with App provenance.
      *
      * Rationale:
      * - Params live in the view hierarchy, not in Redux, so provenance needs a
      *   dedicated adapter to serialize param changes into actions and replay
-     *   them back into ParamMediators.
+     *   them back into the runtime.
      * - This keeps the Core lean while still allowing undo/redo and bookmarks
      *   to capture user-adjustable params (selection and bound inputs).
      * - Suppression is necessary to avoid feedback loops when replaying history.
@@ -153,7 +153,7 @@ export default class ParamProvenanceBridge {
     #registerParamListeners() {
         for (const entry of this.#entries) {
             const paramName = entry.selector.param;
-            const unsubscribe = entry.view.paramMediator.subscribe(
+            const unsubscribe = entry.view.paramRuntime.subscribe(
                 paramName,
                 () => {
                     this.#handleParamChange(entry);
@@ -199,7 +199,7 @@ export default class ParamProvenanceBridge {
         }
 
         const paramName = entry.selector.param;
-        const value = entry.view.paramMediator.getValue(paramName);
+        const value = entry.view.paramRuntime.getValue(paramName);
         if (value === undefined) {
             return;
         }
@@ -407,7 +407,7 @@ export default class ParamProvenanceBridge {
      * @returns {any}
      */
     #getDefaultValue(entry) {
-        return getDefaultParamValue(entry.param, entry.view.paramMediator);
+        return getDefaultParamValue(entry.param, entry.view.paramRuntime);
     }
 
     /**
@@ -569,14 +569,14 @@ export default class ParamProvenanceBridge {
     }
 
     /**
-     * Applies provenance entries to ParamMediators, falling back to defaults.
+     * Applies provenance entries to param runtime values, falling back to defaults.
      *
      * @param {Record<string, ParamProvenanceEntry>} entries
      */
     #applyProvenanceEntries(entries) {
         this.#suppressCapture = true;
         try {
-            this.#root.paramMediator.inTransaction(() => {
+            this.#root.paramRuntime.inTransaction(() => {
                 const knownKeys = new Set(this.#entriesByKey.keys());
                 const unusedKeys = new Set(Object.keys(entries));
 
@@ -592,7 +592,7 @@ export default class ParamProvenanceBridge {
                         ? this.#resolveStoredValue(entry, storedEntry)
                         : this.#getDefaultValue(entry);
 
-                    const setter = entry.view.paramMediator.getSetter(
+                    const setter = entry.view.paramRuntime.getSetter(
                         entry.selector.param
                     );
                     setter(value);
@@ -611,7 +611,7 @@ export default class ParamProvenanceBridge {
             });
 
             // Keep suppression active while deferred propagation is flushed.
-            this.#root.paramMediator.flushNow();
+            this.#root.paramRuntime.flushNow();
         } finally {
             this.#suppressCapture = false;
         }
