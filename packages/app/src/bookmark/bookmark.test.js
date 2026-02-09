@@ -23,10 +23,15 @@ describe("bookmark restore", () => {
             submit: vi.fn(() => Promise.resolve()),
         };
 
+        const paramProvenanceBridge = {
+            whenApplied: vi.fn(() => Promise.resolve()),
+        };
+
         const app = /** @type {import("../app.js").default} */ (
             /** @type {any} */ ({
                 store,
                 intentPipeline,
+                paramProvenanceBridge,
                 provenance: {
                     isUndoable: () => true,
                     activateState: vi.fn(),
@@ -43,5 +48,6 @@ describe("bookmark restore", () => {
             ActionCreators.jumpToPast(0)
         );
         expect(intentPipeline.submit).toHaveBeenCalledWith(entry.actions);
+        expect(paramProvenanceBridge.whenApplied).toHaveBeenCalled();
     });
 });

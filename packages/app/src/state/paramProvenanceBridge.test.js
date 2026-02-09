@@ -232,6 +232,33 @@ describe("ParamProvenanceBridge", () => {
         expect(view.paramRuntime.getValue("alpha")).toBe(0.75);
     });
 
+    it("whenApplied waits for queued provenance apply and propagation", async () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "alpha",
+            value: 0,
+            bind: { input: "range" },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        const bridge = new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "alpha" },
+            value: { type: "value", value: 0.5 },
+        });
+        store.dispatch(action);
+
+        await bridge.whenApplied();
+
+        expect(view.paramRuntime.getValue("alpha")).toBe(0.5);
+    });
+
     it("serializes point selections using encoding.key", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };

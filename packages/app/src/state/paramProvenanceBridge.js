@@ -107,6 +107,9 @@ export default class ParamProvenanceBridge {
     /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }>} */
     #throttledDispatchers = new Map();
 
+    /** @type {Promise<void>} */
+    #lastApplyPromise = Promise.resolve();
+
     /**
      * @param {object} options
      * @param {View} options.root
@@ -612,9 +615,25 @@ export default class ParamProvenanceBridge {
 
             // Keep suppression active while deferred propagation is flushed.
             this.#root.paramRuntime.flushNow();
+            this.#lastApplyPromise = this.#root.paramRuntime.whenPropagated();
         } finally {
             this.#suppressCapture = false;
         }
+    }
+
+    /**
+     * Resolves after the latest provenance apply pass has run and param
+     * propagation has settled.
+     *
+     * Sync barrier only: this does not wait for temporal/animation convergence.
+     *
+     * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
+     */
+    async whenApplied(options) {
+        // #applyProvenanceEntries is scheduled through queueMicrotask.
+        await Promise.resolve();
+        await this.#lastApplyPromise;
+        return this.#root.paramRuntime.whenPropagated(options);
     }
 
     /**
