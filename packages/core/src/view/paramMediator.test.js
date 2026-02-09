@@ -188,6 +188,30 @@ describe("Single-level ParamMediator", () => {
         expect(calls).toBe(1);
     });
 
+    test("inTransaction batches expression updates", async () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+        pm.registerParam({ name: "bar", expr: "foo + 1" });
+
+        let calls = 0;
+        pm.subscribe("bar", () => {
+            calls++;
+        });
+
+        // Non-obvious: runtime propagation is deferred until transaction end.
+        pm.inTransaction(() => {
+            setter(2);
+            setter(3);
+        });
+
+        expect(calls).toBe(0);
+
+        await pm.whenPropagated();
+
+        expect(pm.getValue("bar")).toBe(4);
+        expect(calls).toBe(1);
+    });
+
     test("Throws if both value and expr are provided", () => {
         const pm = new ParamMediator();
         expect(() =>

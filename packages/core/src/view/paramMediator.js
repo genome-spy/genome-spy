@@ -384,6 +384,29 @@ export default class ParamMediator {
     }
 
     /**
+     * @template T
+     * @param {() => T} fn
+     * @returns {T}
+     */
+    inTransaction(fn) {
+        return this.#runtime.inTransaction(fn);
+    }
+
+    flushNow() {
+        this.#runtime.flushNow();
+    }
+
+    /**
+     * Sync barrier only: resolves when DAG propagation/effects have flushed.
+     * Must not be broadened to temporal/animation convergence semantics.
+     *
+     * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
+     */
+    whenPropagated(options) {
+        return this.#runtime.whenPropagated(options);
+    }
+
+    /**
      * Returns true if this ParamMediator has any parameters that are point selections.
      * Point selections necessitate the use of uniqueIds in the data.
      *
