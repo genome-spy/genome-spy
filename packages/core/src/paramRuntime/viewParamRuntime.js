@@ -119,7 +119,9 @@ export default class ViewParamRuntime {
                 param.expr
             );
             this.#localRefs.set(name, ref);
-            setter = (_) => undefined;
+            setter = () => {
+                throw new Error('Cannot set derived parameter "' + name + '".');
+            };
         } else {
             defaultValue = getDefaultParamValue(param, this);
             setter = this.#registerBaseSetter(name, defaultValue);

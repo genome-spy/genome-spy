@@ -190,6 +190,16 @@ describe("Single-level ParamMediator", () => {
         expect(calls).toBe(1);
     });
 
+    test("Derived params are read-only from registerParam setter", () => {
+        const pm = new ParamMediator();
+        pm.registerParam({ name: "foo", value: 1 });
+        const setter = pm.registerParam({ name: "bar", expr: "foo + 1" });
+
+        expect(() => setter(123)).toThrow(
+            'Cannot set derived parameter "bar".'
+        );
+    });
+
     test("inTransaction batches expression updates", async () => {
         const pm = new ParamMediator();
         const setter = pm.registerParam({ name: "foo", value: 1 });
