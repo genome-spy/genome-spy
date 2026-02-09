@@ -6,6 +6,8 @@ const MULTI_KEY_ESCAPE = "\\";
 /**
  * Lazily builds and caches lookup indexes for `encoding.key` fields so that
  * bookmarked point selections can be resolved back to datums efficiently.
+ *
+ * TODO: Use requestIdleCallback to warm up the index to prevent jank on first access.
  */
 export default class KeyIndex {
     /**

@@ -37,6 +37,7 @@ export default class Collector extends FlowNode {
 
     /** @type {KeyIndex} */
     #keyIndex = new KeyIndex();
+
     /**
      * Start and end indices of all facets if they are concatenated into a single array.
      * Used together with the uniqueIdIndex for looking up data items by their unique id.
