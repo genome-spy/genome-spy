@@ -569,7 +569,10 @@ export default class GenomeSpy {
         /** @type {UnitView[]} */
         const views = [];
         this.viewRoot.visit((view) => {
-            if (view instanceof UnitView && view.getDataAccessor("search")) {
+            if (
+                view instanceof UnitView &&
+                view.getSearchAccessors().length > 0
+            ) {
                 views.push(view);
             }
         });

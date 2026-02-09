@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import { createAccessor, createConditionalAccessors } from "./accessor.js";
 import ParamMediator from "../view/paramMediator.js";
-import { createEncoder, createSimpleOrConditionalEncoder } from "./encoder.js";
+import {
+    createEncoder,
+    createSimpleOrConditionalEncoder,
+    isNonMarkPropertyChannel,
+} from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createSinglePointSelection } from "../selection/selection.js";
 import { isArray } from "vega-util";
@@ -80,6 +84,14 @@ describe("Encoder", () => {
     test("accesses a field and uses a scale", () => expect(e.y(datum)).toBe(1));
 
     // TODO: Text ExprRef
+});
+
+describe("isNonMarkPropertyChannel", () => {
+    test("identifies non-mark-property metadata channels", () => {
+        expect(isNonMarkPropertyChannel("key")).toBe(true);
+        expect(isNonMarkPropertyChannel("search")).toBe(true);
+        expect(isNonMarkPropertyChannel("x")).toBe(false);
+    });
 });
 
 // TODO: Refactor and fix conditional encoders

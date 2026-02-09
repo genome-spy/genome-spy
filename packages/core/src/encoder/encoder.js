@@ -104,15 +104,15 @@ export default function createEncoders(unitView, encoding) {
 }
 
 /**
- * Metadata channels that participate in interaction logic but are not encoded
- * into visual mark properties. Keep this centralized so future channels (for
- * example tooltip) can reuse the same handling path.
+ * Channels that are present in encoding but are not direct mark properties.
+ * Keep this centralized so metadata channels (for example tooltip) can reuse
+ * the same handling path.
  *
  * @param {import("../spec/channel.js").Channel} channel
  * @returns {boolean}
  */
 export function isNonMarkPropertyChannel(channel) {
-    return channel === "key";
+    return channel === "key" || channel === "search";
 }
 
 /**

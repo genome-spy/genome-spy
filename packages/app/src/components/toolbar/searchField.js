@@ -126,10 +126,10 @@ export default class SearchField extends LitElement {
             sensitivity: "base",
         });
         for (const view of this.genomeSpy.getSearchableViews()) {
-            const sa =
-                /** @type {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => string}*/ (
-                    view.getDataAccessor("search")
-                );
+            const searchAccessors = view.getSearchAccessors();
+            if (searchAccessors.length === 0) {
+                continue;
+            }
 
             const xa = view.getDataAccessor("x").asNumberAccessor();
             const x2a = view.getDataAccessor("x2").asNumberAccessor();
@@ -142,7 +142,9 @@ export default class SearchField extends LitElement {
             }
 
             for (const d of view.getCollector()?.getData() ?? []) {
-                if (collator.compare(sa(d), term) === 0) {
+                if (
+                    datumMatchesSearchTerm(d, searchAccessors, term, collator)
+                ) {
                     // TODO: zoomLog for log scales, etc
                     const interval = zoomLinear([xa(d), x2a(d)], null, 1.2);
                     await xResolution.zoomTo(interval);
@@ -270,13 +272,15 @@ export default class SearchField extends LitElement {
 
         for (const view of this.genomeSpy?.getSearchableViews() || []) {
             const viewTitle = view.getTitleText() ?? view.spec.name;
-            const a = view.getDataAccessor("search");
-            const fieldString = a.fields.join(", "); // TODO: Field title
+            const searchAccessors = view.getSearchAccessors();
+            const fieldString = searchAccessors
+                .flatMap((accessor) => accessor.fields)
+                .join(", "); // TODO: Field title
 
-            const examples = sampleIterable(
-                3,
+            const examples = collectSearchExamples(
+                searchAccessors,
                 view.getCollector().getData(),
-                a
+                3
             );
 
             parts.push(html`
@@ -388,6 +392,52 @@ function typeSlowly(text, element) {
 
         next();
     });
+}
+
+/**
+ * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
+ * @param {import("vega-util").AccessorFn[]} accessors
+ * @param {string} term
+ * @param {Intl.Collator} collator
+ * @returns {boolean}
+ */
+function datumMatchesSearchTerm(datum, accessors, term, collator) {
+    for (const accessor of accessors) {
+        const value = accessor(datum);
+        if (
+            value !== null &&
+            value !== undefined &&
+            collator.compare(String(value), term) === 0
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @param {import("vega-util").AccessorFn[]} accessors
+ * @param {Iterable<import("@genome-spy/core/data/flowNode.js").Datum>} data
+ * @param {number} maxExamples
+ * @returns {string[]}
+ */
+function collectSearchExamples(accessors, data, maxExamples) {
+    /** @type {Set<string>} */
+    const examples = new Set();
+    for (const accessor of accessors) {
+        for (const example of sampleIterable(maxExamples, data, accessor)) {
+            if (example !== null && example !== undefined) {
+                examples.add(String(example));
+            }
+
+            if (examples.size >= maxExamples) {
+                return [...examples];
+            }
+        }
+    }
+
+    return [...examples];
 }
 
 /**

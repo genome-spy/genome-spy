@@ -466,7 +466,13 @@ Views have two properties for controlling the visibility:
 
 The location/search field in the toolbar allows users to quickly navigate to
 features in the data. To make features searchable, use the `search` channel
-on marks that represent the searchable data objects. Example:
+on marks that represent the searchable data objects.
+
+`search` accepts either a single field definition or an array of field
+definitions. When multiple fields are provided, a datum matches if any of the
+fields matches the entered term (case-insensitive exact match).
+
+Examples:
 
 ```json
 {
@@ -476,6 +482,22 @@ on marks that represent the searchable data objects. Example:
     "search": {
       "field": "geneSymbol"
     },
+    ...,
+  },
+  ...
+}
+```
+
+```json
+{
+  ...,
+  "mark": "rect",
+  "encoding": {
+    "search": [
+      { "field": "geneSymbol" },
+      { "field": "geneId" },
+      { "field": "alias" }
+    ],
     ...,
   },
   ...

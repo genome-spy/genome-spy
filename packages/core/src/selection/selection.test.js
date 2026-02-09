@@ -3,7 +3,6 @@ import {
     asEventConfig,
     createMultiPointSelection,
     createSinglePointSelection,
-    getEncodingKeyFields,
     getPointSelectionKeyTuples,
     resolvePointSelectionFromKeyTuples,
 } from "./selection.js";
@@ -21,36 +20,6 @@ describe("asEventSpec", () => {
 });
 
 describe("key-based selection helpers", () => {
-    it("extracts key fields from encoding", () => {
-        expect(getEncodingKeyFields({})).toBeUndefined();
-        expect(getEncodingKeyFields({ key: { field: "id" } })).toEqual(["id"]);
-        expect(
-            getEncodingKeyFields({
-                key: [
-                    { field: "sampleId" },
-                    { field: "chrom" },
-                    { field: "pos" },
-                ],
-            })
-        ).toEqual(["sampleId", "chrom", "pos"]);
-    });
-
-    it("fails on invalid key field configurations", () => {
-        expect(() => getEncodingKeyFields({ key: [] })).toThrow(
-            /must not be empty/
-        );
-        expect(() =>
-            getEncodingKeyFields({
-                key: /** @type {any} */ ([{ field: "a" }, { value: 1 }]),
-            })
-        ).toThrow(/field definition/);
-        expect(
-            getEncodingKeyFields({
-                key: [{ field: "a" }, { field: "a" }],
-            })
-        ).toEqual(["a", "a"]);
-    });
-
     it("serializes point selections to key tuples", () => {
         const datum = { id: "a", sampleId: "S1", chrom: "chr1", _uniqueId: 1 };
         const single = createSinglePointSelection(datum);

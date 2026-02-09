@@ -24,8 +24,10 @@ import {
     isPointSelectionConfig,
     updateMultiPointSelection,
 } from "../selection/selection.js";
+import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createEventFilterFunction } from "../utils/expression.js";
+import { field } from "../utils/field.js";
 
 /**
  *
@@ -63,6 +65,11 @@ export default class UnitView extends View {
      * @type {boolean}
      */
     #domainSubscriptionsRegistered = false;
+
+    /**
+     * @type {import("vega-util").AccessorFn[] | null}
+     */
+    #searchAccessors = null;
 
     /**
      *
@@ -446,6 +453,20 @@ export default class UnitView extends View {
             return undefined;
         }
         return encoders[channel]?.dataAccessor;
+    }
+
+    /**
+     * Returns data accessors configured for the `search` channel.
+     *
+     * @returns {import("vega-util").AccessorFn[]}
+     */
+    getSearchAccessors() {
+        if (!this.#searchAccessors) {
+            const fields = getEncodingSearchFields(this.getEncoding()) ?? [];
+            this.#searchAccessors = fields.map((fieldName) => field(fieldName));
+        }
+
+        return this.#searchAccessors;
     }
 
     /**

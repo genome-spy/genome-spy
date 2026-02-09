@@ -3,7 +3,6 @@ import { ActionCreators } from "redux-undo";
 import {
     asSelectionConfig,
     createIntervalSelection,
-    getEncodingKeyFields,
     getPointSelectionKeyTuples,
     isActiveIntervalSelection,
     isIntervalSelection,
@@ -13,6 +12,7 @@ import {
     isSinglePointSelection,
     resolvePointSelectionFromKeyTuples,
 } from "@genome-spy/core/selection/selection.js";
+import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import {
     getBookmarkableParams,
     makeParamSelectorKey,

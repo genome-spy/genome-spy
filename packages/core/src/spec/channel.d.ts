@@ -128,6 +128,7 @@ export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> &
 
 export type FieldDefWithoutScale = FieldDefBase & TitleMixins;
 export type KeyDef = FieldDefWithoutScale | FieldDefWithoutScale[];
+export type SearchDef = FieldDefWithoutScale | FieldDefWithoutScale[];
 
 export interface ScaleMixins {
     /**
@@ -532,8 +533,15 @@ export interface Encoding {
     // TODO: proper type
     uniqueId?: FieldDefWithoutScale;
 
-    // TODO: proper type
-    search?: FieldDefWithoutScale;
+    /**
+     * One or more fields used by the App's location/search input to match
+     * data objects in this view.
+     *
+     * Use a single field definition for simple search, or an array for
+     * matching against multiple fields. A datum matches when any configured
+     * search field matches the entered term.
+     */
+    search?: SearchDef;
 
     /**
      * For internal use

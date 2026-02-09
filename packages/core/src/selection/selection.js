@@ -3,7 +3,6 @@ import {
     getSecondaryChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
-import { isFieldDef } from "../encoder/encoder.js";
 import { validateParameterName } from "../view/paramMediator.js";
 import { field } from "../utils/field.js";
 
@@ -29,44 +28,6 @@ export function createMultiPointSelection(data) {
         type: "multi",
         data: new Map(data.map((d) => [d[UNIQUE_ID_KEY], d])),
     };
-}
-
-/**
- * Returns key fields used for point selections, if configured.
- *
- * @param {import("../spec/channel.js").Encoding} encoding
- * @returns {string[] | undefined}
- */
-export function getEncodingKeyFields(encoding) {
-    const keyDef = encoding && encoding.key;
-    if (!keyDef) {
-        return;
-    }
-
-    const keyDefs = Array.isArray(keyDef) ? keyDef : [keyDef];
-    if (keyDefs.length === 0) {
-        throw new Error("The key channel array must not be empty.");
-    }
-
-    /** @type {string[]} */
-    const keyFields = [];
-    for (const definition of keyDefs) {
-        if (!isFieldDef(definition)) {
-            throw new Error(
-                "The key channel must be a field definition or an array of field definitions."
-            );
-        }
-
-        const fieldName = definition.field;
-        if (typeof fieldName !== "string") {
-            throw new Error(
-                "The key channel field definition must include a string field name."
-            );
-        }
-        keyFields.push(fieldName);
-    }
-
-    return keyFields;
 }
 
 /**
