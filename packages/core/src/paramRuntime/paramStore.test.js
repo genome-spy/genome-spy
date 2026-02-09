@@ -1,13 +1,24 @@
 import { describe, expect, test } from "vitest";
 import ParamStore from "./paramStore.js";
 
+/**
+ * @param {string} id
+ * @param {string} name
+ * @returns {import("./types.js").ParamRef<undefined>}
+ */
 function createRef(id, name) {
     return {
         id,
         name,
-        kind: "base",
+        kind: /** @type {"base"} */ ("base"),
         get: () => undefined,
-        subscribe: () => () => undefined,
+        subscribe:
+            (
+                /** @type {() => void} */
+                _listener
+            ) =>
+            () =>
+                undefined,
     };
 }
 

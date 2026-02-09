@@ -176,7 +176,10 @@ export default class ViewParamRuntime {
             }
         );
         this.#localRefs.set(paramName, ref);
-        const setter = (value) => {
+        const setter = (
+            /** @type {T} */
+            value
+        ) => {
             ref.set(value);
             this.#runtime.flushNow();
         };
@@ -365,7 +368,10 @@ export default class ViewParamRuntime {
             defaultValue
         );
         this.#localRefs.set(name, ref);
-        const setter = (value) => {
+        const setter = (
+            /** @type {T} */
+            value
+        ) => {
             ref.set(value);
             this.#runtime.flushNow();
         };

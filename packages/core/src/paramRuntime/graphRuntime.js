@@ -16,6 +16,34 @@ const PRIORITY_STRIDE = 1000000;
  */
 
 /**
+ * @template T
+ * @typedef {RuntimeNodeBase & {
+ *   value: T,
+ *   kind: "base" | "selection",
+ *   name: string
+ * }} WritableNode
+ */
+
+/**
+ * @template T
+ * @typedef {RuntimeNodeBase & {
+ *   value: T,
+ *   kind: "derived",
+ *   name: string,
+ *   fn: () => T
+ * }} ComputedNode
+ */
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   rank: number,
+ *   disposed: boolean,
+ *   fn: () => void
+ * }} EffectNode
+ */
+
+/**
  * @param {import("./lifecycleRegistry.js").default | undefined} lifecycleRegistry
  * @returns {(ownerId: string, disposer: () => void) => void}
  */
@@ -64,7 +92,10 @@ function createRef(node, setter) {
 
     if (setter) {
         return Object.assign(ref, {
-            set(value) {
+            set(
+                /** @type {T} */
+                value
+            ) {
                 setter(value);
             },
         });
@@ -78,7 +109,9 @@ function createRef(node, setter) {
  * @returns {RuntimeNodeBase}
  */
 function getNode(ref) {
-    const node = ref[RUNTIME_NODE];
+    const node = /** @type {RuntimeNodeBase | undefined} */ (
+        /** @type {any} */ (ref)[RUNTIME_NODE]
+    );
     if (!node) {
         throw new Error(
             "ParamRef is not bound to this graph runtime. Expected runtime-created ref."
@@ -108,16 +141,16 @@ export default class GraphRuntime {
 
     #flushing = false;
 
-    /** @type {Set<any>} */
+    /** @type {Set<ComputedNode<any>>} */
     #dirtyComputeds = new Set();
 
-    /** @type {Set<any>} */
+    /** @type {Set<EffectNode>} */
     #dirtyEffects = new Set();
 
-    /** @type {FlatQueue<any>} */
+    /** @type {FlatQueue<ComputedNode<any>>} */
     #computedQueue = new FlatQueue();
 
-    /** @type {FlatQueue<any>} */
+    /** @type {FlatQueue<EffectNode>} */
     #effectQueue = new FlatQueue();
 
     /** @type {Set<{resolve: () => void, reject: (error: Error) => void, abortHandler?: () => void, timeoutId?: ReturnType<typeof setTimeout>}>} */
@@ -147,7 +180,7 @@ export default class GraphRuntime {
         const nodeId = "n" + this.#nextNodeId++;
         const notifyOnSet = options.notify ?? true;
 
-        const node = {
+        const node = /** @type {WritableNode<T>} */ ({
             id: nodeId,
             name,
             kind,
@@ -155,15 +188,21 @@ export default class GraphRuntime {
             rank: 0,
             disposed: false,
             listeners: new Set(),
-            subscribe(listener) {
+            subscribe(
+                /** @type {() => void} */
+                listener
+            ) {
                 node.listeners.add(listener);
                 return () => {
                     node.listeners.delete(listener);
                 };
             },
-        };
+        });
 
-        const setter = (value) => {
+        const setter = (
+            /** @type {T} */
+            value
+        ) => {
             if (node.disposed) {
                 throw new Error(
                     'Cannot set disposed parameter "' +
@@ -209,7 +248,7 @@ export default class GraphRuntime {
         );
 
         const nodeId = "n" + this.#nextNodeId++;
-        const node = {
+        const node = /** @type {ComputedNode<T>} */ ({
             id: nodeId,
             name,
             kind: "derived",
@@ -218,13 +257,16 @@ export default class GraphRuntime {
             disposed: false,
             listeners: new Set(),
             fn,
-            subscribe(listener) {
+            subscribe(
+                /** @type {() => void} */
+                listener
+            ) {
                 node.listeners.add(listener);
                 return () => {
                     node.listeners.delete(listener);
                 };
             },
-        };
+        });
 
         const onDependencyChange = () => {
             if (!node.disposed) {
@@ -267,13 +309,12 @@ export default class GraphRuntime {
         );
 
         const nodeId = "n" + this.#nextNodeId++;
-        const node = {
+        const node = /** @type {EffectNode} */ ({
             id: nodeId,
             rank: maxRank + 1,
             disposed: false,
-            listeners: new Set(),
             fn,
-        };
+        });
 
         const onDependencyChange = () => {
             if (!node.disposed) {
@@ -380,7 +421,11 @@ export default class GraphRuntime {
         }
 
         return new Promise((resolve, reject) => {
-            const waiter = { resolve, reject };
+            const waiter =
+                /** @type {{resolve: () => void, reject: (error: Error) => void, abortHandler?: () => void, timeoutId?: ReturnType<typeof setTimeout>}} */ ({
+                    resolve,
+                    reject,
+                });
 
             if (signal) {
                 waiter.abortHandler = () => {
@@ -414,7 +459,7 @@ export default class GraphRuntime {
     }
 
     /**
-     * @param {any} node
+     * @param {ComputedNode<any>} node
      */
     #enqueueComputed(node) {
         if (this.#dirtyComputeds.has(node)) {
@@ -427,7 +472,7 @@ export default class GraphRuntime {
     }
 
     /**
-     * @param {any} node
+     * @param {EffectNode} node
      */
     #enqueueEffect(node) {
         if (this.#dirtyEffects.has(node)) {

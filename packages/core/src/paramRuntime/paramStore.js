@@ -56,10 +56,11 @@ export default class ParamStore {
 
     /**
      * @template T
+     * @template {import("./types.js").ParamRef<T>} R
      * @param {string} scopeId
      * @param {string} name
-     * @param {import("./types.js").ParamRef<T>} ref
-     * @returns {import("./types.js").ParamRef<T>}
+     * @param {R} ref
+     * @returns {R}
      */
     register(scopeId, name, ref) {
         validateParamName(name);
