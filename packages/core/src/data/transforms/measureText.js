@@ -37,6 +37,11 @@ export default class MeasureTextTransform extends Transform {
                 () => {
                     size = sizeExpr();
                     this.repropagate();
+                },
+                {
+                    scopeOwned: false,
+                    registerDisposer: (disposer) =>
+                        this.registerDisposer(disposer),
                 }
             );
             size = sizeExpr();

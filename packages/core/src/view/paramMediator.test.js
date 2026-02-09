@@ -260,6 +260,35 @@ describe("Single-level ParamMediator", () => {
         expect(calls).toBe(1);
         expect(expr()).toBe(3);
     });
+
+    test("watchExpression supports owner-bound disposer semantics", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+
+        /** @type {(() => void)[]} */
+        const disposers = [];
+        let calls = 0;
+
+        pm.watchExpression(
+            "foo + 1",
+            () => {
+                calls += 1;
+            },
+            {
+                scopeOwned: false,
+                registerDisposer: (disposer) => disposers.push(disposer),
+            }
+        );
+
+        expect(disposers.length).toBe(1);
+
+        setter(2);
+        expect(calls).toBe(1);
+
+        disposers[0]();
+        setter(3);
+        expect(calls).toBe(1);
+    });
 });
 
 describe("Nested ParamMediators", () => {

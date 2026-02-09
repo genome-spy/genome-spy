@@ -286,14 +286,21 @@ export default class ViewParamRuntime {
      *
      * @param {string} expr
      * @param {() => void} listener
+     * @param {{ scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }} [options]
      * @returns {ExprRefFunction}
      */
-    watchExpression(expr, listener) {
+    watchExpression(expr, listener, options = {}) {
         const fn = this.createExpression(expr);
         fn.addListener(listener);
-        this.#runtime.addScopeDisposer(this.#scopeId, () => {
+        const dispose = () => {
             fn.removeListener(listener);
-        });
+        };
+
+        if (options.scopeOwned ?? true) {
+            this.#runtime.addScopeDisposer(this.#scopeId, dispose);
+        }
+        options.registerDisposer?.(dispose);
+
         return fn;
     }
 

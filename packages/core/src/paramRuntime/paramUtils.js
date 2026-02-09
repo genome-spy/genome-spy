@@ -134,7 +134,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void) => ExprRefFunction }} paramRuntime
+ * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction }} paramRuntime
  * @param {T} props The properties object
  * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
@@ -170,7 +170,10 @@ export function activateExprRefProps(
                 const fn = paramRuntime.watchExpression
                     ? paramRuntime.watchExpression(
                           value.expr,
-                          expressionListener
+                          expressionListener,
+                          {
+                              scopeOwned: !registerDisposer,
+                          }
                       )
                     : paramRuntime.createExpression(value.expr);
                 if (!paramRuntime.watchExpression) {
