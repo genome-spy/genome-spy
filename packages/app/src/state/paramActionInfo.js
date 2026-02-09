@@ -16,7 +16,7 @@ import {
  * @typedef {import("@genome-spy/core/spec/genome.js").ChromosomalLocus} ChromosomalLocus
  * @typedef {{ type: "value", value: any }} ParamValueLiteral
  * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [ChromosomalLocus, ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyField: string, keys: Scalar[] }} ParamValuePoint
+ * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
  * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
  * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
  */
@@ -75,7 +75,7 @@ function formatParamActionTitle(view, selector, value, origin, root) {
         if (value.keys.length === 1) {
             return html`Select <strong>${selector.param}</strong> =
                 ${formatStrong(
-                    formatScalar(value.keys[0])
+                    formatPointKeyTuple(value.keys[0])
                 )}${formatOriginSuffix(origin, root)}`;
         }
         return html`Select <strong>${selector.param}</strong> (${formatStrong(
@@ -164,6 +164,18 @@ function formatScalar(value) {
  */
 function formatStrong(value) {
     return html`<strong>${value}</strong>`;
+}
+
+/**
+ * @param {Scalar[]} tuple
+ * @returns {string}
+ */
+function formatPointKeyTuple(tuple) {
+    if (tuple.length === 1) {
+        return formatScalar(tuple[0]);
+    }
+
+    return "(" + tuple.map((value) => formatScalar(value)).join(", ") + ")";
 }
 
 /**

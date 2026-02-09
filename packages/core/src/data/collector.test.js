@@ -193,6 +193,66 @@ describe("Indexing key fields", () => {
 
         expect(collector.findDatumByKey(["id"], ["a"])).toEqual(data2[0]);
     });
+
+    test("Collector finds data by composite key tuples", () => {
+        const collector = new Collector();
+        const data = [
+            { sampleId: "S1", chrom: "chr1", pos: 10 },
+            { sampleId: "S2", chrom: "chr2", pos: 20 },
+        ];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(
+            collector.findDatumByKey(
+                ["sampleId", "chrom", "pos"],
+                ["S1", "chr1", 10]
+            )
+        ).toEqual(data[0]);
+        expect(
+            collector.findDatumByKey(
+                ["sampleId", "chrom", "pos"],
+                ["S1", "chr1", 999]
+            )
+        ).toBeUndefined();
+    });
+
+    test("Collector throws on duplicate composite keys when index is built", () => {
+        const collector = new Collector();
+        const data = [
+            { sampleId: "S1", chrom: "chr1", pos: 10 },
+            { sampleId: "S1", chrom: "chr1", pos: 10 },
+        ];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(() =>
+            collector.findDatumByKey(
+                ["sampleId", "chrom", "pos"],
+                ["S1", "chr1", 10]
+            )
+        ).toThrow(/Duplicate key/);
+    });
+
+    test("Collector throws when key field values are nullish", () => {
+        const collector = new Collector();
+        const data = [{ id: /** @type {string | undefined} */ (undefined) }];
+
+        for (const d of data) {
+            collector.handle(d);
+        }
+        collector.complete();
+
+        expect(() => collector.findDatumByKey(["id"], ["x"])).toThrow(
+            /undefined/
+        );
+    });
 });
 
 describe("Domain caching and notifications", () => {

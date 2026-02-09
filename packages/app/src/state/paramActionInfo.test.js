@@ -119,7 +119,7 @@ describe("getParamActionInfo", () => {
 
         const clearAction = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "selected" },
-            value: { type: "point", keyField: "id", keys: [] },
+            value: { type: "point", keyFields: ["id"], keys: [] },
         });
         const clearInfo = getParamActionInfo(clearAction, view);
         const clearTitle = normalizeTitle(clearInfo);
@@ -128,7 +128,11 @@ describe("getParamActionInfo", () => {
 
         const multiAction = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "selected" },
-            value: { type: "point", keyField: "id", keys: ["a", "b"] },
+            value: {
+                type: "point",
+                keyFields: ["id"],
+                keys: [["a"], ["b"]],
+            },
         });
         const multiInfo = getParamActionInfo(multiAction, view);
         const multiTitle = normalizeTitle(multiInfo);

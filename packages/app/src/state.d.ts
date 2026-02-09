@@ -24,8 +24,8 @@ export interface ParamValueInterval {
 
 export interface ParamValuePoint {
     type: "point";
-    keyField: string;
-    keys: Scalar[];
+    keyFields: string[];
+    keys: Scalar[][];
 }
 
 export type ParamValue =

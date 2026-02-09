@@ -256,11 +256,49 @@ describe("ParamProvenanceBridge", () => {
             store.getState().provenance.present.paramProvenance.entries[key];
         expect(entry.value).toEqual({
             type: "point",
-            keyField: "id",
-            keys: ["A"],
+            keyFields: ["id"],
+            keys: [["A"]],
         });
 
         await flushMicrotasks();
+    });
+
+    it("serializes point selections using composite encoding.key", async () => {
+        const view = new FakeView();
+        view.encoding = {
+            key: [{ field: "sampleId" }, { field: "chrom" }, { field: "pos" }],
+        };
+        const setter = view.paramMediator.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        setter(
+            createMultiPointSelection([
+                { sampleId: "S1", chrom: "chr1", pos: 10, _uniqueId: 1 },
+                { sampleId: "S2", chrom: "chr2", pos: 20, _uniqueId: 2 },
+            ])
+        );
+
+        const key = makeParamSelectorKey({ scope: [], param: "selection" });
+        const entry =
+            store.getState().provenance.present.paramProvenance.entries[key];
+        expect(entry.value).toEqual({
+            type: "point",
+            keyFields: ["sampleId", "chrom", "pos"],
+            keys: [
+                ["S1", "chr1", 10],
+                ["S2", "chr2", 20],
+            ],
+        });
     });
 
     it("warns and skips point selections when encoding.key is missing", async () => {
@@ -364,7 +402,11 @@ describe("ParamProvenanceBridge", () => {
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
                 selector: { scope: [], param: "selection" },
-                value: { type: "point", keyField: "id", keys: ["A", "B"] },
+                value: {
+                    type: "point",
+                    keyFields: ["id"],
+                    keys: [["A"], ["B"]],
+                },
             })
         );
 
@@ -406,8 +448,8 @@ describe("ParamProvenanceBridge", () => {
                 selector: { scope: [], param: "selection" },
                 value: {
                     type: "point",
-                    keyField: "name",
-                    keys: ["duplicate-id"],
+                    keyFields: ["name"],
+                    keys: [["duplicate-id"]],
                 },
             })
         );
@@ -419,6 +461,51 @@ describe("ParamProvenanceBridge", () => {
         const message = templateResultToString(call[0]);
         expect(call[1].title).toBe("Parameter restore warnings");
         expect(message).toContain("encoding.key fields [name] are not unique");
+    });
+
+    it("warns when bookmark key fields do not match the current view", async () => {
+        const { showMessageDialog } =
+            await import("../components/generic/messageDialog.js");
+        showMessageDialog.mockClear();
+
+        const view = new FakeView();
+        view.encoding = {
+            key: [{ field: "sampleId" }, { field: "chrom" }, { field: "pos" }],
+        };
+        view.paramMediator.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+        view.getCollector = () => new FakeCollector(() => undefined);
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        store.dispatch(
+            paramProvenanceSlice.actions.paramChange({
+                selector: { scope: [], param: "selection" },
+                value: {
+                    type: "point",
+                    keyFields: ["sampleId", "chrom"],
+                    keys: [["S1", "chr1"]],
+                },
+            })
+        );
+
+        await flushMicrotasks();
+
+        expect(showMessageDialog).toHaveBeenCalled();
+        const call = showMessageDialog.mock.calls.at(-1);
+        const message = templateResultToString(call[0]);
+        expect(call[1].title).toBe("Parameter restore warnings");
+        expect(message).toContain(
+            "bookmark uses key fields [sampleId, chrom] but the view now uses [sampleId, chrom, pos]"
+        );
     });
 
     it("restores interval selections from provenance entries", async () => {
@@ -562,7 +649,7 @@ describe("ParamProvenanceBridge", () => {
                 ];
             expect(entry.value).toEqual({
                 type: "point",
-                keyField: "id",
+                keyFields: ["id"],
                 keys: [],
             });
         } finally {
@@ -596,7 +683,7 @@ describe("ParamProvenanceBridge", () => {
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
                 selector: { scope: [], param: "selection" },
-                value: { type: "point", keyField: "id", keys: ["A"] },
+                value: { type: "point", keyFields: ["id"], keys: [["A"]] },
             })
         );
 

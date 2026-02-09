@@ -9,7 +9,7 @@ import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
  *
  * @typedef {{ type: "value", value: any }} ParamValueLiteral
  * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [ChromosomalLocus, ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyField: string, keys: Scalar[] }} ParamValuePoint
+ * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
  * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
  *
  * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin

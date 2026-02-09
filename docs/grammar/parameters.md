@@ -32,6 +32,11 @@ persisted in the GenomeSpy App's bookmarks and provenance history. Use
 `persist: false` to opt out of persistence for ephemeral params (such as hover
 selections) or when `encoding.key` is not defined for point selections.
 
+For point selections, `encoding.key` should uniquely identify data objects.
+You can use either a single field or a composite key (an array of field
+definitions). When using a composite key, keep the field order stable across
+bookmark creation and restore.
+
 The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.
 

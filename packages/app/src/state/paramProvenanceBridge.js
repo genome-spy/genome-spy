@@ -39,7 +39,7 @@ const THROTTLE_INTERVAL_MS = 150;
  * @typedef {import("@genome-spy/core/view/view.js").default} View
  * @typedef {{ type: "value", value: any }} ParamValueLiteral
  * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [import("@genome-spy/core/spec/genome.js").ChromosomalLocus, import("@genome-spy/core/spec/genome.js").ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyField: string, keys: Scalar[] }} ParamValuePoint
+ * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
  * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
  * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
  * @typedef {{ selector: ParamSelector, value: ParamValue, origin?: ParamOrigin }} ParamProvenanceEntry
@@ -483,12 +483,6 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        if (keyFields.length !== 1) {
-            throw new Error(
-                "Point selection key fields must contain exactly one field."
-            );
-        }
-
         return keyFields;
     }
 
@@ -538,8 +532,8 @@ export default class ParamProvenanceBridge {
 
                 return {
                     type: "point",
-                    keyField: keyFields[0],
-                    keys: keyTuples.map((tuple) => tuple[0]),
+                    keyFields,
+                    keys: keyTuples,
                 };
             }
 
@@ -648,14 +642,34 @@ export default class ParamProvenanceBridge {
                     return this.#getDefaultValue(entry);
                 }
 
-                if (storedValue.keyField !== keyFields[0]) {
+                if (
+                    !Array.isArray(storedValue.keyFields) ||
+                    !Array.isArray(storedValue.keys) ||
+                    storedValue.keys.some((tuple) => !Array.isArray(tuple))
+                ) {
                     return this.#warnSelectionAndUseDefault(
                         entry,
-                        `cannot be restored because the bookmark uses key field "${storedValue.keyField}" but the view now uses "${keyFields[0]}". Update encoding.key or recreate the bookmark.`
+                        "cannot be restored because the bookmark stores an invalid key tuple structure."
                     );
                 }
 
-                const keyTuples = storedValue.keys.map((key) => [key]);
+                if (
+                    storedValue.keyFields.length !== keyFields.length ||
+                    storedValue.keyFields.some(
+                        (fieldName, i) => fieldName !== keyFields[i]
+                    )
+                ) {
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
+                        `cannot be restored because the bookmark uses key fields [${storedValue.keyFields.join(
+                            ", "
+                        )}] but the view now uses [${keyFields.join(
+                            ", "
+                        )}]. Update encoding.key or recreate the bookmark.`
+                    );
+                }
+
+                const keyTuples = storedValue.keys;
                 const collector = this.#getCollector(entry.view);
                 if (!collector) {
                     return this.#warnSelectionAndUseDefault(

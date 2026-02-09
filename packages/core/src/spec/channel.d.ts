@@ -127,6 +127,7 @@ export type ScaleFieldDef<T extends Type> = TypedFieldDef<T> &
     DomainContributionMixins;
 
 export type FieldDefWithoutScale = FieldDefBase & TitleMixins;
+export type KeyDef = FieldDefWithoutScale | FieldDefWithoutScale[];
 
 export interface ScaleMixins {
     /**
@@ -383,7 +384,10 @@ export interface StringFieldDef extends FieldDefWithoutScale, FormatMixins {}
 
 export type TextDef = StringFieldDef | StringDatumDef | ExprDef; // TODO: Conditions
 
-export type ChannelDef = Encoding[keyof Encoding];
+export type ChannelDef = Exclude<
+    Encoding[keyof Encoding],
+    FieldDefWithoutScale[]
+>;
 
 // TODO: Does this make sense?
 export type ChannelDefWithScale = ScaleMixins &
@@ -511,11 +515,15 @@ export interface Encoding {
     sample?: FieldDefWithoutScale;
 
     /**
-     * A data field that uniquely identifies data objects for stable point
-     * selections and bookmarking across sessions. Unlike `uniqueId` (an implicit
-     * surrogate key), the key must be stable in the source data.
+     * One or more data fields that uniquely identify data objects for stable
+     * point selections and bookmarking across sessions. Unlike `uniqueId` (an
+     * implicit surrogate key), key fields must be stable in the source data.
+     *
+     * Use a single field definition for simple keys, or an array of field
+     * definitions for composite keys. For composite keys, field order is
+     * significant.
      */
-    key?: FieldDefWithoutScale;
+    key?: KeyDef;
 
     /**
      * For internal use

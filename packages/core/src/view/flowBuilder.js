@@ -328,7 +328,11 @@ export function linearizeLocusAccess(view) {
     // that share the chromosome field and channel.
     for (const [c, channelDef] of Object.entries(encoding)) {
         const channel = /** @type {Channel} */ (c);
-        if (isPositionalChannel(channel) && isChromPosDef(channelDef)) {
+        if (
+            isPositionalChannel(channel) &&
+            !Array.isArray(channelDef) &&
+            isChromPosDef(channelDef)
+        ) {
             channelsAndChromPosDefs.push({ channel, chromPosDef: channelDef });
         }
     }
