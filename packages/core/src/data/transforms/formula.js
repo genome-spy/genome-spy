@@ -9,10 +9,10 @@ export default class FormulaTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FormulaParams} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, paramMediatorProvider) {
-        super(params, paramMediatorProvider);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 

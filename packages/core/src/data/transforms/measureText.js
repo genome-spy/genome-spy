@@ -16,10 +16,10 @@ export default class MeasureTextTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").MeasureTextParams} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, paramMediatorProvider) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
@@ -32,7 +32,7 @@ export default class MeasureTextTransform extends Transform {
 
         // TODO: Refactor this into reusable code.
         if (isExprRef(params.fontSize)) {
-            const sizeExpr = paramMediatorProvider.paramRuntime.watchExpression(
+            const sizeExpr = paramRuntimeProvider.paramRuntime.watchExpression(
                 params.fontSize.expr,
                 () => {
                     size = sizeExpr();

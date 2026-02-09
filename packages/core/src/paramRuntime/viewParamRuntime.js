@@ -54,8 +54,8 @@ export default class ViewParamRuntime {
 
     /**
      * @param {() => ViewParamRuntime} [parentFinder]
-     *      An optional function that returns the parent mediator.
-     *      N.B. The function must always return the same mediator for the same parent,
+     *      An optional function that returns the parent runtime.
+     *      N.B. The function must always return the same runtime for the same parent,
      *      i.e., the changing the structure of the hierarchy is NOT supported.
      */
     constructor(parentFinder) {
@@ -89,14 +89,14 @@ export default class ViewParamRuntime {
         let defaultValue;
 
         if (param.push == "outer") {
-            const outerMediator = this.findMediatorForParam(name);
-            if (!outerMediator) {
+            const outerRuntime = this.findRuntimeForParam(name);
+            if (!outerRuntime) {
                 throw new Error(
                     `Parameter "${name}" not found in outer scope!`
                 );
             }
 
-            const outerProps = outerMediator.paramConfigs.get(name);
+            const outerProps = outerRuntime.paramConfigs.get(name);
             if (!outerProps) {
                 throw new Error(
                     `Outer parameter "${name}" exists as a value but has no registered config.`
@@ -107,7 +107,7 @@ export default class ViewParamRuntime {
                     `The outer parameter "${name}" must not have expr or select properties!`
                 );
             }
-            setter = outerMediator.getSetter(name);
+            setter = outerRuntime.getSetter(name);
             // The following will become a bit fragile if the view hierarchy is going to
             // support mutation (i.e. adding/removing children) in future.
             this.#allocatedSetters.set(name, setter);
@@ -205,7 +205,7 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Get the value of a parameter from this mediator.
+     * Get the value of a parameter from this runtime.
      * @param {string} paramName
      */
     getValue(paramName) {
@@ -223,12 +223,12 @@ export default class ViewParamRuntime {
      */
     subscribe(paramName, listener) {
         validateParameterName(paramName);
-        const mediator = this.findMediatorForParam(paramName);
-        if (!mediator) {
+        const runtime = this.findRuntimeForParam(paramName);
+        if (!runtime) {
             throw new Error("Parameter not found: " + paramName);
         }
 
-        const ref = mediator.#localRefs.get(paramName);
+        const ref = runtime.#localRefs.get(paramName);
         if (!ref) {
             throw new Error(
                 "Parameter found without local reference: " + paramName
@@ -239,12 +239,12 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Get the value of a parameter from this mediator or the ancestors.
+     * Get the value of a parameter from this runtime or its ancestors.
      * @param {string} paramName
      */
     findValue(paramName) {
-        const mediator = this.findMediatorForParam(paramName);
-        return mediator?.getValue(paramName);
+        const runtime = this.findRuntimeForParam(paramName);
+        return runtime?.getValue(paramName);
     }
 
     /**
@@ -261,11 +261,11 @@ export default class ViewParamRuntime {
      * @param {string} paramName
      * @returns {ViewParamRuntime}
      */
-    findMediatorForParam(paramName) {
+    findRuntimeForParam(paramName) {
         if (this.#localRefs.has(paramName)) {
             return this;
         } else {
-            return this.#parentFinder()?.findMediatorForParam(paramName);
+            return this.#parentFinder()?.findRuntimeForParam(paramName);
         }
     }
 

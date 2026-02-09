@@ -23,10 +23,6 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  */
 
 /**
- * @typedef {ParamRuntimeProvider} ParamMediatorProvider
- */
-
-/**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
  * @typedef {Record<string, any>} Datum
@@ -53,7 +49,7 @@ export default class FlowNode {
      *
      * @type {ParamRuntimeProvider}
      */
-    paramMediatorProvider = null;
+    paramRuntimeProvider = null;
 
     get behavior() {
         return 0;
@@ -72,7 +68,7 @@ export default class FlowNode {
      * @param {ParamRuntimeProvider} [paramRuntimeProvider]
      */
     constructor(paramRuntimeProvider) {
-        this.paramMediatorProvider = paramRuntimeProvider;
+        this.paramRuntimeProvider = paramRuntimeProvider;
 
         /** @type {FlowNode[]} */
         this.children = [];
@@ -364,9 +360,9 @@ export default class FlowNode {
      * @protected
      */
     get paramRuntime() {
-        if (this.paramMediatorProvider) {
-            if (this.paramMediatorProvider.paramRuntime) {
-                return this.paramMediatorProvider.paramRuntime;
+        if (this.paramRuntimeProvider) {
+            if (this.paramRuntimeProvider.paramRuntime) {
+                return this.paramRuntimeProvider.paramRuntime;
             }
         }
 

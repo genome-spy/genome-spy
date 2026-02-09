@@ -4,7 +4,7 @@ import FormulaTransform from "./transforms/formula.js";
 import Collector from "./collector.js";
 import {
     SynchronousSequenceSource,
-    makeParamMediatorProvider,
+    makeParamRuntimeProvider,
 } from "./flowTestUtils.js";
 
 describe("Test flow graphs", () => {
@@ -44,7 +44,7 @@ describe("Test flow graphs", () => {
         );
     });
 
-    test.skip("Implement stub for ParamMediator");
+    test.skip("Implement stub for ParamRuntime");
 
     test("Longer chain of nodes", () => {
         const source = new SynchronousSequenceSource(10);
@@ -53,7 +53,7 @@ describe("Test flow graphs", () => {
                 type: "filter",
                 expr: "datum.data < 5",
             },
-            makeParamMediatorProvider()
+            makeParamRuntimeProvider()
         );
         const formula = new FormulaTransform(
             {
@@ -61,7 +61,7 @@ describe("Test flow graphs", () => {
                 expr: "datum.data * 2",
                 as: "data",
             },
-            makeParamMediatorProvider()
+            makeParamRuntimeProvider()
         );
         const collector = new Collector();
 

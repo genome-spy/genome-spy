@@ -5,10 +5,10 @@ export default class FilterTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FilterParams} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, paramMediatorProvider) {
-        super(params, paramMediatorProvider);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
