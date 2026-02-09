@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
-import ParamMediator, { activateExprRefProps } from "./paramMediator.js";
+import ParamMediator, {
+    activateExprRefProps,
+} from "../paramRuntime/viewParamRuntime.js";
 
 describe("Single-level ParamMediator", () => {
     test("Trivial case", () => {

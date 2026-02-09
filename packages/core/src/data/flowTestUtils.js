@@ -1,4 +1,4 @@
-import ParamMediator from "../view/paramMediator.js";
+import ParamMediator from "../paramRuntime/viewParamRuntime.js";
 import Collector from "./collector.js";
 import FlowNode from "./flowNode.js";
 

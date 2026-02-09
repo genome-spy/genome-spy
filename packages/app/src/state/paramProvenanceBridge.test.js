@@ -1,6 +1,6 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ParamMediator from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,

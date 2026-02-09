@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import ParamMediator from "../view/paramMediator.js";
+import ParamMediator from "../paramRuntime/viewParamRuntime.js";
 import {
     buildDomainKey,
     createAccessor,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { createAccessor, createConditionalAccessors } from "./accessor.js";
-import ParamMediator from "../view/paramMediator.js";
+import ParamMediator from "../paramRuntime/viewParamRuntime.js";
 import {
     createEncoder,
     createSimpleOrConditionalEncoder,

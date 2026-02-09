@@ -42,7 +42,7 @@ describe("SelectionRect", () => {
         /** @type {() => void} */
         const invalidate = () => undefined;
 
-        /** @type {import("../paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         const selectionExpr = Object.assign(() => selection, {
             addListener,
             removeListener,

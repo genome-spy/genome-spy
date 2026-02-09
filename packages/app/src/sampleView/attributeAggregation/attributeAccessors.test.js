@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { InternMap } from "internmap";
 
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ParamMediator from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "@genome-spy/core/encoder/accessor.js";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
 
@@ -78,7 +78,7 @@ describe("createViewAttributeAccessor", () => {
         setBrush(brush);
 
         const root = {
-            paramMediator: rootParamMediator,
+            paramRuntime: rootParamMediator,
             visit: (visitor) => visitor(root),
         };
 
@@ -121,7 +121,7 @@ describe("createViewAttributeAccessor", () => {
         });
 
         const root = {
-            paramMediator: rootParamMediator,
+            paramRuntime: rootParamMediator,
             visit: (visitor) => visitor(root),
         };
 

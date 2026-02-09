@@ -19,7 +19,7 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
- * @typedef {{paramRuntime?: import("../view/paramMediator.js").default}} ParamMediatorProvider
+ * @typedef {{paramRuntime?: import("../paramRuntime/viewParamRuntime.js").default}} ParamMediatorProvider
  */
 
 /**
@@ -305,7 +305,7 @@ export default class FlowNode {
     }
 
     /**
-     * @returns {import("../view/paramMediator.js").default}
+     * @returns {import("../paramRuntime/viewParamRuntime.js").default}
      * @protected
      */
     get paramRuntime() {

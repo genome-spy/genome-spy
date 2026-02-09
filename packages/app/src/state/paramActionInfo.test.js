@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ParamMediator from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
