@@ -9,6 +9,75 @@ import { radixSortIntoLookupArray } from "../utils/radixSort.js";
 import { UNIQUE_ID_KEY } from "./transforms/identifier.js";
 import createDomain from "../utils/domainArray.js";
 
+const MULTI_KEY_SEPARATOR = "|";
+const MULTI_KEY_ESCAPE = "\\";
+
+/**
+ * @param {unknown} value
+ * @param {string[]} keyFields
+ * @param {number} index
+ * @returns {import("../spec/channel.js").Scalar}
+ */
+function validateKeyComponent(value, keyFields, index) {
+    const fieldName = keyFields[index];
+    if (value === undefined) {
+        throw new Error(
+            `Key field "${fieldName}" is undefined. Ensure all key fields are present in the data.`
+        );
+    }
+
+    if (value === null) {
+        throw new Error(
+            `Key field "${fieldName}" is null. Ensure all key fields are present in the data.`
+        );
+    }
+
+    if (
+        typeof value !== "string" &&
+        typeof value !== "number" &&
+        typeof value !== "boolean"
+    ) {
+        throw new Error(
+            `Key field "${fieldName}" must be a scalar value (string, number, or boolean).`
+        );
+    }
+
+    return value;
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeKeyString(value) {
+    return value
+        .replaceAll(MULTI_KEY_ESCAPE, MULTI_KEY_ESCAPE + MULTI_KEY_ESCAPE)
+        .replaceAll(
+            MULTI_KEY_SEPARATOR,
+            MULTI_KEY_ESCAPE + MULTI_KEY_SEPARATOR
+        );
+}
+
+/**
+ * @param {string[]} keyFields
+ * @param {unknown[]} keyTuple
+ * @returns {string}
+ */
+function makeCompositeKey(keyFields, keyTuple) {
+    return keyTuple
+        .map((value, i) => {
+            const scalar = validateKeyComponent(value, keyFields, i);
+            if (typeof scalar === "string") {
+                return "s:" + escapeKeyString(scalar);
+            } else if (typeof scalar === "number") {
+                return "n:" + String(scalar);
+            } else {
+                return scalar ? "b:1" : "b:0";
+            }
+        })
+        .join(MULTI_KEY_SEPARATOR);
+}
+
 /**
  * Collects (materializes) the data that flows through this node.
  * The collected data can be optionally grouped and sorted.
@@ -356,17 +425,17 @@ export default class Collector extends FlowNode {
         for (const data of this.facetBatches.values()) {
             for (let i = 0, n = data.length; i < n; i++) {
                 const datum = data[i];
+                const keyTuple = accessors.map((accessor) => accessor(datum));
                 const key = useTuple
-                    ? JSON.stringify(
-                          accessors.map((accessor) => accessor(datum))
-                      )
-                    : accessors[0](datum);
+                    ? makeCompositeKey(keyFields, keyTuple)
+                    : validateKeyComponent(keyTuple[0], keyFields, 0);
 
                 if (index.has(key)) {
+                    const duplicateValue = useTuple ? keyTuple : key;
                     throw new Error(
                         `Duplicate key detected for fields [${keyFields.join(
                             ", "
-                        )}]: ${JSON.stringify(key)}`
+                        )}]: ${JSON.stringify(duplicateValue)}`
                     );
                 }
 
@@ -474,8 +543,8 @@ export default class Collector extends FlowNode {
 
         const index = this.#getKeyIndex(keyFields);
         const key = this.#keyIndexUsesTuple
-            ? JSON.stringify(keyTuple)
-            : keyTuple[0];
+            ? makeCompositeKey(keyFields, keyTuple)
+            : validateKeyComponent(keyTuple[0], keyFields, 0);
         return index.get(key);
     }
 }

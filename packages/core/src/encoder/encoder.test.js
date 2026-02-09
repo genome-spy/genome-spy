@@ -54,7 +54,13 @@ describe("Encoder", () => {
     /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} */
     const e = Object.fromEntries(
         Object.entries(encoding).map(([channel, channelDef]) => {
-            const accessor = createAccessor(channel, channelDef, pm);
+            const accessor = createAccessor(
+                channel,
+                /** @type {import("../spec/channel.js").ChannelDef} */ (
+                    channelDef
+                ),
+                pm
+            );
             return [channel, createEncoder(accessor, scaleSource)];
         })
     );

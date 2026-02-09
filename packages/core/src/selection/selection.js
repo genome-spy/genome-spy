@@ -43,11 +43,39 @@ export function getEncodingKeyFields(encoding) {
         return;
     }
 
-    if (!isFieldDef(keyDef)) {
-        throw new Error("The key channel must be a field definition.");
+    const keyDefs = Array.isArray(keyDef) ? keyDef : [keyDef];
+    if (keyDefs.length === 0) {
+        throw new Error("The key channel array must not be empty.");
     }
 
-    return [keyDef.field];
+    /** @type {string[]} */
+    const keyFields = [];
+    const uniqueFields = new Set();
+
+    for (const definition of keyDefs) {
+        if (!isFieldDef(definition)) {
+            throw new Error(
+                "The key channel must be a field definition or an array of field definitions."
+            );
+        }
+
+        const fieldName = definition.field;
+        if (typeof fieldName !== "string") {
+            throw new Error(
+                "The key channel field definition must include a string field name."
+            );
+        }
+        if (uniqueFields.has(fieldName)) {
+            throw new Error(
+                `Duplicate key field "${fieldName}" in the key channel.`
+            );
+        }
+
+        uniqueFields.add(fieldName);
+        keyFields.push(fieldName);
+    }
+
+    return keyFields;
 }
 
 /**

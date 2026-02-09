@@ -292,6 +292,10 @@ export default class UnitView extends View {
                 continue;
             }
 
+            if (Array.isArray(channelDef)) {
+                continue;
+            }
+
             /** @type {import("../spec/channel.js").ChannelDefWithScale} */
             let channelDefWithScale;
 

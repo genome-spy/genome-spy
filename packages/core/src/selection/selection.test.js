@@ -24,20 +24,54 @@ describe("key-based selection helpers", () => {
     it("extracts key fields from encoding", () => {
         expect(getEncodingKeyFields({})).toBeUndefined();
         expect(getEncodingKeyFields({ key: { field: "id" } })).toEqual(["id"]);
+        expect(
+            getEncodingKeyFields({
+                key: [
+                    { field: "sampleId" },
+                    { field: "chrom" },
+                    { field: "pos" },
+                ],
+            })
+        ).toEqual(["sampleId", "chrom", "pos"]);
+    });
+
+    it("fails on invalid key field configurations", () => {
+        expect(() => getEncodingKeyFields({ key: [] })).toThrow(
+            /must not be empty/
+        );
+        expect(() =>
+            getEncodingKeyFields({
+                key: /** @type {any} */ ([{ field: "a" }, { value: 1 }]),
+            })
+        ).toThrow(/field definition/);
+        expect(() =>
+            getEncodingKeyFields({
+                key: [{ field: "a" }, { field: "a" }],
+            })
+        ).toThrow(/Duplicate key field/);
     });
 
     it("serializes point selections to key tuples", () => {
-        const datum = { id: "a", _uniqueId: 1 };
+        const datum = { id: "a", sampleId: "S1", chrom: "chr1", _uniqueId: 1 };
         const single = createSinglePointSelection(datum);
         const multi = createMultiPointSelection([
             datum,
-            { id: "b", _uniqueId: 2 },
+            { id: "b", sampleId: "S2", chrom: "chr2", _uniqueId: 2 },
         ]);
 
         expect(getPointSelectionKeyTuples(single, ["id"])).toEqual([["a"]]);
+        expect(
+            getPointSelectionKeyTuples(single, ["sampleId", "chrom"])
+        ).toEqual([["S1", "chr1"]]);
         expect(getPointSelectionKeyTuples(multi, ["id"])).toEqual([
             ["a"],
             ["b"],
+        ]);
+        expect(
+            getPointSelectionKeyTuples(multi, ["sampleId", "chrom"])
+        ).toEqual([
+            ["S1", "chr1"],
+            ["S2", "chr2"],
         ]);
         expect(
             getPointSelectionKeyTuples(createSinglePointSelection(null), ["id"])
@@ -73,5 +107,32 @@ describe("key-based selection helpers", () => {
 
         expect(multi.selection).toEqual(createMultiPointSelection([datum]));
         expect(multi.unresolved).toEqual([["missing"]]);
+    });
+
+    it("resolves multi-field key tuples back to point selections", () => {
+        const datumA = { sampleId: "S1", chrom: "chr1", _uniqueId: 1 };
+        const datumB = { sampleId: "S2", chrom: "chr2", _uniqueId: 2 };
+        const index = new Map([
+            [JSON.stringify(["S1", "chr1"]), datumA],
+            [JSON.stringify(["S2", "chr2"]), datumB],
+        ]);
+        /** @type {(fields: string[], tuple: import("../spec/channel.js").Scalar[]) => any} */
+        const resolveDatum = (_fields, tuple) =>
+            index.get(JSON.stringify(tuple));
+
+        const resolved = resolvePointSelectionFromKeyTuples(
+            "multi",
+            ["sampleId", "chrom"],
+            [
+                ["S1", "chr1"],
+                ["S2", "chr2"],
+            ],
+            resolveDatum
+        );
+
+        expect(resolved.selection).toEqual(
+            createMultiPointSelection([datumA, datumB])
+        );
+        expect(resolved.unresolved).toEqual([]);
     });
 });

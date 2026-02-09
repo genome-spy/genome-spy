@@ -82,6 +82,59 @@ describe("Trivial creations and initializations", () => {
         expect(unitView).toBeInstanceOf(UnitView);
         expect(unitView.getEncoding().key).toEqual({ field: "id" });
     });
+
+    test("Preserves inherited composite key channel in unit views", async () => {
+        const view = await create(
+            {
+                encoding: {
+                    key: [
+                        { field: "sampleId" },
+                        { field: "chrom" },
+                        { field: "pos" },
+                    ],
+                },
+                layer: [{ mark: "point" }],
+            },
+            LayerView
+        );
+
+        const unitView = view.children[0];
+        expect(unitView).toBeInstanceOf(UnitView);
+        expect(unitView.getEncoding().key).toEqual([
+            { field: "sampleId" },
+            { field: "chrom" },
+            { field: "pos" },
+        ]);
+    });
+
+    test("Initializes a unit view with a composite key channel", () =>
+        expect(
+            createAndInitialize(
+                {
+                    data: {
+                        values: [
+                            {
+                                sampleId: "S1",
+                                chrom: "chr1",
+                                pos: 10,
+                                value: 1,
+                            },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        key: [
+                            { field: "sampleId" },
+                            { field: "chrom" },
+                            { field: "pos" },
+                        ],
+                        x: { field: "pos", type: "quantitative" },
+                        y: { field: "value", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        ).resolves.toBeInstanceOf(UnitView));
 });
 
 describe("Test domain handling", () => {

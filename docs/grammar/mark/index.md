@@ -130,6 +130,17 @@ which allow specifying an interval that the mark should cover in the visualizati
 `text`
 : Text that the `"text"` mark should render for a mark instance.
 
+#### Non-visual channels
+
+Some channels carry metadata for interaction features and are not encoded into
+visual mark properties.
+
+`key`
+: Defines a stable identity for data objects. This is used by point-selection
+  persistence in the GenomeSpy App. The key can be a single field definition
+  or an array of field definitions for a composite key. For composite keys, the
+  field order is significant.
+
 #### Channels for sample collections
 
 The [GenomeSpy app](../../sample-collections/visualizing.md#specifying-a-sample-view) supports an additional channel.

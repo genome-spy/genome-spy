@@ -53,6 +53,14 @@ In parallel, make handling of non-visual channels explicit so future channels li
 - Move point payload from single-field shape to generalized shape:
   - from `{ keyField: string, keys: Scalar[] }`
   - to `{ keyFields: string[], keys: Scalar[][] }`
+ - No backward compatibility for the old payload shape on this branch.
+
+6. Key component validity:
+- Throw if any key component is `null` or `undefined`.
+
+7. Future tooltip support:
+- Keep non-visual channel handling centralized so a future `tooltip` channel can
+  be added without changing encoder iteration logic.
 
 ## Affected Files (Expected)
 
@@ -227,11 +235,5 @@ Commit:
 
 ## Open Questions
 
-1. Backward compatibility for existing bookmark payloads:
-- keep compatibility layer for old `{ keyField, keys: Scalar[] }`, or intentionally drop?
-
-2. Future `tooltip` channel timing:
+1. Future `tooltip` channel timing:
 - include non-visual helper now with only `key`, or include `tooltip` preemptively once channel is added to spec?
-
-3. Error strictness for missing key values:
-- should undefined/null key parts throw, warn+skip, or be treated as valid scalar components?

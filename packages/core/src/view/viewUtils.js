@@ -126,7 +126,7 @@ export function findEncodedFields(view) {
         if (view instanceof UnitView) {
             const encoding = view.getEncoding();
             for (const [channel, def] of Object.entries(encoding)) {
-                if (isFieldDef(def) && "type" in def) {
+                if (!Array.isArray(def) && isFieldDef(def) && "type" in def) {
                     fieldInfos.push({
                         view,
                         channel,

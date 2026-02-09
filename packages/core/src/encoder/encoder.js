@@ -82,10 +82,18 @@ export default function createEncoders(unitView, encoding) {
             continue;
         }
 
-        encoders[channel] = createSimpleOrConditionalEncoder(
+        /** @type {Channel} */
+        const typedChannel = /** @type {Channel} */ (channel);
+        if (isNonVisualEncodingChannel(typedChannel)) {
+            continue;
+        }
+
+        const typedChannelDef =
+            /** @type {import("../spec/channel.js").ChannelDef} */ (channelDef);
+        encoders[typedChannel] = createSimpleOrConditionalEncoder(
             createConditionalAccessors(
-                channel,
-                channelDef,
+                typedChannel,
+                typedChannelDef,
                 unitView.paramMediator
             ),
             scaleSource
@@ -93,6 +101,18 @@ export default function createEncoders(unitView, encoding) {
     }
 
     return encoders;
+}
+
+/**
+ * Metadata channels that participate in interaction logic but are not encoded
+ * into visual mark properties. Keep this centralized so future channels (for
+ * example tooltip) can reuse the same handling path.
+ *
+ * @param {import("../spec/channel.js").Channel} channel
+ * @returns {boolean}
+ */
+export function isNonVisualEncodingChannel(channel) {
+    return channel === "key";
 }
 
 /**
@@ -237,7 +257,7 @@ export function findChannelDefWithScale(channelDef) {
  */
 export function getChannelDefWithScale(view, channel) {
     const channelDef = view.mark.encoding[channel];
-    if (isChannelDefWithScale(channelDef)) {
+    if (!Array.isArray(channelDef) && isChannelDefWithScale(channelDef)) {
         return channelDef;
     } else {
         throw new Error("Not a channel def with scale!");
