@@ -84,7 +84,7 @@ export default function createEncoders(unitView, encoding) {
 
         /** @type {Channel} */
         const typedChannel = /** @type {Channel} */ (channel);
-        if (isNonVisualEncodingChannel(typedChannel)) {
+        if (isNonMarkPropertyChannel(typedChannel)) {
             continue;
         }
 
@@ -111,7 +111,7 @@ export default function createEncoders(unitView, encoding) {
  * @param {import("../spec/channel.js").Channel} channel
  * @returns {boolean}
  */
-export function isNonVisualEncodingChannel(channel) {
+export function isNonMarkPropertyChannel(channel) {
     return channel === "key";
 }
 
