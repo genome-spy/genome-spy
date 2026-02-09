@@ -1,7 +1,7 @@
 import GraphRuntime from "./graphRuntime.js";
 import LifecycleRegistry from "./lifecycleRegistry.js";
 import ParamStore from "./paramStore.js";
-import { compileExpression } from "./expressionCompiler.js";
+import { bindExpression } from "./expressionRef.js";
 
 /**
  * New parameter runtime facade for Core internals.
@@ -78,38 +78,31 @@ export default class ParamRuntime {
      * @returns {import("./types.js").ParamRef<T>}
      */
     registerDerived(scope, name, expr) {
-        const globalObject = {};
-        const compiled = compileExpression(expr, globalObject);
-        const deps = compiled.globals.map((globalName) => {
-            const resolved = this.resolve(scope, globalName);
-            if (!resolved) {
-                throw new Error(
-                    'Unknown variable "' +
-                        globalName +
-                        '" in expression: ' +
-                        expr
-                );
-            }
-            return resolved;
-        });
-
-        for (let i = 0; i < compiled.globals.length; i++) {
-            const globalName = compiled.globals[i];
-            const dep = deps[i];
-
-            Object.defineProperty(globalObject, globalName, {
-                enumerable: true,
-                get() {
-                    return dep.get();
-                },
-            });
-        }
+        const { expression, dependencies } = bindExpression(
+            expr,
+            (globalName) => this.resolve(scope, globalName)
+        );
 
         const ownerId = this.#paramStore.getOwnerId(scope);
-        const ref = this.#graphRuntime.computed(ownerId, name, deps, () =>
-            compiled(null)
+        const ref = this.#graphRuntime.computed(
+            ownerId,
+            name,
+            dependencies,
+            () => expression(null)
         );
         return this.#paramStore.register(scope, name, ref);
+    }
+
+    /**
+     * @param {string} scope
+     * @param {string} expr
+     * @returns {import("./types.js").ExprRefFunction}
+     */
+    createExpression(scope, expr) {
+        const { expression } = bindExpression(expr, (globalName) =>
+            this.resolve(scope, globalName)
+        );
+        return expression;
     }
 
     /**

@@ -32,8 +32,24 @@ describe("ParamRuntime", () => {
         const runtime = new ParamRuntime();
         const scope = runtime.createScope();
 
-        expect(() => runtime.registerDerived(scope, "bar", "missing + 1")).toThrow(
-            'Unknown variable "missing"'
-        );
+        expect(() =>
+            runtime.registerDerived(scope, "bar", "missing + 1")
+        ).toThrow('Unknown variable "missing"');
+    });
+
+    test("creates expression refs bound to scope", () => {
+        const runtime = new ParamRuntime();
+        const root = runtime.createScope();
+        const child = runtime.createScope(root);
+
+        runtime.registerBase(root, "foo", 2);
+        runtime.registerBase(child, "foo", 10);
+
+        const rootExpr = runtime.createExpression(root, "foo + 1");
+        const childExpr = runtime.createExpression(child, "foo + 1");
+
+        expect(rootExpr()).toBe(3);
+        expect(childExpr()).toBe(11);
+        expect(rootExpr.identifier()).not.toBe(childExpr.identifier());
     });
 });

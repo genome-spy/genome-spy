@@ -1,5 +1,4 @@
 import { isString } from "vega-util";
-import createFunction from "../utils/expression.js";
 import ParamRuntime from "./paramRuntime.js";
 import {
     getDefaultParamValue,
@@ -274,85 +273,7 @@ export default class ViewParamRuntime {
      * @param {string} expr
      */
     createExpression(expr) {
-        const globalObject = {};
-
-        /** @type {ExprRefFunction} */
-        const fn = /** @type {any} */ (createFunction(expr, globalObject));
-
-        /** @type {Map<string, import("./types.js").ParamRef<any>>} */
-        const refsForParams = new Map();
-
-        for (const param of fn.globals) {
-            const ref = this.#runtime.resolve(this.#scopeId, param);
-            if (!ref) {
-                throw new Error(
-                    `Unknown variable "${param}" in expression: ${expr}`
-                );
-            }
-
-            refsForParams.set(param, ref);
-
-            Object.defineProperty(globalObject, param, {
-                enumerable: true,
-                get() {
-                    return ref.get();
-                },
-            });
-        }
-        // TODO: There should be a way to "materialize" the global object when
-        // it is used in expressions in transformation batches, i.e., when the same
-        // expression is applied to multiple data objects. In that case, the global
-        // object remains constant and the Map lookups cause unnecessary overhead.
-
-        /** @type {Map<() => void, (() => void)[]>} */
-        const listenerDisposers = new Map();
-
-        /**
-         *
-         * @param {() => void} listener
-         */
-        fn.addListener = (listener) => {
-            if (listenerDisposers.has(listener)) {
-                return;
-            }
-
-            const disposers = [];
-            for (const ref of refsForParams.values()) {
-                disposers.push(ref.subscribe(listener));
-            }
-            listenerDisposers.set(listener, disposers);
-        };
-
-        /**
-         * @param {() => void} listener
-         */
-        fn.removeListener = (listener) => {
-            const disposers = listenerDisposers.get(listener);
-            if (!disposers) {
-                return;
-            }
-            disposers.forEach((dispose) => dispose());
-            listenerDisposers.delete(listener);
-        };
-
-        /**
-         * Detach listeners. This must be called if the expression is no longer used.
-         * TODO: What if the expression is used in multiple places?
-         */
-        fn.invalidate = () => {
-            for (const disposers of listenerDisposers.values()) {
-                disposers.forEach((dispose) => dispose());
-            }
-            listenerDisposers.clear();
-        };
-
-        // TODO: This should contain unique identifier for each parameter.
-        // As the same parameter name may be used in different branches of the
-        // hierarchy, they should be distinguished by a unique identifier, e.g.,
-        // a serial number of something similar.
-        fn.identifier = () => fn.code;
-
-        return fn;
+        return this.#runtime.createExpression(this.#scopeId, expr);
     }
 
     /**
