@@ -55,6 +55,7 @@ export default class DataFlow {
      * @param {import("./sources/dataSource.js").default} dataSource
      */
     removeDataSource(dataSource) {
+        dataSource.disposeSubtree();
         this.#dataSources.delete(dataSource);
     }
 
@@ -69,6 +70,10 @@ export default class DataFlow {
      * @param {import("./collector.js").default} collector
      */
     removeCollector(collector) {
+        if (collector.parent) {
+            collector.parent.removeChild(collector);
+        }
+        collector.disposeSubtree();
         collector.observers.clear();
         this.#collectors.delete(collector);
     }
@@ -84,13 +89,18 @@ export default class DataFlow {
             parent.removeChild(collector);
         }
 
+        collector.disposeSubtree();
+
         while (parent && parent.children.length === 0) {
             const current = parent;
             parent = current.parent;
             if (parent) {
                 parent.removeChild(current);
+                current.dispose();
             } else if (current instanceof DataSource) {
                 this.removeDataSource(current);
+            } else {
+                current.dispose();
             }
         }
     }

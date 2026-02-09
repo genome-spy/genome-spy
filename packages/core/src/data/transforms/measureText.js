@@ -37,10 +37,12 @@ export default class MeasureTextTransform extends Transform {
                     params.fontSize.expr
                 );
             size = sizeExpr();
-            sizeExpr.addListener(() => {
+            const listener = () => {
                 size = sizeExpr();
                 this.repropagate();
-            });
+            };
+            sizeExpr.addListener(listener);
+            this.registerDisposer(() => sizeExpr.removeListener(listener));
         } else {
             size = params.fontSize;
         }

@@ -38,7 +38,8 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                 } else if (props.includes("windowSize")) {
                     this.reloadLastDomain();
                 }
-            }
+            },
+            (disposer) => this.registerDisposer(disposer)
         );
 
         super(view, activatedParams.channel);

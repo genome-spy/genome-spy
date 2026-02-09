@@ -38,7 +38,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                 } else if (props.includes("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
-            }
+            },
+            (disposer) => this.registerDisposer(disposer)
         );
 
         super(view, activatedParams.channel);

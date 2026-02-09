@@ -42,6 +42,12 @@ export default class FlowNode {
     /** @type {boolean} */
     #initialized = false;
 
+    /** @type {boolean} */
+    #disposed = false;
+
+    /** @type {(() => void)[]} */
+    #disposers = [];
+
     /**
      * An object that provides a paramRuntime. (Most likely a View)
      *
@@ -76,6 +82,10 @@ export default class FlowNode {
 
         /** True if all data have been processed */
         this.completed = false;
+    }
+
+    get disposed() {
+        return this.#disposed;
     }
 
     /**
@@ -295,6 +305,47 @@ export default class FlowNode {
         for (const child of this.children) {
             child.complete();
         }
+    }
+
+    /**
+     * Register a disposer to be executed when this node is disposed.
+     *
+     * @param {() => void} disposer
+     */
+    registerDisposer(disposer) {
+        if (this.#disposed) {
+            disposer();
+        } else {
+            this.#disposers.push(disposer);
+        }
+    }
+
+    /**
+     * Release resources owned by this flow node.
+     */
+    dispose() {
+        if (this.#disposed) {
+            return;
+        }
+
+        this.#disposed = true;
+
+        for (const disposer of this.#disposers) {
+            disposer();
+        }
+        this.#disposers.length = 0;
+    }
+
+    /**
+     * Dispose this flow node and all descendants in post-order.
+     */
+    disposeSubtree() {
+        /** @type {(function(FlowNode): void) & { afterChildren?: (node: FlowNode) => void }} */
+        const visitor = () => undefined;
+        visitor.afterChildren = (node) => {
+            node.dispose();
+        };
+        this.visit(visitor);
     }
 
     /**

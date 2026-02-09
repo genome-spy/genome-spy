@@ -137,10 +137,16 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * @param {{ createExpression: (expr: string) => ExprRefFunction }} paramRuntime
  * @param {T} props The properties object
  * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
+ * @param {(disposer: () => void) => void} [registerDisposer]
  * @returns T
  * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
  */
-export function activateExprRefProps(paramRuntime, props, listener) {
+export function activateExprRefProps(
+    paramRuntime,
+    props,
+    listener,
+    registerDisposer
+) {
     /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const activatedProps = { ...props };
 
@@ -161,7 +167,13 @@ export function activateExprRefProps(paramRuntime, props, listener) {
         if (isExprRef(value)) {
             const fn = paramRuntime.createExpression(value.expr);
             if (listener) {
-                fn.addListener(() => batchPropertyChange(key));
+                const expressionListener = () => batchPropertyChange(key);
+                fn.addListener(expressionListener);
+                if (registerDisposer) {
+                    registerDisposer(() =>
+                        fn.removeListener(expressionListener)
+                    );
+                }
             }
 
             Object.defineProperty(activatedProps, key, {

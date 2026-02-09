@@ -36,7 +36,9 @@ export default class FilterTransform extends Transform {
         }
 
         this.predicate = this.paramRuntime.createExpression(expression);
-        this.predicate.addListener(() => this.repropagate());
+        const listener = () => this.repropagate();
+        this.predicate.addListener(listener);
+        this.registerDisposer(() => this.predicate.removeListener(listener));
     }
 
     /**

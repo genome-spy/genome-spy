@@ -359,6 +359,38 @@ test("activateExprRefProps", async () => {
     });
 });
 
+test("activateExprRefProps registers disposer for expression listeners", async () => {
+    const pm = new ParamMediator();
+    const fooSetter = pm.registerParam({ name: "foo", value: 1 });
+
+    /** @type {(() => void)[]} */
+    const disposers = [];
+
+    let calls = 0;
+    activateExprRefProps(
+        pm,
+        {
+            value: { expr: "foo" },
+        },
+        () => {
+            calls += 1;
+        },
+        (disposer) => disposers.push(disposer)
+    );
+
+    expect(disposers.length).toBe(1);
+
+    fooSetter(2);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    disposers[0]();
+
+    fooSetter(3);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+});
+
 describe("hasPointSelections()", () => {
     test("false if there are no point selections", () => {
         const pm = new ParamMediator();

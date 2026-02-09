@@ -310,7 +310,7 @@ export default class Mark {
                 const fn = this.unitView.paramRuntime.createExpression(
                     prop.expr
                 );
-                fn.addListener(() => {
+                this.registerExpressionListener(fn, () => {
                     this.updateGraphicsData();
                     this.unitView.context.animator.requestRender();
                 });
@@ -573,7 +573,7 @@ export default class Mark {
                     glHelper.createSelectionTexture(selection);
 
                     const fn = paramRuntime.createExpression(param);
-                    fn.addListener(() => {
+                    this.registerExpressionListener(fn, () => {
                         const selection =
                             /** @type {import("../types/selectionTypes.js").MultiPointSelection} */ (
                                 fn(null)
@@ -1054,13 +1054,24 @@ export default class Mark {
             const set = () => setter(adjuster(fn(null)));
 
             // Register a listener ...
-            fn.addListener(set);
-            this.#exprListeners.push({ expr: fn, listener: set });
+            this.registerExpressionListener(fn, set);
             // ... and set the initial value
             set();
         } else {
             setter(adjuster(/** @type {Exclude<T, ExprRef>} */ (propValue)));
         }
+    }
+
+    /**
+     * Registers an expression listener and tracks it for mark disposal.
+     *
+     * @protected
+     * @param {import("../paramRuntime/types.js").ExprRefFunction} expr
+     * @param {() => void} listener
+     */
+    registerExpressionListener(expr, listener) {
+        expr.addListener(listener);
+        this.#exprListeners.push({ expr, listener });
     }
 
     /**
