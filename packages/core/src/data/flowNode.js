@@ -19,7 +19,7 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
- * @typedef {{paramRuntime?: import("../view/paramMediator.js").default, paramMediator?: import("../view/paramMediator.js").default}} ParamMediatorProvider
+ * @typedef {{paramRuntime?: import("../view/paramMediator.js").default}} ParamMediatorProvider
  */
 
 /**
@@ -39,7 +39,7 @@ export default class FlowNode {
     #initialized = false;
 
     /**
-     * An object that provides a paramMediator. (Most likely a View)
+     * An object that provides a paramRuntime. (Most likely a View)
      *
      * @type {ParamMediatorProvider}
      */
@@ -312,8 +312,6 @@ export default class FlowNode {
         if (this.paramMediatorProvider) {
             if (this.paramMediatorProvider.paramRuntime) {
                 return this.paramMediatorProvider.paramRuntime;
-            } else if (this.paramMediatorProvider.paramMediator) {
-                return this.paramMediatorProvider.paramMediator;
             }
         }
 
@@ -321,14 +319,6 @@ export default class FlowNode {
             throw new Error("Cannot find paramRuntime!");
         }
         return this.parent.paramRuntime;
-    }
-
-    /**
-     * @returns {import("../view/paramMediator.js").default}
-     * @protected
-     */
-    get paramMediator() {
-        return this.paramRuntime;
     }
 
     /**

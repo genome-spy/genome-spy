@@ -166,13 +166,6 @@ export default class View {
             () => this.dataParent?.paramRuntime
         );
 
-        /**
-         * Temporary alias while call sites migrate to `paramRuntime`.
-         *
-         * @type {ParamMediator}
-         */
-        this.paramMediator = this.paramRuntime;
-
         if (spec.params) {
             for (const param of spec.params) {
                 // TODO: If interval selection, validate `encodings` or provides defaults

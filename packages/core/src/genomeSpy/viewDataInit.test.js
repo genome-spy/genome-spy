@@ -300,7 +300,7 @@ describe("viewDataInit", () => {
         class InitOnceTransform extends Transform {
             initialize() {
                 initCalls += 1;
-                this.paramMediatorProvider.paramMediator.allocateSetter(
+                this.paramMediatorProvider.paramRuntime.allocateSetter(
                     "initOnceParam",
                     0,
                     true

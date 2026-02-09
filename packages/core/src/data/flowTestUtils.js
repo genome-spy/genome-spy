@@ -10,7 +10,6 @@ export function makeParamMediatorProvider() {
     const runtime = new ParamMediator();
     return {
         paramRuntime: runtime,
-        paramMediator: runtime,
     };
 }
 
