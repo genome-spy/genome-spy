@@ -576,37 +576,42 @@ export default class ParamProvenanceBridge {
     #applyProvenanceEntries(entries) {
         this.#suppressCapture = true;
         try {
-            const knownKeys = new Set(this.#entriesByKey.keys());
-            const unusedKeys = new Set(Object.keys(entries));
+            this.#root.paramMediator.inTransaction(() => {
+                const knownKeys = new Set(this.#entriesByKey.keys());
+                const unusedKeys = new Set(Object.keys(entries));
 
-            for (const entry of this.#entries) {
-                const selectorKey = makeParamSelectorKey(entry.selector);
-                unusedKeys.delete(selectorKey);
-                if (this.#unpersistableKeys.has(selectorKey)) {
-                    continue;
-                }
+                for (const entry of this.#entries) {
+                    const selectorKey = makeParamSelectorKey(entry.selector);
+                    unusedKeys.delete(selectorKey);
+                    if (this.#unpersistableKeys.has(selectorKey)) {
+                        continue;
+                    }
 
-                const storedEntry = entries[selectorKey];
-                const value = storedEntry
-                    ? this.#resolveStoredValue(entry, storedEntry)
-                    : this.#getDefaultValue(entry);
+                    const storedEntry = entries[selectorKey];
+                    const value = storedEntry
+                        ? this.#resolveStoredValue(entry, storedEntry)
+                        : this.#getDefaultValue(entry);
 
-                const setter = entry.view.paramMediator.getSetter(
-                    entry.selector.param
-                );
-                setter(value);
-            }
-
-            for (const key of unusedKeys) {
-                if (!knownKeys.has(key)) {
-                    const missing = entries[key];
-                    const selector = missing.selector;
-                    this.#warnMissingParamInScope(
-                        selector.param,
-                        selector.scope
+                    const setter = entry.view.paramMediator.getSetter(
+                        entry.selector.param
                     );
+                    setter(value);
                 }
-            }
+
+                for (const key of unusedKeys) {
+                    if (!knownKeys.has(key)) {
+                        const missing = entries[key];
+                        const selector = missing.selector;
+                        this.#warnMissingParamInScope(
+                            selector.param,
+                            selector.scope
+                        );
+                    }
+                }
+            });
+
+            // Keep suppression active while deferred propagation is flushed.
+            this.#root.paramMediator.flushNow();
         } finally {
             this.#suppressCapture = false;
         }
