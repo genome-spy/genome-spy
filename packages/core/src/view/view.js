@@ -16,7 +16,8 @@ import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
-import ParamMediator, { isExprRef } from "./paramMediator.js";
+import ParamMediator from "./paramMediator.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
 
