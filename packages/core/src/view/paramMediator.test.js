@@ -107,6 +107,32 @@ describe("Single-level ParamMediator", () => {
         expect(result).toBe(51);
     });
 
+    test("Expression invalidation is instance-local", () => {
+        const pm = new ParamMediator();
+        const setter = pm.allocateSetter("foo", 1);
+        const exprA = pm.createExpression("foo + 1");
+        const exprB = pm.createExpression("foo + 1");
+
+        let callsA = 0;
+        let callsB = 0;
+        exprA.addListener(() => {
+            callsA++;
+        });
+        exprB.addListener(() => {
+            callsB++;
+        });
+
+        setter(2);
+        expect(callsA).toBe(1);
+        expect(callsB).toBe(1);
+
+        exprA.invalidate();
+
+        setter(3);
+        expect(callsA).toBe(1);
+        expect(callsB).toBe(2);
+    });
+
     test("Expression removeListener detaches a listener", () => {
         const pm = new ParamMediator();
         const setter = pm.allocateSetter("foo", 42);

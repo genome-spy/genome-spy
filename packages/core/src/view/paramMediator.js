@@ -45,9 +45,6 @@ export default class ParamMediator {
     /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
     #localRefs = new Map();
 
-    /** @type {Map<string, ExprRefFunction>} */
-    #expressions = new Map();
-
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
@@ -274,10 +271,6 @@ export default class ParamMediator {
      * @param {string} expr
      */
     createExpression(expr) {
-        if (this.#expressions.has(expr)) {
-            return this.#expressions.get(expr);
-        }
-
         const globalObject = {};
 
         /** @type {ExprRefFunction} */
@@ -355,8 +348,6 @@ export default class ParamMediator {
         // hierarchy, they should be distinguished by a unique identifier, e.g.,
         // a serial number of something similar.
         fn.identifier = () => fn.code;
-
-        this.#expressions.set(expr, fn);
 
         return fn;
     }
