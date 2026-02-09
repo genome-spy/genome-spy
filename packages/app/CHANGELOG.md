@@ -3,22 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
+# [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
+### Bug Fixes
+
+* **app:** close stale bookmark info boxes ([0353459](https://github.com/genome-spy/genome-spy/commit/03534590d847bae3aa985efa543ba496cbb87f07)) by @tuner
+* **app:** escape dotted metadata field names ([b5e1314](https://github.com/genome-spy/genome-spy/commit/b5e131486821b5a095b73b6b9b15567a0d050281)) by @tuner
+* **app:** layout size invalidation ([#316](https://github.com/genome-spy/genome-spy/issues/316)) ([e133f02](https://github.com/genome-spy/genome-spy/commit/e133f02c90503a4bb678bbd2f9d43ebb00c7b94d)) by @tuner
+* **app:** prefill derived metadata scale ([cd66bd9](https://github.com/genome-spy/genome-spy/commit/cd66bd9bd6b34a17ba7ab19b339ee7a195a48121)) by @tuner
+* **app:** primary dialog action behavior ([3fac120](https://github.com/genome-spy/genome-spy/commit/3fac1207a333b037aa76a4b7a602448f21e5ce17)) by @tuner
+* **app:** reconfigure metadata color domains after restore ([2882684](https://github.com/genome-spy/genome-spy/commit/288268415f2bc846503015d43ca990cb2a777df3)) by @tuner
+* **app:** sampleView content height ([10ca22f](https://github.com/genome-spy/genome-spy/commit/10ca22f1fc004954fbb01ff0107ba959b7f9c907)) by @tuner
+* **app:** zero-length segment features in view attributes ([00de370](https://github.com/genome-spy/genome-spy/commit/00de3701b6c69f2d1605ca1c2986ff99cc04fba2)) by @tuner
+
+### Features
+
+* **app:** add derived metadata workflow for view attributes ([#317](https://github.com/genome-spy/genome-spy/issues/317)) ([d860206](https://github.com/genome-spy/genome-spy/commit/d86020626c4adfa7c994d83bf2a1798070a7d1ec)) by @tuner
+* **app:** async intent pipeline with metadata readiness + bookmark recovery ([#318](https://github.com/genome-spy/genome-spy/issues/318)) ([266c505](https://github.com/genome-spy/genome-spy/commit/266c50544f36da8a1d5ffead73e887d89e66e229)) by @tuner
+* **app:** box, scatter, and bar plots for exploratory analysis ([#315](https://github.com/genome-spy/genome-spy/issues/315)) ([62a6269](https://github.com/genome-spy/genome-spy/commit/62a62691e59f9a7a4b8fc62c9aed66be9f8c1570)) by @tuner
+* **app:** clarify custom groups dialog ([63a6e00](https://github.com/genome-spy/genome-spy/commit/63a6e00f701a548d0772ad33ca08f2a954e2f783)) by @tuner
+* **app:** integrate selections (point and brush) into provenance ([#322](https://github.com/genome-spy/genome-spy/issues/322)) ([e320437](https://github.com/genome-spy/genome-spy/commit/e320437cd13e6237c2b4cf0edf4a38393ea5ea8c)) by @tuner
+* **app:** resolve aggregate intervals from active selections ([#323](https://github.com/genome-spy/genome-spy/issues/323)) ([903c0d5](https://github.com/genome-spy/genome-spy/commit/903c0d58014c36f9d35e5b3b59b2583d0b398778)) by @tuner
+* support multi-field search metadata channels ([766a5c5](https://github.com/genome-spy/genome-spy/commit/766a5c5954c9c1f8767f62d1a847048f467e5223)) by @tuner
+* view selectors, scoped visibility, and selector validation ([#321](https://github.com/genome-spy/genome-spy/issues/321)) ([e211858](https://github.com/genome-spy/genome-spy/commit/e2118589337c0f192ceb13afbdc82b87d1d595da)) by @tuner
+
+### Performance Improvements
+
+* **app:** optimize `combineSampleMetadata` ([7482154](https://github.com/genome-spy/genome-spy/commit/7482154ecf55622c21f1585eb8e6384c261038e2)) by @tuner
+* **app:** prevent unnecessary propagations in `mergeFacets` transform ([acce0c2](https://github.com/genome-spy/genome-spy/commit/acce0c2988a0a73d84a428b79741990180a39be3)) by @tuner
+* **app:** remove unnecessary scale reconfiguration ([107fd36](https://github.com/genome-spy/genome-spy/commit/107fd364e0a84439edaca48986891b2e798d93db)) by @tuner
+* **app:** skip unnecessary scale reconfiguration ([b2acff2](https://github.com/genome-spy/genome-spy/commit/b2acff27388cc22f5e13f405f2fad8b9b9768513)) by @tuner
+* **app:** speed sample metadata updates ([04130d8](https://github.com/genome-spy/genome-spy/commit/04130d853a4d0e3c91677c7797600ced73304913)) by @tuner
+* **app:** speed up sample layout rendering ([#313](https://github.com/genome-spy/genome-spy/issues/313)) ([a01dbce](https://github.com/genome-spy/genome-spy/commit/a01dbce17d07b3da1618787aedf81cfa3bf0ebb7)) by @tuner
+* **app:** update only range of sampleGroupView when necessary ([2e573b9](https://github.com/genome-spy/genome-spy/commit/2e573b9aab23d7a8dacdd28ae8b66267dbb4207c)) by @tuner
+
+# [0.67.0](https://github.com/genome-spy/genome-spy/compare/v0.66.1...v0.67.0) (2026-01-21)
 
 ### Bug Fixes
 
 * **app:** restore visibility before data init ([281573e](https://github.com/genome-spy/genome-spy/commit/281573edc84749d136d48556e4ca46966d6021a8))
 
-
 ### Features
 
 * **app:** interval-based sample actions ([#310](https://github.com/genome-spy/genome-spy/issues/310)) ([3c9fecc](https://github.com/genome-spy/genome-spy/commit/3c9fecc84f941d899c6d3202b672b6b344dc2487))
 * **core:** lazy initialize hidden subtrees + stabilize categorical encoding ([#311](https://github.com/genome-spy/genome-spy/issues/311)) ([0455285](https://github.com/genome-spy/genome-spy/commit/0455285b0009bbc38be7e680ad3a51cde17620e7))
-
-
-
-
 
 ## [0.66.1](https://github.com/genome-spy/genome-spy/compare/v0.66.0...v0.66.1) (2026-01-19)
 
