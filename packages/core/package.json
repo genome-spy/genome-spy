@@ -53,7 +53,7 @@
     "d3-ease": "^3.0.1",
     "d3-format": "^3.1.0",
     "events": "^3.3.0",
-    "flatqueue": "^2.0.3",
+    "flatqueue": "^3.0.0",
     "generic-filehandle2": "^2.0.14",
     "gff-nostream": "^2.0.0",
     "internmap": "^2.0.3",
