@@ -140,10 +140,12 @@ export default class GraphRuntime {
      * @param {string} name
      * @param {"base" | "selection"} kind
      * @param {T} initialValue
+     * @param {{ notify?: boolean }} [options]
      * @returns {import("./types.js").WritableParamRef<T>}
      */
-    createWritable(ownerId, name, kind, initialValue) {
+    createWritable(ownerId, name, kind, initialValue, options = {}) {
         const nodeId = "n" + this.#nextNodeId++;
+        const notifyOnSet = options.notify ?? true;
 
         const node = {
             id: nodeId,
@@ -164,14 +166,20 @@ export default class GraphRuntime {
         const setter = (value) => {
             if (node.disposed) {
                 throw new Error(
-                    'Cannot set disposed parameter "' + name + '" (' + nodeId + ")."
+                    'Cannot set disposed parameter "' +
+                        name +
+                        '" (' +
+                        nodeId +
+                        ")."
                 );
             }
 
             if (value !== node.value) {
                 node.value = value;
-                notify(node.listeners);
-                this.#scheduleFlush();
+                if (notifyOnSet) {
+                    notify(node.listeners);
+                    this.#scheduleFlush();
+                }
             }
         };
 
@@ -224,7 +232,9 @@ export default class GraphRuntime {
             }
         };
 
-        const unsubscribers = deps.map((dep) => dep.subscribe(onDependencyChange));
+        const unsubscribers = deps.map((dep) =>
+            dep.subscribe(onDependencyChange)
+        );
         const dispose = () => {
             if (node.disposed) {
                 return;
@@ -238,7 +248,9 @@ export default class GraphRuntime {
 
         this.#bindDisposer(ownerId, dispose);
 
-        return /** @type {import("./types.js").ParamRef<T>} */ (createRef(node));
+        return /** @type {import("./types.js").ParamRef<T>} */ (
+            createRef(node)
+        );
     }
 
     /**
@@ -269,7 +281,9 @@ export default class GraphRuntime {
             }
         };
 
-        const unsubscribers = deps.map((dep) => dep.subscribe(onDependencyChange));
+        const unsubscribers = deps.map((dep) =>
+            dep.subscribe(onDependencyChange)
+        );
 
         const dispose = () => {
             if (node.disposed) {
@@ -382,7 +396,10 @@ export default class GraphRuntime {
                 waiter.timeoutId = setTimeout(() => {
                     this.#propagatedWaiters.delete(waiter);
                     if (waiter.abortHandler) {
-                        signal?.removeEventListener("abort", waiter.abortHandler);
+                        signal?.removeEventListener(
+                            "abort",
+                            waiter.abortHandler
+                        );
                     }
                     reject(
                         new Error(
@@ -432,11 +449,7 @@ export default class GraphRuntime {
     }
 
     #scheduleFlush() {
-        if (
-            this.#transactionDepth > 0 ||
-            this.#scheduled ||
-            this.#flushing
-        ) {
+        if (this.#transactionDepth > 0 || this.#scheduled || this.#flushing) {
             return;
         }
 

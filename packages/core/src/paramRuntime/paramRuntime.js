@@ -35,15 +35,17 @@ export default class ParamRuntime {
      * @param {string} scope
      * @param {string} name
      * @param {T} initial
+     * @param {{ notify?: boolean }} [options]
      * @returns {import("./types.js").WritableParamRef<T>}
      */
-    registerBase(scope, name, initial) {
+    registerBase(scope, name, initial, options) {
         const ownerId = this.#paramStore.getOwnerId(scope);
         const ref = this.#graphRuntime.createWritable(
             ownerId,
             name,
             "base",
-            initial
+            initial,
+            options
         );
         return this.#paramStore.register(scope, name, ref);
     }
@@ -53,15 +55,17 @@ export default class ParamRuntime {
      * @param {string} scope
      * @param {string} name
      * @param {T} initial
+     * @param {{ notify?: boolean }} [options]
      * @returns {import("./types.js").WritableParamRef<T>}
      */
-    registerSelection(scope, name, initial) {
+    registerSelection(scope, name, initial, options) {
         const ownerId = this.#paramStore.getOwnerId(scope);
         const ref = this.#graphRuntime.createWritable(
             ownerId,
             name,
             "selection",
-            initial
+            initial,
+            options
         );
         return this.#paramStore.register(scope, name, ref);
     }
@@ -80,7 +84,10 @@ export default class ParamRuntime {
             const resolved = this.resolve(scope, globalName);
             if (!resolved) {
                 throw new Error(
-                    'Unknown variable "' + globalName + '" in expression: ' + expr
+                    'Unknown variable "' +
+                        globalName +
+                        '" in expression: ' +
+                        expr
                 );
             }
             return resolved;

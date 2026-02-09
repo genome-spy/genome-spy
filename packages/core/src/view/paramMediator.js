@@ -1,5 +1,6 @@
 import { isString } from "vega-util";
 import createFunction from "../utils/expression.js";
+import ParamRuntime from "../paramRuntime/paramRuntime.js";
 import {
     getDefaultParamValue,
     isSelectionParameter,
@@ -32,17 +33,17 @@ export default class ParamMediator {
      * @typedef {(value: any) => void} ParameterSetter
      */
 
-    /** @type {Map<string, any>} */
-    #paramValues;
+    /** @type {ParamRuntime} */
+    #runtime;
 
-    /**
-     * @type {Map<string, Set<() => void>>}
-     * @protected
-     */
-    paramListeners;
+    /** @type {string} */
+    #scopeId;
 
     /** @type {Map<string, (value: any) => void>} */
     #allocatedSetters = new Map();
+
+    /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
+    #localRefs = new Map();
 
     /** @type {Map<string, ExprRefFunction>} */
     #expressions = new Map();
@@ -62,8 +63,14 @@ export default class ParamMediator {
     constructor(parentFinder) {
         this.#parentFinder = parentFinder ?? (() => undefined);
 
-        this.#paramValues = new Map();
-        this.paramListeners = new Map();
+        const parent = this.#parentFinder();
+        if (parent) {
+            this.#runtime = parent.#runtime;
+            this.#scopeId = this.#runtime.createScope(parent.#scopeId);
+        } else {
+            this.#runtime = new ParamRuntime();
+            this.#scopeId = this.#runtime.createScope();
+        }
     }
 
     /**
@@ -92,6 +99,11 @@ export default class ParamMediator {
             }
 
             const outerProps = outerMediator.paramConfigs.get(name);
+            if (!outerProps) {
+                throw new Error(
+                    `Outer parameter "${name}" exists as a value but has no registered config.`
+                );
+            }
             if ("expr" in outerProps || "select" in outerProps) {
                 throw new Error(
                     `The outer parameter "${name}" must not have expr or select properties!`
@@ -103,23 +115,35 @@ export default class ParamMediator {
             this.#allocatedSetters.set(name, setter);
         } else if ("value" in param) {
             defaultValue = getDefaultParamValue(param, this);
-            setter = this.allocateSetter(name, defaultValue);
+            setter = this.#registerBaseSetter(name, defaultValue);
         } else if ("expr" in param) {
-            const expr = this.createExpression(param.expr);
-            // TODO: getSetter(param) should return a setter that throws if
-            // modifying the value is attempted.
-            defaultValue = getDefaultParamValue(param, this, expr);
-            const realSetter = this.allocateSetter(name, defaultValue);
-            expr.addListener(() => realSetter(expr(null)));
-            // NOP
+            const ref = this.#runtime.registerDerived(
+                this.#scopeId,
+                name,
+                param.expr
+            );
+            this.#localRefs.set(name, ref);
             setter = (_) => undefined;
         } else {
             defaultValue = getDefaultParamValue(param, this);
-            setter = this.allocateSetter(name, defaultValue);
+            setter = this.#registerBaseSetter(name, defaultValue);
         }
 
         if ("select" in param) {
             defaultValue ??= getDefaultParamValue(param, this);
+            if (!this.#allocatedSetters.has(name)) {
+                const ref = this.#runtime.registerSelection(
+                    this.#scopeId,
+                    name,
+                    defaultValue
+                );
+                this.#localRefs.set(name, ref);
+                this.#allocatedSetters.set(name, (value) => {
+                    ref.set(value);
+                    this.#runtime.flushNow();
+                });
+                setter = this.#allocatedSetters.get(name);
+            }
             // Set initial value so that production rules in shaders can be generated, etc.
             setter(defaultValue);
         }
@@ -146,22 +170,19 @@ export default class ParamMediator {
             );
         }
 
-        /** @type {(value: any) => void} */
-        const setter = (value) => {
-            const previous = this.#paramValues.get(paramName);
-            if (value !== previous) {
-                this.#paramValues.set(paramName, value);
-
-                const listeners = this.paramListeners.get(paramName);
-                if (listeners && !passive) {
-                    for (const listener of listeners) {
-                        listener();
-                    }
-                }
+        const ref = this.#runtime.registerBase(
+            this.#scopeId,
+            paramName,
+            initialValue,
+            {
+                notify: !passive,
             }
+        );
+        this.#localRefs.set(paramName, ref);
+        const setter = (value) => {
+            ref.set(value);
+            this.#runtime.flushNow();
         };
-
-        setter(initialValue);
 
         this.#allocatedSetters.set(paramName, setter);
 
@@ -185,7 +206,7 @@ export default class ParamMediator {
      * @param {string} paramName
      */
     getValue(paramName) {
-        return this.#paramValues.get(paramName);
+        return this.#localRefs.get(paramName)?.get();
     }
 
     /**
@@ -204,16 +225,14 @@ export default class ParamMediator {
             throw new Error("Parameter not found: " + paramName);
         }
 
-        const listeners = mediator.paramListeners.get(paramName) ?? new Set();
-        mediator.paramListeners.set(paramName, listeners);
-        listeners.add(listener);
+        const ref = mediator.#localRefs.get(paramName);
+        if (!ref) {
+            throw new Error(
+                "Parameter found without local reference: " + paramName
+            );
+        }
 
-        return () => {
-            listeners.delete(listener);
-            if (!listeners.size) {
-                mediator.paramListeners.delete(paramName);
-            }
-        };
+        return ref.subscribe(listener);
     }
 
     /**
@@ -240,7 +259,7 @@ export default class ParamMediator {
      * @returns {ParamMediator}
      */
     findMediatorForParam(paramName) {
-        if (this.#paramValues.has(paramName)) {
+        if (this.#localRefs.has(paramName)) {
             return this;
         } else {
             return this.#parentFinder()?.findMediatorForParam(paramName);
@@ -264,23 +283,23 @@ export default class ParamMediator {
         /** @type {ExprRefFunction} */
         const fn = /** @type {any} */ (createFunction(expr, globalObject));
 
-        /** @type {Map<string, ParamMediator>} */
-        const mediatorsForParams = new Map();
+        /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
+        const refsForParams = new Map();
 
         for (const param of fn.globals) {
-            const mediator = this.findMediatorForParam(param);
-            if (!mediator) {
+            const ref = this.#runtime.resolve(this.#scopeId, param);
+            if (!ref) {
                 throw new Error(
                     `Unknown variable "${param}" in expression: ${expr}`
                 );
             }
 
-            mediatorsForParams.set(param, mediator);
+            refsForParams.set(param, ref);
 
             Object.defineProperty(globalObject, param, {
                 enumerable: true,
                 get() {
-                    return mediator.getValue(param);
+                    return ref.get();
                 },
             });
         }
@@ -289,32 +308,35 @@ export default class ParamMediator {
         // expression is applied to multiple data objects. In that case, the global
         // object remains constant and the Map lookups cause unnecessary overhead.
 
-        // Keep track of them so that they can be detached later
-        const myListeners = new Set();
+        /** @type {Map<() => void, (() => void)[]>} */
+        const listenerDisposers = new Map();
 
         /**
          *
          * @param {() => void} listener
          */
         fn.addListener = (listener) => {
-            for (const [param, mediator] of mediatorsForParams) {
-                const listeners =
-                    mediator.paramListeners.get(param) ?? new Set();
-                mediator.paramListeners.set(param, listeners);
-
-                listeners.add(listener);
-                myListeners.add(listener);
+            if (listenerDisposers.has(listener)) {
+                return;
             }
+
+            const disposers = [];
+            for (const ref of refsForParams.values()) {
+                disposers.push(ref.subscribe(listener));
+            }
+            listenerDisposers.set(listener, disposers);
         };
 
         /**
          * @param {() => void} listener
          */
         fn.removeListener = (listener) => {
-            for (const [param, mediator] of mediatorsForParams) {
-                mediator.paramListeners.get(param)?.delete(listener);
+            const disposers = listenerDisposers.get(listener);
+            if (!disposers) {
+                return;
             }
-            myListeners.delete(listener);
+            disposers.forEach((dispose) => dispose());
+            listenerDisposers.delete(listener);
         };
 
         /**
@@ -322,12 +344,10 @@ export default class ParamMediator {
          * TODO: What if the expression is used in multiple places?
          */
         fn.invalidate = () => {
-            for (const [param, mediator] of mediatorsForParams) {
-                for (const listener of myListeners) {
-                    mediator.paramListeners.get(param)?.delete(listener);
-                }
+            for (const disposers of listenerDisposers.values()) {
+                disposers.forEach((dispose) => dispose());
             }
-            myListeners.clear();
+            listenerDisposers.clear();
         };
 
         // TODO: This should contain unique identifier for each parameter.
@@ -339,6 +359,27 @@ export default class ParamMediator {
         this.#expressions.set(expr, fn);
 
         return fn;
+    }
+
+    /**
+     * @template T
+     * @param {string} name
+     * @param {T} defaultValue
+     * @returns {(value: T) => void}
+     */
+    #registerBaseSetter(name, defaultValue) {
+        const ref = this.#runtime.registerBase(
+            this.#scopeId,
+            name,
+            defaultValue
+        );
+        this.#localRefs.set(name, ref);
+        const setter = (value) => {
+            ref.set(value);
+            this.#runtime.flushNow();
+        };
+        this.#allocatedSetters.set(name, setter);
+        return setter;
     }
 
     /**
