@@ -19,7 +19,11 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
- * @typedef {{paramRuntime?: import("../paramRuntime/viewParamRuntime.js").default}} ParamMediatorProvider
+ * @typedef {{paramRuntime?: import("../paramRuntime/viewParamRuntime.js").default}} ParamRuntimeProvider
+ */
+
+/**
+ * @typedef {ParamRuntimeProvider} ParamMediatorProvider
  */
 
 /**
@@ -41,7 +45,7 @@ export default class FlowNode {
     /**
      * An object that provides a paramRuntime. (Most likely a View)
      *
-     * @type {ParamMediatorProvider}
+     * @type {ParamRuntimeProvider}
      */
     paramMediatorProvider = null;
 
@@ -59,10 +63,10 @@ export default class FlowNode {
     }
 
     /**
-     * @param {ParamMediatorProvider} [paramMediatorProvider]
+     * @param {ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(paramMediatorProvider) {
-        this.paramMediatorProvider = paramMediatorProvider;
+    constructor(paramRuntimeProvider) {
+        this.paramMediatorProvider = paramRuntimeProvider;
 
         /** @type {FlowNode[]} */
         this.children = [];

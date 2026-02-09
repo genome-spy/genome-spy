@@ -148,7 +148,7 @@ export default class ParamProvenanceBridge {
     }
 
     /**
-     * Subscribes to ParamMediator changes and forwards them into provenance.
+     * Subscribes to param runtime changes and forwards them into provenance.
      */
     #registerParamListeners() {
         for (const entry of this.#entries) {

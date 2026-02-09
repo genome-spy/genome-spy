@@ -27,7 +27,7 @@ export {
  *
  * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, removeListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
-export default class ParamMediator {
+export default class ViewParamRuntime {
     /**
      * @typedef {import("../spec/parameter.js").Parameter} Parameter
      * @typedef {(value: any) => void} ParameterSetter
@@ -48,11 +48,11 @@ export default class ParamMediator {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
-    /** @type {() => ParamMediator} */
+    /** @type {() => ViewParamRuntime} */
     #parentFinder;
 
     /**
-     * @param {() => ParamMediator} [parentFinder]
+     * @param {() => ViewParamRuntime} [parentFinder]
      *      An optional function that returns the parent mediator.
      *      N.B. The function must always return the same mediator for the same parent,
      *      i.e., the changing the structure of the hierarchy is NOT supported.
@@ -253,7 +253,7 @@ export default class ParamMediator {
     /**
      *
      * @param {string} paramName
-     * @returns {ParamMediator}
+     * @returns {ViewParamRuntime}
      */
     findMediatorForParam(paramName) {
         if (this.#localRefs.has(paramName)) {
@@ -407,7 +407,7 @@ export default class ParamMediator {
     }
 
     /**
-     * Returns true if this ParamMediator has any parameters that are point selections.
+     * Returns true if this runtime has any parameters that are point selections.
      * Point selections necessitate the use of uniqueIds in the data.
      *
      * @returns {boolean}

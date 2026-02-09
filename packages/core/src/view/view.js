@@ -16,7 +16,7 @@ import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
-import ParamMediator from "../paramRuntime/viewParamRuntime.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
@@ -161,8 +161,8 @@ export default class View {
          */
         this.needsAxes = { x: false, y: false };
 
-        /** @type {ParamMediator} */
-        this.paramRuntime = new ParamMediator(
+        /** @type {ViewParamRuntime} */
+        this.paramRuntime = new ViewParamRuntime(
             () => this.dataParent?.paramRuntime
         );
 
