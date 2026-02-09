@@ -9,7 +9,10 @@ import {
     isValueDefWithCondition,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
-import { isExprRef, makeConstantExprRef } from "../view/paramMediator.js";
+import {
+    isExprRef,
+    makeConstantExprRef,
+} from "../paramRuntime/paramUtils.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel

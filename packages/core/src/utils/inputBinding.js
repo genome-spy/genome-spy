@@ -1,7 +1,7 @@
 import { html } from "lit";
 import { debounce } from "./debounce.js";
 import { tickStep } from "d3-array";
-import { isVariableParameter } from "../view/paramMediator.js";
+import { isVariableParameter } from "../paramRuntime/paramUtils.js";
 
 /**
  * @param {import("../view/paramMediator.js").default} mediator

@@ -20,7 +20,7 @@ import {
 } from "@genome-spy/core/utils/trees.js";
 import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
-import { isVariableParameter } from "@genome-spy/core/view/paramMediator.js";
+import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";

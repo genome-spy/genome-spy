@@ -8,7 +8,7 @@ import { isArray, isObject, isString } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
-import { isSelectionParameter } from "./paramMediator.js";
+import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
 import {
     markViewAsNonAddressable,

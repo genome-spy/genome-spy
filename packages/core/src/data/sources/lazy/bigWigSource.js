@@ -1,7 +1,7 @@
 import {
     activateExprRefProps,
     withoutExprRef,
-} from "../../../view/paramMediator.js";
+} from "../../../paramRuntime/paramUtils.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 

@@ -1,5 +1,8 @@
 import { VISIT_SKIP, VISIT_STOP } from "./view.js";
-import { isSelectionParameter, isVariableParameter } from "./paramMediator.js";
+import {
+    isSelectionParameter,
+    isVariableParameter,
+} from "../paramRuntime/paramUtils.js";
 
 /**
  * Selectors identify views and parameters in a way that stays stable when the

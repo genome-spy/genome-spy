@@ -1,7 +1,7 @@
 import {
     activateExprRefProps,
     withoutExprRef,
-} from "../../view/paramMediator.js";
+} from "../../paramRuntime/paramUtils.js";
 import DataSource from "./dataSource.js";
 
 /**

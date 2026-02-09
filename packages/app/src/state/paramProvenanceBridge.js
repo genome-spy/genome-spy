@@ -22,7 +22,7 @@ import {
     getDefaultParamValue,
     isSelectionParameter,
     isVariableParameter,
-} from "@genome-spy/core/view/paramMediator.js";
+} from "@genome-spy/core/paramRuntime/paramUtils.js";
 import { field } from "@genome-spy/core/utils/field.js";
 import throttle from "@genome-spy/core/utils/throttle.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";

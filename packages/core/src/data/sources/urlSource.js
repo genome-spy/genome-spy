@@ -4,7 +4,7 @@ import DataSource from "./dataSource.js";
 import {
     activateExprRefProps,
     withoutExprRef,
-} from "../../view/paramMediator.js";
+} from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 
 /**

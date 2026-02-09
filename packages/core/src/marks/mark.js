@@ -48,7 +48,10 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
-import { isExprRef, validateParameterName } from "../view/paramMediator.js";
+import {
+    isExprRef,
+    validateParameterName,
+} from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     isIntervalSelection,

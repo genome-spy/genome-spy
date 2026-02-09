@@ -3,7 +3,7 @@ import fontMetadata from "../../fonts/Lato-Regular.json" with { type: "json" };
 import getMetrics from "../../fonts/bmFontMetrics.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import { isExprRef } from "../../view/paramMediator.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /**
  * Measures text length. This is mainly intended for strand arrows in gene annotations.

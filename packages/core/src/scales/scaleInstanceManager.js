@@ -1,7 +1,7 @@
 import { isArray } from "vega-util";
 
 import createScale, { configureScale } from "../scale/scale.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
 
 export default class ScaleInstanceManager {
