@@ -10,6 +10,7 @@ import kWayMerge from "@genome-spy/core/utils/kWayMerge.js";
 import SampleView from "./sampleView.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import FlowNode from "@genome-spy/core/data/flowNode.js";
+import { subscribeTo } from "../state/subscribeTo.js";
 
 /** The number of samples in a facet */
 const SAMPLE_COUNT_VARIABLE = "sampleCount";
@@ -44,30 +45,40 @@ export default class MergeSampleFacets extends FlowNode {
             throw new Error("No SampleView was found!");
         }
 
-        const unsubscribe = this.provenance.store.subscribe(() => {
-            if (!this.#shouldUpdate) {
-                return;
-            }
+        const unsubscribe = subscribeTo(
+            this.provenance.store,
+            (state) => state.provenance.present[SAMPLE_SLICE_NAME],
+            () => {
+                // TODO: Should update only when the structure of the sample hierarchy changes.
+                // i.e., when groups or samples are added or removed. Reordering the
+                // the samples within a group should not trigger an update.
+                // TODO: Also check child visibilities. No need to propagate if
+                // the directly attached view is visible but all its children are
+                // invisible.
+                if (!this.#shouldUpdate) {
+                    return;
+                }
 
-            // Ensure that propagation is complete (albeit without actual data)
-            // before the first update. This is necessary to prevent errors in
-            // rendering before the initial data is available. The requestTransition
-            // hack below postpones the update until the next animation frame.
-            if (this.#initialUpdate) {
-                this.#initialUpdate = false;
-                this.reset();
-                this.complete();
-            }
+                // Ensure that propagation is complete (albeit without actual data)
+                // before the first update. This is necessary to prevent errors in
+                // rendering before the initial data is available. The requestTransition
+                // hack below postpones the update until the next animation frame.
+                if (this.#initialUpdate) {
+                    this.#initialUpdate = false;
+                    this.reset();
+                    this.complete();
+                }
 
-            // Using requestTransition to prevent unnecessary updates
-            // when multiple actions are dispatched as a batch.
-            // TODO: Figure out a cleaner way to do this.
-            animator.requestTransition(() => {
-                this.reset();
-                // complete calls mergeAndPropagate
-                this.complete();
-            });
-        });
+                // Using requestTransition to prevent unnecessary updates
+                // when multiple actions are dispatched as a batch.
+                // TODO: Figure out a cleaner way to do this.
+                animator.requestTransition(() => {
+                    this.reset();
+                    // complete calls mergeAndPropagate
+                    this.complete();
+                });
+            }
+        );
 
         this.view.registerDisposer(unsubscribe);
     }
@@ -103,12 +114,6 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     get #shouldUpdate() {
-        // TODO: Should update only when the sample hierarchy changes.
-        // i.e., when groups or samples are added or removed. Reordering the
-        // the samples within a group should not trigger an update.
-        // TODO: Also check child visibilities. No need to propagate if
-        // the directly attached view is visible but all its children are
-        // invisible.
         return this.view.isConfiguredVisible();
     }
 
