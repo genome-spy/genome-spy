@@ -403,6 +403,96 @@ export default class ParamProvenanceBridge {
     }
 
     /**
+     * @param {BookmarkableParamEntry} entry
+     * @returns {any}
+     */
+    #getDefaultValue(entry) {
+        return getDefaultParamValue(entry.param, entry.view.paramMediator);
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {string} message
+     * @returns {any}
+     */
+    #warnSelectionAndUseDefault(entry, message) {
+        this.#warnSelection(entry.param, message);
+        return this.#getDefaultValue(entry);
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {string} message
+     * @returns {any}
+     */
+    #warnParamAndUseDefault(entry, message) {
+        this.#warnParam(entry.param, message);
+        return this.#getDefaultValue(entry);
+    }
+
+    /**
+     * @param {View} view
+     * @returns {import("@genome-spy/core/data/collector.js").default | undefined}
+     */
+    #getCollector(view) {
+        /** @type {any} */
+        const anyView = view;
+        if (typeof anyView.getCollector !== "function") {
+            return;
+        }
+
+        return anyView.getCollector();
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {"persist" | "restore"} purpose
+     * @returns {string[] | undefined}
+     */
+    #getPointSelectionKeyFields(entry, purpose) {
+        let keyFields;
+        try {
+            keyFields = getEncodingKeyFields(entry.view.getEncoding());
+        } catch (error) {
+            if (purpose === "persist") {
+                this.#warnPersistSelection(
+                    entry.param,
+                    `will not be saved because encoding.key is invalid: ${error}`
+                );
+            } else {
+                this.#warnSelection(
+                    entry.param,
+                    `cannot be restored because encoding.key is invalid: ${error}`
+                );
+            }
+            return;
+        }
+
+        if (!keyFields) {
+            if (purpose === "persist") {
+                this.#warnPersistSelection(
+                    entry.param,
+                    "will not be saved to bookmarks because encoding.key is missing on the owning view."
+                );
+            } else {
+                this.#warnSelection(
+                    entry.param,
+                    "cannot be restored because encoding.key is missing on the owning view."
+                );
+            }
+            return;
+        }
+
+        if (keyFields.length !== 1) {
+            throw new Error(
+                "Point selection key fields must contain exactly one field."
+            );
+        }
+
+        return keyFields;
+    }
+
+    /**
      * Converts a live param value to a bookmark-friendly payload.
      *
      * @param {BookmarkableParamEntry} entry
@@ -416,7 +506,10 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
-                const keyFields = this.#getKeyFieldsForPersist(entry);
+                const keyFields = this.#getPointSelectionKeyFields(
+                    entry,
+                    "persist"
+                );
                 if (!keyFields) {
                     return;
                 }
@@ -426,10 +519,21 @@ export default class ParamProvenanceBridge {
                     return;
                 }
 
-                if (keyFields.length !== 1) {
-                    throw new Error(
-                        "Point selection key fields must contain exactly one field."
-                    );
+                const collector = this.#getCollector(entry.view);
+                if (collector && collector.completed) {
+                    try {
+                        for (const keyTuple of keyTuples) {
+                            collector.findDatumByKey(keyFields, keyTuple);
+                        }
+                    } catch (error) {
+                        this.#warnPersistSelection(
+                            param,
+                            `will not be saved because encoding.key fields [${keyFields.join(
+                                ", "
+                            )}] are not unique in the current data: ${error}`
+                        );
+                        return;
+                    }
                 }
 
                 return {
@@ -491,10 +595,7 @@ export default class ParamProvenanceBridge {
                 const storedEntry = entries[selectorKey];
                 const value = storedEntry
                     ? this.#resolveStoredValue(entry, storedEntry)
-                    : getDefaultParamValue(
-                          entry.param,
-                          entry.view.paramMediator
-                      );
+                    : this.#getDefaultValue(entry);
 
                 const setter = entry.view.paramMediator.getSetter(
                     entry.selector.param
@@ -533,62 +634,39 @@ export default class ParamProvenanceBridge {
 
             if (isPointSelectionConfig(select)) {
                 if (storedValue.type !== "point") {
-                    this.#warnSelection(
-                        param,
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
                         "cannot be restored because the bookmark stored a different selection type."
-                    );
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
                     );
                 }
 
-                const keyFields = this.#getKeyFieldsForRestore(entry);
+                const keyFields = this.#getPointSelectionKeyFields(
+                    entry,
+                    "restore"
+                );
                 if (!keyFields) {
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
-                    );
+                    return this.#getDefaultValue(entry);
                 }
 
                 if (storedValue.keyField !== keyFields[0]) {
-                    this.#warnSelection(
-                        param,
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
                         `cannot be restored because the bookmark uses key field "${storedValue.keyField}" but the view now uses "${keyFields[0]}". Update encoding.key or recreate the bookmark.`
-                    );
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
                     );
                 }
 
                 const keyTuples = storedValue.keys.map((key) => [key]);
-                /** @type {(() => import("@genome-spy/core/data/collector.js").default) | undefined} */
-                const getCollector =
-                    typeof (/** @type {any} */ (entry.view).getCollector) ===
-                    "function"
-                        ? /** @type {any} */ (entry.view).getCollector
-                        : undefined;
-                const collector = getCollector
-                    ? getCollector.call(entry.view)
-                    : null;
+                const collector = this.#getCollector(entry.view);
                 if (!collector) {
-                    this.#warnSelection(
-                        param,
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
                         "cannot be restored because the view does not expose data for key lookup."
-                    );
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
                     );
                 }
 
                 if (!collector.completed) {
                     this.#scheduleReapply(collector);
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
-                    );
+                    return this.#getDefaultValue(entry);
                 }
 
                 const selectionType = select.toggle ? "multi" : "single";
@@ -602,14 +680,21 @@ export default class ParamProvenanceBridge {
                             collector.findDatumByKey(fields, tuple)
                     );
                 } catch (error) {
-                    this.#warnSelection(
-                        param,
-                        `cannot be restored due to an error: ${error}`
-                    );
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
-                    );
+                    const message = String(error);
+                    if (message.includes("Duplicate key detected")) {
+                        this.#warnSelection(
+                            param,
+                            `cannot be restored because encoding.key fields [${keyFields.join(
+                                ", "
+                            )}] are not unique in the current data.`
+                        );
+                    } else {
+                        this.#warnSelection(
+                            param,
+                            `cannot be restored due to an error: ${error}`
+                        );
+                    }
+                    return this.#getDefaultValue(entry);
                 }
 
                 if (resolved.unresolved.length) {
@@ -624,13 +709,9 @@ export default class ParamProvenanceBridge {
 
             if (isIntervalSelectionConfig(select)) {
                 if (storedValue.type !== "interval") {
-                    this.#warnSelection(
-                        param,
+                    return this.#warnSelectionAndUseDefault(
+                        entry,
                         "cannot be restored because the bookmark stored a different selection type."
-                    );
-                    return getDefaultParamValue(
-                        param,
-                        entry.view.paramMediator
                     );
                 }
 
@@ -657,21 +738,20 @@ export default class ParamProvenanceBridge {
                 return selection;
             }
 
-            return getDefaultParamValue(param, entry.view.paramMediator);
+            return this.#getDefaultValue(entry);
         }
 
         if (isVariableParameter(param)) {
             if (storedValue.type !== "value") {
-                this.#warnParam(
-                    param,
+                return this.#warnParamAndUseDefault(
+                    entry,
                     "cannot be restored because the bookmark stored a different value type."
                 );
-                return getDefaultParamValue(param, entry.view.paramMediator);
             }
             return storedValue.value;
         }
 
-        return getDefaultParamValue(param, entry.view.paramMediator);
+        return this.#getDefaultValue(entry);
     }
 
     /**
@@ -739,12 +819,7 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        /** @type {(() => import("@genome-spy/core/data/collector.js").default) | undefined} */
-        const getCollector =
-            typeof (/** @type {any} */ (originView).getCollector) === "function"
-                ? /** @type {any} */ (originView).getCollector
-                : undefined;
-        const collector = getCollector ? getCollector.call(originView) : null;
+        const collector = this.#getCollector(originView);
         if (!collector) {
             this.#warnOrigin(
                 "the source view does not expose data. Using stored coordinates instead."
@@ -870,24 +945,9 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        let keyFields;
-        try {
-            keyFields = getEncodingKeyFields(entry.view.getEncoding());
-        } catch (error) {
-            this.#unpersistableKeys.add(selectorKey);
-            this.#warnPersistSelection(
-                param,
-                `will not be saved because encoding.key is invalid: ${error}`
-            );
-            return;
-        }
-
+        const keyFields = this.#getPointSelectionKeyFields(entry, "persist");
         if (!keyFields) {
             this.#unpersistableKeys.add(selectorKey);
-            this.#warnPersistSelection(
-                param,
-                "will not be saved to bookmarks because encoding.key is missing on the owning view. Add encoding.key or set persist: false."
-            );
         }
     }
 
@@ -915,64 +975,6 @@ export default class ParamProvenanceBridge {
         }
 
         return false;
-    }
-
-    /**
-     * Reads key fields from encoding and warns when unavailable.
-     *
-     * @param {BookmarkableParamEntry} entry
-     * @returns {string[] | undefined}
-     */
-    #getKeyFieldsForPersist(entry) {
-        let keyFields;
-        try {
-            keyFields = getEncodingKeyFields(entry.view.getEncoding());
-        } catch (error) {
-            this.#warnPersistSelection(
-                entry.param,
-                `cannot be saved because encoding.key is invalid: ${error}`
-            );
-            return;
-        }
-
-        if (!keyFields) {
-            this.#warnPersistSelection(
-                entry.param,
-                "will not be saved to bookmarks because encoding.key is missing on the owning view. Add encoding.key or set persist: false."
-            );
-            return;
-        }
-
-        return keyFields;
-    }
-
-    /**
-     * Reads key fields from encoding for restore warnings.
-     *
-     * @param {BookmarkableParamEntry} entry
-     * @returns {string[] | undefined}
-     */
-    #getKeyFieldsForRestore(entry) {
-        let keyFields;
-        try {
-            keyFields = getEncodingKeyFields(entry.view.getEncoding());
-        } catch (error) {
-            this.#warnSelection(
-                entry.param,
-                `cannot be restored because encoding.key is invalid: ${error}`
-            );
-            return;
-        }
-
-        if (!keyFields) {
-            this.#warnSelection(
-                entry.param,
-                "cannot be restored because encoding.key is missing on the owning view."
-            );
-            return;
-        }
-
-        return keyFields;
     }
 
     /**

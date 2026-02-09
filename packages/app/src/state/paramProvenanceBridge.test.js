@@ -11,6 +11,7 @@ import ParamProvenanceBridge from "./paramProvenanceBridge.js";
 import IntentExecutor from "./intentExecutor.js";
 import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
 import { flushMicrotasks } from "./testUtils.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 vi.mock("../components/generic/messageDialog.js", () => ({
     showMessageDialog: vi.fn(),
@@ -291,6 +292,48 @@ describe("ParamProvenanceBridge", () => {
         ).toHaveLength(0);
     });
 
+    it("warns and skips point selections when encoding.key is not unique", async () => {
+        const { showMessageDialog } =
+            await import("../components/generic/messageDialog.js");
+        showMessageDialog.mockClear();
+
+        const view = new FakeView();
+        view.encoding = { key: { field: "name" } };
+        view.getCollector = () =>
+            new FakeCollector(() => {
+                throw new Error(
+                    'Duplicate key detected for fields [name]: "duplicate-id"'
+                );
+            });
+
+        const setter = view.paramMediator.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        setter(
+            createMultiPointSelection([{ name: "duplicate-id", _uniqueId: 1 }])
+        );
+        await flushMicrotasks();
+
+        expect(showMessageDialog).toHaveBeenCalled();
+        const lastCall = showMessageDialog.mock.calls.at(-1);
+        expect(lastCall?.[1]?.title).toBe("Bookmark persistence warnings");
+        expect(
+            Object.keys(
+                store.getState().provenance.present.paramProvenance.entries
+            )
+        ).toHaveLength(0);
+    });
+
     it("restores point selections and warns on unresolved keys", async () => {
         const { showMessageDialog } =
             await import("../components/generic/messageDialog.js");
@@ -330,6 +373,52 @@ describe("ParamProvenanceBridge", () => {
         const selection = view.paramMediator.getValue("selection");
         expect(selection.data.size).toBe(1);
         expect(showMessageDialog).toHaveBeenCalled();
+    });
+
+    it("shows key field names when restore fails due to duplicate keys", async () => {
+        const { showMessageDialog } =
+            await import("../components/generic/messageDialog.js");
+        showMessageDialog.mockClear();
+
+        const view = new FakeView();
+        view.encoding = { key: { field: "name" } };
+        view.paramMediator.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+        view.getCollector = () =>
+            new FakeCollector(() => {
+                throw new Error(
+                    'Duplicate key detected for fields [name]: "duplicate-id"'
+                );
+            });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        store.dispatch(
+            paramProvenanceSlice.actions.paramChange({
+                selector: { scope: [], param: "selection" },
+                value: {
+                    type: "point",
+                    keyField: "name",
+                    keys: ["duplicate-id"],
+                },
+            })
+        );
+
+        await flushMicrotasks();
+
+        expect(showMessageDialog).toHaveBeenCalled();
+        const call = showMessageDialog.mock.calls.at(-1);
+        const message = templateResultToString(call[0]);
+        expect(call[1].title).toBe("Parameter restore warnings");
+        expect(message).toContain("encoding.key fields [name] are not unique");
     });
 
     it("restores interval selections from provenance entries", async () => {
