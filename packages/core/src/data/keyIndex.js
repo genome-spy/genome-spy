@@ -4,95 +4,9 @@ const MULTI_KEY_SEPARATOR = "|";
 const MULTI_KEY_ESCAPE = "\\";
 
 /**
- * @param {unknown} value
- * @param {string[]} keyFields
- * @param {number} index
- * @returns {import("../spec/channel.js").Scalar}
+ * Lazily builds and caches lookup indexes for `encoding.key` fields so that
+ * bookmarked point selections can be resolved back to datums efficiently.
  */
-function validateKeyComponent(value, keyFields, index) {
-    const fieldName = keyFields[index];
-    if (value === undefined) {
-        throw new Error(
-            `Key field "${fieldName}" is undefined. Ensure all key fields are present in the data.`
-        );
-    }
-
-    if (value === null) {
-        throw new Error(
-            `Key field "${fieldName}" is null. Ensure all key fields are present in the data.`
-        );
-    }
-
-    if (
-        typeof value !== "string" &&
-        typeof value !== "number" &&
-        typeof value !== "boolean"
-    ) {
-        throw new Error(
-            `Key field "${fieldName}" must be a scalar value (string, number, or boolean).`
-        );
-    }
-
-    return value;
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function escapeKeyString(value) {
-    let needsEscaping = false;
-    for (let i = 0; i < value.length; i++) {
-        const char = value[i];
-        if (char === MULTI_KEY_ESCAPE || char === MULTI_KEY_SEPARATOR) {
-            needsEscaping = true;
-            break;
-        }
-    }
-
-    if (!needsEscaping) {
-        return value;
-    }
-
-    let escaped = "";
-    for (let i = 0; i < value.length; i++) {
-        const char = value[i];
-        if (char === MULTI_KEY_ESCAPE || char === MULTI_KEY_SEPARATOR) {
-            escaped += MULTI_KEY_ESCAPE;
-        }
-        escaped += char;
-    }
-
-    return escaped;
-}
-
-/**
- * @param {import("../spec/channel.js").Scalar} scalar
- * @returns {string}
- */
-function encodeKeyPart(scalar) {
-    return escapeKeyString(String(scalar));
-}
-
-/**
- * @param {string[]} keyFields
- * @param {import("../spec/channel.js").Scalar[]} keyTuple
- * @returns {string}
- */
-function makeCompositeKeyFromTuple(keyFields, keyTuple) {
-    let compositeKey = "";
-    for (let i = 0; i < keyTuple.length; i++) {
-        if (i > 0) {
-            compositeKey += MULTI_KEY_SEPARATOR;
-        }
-
-        const scalar = validateKeyComponent(keyTuple[i], keyFields, i);
-        compositeKey += encodeKeyPart(scalar);
-    }
-
-    return compositeKey;
-}
-
 export default class KeyIndex {
     /**
      * @typedef {import("./flowNode.js").Datum} Datum
@@ -125,11 +39,10 @@ export default class KeyIndex {
             return;
         }
 
+        const fieldList = keyFields.join(", ");
         if (keyFields.length !== keyTuple.length) {
             throw new Error(
-                `Key tuple length ${keyTuple.length} does not match fields [${keyFields.join(
-                    ", "
-                )}]`
+                `Key tuple length ${keyTuple.length} does not match fields [${fieldList}]`
             );
         }
 
@@ -138,9 +51,25 @@ export default class KeyIndex {
         }
 
         const canonicalFields = /** @type {string[]} */ (this.#keyFields);
-        const key = this.#usesCompositeKey
-            ? makeCompositeKeyFromTuple(canonicalFields, keyTuple)
-            : validateKeyComponent(keyTuple[0], canonicalFields, 0);
+        /** @type {import("../spec/channel.js").Scalar | string} */
+        let key;
+        if (!this.#usesCompositeKey) {
+            const fieldName = canonicalFields[0];
+            key = validateKeyComponent(keyTuple[0], fieldName);
+        } else {
+            let compositeKey = "";
+            for (let i = 0; i < keyTuple.length; i++) {
+                if (i > 0) {
+                    compositeKey += MULTI_KEY_SEPARATOR;
+                }
+
+                const fieldName = canonicalFields[i];
+                const value = validateKeyComponent(keyTuple[i], fieldName);
+
+                compositeKey += encodeKeyPart(value);
+            }
+            key = compositeKey;
+        }
 
         return this.#index.get(key);
     }
@@ -154,26 +83,25 @@ export default class KeyIndex {
         const accessors = keyFields.map((fieldName) => field(fieldName));
         /** @type {Map<import("../spec/channel.js").Scalar | string, Datum>} */
         const index = new Map();
+        const fieldList = keyFields.join(", ");
 
         const usesCompositeKey = keyFields.length !== 1;
 
         if (!usesCompositeKey) {
             const accessor = accessors[0];
+            const fieldName = keyFields[0];
             for (const data of facetBatches) {
                 for (let i = 0, n = data.length; i < n; i++) {
                     const datum = data[i];
                     const key = validateKeyComponent(
                         accessor(datum),
-                        keyFields,
-                        0
+                        fieldName
                     );
 
                     const previous = index.get(key);
                     if (previous !== undefined) {
                         throw new Error(
-                            `Duplicate key detected for fields [${keyFields.join(
-                                ", "
-                            )}]: ${JSON.stringify(key)}`
+                            `Duplicate key detected for fields [${fieldList}]: ${JSON.stringify(key)}`
                         );
                     }
 
@@ -190,12 +118,13 @@ export default class KeyIndex {
                             compositeKey += MULTI_KEY_SEPARATOR;
                         }
 
-                        const scalar = validateKeyComponent(
+                        const fieldName = keyFields[j];
+                        const value = validateKeyComponent(
                             accessors[j](datum),
-                            keyFields,
-                            j
+                            fieldName
                         );
-                        compositeKey += encodeKeyPart(scalar);
+
+                        compositeKey += encodeKeyPart(value);
                     }
 
                     const previous = index.get(compositeKey);
@@ -204,9 +133,7 @@ export default class KeyIndex {
                             accessor(datum)
                         );
                         throw new Error(
-                            `Duplicate key detected for fields [${keyFields.join(
-                                ", "
-                            )}]: ${JSON.stringify(duplicateTuple)}`
+                            `Duplicate key detected for fields [${fieldList}]: ${JSON.stringify(duplicateTuple)}`
                         );
                     }
 
@@ -241,4 +168,72 @@ export default class KeyIndex {
 
         return true;
     }
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} fieldName
+ * @returns {import("../spec/channel.js").Scalar}
+ */
+function validateKeyComponent(value, fieldName) {
+    if (value === undefined) {
+        throw new Error(
+            `Key field "${fieldName}" is undefined. Ensure all key fields are present in the data.`
+        );
+    }
+
+    if (value === null) {
+        throw new Error(
+            `Key field "${fieldName}" is null. Ensure all key fields are present in the data.`
+        );
+    }
+
+    if (
+        typeof value !== "string" &&
+        typeof value !== "number" &&
+        typeof value !== "boolean"
+    ) {
+        throw new Error(
+            `Key field "${fieldName}" must be a scalar value (string, number, or boolean).`
+        );
+    }
+
+    return value;
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeKeyString(value) {
+    const needsEscaping =
+        value.indexOf(MULTI_KEY_ESCAPE) !== -1 ||
+        value.indexOf(MULTI_KEY_SEPARATOR) !== -1;
+
+    if (!needsEscaping) {
+        return value;
+    }
+
+    let escaped = "";
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        if (char === MULTI_KEY_ESCAPE || char === MULTI_KEY_SEPARATOR) {
+            escaped += MULTI_KEY_ESCAPE;
+        }
+        escaped += char;
+    }
+
+    return escaped;
+}
+
+/**
+ * @param {import("../spec/channel.js").Scalar} scalar
+ * @returns {string}
+ */
+function encodeKeyPart(scalar) {
+    if (typeof scalar === "string") {
+        return escapeKeyString(scalar);
+    }
+
+    return String(scalar);
 }
