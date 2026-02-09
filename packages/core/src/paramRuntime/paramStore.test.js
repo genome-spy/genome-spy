@@ -49,4 +49,21 @@ describe("ParamStore", () => {
 
         expect(() => store.register(root, "foo", otherFoo)).toThrow();
     });
+
+    test("clearScope removes local bindings but keeps parent traversal", () => {
+        const store = new ParamStore();
+        const root = store.createRootScope("owner:root");
+        const child = store.createChildScope("owner:child", root);
+
+        const rootFoo = createRef("p:root:foo", "foo");
+        const childBar = createRef("p:child:bar", "bar");
+
+        store.register(root, "foo", rootFoo);
+        store.register(child, "bar", childBar);
+
+        store.clearScope(child);
+
+        expect(store.resolve(child, "bar")).toBeUndefined();
+        expect(store.resolve(child, "foo")).toBe(rootFoo);
+    });
 });

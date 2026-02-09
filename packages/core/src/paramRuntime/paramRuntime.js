@@ -31,6 +31,18 @@ export default class ParamRuntime {
     }
 
     /**
+     * Disposes all runtime resources owned by the scope and clears the scope's
+     * parameter bindings.
+     *
+     * @param {string} scope
+     */
+    disposeScope(scope) {
+        const ownerId = this.#paramStore.getOwnerId(scope);
+        this.#lifecycleRegistry.disposeOwner(ownerId);
+        this.#paramStore.clearScope(scope);
+    }
+
+    /**
      * @template T
      * @param {string} scope
      * @param {string} name

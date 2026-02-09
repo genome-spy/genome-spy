@@ -55,6 +55,21 @@ export default class ParamStore {
     }
 
     /**
+     * Clears all parameter bindings from a scope while keeping the scope chain
+     * metadata intact for descendants that may still resolve through it.
+     *
+     * @param {string} scopeId
+     */
+    clearScope(scopeId) {
+        const scope = this.#scopes.get(scopeId);
+        if (!scope) {
+            throw new Error("Unknown scope: " + scopeId);
+        }
+
+        scope.params.clear();
+    }
+
+    /**
      * @template T
      * @template {import("./types.js").ParamRef<T>} R
      * @param {string} scopeId

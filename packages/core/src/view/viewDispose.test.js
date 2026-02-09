@@ -154,4 +154,24 @@ describe("View disposal", () => {
 
         expect(child.flowHandle).toBeUndefined();
     });
+
+    test("disposes parameter runtime scope with view", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "c"
+        );
+        const child = new DisposableView("a", context, parent, parent);
+
+        const setter = child.paramRuntime.allocateSetter("foo", 1);
+        expect(child.paramRuntime.getValue("foo")).toBe(1);
+
+        child.disposeSubtree();
+
+        expect(child.paramRuntime.getValue("foo")).toBeUndefined();
+        expect(() => setter(2)).toThrow();
+    });
 });

@@ -230,6 +230,18 @@ describe("Single-level ParamMediator", () => {
             pm.registerParam({ name: "foo", value: 42, expr: "bar" })
         ).toThrow();
     });
+
+    test("dispose clears local scope and disables allocated setters", () => {
+        const pm = new ParamMediator();
+        const setter = pm.registerParam({ name: "foo", value: 1 });
+
+        expect(pm.getValue("foo")).toBe(1);
+
+        pm.dispose();
+
+        expect(pm.getValue("foo")).toBeUndefined();
+        expect(() => setter(2)).toThrow();
+    });
 });
 
 describe("Nested ParamMediators", () => {

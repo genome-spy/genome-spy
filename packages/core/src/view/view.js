@@ -643,6 +643,8 @@ export default class View {
             this.context.dataFlow.removeDataSource(handle.dataSource);
         }
 
+        this.paramRuntime.dispose();
+
         this.context.dataFlow.loadingStatusRegistry.delete(this);
 
         this.flowHandle = undefined;

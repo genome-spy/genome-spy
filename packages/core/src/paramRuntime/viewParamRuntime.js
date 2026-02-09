@@ -50,6 +50,8 @@ export default class ViewParamRuntime {
     /** @type {() => ViewParamRuntime} */
     #parentFinder;
 
+    #disposed = false;
+
     /**
      * @param {() => ViewParamRuntime} [parentFinder]
      *      An optional function that returns the parent mediator.
@@ -333,6 +335,18 @@ export default class ViewParamRuntime {
      */
     whenPropagated(options) {
         return this.#runtime.whenPropagated(options);
+    }
+
+    dispose() {
+        if (this.#disposed) {
+            return;
+        }
+
+        this.#disposed = true;
+        this.#runtime.disposeScope(this.#scopeId);
+        this.#allocatedSetters.clear();
+        this.#localRefs.clear();
+        this.#paramConfigs.clear();
     }
 
     /**

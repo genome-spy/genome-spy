@@ -52,4 +52,25 @@ describe("ParamRuntime", () => {
         expect(childExpr()).toBe(11);
         expect(rootExpr.identifier()).not.toBe(childExpr.identifier());
     });
+
+    test("disposeScope tears down owned nodes and clears local params", async () => {
+        const runtime = new ParamRuntime();
+        const root = runtime.createScope();
+        const child = runtime.createScope(root);
+
+        const foo = runtime.registerBase(root, "foo", 1);
+        const bar = runtime.registerDerived(child, "bar", "foo + 1");
+
+        expect(bar.get()).toBe(2);
+        expect(runtime.resolve(child, "bar")).toBe(bar);
+
+        runtime.disposeScope(child);
+        expect(runtime.resolve(child, "bar")).toBeUndefined();
+
+        foo.set(5);
+        await runtime.whenPropagated();
+
+        // Non-obvious: disposed computeds keep their last value and no longer track updates.
+        expect(bar.get()).toBe(2);
+    });
 });
