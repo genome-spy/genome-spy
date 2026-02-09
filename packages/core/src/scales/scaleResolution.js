@@ -329,6 +329,12 @@ export default class ScaleResolution {
         };
     }
 
+    dispose() {
+        this.#listeners.domain.clear();
+        this.#listeners.range.clear();
+        this.#scaleManager.dispose();
+    }
+
     #hasRenderedMember() {
         for (const member of this.#members) {
             if (member.view.hasRendered()) {

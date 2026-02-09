@@ -426,6 +426,7 @@ export default class UnitView extends View {
                         unregister() &&
                         view.resolutions[type][targetChannel] === resolution
                     ) {
+                        resolution.dispose();
                         delete view.resolutions[type][targetChannel];
                     }
                 });

@@ -172,4 +172,31 @@ describe("ScaleInstanceManager", () => {
             })
         ).toThrow("No genome with the name missing has been configured!");
     });
+
+    test("dispose invalidates active range expressions", () => {
+        const invalidate = vi.fn();
+        const expr = /** @type {any} */ (() => 1);
+        expr.addListener = /** @returns {void} */ () => undefined;
+        expr.invalidate = invalidate;
+
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => expr,
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+        });
+
+        manager.createScale(
+            /** @type {import("../spec/scale.js").Scale} */ ({
+                type: "linear",
+                domain: [0, 1],
+                range: /** @type {any} */ ([{ expr: "value" }, 10]),
+            })
+        );
+
+        manager.dispose();
+
+        expect(invalidate).toHaveBeenCalledTimes(1);
+    });
 });

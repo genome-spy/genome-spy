@@ -216,6 +216,11 @@ export default class ScaleInstanceManager {
 
         notifyRange();
     }
+
+    dispose() {
+        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
+        this.#rangeExprRefListeners.clear();
+    }
 }
 
 /**
