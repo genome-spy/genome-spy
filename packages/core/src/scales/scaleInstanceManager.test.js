@@ -10,12 +10,10 @@ describe("ScaleInstanceManager", () => {
         const onRangeChange = vi.fn();
         const exprFn = /** @type {any} */ (() => 0);
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => exprFn,
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => exprFn,
+                }),
             onRangeChange,
         });
 
@@ -45,12 +43,10 @@ describe("ScaleInstanceManager", () => {
 
         // Non-obvious: stub expression function to avoid vega-expression in unit tests.
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => expr,
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => expr,
+                }),
             onRangeChange: /** @returns {void} */ () => undefined,
         });
 
@@ -72,12 +68,10 @@ describe("ScaleInstanceManager", () => {
     test("domain changes notify listeners", () => {
         const onDomainChange = vi.fn();
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => /** @type {any} */ (() => 0),
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
             onRangeChange: /** @returns {void} */ () => undefined,
             onDomainChange,
         });
@@ -100,12 +94,10 @@ describe("ScaleInstanceManager", () => {
         });
 
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => /** @type {any} */ (() => 0),
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -135,12 +127,10 @@ describe("ScaleInstanceManager", () => {
         genomeStore.genomes.set(altGenome.name, altGenome);
 
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => /** @type {any} */ (() => 0),
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });
@@ -165,12 +155,10 @@ describe("ScaleInstanceManager", () => {
         });
 
         const manager = new ScaleInstanceManager({
-            getParamMediator: () =>
-                /** @type {import("../view/paramMediator.js").default} */ (
-                    /** @type {unknown} */ ({
-                        createExpression: () => /** @type {any} */ (() => 0),
-                    })
-                ),
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
             onRangeChange: /** @returns {void} */ () => undefined,
             getGenomeStore: () => genomeStore,
         });

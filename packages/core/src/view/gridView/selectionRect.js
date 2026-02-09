@@ -8,7 +8,7 @@ export default class SelectionRect extends LayerView {
      * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
      */
 
-    /** @type {import("../paramMediator.js").ExprRefFunction} */
+    /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
     _selectionExpr;
 
     /** @type {() => void} */
@@ -16,7 +16,7 @@ export default class SelectionRect extends LayerView {
 
     /**
      * @param {import("./gridChild.js").default} gridChild
-     * @param {import("../paramMediator.js").ExprRefFunction} selectionExpr
+     * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
      * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
      */
     constructor(gridChild, selectionExpr, brushConfig = {}) {
@@ -156,7 +156,7 @@ export default class SelectionRect extends LayerView {
 
         markViewAsNonAddressable(this, { skipSubtree: true });
 
-        /** @type {import("../paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this._selectionExpr = selectionExpr;
 
         this._selectionListener = () => {

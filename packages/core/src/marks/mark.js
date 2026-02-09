@@ -99,7 +99,7 @@ export default class Mark {
     #callAfterShaderCompilation = [];
 
     /**
-     * @type {{expr: import("../view/paramMediator.js").ExprRefFunction, listener: () => void}[]}
+     * @type {{expr: import("../paramRuntime/types.js").ExprRefFunction, listener: () => void}[]}
      */
     #exprListeners = [];
 
@@ -490,8 +490,8 @@ export default class Mark {
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
-            const paramMediator = this.unitView.paramRuntime;
-            const selection = paramMediator.findValue(param);
+            const paramRuntime = this.unitView.paramRuntime;
+            const selection = paramRuntime.findValue(param);
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
@@ -549,7 +549,7 @@ export default class Mark {
 
                     this.selectionTextureOps.push(() => {
                         // Texture is set in the prepareRender method
-                        const selection = paramMediator.getValue(param);
+                        const selection = paramRuntime.getValue(param);
                         const texture = selectionTextures.get(selection);
                         if (!texture) {
                             throw new Error(
@@ -572,7 +572,7 @@ export default class Mark {
                     // Create the initial texture
                     glHelper.createSelectionTexture(selection);
 
-                    const fn = paramMediator.createExpression(param);
+                    const fn = paramRuntime.createExpression(param);
                     fn.addListener(() => {
                         const selection =
                             /** @type {import("../types/selectionTypes.js").MultiPointSelection} */ (

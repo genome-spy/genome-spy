@@ -33,7 +33,7 @@ export default class MeasureTextTransform extends Transform {
         // TODO: Refactor this into reusable code.
         if (isExprRef(params.fontSize)) {
             const sizeExpr =
-                paramMediatorProvider.paramMediator.createExpression(
+                paramMediatorProvider.paramRuntime.createExpression(
                     params.fontSize.expr
                 );
             size = sizeExpr();

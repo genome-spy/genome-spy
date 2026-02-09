@@ -12,7 +12,7 @@ export default class FilterTransform extends Transform {
 
         this.params = params;
 
-        /** @type {import("../../view/paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this.predicate = undefined;
     }
 
@@ -22,7 +22,7 @@ export default class FilterTransform extends Transform {
         if (isExprFilterParams(this.params)) {
             expression = this.params.expr;
         } else if (isSelectionFilterParams(this.params)) {
-            const selection = this.paramMediator.findValue(this.params.param);
+            const selection = this.paramRuntime.findValue(this.params.param);
             if (!selection) {
                 throw new Error(
                     `Cannot initialize filter transform. Selection parameter "${this.params.param}" not found!`
@@ -35,7 +35,7 @@ export default class FilterTransform extends Transform {
             );
         }
 
-        this.predicate = this.paramMediator.createExpression(expression);
+        this.predicate = this.paramRuntime.createExpression(expression);
         this.predicate.addListener(() => this.repropagate());
     }
 

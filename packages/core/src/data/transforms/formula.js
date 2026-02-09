@@ -18,12 +18,12 @@ export default class FormulaTransform extends Transform {
 
         this.as = params.as;
 
-        /** @type {import("../../view/paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this.fn = undefined;
     }
 
     initialize() {
-        this.fn = this.paramMediator.createExpression(this.params.expr);
+        this.fn = this.paramRuntime.createExpression(this.params.expr);
         this.fn.addListener(() => this.repropagate());
     }
 

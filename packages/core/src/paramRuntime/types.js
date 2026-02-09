@@ -14,4 +14,13 @@
  * @typedef {ParamRef<T> & { set: (value: T) => void }} WritableParamRef
  */
 
+/**
+ * @typedef {import("../utils/expression.js").ExpressionFunction & {
+ *   addListener: (listener: () => void) => void,
+ *   removeListener: (listener: () => void) => void,
+ *   invalidate: () => void,
+ *   identifier: () => string
+ * }} ExprRefFunction
+ */
+
 export {};
