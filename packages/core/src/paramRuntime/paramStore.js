@@ -1,4 +1,7 @@
 /**
+ * Validates that `name` is a legal JavaScript identifier for parameter access
+ * in compiled expressions.
+ *
  * @param {string} name
  */
 export function validateParamName(name) {
@@ -11,16 +14,40 @@ export function validateParamName(name) {
     }
 }
 
+/**
+ * Runtime store for scoped parameter bindings.
+ *
+ * Responsibilities:
+ * 1. Maintain scope chain metadata (`scope -> parentScope`).
+ * 2. Store local bindings (`scope + name -> ParamRef`).
+ * 3. Resolve names using nearest-scope lookup through the parent chain.
+ *
+ * This class is intentionally storage-only: propagation/lifecycle is handled
+ * by higher-level runtime components.
+ */
 export default class ParamStore {
     #nextScopeId = 1;
 
     /**
-     * @type {Map<string, { parentScope?: string, params: Map<string, import("./types.js").ParamRef<any>>, ownerId: string }>}
+     * @typedef {{
+     *   parentScope?: string,
+     *   params: Map<string, import("./types.js").ParamRef<any>>,
+     *   ownerId: string
+     * }} ScopeRecord
+     */
+
+    /**
+     * Scope registry keyed by scope id.
+     *
+     * @type {Map<string, ScopeRecord>}
      */
     #scopes = new Map();
 
     /**
+     * Creates a root scope with no parent scope.
+     *
      * @param {string} ownerId
+     * @returns {string}
      */
     createRootScope(ownerId) {
         const scopeId = "scope:" + this.#nextScopeId++;
@@ -29,8 +56,11 @@ export default class ParamStore {
     }
 
     /**
+     * Creates a child scope whose fallback resolution target is `parentScope`.
+     *
      * @param {string} ownerId
      * @param {string} parentScope
+     * @returns {string}
      */
     createChildScope(ownerId, parentScope) {
         if (!this.#scopes.has(parentScope)) {
@@ -43,6 +73,8 @@ export default class ParamStore {
     }
 
     /**
+     * Returns lifecycle owner id associated with a scope.
+     *
      * @param {string} scopeId
      * @returns {string}
      */
@@ -70,6 +102,11 @@ export default class ParamStore {
     }
 
     /**
+     * Registers a local parameter binding into `scopeId`.
+     *
+     * The same parameter name can exist in parent scopes (shadowing), but
+     * duplicate names are not allowed within one scope.
+     *
      * @template T
      * @template {import("./types.js").ParamRef<T>} R
      * @param {string} scopeId
@@ -95,6 +132,9 @@ export default class ParamStore {
     }
 
     /**
+     * Resolves a parameter by name from `scopeId`, searching current scope
+     * first and then walking parent scopes until a match is found.
+     *
      * @template T
      * @param {string} scopeId
      * @param {string} name
