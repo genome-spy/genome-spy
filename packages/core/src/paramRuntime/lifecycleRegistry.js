@@ -1,3 +1,12 @@
+/**
+ * Tracks owner-bound cleanup callbacks for runtime resources.
+ *
+ * Why this exists:
+ * reactive graph nodes and expression subscriptions can outlive their creating
+ * call site unless they are disposed explicitly. The lifecycle registry gives
+ * `ParamRuntime`/`GraphRuntime` a single owner-based teardown mechanism so
+ * disposing a scope/view reliably detaches listeners and releases resources.
+ */
 export default class LifecycleRegistry {
     #nextOwnerId = 1;
 
