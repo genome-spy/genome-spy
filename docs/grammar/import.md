@@ -65,6 +65,10 @@ like view visibility. When repeating templates, give each import instance a
 unique `name` so that descendants with the same internal names remain
 unambiguous.
 
+Import specs can also override the imported view's default visibility using
+`visible`. This is useful when importing the same template multiple times with
+different parameters and choosing which instance is shown by default.
+
 <div><genome-spy-doc-embed height="250">
 
 ```json
@@ -75,6 +79,7 @@ unambiguous.
         "template": "myTrack"
       },
       "name": "trackA",
+      "visible": true,
       "params": [{ "name": "size", "value": 5 }]
     },
     {
@@ -82,6 +87,7 @@ unambiguous.
         "template": "myTrack"
       },
       "name": "trackB",
+      "visible": true,
       "params": { "offset": 3.141, "size": 20 }
     }
   ],

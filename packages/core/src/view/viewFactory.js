@@ -267,6 +267,10 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
         importedSpec.name = importSpec.name;
     }
 
+    if (importSpec.visible != null) {
+        importedSpec.visible = importSpec.visible;
+    }
+
     const params = isArray(importSpec.params)
         ? importSpec.params
         : isObject(importSpec.params)

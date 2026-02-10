@@ -346,6 +346,13 @@ export interface ImportSpec {
     params?: Parameter[] | Record<string, any>;
 
     /**
+     * Overrides the visibility of the imported view.
+     *
+     * If not specified, the imported specification's `visible` property is used.
+     */
+    visible?: boolean;
+
+    /**
      * The method to import a specification.
      */
     import: UrlImport | TemplateImport;
