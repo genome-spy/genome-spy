@@ -6,7 +6,7 @@ import { isVariableParameter } from "../paramRuntime/paramUtils.js";
 /**
  * @param {{
  *   paramConfigs: ReadonlyMap<string, import("../spec/parameter.js").Parameter>,
- *   getSetter: (name: string) => (value: any) => void,
+ *   setValue: (name: string, value: any) => void,
  *   getValue: (name: string) => any
  * }} mediator
  */
@@ -26,7 +26,12 @@ export default function createBindingInputs(mediator) {
         }
 
         const name = param.name;
-        const setter = mediator.getSetter(name);
+        const setter = (
+            /** @type {any} */
+            value
+        ) => {
+            mediator.setValue(name, value);
+        };
         const value = mediator.getValue(name);
         const label = bind.name ?? name;
 

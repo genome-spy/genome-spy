@@ -133,7 +133,12 @@ export default class ViewParamRuntime {
                     `The outer parameter "${name}" must not have expr or select properties!`
                 );
             }
-            setter = outerRuntime.getSetter(name);
+            setter = (
+                /** @type {any} */
+                value
+            ) => {
+                outerRuntime.setValue(name, value);
+            };
             // The following will become a bit fragile if the view hierarchy is going to
             // support mutation (i.e. adding/removing children) in future.
             this.#allocatedSetters.set(name, setter);
@@ -219,15 +224,23 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Gets an existing setter for a parameter. Throws if the setter is not found.
+     * Sets a writable parameter value in this runtime scope.
+     *
+     * Only parameters with locally registered writable setters are supported.
+     * This method does not resolve through ancestors.
+     *
      * @param {string} paramName
+     * @param {any} value
      */
-    getSetter(paramName) {
+    setValue(paramName, value) {
+        validateParameterName(paramName);
         const setter = this.#allocatedSetters.get(paramName);
         if (!setter) {
-            throw new Error("Setter not found for parameter: " + paramName);
+            throw new Error(
+                "Writable parameter not found in this scope: " + paramName
+            );
         }
-        return setter;
+        setter(value);
     }
 
     /**

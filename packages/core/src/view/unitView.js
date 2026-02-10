@@ -145,7 +145,12 @@ export default class UnitView extends View {
                 const none = 0;
                 let lastId = none;
 
-                const setter = this.paramRuntime.getSetter(name);
+                const setter = (
+                    /** @type {any} */
+                    selection
+                ) => {
+                    this.paramRuntime.setValue(name, selection);
+                };
 
                 const getHoveredDatum = () => {
                     const h = this.context.getCurrentHover();

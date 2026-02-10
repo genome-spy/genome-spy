@@ -562,8 +562,9 @@ export default class SampleView extends ContainerView {
             this.spec.view
         );
 
-        this.#sampleHeightParam =
-            this.#gridChild.view.paramRuntime.getSetter("height");
+        this.#sampleHeightParam = (value) => {
+            this.#gridChild.view.paramRuntime.setValue("height", value);
+        };
 
         // TODO: Hack the sample height to sidebar as well.
 
@@ -614,10 +615,12 @@ export default class SampleView extends ContainerView {
                 },
             }
         );
-        this.#scrollbarOpacitySetter =
-            this.#gridChild.scrollbars.vertical.paramRuntime.getSetter(
-                "scrollbarOpacity"
+        this.#scrollbarOpacitySetter = (value) => {
+            this.#gridChild.scrollbars.vertical.paramRuntime.setValue(
+                "scrollbarOpacity",
+                value
             );
+        };
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();

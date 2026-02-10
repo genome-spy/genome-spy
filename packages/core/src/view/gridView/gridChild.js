@@ -200,7 +200,12 @@ export default class GridChild {
                 );
 
             const selectionExpr = view.paramRuntime.createExpression(name);
-            const setter = view.paramRuntime.getSetter(name);
+            const setter = (
+                /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
+                selection
+            ) => {
+                view.paramRuntime.setValue(name, selection);
+            };
 
             if (param.value) {
                 setter({ type: "interval", intervals: param.value });

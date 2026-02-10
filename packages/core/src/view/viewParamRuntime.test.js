@@ -19,6 +19,14 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("foo")).toBe(43);
     });
 
+    test("setValue updates a writable parameter by name", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerParam({ name: "foo", value: 42 });
+
+        pm.setValue("foo", 43);
+        expect(pm.getValue("foo")).toBe(43);
+    });
+
     test("Subscribe notifies on value changes", () => {
         const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
@@ -299,6 +307,18 @@ describe("Nested ViewParamRuntimes", () => {
         parent.registerParam({ name: "foo", value: 42 });
         expect(parent.findValue("foo")).toBe(42);
         expect(child.findValue("foo")).toBe(42);
+    });
+
+    test("setValue does not write through ancestor lookup", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+
+        expect(() => child.setValue("foo", 2)).toThrow(
+            "Writable parameter not found in this scope: foo"
+        );
+        expect(parent.getValue("foo")).toBe(1);
     });
 
     test("Value in child", () => {

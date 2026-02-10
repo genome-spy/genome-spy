@@ -595,10 +595,10 @@ export default class ParamProvenanceBridge {
                         ? this.#resolveStoredValue(entry, storedEntry)
                         : this.#getDefaultValue(entry);
 
-                    const setter = entry.view.paramRuntime.getSetter(
-                        entry.selector.param
+                    entry.view.paramRuntime.setValue(
+                        entry.selector.param,
+                        value
                     );
-                    setter(value);
                 }
 
                 for (const key of unusedKeys) {
