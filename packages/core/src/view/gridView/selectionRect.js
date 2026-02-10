@@ -8,15 +8,6 @@ export default class SelectionRect extends LayerView {
      * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
      */
 
-    /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
-    _selectionExpr;
-
-    /** @type {() => void} */
-    _selectionListener;
-
-    /** @type {() => void} */
-    _selectionUnsubscribe;
-
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
@@ -159,10 +150,7 @@ export default class SelectionRect extends LayerView {
 
         markViewAsNonAddressable(this, { skipSubtree: true });
 
-        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
-        this._selectionExpr = selectionExpr;
-
-        this._selectionListener = () => {
+        const selectionListener = () => {
             const selection =
                 /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
                     selectionExpr()
@@ -182,17 +170,7 @@ export default class SelectionRect extends LayerView {
             datasource.updateDynamicData(selectionToData(selection));
         };
 
-        this._selectionUnsubscribe = selectionExpr.subscribe(
-            this._selectionListener
-        );
-    }
-
-    /**
-     * @override
-     */
-    dispose() {
-        this._selectionUnsubscribe();
-        super.dispose();
+        this.registerDisposer(selectionExpr.subscribe(selectionListener));
     }
 }
 

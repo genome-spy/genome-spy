@@ -35,8 +35,14 @@ describe("SelectionRect", () => {
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
+        /** @type {() => void} */
+        let selectionListener;
+
         /** @type {(listener: () => void) => () => void} */
-        const subscribe = () => () => undefined;
+        const subscribe = (listener) => {
+            selectionListener = listener;
+            return () => undefined;
+        };
         /** @type {() => void} */
         const invalidate = () => undefined;
 
@@ -74,7 +80,7 @@ describe("SelectionRect", () => {
             intervals: { x: [5, 6], y: [7, 8] },
         };
 
-        selectionRect._selectionListener();
+        selectionListener();
 
         expect(updateSpy).toHaveBeenCalledTimes(1);
         expect(updateSpy).toHaveBeenCalledWith([
