@@ -19,6 +19,41 @@ The current design works but has accumulated structural issues:
 5. Behavior contracts (derived param mutability, teardown guarantees) are not
    explicit enough.
 
+### Implementation status
+
+The redesign has been implemented incrementally on the refactor branch and is
+now in final hardening/cleanup state.
+
+Completed outcomes:
+
+1. Runtime modules exist under `packages/core/src/paramRuntime/`.
+2. `packages/core/src/view/paramMediator.js` has been deleted.
+3. Core call sites use runtime-owned expression wiring and owner-bound
+   teardown.
+4. Derived params are read-only from setter APIs (fail fast on writes).
+5. `whenPropagated` is implemented as a sync propagation barrier with explicit
+   timeout/abort behavior.
+6. Bookmark/provenance restore awaits runtime propagation before considering
+   state restoration complete.
+7. Full repo validation is green (`npm test`, `npm run lint`,
+   `npm -ws run test:tsc --if-present`).
+
+Key milestone commits include:
+
+1. `7204cd71` delete legacy view-level mediator shim.
+2. `f5634a56` extract expression binding into runtime module.
+3. `70f4b3a2` enforce derived-param read-only writes.
+4. `8c2a8dbc` add deterministic expression listener teardown.
+5. `16a67567` dispose scale expression listeners with scale resolution teardown.
+6. `f5a648b6` await runtime propagation during bookmark restore.
+7. `f0981542` bind transform watchers to flow-node disposal.
+8. `449d8973` align runtime naming in tests and strengthen graph runtime specs.
+
+Remaining work for merge preparation:
+
+1. Keep this document and `ARCHITECTURE.md` synchronized with final terminology.
+2. Run any optional performance characterization if required for release notes.
+
 ### Scope of this plan
 
 This is a **full internal redesign** of parameter reactivity/runtime in Core,
@@ -545,10 +580,11 @@ Mitigation: explicit contract tests and inline comment guard in API definition.
 
 All of the following must be true:
 
-1. New runtime modules are in `packages/core/src/paramRuntime/`.
-2. `packages/core/src/view/paramMediator.js` has been deleted.
-3. Legacy `ParamMediator` architecture is removed from active core flows.
-4. DAG propagation correctness tests pass.
-5. Lifecycle/disposal tests pass for migrated subsystems.
-6. App provenance/bookmark restore pathways pass with propagation barrier usage.
-7. Full repo tests, lint, and type checks pass.
+1. [x] New runtime modules are in `packages/core/src/paramRuntime/`.
+2. [x] `packages/core/src/view/paramMediator.js` has been deleted.
+3. [x] Legacy `ParamMediator` architecture is removed from active core flows.
+4. [x] DAG propagation correctness tests pass.
+5. [x] Lifecycle/disposal tests pass for migrated subsystems.
+6. [x] App provenance/bookmark restore pathways pass with propagation barrier
+   usage.
+7. [x] Full repo tests, lint, and type checks pass.

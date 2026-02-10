@@ -28,7 +28,7 @@ design patterns.
 - `View` (`packages/core/src/view/view.js`) is the base class handling:
   - Layout sizing and caching
   - Scale and axis resolution references
-  - Param mediation and scoped params
+  - Param runtime scoping and parameter registration
   - Tree traversal and broadcasting
 - `ViewFactory` (`packages/core/src/view/viewFactory.js`) instantiates view
   subclasses based on spec shape:
@@ -195,7 +195,14 @@ design patterns.
 
 ## Reactivity and Expression System
 
-- Params are managed per view in `ParamMediator`.
+- Params are managed per view in `ViewParamRuntime`
+  (`packages/core/src/paramRuntime/viewParamRuntime.js`) backed by shared
+  `ParamRuntime` internals.
+- Runtime internals (`packages/core/src/paramRuntime/`) split responsibilities
+  across graph scheduling, scoped param storage, expression binding, and owner
+  lifecycle disposal.
+- DAG propagation is transaction-aware (`inTransaction`) and exposes a sync
+  barrier (`whenPropagated`) for deterministic post-update coordination.
 - Expressions are parsed/compiled using `vega-expression` and bound to param
   values via generated accessors.
 - Expression changes trigger:
@@ -216,8 +223,8 @@ design patterns.
 - **Batched rendering**:
   - Render calls are sorted and batched to reduce WebGL state changes.
 - **Param hierarchy**:
-  - Scoped param lookup via view hierarchy; expressions automatically attach
-    listeners to upstream params.
+  - Scoped param lookup via view hierarchy and runtime scopes; expressions
+    automatically attach listeners to upstream params with owner-scoped teardown.
 
 ## Notable Technical Decisions
 
