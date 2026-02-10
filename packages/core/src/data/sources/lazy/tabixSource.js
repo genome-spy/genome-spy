@@ -28,7 +28,10 @@ export default class TabixSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        const activatedParams = activateExprRefProps(
+        const channel = withoutExprRef(paramsWithDefaults.channel);
+        super(view, channel);
+
+        this.params = activateExprRefProps(
             view.paramRuntime,
             paramsWithDefaults,
             (props) => {
@@ -45,10 +48,6 @@ export default class TabixSource extends SingleAxisWindowedSource {
             (disposer) => this.registerDisposer(disposer),
             { batchMode: "whenPropagated" }
         );
-
-        super(view, activatedParams.channel);
-
-        this.params = activatedParams;
 
         if (!withoutExprRef(this.params.url)) {
             throw new Error("No URL provided for TabixSource");

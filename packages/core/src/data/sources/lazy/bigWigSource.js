@@ -29,7 +29,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        const activatedParams = activateExprRefProps(
+        const channel = withoutExprRef(paramsWithDefaults.channel);
+        super(view, channel);
+
+        this.params = activateExprRefProps(
             view.paramRuntime,
             paramsWithDefaults,
             (props) => {
@@ -42,10 +45,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             (disposer) => this.registerDisposer(disposer),
             { batchMode: "whenPropagated" }
         );
-
-        super(view, activatedParams.channel);
-
-        this.params = activatedParams;
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");
