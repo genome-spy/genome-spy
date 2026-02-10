@@ -16,7 +16,8 @@ import { concatUrl } from "../utils/url.js";
 import { isDiscrete, bandSpace } from "vega-scale";
 import { peek } from "../utils/arrayUtils.js";
 import ViewError from "./viewError.js";
-import ParamMediator, { isExprRef } from "./paramMediator.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
 
@@ -160,15 +161,15 @@ export default class View {
          */
         this.needsAxes = { x: false, y: false };
 
-        /** @type {ParamMediator} */
-        this.paramMediator = new ParamMediator(
-            () => this.dataParent?.paramMediator
+        /** @type {ViewParamRuntime} */
+        this.paramRuntime = new ViewParamRuntime(
+            () => this.dataParent?.paramRuntime
         );
 
         if (spec.params) {
             for (const param of spec.params) {
                 // TODO: If interval selection, validate `encodings` or provides defaults
-                this.paramMediator.registerParam(param);
+                this.paramRuntime.registerParam(param);
             }
         }
 
@@ -178,9 +179,9 @@ export default class View {
             // doesn't make much sense, but it's used in the App's SampleView
             // to set the height to sample facets' height.
             const allocateIfFree = (/** @type {string} */ name) =>
-                this.paramMediator.findMediatorForParam(name)
+                this.paramRuntime.findRuntimeForParam(name)
                     ? undefined
-                    : this.paramMediator.allocateSetter(name, 0);
+                    : this.paramRuntime.allocateSetter(name, 0);
             this.#heightSetter = allocateIfFree("height");
             this.#widthSetter = allocateIfFree("width");
         }
@@ -510,6 +511,7 @@ export default class View {
      *
      * @param {string} type
      * @param {function(BroadcastMessage):void} handler
+     * @returns {() => void}
      */
     _addBroadcastHandler(type, handler) {
         let handlers = this.#broadcastHandlers[type];
@@ -518,6 +520,18 @@ export default class View {
             this.#broadcastHandlers[type] = handlers;
         }
         handlers.push(handler);
+
+        return () => {
+            const currentHandlers = this.#broadcastHandlers[type];
+            if (!currentHandlers) {
+                return;
+            }
+
+            const index = currentHandlers.indexOf(handler);
+            if (index >= 0) {
+                currentHandlers.splice(index, 1);
+            }
+        };
     }
 
     /**
@@ -641,6 +655,8 @@ export default class View {
         ) {
             this.context.dataFlow.removeDataSource(handle.dataSource);
         }
+
+        this.paramRuntime.dispose();
 
         this.context.dataFlow.loadingStatusRegistry.delete(this);
 
@@ -875,7 +891,7 @@ export default class View {
             return isString(title)
                 ? title
                 : isExprRef(title.text)
-                  ? this.paramMediator.evaluateAndGet(title.text.expr)
+                  ? this.paramRuntime.evaluateAndGet(title.text.expr)
                   : title.text;
         }
     }
@@ -983,8 +999,9 @@ function createViewOpacityFunction(view) {
                 return interpolate(unitsPerPixel) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
-            const fn = view.paramMediator.createExpression(opacityDef.expr);
-            fn.addListener(() => view.context.animator.requestRender());
+            const fn = view.paramRuntime.watchExpression(opacityDef.expr, () =>
+                view.context.animator.requestRender()
+            );
             return (parentOpacity) => fn(null) * parentOpacity;
         }
     }

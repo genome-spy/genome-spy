@@ -19,7 +19,7 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
- * @typedef {{paramMediator: import("../view/paramMediator.js").default}} ParamMediatorProvider
+ * @typedef {{paramRuntime?: import("../paramRuntime/viewParamRuntime.js").default}} ParamRuntimeProvider
  */
 
 /**
@@ -38,12 +38,18 @@ export default class FlowNode {
     /** @type {boolean} */
     #initialized = false;
 
+    /** @type {boolean} */
+    #disposed = false;
+
+    /** @type {(() => void)[]} */
+    #disposers = [];
+
     /**
-     * An object that provides a paramMediator. (Most likely a View)
+     * An object that provides a paramRuntime. (Most likely a View)
      *
-     * @type {ParamMediatorProvider}
+     * @type {ParamRuntimeProvider}
      */
-    paramMediatorProvider = null;
+    paramRuntimeProvider = null;
 
     get behavior() {
         return 0;
@@ -59,10 +65,10 @@ export default class FlowNode {
     }
 
     /**
-     * @param {ParamMediatorProvider} [paramMediatorProvider]
+     * @param {ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(paramMediatorProvider) {
-        this.paramMediatorProvider = paramMediatorProvider;
+    constructor(paramRuntimeProvider) {
+        this.paramRuntimeProvider = paramRuntimeProvider;
 
         /** @type {FlowNode[]} */
         this.children = [];
@@ -72,6 +78,10 @@ export default class FlowNode {
 
         /** True if all data have been processed */
         this.completed = false;
+    }
+
+    get disposed() {
+        return this.#disposed;
     }
 
     /**
@@ -294,6 +304,47 @@ export default class FlowNode {
     }
 
     /**
+     * Register a disposer to be executed when this node is disposed.
+     *
+     * @param {() => void} disposer
+     */
+    registerDisposer(disposer) {
+        if (this.#disposed) {
+            disposer();
+        } else {
+            this.#disposers.push(disposer);
+        }
+    }
+
+    /**
+     * Release resources owned by this flow node.
+     */
+    dispose() {
+        if (this.#disposed) {
+            return;
+        }
+
+        this.#disposed = true;
+
+        for (const disposer of this.#disposers) {
+            disposer();
+        }
+        this.#disposers.length = 0;
+    }
+
+    /**
+     * Dispose this flow node and all descendants in post-order.
+     */
+    disposeSubtree() {
+        /** @type {(function(FlowNode): void) & { afterChildren?: (node: FlowNode) => void }} */
+        const visitor = () => undefined;
+        visitor.afterChildren = (node) => {
+            node.dispose();
+        };
+        this.visit(visitor);
+    }
+
+    /**
      * Signals that a new batch of data will be propagated.
      *
      * @param {import("../types/flowBatch.js").FlowBatch} flowBatch
@@ -305,18 +356,20 @@ export default class FlowNode {
     }
 
     /**
-     * @returns {import("../view/paramMediator.js").default}
+     * @returns {import("../paramRuntime/viewParamRuntime.js").default}
      * @protected
      */
-    get paramMediator() {
-        if (this.paramMediatorProvider) {
-            return this.paramMediatorProvider.paramMediator;
+    get paramRuntime() {
+        if (this.paramRuntimeProvider) {
+            if (this.paramRuntimeProvider.paramRuntime) {
+                return this.paramRuntimeProvider.paramRuntime;
+            }
         }
 
         if (!this.parent) {
-            throw new Error("Cannot find paramMediator!");
+            throw new Error("Cannot find paramRuntime!");
         }
-        return this.parent.paramMediator;
+        return this.parent.paramRuntime;
     }
 
     /**

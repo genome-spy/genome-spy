@@ -69,6 +69,22 @@ describe("Trivial creations and initializations", () => {
             )
         ).resolves.toBeInstanceOf(UnitView));
 
+    test("Broadcast handler disposer unregisters listener", async () => {
+        const view = await create({ mark: "point" }, View);
+
+        let calls = 0;
+        const disposer = view._addBroadcastHandler("layoutComputed", () => {
+            calls += 1;
+        });
+
+        view.handleBroadcast({ type: "layoutComputed" });
+        expect(calls).toBe(1);
+
+        disposer();
+        view.handleBroadcast({ type: "layoutComputed" });
+        expect(calls).toBe(1);
+    });
+
     test("Preserves inherited key channel in unit views", async () => {
         const view = await create(
             {

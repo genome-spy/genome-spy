@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import ParamMediator from "../view/paramMediator.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import {
     buildDomainKey,
     createAccessor,
@@ -22,7 +22,7 @@ describe("Accessors for different encoding types", () => {
         const a = createAccessor(
             "x",
             { field: "a" },
-            new ParamMediator(() => undefined)
+            new ViewParamRuntime(() => undefined)
         );
         expect(a(datum)).toEqual(1);
         expect(a.constant).toBeFalsy();
@@ -33,7 +33,7 @@ describe("Accessors for different encoding types", () => {
         const a = createAccessor(
             "x",
             { expr: `datum.b + datum['x\\.c']` },
-            new ParamMediator(() => undefined)
+            new ViewParamRuntime(() => undefined)
         );
         expect(a(datum)).toEqual(5);
         expect(a.constant).toBeFalsy();
@@ -44,7 +44,7 @@ describe("Accessors for different encoding types", () => {
         const a = createAccessor(
             "x",
             { datum: 0 },
-            new ParamMediator(() => undefined)
+            new ViewParamRuntime(() => undefined)
         );
         expect(a(datum)).toEqual(0);
         expect(a.constant).toBeTruthy();
@@ -55,7 +55,7 @@ describe("Accessors for different encoding types", () => {
         const a = createAccessor(
             "x",
             { value: 123 },
-            new ParamMediator(() => undefined)
+            new ViewParamRuntime(() => undefined)
         );
         expect(a(datum)).toEqual(123);
         expect(a.constant).toBeTruthy();
@@ -64,41 +64,41 @@ describe("Accessors for different encoding types", () => {
 });
 
 describe("Accessor equality", () => {
-    const paramMediator = new ParamMediator(() => undefined);
+    const paramRuntime = new ViewParamRuntime(() => undefined);
 
     test("Field accessors with the same field are equal", () => {
-        const a = createAccessor("x", { field: "a" }, paramMediator);
-        const b = createAccessor("x", { field: "a" }, paramMediator);
+        const a = createAccessor("x", { field: "a" }, paramRuntime);
+        const b = createAccessor("x", { field: "a" }, paramRuntime);
         expect(a.equals(b)).toBeTruthy();
     });
 
     test("Field accessors with different fields are not equal", () => {
-        const a = createAccessor("x", { field: "a" }, paramMediator);
-        const b = createAccessor("x", { field: "b" }, paramMediator);
+        const a = createAccessor("x", { field: "a" }, paramRuntime);
+        const b = createAccessor("x", { field: "b" }, paramRuntime);
         expect(a.equals(b)).toBeFalsy();
     });
 
     test("Expression accessors with the same expression are equal", () => {
-        const a = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
-        const b = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
+        const a = createAccessor("x", { expr: "datum.a + 1" }, paramRuntime);
+        const b = createAccessor("x", { expr: "datum.a + 1" }, paramRuntime);
         expect(a.equals(b)).toBeTruthy();
     });
 
     test("Expression accessors with different expressions are not equal", () => {
-        const a = createAccessor("x", { expr: "datum.a + 1" }, paramMediator);
-        const b = createAccessor("x", { expr: "datum.a + 2" }, paramMediator);
+        const a = createAccessor("x", { expr: "datum.a + 1" }, paramRuntime);
+        const b = createAccessor("x", { expr: "datum.a + 2" }, paramRuntime);
         expect(a.equals(b)).toBeFalsy();
     });
 
     test("Constant accessors with the same literal are equal", () => {
-        const a = createAccessor("x", { datum: 5 }, paramMediator);
-        const b = createAccessor("x", { value: 5 }, paramMediator);
+        const a = createAccessor("x", { datum: 5 }, paramRuntime);
+        const b = createAccessor("x", { value: 5 }, paramRuntime);
         expect(a.equals(b)).toBeTruthy();
     });
 
     test("Constant accessors with different literals are not equal", () => {
-        const a = createAccessor("x", { datum: 5 }, paramMediator);
-        const b = createAccessor("x", { value: 6 }, paramMediator);
+        const a = createAccessor("x", { datum: 5 }, paramRuntime);
+        const b = createAccessor("x", { value: 6 }, paramRuntime);
         expect(a.equals(b)).toBeFalsy();
     });
 
@@ -106,17 +106,17 @@ describe("Accessor equality", () => {
         const a = createAccessor(
             "x",
             { datum: { expr: "1 + 1" } },
-            paramMediator
+            paramRuntime
         );
         const b = createAccessor(
             "x",
             { value: { expr: "1 + 1" } },
-            paramMediator
+            paramRuntime
         );
         const c = createAccessor(
             "x",
             { value: { expr: "1 + 2" } },
-            paramMediator
+            paramRuntime
         );
         expect(a.equals(b)).toBeTruthy();
         expect(a.equals(c)).toBeFalsy();
@@ -125,7 +125,7 @@ describe("Accessor equality", () => {
 
 test("Throws on incomplete encoding spec", () => {
     expect(() =>
-        createAccessor("x", {}, new ParamMediator(() => undefined))
+        createAccessor("x", {}, new ViewParamRuntime(() => undefined))
     ).toThrow();
 });
 
@@ -136,8 +136,8 @@ describe.skip("createConditionalAccessors", () => {
         { a: 3, b: 4, [UNIQUE_ID_KEY]: 1 },
     ];
 
-    const paramMediator = new ParamMediator(() => undefined);
-    paramMediator.allocateSetter("p", createSinglePointSelection(data[0]));
+    const paramRuntime = new ViewParamRuntime(() => undefined);
+    paramRuntime.allocateSetter("p", createSinglePointSelection(data[0]));
 
     const a = createConditionalAccessors(
         "x",
@@ -146,7 +146,7 @@ describe.skip("createConditionalAccessors", () => {
             type: "quantitative",
             condition: { param: "p", value: 123 },
         },
-        paramMediator
+        paramRuntime
     );
 
     const b = createConditionalAccessors(
@@ -159,7 +159,7 @@ describe.skip("createConditionalAccessors", () => {
                 { param: "p", value: 234 },
             ],
         },
-        paramMediator
+        paramRuntime
     );
 
     const c = createConditionalAccessors(
@@ -172,7 +172,7 @@ describe.skip("createConditionalAccessors", () => {
                 type: "quantitative",
             },
         },
-        paramMediator
+        paramRuntime
     );
 
     // TODO: Add more combinations of datum, field, expr, etc
@@ -218,7 +218,7 @@ describe.skip("createConditionalAccessors", () => {
                         type: "quantitative",
                     },
                 },
-                paramMediator
+                paramRuntime
             )
         ).toThrow();
 
@@ -235,7 +235,7 @@ describe.skip("createConditionalAccessors", () => {
                         type: "quantitative",
                     },
                 },
-                paramMediator
+                paramRuntime
             )
         ).toThrow();
     });
@@ -280,9 +280,9 @@ describe("Accessor domain keys", () => {
     test.each(cases)(
         "$name",
         ({ channel, channelDef, resolvedType, expectedBase, expectedKey }) => {
-            // ParamMediator is required even when accessors only read fields.
-            const paramMediator = new ParamMediator(() => undefined);
-            const accessor = createAccessor(channel, channelDef, paramMediator);
+            // ViewParamRuntime is required even when accessors only read fields.
+            const paramRuntime = new ViewParamRuntime(() => undefined);
+            const accessor = createAccessor(channel, channelDef, paramRuntime);
 
             expect(accessor.domainKeyBase).toBe(expectedBase);
             if (!isScaleAccessor(accessor)) {

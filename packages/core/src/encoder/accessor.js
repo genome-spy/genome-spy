@@ -9,15 +9,15 @@ import {
     isValueDefWithCondition,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
-import { isExprRef, makeConstantExprRef } from "../view/paramMediator.js";
+import { isExprRef, makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef | import("../spec/channel.js").Conditional<import("../spec/channel.js").ChannelDef>} channelDef
- * @param {import("../view/paramMediator.js").default} paramMediator
+ * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @returns {import("../types/encoder.js").Accessor}
  */
-export function createAccessor(channel, channelDef, paramMediator) {
+export function createAccessor(channel, channelDef, paramRuntime) {
     /**
      * @typedef {import("../data/flowNode.js").Datum} Datum
      * @typedef {import("../spec/channel.js").Scalar} Scalar
@@ -56,7 +56,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
         if ("param" in channelDef) {
             // TODO: Figure out how to fix it. Interval selection depends on FIELDS!
             /*
-            a.predicate = paramMediator.createExpression(
+            a.predicate = paramRuntime.createExpression(
                 makeSelectionTestExpression(channelDef)
             );
             a.predicate.param = channelDef.param;
@@ -95,7 +95,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
     function potentialExprRefToAccessor(potentialExprRef) {
         if (isExprRef(potentialExprRef)) {
             const a = asAccessor(
-                paramMediator.createExpression(potentialExprRef.expr)
+                paramRuntime.createExpression(potentialExprRef.expr)
             );
             if (a.fields.length > 0) {
                 throw new Error(
@@ -118,7 +118,7 @@ export function createAccessor(channel, channelDef, paramMediator) {
         }
     } else if (isExprDef(channelDef)) {
         // TODO: If parameters change, the data should be re-evaluated
-        return asAccessor(paramMediator.createExpression(channelDef.expr));
+        return asAccessor(paramRuntime.createExpression(channelDef.expr));
     } else if (isDatumDef(channelDef)) {
         return potentialExprRefToAccessor(channelDef.datum);
     } else if (isValueDef(channelDef)) {
@@ -139,9 +139,9 @@ export function createAccessor(channel, channelDef, paramMediator) {
  *
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @param {import("../view/paramMediator.js").default} paramMediator
+ * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  */
-export function createConditionalAccessors(channel, channelDef, paramMediator) {
+export function createConditionalAccessors(channel, channelDef, paramRuntime) {
     /** @type {import("../types/encoder.js").Accessor[]} */
     const conditionalAccessors = [];
 
@@ -156,13 +156,13 @@ export function createConditionalAccessors(channel, channelDef, paramMediator) {
 
         for (const condition of conditions) {
             conditionalAccessors.push(
-                createAccessor(channel, condition, paramMediator)
+                createAccessor(channel, condition, paramRuntime)
             );
         }
     }
 
     conditionalAccessors.push(
-        createAccessor(channel, channelDef, paramMediator)
+        createAccessor(channel, channelDef, paramRuntime)
     );
 
     if (conditionalAccessors.filter((a) => !a.constant).length > 1) {

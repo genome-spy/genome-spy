@@ -3,7 +3,7 @@ import {
     getSecondaryChannel,
     isPrimaryPositionalChannel,
 } from "../encoder/encoder.js";
-import { validateParameterName } from "../view/paramMediator.js";
+import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { field } from "../utils/field.js";
 
 /**

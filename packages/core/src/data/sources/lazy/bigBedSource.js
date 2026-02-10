@@ -1,7 +1,7 @@
 import {
     activateExprRefProps,
     withoutExprRef,
-} from "../../../view/paramMediator.js";
+} from "../../../paramRuntime/paramUtils.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -30,15 +30,17 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         };
 
         const activatedParams = activateExprRefProps(
-            view.paramMediator,
+            view.paramRuntime,
             paramsWithDefaults,
             (props) => {
-                if (props.includes("url")) {
+                if (props.has("url")) {
                     this.#initialize().then(() => this.reloadLastDomain());
-                } else if (props.includes("windowSize")) {
+                } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
-            }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         super(view, activatedParams.channel);

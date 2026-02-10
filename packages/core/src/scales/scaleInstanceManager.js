@@ -1,7 +1,7 @@
 import { isArray } from "vega-util";
 
 import createScale, { configureScale } from "../scale/scale.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { isScaleLocus } from "../genome/scaleLocus.js";
 
 export default class ScaleInstanceManager {
@@ -13,11 +13,11 @@ export default class ScaleInstanceManager {
     /** @type {ScaleWithProps | undefined} */
     #scale;
 
-    /** @type {Set<import("../view/paramMediator.js").ExprRefFunction>} */
+    /** @type {Set<import("../paramRuntime/types.js").ExprRefFunction>} */
     #rangeExprRefListeners = new Set();
 
-    /** @type {() => import("../view/paramMediator.js").default} */
-    #getParamMediator;
+    /** @type {() => { createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} */
+    #getParamRuntime;
 
     /** @type {() => void} */
     #onRangeChange;
@@ -32,18 +32,18 @@ export default class ScaleInstanceManager {
 
     /**
      * @param {object} options
-     * @param {() => import("../view/paramMediator.js").default} options.getParamMediator
+     * @param {() => { createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} options.getParamRuntime
      * @param {() => void} options.onRangeChange
      * @param {() => void} [options.onDomainChange]
      * @param {() => import("../genome/genomeStore.js").default | undefined} [options.getGenomeStore]
      */
     constructor({
-        getParamMediator,
+        getParamRuntime,
         onRangeChange,
         onDomainChange,
         getGenomeStore,
     }) {
-        this.#getParamMediator = getParamMediator;
+        this.#getParamRuntime = getParamRuntime;
         this.#onRangeChange = onRangeChange;
         this.#onDomainChange = onDomainChange;
         this.#getGenomeStore = getGenomeStore;
@@ -167,12 +167,13 @@ export default class ScaleInstanceManager {
 
         const props = scale.props;
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
+        this.#rangeExprRefListeners.clear();
 
         const resolved = resolveRange({
             range: props.range,
             reverse: props.reverse,
             createExpression: (expr) =>
-                this.#getParamMediator().createExpression(expr),
+                this.#getParamRuntime().createExpression(expr),
             registerExpr: (fn) => this.#rangeExprRefListeners.add(fn),
         });
 
@@ -215,6 +216,11 @@ export default class ScaleInstanceManager {
         });
 
         notifyRange();
+    }
+
+    dispose() {
+        this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
+        this.#rangeExprRefListeners.clear();
     }
 }
 
@@ -261,8 +267,8 @@ function withScaleInterceptors(
  * @param {object} options
  * @param {import("../spec/scale.js").Scale["range"]} options.range
  * @param {boolean | undefined} options.reverse
- * @param {(expr: string) => import("../view/paramMediator.js").ExprRefFunction} options.createExpression
- * @param {(fn: import("../view/paramMediator.js").ExprRefFunction) => void} options.registerExpr
+ * @param {(expr: string) => import("../paramRuntime/types.js").ExprRefFunction} options.createExpression
+ * @param {(fn: import("../paramRuntime/types.js").ExprRefFunction) => void} options.registerExpr
  * @returns {{
  *   dynamic: true,
  *   evaluate: () => any[],
@@ -299,7 +305,7 @@ function resolveRange({ range, reverse, createExpression, registerExpr }) {
             expressions = range.map((elem) => {
                 if (isExprRef(elem)) {
                     const fn = createExpression(elem.expr);
-                    fn.addListener(listener);
+                    fn.subscribe(listener);
                     registerExpr(fn);
                     return () => fn(null);
                 }

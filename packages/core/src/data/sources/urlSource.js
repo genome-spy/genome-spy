@@ -4,7 +4,7 @@ import DataSource from "./dataSource.js";
 import {
     activateExprRefProps,
     withoutExprRef,
-} from "../../view/paramMediator.js";
+} from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 
 /**
@@ -23,8 +23,12 @@ export default class UrlSource extends DataSource {
     constructor(params, view) {
         super(view);
 
-        this.params = activateExprRefProps(view.paramMediator, params, () =>
-            this.load()
+        this.params = activateExprRefProps(
+            view.paramRuntime,
+            params,
+            () => this.load(),
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         this.baseUrl = view?.getBaseUrl();

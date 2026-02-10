@@ -10,7 +10,7 @@ import DataFlow from "./dataFlow.js";
 import { combineIdenticalDataSources } from "./flowOptimizer.js";
 import InlineSource from "./sources/inlineSource.js";
 import UrlSource from "./sources/urlSource.js";
-import { makeParamMediatorProvider } from "./flowTestUtils.js";
+import { makeParamRuntimeProvider } from "./flowTestUtils.js";
 
 test("validateLinks() detects broken graph", () => {
     const root = new FlowNode();
@@ -135,7 +135,7 @@ describe("removeRedundantCloneTransforms", () => {
 
 /** @type {import("../view/view.js").default} */
 const viewStub = /** @type {any} */ (
-    Object.assign(makeParamMediatorProvider(), {
+    Object.assign(makeParamRuntimeProvider(), {
         getBaseUrl: () => "",
     })
 );

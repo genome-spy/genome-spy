@@ -196,7 +196,7 @@ export default class GenomeSpy {
     }
 
     #setupDpr() {
-        const dprSetter = this.viewRoot.paramMediator.allocateSetter(
+        const dprSetter = this.viewRoot.paramRuntime.allocateSetter(
             "devicePixelRatio",
             this.dpr
         );

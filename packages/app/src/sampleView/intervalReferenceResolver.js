@@ -38,7 +38,7 @@ export function resolveIntervalReference(root, intervalReference) {
         );
     }
 
-    const value = resolved.view.paramMediator.getValue(
+    const value = resolved.view.paramRuntime.getValue(
         intervalReference.selector.param
     );
     if (

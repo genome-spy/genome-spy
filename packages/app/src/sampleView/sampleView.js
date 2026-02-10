@@ -562,8 +562,9 @@ export default class SampleView extends ContainerView {
             this.spec.view
         );
 
-        this.#sampleHeightParam =
-            this.#gridChild.view.paramMediator.getSetter("height");
+        this.#sampleHeightParam = (value) => {
+            this.#gridChild.view.paramRuntime.setValue("height", value);
+        };
 
         // TODO: Hack the sample height to sidebar as well.
 
@@ -614,10 +615,12 @@ export default class SampleView extends ContainerView {
                 },
             }
         );
-        this.#scrollbarOpacitySetter =
-            this.#gridChild.scrollbars.vertical.paramMediator.getSetter(
-                "scrollbarOpacity"
+        this.#scrollbarOpacitySetter = (value) => {
+            this.#gridChild.scrollbars.vertical.paramRuntime.setValue(
+                "scrollbarOpacity",
+                value
             );
+        };
 
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
@@ -1076,7 +1079,7 @@ export default class SampleView extends ContainerView {
         const ancestors = this.#gridChild.view.getLayoutAncestors();
 
         for (const view of ancestors) {
-            for (const [name, param] of view.paramMediator.paramConfigs) {
+            for (const [name, param] of view.paramRuntime.paramConfigs) {
                 if (!("select" in param)) {
                     continue;
                 }
@@ -1090,7 +1093,7 @@ export default class SampleView extends ContainerView {
                     continue;
                 }
 
-                const selection = view.paramMediator.getValue(name);
+                const selection = view.paramRuntime.getValue(name);
                 if (selection && isActiveIntervalSelection(selection)) {
                     return {
                         selection,

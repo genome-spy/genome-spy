@@ -3,7 +3,7 @@ import fontMetadata from "../../fonts/Lato-Regular.json" with { type: "json" };
 import getMetrics from "../../fonts/bmFontMetrics.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
-import { isExprRef } from "../../view/paramMediator.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /**
  * Measures text length. This is mainly intended for strand arrows in gene annotations.
@@ -16,10 +16,10 @@ export default class MeasureTextTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").MeasureTextParams} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, paramMediatorProvider) {
-        super(params);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
@@ -32,15 +32,19 @@ export default class MeasureTextTransform extends Transform {
 
         // TODO: Refactor this into reusable code.
         if (isExprRef(params.fontSize)) {
-            const sizeExpr =
-                paramMediatorProvider.paramMediator.createExpression(
-                    params.fontSize.expr
-                );
+            const sizeExpr = paramRuntimeProvider.paramRuntime.watchExpression(
+                params.fontSize.expr,
+                () => {
+                    size = sizeExpr();
+                    this.repropagate();
+                },
+                {
+                    scopeOwned: false,
+                    registerDisposer: (disposer) =>
+                        this.registerDisposer(disposer),
+                }
+            );
             size = sizeExpr();
-            sizeExpr.addListener(() => {
-                size = sizeExpr();
-                this.repropagate();
-            });
         } else {
             size = params.fontSize;
         }

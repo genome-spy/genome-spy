@@ -6,10 +6,10 @@ export default class Transform extends FlowNode {
 
     /**
      * @param {import("../../spec/transform.js").TransformParamsBase} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} [paramMediatorProvider]
+     * @param {import("../flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params, paramMediatorProvider) {
-        super(paramMediatorProvider);
+    constructor(params, paramRuntimeProvider) {
+        super(paramRuntimeProvider);
         this.#label = params.type;
     }
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import Collector from "../collector.js";
 import SequenceSource from "./sequenceSource.js";
-import { makeParamMediatorProvider } from "../flowTestUtils.js";
+import { makeParamRuntimeProvider } from "../flowTestUtils.js";
 
 /**
  * @param {SequenceSource} source
@@ -17,7 +17,7 @@ async function collectSource(source) {
 
 describe("SequenceSource", () => {
     /** @type {import("../../view/view.js").default} */
-    const viewStub = /** @type {any} */ (makeParamMediatorProvider());
+    const viewStub = /** @type {any} */ (makeParamRuntimeProvider());
 
     test("generates a sequence", () =>
         expect(

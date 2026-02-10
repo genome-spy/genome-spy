@@ -1,4 +1,4 @@
-import { withoutExprRef } from "../../../view/paramMediator.js";
+import { withoutExprRef } from "../../../paramRuntime/paramUtils.js";
 import { debounce } from "../../../utils/debounce.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 

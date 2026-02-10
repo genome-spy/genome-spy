@@ -1,6 +1,6 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,
@@ -54,7 +54,7 @@ class FakeCollector {
 
 class FakeView {
     constructor() {
-        this.paramMediator = new ParamMediator();
+        this.paramRuntime = new ViewParamRuntime();
         this.explicitName = "root";
         this.spec = {};
     }
@@ -96,7 +96,7 @@ function createStore() {
 describe("ParamProvenanceBridge", () => {
     it("captures param changes into provenance", () => {
         const view = new FakeView();
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "threshold",
             value: 1,
             bind: { input: "range" },
@@ -127,7 +127,7 @@ describe("ParamProvenanceBridge", () => {
                 toComplex: (value) => ({ chrom: "chr1", pos: value }),
                 fromComplex: (value) => value,
             });
-            const setter = view.paramMediator.registerParam({
+            const setter = view.paramRuntime.registerParam({
                 name: "brush",
                 select: { type: "interval", encodings: ["x"] },
             });
@@ -165,7 +165,7 @@ describe("ParamProvenanceBridge", () => {
         vi.useFakeTimers();
         try {
             const view = new FakeView();
-            const setter = view.paramMediator.registerParam({
+            const setter = view.paramRuntime.registerParam({
                 name: "alpha",
                 value: 0,
                 bind: { input: "range" },
@@ -193,7 +193,7 @@ describe("ParamProvenanceBridge", () => {
             await flushMicrotasks();
 
             expect(dispatchSpy).toHaveBeenCalledTimes(2);
-            expect(view.paramMediator.getValue("alpha")).toBe(3);
+            expect(view.paramRuntime.getValue("alpha")).toBe(3);
             const entry =
                 store.getState().provenance.present.paramProvenance.entries[
                     makeParamSelectorKey({ scope: [], param: "alpha" })
@@ -206,7 +206,7 @@ describe("ParamProvenanceBridge", () => {
 
     it("applies stored param values to the mediator", async () => {
         const view = new FakeView();
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "alpha",
             value: 0,
             bind: { input: "range" },
@@ -229,13 +229,40 @@ describe("ParamProvenanceBridge", () => {
         // Non-obvious: bridge applies values on a microtask tick.
         await flushMicrotasks();
 
-        expect(view.paramMediator.getValue("alpha")).toBe(0.75);
+        expect(view.paramRuntime.getValue("alpha")).toBe(0.75);
+    });
+
+    it("whenApplied waits for queued provenance apply and propagation", async () => {
+        const view = new FakeView();
+        view.paramRuntime.registerParam({
+            name: "alpha",
+            value: 0,
+            bind: { input: "range" },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        const bridge = new ParamProvenanceBridge({
+            root: view,
+            store,
+            intentExecutor,
+        });
+
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "alpha" },
+            value: { type: "value", value: 0.5 },
+        });
+        store.dispatch(action);
+
+        await bridge.whenApplied();
+
+        expect(view.paramRuntime.getValue("alpha")).toBe(0.5);
     });
 
     it("serializes point selections using encoding.key", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point" },
         });
@@ -268,7 +295,7 @@ describe("ParamProvenanceBridge", () => {
         view.encoding = {
             key: [{ field: "sampleId" }, { field: "chrom" }, { field: "pos" }],
         };
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point", toggle: true },
         });
@@ -306,7 +333,7 @@ describe("ParamProvenanceBridge", () => {
             await import("../components/generic/messageDialog.js");
 
         const view = new FakeView();
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point" },
         });
@@ -344,7 +371,7 @@ describe("ParamProvenanceBridge", () => {
                 );
             });
 
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point", toggle: true },
         });
@@ -378,7 +405,7 @@ describe("ParamProvenanceBridge", () => {
 
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point", toggle: true },
         });
@@ -412,7 +439,7 @@ describe("ParamProvenanceBridge", () => {
 
         await flushMicrotasks();
 
-        const selection = view.paramMediator.getValue("selection");
+        const selection = view.paramRuntime.getValue("selection");
         expect(selection.data.size).toBe(1);
         expect(showMessageDialog).toHaveBeenCalled();
     });
@@ -424,7 +451,7 @@ describe("ParamProvenanceBridge", () => {
 
         const view = new FakeView();
         view.encoding = { key: { field: "name" } };
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point", toggle: true },
         });
@@ -472,7 +499,7 @@ describe("ParamProvenanceBridge", () => {
         view.encoding = {
             key: [{ field: "sampleId" }, { field: "chrom" }, { field: "pos" }],
         };
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point", toggle: true },
         });
@@ -510,7 +537,7 @@ describe("ParamProvenanceBridge", () => {
 
     it("restores interval selections from provenance entries", async () => {
         const view = new FakeView();
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "brush",
             select: { type: "interval", encodings: ["x"] },
         });
@@ -532,14 +559,14 @@ describe("ParamProvenanceBridge", () => {
 
         await flushMicrotasks();
 
-        const selection = view.paramMediator.getValue("brush");
+        const selection = view.paramRuntime.getValue("brush");
         expect(selection.intervals.x).toEqual([10, 20]);
     });
 
     it("skips clear actions when the selection is already empty", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point" },
         });
@@ -565,12 +592,12 @@ describe("ParamProvenanceBridge", () => {
     it("undoes when clearing the last selection action", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
-        const otherSetter = view.paramMediator.registerParam({
+        const otherSetter = view.paramRuntime.registerParam({
             name: "other",
             value: 1,
             bind: { input: "range" },
         });
-        const setter = view.paramMediator.registerParam({
+        const setter = view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point" },
         });
@@ -605,12 +632,12 @@ describe("ParamProvenanceBridge", () => {
         try {
             const view = new FakeView();
             view.encoding = { key: { field: "id" } };
-            view.paramMediator.registerParam({
+            view.paramRuntime.registerParam({
                 name: "other",
                 value: 1,
                 bind: { input: "range" },
             });
-            const setter = view.paramMediator.registerParam({
+            const setter = view.paramRuntime.registerParam({
                 name: "selection",
                 select: { type: "point" },
             });
@@ -660,7 +687,7 @@ describe("ParamProvenanceBridge", () => {
     it("reapplies selections when data becomes available", async () => {
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "selection",
             select: { type: "point" },
         });
@@ -688,18 +715,18 @@ describe("ParamProvenanceBridge", () => {
         );
 
         await flushMicrotasks();
-        expect(view.paramMediator.getValue("selection").data.size).toBe(0);
+        expect(view.paramRuntime.getValue("selection").data.size).toBe(0);
 
         collector.completed = true;
         collector.notify();
         await flushMicrotasks();
 
-        expect(view.paramMediator.getValue("selection").data.has(1)).toBe(true);
+        expect(view.paramRuntime.getValue("selection").data.has(1)).toBe(true);
     });
 
     it("does not dispatch new actions when applying provenance", async () => {
         const view = new FakeView();
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "alpha",
             value: 0,
             bind: { input: "range" },
@@ -723,6 +750,6 @@ describe("ParamProvenanceBridge", () => {
         await flushMicrotasks();
 
         expect(store.getState().provenance.past.length).toBe(0);
-        expect(view.paramMediator.getValue("alpha")).toBe(1);
+        expect(view.paramRuntime.getValue("alpha")).toBe(1);
     });
 });

@@ -35,17 +35,20 @@ describe("SelectionRect", () => {
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
-        /** @type {(listener: () => void) => void} */
-        const addListener = () => undefined;
-        /** @type {(listener: () => void) => void} */
-        const removeListener = () => undefined;
+        /** @type {() => void} */
+        let selectionListener;
+
+        /** @type {(listener: () => void) => () => void} */
+        const subscribe = (listener) => {
+            selectionListener = listener;
+            return () => undefined;
+        };
         /** @type {() => void} */
         const invalidate = () => undefined;
 
-        /** @type {import("../paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         const selectionExpr = Object.assign(() => selection, {
-            addListener,
-            removeListener,
+            subscribe,
             invalidate,
             identifier: () => "selection",
             fields: [],
@@ -77,7 +80,7 @@ describe("SelectionRect", () => {
             intervals: { x: [5, 6], y: [7, 8] },
         };
 
-        selectionRect._selectionListener();
+        selectionListener();
 
         expect(updateSpy).toHaveBeenCalledTimes(1);
         expect(updateSpy).toHaveBeenCalledWith([
@@ -107,18 +110,15 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
-        /** @type {(listener: () => void) => void} */
-        const addListener = () => undefined;
-        /** @type {(listener: () => void) => void} */
-        const removeListener = () => undefined;
+        /** @type {(listener: () => void) => () => void} */
+        const subscribe = () => () => undefined;
         /** @type {() => void} */
         const invalidate = () => undefined;
 
         const selectionExpr = Object.assign(
             () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
             {
-                addListener,
-                removeListener,
+                subscribe,
                 invalidate,
                 identifier: () => "selection",
                 fields: [],

@@ -22,7 +22,7 @@ describe("resolveIntervalReference", () => {
 
         resolveParamSelectorMock.mockReturnValue({
             view: {
-                paramMediator: {
+                paramRuntime: {
                     getValue: () => selection,
                 },
             },
@@ -53,7 +53,7 @@ describe("resolveIntervalReference", () => {
 
         resolveParamSelectorMock.mockReturnValue({
             view: {
-                paramMediator: {
+                paramRuntime: {
                     getValue: () => selection,
                 },
             },

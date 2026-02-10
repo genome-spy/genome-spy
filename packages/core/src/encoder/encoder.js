@@ -11,14 +11,14 @@ import { createConditionalAccessors } from "./accessor.js";
  *
  * @param {string} param
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {import("../view/paramMediator.js").default} paramMediator
+ * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {boolean} empty
  */
 // eslint-disable-next-line no-unused-vars
-function createSelectionPredicate(param, encoding, paramMediator, empty) {
+function createSelectionPredicate(param, encoding, paramRuntime, empty) {
     const selection =
         /** @type {import("../types/selectionTypes.js").Selection} */ (
-            paramMediator.findValue(param)
+            paramRuntime.findValue(param)
         );
     if (!selection) {
         throw new Error(`No selection parameter found: ${param}`);
@@ -51,7 +51,7 @@ function createSelectionPredicate(param, encoding, paramMediator, empty) {
         selection
     );
 
-    return paramMediator.createExpression(expr);
+    return paramRuntime.createExpression(expr);
 }
 
 /**
@@ -94,7 +94,7 @@ export default function createEncoders(unitView, encoding) {
             createConditionalAccessors(
                 typedChannel,
                 typedChannelDef,
-                unitView.paramMediator
+                unitView.paramRuntime
             ),
             scaleSource
         );

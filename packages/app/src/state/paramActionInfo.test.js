@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
@@ -21,8 +21,8 @@ class FakeView {
     /** @type {FakeView[]} */
     #children;
 
-    /** @type {ParamMediator} */
-    paramMediator;
+    /** @type {ViewParamRuntime} */
+    paramRuntime;
 
     /** @type {{ getScale: () => object }} */
     #scaleResolution;
@@ -41,7 +41,7 @@ class FakeView {
         this.spec = options.specName ? { name: options.specName } : undefined;
         this.#title = options.title;
         this.#children = options.children ? [...options.children] : [];
-        this.paramMediator = new ParamMediator();
+        this.paramRuntime = new ViewParamRuntime();
         this.#scaleResolution = { getScale: () => ({}) };
     }
 
@@ -93,7 +93,7 @@ function normalizeTitle(info) {
 describe("getParamActionInfo", () => {
     it("formats value param titles with a view label", () => {
         const view = new FakeView({ title: "Overview", explicitName: "root" });
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "threshold",
             value: 1,
             bind: { input: "range" },
@@ -112,7 +112,7 @@ describe("getParamActionInfo", () => {
 
     it("formats point selection titles for clear and multi selections", () => {
         const view = new FakeView({ explicitName: "points" });
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "selected",
             select: { type: "point", toggle: true },
         });
@@ -142,7 +142,7 @@ describe("getParamActionInfo", () => {
 
     it("formats interval selections with x and y ranges", () => {
         const view = new FakeView({ explicitName: "intervals" });
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "brush",
             select: { type: "interval", encodings: ["x", "y"] },
         });
@@ -166,7 +166,7 @@ describe("getParamActionInfo", () => {
     it("includes origin suffix when the origin view can be resolved", () => {
         const root = new FakeView();
         const view = new FakeView({ title: "Main", explicitName: "main" });
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "brush",
             select: { type: "interval", encodings: ["x"] },
         });
@@ -215,7 +215,7 @@ describe("getParamActionInfo", () => {
             explicitName: "ExplicitView",
             specName: "SpecName",
         });
-        view.paramMediator.registerParam({
+        view.paramRuntime.registerParam({
             name: "alpha",
             value: 0.2,
             bind: { input: "range" },

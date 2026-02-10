@@ -1,3 +1,7 @@
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -24,16 +28,38 @@ export default class TabixSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        super(view, paramsWithDefaults.channel);
+        const activatedParams = activateExprRefProps(
+            view.paramRuntime,
+            paramsWithDefaults,
+            (props) => {
+                if (
+                    props.has("url") ||
+                    props.has("indexUrl") ||
+                    props.has("addChrPrefix")
+                ) {
+                    this.#initialize().then(() => this.reloadLastDomain());
+                } else if (props.has("windowSize")) {
+                    this.reloadLastDomain();
+                }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
+        );
 
-        this.params = paramsWithDefaults;
+        super(view, activatedParams.channel);
 
-        if (!this.params.url) {
+        this.params = activatedParams;
+
+        if (!withoutExprRef(this.params.url)) {
             throw new Error("No URL provided for TabixSource");
         }
 
         this.setupDebouncing(this.params);
 
+        this.#initialize();
+    }
+
+    #initialize() {
         this.initializedPromise = new Promise((resolve, reject) => {
             Promise.all([
                 import("@gmod/tabix"),
@@ -42,16 +68,19 @@ export default class TabixSource extends SingleAxisWindowedSource {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
+                const url = withoutExprRef(this.params.url);
+                const indexUrl =
+                    withoutExprRef(this.params.indexUrl) ?? url + ".tbi";
+                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
+
                 this.#tbiIndex = new TabixIndexedFile({
-                    filehandle: withBase(this.params.url),
-                    tbiFilehandle: withBase(
-                        this.params.indexUrl ?? this.params.url + ".tbi"
-                    ),
+                    filehandle: withBase(url),
+                    tbiFilehandle: withBase(indexUrl),
                     renameRefSeqs:
-                        this.params.addChrPrefix === true
+                        addChrPrefix === true
                             ? (refSeq) => "chr" + refSeq
-                            : this.params.addChrPrefix
-                              ? (refSeq) => this.params.addChrPrefix + refSeq
+                            : addChrPrefix
+                              ? (refSeq) => addChrPrefix + refSeq
                               : undefined,
                 });
 
@@ -65,12 +94,14 @@ export default class TabixSource extends SingleAxisWindowedSource {
                     this.load();
                     this.setLoadingStatus(
                         "error",
-                        `${this.params.url}: ${e.message}`
+                        `${withoutExprRef(this.params.url)}: ${e.message}`
                     );
                     reject(e);
                 }
             });
         });
+
+        return this.initializedPromise;
     }
 
     /**

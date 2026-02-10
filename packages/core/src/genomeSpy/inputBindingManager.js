@@ -29,7 +29,7 @@ export default class InputBindingManager {
         const inputs = [];
 
         viewRoot.visit((view) => {
-            const mediator = view.paramMediator;
+            const mediator = view.paramRuntime;
             inputs.push(...createBindingInputs(mediator));
         });
         const ibc = this.#options.inputBindingContainer;

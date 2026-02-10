@@ -25,7 +25,7 @@ import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
-import { ExprRefFunction } from "../view/paramMediator.js";
+import { ExprRefFunction } from "../paramRuntime/types.js";
 
 export interface Accessor<T = Scalar> {
     (datum: Datum): T;

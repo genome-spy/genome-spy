@@ -88,7 +88,7 @@ export default class MergeSampleFacets extends FlowNode {
     }
 
     initialize() {
-        this.#sampleCountSetter = this.paramMediator.allocateSetter(
+        this.#sampleCountSetter = this.paramRuntime.allocateSetter(
             SAMPLE_COUNT_VARIABLE,
             0,
             true
@@ -115,14 +115,6 @@ export default class MergeSampleFacets extends FlowNode {
 
     get #shouldUpdate() {
         return this.view.isConfiguredVisible();
-    }
-
-    /**
-     * @returns {import("@genome-spy/core/view/paramMediator.js").default}
-     * @protected
-     */
-    get paramMediator() {
-        return this.view.paramMediator;
     }
 
     #getCollector() {

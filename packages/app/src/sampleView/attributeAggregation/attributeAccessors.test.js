@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { InternMap } from "internmap";
 
-import ParamMediator from "@genome-spy/core/view/paramMediator.js";
+import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "@genome-spy/core/encoder/accessor.js";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
 
@@ -44,13 +44,9 @@ function createView({
 
 describe("createViewAttributeAccessor", () => {
     test("treats equal x and x2 accessors as point features", () => {
-        const paramMediator = new ParamMediator(() => undefined);
-        const xAccessor = createAccessor("x", { field: "pos" }, paramMediator);
-        const x2Accessor = createAccessor(
-            "x2",
-            { field: "pos" },
-            paramMediator
-        );
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const x2Accessor = createAccessor("x2", { field: "pos" }, paramRuntime);
         const view = createView({
             data: [{ pos: 5, value: 10 }],
             xAccessor,
@@ -68,8 +64,8 @@ describe("createViewAttributeAccessor", () => {
     });
 
     test("resolves selection-backed intervals via param selector", () => {
-        const rootParamMediator = new ParamMediator(() => undefined);
-        const setBrush = rootParamMediator.registerParam({
+        const rootViewParamRuntime = new ViewParamRuntime(() => undefined);
+        const setBrush = rootViewParamRuntime.registerParam({
             name: "brush",
             select: { type: "interval", encodings: ["x"] },
         });
@@ -78,17 +74,13 @@ describe("createViewAttributeAccessor", () => {
         setBrush(brush);
 
         const root = {
-            paramMediator: rootParamMediator,
+            paramRuntime: rootViewParamRuntime,
             visit: (visitor) => visitor(root),
         };
 
-        const paramMediator = new ParamMediator(() => undefined);
-        const xAccessor = createAccessor("x", { field: "pos" }, paramMediator);
-        const x2Accessor = createAccessor(
-            "x2",
-            { field: "pos" },
-            paramMediator
-        );
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const x2Accessor = createAccessor("x2", { field: "pos" }, paramRuntime);
 
         const view = createView({
             data: [
@@ -114,24 +106,20 @@ describe("createViewAttributeAccessor", () => {
     });
 
     test("throws on accessor call for selection-backed intervals when selection is empty", () => {
-        const rootParamMediator = new ParamMediator(() => undefined);
-        rootParamMediator.registerParam({
+        const rootViewParamRuntime = new ViewParamRuntime(() => undefined);
+        rootViewParamRuntime.registerParam({
             name: "brush",
             select: { type: "interval", encodings: ["x"] },
         });
 
         const root = {
-            paramMediator: rootParamMediator,
+            paramRuntime: rootViewParamRuntime,
             visit: (visitor) => visitor(root),
         };
 
-        const paramMediator = new ParamMediator(() => undefined);
-        const xAccessor = createAccessor("x", { field: "pos" }, paramMediator);
-        const x2Accessor = createAccessor(
-            "x2",
-            { field: "pos" },
-            paramMediator
-        );
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const x2Accessor = createAccessor("x2", { field: "pos" }, paramRuntime);
 
         const view = createView({
             data: [{ pos: 4, value: 10 }],

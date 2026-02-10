@@ -54,6 +54,7 @@ export async function restoreBookmark(entry, app) {
                 );
             }
             await app.intentPipeline.submit(entry.actions);
+            await app.paramProvenanceBridge?.whenApplied();
         }
 
         const normalized = normalizeViewSettingsPayload(entry.viewSettings);

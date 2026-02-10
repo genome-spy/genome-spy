@@ -22,7 +22,7 @@ import {
     getDefaultParamValue,
     isSelectionParameter,
     isVariableParameter,
-} from "@genome-spy/core/view/paramMediator.js";
+} from "@genome-spy/core/paramRuntime/paramUtils.js";
 import { field } from "@genome-spy/core/utils/field.js";
 import throttle from "@genome-spy/core/utils/throttle.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
@@ -48,12 +48,12 @@ const THROTTLE_INTERVAL_MS = 150;
 
 export default class ParamProvenanceBridge {
     /**
-     * Bridges Core param state (ParamMediator) with App provenance.
+     * Bridges Core param state (param runtime) with App provenance.
      *
      * Rationale:
      * - Params live in the view hierarchy, not in Redux, so provenance needs a
      *   dedicated adapter to serialize param changes into actions and replay
-     *   them back into ParamMediators.
+     *   them back into the runtime.
      * - This keeps the Core lean while still allowing undo/redo and bookmarks
      *   to capture user-adjustable params (selection and bound inputs).
      * - Suppression is necessary to avoid feedback loops when replaying history.
@@ -107,6 +107,9 @@ export default class ParamProvenanceBridge {
     /** @type {Map<string, ((entry: BookmarkableParamEntry, value: ParamValue) => void) & { cancel: () => void }>} */
     #throttledDispatchers = new Map();
 
+    /** @type {Promise<void>} */
+    #lastApplyPromise = Promise.resolve();
+
     /**
      * @param {object} options
      * @param {View} options.root
@@ -148,12 +151,12 @@ export default class ParamProvenanceBridge {
     }
 
     /**
-     * Subscribes to ParamMediator changes and forwards them into provenance.
+     * Subscribes to param runtime changes and forwards them into provenance.
      */
     #registerParamListeners() {
         for (const entry of this.#entries) {
             const paramName = entry.selector.param;
-            const unsubscribe = entry.view.paramMediator.subscribe(
+            const unsubscribe = entry.view.paramRuntime.subscribe(
                 paramName,
                 () => {
                     this.#handleParamChange(entry);
@@ -199,7 +202,7 @@ export default class ParamProvenanceBridge {
         }
 
         const paramName = entry.selector.param;
-        const value = entry.view.paramMediator.getValue(paramName);
+        const value = entry.view.paramRuntime.getValue(paramName);
         if (value === undefined) {
             return;
         }
@@ -407,7 +410,7 @@ export default class ParamProvenanceBridge {
      * @returns {any}
      */
     #getDefaultValue(entry) {
-        return getDefaultParamValue(entry.param, entry.view.paramMediator);
+        return getDefaultParamValue(entry.param, entry.view.paramRuntime);
     }
 
     /**
@@ -569,47 +572,68 @@ export default class ParamProvenanceBridge {
     }
 
     /**
-     * Applies provenance entries to ParamMediators, falling back to defaults.
+     * Applies provenance entries to param runtime values, falling back to defaults.
      *
      * @param {Record<string, ParamProvenanceEntry>} entries
      */
     #applyProvenanceEntries(entries) {
         this.#suppressCapture = true;
         try {
-            const knownKeys = new Set(this.#entriesByKey.keys());
-            const unusedKeys = new Set(Object.keys(entries));
+            this.#root.paramRuntime.runInTransaction(() => {
+                const knownKeys = new Set(this.#entriesByKey.keys());
+                const unusedKeys = new Set(Object.keys(entries));
 
-            for (const entry of this.#entries) {
-                const selectorKey = makeParamSelectorKey(entry.selector);
-                unusedKeys.delete(selectorKey);
-                if (this.#unpersistableKeys.has(selectorKey)) {
-                    continue;
-                }
+                for (const entry of this.#entries) {
+                    const selectorKey = makeParamSelectorKey(entry.selector);
+                    unusedKeys.delete(selectorKey);
+                    if (this.#unpersistableKeys.has(selectorKey)) {
+                        continue;
+                    }
 
-                const storedEntry = entries[selectorKey];
-                const value = storedEntry
-                    ? this.#resolveStoredValue(entry, storedEntry)
-                    : this.#getDefaultValue(entry);
+                    const storedEntry = entries[selectorKey];
+                    const value = storedEntry
+                        ? this.#resolveStoredValue(entry, storedEntry)
+                        : this.#getDefaultValue(entry);
 
-                const setter = entry.view.paramMediator.getSetter(
-                    entry.selector.param
-                );
-                setter(value);
-            }
-
-            for (const key of unusedKeys) {
-                if (!knownKeys.has(key)) {
-                    const missing = entries[key];
-                    const selector = missing.selector;
-                    this.#warnMissingParamInScope(
-                        selector.param,
-                        selector.scope
+                    entry.view.paramRuntime.setValue(
+                        entry.selector.param,
+                        value
                     );
                 }
-            }
+
+                for (const key of unusedKeys) {
+                    if (!knownKeys.has(key)) {
+                        const missing = entries[key];
+                        const selector = missing.selector;
+                        this.#warnMissingParamInScope(
+                            selector.param,
+                            selector.scope
+                        );
+                    }
+                }
+            });
+
+            // Keep suppression active while deferred propagation is flushed.
+            this.#root.paramRuntime.flushNow();
+            this.#lastApplyPromise = this.#root.paramRuntime.whenPropagated();
         } finally {
             this.#suppressCapture = false;
         }
+    }
+
+    /**
+     * Resolves after the latest provenance apply pass has run and param
+     * propagation has settled.
+     *
+     * Sync barrier only: this does not wait for temporal/animation convergence.
+     *
+     * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
+     */
+    async whenApplied(options) {
+        // #applyProvenanceEntries is scheduled through queueMicrotask.
+        await Promise.resolve();
+        await this.#lastApplyPromise;
+        return this.#root.paramRuntime.whenPropagated(options);
     }
 
     /**

@@ -48,7 +48,10 @@ import coalesceProperties from "../utils/propertyCoalescer.js";
 import { isScalar } from "../utils/variableTools.js";
 import { InternMap } from "internmap";
 import ViewError from "../view/viewError.js";
-import { isExprRef, validateParameterName } from "../view/paramMediator.js";
+import {
+    isExprRef,
+    validateParameterName,
+} from "../paramRuntime/paramUtils.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import {
     isIntervalSelection,
@@ -94,11 +97,6 @@ export default class Mark {
      * @type {(() => void)[]}
      */
     #callAfterShaderCompilation = [];
-
-    /**
-     * @type {{expr: import("../view/paramMediator.js").ExprRefFunction, listener: () => void}[]}
-     */
-    #exprListeners = [];
 
     /**
      * @param {import("../view/unitView.js").default} unitView
@@ -304,13 +302,13 @@ export default class Mark {
         for (const key of props) {
             const prop = this.properties[key];
             if (prop && isExprRef(prop)) {
-                const fn = this.unitView.paramMediator.createExpression(
-                    prop.expr
+                const fn = this.unitView.paramRuntime.watchExpression(
+                    prop.expr,
+                    () => {
+                        this.updateGraphicsData();
+                        this.unitView.context.animator.requestRender();
+                    }
                 );
-                fn.addListener(() => {
-                    this.updateGraphicsData();
-                    this.unitView.context.animator.requestRender();
-                });
                 // @ts-ignore
                 if (!channels.includes(key)) {
                     Object.defineProperty(exprProps, key, {
@@ -487,8 +485,8 @@ export default class Mark {
 
         for (const predicate of paramPredicates) {
             const param = predicate.param;
-            const paramMediator = this.unitView.paramMediator;
-            const selection = paramMediator.findValue(param);
+            const paramRuntime = this.unitView.paramRuntime;
+            const selection = paramRuntime.findValue(param);
 
             // The selection is supposed to have an empty value at this point
             // so that we can figure out the type of the selection.
@@ -546,7 +544,7 @@ export default class Mark {
 
                     this.selectionTextureOps.push(() => {
                         // Texture is set in the prepareRender method
-                        const selection = paramMediator.getValue(param);
+                        const selection = paramRuntime.getValue(param);
                         const texture = selectionTextures.get(selection);
                         if (!texture) {
                             throw new Error(
@@ -569,11 +567,10 @@ export default class Mark {
                     // Create the initial texture
                     glHelper.createSelectionTexture(selection);
 
-                    const fn = paramMediator.createExpression(param);
-                    fn.addListener(() => {
+                    paramRuntime.watchExpression(param, () => {
                         const selection =
                             /** @type {import("../types/selectionTypes.js").MultiPointSelection} */ (
-                                fn(null)
+                                paramRuntime.getValue(param)
                             );
                         glHelper.createSelectionTexture(selection);
                         this.getContext().animator.requestRender();
@@ -1044,15 +1041,14 @@ export default class Mark {
         };
 
         if (isExprRef(propValue)) {
-            const fn = this.unitView.paramMediator.createExpression(
-                propValue.expr
+            /** @type {import("../paramRuntime/types.js").ExprRefFunction} */
+            let fn;
+            const set = () => setter(adjuster(fn(null)));
+            fn = this.unitView.paramRuntime.watchExpression(
+                propValue.expr,
+                set
             );
 
-            const set = () => setter(adjuster(fn(null)));
-
-            // Register a listener ...
-            fn.addListener(set);
-            this.#exprListeners.push({ expr: fn, listener: set });
             // ... and set the initial value
             set();
         } else {
@@ -1097,10 +1093,6 @@ export default class Mark {
     }
 
     dispose() {
-        for (const { expr, listener } of this.#exprListeners) {
-            expr.removeListener(listener);
-        }
-        this.#exprListeners.length = 0;
         this.deleteGraphicsData();
     }
 
@@ -1177,7 +1169,7 @@ export default class Mark {
     isPickingParticipant() {
         if (
             this.properties.tooltip === null &&
-            !this.unitView.paramMediator.hasPointSelections()
+            !this.unitView.paramRuntime.hasPointSelections()
         ) {
             // Disabled
             return false;

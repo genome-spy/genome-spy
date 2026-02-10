@@ -20,7 +20,7 @@ import {
 } from "@genome-spy/core/utils/trees.js";
 import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
-import { isVariableParameter } from "@genome-spy/core/view/paramMediator.js";
+import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
@@ -211,7 +211,7 @@ class ViewSettingsButton extends LitElement {
                     { type: "divider" },
                     {
                         customContent: html`<div class="gs-input-binding">
-                            ${createBindingInputs(view.paramMediator)}
+                            ${createBindingInputs(view.paramRuntime)}
                         </div>`,
                     }
                 );
@@ -361,7 +361,7 @@ const isVisibilityConfigurable = (/** @type {View} */ view) =>
     !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 const hasVariableBindings = (/** @type {View} */ view) =>
-    [...view.paramMediator.paramConfigs.values()].some(
+    [...view.paramRuntime.paramConfigs.values()].some(
         (param) => isVariableParameter(param) && param.bind
     );
 

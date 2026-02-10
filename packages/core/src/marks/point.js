@@ -10,7 +10,7 @@ import FRAGMENT_SHADER from "./point.fragment.glsl";
 import COMMON_SHADER from "./point.common.glsl";
 
 import Mark from "./mark.js";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 
@@ -58,11 +58,9 @@ export default class PointMark extends Mark {
         const szf = this.properties.semanticZoomFraction;
         if (szf != null) {
             if (isExprRef(szf)) {
-                const fn = this.unitView.paramMediator.createExpression(
-                    szf.expr
-                );
-                fn.addListener(() =>
-                    this.getContext().animator.requestRender()
+                const fn = this.unitView.paramRuntime.watchExpression(
+                    szf.expr,
+                    () => this.getContext().animator.requestRender()
                 );
                 this.#semanticZoomFraction = fn;
             } else {

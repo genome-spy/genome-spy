@@ -15,7 +15,7 @@ import {
 } from "../encoder/encoder.js";
 import { asArray, peek } from "../utils/arrayUtils.js";
 import { InternMap } from "internmap";
-import { isExprRef } from "../view/paramMediator.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import scaleNull from "../utils/scaleNull.js";
 import { cssColorToArray } from "./colorUtils.js";
 

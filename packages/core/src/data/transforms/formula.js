@@ -9,22 +9,28 @@ export default class FormulaTransform extends Transform {
     /**
      *
      * @param {import("../../spec/transform.js").FormulaParams} params
-     * @param {import("../flowNode.js").ParamMediatorProvider} paramMediatorProvider
+     * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
-    constructor(params, paramMediatorProvider) {
-        super(params, paramMediatorProvider);
+    constructor(params, paramRuntimeProvider) {
+        super(params, paramRuntimeProvider);
 
         this.params = params;
 
         this.as = params.as;
 
-        /** @type {import("../../view/paramMediator.js").ExprRefFunction} */
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this.fn = undefined;
     }
 
     initialize() {
-        this.fn = this.paramMediator.createExpression(this.params.expr);
-        this.fn.addListener(() => this.repropagate());
+        this.fn = this.paramRuntime.watchExpression(
+            this.params.expr,
+            () => this.repropagate(),
+            {
+                scopeOwned: false,
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            }
+        );
     }
 
     /**

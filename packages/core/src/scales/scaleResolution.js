@@ -132,7 +132,7 @@ export default class ScaleResolution {
         });
 
         this.#scaleManager = new ScaleInstanceManager({
-            getParamMediator: () => this.#firstMemberView.paramMediator,
+            getParamRuntime: () => this.#firstMemberView.paramRuntime,
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,
@@ -327,6 +327,12 @@ export default class ScaleResolution {
             }
             return removed && this.#members.size === 0;
         };
+    }
+
+    dispose() {
+        this.#listeners.domain.clear();
+        this.#listeners.range.clear();
+        this.#scaleManager.dispose();
     }
 
     #hasRenderedMember() {

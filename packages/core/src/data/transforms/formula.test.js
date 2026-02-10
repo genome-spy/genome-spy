@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
-import { makeParamMediatorProvider, processData } from "../flowTestUtils.js";
+import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
 import FormulaTransform from "./formula.js";
 
-test.todo("Implement stub for ParamMediator");
+test.todo("Implement stub for ParamRuntime");
 
 test("FormulaTransform", () => {
     const data = [{ a: 2 }, { a: 3 }];
@@ -13,7 +13,7 @@ test("FormulaTransform", () => {
             expr: "datum.a * 2",
             as: "b",
         },
-        makeParamMediatorProvider()
+        makeParamRuntimeProvider()
     );
 
     t.initialize();

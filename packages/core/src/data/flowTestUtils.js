@@ -1,14 +1,15 @@
-import ParamMediator from "../view/paramMediator.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import Collector from "./collector.js";
 import FlowNode from "./flowNode.js";
 
 /**
  *
- * @returns {import("./flowNode.js").ParamMediatorProvider}
+ * @returns {import("./flowNode.js").ParamRuntimeProvider}
  */
-export function makeParamMediatorProvider() {
+export function makeParamRuntimeProvider() {
+    const runtime = new ViewParamRuntime();
     return {
-        paramMediator: new ParamMediator(),
+        paramRuntime: runtime,
     };
 }
 
