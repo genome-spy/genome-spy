@@ -1,18 +1,4 @@
-/**
- * Validates that `name` is a legal JavaScript identifier for parameter access
- * in compiled expressions.
- *
- * @param {string} name
- */
-export function validateParamName(name) {
-    if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(name)) {
-        throw new Error(
-            "Invalid parameter name: " +
-                name +
-                ". Must be a valid JavaScript identifier."
-        );
-    }
-}
+import { validateParameterName } from "./paramUtils.js";
 
 /**
  * Runtime store for scoped parameter bindings.
@@ -115,7 +101,7 @@ export default class ParamStore {
      * @returns {R}
      */
     register(scopeId, name, ref) {
-        validateParamName(name);
+        validateParameterName(name);
         const scope = this.#scopes.get(scopeId);
         if (!scope) {
             throw new Error("Unknown scope: " + scopeId);
@@ -141,7 +127,7 @@ export default class ParamStore {
      * @returns {import("./types.js").ParamRef<T> | undefined}
      */
     resolve(scopeId, name) {
-        validateParamName(name);
+        validateParameterName(name);
 
         let currentScopeId = scopeId;
         while (currentScopeId) {
