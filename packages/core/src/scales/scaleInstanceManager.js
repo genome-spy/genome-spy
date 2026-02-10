@@ -167,6 +167,7 @@ export default class ScaleInstanceManager {
 
         const props = scale.props;
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
+        this.#rangeExprRefListeners.clear();
 
         const resolved = resolveRange({
             range: props.range,
