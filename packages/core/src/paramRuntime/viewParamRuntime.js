@@ -19,10 +19,10 @@ export {
 
 /**
  * A class that manages parameters and expressions.
- * Supports nesting and scoped parameters.
- *
- * TODO: The proposed JavaScript signals may provide a better way to implement this.
- * https://github.com/proposal-signals/proposal-signals
+ * Supports nesting and scoped parameters through a shared runtime graph.
+ * The architecture follows signal-graph ideas (explicit dependencies, batched
+ * propagation, deterministic scheduling) while keeping GenomeSpy-specific
+ * parameter and expression semantics.
  *
  * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, removeListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
@@ -269,7 +269,8 @@ export default class ViewParamRuntime {
         }
     }
 
-    // TODO: deallocateSetter
+    // Setter lifecycle is scope-owned: setters are dropped when the runtime scope
+    // is disposed. A standalone deallocation API is intentionally not exposed.
 
     /**
      * Parse expr and return a function that returns the value of the parameter.

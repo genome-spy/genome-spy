@@ -198,6 +198,10 @@ design patterns.
 - Params are managed per view in `ViewParamRuntime`
   (`packages/core/src/paramRuntime/viewParamRuntime.js`) backed by shared
   `ParamRuntime` internals.
+- Design inspiration comes from Vega’s reactive signal model (explicit
+  dependency-driven recomputation) and from fine-grained signal systems such as
+  Preact Signals (batched updates and localized subscriptions). GenomeSpy does
+  not embed those runtimes directly; it implements a purpose-built runtime.
 - Runtime internals (`packages/core/src/paramRuntime/`) split responsibilities
   across graph scheduling, scoped param storage, expression binding, and owner
   lifecycle disposal.
