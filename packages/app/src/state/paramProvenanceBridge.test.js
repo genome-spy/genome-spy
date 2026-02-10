@@ -1,6 +1,6 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
-import ParamMediator from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
+import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import {
     createIntervalSelection,
     createMultiPointSelection,
@@ -54,7 +54,7 @@ class FakeCollector {
 
 class FakeView {
     constructor() {
-        this.paramRuntime = new ParamMediator();
+        this.paramRuntime = new ViewParamRuntime();
         this.explicitName = "root";
         this.spec = {};
     }

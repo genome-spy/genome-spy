@@ -1,17 +1,17 @@
 import { describe, expect, test } from "vitest";
-import ParamMediator, {
+import ViewParamRuntime, {
     activateExprRefProps,
 } from "../paramRuntime/viewParamRuntime.js";
 
-describe("Single-level ParamMediator", () => {
+describe("Single-level ViewParamRuntime", () => {
     test("Trivial case", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", value: 42 });
         expect(pm.getValue("foo")).toBe(42);
     });
 
     test("Setter", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);
         expect(pm.getValue("foo")).toBe(42);
 
@@ -20,7 +20,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Subscribe notifies on value changes", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
 
         let calls = 0;
@@ -40,19 +40,19 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Expressions have access to parameters", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", value: 42 });
         const expr = pm.createExpression("foo + 1");
         expect(expr()).toBe(43);
     });
 
     test("Throws on an unknown parameter", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         expect(() => pm.createExpression("foo")).toThrow();
     });
 
     test("Listener on an expression gets called (only) when a parameter changes", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);
         const expr = pm.createExpression("foo + 1");
 
@@ -78,7 +78,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Passive parameter does not trigger listeners", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42, true);
         const expr = pm.createExpression("foo");
 
@@ -91,7 +91,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Expression invalidation", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);
         const expr = pm.createExpression("foo + 1");
 
@@ -110,7 +110,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Expression invalidation is instance-local", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 1);
         const exprA = pm.createExpression("foo + 1");
         const exprB = pm.createExpression("foo + 1");
@@ -136,7 +136,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Expression removeListener detaches a listener", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);
         const expr = pm.createExpression("foo + 1");
 
@@ -158,7 +158,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Expression parameter handles dependencies", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 42 });
         pm.registerParam({ name: "bar", expr: "foo + 1" });
         pm.registerParam({ name: "baz", expr: "bar + 2" });
@@ -175,7 +175,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Subscribe tracks expression parameter changes", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
         pm.registerParam({ name: "bar", expr: "foo + 1" });
 
@@ -191,7 +191,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Derived params are read-only from registerParam setter", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", value: 1 });
         const setter = pm.registerParam({ name: "bar", expr: "foo + 1" });
 
@@ -201,7 +201,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("inTransaction batches expression updates", async () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
         pm.registerParam({ name: "bar", expr: "foo + 1" });
 
@@ -225,14 +225,14 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("Throws if both value and expr are provided", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         expect(() =>
             pm.registerParam({ name: "foo", value: 42, expr: "bar" })
         ).toThrow();
     });
 
     test("dispose clears local scope and disables allocated setters", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
 
         expect(pm.getValue("foo")).toBe(1);
@@ -244,7 +244,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("watchExpression notifies on upstream changes", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
 
         let calls = 0;
@@ -262,7 +262,7 @@ describe("Single-level ParamMediator", () => {
     });
 
     test("watchExpression supports owner-bound disposer semantics", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
 
         /** @type {(() => void)[]} */
@@ -291,10 +291,10 @@ describe("Single-level ParamMediator", () => {
     });
 });
 
-describe("Nested ParamMediators", () => {
+describe("Nested ViewParamRuntimes", () => {
     test("Value in parent", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         parent.registerParam({ name: "foo", value: 42 });
         expect(parent.findValue("foo")).toBe(42);
@@ -302,8 +302,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("Value in child", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         child.registerParam({ name: "foo", value: 42 });
         expect(parent.findValue("foo")).toBeUndefined();
@@ -311,8 +311,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("Child overrides parent", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         parent.registerParam({ name: "foo", value: 1 });
         child.registerParam({ name: "foo", value: 2 });
@@ -322,8 +322,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("Expression", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         parent.registerParam({ name: "foo", value: 1 });
         child.registerParam({ name: "bar", value: 2 });
@@ -333,8 +333,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("Listener on an expression", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         const parentSetter = parent.allocateSetter("foo", 1);
         const childSetter = parent.allocateSetter("bar", 2);
@@ -354,8 +354,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("Pushing to outer parameter", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         parent.registerParam({ name: "foo", value: 1 });
         const childSetter = child.registerParam({ name: "foo", push: "outer" });
@@ -370,8 +370,8 @@ describe("Nested ParamMediators", () => {
     });
 
     test("watchExpression listener is detached when child scope is disposed", () => {
-        const parent = new ParamMediator();
-        const child = new ParamMediator(() => parent);
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
 
         const setter = parent.registerParam({ name: "foo", value: 1 });
         let calls = 0;
@@ -389,7 +389,7 @@ describe("Nested ParamMediators", () => {
 });
 
 test("activateExprRefProps", async () => {
-    const pm = new ParamMediator();
+    const pm = new ViewParamRuntime();
 
     const fooSetter = pm.registerParam({ name: "foo", value: 7 });
     const barSetter = pm.registerParam({ name: "bar", value: 11 });
@@ -437,7 +437,7 @@ test("activateExprRefProps", async () => {
 });
 
 test("activateExprRefProps registers disposer for expression listeners", async () => {
-    const pm = new ParamMediator();
+    const pm = new ViewParamRuntime();
     const fooSetter = pm.registerParam({ name: "foo", value: 1 });
 
     /** @type {(() => void)[]} */
@@ -470,19 +470,19 @@ test("activateExprRefProps registers disposer for expression listeners", async (
 
 describe("hasPointSelections()", () => {
     test("false if there are no point selections", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", value: 42 });
         expect(pm.hasPointSelections()).toBe(false);
     });
 
     test("true if there are point selections (1/2)", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", select: "point" });
         expect(pm.hasPointSelections()).toBe(true);
     });
 
     test("true if there are point selections (2/2)", () => {
-        const pm = new ParamMediator();
+        const pm = new ViewParamRuntime();
         pm.registerParam({ name: "foo", select: { type: "point" } });
         expect(pm.hasPointSelections()).toBe(true);
     });

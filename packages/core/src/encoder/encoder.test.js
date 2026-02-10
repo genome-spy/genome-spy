@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { createAccessor, createConditionalAccessors } from "./accessor.js";
-import ParamMediator from "../paramRuntime/viewParamRuntime.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import {
     createEncoder,
     createSimpleOrConditionalEncoder,
@@ -54,7 +54,7 @@ const datum = {
 };
 
 describe("Encoder", () => {
-    const pm = new ParamMediator();
+    const pm = new ViewParamRuntime();
     /** @type {Partial<Record<import("../spec/channel.js").Channel, import("../types/encoder.js").Encoder>>} */
     const e = Object.fromEntries(
         Object.entries(encoding).map(([channel, channelDef]) => {
@@ -96,7 +96,7 @@ describe("isNonMarkPropertyChannel", () => {
 
 // TODO: Refactor and fix conditional encoders
 describe.skip("Conditional encoder with a field and a conditional value", () => {
-    const pm = new ParamMediator();
+    const pm = new ViewParamRuntime();
     const setter = pm.allocateSetter("p", createSinglePointSelection(null));
 
     const e = createSimpleOrConditionalEncoder(

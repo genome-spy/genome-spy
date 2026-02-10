@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import ParamMediator from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
+import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
@@ -21,7 +21,7 @@ class FakeView {
     /** @type {FakeView[]} */
     #children;
 
-    /** @type {ParamMediator} */
+    /** @type {ViewParamRuntime} */
     paramRuntime;
 
     /** @type {{ getScale: () => object }} */
@@ -41,7 +41,7 @@ class FakeView {
         this.spec = options.specName ? { name: options.specName } : undefined;
         this.#title = options.title;
         this.#children = options.children ? [...options.children] : [];
-        this.paramRuntime = new ParamMediator();
+        this.paramRuntime = new ViewParamRuntime();
         this.#scaleResolution = { getScale: () => ({}) };
     }
 
