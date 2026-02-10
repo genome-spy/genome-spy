@@ -10,8 +10,7 @@ import {
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
- *   addListener: (listener: () => void) => void,
- *   removeListener: (listener: () => void) => void,
+ *   subscribe: (listener: () => void) => () => void,
  *   invalidate: () => void,
  *   identifier: () => string
  * }} ExprRefFunction
@@ -173,16 +172,13 @@ export function activateExprRefProps(
                           expressionListener,
                           {
                               scopeOwned: !registerDisposer,
+                              registerDisposer,
                           }
                       )
                     : paramRuntime.createExpression(value.expr);
                 if (!paramRuntime.watchExpression) {
-                    fn.addListener(expressionListener);
-                }
-                if (registerDisposer) {
-                    registerDisposer(() =>
-                        fn.removeListener(expressionListener)
-                    );
+                    const unsubscribe = fn.subscribe(expressionListener);
+                    registerDisposer?.(unsubscribe);
                 }
 
                 Object.defineProperty(activatedProps, key, {
@@ -216,8 +212,7 @@ export function activateExprRefProps(
  */
 export function makeConstantExprRef(value) {
     return Object.assign(() => value, {
-        addListener: () => /** @type {void} */ (undefined),
-        removeListener: () => /** @type {void} */ (undefined),
+        subscribe: () => () => /** @type {void} */ (undefined),
         invalidate: () => /** @type {void} */ (undefined),
         identifier: () => "constant",
         fields: [],

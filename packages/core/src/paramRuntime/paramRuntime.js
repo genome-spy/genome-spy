@@ -161,7 +161,7 @@ export default class ParamRuntime {
     /**
      * Creates an expression function bound to scope-based parameter resolution.
      *
-     * The returned expression supports listeners (`addListener/removeListener`)
+     * The returned expression supports subscriptions (`subscribe`)
      * and can be used by callers that need expression-level reactivity without
      * registering a named derived parameter.
      *

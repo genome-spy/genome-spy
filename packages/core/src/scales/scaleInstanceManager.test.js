@@ -36,8 +36,11 @@ describe("ScaleInstanceManager", () => {
         /** @type {(() => void) | undefined} */
         let listener;
         const expr = /** @type {any} */ (() => current);
-        expr.addListener = (/** @type {() => void} */ fn) => {
+        expr.subscribe = (/** @type {() => void} */ fn) => {
             listener = fn;
+            return () => {
+                listener = undefined;
+            };
         };
         expr.invalidate = /** @returns {void} */ () => undefined;
 
@@ -176,7 +179,10 @@ describe("ScaleInstanceManager", () => {
     test("dispose invalidates active range expressions", () => {
         const invalidate = vi.fn();
         const expr = /** @type {any} */ (() => 1);
-        expr.addListener = /** @returns {void} */ () => undefined;
+        expr.subscribe = (
+            /** @type {() => void} */
+            _listener
+        ) => /** @type {() => void} */ (() => undefined);
         expr.invalidate = invalidate;
 
         const manager = new ScaleInstanceManager({

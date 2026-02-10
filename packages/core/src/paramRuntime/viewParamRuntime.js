@@ -24,7 +24,7 @@ export {
  * propagation, deterministic scheduling) while keeping GenomeSpy-specific
  * parameter and expression semantics.
  *
- * @typedef {import("../utils/expression.js").ExpressionFunction & { addListener: (listener: () => void) => void, removeListener: (listener: () => void) => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
+ * @typedef {import("../utils/expression.js").ExpressionFunction & { subscribe: (listener: () => void) => () => void, invalidate: () => void, identifier: () => string}} ExprRefFunction
  */
 export default class ViewParamRuntime {
     /**
@@ -292,10 +292,7 @@ export default class ViewParamRuntime {
      */
     watchExpression(expr, listener, options = {}) {
         const fn = this.createExpression(expr);
-        fn.addListener(listener);
-        const dispose = () => {
-            fn.removeListener(listener);
-        };
+        const dispose = fn.subscribe(listener);
 
         if (options.scopeOwned ?? true) {
             this.#runtime.addScopeDisposer(this.#scopeId, dispose);

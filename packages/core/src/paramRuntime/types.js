@@ -16,8 +16,7 @@
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
- *   addListener: (listener: () => void) => void,
- *   removeListener: (listener: () => void) => void,
+ *   subscribe: (listener: () => void) => () => void,
  *   invalidate: () => void,
  *   identifier: () => string
  * }} ExprRefFunction

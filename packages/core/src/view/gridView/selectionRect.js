@@ -14,6 +14,9 @@ export default class SelectionRect extends LayerView {
     /** @type {() => void} */
     _selectionListener;
 
+    /** @type {() => void} */
+    _selectionUnsubscribe;
+
     /**
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
@@ -179,14 +182,16 @@ export default class SelectionRect extends LayerView {
             datasource.updateDynamicData(selectionToData(selection));
         };
 
-        selectionExpr.addListener(this._selectionListener);
+        this._selectionUnsubscribe = selectionExpr.subscribe(
+            this._selectionListener
+        );
     }
 
     /**
      * @override
      */
     dispose() {
-        this._selectionExpr.removeListener(this._selectionListener);
+        this._selectionUnsubscribe();
         super.dispose();
     }
 }

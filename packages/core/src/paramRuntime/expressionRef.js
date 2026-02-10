@@ -48,42 +48,35 @@ export function bindExpression(expr, resolve) {
         });
     }
 
-    /** @type {Map<() => void, (() => void)[]>} */
-    const listenerDisposers = new Map();
+    /** @type {Set<() => void>} */
+    const activeSubscriptions = new Set();
 
-    /**
-     * @param {() => void} listener
-     */
-    expression.addListener = (listener) => {
-        if (listenerDisposers.has(listener)) {
-            return;
-        }
-
+    expression.subscribe = (listener) => {
+        /** @type {(() => void)[]} */
         const disposers = [];
         for (const ref of refsForParams.values()) {
             disposers.push(ref.subscribe(listener));
         }
-        listenerDisposers.set(listener, disposers);
-    };
 
-    /**
-     * @param {() => void} listener
-     */
-    expression.removeListener = (listener) => {
-        const disposers = listenerDisposers.get(listener);
-        if (!disposers) {
-            return;
-        }
+        let active = true;
+        const unsubscribe = () => {
+            if (!active) {
+                return;
+            }
+            active = false;
+            activeSubscriptions.delete(unsubscribe);
+            disposers.forEach((dispose) => dispose());
+        };
+        activeSubscriptions.add(unsubscribe);
 
-        disposers.forEach((dispose) => dispose());
-        listenerDisposers.delete(listener);
+        return unsubscribe;
     };
 
     expression.invalidate = () => {
-        for (const disposers of listenerDisposers.values()) {
-            disposers.forEach((dispose) => dispose());
+        for (const unsubscribe of activeSubscriptions) {
+            unsubscribe();
         }
-        listenerDisposers.clear();
+        activeSubscriptions.clear();
     };
 
     // Include dependency identities to avoid collisions between structurally

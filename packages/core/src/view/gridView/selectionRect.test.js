@@ -35,17 +35,14 @@ describe("SelectionRect", () => {
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
-        /** @type {(listener: () => void) => void} */
-        const addListener = () => undefined;
-        /** @type {(listener: () => void) => void} */
-        const removeListener = () => undefined;
+        /** @type {(listener: () => void) => () => void} */
+        const subscribe = () => () => undefined;
         /** @type {() => void} */
         const invalidate = () => undefined;
 
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         const selectionExpr = Object.assign(() => selection, {
-            addListener,
-            removeListener,
+            subscribe,
             invalidate,
             identifier: () => "selection",
             fields: [],
@@ -107,18 +104,15 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
-        /** @type {(listener: () => void) => void} */
-        const addListener = () => undefined;
-        /** @type {(listener: () => void) => void} */
-        const removeListener = () => undefined;
+        /** @type {(listener: () => void) => () => void} */
+        const subscribe = () => () => undefined;
         /** @type {() => void} */
         const invalidate = () => undefined;
 
         const selectionExpr = Object.assign(
             () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
             {
-                addListener,
-                removeListener,
+                subscribe,
                 invalidate,
                 identifier: () => "selection",
                 fields: [],

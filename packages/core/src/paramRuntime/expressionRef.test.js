@@ -60,7 +60,7 @@ describe("bindExpression", () => {
             calls += 1;
         };
 
-        expression.addListener(listener);
+        expression.subscribe(listener);
         foo.set(3);
 
         expect(expression()).toBe(6);
@@ -82,10 +82,10 @@ describe("bindExpression", () => {
         let callsA = 0;
         let callsB = 0;
 
-        exprA.addListener(() => {
+        exprA.subscribe(() => {
             callsA += 1;
         });
-        exprB.addListener(() => {
+        exprB.subscribe(() => {
             callsB += 1;
         });
 

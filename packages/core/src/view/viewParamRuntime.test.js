@@ -59,7 +59,7 @@ describe("Single-level ViewParamRuntime", () => {
         let result;
         let calls = 0;
 
-        expr.addListener(() => {
+        expr.subscribe(() => {
             result = expr();
             calls++;
         });
@@ -84,7 +84,7 @@ describe("Single-level ViewParamRuntime", () => {
 
         let result = expr();
 
-        expr.addListener(() => (result = expr()));
+        expr.subscribe(() => (result = expr()));
 
         setter(50);
         expect(result).toBe(42);
@@ -98,7 +98,7 @@ describe("Single-level ViewParamRuntime", () => {
         let result = expr();
         expect(result).toBe(43);
 
-        expr.addListener(() => (result = expr()));
+        expr.subscribe(() => (result = expr()));
 
         setter(50);
         expect(result).toBe(51);
@@ -117,10 +117,10 @@ describe("Single-level ViewParamRuntime", () => {
 
         let callsA = 0;
         let callsB = 0;
-        exprA.addListener(() => {
+        exprA.subscribe(() => {
             callsA++;
         });
-        exprB.addListener(() => {
+        exprB.subscribe(() => {
             callsB++;
         });
 
@@ -135,7 +135,7 @@ describe("Single-level ViewParamRuntime", () => {
         expect(callsB).toBe(2);
     });
 
-    test("Expression removeListener detaches a listener", () => {
+    test("Expression subscription disposer detaches a listener", () => {
         const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);
         const expr = pm.createExpression("foo + 1");
@@ -146,12 +146,12 @@ describe("Single-level ViewParamRuntime", () => {
             calls++;
         };
 
-        expr.addListener(listener);
+        const unsubscribe = expr.subscribe(listener);
 
         setter(50);
         expect(calls).toBe(1);
 
-        expr.removeListener(listener);
+        unsubscribe();
 
         setter(60);
         expect(calls).toBe(1);
@@ -168,7 +168,7 @@ describe("Single-level ViewParamRuntime", () => {
         let result = expr();
         expect(result).toBe(45);
 
-        expr.addListener(() => (result = expr()));
+        expr.subscribe(() => (result = expr()));
 
         setter(52);
         expect(result).toBe(55);
@@ -342,7 +342,7 @@ describe("Nested ViewParamRuntimes", () => {
         const expr = child.createExpression("foo + bar");
 
         let result = expr();
-        expr.addListener(() => (result = expr()));
+        expr.subscribe(() => (result = expr()));
 
         expect(result).toBe(3);
 

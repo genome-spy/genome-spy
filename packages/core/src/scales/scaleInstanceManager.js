@@ -304,7 +304,7 @@ function resolveRange({ range, reverse, createExpression, registerExpr }) {
             expressions = range.map((elem) => {
                 if (isExprRef(elem)) {
                     const fn = createExpression(elem.expr);
-                    fn.addListener(listener);
+                    fn.subscribe(listener);
                     registerExpr(fn);
                     return () => fn(null);
                 }
