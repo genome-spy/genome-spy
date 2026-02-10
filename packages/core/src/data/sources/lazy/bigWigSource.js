@@ -33,13 +33,14 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             view.paramRuntime,
             paramsWithDefaults,
             (props) => {
-                if (props.includes("url")) {
+                if (props.has("url")) {
                     this.#initialize().then(() => this.reloadLastDomain());
-                } else if (props.includes("pixelsPerBin")) {
+                } else if (props.has("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
             },
-            (disposer) => this.registerDisposer(disposer)
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         super(view, activatedParams.channel);

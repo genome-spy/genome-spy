@@ -433,11 +433,11 @@ test("activateExprRefProps", async () => {
         c: { expr: "bar" },
     };
 
-    /** @type {string[]} */
-    let altered = [];
+    /** @type {Set<string>} */
+    let altered = new Set();
 
     const activatedProps = activateExprRefProps(pm, props, (props) => {
-        altered = props;
+        altered = new Set(props);
     });
 
     expect(activatedProps).toEqual({
@@ -451,7 +451,7 @@ test("activateExprRefProps", async () => {
     // Let the scheduled microtask call the listener
     await Promise.resolve();
 
-    expect(altered).toEqual(["b"]);
+    expect(altered).toEqual(new Set(["b"]));
 
     fooSetter(1);
     barSetter(2);
@@ -459,7 +459,7 @@ test("activateExprRefProps", async () => {
     // Let the scheduled microtask call the listener
     await Promise.resolve();
 
-    expect(altered).toEqual(["b", "c"]);
+    expect(altered).toEqual(new Set(["b", "c"]));
 
     expect(activatedProps).toEqual({
         a: 42,
@@ -498,6 +498,42 @@ test("activateExprRefProps registers disposer for expression listeners", async (
     fooSetter(3);
     await Promise.resolve();
     expect(calls).toBe(1);
+});
+
+test("activateExprRefProps supports propagated batching and deduped keys", async () => {
+    const pm = new ViewParamRuntime();
+    const fooSetter = pm.registerParam({ name: "foo", value: 1 });
+    const barSetter = pm.registerParam({ name: "bar", value: 1 });
+
+    let calls = 0;
+    /** @type {Set<string>} */
+    let altered = new Set();
+
+    activateExprRefProps(
+        pm,
+        {
+            a: { expr: "foo" },
+            b: { expr: "bar" },
+        },
+        (props) => {
+            calls += 1;
+            altered = new Set(props);
+        },
+        undefined,
+        { batchMode: "whenPropagated" }
+    );
+
+    pm.runInTransaction(() => {
+        fooSetter(2);
+        barSetter(3);
+        fooSetter(4);
+    });
+
+    await pm.whenPropagated();
+    await Promise.resolve();
+
+    expect(calls).toBe(1);
+    expect(altered).toEqual(new Set(["a", "b"]));
 });
 
 describe("hasPointSelections()", () => {

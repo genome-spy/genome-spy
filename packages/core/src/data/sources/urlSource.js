@@ -27,7 +27,8 @@ export default class UrlSource extends DataSource {
             view.paramRuntime,
             params,
             () => this.load(),
-            (disposer) => this.registerDisposer(disposer)
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         this.baseUrl = view?.getBaseUrl();

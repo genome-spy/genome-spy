@@ -133,10 +133,11 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction }} paramRuntime
+ * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction, whenPropagated?: () => Promise<void> }} paramRuntime
  * @param {T} props The properties object
- * @param {(props: (keyof T)[]) => void} [listener] Listener to be called when any of the expressions change
+ * @param {(props: ReadonlySet<keyof T>) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
+ * @param {{ batchMode?: "microtask" | "whenPropagated" }} [options]
  * @returns T
  * @template {Record<string, any | import("../spec/parameter.js").ExprRef>} T
  */
@@ -144,20 +145,43 @@ export function activateExprRefProps(
     paramRuntime,
     props,
     listener,
-    registerDisposer
+    registerDisposer,
+    options = {}
 ) {
     /** @type {Record<string, any | import("../spec/parameter.js").ExprRef>} */
     const activatedProps = { ...props };
 
-    /** @type {(keyof T)[]} */
-    const alteredProps = [];
+    /** @type {Set<keyof T>} */
+    const alteredProps = new Set();
+
+    let scheduled = false;
+    const batchMode = options.batchMode ?? "microtask";
+
+    const flushChanges = () => {
+        if (!listener || alteredProps.size === 0) {
+            scheduled = false;
+            return;
+        }
+
+        const changedProps = new Set(alteredProps);
+        alteredProps.clear();
+        scheduled = false;
+        listener(changedProps);
+    };
 
     const batchPropertyChange = (/** @type {keyof T} */ prop) => {
-        alteredProps.push(prop);
-        if (alteredProps.length === 1) {
+        alteredProps.add(prop);
+        if (!scheduled) {
+            scheduled = true;
             queueMicrotask(() => {
-                listener(alteredProps.slice());
-                alteredProps.length = 0;
+                if (
+                    batchMode == "whenPropagated" &&
+                    paramRuntime.whenPropagated
+                ) {
+                    paramRuntime.whenPropagated().then(flushChanges);
+                } else {
+                    flushChanges();
+                }
             });
         }
     };

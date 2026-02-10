@@ -25,7 +25,8 @@ export default class SequenceSource extends DataSource {
             view.paramRuntime,
             params.sequence,
             () => this.loadSynchronously(),
-            (disposer) => this.registerDisposer(disposer)
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         if (!("start" in this.sequence)) {

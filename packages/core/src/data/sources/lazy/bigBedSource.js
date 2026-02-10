@@ -33,13 +33,14 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             view.paramRuntime,
             paramsWithDefaults,
             (props) => {
-                if (props.includes("url")) {
+                if (props.has("url")) {
                     this.#initialize().then(() => this.reloadLastDomain());
-                } else if (props.includes("windowSize")) {
+                } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
             },
-            (disposer) => this.registerDisposer(disposer)
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
         );
 
         super(view, activatedParams.channel);
