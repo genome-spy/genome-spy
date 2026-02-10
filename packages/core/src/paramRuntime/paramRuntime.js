@@ -13,6 +13,17 @@ import { bindExpression } from "./expressionRef.js";
  *
  * Most Core call sites should use this class (or `ViewParamRuntime`) instead
  * of interacting with `GraphRuntime` directly.
+ *
+ * Scope semantics used by this runtime:
+ * 1. A scope is a runtime-only identity (`ScopeId`) with a parent pointer.
+ * 2. Parameters are registered into exactly one scope.
+ * 3. Name resolution is lexical/nearest-first: local scope, then parent chain.
+ * 4. Shadowing is allowed across scopes (same param name in parent/child).
+ * 5. Duplicate names are rejected within a single scope.
+ * 6. `disposeScope` clears local bindings and owner resources while preserving
+ *    scope-chain structure for descendants that still resolve through parents.
+ *
+ * @typedef {string} ScopeId
  */
 export default class ParamRuntime {
     #lifecycleRegistry = new LifecycleRegistry();
@@ -29,8 +40,8 @@ export default class ParamRuntime {
      * If `parentScope` is provided, name resolution in this scope falls back to
      * the parent chain.
      *
-     * @param {string} [parentScope]
-     * @returns {string}
+     * @param {ScopeId} [parentScope]
+     * @returns {ScopeId}
      */
     createScope(parentScope) {
         const ownerId = this.#lifecycleRegistry.createOwner(
@@ -46,9 +57,12 @@ export default class ParamRuntime {
 
     /**
      * Disposes all runtime resources owned by the scope and clears the scope's
-     * parameter bindings.
+     * local parameter bindings.
      *
-     * @param {string} scope
+     * Descendant scopes remain valid and continue resolving through their own
+     * parent chains.
+     *
+     * @param {ScopeId} scope
      */
     disposeScope(scope) {
         const ownerId = this.#paramStore.getOwnerId(scope);
@@ -59,7 +73,9 @@ export default class ParamRuntime {
     /**
      * Registers a disposer that is bound to the scope lifecycle.
      *
-     * @param {string} scope
+     * The disposer is called when `disposeScope(scope)` is executed.
+     *
+     * @param {ScopeId} scope
      * @param {() => void} disposer
      */
     addScopeDisposer(scope, disposer) {
@@ -71,7 +87,7 @@ export default class ParamRuntime {
      * Registers a writable base parameter in `scope`.
      *
      * @template T
-     * @param {string} scope
+     * @param {ScopeId} scope
      * @param {string} name
      * @param {T} initial
      * @param {{ notify?: boolean }} [options]
@@ -96,7 +112,7 @@ export default class ParamRuntime {
      * "selection"` for downstream handling.
      *
      * @template T
-     * @param {string} scope
+     * @param {ScopeId} scope
      * @param {string} name
      * @param {T} initial
      * @param {{ notify?: boolean }} [options]
@@ -121,7 +137,7 @@ export default class ParamRuntime {
      * the graph runtime when dependencies change.
      *
      * @template T
-     * @param {string} scope
+     * @param {ScopeId} scope
      * @param {string} name
      * @param {string} expr
      * @returns {import("./types.js").ParamRef<T>}
@@ -149,7 +165,7 @@ export default class ParamRuntime {
      * and can be used by callers that need expression-level reactivity without
      * registering a named derived parameter.
      *
-     * @param {string} scope
+     * @param {ScopeId} scope
      * @param {string} expr
      * @returns {import("./types.js").ExprRefFunction}
      */
@@ -162,9 +178,10 @@ export default class ParamRuntime {
 
     /**
      * Resolves a parameter by name from `scope`, searching parent scopes as needed.
+     * Returns the nearest matching binding, if any.
      *
      * @template T
-     * @param {string} scope
+     * @param {ScopeId} scope
      * @param {string} name
      * @returns {import("./types.js").ParamRef<T> | undefined}
      */

@@ -207,6 +207,14 @@ design patterns.
   lifecycle disposal.
 - DAG propagation is transaction-aware (`runInTransaction`) and exposes a sync
   barrier (`whenPropagated`) for deterministic post-update coordination.
+- Scope model:
+  - Runtime param scopes are internal `ScopeId` nodes created per
+    `ViewParamRuntime` and chained by `dataParent` ancestry.
+  - Param resolution is lexical (nearest scope first, then parent chain), so
+    child scopes can shadow parent param names.
+  - Selector/import scopes (used by view/param selectors and provenance keys)
+    are a separate addressing mechanism and are not used for runtime param
+    value resolution.
 - Expressions are parsed/compiled using `vega-expression` and bound to param
   values via generated accessors.
 - Expression changes trigger:
