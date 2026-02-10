@@ -155,9 +155,22 @@ export function activateExprRefProps(
     const alteredProps = new Set();
 
     let scheduled = false;
+    let cancelled = false;
     const batchMode = options.batchMode ?? "microtask";
 
+    const cancel = () => {
+        cancelled = true;
+        alteredProps.clear();
+        scheduled = false;
+    };
+
+    registerDisposer?.(cancel);
+
     const flushChanges = () => {
+        if (cancelled) {
+            return;
+        }
+
         if (!listener || alteredProps.size === 0) {
             scheduled = false;
             return;
@@ -170,15 +183,28 @@ export function activateExprRefProps(
     };
 
     const batchPropertyChange = (/** @type {keyof T} */ prop) => {
+        if (cancelled) {
+            return;
+        }
+
         alteredProps.add(prop);
         if (!scheduled) {
             scheduled = true;
             queueMicrotask(() => {
+                if (cancelled) {
+                    return;
+                }
+
                 if (
                     batchMode == "whenPropagated" &&
                     paramRuntime.whenPropagated
                 ) {
-                    paramRuntime.whenPropagated().then(flushChanges);
+                    paramRuntime
+                        .whenPropagated()
+                        .then(flushChanges)
+                        .catch(() => {
+                            flushChanges();
+                        });
                 } else {
                     flushChanges();
                 }

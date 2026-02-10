@@ -487,7 +487,7 @@ test("activateExprRefProps registers disposer for expression listeners", async (
         (disposer) => disposers.push(disposer)
     );
 
-    expect(disposers.length).toBe(1);
+    expect(disposers.length).toBe(2);
 
     fooSetter(2);
     await Promise.resolve();
@@ -498,6 +498,82 @@ test("activateExprRefProps registers disposer for expression listeners", async (
     fooSetter(3);
     await Promise.resolve();
     expect(calls).toBe(1);
+});
+
+test("activateExprRefProps does not notify after disposer before flush", async () => {
+    const pm = new ViewParamRuntime();
+    const fooSetter = pm.registerParam({ name: "foo", value: 1 });
+
+    /** @type {(() => void)[]} */
+    const disposers = [];
+    let calls = 0;
+
+    activateExprRefProps(
+        pm,
+        {
+            value: { expr: "foo" },
+        },
+        () => {
+            calls += 1;
+        },
+        (disposer) => disposers.push(disposer)
+    );
+
+    fooSetter(2);
+    disposers.forEach((dispose) => dispose());
+    await Promise.resolve();
+
+    expect(calls).toBe(0);
+});
+
+test("activateExprRefProps falls back to flush when whenPropagated rejects", async () => {
+    /** @type {Set<() => void>} */
+    const listeners = new Set();
+
+    /** @type {import("../paramRuntime/types.js").ExprRefFunction} */
+    const expression = Object.assign(() => 1, {
+        subscribe: (
+            /** @type {() => void} */
+            listener
+        ) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        invalidate: () => /** @type {void} */ (undefined),
+        identifier: () => "expr",
+        fields: [],
+        globals: [],
+        code: "expr",
+    });
+
+    /** @type {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, whenPropagated: () => Promise<void> }} */
+    const runtime = {
+        createExpression: () => expression,
+        whenPropagated: () => Promise.reject(new Error("boom")),
+    };
+
+    let calls = 0;
+    /** @type {Set<string>} */
+    let altered = new Set();
+
+    activateExprRefProps(
+        runtime,
+        {
+            value: { expr: "foo" },
+        },
+        (props) => {
+            calls += 1;
+            altered = new Set(props);
+        },
+        undefined,
+        { batchMode: "whenPropagated" }
+    );
+
+    listeners.forEach((listener) => listener());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(calls).toBe(1);
+    expect(altered).toEqual(new Set(["value"]));
 });
 
 test("activateExprRefProps supports propagated batching and deduped keys", async () => {
