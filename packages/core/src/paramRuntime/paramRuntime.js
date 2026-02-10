@@ -4,7 +4,15 @@ import ParamStore from "./paramStore.js";
 import { bindExpression } from "./expressionRef.js";
 
 /**
- * New parameter runtime facade for Core internals.
+ * Core-facing parameter runtime facade.
+ *
+ * `ParamRuntime` composes three internal subsystems:
+ * 1. `ParamStore` for scoped name resolution (`scope` + `name` -> ref).
+ * 2. `GraphRuntime` for reactive propagation and batching.
+ * 3. `LifecycleRegistry` for owner-bound teardown.
+ *
+ * Most Core call sites should use this class (or `ViewParamRuntime`) instead
+ * of interacting with `GraphRuntime` directly.
  */
 export default class ParamRuntime {
     #lifecycleRegistry = new LifecycleRegistry();
@@ -16,7 +24,13 @@ export default class ParamRuntime {
     #paramStore = new ParamStore();
 
     /**
+     * Creates a new parameter scope.
+     *
+     * If `parentScope` is provided, name resolution in this scope falls back to
+     * the parent chain.
+     *
      * @param {string} [parentScope]
+     * @returns {string}
      */
     createScope(parentScope) {
         const ownerId = this.#lifecycleRegistry.createOwner(
@@ -54,6 +68,8 @@ export default class ParamRuntime {
     }
 
     /**
+     * Registers a writable base parameter in `scope`.
+     *
      * @template T
      * @param {string} scope
      * @param {string} name
@@ -74,6 +90,11 @@ export default class ParamRuntime {
     }
 
     /**
+     * Registers a writable selection parameter in `scope`.
+     *
+     * Selection params are writable like base params but carry `kind:
+     * "selection"` for downstream handling.
+     *
      * @template T
      * @param {string} scope
      * @param {string} name
@@ -94,6 +115,11 @@ export default class ParamRuntime {
     }
 
     /**
+     * Registers a derived read-only parameter in `scope`.
+     *
+     * The expression is bound to current scope resolution and re-evaluated by
+     * the graph runtime when dependencies change.
+     *
      * @template T
      * @param {string} scope
      * @param {string} name
@@ -117,6 +143,12 @@ export default class ParamRuntime {
     }
 
     /**
+     * Creates an expression function bound to scope-based parameter resolution.
+     *
+     * The returned expression supports listeners (`addListener/removeListener`)
+     * and can be used by callers that need expression-level reactivity without
+     * registering a named derived parameter.
+     *
      * @param {string} scope
      * @param {string} expr
      * @returns {import("./types.js").ExprRefFunction}
@@ -129,6 +161,8 @@ export default class ParamRuntime {
     }
 
     /**
+     * Resolves a parameter by name from `scope`, searching parent scopes as needed.
+     *
      * @template T
      * @param {string} scope
      * @param {string} name
@@ -139,6 +173,11 @@ export default class ParamRuntime {
     }
 
     /**
+     * Runs a transactional update against the underlying graph runtime.
+     *
+     * Multiple writes inside `fn` are batched and propagated after the
+     * outermost transaction exits.
+     *
      * @template T
      * @param {() => T} fn
      * @returns {T}
@@ -147,12 +186,18 @@ export default class ParamRuntime {
         return this.#graphRuntime.runInTransaction(fn);
     }
 
+    /**
+     * Forces immediate synchronous propagation of currently queued graph work.
+     */
     flushNow() {
         this.#graphRuntime.flushNow();
     }
 
     /**
+     * Resolves when propagation/effects have settled in the graph runtime.
+     *
      * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
+     * @returns {Promise<void>}
      */
     whenPropagated(options) {
         return this.#graphRuntime.whenPropagated(options);
