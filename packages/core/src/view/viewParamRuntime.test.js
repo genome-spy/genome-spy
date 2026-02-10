@@ -369,6 +369,18 @@ describe("Nested ViewParamRuntimes", () => {
         expect(child.findValue("foo")).toBe(2);
     });
 
+    test("Pushing to outer parameter rejects duplicate registration in child scope", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+        child.registerParam({ name: "foo", push: "outer" });
+
+        expect(() =>
+            child.registerParam({ name: "foo", push: "outer" })
+        ).toThrow('Parameter "foo" already registered in this scope.');
+    });
+
     test("watchExpression listener is detached when child scope is disposed", () => {
         const parent = new ViewParamRuntime();
         const child = new ViewParamRuntime(() => parent);

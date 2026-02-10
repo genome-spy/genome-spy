@@ -83,11 +83,26 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Registers a parameter definition into this runtime scope.
+     *
+     * Returns a writable setter for writable parameters (`value`, `select`,
+     * `push: "outer"`). For derived (`expr`) parameters, the returned setter
+     * throws.
+     *
+     * A parameter name can be registered only once per runtime scope.
+     *
      * @param {Parameter} param
      * @returns {ParameterSetter}
      */
     registerParam(param) {
         const name = param.name;
+        validateParameterName(name);
+
+        if (this.#paramConfigs.has(name)) {
+            throw new Error(
+                'Parameter "' + name + '" already registered in this scope.'
+            );
+        }
 
         if ("value" in param && "expr" in param) {
             throw new Error(
