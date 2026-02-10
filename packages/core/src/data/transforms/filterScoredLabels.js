@@ -51,13 +51,18 @@ export default class FilterScoredLabelsTransform extends Transform {
         this.schedule = () => view.context.animator.requestTransition(callback);
 
         // Propagate when the domain changes
-        this.resolution.addEventListener("domain", (scale) => this.schedule());
+        const domainListener = () => this.schedule();
+        this.resolution.addEventListener("domain", domainListener);
+        this.registerDisposer(() =>
+            this.resolution.removeEventListener("domain", domainListener)
+        );
 
-        // Propagate when layout changes. Abusing a "private" method.
-        // TODO: Provide another attachment point, in view context for example
-        view._addBroadcastHandler("layoutComputed", () => this.schedule());
-
-        // TODO: Remove observers when this FlowNode is thrown away.
+        // Propagate when layout changes.
+        const removeLayoutListener = view._addBroadcastHandler(
+            "layoutComputed",
+            () => this.schedule()
+        );
+        this.registerDisposer(removeLayoutListener);
     }
 
     complete() {

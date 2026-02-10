@@ -511,6 +511,7 @@ export default class View {
      *
      * @param {string} type
      * @param {function(BroadcastMessage):void} handler
+     * @returns {() => void}
      */
     _addBroadcastHandler(type, handler) {
         let handlers = this.#broadcastHandlers[type];
@@ -519,6 +520,18 @@ export default class View {
             this.#broadcastHandlers[type] = handlers;
         }
         handlers.push(handler);
+
+        return () => {
+            const currentHandlers = this.#broadcastHandlers[type];
+            if (!currentHandlers) {
+                return;
+            }
+
+            const index = currentHandlers.indexOf(handler);
+            if (index >= 0) {
+                currentHandlers.splice(index, 1);
+            }
+        };
     }
 
     /**
