@@ -30,6 +30,17 @@ export default class ViewParamRuntime {
     /**
      * @typedef {import("../spec/parameter.js").Parameter} Parameter
      * @typedef {(value: any) => void} ParameterSetter
+     *
+     * @typedef {object} WatchExpressionOptions
+     * @prop {boolean} [scopeOwned=true]
+     *      Whether the subscription lifecycle is owned by this runtime scope.
+     *      When true, the listener is unsubscribed automatically during
+     *      `dispose()` via scope disposal. Set to false when another owner
+     *      (for example a `View` disposer registry) controls teardown.
+     * @prop {(disposer: () => void) => void} [registerDisposer]
+     *      Optional external disposer registration hook. When provided, the
+     *      unsubscribe callback is passed to this hook in addition to any
+     *      scope-owned registration.
      */
 
     /** @type {ParamRuntime} */
@@ -283,11 +294,19 @@ export default class ViewParamRuntime {
 
     /**
      * Creates an expression and subscribes a listener that is automatically
-     * removed when this runtime scope is disposed.
+     * removed according to `options` lifecycle ownership.
+     *
+     * Lifecycle semantics:
+     * 1. `scopeOwned: true` (default): unsubscribe is bound to runtime scope
+     *    disposal (`ViewParamRuntime.dispose()`).
+     * 2. `scopeOwned: false`: caller must own teardown, typically via
+     *    `registerDisposer` or by storing and calling the returned unsubscribe.
+     * 3. `registerDisposer` can be used regardless of `scopeOwned` to bind the
+     *    same unsubscribe to another lifecycle owner.
      *
      * @param {string} expr
      * @param {() => void} listener
-     * @param {{ scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }} [options]
+     * @param {WatchExpressionOptions} [options]
      * @returns {ExprRefFunction}
      */
     watchExpression(expr, listener, options = {}) {
