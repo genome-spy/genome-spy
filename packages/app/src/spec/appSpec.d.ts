@@ -1,4 +1,5 @@
-import { RootSpec } from "@genome-spy/core/spec/root.js";
+import { RootConfig } from "@genome-spy/core/spec/root.js";
+import { AppViewSpec } from "./view.js";
 
 export interface RemoteBookmarkConfig {
     url: string;
@@ -39,4 +40,4 @@ interface AppRootConfig {
     bookmarks?: BookmarkConfig;
 }
 
-export type AppRootSpec = RootSpec & AppRootConfig;
+export type AppRootSpec = AppViewSpec & RootConfig & AppRootConfig;

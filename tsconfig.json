@@ -2,6 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@genome-spy/app": ["packages/app/src"],
+      "@genome-spy/app/*": ["packages/app/src/*"],
+      "@genome-spy/app/schema.json": ["packages/app/dist/schema.json"],
       "@genome-spy/core": ["packages/core/src"],
       "@genome-spy/core/*": ["packages/core/src/*"],
       "@genome-spy/core/schema.json": ["packages/core/dist/schema.json"]
@@ -18,6 +21,10 @@
     "types": [],
     "skipLibCheck": false
   },
-  "include": ["packages/*/src", "packages/core/dist/schema.json"],
+  "include": [
+    "packages/*/src",
+    "packages/core/dist/schema.json",
+    "packages/app/dist/schema.json"
+  ],
   "exclude": ["packages/*/dist", "packages/*/build", "packages/*/lib"]
 }

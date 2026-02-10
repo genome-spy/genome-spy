@@ -30,7 +30,7 @@ import {
 import { validateSelectorConstraints } from "@genome-spy/core/view/viewSelectors.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
-import { isSampleSpec } from "@genome-spy/core/view/viewFactory.js";
+import { isSampleSpec } from "./sampleView/specGuards.js";
 import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
@@ -109,7 +109,7 @@ export default class App {
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
             (
-                /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */ spec,
+                /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */ spec,
                 context,
                 layoutParent,
                 dataParent,

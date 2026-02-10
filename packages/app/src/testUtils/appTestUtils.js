@@ -10,7 +10,7 @@ import CompositeAttributeInfoSource from "../sampleView/compositeAttributeInfoSo
 
 /**
  * @typedef {import("@genome-spy/core/types/viewContext.js").default} ViewContext
- * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleSpec} SampleSpec
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleSpec} SampleSpec
  * @typedef {ReturnType<setupStore>} AppStore
  * @typedef {object} StoreStub
  * @prop {() => any} getState
@@ -21,7 +21,7 @@ import CompositeAttributeInfoSource from "../sampleView/compositeAttributeInfoSo
  * @prop {{ attributeNames: string[], attributeDefs: Record<string, any>, entities: Record<string, any> }} sampleMetadata
  * @prop {{ entities: Record<string, { indexNumber: number }> }} sampleData
  * @typedef {import("@genome-spy/core/view/concatView.js").default & {
- *   spec: { samples: import("@genome-spy/core/spec/sampleView.js").SampleDef },
+ *   spec: { samples: import("@genome-spy/app/spec/sampleView.js").SampleDef },
  *   sampleHierarchy: SampleHierarchyStub,
  *   compositeAttributeInfoSource: { addAttributeInfoSource: (name: string, resolver: (attribute: any) => any) => void, removeAttributeInfoSource: (name: string, resolver?: (attribute: any) => any) => void, attributeInfoSourcesByType: Record<string, any> },
  *   provenance: { store: StoreStub, getPresentState: () => any },
@@ -114,7 +114,7 @@ export function createSampleViewStub(options) {
     sampleView.spec = {
         ...view.spec,
         samples:
-            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleDef} */ ({}),
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleDef} */ ({}),
     };
     sampleView.sampleHierarchy = options.sampleHierarchy;
     sampleView.compositeAttributeInfoSource =

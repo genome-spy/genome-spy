@@ -30,7 +30,7 @@
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
-    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type RootSpec > dist/schema.json",
+    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
     "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
     "prepack": "node scripts/prepack.mjs",
     "postpack": "node scripts/postpack.mjs"

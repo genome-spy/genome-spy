@@ -1,5 +1,5 @@
 /**
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} dataType
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} dataType
  * @param {any[]} values
  * @returns {(string | number)[]}
  */

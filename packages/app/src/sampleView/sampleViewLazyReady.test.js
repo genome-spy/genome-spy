@@ -44,7 +44,7 @@ describe("SampleView lazy readiness", () => {
                 ],
             };
 
-            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
             const spec = {
                 samples: {
                     data: {
@@ -116,7 +116,7 @@ describe("SampleView lazy readiness", () => {
     });
 
     it("rejects ensureViewAttributeAvailability when interval source selector cannot be resolved", async () => {
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             samples: {
                 data: {
@@ -156,7 +156,7 @@ describe("SampleView lazy readiness", () => {
     });
 
     it("rejects ensureViewAttributeAvailability when interval source selection is empty", async () => {
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             samples: {
                 data: {

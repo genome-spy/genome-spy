@@ -25,7 +25,7 @@ function createDeferred() {
 
 describe("SampleView ensureViewAttributeAvailability", () => {
     it("awaits zoom and subtree readiness before resolving", async () => {
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             data: {
                 values: [{ sample: "S1", x: 1 }],

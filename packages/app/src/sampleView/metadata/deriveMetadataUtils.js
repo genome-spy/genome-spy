@@ -3,7 +3,7 @@ import emptyToUndefined from "../../utils/emptyToUndefined.js";
 import { compressAttributeName } from "./derivedMetadataNameUtils.js";
 
 /**
- * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} SampleAttributeType
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} SampleAttributeType
  */
 
 /**
@@ -70,7 +70,7 @@ export function validateDerivedMetadataName(
  * @returns {string}
  */
 export function deriveAttributeName(attributeName, groupPath, dataType) {
-    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
     const attributeDefs = {
         [attributeName]: {
             type: dataType,

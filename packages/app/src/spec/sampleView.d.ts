@@ -1,16 +1,13 @@
-import { Data } from "./data.js";
-import { Align, FontStyle, FontWeight } from "./font.js";
-import { Scale } from "./scale.js";
-import { LayerSpec, UnitSpec, ViewSpecBase, ViewBackground } from "./view.js";
-
-// TODO: Figure out how this could be moved to the app package and excluded
-// from the core package.
+import { Data } from "@genome-spy/core/spec/data.js";
+import { Align, FontStyle, FontWeight } from "@genome-spy/core/spec/font.js";
+import { Scale } from "@genome-spy/core/spec/scale.js";
+import { ViewSpecBase, ViewBackground } from "@genome-spy/core/spec/view.js";
+import { AppLayerSpec, AppNestedViewSpec, AppUnitSpec } from "./view.js";
 
 /**
  * A view specification for a SampleView.
- * This is only functional in the GenomeSpy app.
  */
-export interface SampleSpec extends ViewSpecBase {
+export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     /**
      * Sample metadata definition.
      * If the object is empty, the sample identifiers will be inferred from the data.
@@ -22,10 +19,15 @@ export interface SampleSpec extends ViewSpecBase {
      * repeated for each group.
      */
     view?: ViewBackground;
+
     /**
      * The view specification to be repeated for each sample.
      */
-    spec: LayerSpec | UnitSpec;
+    spec: AppLayerSpec | AppUnitSpec;
+
+    // Templates inside a SampleSpec may only produce non-sample descendants.
+    // This keeps SampleView as a top-level/sibling concept instead of nestable.
+    templates?: Record<string, AppNestedViewSpec>;
 
     stickySummaries?: boolean;
 }

@@ -20,7 +20,7 @@ import { METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import "./configureScaleDialog.js";
 
 /**
- * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} SampleAttributeType
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} SampleAttributeType
  */
 /**
  * @typedef {object} DerivedMetadataConfig

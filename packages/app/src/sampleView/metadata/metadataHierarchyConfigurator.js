@@ -168,7 +168,7 @@ export default class MetadataHierarchyConfigurator extends LitElement {
     }
 
     #inferRawTypes() {
-        /** @type {Map<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeType>} */
+        /** @type {Map<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeType>} */
         this._rawTypes = new Map();
         for (const node of pathTreeDfs(this._pathRoot)) {
             if (node.path) {

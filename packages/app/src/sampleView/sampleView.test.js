@@ -14,7 +14,7 @@ import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 
 describe("SampleView", () => {
     test("extracts samples from main data subtree on subtreeDataReady", async () => {
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleSpec} */
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             data: {
                 values: [

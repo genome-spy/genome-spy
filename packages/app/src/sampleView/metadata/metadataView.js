@@ -489,7 +489,7 @@ export class MetadataView extends ConcatView {
          *
          * @param {import("./metadataUtils.js").PathTreeNode} attributeNode
          * @param {ConcatView} container
-         * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} inheritedAttributeDef
+         * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} inheritedAttributeDef
          */
         const createAttributeViews = (
             attributeNode,
@@ -771,8 +771,8 @@ export class MetadataView extends ConcatView {
 
 /**
  * @param {string} attributeName
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} attributeDef
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} attributeDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
  */
 function createAttributeSpec(attributeName, attributeDef, sampleDef) {
     if (!attributeDef) {

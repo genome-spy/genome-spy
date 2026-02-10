@@ -34,7 +34,6 @@ export class ViewFactory {
      * @typedef {import("../spec/view.js").LayerSpec} LayerSpec
      * @typedef {import("../spec/view.js").VConcatSpec} VConcatSpec
      * @typedef {import("../spec/view.js").ConcatSpec} ConcatSpec
-     * @typedef {import("../spec/sampleView.js").SampleSpec} SampleSpec
      *
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
      * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string) => View} Factory
@@ -74,12 +73,6 @@ export class ViewFactory {
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isConcatSpec, makeDefaultFactory(ConcatView));
         //this.addViewType(isFacetSpec, makeDefaultFactory(FacetView));
-
-        this.addViewType(isSampleSpec, () => {
-            throw new Error(
-                "SampleView is not supported by the @genome-spy/core package. Use @genome-spy/app instead!"
-            );
-        });
     }
 
     /**
@@ -108,6 +101,12 @@ export class ViewFactory {
                     defaultName
                 );
             }
+        }
+
+        if (isSampleSpec(spec)) {
+            throw new Error(
+                "SampleView is not supported by the @genome-spy/core package. Use @genome-spy/app instead!"
+            );
         }
 
         throw new Error(
@@ -335,19 +334,6 @@ export function isFacetSpec(spec) {
 
 /**
  *
- * @param {ViewSpec} spec
- * @returns {spec is import("../spec/view.js").AggregateSamplesSpec}
- */
-export function isAggregateSamplesSpec(spec) {
-    return (
-        spec &&
-        (isUnitSpec(spec) || isLayerSpec(spec)) &&
-        "aggregateSamples" in spec
-    );
-}
-
-/**
- *
  * @param {object} spec
  * @returns {spec is import("../spec/view.js").ImportSpec}
  */
@@ -384,10 +370,9 @@ export function isConcatSpec(spec) {
 
 /**
  *
- * @param {ViewSpec} spec
- * @returns {spec is SampleSpec}
+ * @param {object} spec
  */
-export function isSampleSpec(spec) {
+function isSampleSpec(spec) {
     return (
         "samples" in spec &&
         isObject(spec.samples) &&

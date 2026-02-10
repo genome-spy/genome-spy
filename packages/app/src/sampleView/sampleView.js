@@ -31,7 +31,7 @@ import GridChild, {
     createBackground,
     createBackgroundStroke,
 } from "@genome-spy/core/view/gridView/gridChild.js";
-import { isAggregateSamplesSpec } from "@genome-spy/core/view/viewFactory.js";
+import { isAggregateSamplesSpec } from "./specGuards.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
@@ -119,7 +119,7 @@ export default class SampleView extends ContainerView {
 
     /**
      *
-     * @param {import("@genome-spy/core/spec/sampleView.js").SampleSpec} spec
+     * @param {import("@genome-spy/app/spec/sampleView.js").SampleSpec} spec
      * @param {import("@genome-spy/core/types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
      * @param {import("@genome-spy/core/view/view.js").default} dataParent

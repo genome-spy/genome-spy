@@ -1,4 +1,9 @@
-import { createSelector, createSlice, freeze, original } from "@reduxjs/toolkit";
+import {
+    createSelector,
+    createSlice,
+    freeze,
+    original,
+} from "@reduxjs/toolkit";
 import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import {
     groupSamplesByAccessor,
@@ -607,7 +612,7 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
 
     const resolvedType = resolveDataType(attributeInfo, { strict: false });
 
-    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
     const attributeDefs = {
         [attributeName]: {
             type: emptyToUndefined(resolvedType),
@@ -644,5 +649,5 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
 /**
  * @param {import("../types.js").AttributeInfo | null} attributeInfo
  * @param {{ strict?: boolean }} [options]
- * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | null}
+ * @returns {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType | null}
  */

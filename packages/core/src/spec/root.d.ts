@@ -1,7 +1,7 @@
 import { GenomeConfig } from "./genome.js";
 import { ViewSpec } from "./view.js";
 
-interface RootConfig {
+export interface RootConfig {
     $schema?: string;
 
     genome?: GenomeConfig;

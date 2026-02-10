@@ -9,7 +9,7 @@ import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";
 import { AggregationSpec, AttributeIdentifier, Interval } from "../types.js";
-import { SampleAttributeDef } from "@genome-spy/core/spec/sampleView.js";
+import { SampleAttributeDef } from "@genome-spy/app/spec/sampleView.js";
 
 /*
  * This file defines the payload types for actions that modify sample view state.

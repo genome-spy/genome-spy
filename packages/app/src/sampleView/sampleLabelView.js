@@ -133,7 +133,7 @@ export class SampleLabelView extends UnitView {
 
 /**
  *
- * @param {import("@genome-spy/core/spec/sampleView.js").SampleDef} sampleDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
  */
 function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels

@@ -16,7 +16,6 @@ import {
 } from "./mark.js";
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
-import { SampleSpec } from "./sampleView.js";
 import { Parameter } from "./parameter.js";
 
 export interface SizeDef {
@@ -249,8 +248,7 @@ export interface DynamicOpacitySpec {
     opacity?: ViewOpacityDef;
 }
 
-export interface UnitSpec
-    extends ViewSpecBase, DynamicOpacitySpec, AggregateSamplesSpec {
+export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
     /**
      * The background of the view, including fill, stroke, and stroke width.
      */
@@ -262,18 +260,7 @@ export interface UnitSpec
     mark: MarkType | MarkProps;
 }
 
-// TODO: Some fancy generic typing that would make Aggregating available only
-// inside SampleSpec.
-export interface AggregateSamplesSpec {
-    /**
-     * Specifies views that [aggregate](https://genomespy.app/docs/sample-collections/visualizing/#aggregation)
-     * multiple samples within the GenomeSpy App.
-     */
-    aggregateSamples?: (UnitSpec | LayerSpec)[];
-}
-
-export interface LayerSpec
-    extends ViewSpecBase, DynamicOpacitySpec, AggregateSamplesSpec {
+export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
     layer: (LayerSpec | UnitSpec | ImportSpec)[];
 }
@@ -313,25 +300,21 @@ export interface ResolveSpec {
     >;
 }
 
-export type ContainerSpec = (
-    | LayerSpec
-    //    | FacetSpec
-    | SampleSpec
-    | VConcatSpec
-    | HConcatSpec
-    | ConcatSpec
-    | UnitSpec
-) &
-    ResolveSpec;
+export interface ViewSpecExtensions {}
 
-export type ViewSpec =
+export type ViewSpecExtension = ViewSpecExtensions[keyof ViewSpecExtensions];
+
+export type CoreViewSpec =
     | UnitSpec
     | LayerSpec
     //    | FacetSpec
     | VConcatSpec
     | HConcatSpec
-    | ConcatSpec
-    | SampleSpec;
+    | ConcatSpec;
+
+export type ContainerSpec = (CoreViewSpec | ViewSpecExtension) & ResolveSpec;
+
+export type ViewSpec = CoreViewSpec | ViewSpecExtension;
 
 export interface UrlImport {
     /**

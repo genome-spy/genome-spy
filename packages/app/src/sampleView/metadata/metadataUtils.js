@@ -12,7 +12,7 @@ import { rowsToColumns } from "../../utils/dataLayout.js";
  */
 
 /**
- * @typedef {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType | "inherit" | "unset"} MetadataType
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType | "inherit" | "unset"} MetadataType
  */
 
 /**
@@ -257,7 +257,7 @@ export function replacePathSeparatorInKeys(
  * Returns a payload suitable for the "setMetadata" redux action.
  *
  * @param {Record<string, any>[]} rowMetadata
- * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} [attributeDefs] Attribute definitions with the internal separator
+ * @param {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} [attributeDefs] Attribute definitions with the internal separator
  * @param {string} [separator]
  * @param {string} [placeUnderGroup]
  * @param {Set<string>} [skipColumns]
@@ -343,12 +343,12 @@ export function buildSetMetadataPayload(
             .map(([key]) => key)
     );
 
-    /** @type {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} */
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
     const attributeDefs = Object.fromEntries(
         nodeKeys.map((key) => {
-            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
             const def = {
-                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                type: /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */ (
                     metadataConfig.metadataNodeTypes.get(key)
                 ),
             };
@@ -368,9 +368,9 @@ export function buildSetMetadataPayload(
             if (attributeDefs[key]) {
                 continue;
             }
-            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
             const def = {
-                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                type: /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */ (
                     rootType
                 ),
             };
@@ -399,9 +399,9 @@ export function buildSetMetadataPayload(
               )
             : metadataConfig.addUnderGroup;
         if (groupPath && !setMetadata.attributeDefs[groupPath]) {
-            /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef} */
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
             const def = {
-                type: /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */ (
+                type: /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */ (
                     rootType
                 ),
             };
@@ -472,10 +472,10 @@ export function applyGroupToColumnarMetadata(
 /**
  * Prefix attribute definition keys under a group path.
  *
- * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} attributeDefs
+ * @param {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} attributeDefs
  * @param {string} placeUnderGroup
  * @param {string} [separator]
- * @returns {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>}
+ * @returns {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>}
  */
 export function applyGroupToAttributeDefs(
     attributeDefs,
@@ -505,7 +505,7 @@ export function placeMetadataUnderGroup(columnarMetadata, groupPath = []) {
  * Infer a basic metadata type using vega-loader's type detection.
  *
  * @param {import("@genome-spy/core/utils/domainArray.js").scalar[]} values
- * @returns {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType}
+ * @returns {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType}
  */
 export function inferMetadataFieldType(values) {
     switch (inferType(values)) {
@@ -522,7 +522,7 @@ export function inferMetadataFieldType(values) {
  * For group nodes: collects types from all leaf descendants; returns "unset" if mixed, else the uniform type.
  * For leaf nodes: uses raw type; returns "inherit" if a parent has a non-unset type.
  *
- * @param {Map<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeType>} rawTypes
+ * @param {Map<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeType>} rawTypes
  * @param {PathTreeNode} root
  * @returns {Map<string, MetadataType>} Path to inferred MetadataType
  */
@@ -584,9 +584,9 @@ export function inferMetadataTypesForNodes(rawTypes, root) {
  * inferred types while avoiding unnecessary duplication of defs for leaves.
  *
  * @param {import("../state/sampleState.js").SampleMetadata} sampleMetadata
- * @param {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>} existingDefs
+ * @param {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} existingDefs
  * @param {string} [separator] optional separator used to form attribute hierarchies
- * @returns {Record<string, import("@genome-spy/core/spec/sampleView.js").SampleAttributeDef>}
+ * @returns {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>}
  */
 export function computeAttributeDefs(
     sampleMetadata,
@@ -620,7 +620,7 @@ export function computeAttributeDefs(
         let existingDef = attributeDefs[attributeName];
 
         // Find the nearest ancestor that has a type definition
-        /** @type {import("@genome-spy/core/spec/sampleView.js").SampleAttributeType} */
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */
         let ancestorType = null;
 
         if (separator != null) {
