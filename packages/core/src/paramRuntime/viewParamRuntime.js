@@ -344,8 +344,8 @@ export default class ViewParamRuntime {
      * @param {() => T} fn
      * @returns {T}
      */
-    inTransaction(fn) {
-        return this.#runtime.inTransaction(fn);
+    runInTransaction(fn) {
+        return this.#runtime.runInTransaction(fn);
     }
 
     flushNow() {

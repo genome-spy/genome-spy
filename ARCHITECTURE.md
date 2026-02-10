@@ -205,7 +205,7 @@ design patterns.
 - Runtime internals (`packages/core/src/paramRuntime/`) split responsibilities
   across graph scheduling, scoped param storage, expression binding, and owner
   lifecycle disposal.
-- DAG propagation is transaction-aware (`inTransaction`) and exposes a sync
+- DAG propagation is transaction-aware (`runInTransaction`) and exposes a sync
   barrier (`whenPropagated`) for deterministic post-update coordination.
 - Expressions are parsed/compiled using `vega-expression` and bound to param
   values via generated accessors.

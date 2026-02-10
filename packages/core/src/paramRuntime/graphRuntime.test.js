@@ -49,7 +49,7 @@ describe("GraphRuntime", () => {
             }
         );
 
-        runtime.inTransaction(() => {
+        runtime.runInTransaction(() => {
             source.set(2);
             source.set(3);
             source.set(4);
@@ -91,7 +91,7 @@ describe("GraphRuntime", () => {
 
         /** @type {Promise<void>} */
         let waitPromise = Promise.resolve();
-        runtime.inTransaction(() => {
+        runtime.runInTransaction(() => {
             source.set(2);
             waitPromise = runtime.whenPropagated({
                 signal: controller.signal,

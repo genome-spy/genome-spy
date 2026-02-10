@@ -256,7 +256,7 @@ interface ParamStore {
 
 ```ts
 interface GraphRuntime {
-    inTransaction<T>(fn: () => T): T;
+    runInTransaction<T>(fn: () => T): T;
     flushNow(): void;
     // Sync barrier only: resolves when DAG propagation/effects have flushed.
     // Must NOT be broadened to temporal/animation convergence semantics.
@@ -274,7 +274,7 @@ interface ParamRuntime {
     registerDerived<T>(scope: ScopeId, name: string, expr: string): ParamRef<T>;
     registerSelection<T>(scope: ScopeId, name: string, initial: T): WritableParamRef<T>;
     resolve<T>(scope: ScopeId, name: string): ParamRef<T> | undefined;
-    inTransaction<T>(fn: () => T): T;
+    runInTransaction<T>(fn: () => T): T;
     flushNow(): void;
     whenPropagated(options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<void>;
 }
@@ -508,7 +508,7 @@ Final commit expectations:
 ### Minimum required new test classes
 
 1. GraphRuntime DAG ordering and once-per-flush recompute.
-2. Nested transactions with `inTransaction`.
+2. Nested transactions with `runInTransaction`.
 3. `whenPropagated` semantics and timeout behavior.
 4. Owner disposal teardown guarantees.
 5. ParamStore scope resolution and identity uniqueness.

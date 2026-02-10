@@ -342,11 +342,28 @@ export default class GraphRuntime {
     }
 
     /**
+     * Runs `fn` as an atomic update transaction for this runtime graph.
+     *
+     * Transaction intent:
+     * 1. Batch multiple source writes so downstream computeds/effects observe
+     *    the final state for the batch, not each intermediate write.
+     * 2. Defer scheduling/flush until the outermost transaction exits.
+     * 3. Preserve deterministic propagation order by running one flush pass
+     *    after the transaction boundary.
+     *
+     * Semantics:
+     * 1. Nested transactions are supported via depth counting.
+     * 2. Only the outermost transaction exit triggers scheduling.
+     * 3. If `fn` throws, the error is rethrown after transaction depth is
+     *    restored; pending propagation is still scheduled from `finally`.
+     * 4. This method does not force immediate synchronous propagation. Use
+     *    `flushNow()` when the caller explicitly requires immediate flushing.
+     *
      * @template T
      * @param {() => T} fn
      * @returns {T}
      */
-    inTransaction(fn) {
+    runInTransaction(fn) {
         this.#transactionDepth += 1;
         try {
             return fn();

@@ -579,7 +579,7 @@ export default class ParamProvenanceBridge {
     #applyProvenanceEntries(entries) {
         this.#suppressCapture = true;
         try {
-            this.#root.paramRuntime.inTransaction(() => {
+            this.#root.paramRuntime.runInTransaction(() => {
                 const knownKeys = new Set(this.#entriesByKey.keys());
                 const unusedKeys = new Set(Object.keys(entries));
 

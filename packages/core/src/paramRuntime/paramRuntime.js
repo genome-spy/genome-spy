@@ -143,8 +143,8 @@ export default class ParamRuntime {
      * @param {() => T} fn
      * @returns {T}
      */
-    inTransaction(fn) {
-        return this.#graphRuntime.inTransaction(fn);
+    runInTransaction(fn) {
+        return this.#graphRuntime.runInTransaction(fn);
     }
 
     flushNow() {

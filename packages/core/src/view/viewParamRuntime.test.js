@@ -200,7 +200,7 @@ describe("Single-level ViewParamRuntime", () => {
         );
     });
 
-    test("inTransaction batches expression updates", async () => {
+    test("runInTransaction batches expression updates", async () => {
         const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
         pm.registerParam({ name: "bar", expr: "foo + 1" });
@@ -211,7 +211,7 @@ describe("Single-level ViewParamRuntime", () => {
         });
 
         // Non-obvious: runtime propagation is deferred until transaction end.
-        pm.inTransaction(() => {
+        pm.runInTransaction(() => {
             setter(2);
             setter(3);
         });
