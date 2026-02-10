@@ -130,6 +130,29 @@ function notify(listeners) {
     }
 }
 
+/**
+ * Low-level reactive DAG runtime for parameter propagation.
+ *
+ * `GraphRuntime` is the scheduling engine behind `ParamRuntime`. It owns:
+ * 1. Writable source nodes (`base` and `selection`).
+ * 2. Derived/computed nodes with explicit dependencies.
+ * 3. Side-effect nodes that run after computed stabilization.
+ * 4. Transaction-aware batching and deterministic topological flushing.
+ *
+ * Typical usage:
+ * 1. Create writable refs using `createWritable(...)`.
+ * 2. Build derived refs with `computed(...)` from existing refs.
+ * 3. Attach side effects with `effect(...)` when external work is needed.
+ * 4. Batch writes with `runInTransaction(...)` when multiple updates belong to
+ *    one logical state transition.
+ * 5. Await `whenPropagated(...)` when callers need a "graph is settled" barrier.
+ *
+ * Notes:
+ * 1. This class is intended for runtime internals; most call sites should use
+ *    `ParamRuntime` / `ViewParamRuntime`.
+ * 2. Equality is referential (`!==`), so object writes must use new identities
+ *    to trigger propagation.
+ */
 export default class GraphRuntime {
     #nextNodeId = 1;
 
@@ -160,14 +183,30 @@ export default class GraphRuntime {
     #bindDisposer;
 
     /**
+     * Creates a graph runtime.
+     *
      * @param {object} [options]
      * @param {import("./lifecycleRegistry.js").default} [options.lifecycleRegistry]
+     *      Optional lifecycle owner registry. When provided, all created nodes
+     *      are bound to owners and disposed automatically on owner disposal.
      */
     constructor(options = {}) {
         this.#bindDisposer = createDisposerBinder(options.lifecycleRegistry);
     }
 
     /**
+     * Registers a writable source node and returns a writable param ref.
+     *
+     * Write semantics:
+     * 1. A write triggers propagation only when `value !== currentValue`.
+     * 2. If `options.notify` is `false`, local listeners are not notified and
+     *    downstream scheduling is skipped for writes to this ref.
+     * 3. Writing to a disposed ref throws.
+     *
+     * Lifecycle:
+     * 1. The node is owner-bound via `ownerId`.
+     * 2. Owner disposal marks the node disposed and clears listeners.
+     *
      * @template T
      * @param {string} ownerId
      * @param {string} name
@@ -233,6 +272,17 @@ export default class GraphRuntime {
     }
 
     /**
+     * Registers a derived node whose value is computed from dependencies.
+     *
+     * Compute semantics:
+     * 1. Initial value is computed eagerly at registration time.
+     * 2. On dependency changes, recomputation is queued (deduplicated per flush).
+     * 3. Downstream listeners are notified only if computed value identity changes.
+     *
+     * Lifecycle:
+     * 1. Dependency subscriptions are created immediately.
+     * 2. Owner disposal unsubscribes dependencies and detaches the node.
+     *
      * @template T
      * @param {string} ownerId
      * @param {string} name
@@ -296,10 +346,17 @@ export default class GraphRuntime {
     }
 
     /**
+     * Registers an effect node that runs after computed propagation.
+     *
+     * Effect semantics:
+     * 1. Effect callbacks are queued on dependency changes.
+     * 2. Effects run after computed nodes for the same flush epoch.
+     * 3. Multiple dependency changes before a flush coalesce to one queued run.
+     *
      * @param {string} ownerId
      * @param {import("./types.js").ParamRef<any>[]} deps
      * @param {() => void} fn
-     * @returns {() => void}
+     * @returns {() => void} explicit disposer for manual teardown
      */
     effect(ownerId, deps, fn) {
         const depNodes = deps.map(getNode);
@@ -375,6 +432,15 @@ export default class GraphRuntime {
         }
     }
 
+    /**
+     * Flushes currently queued computed/effect work immediately.
+     *
+     * Behavior:
+     * 1. No-op if called while a transaction is open.
+     * 2. No-op during re-entrant flush calls.
+     * 3. Runs computeds first, then effects, until the graph reaches a fixed
+     *    point for the current queued work.
+     */
     flushNow() {
         if (this.#transactionDepth > 0 || this.#flushing) {
             return;
@@ -424,7 +490,14 @@ export default class GraphRuntime {
     }
 
     /**
+     * Returns a promise that resolves when currently pending graph propagation
+     * has completed (computed queue and effect queue are settled).
+     *
+     * This is a synchronization barrier for reactive propagation only. It does
+     * not include animation/time-based convergence semantics.
+     *
      * @param {{ signal?: AbortSignal, timeoutMs?: number }} [options]
+     *      Optional cancellation/timeout controls for waiting callers.
      * @returns {Promise<void>}
      */
     whenPropagated(options = {}) {
