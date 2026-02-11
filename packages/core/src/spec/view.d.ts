@@ -47,9 +47,11 @@ export interface FacetMapping {
 export interface DynamicOpacity {
     /**
      * The positional channel whose scale domain controls the opacity.
+     * If set to `"auto"`, both `x` and `y` scales may contribute.
+     *
      * If omitted, `x` is used when available and `y` is used as a fallback.
      */
-    channel?: PrimaryPositionalChannel;
+    channel?: PrimaryPositionalChannel | "auto";
 
     /**
      * Opacity stops expressed as units (base pairs, for example) per pixel.
@@ -289,7 +291,58 @@ export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
 
 export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
-    layer: (LayerSpec | UnitSpec | ImportSpec)[];
+    layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
+}
+
+export interface MultiscaleStops {
+    /**
+     * The metric used to evaluate zoom stops.
+     *
+     * __Default value:__ `"unitsPerPixel"`
+     */
+    metric?: "unitsPerPixel";
+
+    /**
+     * Stop values in descending order.
+     */
+    values: number[];
+
+    /**
+     * Which positional channel controls the stop metric.
+     *
+     * - `"auto"` averages `x` and `y` when both are available.
+     * - `"x"` uses only the `x` channel.
+     * - `"y"` uses only the `y` channel.
+     *
+     * __Default value:__ `"auto"`
+     */
+    channel?: PrimaryPositionalChannel | "auto";
+
+    /**
+     * Relative transition width around each stop.
+     *
+     * __Default value:__ `0.15`
+     */
+    fade?: number;
+}
+
+export type MultiscaleStopsDef = number[] | MultiscaleStops;
+
+export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
+    view?: ViewBackground;
+
+    /**
+     * Child views ordered from zoomed-out to zoomed-in detail levels.
+     */
+    multiscale: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
+
+    /**
+     * Stop definition that controls transitions between the multiscale levels.
+     *
+     * - `number[]` is shorthand for `{ metric: "unitsPerPixel", values: ... }`
+     * - Object form allows configuring metric, channel, and fade.
+     */
+    stops: MultiscaleStopsDef;
 }
 
 export interface FacetSpec extends ViewSpecBase {
@@ -334,6 +387,7 @@ export type ViewSpecExtension = ViewSpecExtensions[keyof ViewSpecExtensions];
 export type CoreViewSpec =
     | UnitSpec
     | LayerSpec
+    | MultiscaleSpec
     //    | FacetSpec
     | VConcatSpec
     | HConcatSpec
