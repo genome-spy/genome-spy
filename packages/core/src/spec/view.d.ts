@@ -45,15 +45,26 @@ export interface FacetMapping {
  * The opacity is interpolated between the specified stops.
  */
 export interface DynamicOpacity {
-    channel?: PrimaryPositionalChannel;
+    /**
+     * The positional channel whose scale domain controls the opacity.
+     * If set to `"auto"`, both `x` and `y` scales may contribute.
+     *
+     * If omitted, `x` is used when available and `y` is used as a fallback.
+     */
+    channel?: PrimaryPositionalChannel | "auto";
 
     /**
-     * Stops expressed as units (base pairs, for example) per pixel.
+     * Opacity stops expressed as units (base pairs, for example) per pixel.
+     * The values must be positive.
+     *
+     * Each stop is paired with an opacity in `values` at the same index.
      */
     unitsPerPixel: number[];
 
     /**
-     * Opacity values that match the given stops.
+     * Opacity values that match the given `unitsPerPixel` stops.
+     *
+     * Values outside the stop range are clamped to the nearest stop.
      */
     values: number[];
 }
@@ -238,12 +249,30 @@ export interface ViewSpecBase extends ResolveSpec {
 
 export interface DynamicOpacitySpec {
     /**
-     * Opacity of the view and all its children. Allows implementing semantic
-     * zooming where the layers are faded in and out as the user zooms in and out.
+     * Opacity of the view and all its children.
      *
-     * TODO: Write proper documentation with examples.
+     * This can be:
      *
-     * **Default:** `1.0`
+     * - a fixed number between `0` and `1`
+     * - an expression reference (`ExprRef`)
+     * - a `DynamicOpacity` definition for zoom-dependent opacity
+     *
+     * Dynamic opacity is useful for semantic zooming where layers are faded in
+     * and out as the user zooms.
+     *
+     * Example:
+     *
+     * ```json
+     * "opacity": {
+     *   "unitsPerPixel": [100000, 40000],
+     *   "values": [0, 1]
+     * }
+     * ```
+     *
+     * In this example, the view fades in while zooming in from 100 000 to
+     * 40 000 units per pixel.
+     *
+     * __Default value:__ `1.0`
      */
     opacity?: ViewOpacityDef;
 }
@@ -262,7 +291,63 @@ export interface UnitSpec extends ViewSpecBase, DynamicOpacitySpec {
 
 export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
-    layer: (LayerSpec | UnitSpec | ImportSpec)[];
+    layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
+}
+
+export interface MultiscaleStops {
+    /**
+     * The metric used to evaluate zoom stops.
+     *
+     * __Default value:__ `"unitsPerPixel"`
+     */
+    metric?: "unitsPerPixel";
+
+    /**
+     * Stop values in descending order.
+     */
+    values: number[];
+
+    /**
+     * Which positional channel controls the stop metric.
+     *
+     * - `"auto"` averages `x` and `y` when both are available.
+     * - `"x"` uses only the `x` channel.
+     * - `"y"` uses only the `y` channel.
+     *
+     * __Default value:__ `"auto"`
+     */
+    channel?: PrimaryPositionalChannel | "auto";
+
+    /**
+     * Relative transition width around each stop.
+     *
+     * For each stop value `s`, the fade transition is evaluated in the range:
+     *
+     * - upper edge: `s * (1 + fade)`
+     * - lower edge: `s * (1 - fade)`
+     *
+     * __Default value:__ `0.5`
+     */
+    fade?: number;
+}
+
+export type MultiscaleStopsDef = number[] | MultiscaleStops;
+
+export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
+    view?: ViewBackground;
+
+    /**
+     * Child views ordered from zoomed-out to zoomed-in detail levels.
+     */
+    multiscale: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
+
+    /**
+     * Stop definition that controls transitions between the multiscale levels.
+     *
+     * - `number[]` is shorthand for `{ metric: "unitsPerPixel", values: ... }`
+     * - Object form allows configuring metric, channel, and fade.
+     */
+    stops: MultiscaleStopsDef;
 }
 
 export interface FacetSpec extends ViewSpecBase {
@@ -300,6 +385,7 @@ export interface ResolveSpec {
     >;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ViewSpecExtensions {}
 
 export type ViewSpecExtension = ViewSpecExtensions[keyof ViewSpecExtensions];
@@ -307,6 +393,7 @@ export type ViewSpecExtension = ViewSpecExtensions[keyof ViewSpecExtensions];
 export type CoreViewSpec =
     | UnitSpec
     | LayerSpec
+    | MultiscaleSpec
     //    | FacetSpec
     | VConcatSpec
     | HConcatSpec

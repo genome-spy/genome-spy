@@ -29,6 +29,29 @@ describe("Trivial creations and initializations", () => {
         await expect(create({ layer: [] }, View)).resolves.toBeInstanceOf(
             LayerView
         );
+        await expect(
+            create(
+                {
+                    multiscale: [{ mark: "point" }, { mark: "rect" }],
+                    stops: [1000],
+                },
+                View
+            )
+        ).resolves.toBeInstanceOf(LayerView);
+    });
+
+    test("Wraps root multiscale into implicit grid root", async () => {
+        const view = await create(
+            {
+                multiscale: [{ mark: "point" }, { mark: "rect" }],
+                stops: [1000],
+            },
+            ConcatView,
+            { wrapRoot: true }
+        );
+
+        expect(view).toBeInstanceOf(ConcatView);
+        expect(view.children[0]).toBeInstanceOf(LayerView);
     });
 
     test("Parses a more comples spec", async () => {
@@ -151,6 +174,52 @@ describe("Trivial creations and initializations", () => {
                 UnitView
             )
         ).resolves.toBeInstanceOf(UnitView));
+
+    test("Dynamic opacity channel auto averages x and y metrics", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [1, 0.01],
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        view.configureViewOpacity();
+
+        expect(view.getEffectiveOpacity()).toBeCloseTo(0.1505, 3);
+    });
+
+    test("Dynamic opacity channel auto fails if no positional scales exist", async () => {
+        const view = await create(
+            {
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [1000, 100],
+                    values: [0, 1],
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.configureViewOpacity()).toThrow(
+            "Cannot find a resolved quantitative x or y scale for dynamic opacity!"
+        );
+    });
 });
 
 describe("Test domain handling", () => {

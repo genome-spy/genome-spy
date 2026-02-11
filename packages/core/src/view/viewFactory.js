@@ -14,6 +14,7 @@ import {
     markViewAsNonAddressable,
     registerImportInstance,
 } from "./viewSelectors.js";
+import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
 
@@ -32,6 +33,7 @@ export class ViewFactory {
      * @typedef {import("../spec/view.js").UnitSpec} UnitSpec
      * @typedef {import("../spec/view.js").ViewSpec} ViewSpec
      * @typedef {import("../spec/view.js").LayerSpec} LayerSpec
+     * @typedef {import("../spec/view.js").MultiscaleSpec} MultiscaleSpec
      * @typedef {import("../spec/view.js").VConcatSpec} VConcatSpec
      * @typedef {import("../spec/view.js").ConcatSpec} ConcatSpec
      *
@@ -68,6 +70,25 @@ export class ViewFactory {
                 );
 
         this.addViewType(isLayerSpec, makeDefaultFactory(LayerView));
+        this.addViewType(
+            isMultiscaleSpec,
+            /** @type {Factory} */ (
+                (spec, context, layoutParent, dataParent, defaultName) =>
+                    /** @type {View} */ (
+                        new LayerView(
+                            normalizeMultiscaleSpec(
+                                /** @type {import("../spec/view.js").MultiscaleSpec} */ (
+                                    spec
+                                )
+                            ),
+                            context,
+                            layoutParent,
+                            dataParent,
+                            defaultName
+                        )
+                    )
+            )
+        );
         this.addViewType(isUnitSpec, makeDefaultFactory(UnitView));
         this.addViewType(isVConcatSpec, makeDefaultFactory(ConcatView));
         this.addViewType(isHConcatSpec, makeDefaultFactory(ConcatView));
@@ -202,6 +223,7 @@ export class ViewFactory {
             this.options.wrapRoot &&
             (isUnitSpec(viewSpec) ||
                 isLayerSpec(viewSpec) ||
+                isMultiscaleSpec(viewSpec) ||
                 hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {

@@ -967,36 +967,70 @@ function createViewOpacityFunction(view) {
         if (isNumber(opacityDef)) {
             return (parentOpacity) => parentOpacity * opacityDef;
         } else if (isDynamicOpacity(opacityDef)) {
-            /** @type {(channel: import("../spec/channel.js").ChannelWithScale) => any} */
-            const getScale = (channel) => {
-                const scale = view.getScaleResolution(channel)?.getScale();
+            /**
+             * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+             */
+            const getScaleContext = (channel) => {
+                const scaleResolution = view.getScaleResolution(channel);
+                const scale = scaleResolution?.getScale();
                 // Only works on linear scales
                 if (["linear", "index", "locus"].includes(scale?.type)) {
-                    return scale;
+                    return { scale, scaleResolution };
                 }
             };
-
-            const scale = opacityDef.channel
-                ? getScale(opacityDef.channel)
-                : (getScale("x") ?? getScale("y"));
-
-            if (!scale) {
-                throw new ViewError(
-                    "Cannot find a resolved quantitative scale for dynamic opacity!",
-                    view
-                );
-            }
 
             const interpolate = scaleLog()
                 .domain(opacityDef.unitsPerPixel)
                 .range(opacityDef.values)
                 .clamp(true);
 
-            return (parentOpacity) => {
-                const rangeSpan = 1000; //TODO: span(scale.range());
-                const unitsPerPixel = span(scale.domain()) / rangeSpan;
+            /**
+             * @param {{ scale: any, scaleResolution: import("../scales/scaleResolution.js").default }} scaleContext
+             */
+            const getUnitsPerPixel = (scaleContext) => {
+                const axisLength = scaleContext.scaleResolution.getAxisLength();
+                const rangeSpan = axisLength || 1000;
+                return span(scaleContext.scale.domain()) / rangeSpan;
+            };
 
-                return interpolate(unitsPerPixel) * parentOpacity;
+            /** @type {() => number} */
+            let getMetric;
+
+            if (opacityDef.channel === "auto") {
+                const xScale = getScaleContext("x");
+                const yScale = getScaleContext("y");
+
+                if (xScale && yScale) {
+                    getMetric = () =>
+                        (getUnitsPerPixel(xScale) + getUnitsPerPixel(yScale)) /
+                        2;
+                } else if (xScale) {
+                    getMetric = () => getUnitsPerPixel(xScale);
+                } else if (yScale) {
+                    getMetric = () => getUnitsPerPixel(yScale);
+                } else {
+                    throw new ViewError(
+                        "Cannot find a resolved quantitative x or y scale for dynamic opacity!",
+                        view
+                    );
+                }
+            } else {
+                const scaleContext = opacityDef.channel
+                    ? getScaleContext(opacityDef.channel)
+                    : (getScaleContext("x") ?? getScaleContext("y"));
+
+                if (!scaleContext) {
+                    throw new ViewError(
+                        "Cannot find a resolved quantitative scale for dynamic opacity!",
+                        view
+                    );
+                }
+
+                getMetric = () => getUnitsPerPixel(scaleContext);
+            }
+
+            return (parentOpacity) => {
+                return interpolate(getMetric()) * parentOpacity;
             };
         } else if (isExprRef(opacityDef)) {
             const fn = view.paramRuntime.watchExpression(opacityDef.expr, () =>

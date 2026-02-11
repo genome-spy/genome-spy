@@ -3,10 +3,11 @@
 GenomeSpy replicates the [hierarchical
 composition](https://vega.github.io/vega-lite/docs/composition.html) model of
 Vega-Lite, and currently provides the [concatenation](./concat.md) and
-[`layer`](./layer.md) composition operators in the _core_ library. In addition,
-the GenomeSpy _app_ provides a facet operator for visualizing [sample
-collections](../../sample-collections/visualizing.md) using a track-based
-layout.
+[`layer`](./layer.md) composition operators in the _core_ library, as well as
+[`multiscale`](./multiscale.md) for semantic zooming with multiple detail
+levels. In addition, the GenomeSpy _app_ provides a facet operator for
+visualizing [sample collections](../../sample-collections/visualizing.md) using
+a track-based layout.
 
 The hierarchical model allows for nesting composition operators. For instance,
 you could have a visualization with two views side by side, and those views

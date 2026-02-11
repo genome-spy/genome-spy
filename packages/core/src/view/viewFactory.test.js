@@ -10,11 +10,21 @@ test("isViewSpec", () => {
 
     expect(factory.isViewSpec({ mark: "rect" })).toBeTruthy();
     expect(factory.isViewSpec({ layer: [] })).toBeTruthy();
+    expect(
+        factory.isViewSpec({ multiscale: [{ mark: "point" }], stops: [] })
+    ).toBeTruthy();
     expect(factory.isViewSpec({ hconcat: [] })).toBeTruthy();
     expect(factory.isViewSpec({ vconcat: [] })).toBeTruthy();
     expect(factory.isViewSpec({ concat: [], columns: 1 })).toBeTruthy();
 
     expect(() => factory.isViewSpec({ mark: "rect", layer: [] })).toThrow();
+    expect(() =>
+        factory.isViewSpec({
+            mark: "rect",
+            multiscale: [{ mark: "point" }],
+            stops: [],
+        })
+    ).toThrow();
 });
 
 test("Throws if importing is not allowed", async () => {

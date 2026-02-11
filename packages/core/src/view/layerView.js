@@ -2,6 +2,7 @@ import { isLayerSpec, isUnitSpec } from "./viewFactory.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
+import { isMultiscaleSpec } from "./multiscale.js";
 
 export default class LayerView extends ContainerView {
     /**
@@ -47,10 +48,11 @@ export default class LayerView extends ContainerView {
                             (importedSpec) => {
                                 if (
                                     !isLayerSpec(importedSpec) &&
-                                    !isUnitSpec(importedSpec)
+                                    !isUnitSpec(importedSpec) &&
+                                    !isMultiscaleSpec(importedSpec)
                                 ) {
                                     throw new ViewError(
-                                        "LayerView accepts only unit or layer specs as children!",
+                                        "LayerView accepts only unit, layer, or multiscale specs as children!",
                                         this
                                     );
                                     // TODO: Add view to exception

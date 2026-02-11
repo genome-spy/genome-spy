@@ -1,5 +1,4 @@
 import { SampleSpec } from "@genome-spy/app/spec/sampleView.js";
-import { LayerSpec, UnitSpec } from "@genome-spy/core/spec/view.js";
 
 // App-specific compile-time augmentation for core spec types.
 // This file exists only to make app code type-compatible with core classes
@@ -23,6 +22,7 @@ declare module "@genome-spy/core/spec/view.js" {
 
     // Hook declared by core. App attaches SampleSpec here so core ViewSpec /
     // ContainerSpec are widened when app is type-checked.
+    // eslint-disable-next-line no-unused-vars
     interface ViewSpecExtensions {
         sample: SampleSpec;
     }

@@ -1,6 +1,9 @@
 # Layering Views
 
-The `layer` operator superimposes multiple views over each other.
+The `layer` operator overlays multiple views in the same space. By default,
+layers share coordinate space and scales, which makes it straightforward to
+combine complementary marks (for example, bars and labels) into one composite
+view.
 
 ## Example
 
@@ -64,6 +67,59 @@ specifications. The encodings and data that are specified in a layer view
 propagate to its descendants. For example, in the above example, the `"Bar"` and
 `"Label"` views inherit the data and encodings for the `x` and `y` channels from
 their parent, the layer view.
+
+## Zoom-driven layer opacity
+
+Layer (and unit) views support zoom-dependent opacity using `opacity` with
+`unitsPerPixel` and `values`. This is useful for semantic zooming where one
+layer is visible when zoomed out and another appears when zoomed in.
+`unitsPerPixel` means data-units per screen pixel. With genomic locus scales,
+you can read it as base pairs per pixel.
+
+If layers are alternative zoom states (even just overview + detail), prefer
+[`multiscale`](./multiscale.md). Use direct `opacity` when layers are additive
+and meant to be visible together.
+
+```json
+{
+  "opacity": {
+    "unitsPerPixel": [100000, 40000],
+    "values": [0, 1]
+  }
+}
+```
+
+The opacity is interpolated between the stops. In the example above, the layer
+is invisible at `100000` units/pixel and fully visible at `40000` units/pixel.
+Outside the range, the nearest stop value is used.
+
+### Cross-fading overview and detail layers
+
+Use opposite stop orders in two layers to cross-fade between them while
+zooming:
+
+```json
+{
+  "layer": [
+    {
+      "name": "Overview",
+      "opacity": {
+        "unitsPerPixel": [100000, 40000],
+        "values": [1, 0]
+      },
+      "mark": "rect"
+    },
+    {
+      "name": "Detail",
+      "opacity": {
+        "unitsPerPixel": [100000, 40000],
+        "values": [0, 1]
+      },
+      "mark": "point"
+    }
+  ]
+}
+```
 
 ## Resolve
 
