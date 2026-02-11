@@ -71,6 +71,10 @@ Layer (and unit) views support zoom-dependent opacity using `opacity` with
 `unitsPerPixel` and `values`. This is useful for semantic zooming where one
 layer is visible when zoomed out and another appears when zoomed in.
 
+If you have more than two semantic zoom levels (for example, hint + aggregate +
+detail), prefer [`multiscale`](./multiscale.md) to avoid manual opacity
+boilerplate.
+
 ```json
 {
   "opacity": {

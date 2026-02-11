@@ -76,7 +76,11 @@ export class ViewFactory {
                 (spec, context, layoutParent, dataParent, defaultName) =>
                     /** @type {View} */ (
                         new LayerView(
-                            normalizeMultiscaleSpec(spec),
+                            normalizeMultiscaleSpec(
+                                /** @type {import("../spec/view.js").MultiscaleSpec} */ (
+                                    spec
+                                )
+                            ),
                             context,
                             layoutParent,
                             dataParent,
