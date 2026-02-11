@@ -1,27 +1,18 @@
 # Multiscale Composition
 
-The `multiscale` composition operator is designed for semantic zooming patterns
-that are common in genomic tracks:
-
-1. zoomed-out hint (`"Zoom in to see..."`)
-2. intermediate aggregated view
-3. zoomed-in detailed view
-
-Instead of manually writing mirrored opacity ramps for each stage, `multiscale`
-generates the required transitions automatically from `stops`.
+`multiscale` is a convenience macro for semantic zooming. It expands to a
+[`layer`](./layer.md) composition with generated zoom-driven
+[`opacity`](./layer.md#zoom-driven-layer-opacity) transitions between child
+views.
 
 ## Example
 
-This example is the same as
-`packages/core/examples/techniques/multiscale.json`.
-
-<div><genome-spy-doc-embed height="180">
+<div><genome-spy-doc-embed height="180" spechidden="true">
 
 ```json
 {
   "description": "A three-stage semantic zoom using the multiscale composition operator.",
   "view": { "stroke": "lightgray" },
-  "height": 120,
 
   "resolve": { "scale": { "x": "shared" } },
 
@@ -96,10 +87,16 @@ This example is the same as
 
 </genome-spy-doc-embed></div>
 
-## Behavior
+## How It Works
 
 `multiscale` children are ordered from zoomed-out to zoomed-in. For `N` child
 views, `stops` must contain `N - 1` values.
+
+At compile time, `multiscale` is expanded into a regular
+[`layer`](./layer.md): each child is wrapped with generated `opacity` ramps
+that cross-fade adjacent levels. Normal layer behavior still applies
+(inherited encodings/data, scale resolution, and opacity multiplication with
+manually specified child opacity).
 
 By default, channel selection is automatic:
 
@@ -108,26 +105,53 @@ By default, channel selection is automatic:
 3. Scales that are not visible at the `multiscale` scope (for example,
    independent descendant-local scales) are ignored.
 
+For manual opacity control patterns, see
+[`layer` zoom-driven opacity](./layer.md#zoom-driven-layer-opacity).
+
+### Schematic Two-Level Cross-Fade Example
+
+This mirrors the
+[`layer` cross-fading overview/detail example](./layer.md#cross-fading-overview-and-detail-layers).
+
+```json
+{
+  "stops": [40000],
+  "multiscale": [
+    {
+      "name": "Overview",
+      "mark": "rect"
+    },
+    {
+      "name": "Detail",
+      "mark": "point"
+    }
+  ]
+}
+```
+
 ## Properties
 
-`multiscale` (array)
-: Child views from zoomed-out to zoomed-in.
+SCHEMA MultiscaleSpec
 
-`stops` (array or object)
-: Stop definition controlling transitions between adjacent levels.
-  Array shorthand:
-  `{"stops":[1,0.1]}`
-  equals
-  `{"stops":{"metric":"unitsPerPixel","values":[1,0.1]}}`.
+### MultiscaleStops
 
-`stops.metric` (string)
-: Stop metric. Currently, `"unitsPerPixel"` is supported.
+SCHEMA MultiscaleStops
 
-`stops.values` (number[])
-: Stop values for the chosen metric. For `N` levels, provide `N - 1` values.
+Array shorthand:
 
-`stops.channel` (string, optional)
-: `"auto"` (default), `"x"`, or `"y"`.
+```json
+{
+  "stops": [1, 0.1]
+}
+```
 
-`stops.fade` (number, optional)
-: Relative transition width around each stop. Default is `0.15`.
+is equivalent to:
+
+```json
+{
+  "stops": {
+    "metric": "unitsPerPixel",
+    "values": [1, 0.1]
+  }
+}
+```
