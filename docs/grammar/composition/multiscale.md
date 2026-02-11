@@ -157,3 +157,6 @@ is equivalent to:
   }
 }
 ```
+
+`unitsPerPixel` means data-units per screen pixel. On genomic axes, this is
+typically base pairs per pixel.

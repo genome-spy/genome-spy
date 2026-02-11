@@ -70,6 +70,8 @@ their parent, the layer view.
 Layer (and unit) views support zoom-dependent opacity using `opacity` with
 `unitsPerPixel` and `values`. This is useful for semantic zooming where one
 layer is visible when zoomed out and another appears when zoomed in.
+`unitsPerPixel` means data-units per screen pixel. With genomic locus scales,
+you can read it as base pairs per pixel.
 
 If layers are alternative zoom states (even just overview + detail), prefer
 [`multiscale`](./multiscale.md). Use direct `opacity` when layers are additive
