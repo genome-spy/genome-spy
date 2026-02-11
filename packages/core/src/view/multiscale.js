@@ -241,74 +241,49 @@ function createStageOpacity(stageIndex, stageCount, stops) {
 }
 
 /**
+ * Builds a runtime expression that computes `opacity.unitsPerPixel` for one
+ * generated multiscale stage.
+ *
  * @param {number} stageIndex
  * @param {number} stageCount
  * @param {string} stopsExpr
  * @param {number} fade
+ * @returns {string}
  */
 function createStageOpacityExpr(stageIndex, stageCount, stopsExpr, fade) {
     const upperScale = 1 + fade;
     const lowerScale = 1 - fade;
-    const stopsArrayExpr = "(" + stopsExpr + ")";
+    const stopsArrayExpr = `(${stopsExpr})`;
+
+    /**
+     * @param {number} index
+     * @param {number} scale
+     */
+    const scaledStop = (index, scale) =>
+        `(${stopsArrayExpr}[${index}]) * ${scale}`;
+
+    /**
+     * @param {number} index
+     * @returns {string[]}
+     */
+    const transitionPair = (index) => [
+        scaledStop(index, upperScale),
+        scaledStop(index, lowerScale),
+    ];
+
+    /** @type {string[]} */
+    let terms;
 
     if (stageIndex === 0) {
-        return (
-            "[(" +
-            stopsArrayExpr +
-            "[0]) * " +
-            upperScale +
-            ", (" +
-            stopsArrayExpr +
-            "[0]) * " +
-            lowerScale +
-            "]"
-        );
+        terms = transitionPair(0);
     } else if (stageIndex === stageCount - 1) {
-        const stopIndex = stageCount - 2;
-        return (
-            "[(" +
-            stopsArrayExpr +
-            "[" +
-            stopIndex +
-            "]) * " +
-            upperScale +
-            ", (" +
-            stopsArrayExpr +
-            "[" +
-            stopIndex +
-            "]) * " +
-            lowerScale +
-            "]"
-        );
+        terms = transitionPair(stageCount - 2);
     } else {
-        const previousIndex = stageIndex - 1;
-        const nextIndex = stageIndex;
-        return (
-            "[(" +
-            stopsArrayExpr +
-            "[" +
-            previousIndex +
-            "]) * " +
-            upperScale +
-            ", (" +
-            stopsArrayExpr +
-            "[" +
-            previousIndex +
-            "]) * " +
-            lowerScale +
-            ", (" +
-            stopsArrayExpr +
-            "[" +
-            nextIndex +
-            "]) * " +
-            upperScale +
-            ", (" +
-            stopsArrayExpr +
-            "[" +
-            nextIndex +
-            "]) * " +
-            lowerScale +
-            "]"
-        );
+        terms = [
+            ...transitionPair(stageIndex - 1),
+            ...transitionPair(stageIndex),
+        ];
     }
+
+    return `[${terms.join(", ")}]`;
 }

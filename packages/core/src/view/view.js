@@ -956,6 +956,16 @@ function isDynamicOpacity(opacity) {
 }
 
 /**
+ * Builds the effective opacity function for a view.
+ *
+ * The resulting function multiplies parent opacity with one of:
+ * 1. constant opacity (`number`)
+ * 2. zoom-driven dynamic opacity (`DynamicOpacity`) that maps the current
+ *    units-per-pixel metric through a log interpolation
+ * 3. expression-driven opacity (`ExprRef`) that is evaluated reactively
+ *
+ * Dynamic opacity supports scale selection via `channel` (`x`, `y`, or
+ * `"auto"`), where `"auto"` averages available x/y metrics.
  *
  * @param {View} view
  * @returns {function(number):number}
