@@ -46,40 +46,51 @@
     "stroke": "lightgray"
   },
 
-  "data": {
-    "lazy": {
-      "type": "bigbed",
-      "url": { "expr": "url" },
-      "windowSize": { "expr": "windowSize" },
-      "debounce": { "expr": "debounce" }
-    }
-  },
+  "stops": [{ "expr": "windowSize / max(width, 1)" }],
 
-  "transform": [],
-
-  "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "chromStart",
-      "type": "locus"
+  "multiscale": [
+    {
+      "data": { "values": [{}] },
+      "mark": {
+        "type": "text",
+        "text": "Zoom in to see cCREs",
+        "opacity": 0.6
+      }
     },
-    "x2": {
-      "chrom": "chrom",
-      "pos": "chromEnd"
-    },
-    "color": {
-      "field": "ucscLabel",
-      "type": "nominal",
-      "scale": {
-        "domain": ["prom", "enhP", "enhD", "K4m3", "CTCF"],
-        "range": ["#FF0000", "#FFA700", "#FFCD00", "#FFAAAA", "#00B0F0"]
+    {
+      "data": {
+        "lazy": {
+          "type": "bigbed",
+          "url": { "expr": "url" },
+          "windowSize": { "expr": "windowSize" },
+          "debounce": { "expr": "debounce" }
+        }
+      },
+      "transform": [],
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "chromStart",
+          "type": "locus"
+        },
+        "x2": {
+          "chrom": "chrom",
+          "pos": "chromEnd"
+        },
+        "color": {
+          "field": "ucscLabel",
+          "type": "nominal",
+          "scale": {
+            "domain": ["prom", "enhP", "enhD", "K4m3", "CTCF"],
+            "range": ["#FF0000", "#FFA700", "#FFCD00", "#FFAAAA", "#00B0F0"]
+          }
+        }
+      },
+      "mark": {
+        "type": "rect",
+        "minWidth": 0.5,
+        "minOpacity": 0.4
       }
     }
-  },
-
-  "mark": {
-    "type": "rect",
-    "minWidth": 0.5,
-    "minOpacity": 0.4
-  }
+  ]
 }

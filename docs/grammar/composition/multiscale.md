@@ -158,5 +158,17 @@ is equivalent to:
 }
 ```
 
+Expression shorthands are also supported:
+
+```json
+{
+  "stops": [
+    2000,
+    { "expr": "windowSize / max(width, 1)" },
+    { "expr": "0.2 * windowSize / max(width, 1)" }
+  ]
+}
+```
+
 `unitsPerPixel` means data-units per screen pixel. On genomic axes, this is
 typically base pairs per pixel.

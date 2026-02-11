@@ -220,6 +220,122 @@ describe("Trivial creations and initializations", () => {
             "Cannot find a resolved quantitative x or y scale for dynamic opacity!"
         );
     });
+
+    test("Dynamic opacity updates when unitsPerPixel is expression-driven", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "stop", value: 1 }],
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [{ expr: "stop" }, { expr: "stop / 100" }],
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        view.configureViewOpacity();
+
+        const initialOpacity = view.getEffectiveOpacity();
+        view.paramRuntime.setValue("stop", 10);
+        const updatedOpacity = view.getEffectiveOpacity();
+
+        expect(updatedOpacity).toBeGreaterThan(initialOpacity);
+    });
+
+    test("Dynamic opacity fails if unitsPerPixel is not an array", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "stop", value: 1 }],
+                data: {
+                    values: [{ x: 0, y: 0 }],
+                },
+                mark: "point",
+                opacity: {
+                    unitsPerPixel: /** @type {any} */ ({ expr: "stop" }),
+                    values: [1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.configureViewOpacity()).toThrow(
+            '"opacity.unitsPerPixel" must be an array.'
+        );
+    });
+
+    test("Dynamic opacity supports mixed constant and ExprRef stops", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "stop", value: 0.01 }],
+                data: {
+                    // Keep a non-trivial auto metric from both x and y scales.
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [1, { expr: "stop" }],
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        view.configureViewOpacity();
+
+        const initialOpacity = view.getEffectiveOpacity();
+        view.paramRuntime.setValue("stop", 0.1);
+        const updatedOpacity = view.getEffectiveOpacity();
+
+        expect(updatedOpacity).not.toBeCloseTo(initialOpacity, 6);
+    });
+
+    test("Dynamic opacity fails if unitsPerPixel ExprRef resolves to a non-number", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [{ x: 0, y: 0 }],
+                },
+                mark: "point",
+                opacity: {
+                    unitsPerPixel: [1, { expr: '"invalid"' }],
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.configureViewOpacity()).toThrow(
+            "Invalid opacity.unitsPerPixel value at index 1. Expected a finite number."
+        );
+    });
 });
 
 describe("Test domain handling", () => {

@@ -1,14 +1,16 @@
 import { isArray, isObject } from "vega-util";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const DEFAULT_FADE = 0.5;
 
 /**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
  * @typedef {"x" | "y" | "auto"} MultiscaleChannel
+ * @typedef {number | import("../spec/parameter.js").ExprRef} StopValue
  *
  * @typedef {{
  *     metric: MultiscaleMetric;
- *     values: number[];
+ *     values: StopValue[];
  *     channel: MultiscaleChannel;
  *     fade: number;
  * }} ParsedStops
@@ -66,17 +68,17 @@ export function normalizeMultiscaleSpec(spec) {
 function parseStops(stops, stageCount) {
     /** @type {MultiscaleMetric} */
     let metric = "unitsPerPixel";
-    /** @type {number[]} */
+    /** @type {StopValue[]} */
     let values;
     /** @type {MultiscaleChannel} */
     let channel = "auto";
     let fade = DEFAULT_FADE;
 
     if (isArray(stops)) {
-        values = stops;
+        values = parseStopValues(stops, stageCount, "stops");
     } else if (isObject(stops)) {
         metric = stops.metric ?? "unitsPerPixel";
-        values = stops.values;
+        values = parseStopValues(stops.values, stageCount, "stops.values");
         channel = stops.channel ?? "auto";
         fade = stops.fade ?? DEFAULT_FADE;
     } else {
@@ -86,21 +88,6 @@ function parseStops(stops, stageCount) {
     if (metric !== "unitsPerPixel") {
         throw new Error(
             'Only "unitsPerPixel" is supported for "stops.metric" in multiscale.'
-        );
-    }
-
-    if (!isArray(values)) {
-        throw new Error('"stops.values" must be an array of numbers.');
-    }
-
-    const expectedStopCount = stageCount - 1;
-    if (values.length !== expectedStopCount) {
-        throw new Error(
-            "Invalid stop count for multiscale. Expected " +
-                expectedStopCount +
-                ", got " +
-                values.length +
-                "."
         );
     }
 
@@ -115,7 +102,7 @@ function parseStops(stops, stageCount) {
     }
 
     values.forEach((value, index) => {
-        if (!Number.isFinite(value) || value <= 0) {
+        if (!isExprRef(value) && (!Number.isFinite(value) || value <= 0)) {
             throw new Error(
                 "Invalid stop value at index " +
                     index +
@@ -124,21 +111,25 @@ function parseStops(stops, stageCount) {
         }
     });
 
-    for (let i = 1; i < values.length; i++) {
-        if (values[i - 1] <= values[i]) {
-            throw new Error(
-                '"stops.values" must be strictly decreasing for "unitsPerPixel".'
-            );
-        }
-    }
+    if (!values.some(isExprRef)) {
+        const numericValues = /** @type {number[]} */ (values);
 
-    for (let i = 0; i < values.length - 1; i++) {
-        const leftLower = values[i] * (1 - fade);
-        const rightUpper = values[i + 1] * (1 + fade);
-        if (leftLower <= rightUpper) {
-            throw new Error(
-                "Adjacent transitions overlap. Reduce fade or increase stop spacing."
-            );
+        for (let i = 1; i < numericValues.length; i++) {
+            if (numericValues[i - 1] <= numericValues[i]) {
+                throw new Error(
+                    '"stops.values" must be strictly decreasing for "unitsPerPixel".'
+                );
+            }
+        }
+
+        for (let i = 0; i < numericValues.length - 1; i++) {
+            const leftLower = numericValues[i] * (1 - fade);
+            const rightUpper = numericValues[i + 1] * (1 + fade);
+            if (leftLower <= rightUpper) {
+                throw new Error(
+                    "Adjacent transitions overlap. Reduce fade or increase stop spacing."
+                );
+            }
         }
     }
 
@@ -151,34 +142,73 @@ function parseStops(stops, stageCount) {
 }
 
 /**
+ * @param {unknown} rawValues
+ * @param {number} stageCount
+ * @param {string} path
+ * @returns {StopValue[]}
+ */
+function parseStopValues(rawValues, stageCount, path) {
+    if (!isArray(rawValues)) {
+        throw new Error(
+            '"' + path + '" must be an array of numbers or ExprRefs.'
+        );
+    }
+
+    const expectedStopCount = stageCount - 1;
+    if (rawValues.length !== expectedStopCount) {
+        throw new Error(
+            "Invalid stop count for multiscale. Expected " +
+                expectedStopCount +
+                ", got " +
+                rawValues.length +
+                "."
+        );
+    }
+
+    for (const value of rawValues) {
+        if (!isExprRef(value) && !Number.isFinite(value)) {
+            throw new Error(
+                '"' + path + '" must contain only numbers or ExprRefs.'
+            );
+        }
+    }
+
+    return /** @type {StopValue[]} */ (rawValues);
+}
+
+/**
  * @param {number} stageIndex
  * @param {number} stageCount
  * @param {ParsedStops} stops
  * @returns {import("../spec/view.js").DynamicOpacity}
  */
 function createStageOpacity(stageIndex, stageCount, stops) {
-    const transitions = stops.values.map((stop) => ({
-        hi: stop * (1 + stops.fade),
-        lo: stop * (1 - stops.fade),
-    }));
-
-    /** @type {number[]} */
+    /** @type {StopValue[]} */
     let unitsPerPixel;
     /** @type {number[]} */
     let values;
+    const transitions = stops.values.map((stop) => ({
+        hi: scaleStop(stop, 1 + stops.fade),
+        lo: scaleStop(stop, 1 - stops.fade),
+    }));
 
     if (stageIndex === 0) {
         unitsPerPixel = [transitions[0].hi, transitions[0].lo];
-        values = [1, 0];
     } else if (stageIndex === stageCount - 1) {
         const last = transitions.at(-1);
         unitsPerPixel = [last.hi, last.lo];
-        values = [0, 1];
     } else {
         const previous = transitions[stageIndex - 1];
         const next = transitions[stageIndex];
 
         unitsPerPixel = [previous.hi, previous.lo, next.hi, next.lo];
+    }
+
+    if (stageIndex === 0) {
+        values = [1, 0];
+    } else if (stageIndex === stageCount - 1) {
+        values = [0, 1];
+    } else {
         values = [0, 1, 1, 0];
     }
 
@@ -187,4 +217,17 @@ function createStageOpacity(stageIndex, stageCount, stops) {
         unitsPerPixel,
         values,
     };
+}
+
+/**
+ * @param {StopValue} stop
+ * @param {number} factor
+ * @returns {StopValue}
+ */
+function scaleStop(stop, factor) {
+    if (isExprRef(stop)) {
+        return { expr: "(" + stop.expr + ") * " + factor };
+    } else {
+        return stop * factor;
+    }
 }

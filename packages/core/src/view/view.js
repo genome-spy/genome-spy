@@ -9,7 +9,7 @@ import {
     initPropertyCache,
     invalidatePrefix,
 } from "../utils/propertyCacher.js";
-import { isNumber, isString, span } from "vega-util";
+import { isArray, isNumber, isString, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { concatUrl } from "../utils/url.js";
@@ -956,6 +956,16 @@ function isDynamicOpacity(opacity) {
 }
 
 /**
+ * Builds the effective opacity function for a view.
+ *
+ * The resulting function multiplies parent opacity with one of:
+ * 1. constant opacity (`number`)
+ * 2. zoom-driven dynamic opacity (`DynamicOpacity`) that maps the current
+ *    units-per-pixel metric through a log interpolation
+ * 3. expression-driven opacity (`ExprRef`) that is evaluated reactively
+ *
+ * Dynamic opacity supports scale selection via `channel` (`x`, `y`, or
+ * `"auto"`), where `"auto"` averages available x/y metrics.
  *
  * @param {View} view
  * @returns {function(number):number}
@@ -979,10 +989,58 @@ function createViewOpacityFunction(view) {
                 }
             };
 
-            const interpolate = scaleLog()
-                .domain(opacityDef.unitsPerPixel)
-                .range(opacityDef.values)
-                .clamp(true);
+            const opacityValues = asFiniteNumberArray(
+                opacityDef.values,
+                "opacity.values",
+                view
+            );
+
+            if (!isArray(opacityDef.unitsPerPixel)) {
+                throw new ViewError(
+                    '"opacity.unitsPerPixel" must be an array.',
+                    view
+                );
+            }
+
+            /** @type {function(number): number} */
+            let interpolate = () => 1;
+
+            /** @type {(() => number)[]} */
+            let stopReaders = [];
+
+            const updateInterpolator = () => {
+                const unitsPerPixel = asFiniteNumberArray(
+                    stopReaders.map((readStop) => readStop()),
+                    "opacity.unitsPerPixel",
+                    view
+                );
+
+                validateDynamicOpacityStops(unitsPerPixel, opacityValues, view);
+
+                const scale = scaleLog()
+                    .domain(unitsPerPixel)
+                    .range(opacityValues)
+                    .clamp(true);
+
+                interpolate = (value) => scale(value);
+            };
+
+            stopReaders = opacityDef.unitsPerPixel.map((stop) => {
+                if (isExprRef(stop)) {
+                    const fn = view.paramRuntime.watchExpression(
+                        stop.expr,
+                        () => {
+                            updateInterpolator();
+                            view.context.animator.requestRender();
+                        }
+                    );
+                    return () => fn(null);
+                } else {
+                    return () => stop;
+                }
+            });
+
+            updateInterpolator();
 
             /**
              * @param {{ scale: any, scaleResolution: import("../scales/scaleResolution.js").default }} scaleContext
@@ -1040,6 +1098,74 @@ function createViewOpacityFunction(view) {
         }
     }
     return (parentOpacity) => parentOpacity;
+}
+
+/**
+ * @param {number[]} unitsPerPixel
+ * @param {number[]} values
+ * @param {View} view
+ */
+function validateDynamicOpacityStops(unitsPerPixel, values, view) {
+    if (!unitsPerPixel.length) {
+        throw new ViewError(
+            '"opacity.unitsPerPixel" must contain at least one stop.',
+            view
+        );
+    }
+
+    if (unitsPerPixel.length !== values.length) {
+        throw new ViewError(
+            '"opacity.unitsPerPixel" and "opacity.values" must have the same length.',
+            view
+        );
+    }
+
+    unitsPerPixel.forEach((value, index) => {
+        if (value <= 0) {
+            throw new ViewError(
+                "Invalid opacity.unitsPerPixel value at index " +
+                    index +
+                    ". Stop values must be positive.",
+                view
+            );
+        }
+    });
+
+    for (let i = 1; i < unitsPerPixel.length; i++) {
+        if (unitsPerPixel[i - 1] <= unitsPerPixel[i]) {
+            throw new ViewError(
+                '"opacity.unitsPerPixel" must be strictly decreasing.',
+                view
+            );
+        }
+    }
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} label
+ * @param {View} view
+ * @returns {number[]}
+ */
+function asFiniteNumberArray(value, label, view) {
+    if (!isArray(value)) {
+        throw new ViewError('"' + label + '" must evaluate to an array.', view);
+    }
+
+    return value.map((item, index) => {
+        if (!isNumber(item) || !Number.isFinite(item)) {
+            throw new ViewError(
+                "Invalid " +
+                    label +
+                    " value at index " +
+                    index +
+                    ". Expected a finite number.",
+                view
+            );
+        }
+
+        return item;
+    });
 }
 
 /**
