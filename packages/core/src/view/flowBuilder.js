@@ -316,10 +316,11 @@ export function linearizeLocusAccess(view) {
     const rewrittenEncoding = {};
 
     // Use mark.encoding so we see the same channel defs that encoders consume,
-    // including inherited channels and mark defaults. getEncoding() only returns
-    // spec/inherited encodings and can omit channels during lazy init (e.g.,
-    // summary views that inherit chrom/pos), which would skip chrom/pos rewrites.
+    // including inherited channels and mark defaults. Keep the configured
+    // encoding too so we can avoid rewriting synthesized channels (e.g., x2
+    // introduced by mark defaults/fixups).
     const encoding = view.mark.encoding;
+    const configuredEncoding = view.getEncoding();
 
     /** @type {{ channel: Channel, chromPosDef: import("../spec/channel.js").ChromPosDef}[]} */
     const channelsAndChromPosDefs = [];
@@ -328,6 +329,13 @@ export function linearizeLocusAccess(view) {
     // that share the chromosome field and channel.
     for (const [c, channelDef] of Object.entries(encoding)) {
         const channel = /** @type {Channel} */ (c);
+        if (
+            getPrimaryChannel(channel) !== channel &&
+            !(channel in configuredEncoding)
+        ) {
+            continue;
+        }
+
         if (
             isPositionalChannel(channel) &&
             !Array.isArray(channelDef) &&
@@ -369,6 +377,7 @@ export function linearizeLocusAccess(view) {
                 /** @type {any} */
                 const newFieldDef = {
                     ...(view.spec.encoding?.[channel] ??
+                        configuredEncoding[channel] ??
                         encoding[channel] ??
                         {}),
                     field: linearizedField,

@@ -5,7 +5,7 @@ import FilterTransform from "../data/transforms/filter.js";
 import FormulaTransform from "../data/transforms/formula.js";
 import InlineSource from "../data/sources/inlineSource.js";
 import SequenceSource from "../data/sources/sequenceSource.js";
-import { buildDataFlow } from "./flowBuilder.js";
+import { buildDataFlow, linearizeLocusAccess } from "./flowBuilder.js";
 import { create } from "./testUtils.js";
 import CloneTransform from "../data/transforms/clone.js";
 import LayerView from "./layerView.js";
@@ -122,4 +122,37 @@ test("Nested data sources", async () => {
     expect(byPath(dataSources[1], [0])).toBeInstanceOf(CloneTransform);
     expect(byPath(dataSources[1], [0, 0])).toBeInstanceOf(FormulaTransform);
     expect(byPath(dataSources[1], [0, 0, 0])).toBeInstanceOf(Collector);
+});
+
+test("Linearize does not rewrite synthesized secondary locus channels", async () => {
+    const root = await create(
+        {
+            genome: { name: "hg38" },
+            data: {
+                values: [{ chrom: "chr1", pos: 10 }],
+            },
+            encoding: {
+                x: { chrom: "chrom", pos: "pos", type: "locus" },
+            },
+            layer: [
+                {
+                    mark: "rect",
+                },
+            ],
+        },
+        LayerView
+    );
+
+    const unit = root.getDescendants().find((view) => view instanceof UnitView);
+    const linearize = unit && linearizeLocusAccess(unit);
+
+    expect(linearize).toBeDefined();
+    linearize?.rewrite();
+
+    // x2 is synthesized by mark encoding and should not be materialized in the spec.
+    expect(unit?.spec.encoding?.x2).toBeUndefined();
+    expect(unit?.spec.encoding?.x).toMatchObject({
+        field: "_linearized_chrom_pos",
+        type: "locus",
+    });
 });
