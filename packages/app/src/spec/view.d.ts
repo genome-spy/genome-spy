@@ -3,6 +3,7 @@ import {
     HConcatSpec as CoreHConcatSpec,
     ImportSpec,
     LayerSpec as CoreLayerSpec,
+    MultiscaleSpec as CoreMultiscaleSpec,
     UnitSpec as CoreUnitSpec,
     VConcatSpec as CoreVConcatSpec,
 } from "@genome-spy/core/spec/view.js";
@@ -38,7 +39,22 @@ export type AppLayerSpec = Omit<
     AggregateSamplesSpec & {
         templates?: Record<string, AppNestedViewSpec>;
 
-        layer: (AppLayerSpec | AppUnitSpec | ImportSpec)[];
+        layer: (AppLayerSpec | AppUnitSpec | AppMultiscaleSpec | ImportSpec)[];
+    };
+
+export type AppMultiscaleSpec = Omit<
+    CoreMultiscaleSpec,
+    "multiscale" | "aggregateSamples" | "templates"
+> &
+    AggregateSamplesSpec & {
+        templates?: Record<string, AppNestedViewSpec>;
+
+        multiscale: (
+            | AppLayerSpec
+            | AppUnitSpec
+            | AppMultiscaleSpec
+            | ImportSpec
+        )[];
     };
 
 export type AppVConcatSpec = Omit<CoreVConcatSpec, "templates" | "vconcat"> & {
@@ -62,6 +78,7 @@ export type AppConcatSpec = Omit<CoreConcatSpec, "templates" | "concat"> & {
 export type AppNestedViewSpec =
     | AppUnitSpec
     | AppLayerSpec
+    | AppMultiscaleSpec
     | AppVConcatSpec
     | AppHConcatSpec
     | AppConcatSpec;
