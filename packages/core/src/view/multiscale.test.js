@@ -86,15 +86,19 @@ describe("multiscale", () => {
             },
         });
 
-        const firstUnitsPerPixel = asLayer(normalized.layer[0]).opacity
-            .unitsPerPixel;
-        const secondUnitsPerPixel = asLayer(normalized.layer[1]).opacity
-            .unitsPerPixel;
+        const firstOpacity =
+            /** @type {import("../spec/view.js").DynamicOpacity} */ (
+                asLayer(normalized.layer[0]).opacity
+            );
+        const secondOpacity =
+            /** @type {import("../spec/view.js").DynamicOpacity} */ (
+                asLayer(normalized.layer[1]).opacity
+            );
 
-        expect(firstUnitsPerPixel).toEqual({
+        expect(firstOpacity.unitsPerPixel).toEqual({
             expr: expect.stringContaining("windowSize / max(width, 1)"),
         });
-        expect(secondUnitsPerPixel).toEqual({
+        expect(secondOpacity.unitsPerPixel).toEqual({
             expr: expect.stringContaining("windowSize / max(width, 1)"),
         });
     });
@@ -105,7 +109,10 @@ describe("multiscale", () => {
             stops: [{ expr: "outerStop" }, { expr: "innerStop" }],
         });
 
-        const middleOpacity = asLayer(normalized.layer[1]).opacity;
+        const middleOpacity =
+            /** @type {import("../spec/view.js").DynamicOpacity} */ (
+                asLayer(normalized.layer[1]).opacity
+            );
         expect(middleOpacity.unitsPerPixel).toEqual({
             expr: expect.stringContaining("outerStop"),
         });

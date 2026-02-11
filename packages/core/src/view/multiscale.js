@@ -94,7 +94,7 @@ function parseStops(stops, stageCount) {
                     "]",
             };
         } else {
-            values = stops;
+            values = /** @type {number[]} */ (stops);
         }
     } else if (isExprRef(stops)) {
         values = stops;

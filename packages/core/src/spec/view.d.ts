@@ -71,8 +71,6 @@ export interface DynamicOpacity {
 
 export type NumericArrayExprDef = number[] | ExprRef;
 
-export type NumericStopDef = number | ExprRef;
-
 export type ViewOpacityDef = number | DynamicOpacity | ExprRef;
 
 export interface Step {
@@ -335,7 +333,11 @@ export interface MultiscaleStops {
     fade?: number;
 }
 
-export type MultiscaleStopsDef = NumericStopDef[] | ExprRef | MultiscaleStops;
+export type MultiscaleStopsDef =
+    | number[]
+    | ExprRef[]
+    | ExprRef
+    | MultiscaleStops;
 
 export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
