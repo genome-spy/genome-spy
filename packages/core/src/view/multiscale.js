@@ -74,33 +74,10 @@ function parseStops(stops, stageCount) {
     let fade = DEFAULT_FADE;
 
     if (isArray(stops)) {
-        if (stops.every(isExprRef)) {
-            const expectedStopCount = stageCount - 1;
-
-            if (stops.length !== expectedStopCount) {
-                throw new Error(
-                    "Invalid stop count for multiscale. Expected " +
-                        expectedStopCount +
-                        ", got " +
-                        stops.length +
-                        "."
-                );
-            }
-
-            values = {
-                expr:
-                    "[" +
-                    stops.map((stop) => "(" + stop.expr + ")").join(", ") +
-                    "]",
-            };
-        } else {
-            values = /** @type {number[]} */ (stops);
-        }
-    } else if (isExprRef(stops)) {
-        values = stops;
+        values = parseStopValues(stops, stageCount, "stops");
     } else if (isObject(stops)) {
         metric = stops.metric ?? "unitsPerPixel";
-        values = stops.values;
+        values = parseStopValues(stops.values, stageCount, "stops.values");
         channel = stops.channel ?? "auto";
         fade = stops.fade ?? DEFAULT_FADE;
     } else {
@@ -183,6 +160,59 @@ function parseStops(stops, stageCount) {
         channel,
         fade,
     };
+}
+
+/**
+ * @param {unknown} rawValues
+ * @param {number} stageCount
+ * @param {string} path
+ * @returns {number[] | import("../spec/parameter.js").ExprRef}
+ */
+function parseStopValues(rawValues, stageCount, path) {
+    if (!isArray(rawValues)) {
+        throw new Error(
+            '"' + path + '" must be an array of numbers or ExprRefs.'
+        );
+    }
+
+    const expectedStopCount = stageCount - 1;
+    if (rawValues.length !== expectedStopCount) {
+        throw new Error(
+            "Invalid stop count for multiscale. Expected " +
+                expectedStopCount +
+                ", got " +
+                rawValues.length +
+                "."
+        );
+    }
+
+    let hasExpr = false;
+    for (const value of rawValues) {
+        if (isExprRef(value)) {
+            hasExpr = true;
+        } else if (!Number.isFinite(value)) {
+            throw new Error(
+                '"' + path + '" must contain only numbers or ExprRefs.'
+            );
+        }
+    }
+
+    if (hasExpr) {
+        return {
+            expr:
+                "[" +
+                rawValues
+                    .map((value) =>
+                        isExprRef(value)
+                            ? "(" + value.expr + ")"
+                            : "(" + value + ")"
+                    )
+                    .join(", ") +
+                "]",
+        };
+    } else {
+        return /** @type {number[]} */ (rawValues);
+    }
 }
 
 /**

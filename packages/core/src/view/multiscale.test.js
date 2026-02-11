@@ -78,12 +78,10 @@ describe("multiscale", () => {
         });
     });
 
-    test("supports top-level ExprRef shorthand for stops", () => {
+    test("supports mixed constants and ExprRefs in top-level stops", () => {
         const normalized = normalizeMultiscaleSpec({
-            multiscale: [unit("point"), unit("rect")],
-            stops: {
-                expr: "[windowSize / max(width, 1)]",
-            },
+            multiscale: [unit("point"), unit("rect"), unit("rule")],
+            stops: [5000, { expr: "windowSize / max(width, 1)" }],
         });
 
         const firstOpacity =
@@ -95,6 +93,9 @@ describe("multiscale", () => {
                 asLayer(normalized.layer[1]).opacity
             );
 
+        expect(firstOpacity.unitsPerPixel).toEqual({
+            expr: expect.stringContaining("(5000)"),
+        });
         expect(firstOpacity.unitsPerPixel).toEqual({
             expr: expect.stringContaining("windowSize / max(width, 1)"),
         });
@@ -121,6 +122,27 @@ describe("multiscale", () => {
         });
     });
 
+    test("supports mixed constants and ExprRefs in object stop values", () => {
+        const normalized = normalizeMultiscaleSpec({
+            multiscale: [unit("point"), unit("rect"), unit("rule")],
+            stops: {
+                metric: "unitsPerPixel",
+                values: [6000, { expr: "innerStop" }],
+            },
+        });
+
+        const middleOpacity =
+            /** @type {import("../spec/view.js").DynamicOpacity} */ (
+                asLayer(normalized.layer[1]).opacity
+            );
+        expect(middleOpacity.unitsPerPixel).toEqual({
+            expr: expect.stringContaining("(6000)"),
+        });
+        expect(middleOpacity.unitsPerPixel).toEqual({
+            expr: expect.stringContaining("innerStop"),
+        });
+    });
+
     test("fails if top-level ExprRef stop array has invalid length", () => {
         expect(() =>
             normalizeMultiscaleSpec({
@@ -128,6 +150,17 @@ describe("multiscale", () => {
                 stops: [{ expr: "onlyOneStop" }],
             })
         ).toThrow("Invalid stop count");
+    });
+
+    test("fails if top-level stops is a single ExprRef", () => {
+        const invalidStops = /** @type {any} */ ({ expr: "[1000]" });
+
+        expect(() =>
+            normalizeMultiscaleSpec({
+                multiscale: [unit("point"), unit("rect")],
+                stops: invalidStops,
+            })
+        ).toThrow('"stops.values" must be an array of numbers or ExprRefs.');
     });
 
     test("keeps a single level as a plain child", () => {

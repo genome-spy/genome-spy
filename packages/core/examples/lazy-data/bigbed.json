@@ -46,7 +46,7 @@
     "stroke": "lightgray"
   },
 
-  "stops": { "expr": "[windowSize / max(width, 1)]" },
+  "stops": [{ "expr": "windowSize / max(width, 1)" }],
 
   "multiscale": [
     {

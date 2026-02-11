@@ -23,9 +23,9 @@ Because `width` and `height` are already exposed as runtime params, expression-d
 
 - Make `DynamicOpacity.unitsPerPixel` accept expression-based arrays.
 - Make `multiscale.stops.values` accept expression-based arrays.
-- Make top-level `multiscale.stops` shorthand accept expression forms:
-  - `stops: { "expr": "..." }` (expression returns an array)
-  - `stops: [{ "expr": "..." }, ...]` (per-stop expressions)
+- Make top-level `multiscale.stops` shorthand accept per-stop expression items:
+  - `stops: [{ "expr": "..." }, ...]`
+  - mixed constants and expressions are allowed
 - Allow users to derive stop thresholds from `windowSize` and view size params.
 - Preserve existing static behavior and backward compatibility.
 
@@ -51,7 +51,7 @@ Update `packages/core/src/spec/view.d.ts`:
 - Keep `DynamicOpacity.values` as static `number[]`.
 - Extend multiscale shorthand type:
   - from `MultiscaleStopsDef = number[] | MultiscaleStops`
-  - to `MultiscaleStopsDef = number[] | ExprRef[] | ExprRef | MultiscaleStops`
+  - to `MultiscaleStopsDef = (number | ExprRef)[] | MultiscaleStops`
 
 Update JSDoc:
 
@@ -90,8 +90,7 @@ Implement in `packages/core/src/view/multiscale.js`:
 - Keep current static-number path unchanged.
 - Add expression-aware path for `stops.values: ExprRef`.
 - Add expression-aware path for top-level `stops` shorthand:
-  - `stops: ExprRef` (must evaluate to numeric array at runtime)
-  - `stops: ExprRef[]` (evaluate each item expression into a number)
+  - `stops: (number | ExprRef)[]` (evaluate each expression item into a number)
 
 Normalization strategy:
 
@@ -107,8 +106,7 @@ Validation model:
 - Keep compile-time validation for static stops.
 - For expression-driven shorthand and `stops.values`, defer stop-array validation
   to runtime (in dynamic opacity validation step), including:
-  - expression returns array (for `stops: ExprRef`)
-  - per-item expressions resolve to finite numbers (for `stops: ExprRef[]`)
+  - per-item expressions resolve to finite numbers
 
 ### 4. Tests
 
@@ -128,8 +126,7 @@ Test matrix:
    - non-positive or non-decreasing `unitsPerPixel`
 4. `multiscale` with expression-based stops generates expected opacity defs and updates with param changes.
 5. Top-level shorthand cases are covered:
-   - `stops: ExprRef` returning array works
-   - `stops: ExprRef[]` works
+   - `stops: (number | ExprRef)[]` works (including mixed arrays)
    - invalid shapes throw clear runtime errors
 
 ### 5. Documentation updates
@@ -153,8 +150,8 @@ Revise the example to demonstrate the intended wiring:
   1. zoomed-out hint text layer
   2. zoomed-in bigBed detail layer
 - Derive stop values from `windowSize` and `width` using top-level shorthand:
-  - example shape: `stops = { "expr": "[windowSize / max(width, 1)]" }`
-  - optional alternative: `stops = [{ "expr": "windowSize / max(width, 1)" }]`
+  - example shape: `stops = [{ "expr": "windowSize / max(width, 1)" }]`
+  - optional mixed form: `stops = [5000, { "expr": "windowSize / max(width, 1)" }]`
 - Keep behavior robust under layout changes (width changes should shift transition naturally).
 
 This demonstrates the exact coupling discussed:
@@ -193,6 +190,6 @@ Manual checks:
 - Users can set `opacity.unitsPerPixel` via expressions.
 - `opacity.values` remains static numeric array.
 - Users can set `multiscale.stops.values` via expressions.
-- Users can set top-level `multiscale.stops` using `ExprRef` or `ExprRef[]`.
+- Users can set top-level `multiscale.stops` using mixed `(number | ExprRef)[]`.
 - `examples/lazy-data/bigbed.json` demonstrates `windowSize -> stops` coupling.
 - Existing static specs remain valid and behaviorally unchanged.

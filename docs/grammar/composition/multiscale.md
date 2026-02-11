@@ -162,13 +162,8 @@ Expression shorthands are also supported:
 
 ```json
 {
-  "stops": { "expr": "[windowSize / max(width, 1), 0.2 * windowSize / max(width, 1)]" }
-}
-```
-
-```json
-{
   "stops": [
+    2000,
     { "expr": "windowSize / max(width, 1)" },
     { "expr": "0.2 * windowSize / max(width, 1)" }
   ]
