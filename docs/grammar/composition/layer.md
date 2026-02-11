@@ -1,6 +1,9 @@
 # Layering Views
 
-The `layer` operator superimposes multiple views over each other.
+The `layer` operator overlays multiple views in the same space. By default,
+layers share coordinate space and scales, which makes it straightforward to
+combine complementary marks (for example, bars and labels) into one composite
+view.
 
 ## Example
 
