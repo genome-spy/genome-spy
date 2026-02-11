@@ -7,23 +7,18 @@
     "name": "hg38"
   },
 
-  "layer": [
+  "stops": [8],
+
+  "multiscale": [
     {
-      "opacity": {
-        "unitsPerPixel": [5, 8],
-        "values": [0, 0.5]
-      },
       "data": { "values": [{}] },
       "mark": {
         "type": "text",
-        "text": "Zoom in to see the reference sequence"
+        "text": "Zoom in to see the reference sequence",
+        "opacity": 0.5
       }
     },
     {
-      "opacity": {
-        "unitsPerPixel": [8, 5],
-        "values": [0, 1]
-      },
       "data": {
         "lazy": {
           "type": "indexedFasta",
