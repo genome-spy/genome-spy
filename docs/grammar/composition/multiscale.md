@@ -131,7 +131,9 @@ This mirrors the
 
 ## Properties
 
-SCHEMA MultiscaleSpec
+All other properties follow [`layer`](./layer.md) view semantics.
+
+SCHEMA MultiscaleSpec stops
 
 ### MultiscaleStops
 

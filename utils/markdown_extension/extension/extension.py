@@ -38,14 +38,17 @@ refPattern = re.compile('^#/definitions/(\\w+)$')
 class MyPreprocessor(Preprocessor):
     def __init__(self, schema):
         self.schema = schema
-        self.pattern = re.compile('^SCHEMA (\\w+)$')
+        self.pattern = re.compile(r'^SCHEMA\s+(\w+)(?:\s+(.+))?$')
 
     def run(self, lines):
         new_lines = []
         for line in lines:
             m = self.pattern.match(line)
             if m:
-                new_lines.extend(self.getType(m.group(1)))
+                prop_list = []
+                if m.group(2):
+                    prop_list = m.group(2).split()
+                new_lines.extend(self.getType(m.group(1), prop_list))
             else:
                 new_lines.append(line)
 
@@ -110,7 +113,7 @@ class MyPreprocessor(Preprocessor):
     def propTypesToString(self, propTypes):
         return ' | '.join([self.propTypeToString(p) for p in propTypes])
 
-    def getType(self, type_name):
+    def getType(self, type_name, included_properties=None):
         type = self.schema['definitions'][type_name]
         if not type:
             return ['Unknown type: ' + type_name]
@@ -128,7 +131,21 @@ class MyPreprocessor(Preprocessor):
         if not properties:
             return ['No properties']
 
-        for (property, value) in properties.items():
+        selected_properties = properties.items()
+        if included_properties:
+            selected_properties = []
+            for property in included_properties:
+                value = properties.get(property)
+                if not value:
+                    lines.append(
+                        'Unknown property: `{}` in type `{}`'.format(
+                            property, type_name
+                        )
+                    )
+                    continue
+                selected_properties.append((property, value))
+
+        for (property, value) in selected_properties:
             if value.get('const', "") != "":
                 # Skip contants such as types of transforms
                 continue
@@ -154,8 +171,15 @@ class MyPreprocessor(Preprocessor):
             if propTypes:
                 paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes))
 
-            for lineno, description_line in enumerate(paragraphs):
-                lines.append((':   ' if lineno == 0 else '    ') + description_line)
+            continuation_indent = '  '
+
+            for lineno, paragraph in enumerate(paragraphs):
+                paragraph_lines = paragraph.split('\n')
+                for line_no, paragraph_line in enumerate(paragraph_lines):
+                    if lineno == 0 and line_no == 0:
+                        lines.append(':   ' + paragraph_line)
+                    else:
+                        lines.append(continuation_indent + paragraph_line)
                 lines.append('')
 
         return lines
