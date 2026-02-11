@@ -9,7 +9,7 @@ import {
     initPropertyCache,
     invalidatePrefix,
 } from "../utils/propertyCacher.js";
-import { isNumber, isString, span } from "vega-util";
+import { isArray, isNumber, isString, span } from "vega-util";
 import { scaleLog } from "d3-scale";
 import { isFieldDef, getPrimaryChannel } from "../encoder/encoder.js";
 import { concatUrl } from "../utils/url.js";
@@ -979,10 +979,47 @@ function createViewOpacityFunction(view) {
                 }
             };
 
-            const interpolate = scaleLog()
-                .domain(opacityDef.unitsPerPixel)
-                .range(opacityDef.values)
-                .clamp(true);
+            const opacityValues = asFiniteNumberArray(
+                opacityDef.values,
+                "opacity.values",
+                view
+            );
+
+            /** @type {function(number): number} */
+            let interpolate = () => 1;
+
+            /**
+             * @param {unknown} unitsPerPixelDef
+             */
+            const updateInterpolator = (unitsPerPixelDef) => {
+                const unitsPerPixel = asFiniteNumberArray(
+                    unitsPerPixelDef,
+                    "opacity.unitsPerPixel",
+                    view
+                );
+
+                validateDynamicOpacityStops(unitsPerPixel, opacityValues, view);
+
+                const scale = scaleLog()
+                    .domain(unitsPerPixel)
+                    .range(opacityValues)
+                    .clamp(true);
+
+                interpolate = (value) => scale(value);
+            };
+
+            if (isExprRef(opacityDef.unitsPerPixel)) {
+                const fn = view.paramRuntime.watchExpression(
+                    opacityDef.unitsPerPixel.expr,
+                    () => {
+                        updateInterpolator(fn(null));
+                        view.context.animator.requestRender();
+                    }
+                );
+                updateInterpolator(fn(null));
+            } else {
+                updateInterpolator(opacityDef.unitsPerPixel);
+            }
 
             /**
              * @param {{ scale: any, scaleResolution: import("../scales/scaleResolution.js").default }} scaleContext
@@ -1040,6 +1077,74 @@ function createViewOpacityFunction(view) {
         }
     }
     return (parentOpacity) => parentOpacity;
+}
+
+/**
+ * @param {number[]} unitsPerPixel
+ * @param {number[]} values
+ * @param {View} view
+ */
+function validateDynamicOpacityStops(unitsPerPixel, values, view) {
+    if (!unitsPerPixel.length) {
+        throw new ViewError(
+            '"opacity.unitsPerPixel" must contain at least one stop.',
+            view
+        );
+    }
+
+    if (unitsPerPixel.length !== values.length) {
+        throw new ViewError(
+            '"opacity.unitsPerPixel" and "opacity.values" must have the same length.',
+            view
+        );
+    }
+
+    unitsPerPixel.forEach((value, index) => {
+        if (value <= 0) {
+            throw new ViewError(
+                "Invalid opacity.unitsPerPixel value at index " +
+                    index +
+                    ". Stop values must be positive.",
+                view
+            );
+        }
+    });
+
+    for (let i = 1; i < unitsPerPixel.length; i++) {
+        if (unitsPerPixel[i - 1] <= unitsPerPixel[i]) {
+            throw new ViewError(
+                '"opacity.unitsPerPixel" must be strictly decreasing.',
+                view
+            );
+        }
+    }
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} label
+ * @param {View} view
+ * @returns {number[]}
+ */
+function asFiniteNumberArray(value, label, view) {
+    if (!isArray(value)) {
+        throw new ViewError('"' + label + '" must evaluate to an array.', view);
+    }
+
+    return value.map((item, index) => {
+        if (!isNumber(item) || !Number.isFinite(item)) {
+            throw new ViewError(
+                "Invalid " +
+                    label +
+                    " value at index " +
+                    index +
+                    ". Expected a finite number.",
+                view
+            );
+        }
+
+        return item;
+    });
 }
 
 /**
