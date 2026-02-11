@@ -321,7 +321,12 @@ export interface MultiscaleStops {
     /**
      * Relative transition width around each stop.
      *
-     * __Default value:__ `0.15`
+     * For each stop value `s`, the fade transition is evaluated in the range:
+     *
+     * - upper edge: `s * (1 + fade)`
+     * - lower edge: `s * (1 - fade)`
+     *
+     * __Default value:__ `0.5`
      */
     fade?: number;
 }

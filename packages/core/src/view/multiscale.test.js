@@ -40,17 +40,17 @@ describe("multiscale", () => {
 
         expect(asLayer(normalized.layer[0]).opacity).toEqual({
             channel: "auto",
-            unitsPerPixel: [23000, 17000],
+            unitsPerPixel: [30000, 10000],
             values: [1, 0],
         });
         expect(asLayer(normalized.layer[1]).opacity).toEqual({
             channel: "auto",
-            unitsPerPixel: [23000, 17000, 2300, 1700],
+            unitsPerPixel: [30000, 10000, 3000, 1000],
             values: [0, 1, 1, 0],
         });
         expect(asLayer(normalized.layer[2]).opacity).toEqual({
             channel: "auto",
-            unitsPerPixel: [2300, 1700],
+            unitsPerPixel: [3000, 1000],
             values: [0, 1],
         });
     });

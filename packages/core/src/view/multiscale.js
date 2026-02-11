@@ -1,6 +1,6 @@
 import { isArray, isObject } from "vega-util";
 
-const DEFAULT_FADE = 0.15;
+const DEFAULT_FADE = 0.5;
 
 /**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
@@ -108,9 +108,9 @@ function parseStops(stops, stageCount) {
         throw new Error('"stops.channel" must be one of "x", "y", or "auto".');
     }
 
-    if (!Number.isFinite(fade) || fade < 0 || fade >= 0.5) {
+    if (!Number.isFinite(fade) || fade < 0 || fade > 0.5) {
         throw new Error(
-            '"stops.fade" must be a finite number in range [0, 0.5).'
+            '"stops.fade" must be a finite number in range [0, 0.5].'
         );
     }
 
