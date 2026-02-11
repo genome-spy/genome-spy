@@ -7,6 +7,18 @@
 
   "resolve": { "scale": { "x": "shared" } },
 
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative"
+    }
+  },
+
   "stops": [1, 0.1],
 
   "multiscale": [
@@ -39,13 +51,9 @@
           "as": "x2"
         }
       ],
-      "mark": {
-        "type": "rect",
-        "tooltip": null
-      },
+      "mark": "rect",
       "encoding": {
-        "x2": { "field": "x2" },
-        "color": { "value": "#9ecae1" }
+        "x2": { "field": "x2" }
       }
     },
     {
@@ -59,27 +67,10 @@
           "as": "y"
         }
       ],
-      "mark": {
-        "type": "point",
-        "size": 35
-      },
+      "mark": "point",
       "encoding": {
-        "color": { "value": "#08519c" },
         "opacity": { "value": 0.7 }
       }
     }
-  ],
-
-  "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "scale": { "zoom": true }
-    },
-    "y": {
-      "field": "y",
-      "type": "quantitative",
-      "scale": { "domain": [-1.5, 1.5] }
-    }
-  }
+  ]
 }
