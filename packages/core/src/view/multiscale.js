@@ -1,4 +1,5 @@
 import { isArray, isObject } from "vega-util";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const DEFAULT_FADE = 0.5;
 
@@ -8,7 +9,7 @@ const DEFAULT_FADE = 0.5;
  *
  * @typedef {{
  *     metric: MultiscaleMetric;
- *     values: number[];
+ *     values: number[] | import("../spec/parameter.js").ExprRef;
  *     channel: MultiscaleChannel;
  *     fade: number;
  * }} ParsedStops
@@ -66,13 +67,36 @@ export function normalizeMultiscaleSpec(spec) {
 function parseStops(stops, stageCount) {
     /** @type {MultiscaleMetric} */
     let metric = "unitsPerPixel";
-    /** @type {number[]} */
+    /** @type {number[] | import("../spec/parameter.js").ExprRef} */
     let values;
     /** @type {MultiscaleChannel} */
     let channel = "auto";
     let fade = DEFAULT_FADE;
 
     if (isArray(stops)) {
+        if (stops.every(isExprRef)) {
+            const expectedStopCount = stageCount - 1;
+
+            if (stops.length !== expectedStopCount) {
+                throw new Error(
+                    "Invalid stop count for multiscale. Expected " +
+                        expectedStopCount +
+                        ", got " +
+                        stops.length +
+                        "."
+                );
+            }
+
+            values = {
+                expr:
+                    "[" +
+                    stops.map((stop) => "(" + stop.expr + ")").join(", ") +
+                    "]",
+            };
+        } else {
+            values = stops;
+        }
+    } else if (isExprRef(stops)) {
         values = stops;
     } else if (isObject(stops)) {
         metric = stops.metric ?? "unitsPerPixel";
@@ -89,8 +113,29 @@ function parseStops(stops, stageCount) {
         );
     }
 
+    if (!["x", "y", "auto"].includes(channel)) {
+        throw new Error('"stops.channel" must be one of "x", "y", or "auto".');
+    }
+
+    if (!Number.isFinite(fade) || fade < 0 || fade > 0.5) {
+        throw new Error(
+            '"stops.fade" must be a finite number in range [0, 0.5].'
+        );
+    }
+
+    if (isExprRef(values)) {
+        return {
+            metric,
+            values,
+            channel,
+            fade,
+        };
+    }
+
     if (!isArray(values)) {
-        throw new Error('"stops.values" must be an array of numbers.');
+        throw new Error(
+            '"stops.values" must be an array of numbers or ExprRef.'
+        );
     }
 
     const expectedStopCount = stageCount - 1;
@@ -101,16 +146,6 @@ function parseStops(stops, stageCount) {
                 ", got " +
                 values.length +
                 "."
-        );
-    }
-
-    if (!["x", "y", "auto"].includes(channel)) {
-        throw new Error('"stops.channel" must be one of "x", "y", or "auto".');
-    }
-
-    if (!Number.isFinite(fade) || fade < 0 || fade > 0.5) {
-        throw new Error(
-            '"stops.fade" must be a finite number in range [0, 0.5].'
         );
     }
 
@@ -157,28 +192,44 @@ function parseStops(stops, stageCount) {
  * @returns {import("../spec/view.js").DynamicOpacity}
  */
 function createStageOpacity(stageIndex, stageCount, stops) {
-    const transitions = stops.values.map((stop) => ({
-        hi: stop * (1 + stops.fade),
-        lo: stop * (1 - stops.fade),
-    }));
-
-    /** @type {number[]} */
+    /** @type {number[] | import("../spec/parameter.js").ExprRef} */
     let unitsPerPixel;
     /** @type {number[]} */
     let values;
 
+    if (isExprRef(stops.values)) {
+        unitsPerPixel = {
+            expr: createStageOpacityExpr(
+                stageIndex,
+                stageCount,
+                stops.values.expr,
+                stops.fade
+            ),
+        };
+    } else {
+        const transitions = stops.values.map((stop) => ({
+            hi: stop * (1 + stops.fade),
+            lo: stop * (1 - stops.fade),
+        }));
+
+        if (stageIndex === 0) {
+            unitsPerPixel = [transitions[0].hi, transitions[0].lo];
+        } else if (stageIndex === stageCount - 1) {
+            const last = transitions.at(-1);
+            unitsPerPixel = [last.hi, last.lo];
+        } else {
+            const previous = transitions[stageIndex - 1];
+            const next = transitions[stageIndex];
+
+            unitsPerPixel = [previous.hi, previous.lo, next.hi, next.lo];
+        }
+    }
+
     if (stageIndex === 0) {
-        unitsPerPixel = [transitions[0].hi, transitions[0].lo];
         values = [1, 0];
     } else if (stageIndex === stageCount - 1) {
-        const last = transitions.at(-1);
-        unitsPerPixel = [last.hi, last.lo];
         values = [0, 1];
     } else {
-        const previous = transitions[stageIndex - 1];
-        const next = transitions[stageIndex];
-
-        unitsPerPixel = [previous.hi, previous.lo, next.hi, next.lo];
         values = [0, 1, 1, 0];
     }
 
@@ -187,4 +238,77 @@ function createStageOpacity(stageIndex, stageCount, stops) {
         unitsPerPixel,
         values,
     };
+}
+
+/**
+ * @param {number} stageIndex
+ * @param {number} stageCount
+ * @param {string} stopsExpr
+ * @param {number} fade
+ */
+function createStageOpacityExpr(stageIndex, stageCount, stopsExpr, fade) {
+    const upperScale = 1 + fade;
+    const lowerScale = 1 - fade;
+    const stopsArrayExpr = "(" + stopsExpr + ")";
+
+    if (stageIndex === 0) {
+        return (
+            "[(" +
+            stopsArrayExpr +
+            "[0]) * " +
+            upperScale +
+            ", (" +
+            stopsArrayExpr +
+            "[0]) * " +
+            lowerScale +
+            "]"
+        );
+    } else if (stageIndex === stageCount - 1) {
+        const stopIndex = stageCount - 2;
+        return (
+            "[(" +
+            stopsArrayExpr +
+            "[" +
+            stopIndex +
+            "]) * " +
+            upperScale +
+            ", (" +
+            stopsArrayExpr +
+            "[" +
+            stopIndex +
+            "]) * " +
+            lowerScale +
+            "]"
+        );
+    } else {
+        const previousIndex = stageIndex - 1;
+        const nextIndex = stageIndex;
+        return (
+            "[(" +
+            stopsArrayExpr +
+            "[" +
+            previousIndex +
+            "]) * " +
+            upperScale +
+            ", (" +
+            stopsArrayExpr +
+            "[" +
+            previousIndex +
+            "]) * " +
+            lowerScale +
+            ", (" +
+            stopsArrayExpr +
+            "[" +
+            nextIndex +
+            "]) * " +
+            upperScale +
+            ", (" +
+            stopsArrayExpr +
+            "[" +
+            nextIndex +
+            "]) * " +
+            lowerScale +
+            "]"
+        );
+    }
 }
