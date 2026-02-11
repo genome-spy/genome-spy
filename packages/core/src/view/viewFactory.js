@@ -219,6 +219,7 @@ export class ViewFactory {
             this.options.wrapRoot &&
             (isUnitSpec(viewSpec) ||
                 isLayerSpec(viewSpec) ||
+                isMultiscaleSpec(viewSpec) ||
                 hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {

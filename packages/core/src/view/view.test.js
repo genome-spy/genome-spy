@@ -40,6 +40,20 @@ describe("Trivial creations and initializations", () => {
         ).resolves.toBeInstanceOf(LayerView);
     });
 
+    test("Wraps root multiscale into implicit grid root", async () => {
+        const view = await create(
+            {
+                multiscale: [{ mark: "point" }, { mark: "rect" }],
+                stops: [1000],
+            },
+            ConcatView,
+            { wrapRoot: true }
+        );
+
+        expect(view).toBeInstanceOf(ConcatView);
+        expect(view.children[0]).toBeInstanceOf(LayerView);
+    });
+
     test("Parses a more comples spec", async () => {
         const view = await create(
             {
