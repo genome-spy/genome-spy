@@ -127,7 +127,6 @@ test("Nested data sources", async () => {
 test("Linearize does not rewrite synthesized secondary locus channels", async () => {
     const root = await create(
         {
-            genome: { name: "hg38" },
             data: {
                 values: [{ chrom: "chr1", pos: 10 }],
             },
