@@ -45,15 +45,24 @@ export interface FacetMapping {
  * The opacity is interpolated between the specified stops.
  */
 export interface DynamicOpacity {
+    /**
+     * The positional channel whose scale domain controls the opacity.
+     * If omitted, `x` is used when available and `y` is used as a fallback.
+     */
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Stops expressed as units (base pairs, for example) per pixel.
+     * Opacity stops expressed as units (base pairs, for example) per pixel.
+     * The values must be positive.
+     *
+     * Each stop is paired with an opacity in `values` at the same index.
      */
     unitsPerPixel: number[];
 
     /**
-     * Opacity values that match the given stops.
+     * Opacity values that match the given `unitsPerPixel` stops.
+     *
+     * Values outside the stop range are clamped to the nearest stop.
      */
     values: number[];
 }
@@ -238,12 +247,30 @@ export interface ViewSpecBase extends ResolveSpec {
 
 export interface DynamicOpacitySpec {
     /**
-     * Opacity of the view and all its children. Allows implementing semantic
-     * zooming where the layers are faded in and out as the user zooms in and out.
+     * Opacity of the view and all its children.
      *
-     * TODO: Write proper documentation with examples.
+     * This can be:
      *
-     * **Default:** `1.0`
+     * - a fixed number between `0` and `1`
+     * - an expression reference (`ExprRef`)
+     * - a `DynamicOpacity` definition for zoom-dependent opacity
+     *
+     * Dynamic opacity is useful for semantic zooming where layers are faded in
+     * and out as the user zooms.
+     *
+     * Example:
+     *
+     * ```json
+     * "opacity": {
+     *   "unitsPerPixel": [100000, 40000],
+     *   "values": [0, 1]
+     * }
+     * ```
+     *
+     * In this example, the view fades in while zooming in from 100 000 to
+     * 40 000 units per pixel.
+     *
+     * __Default value:__ `1.0`
      */
     opacity?: ViewOpacityDef;
 }

@@ -65,6 +65,53 @@ propagate to its descendants. For example, in the above example, the `"Bar"` and
 `"Label"` views inherit the data and encodings for the `x` and `y` channels from
 their parent, the layer view.
 
+## Zoom-driven layer opacity
+
+Layer (and unit) views support zoom-dependent opacity using `opacity` with
+`unitsPerPixel` and `values`. This is useful for semantic zooming where one
+layer is visible when zoomed out and another appears when zoomed in.
+
+```json
+{
+  "opacity": {
+    "unitsPerPixel": [100000, 40000],
+    "values": [0, 1]
+  }
+}
+```
+
+The opacity is interpolated between the stops. In the example above, the layer
+is invisible at `100000` units/pixel and fully visible at `40000` units/pixel.
+Outside the range, the nearest stop value is used.
+
+### Cross-fading overview and detail layers
+
+Use opposite stop orders in two layers to cross-fade between them while
+zooming:
+
+```json
+{
+  "layer": [
+    {
+      "name": "Overview",
+      "opacity": {
+        "unitsPerPixel": [100000, 40000],
+        "values": [1, 0]
+      },
+      "mark": "rect"
+    },
+    {
+      "name": "Detail",
+      "opacity": {
+        "unitsPerPixel": [100000, 40000],
+        "values": [0, 1]
+      },
+      "mark": "point"
+    }
+  ]
+}
+```
+
 ## Resolve
 
 By default, layers share their scales and axes, unioning the data domains.
