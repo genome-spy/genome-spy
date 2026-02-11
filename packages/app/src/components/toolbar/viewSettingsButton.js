@@ -100,16 +100,28 @@ class ViewSettingsButton extends LitElement {
             );
         }
 
-        this.#app.store.dispatch(
-            checked != view.isVisibleInSpec()
-                ? viewSettingsSlice.actions.setVisibility({
-                      key: selectorKey,
-                      visibility: checked,
-                  })
-                : viewSettingsSlice.actions.restoreDefaultVisibility(
-                      selectorKey
-                  )
-        );
+        if (checked != view.isVisibleInSpec()) {
+            this.#app.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    key: selectorKey,
+                    visibility: checked,
+                })
+            );
+        } else {
+            this.#app.store.dispatch(
+                viewSettingsSlice.actions.restoreDefaultVisibility(selectorKey)
+            );
+
+            // Clear legacy explicit-name overrides too. Otherwise an old
+            // bookmark key can keep the view invisible even after restoring.
+            if (view.explicitName && view.explicitName !== selectorKey) {
+                this.#app.store.dispatch(
+                    viewSettingsSlice.actions.restoreDefaultVisibility(
+                        view.explicitName
+                    )
+                );
+            }
+        }
 
         // Just to be sure...
         this.requestUpdate();
