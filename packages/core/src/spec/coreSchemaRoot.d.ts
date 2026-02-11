@@ -1,45 +1,39 @@
 import { RootConfig } from "./root.js";
 import {
-    ConcatSpec,
-    HConcatSpec,
+    ConcatSpec as CoreConcatSpec,
+    HConcatSpec as CoreHConcatSpec,
     ImportSpec,
-    LayerSpec,
-    UnitSpec,
-    VConcatSpec,
+    LayerSpec as CoreLayerSpec,
+    UnitSpec as CoreUnitSpec,
+    VConcatSpec as CoreVConcatSpec,
 } from "./view.js";
 
-interface CoreSchemaViewConfig {
-    templates?: Record<string, CoreSchemaViewSpec>;
+interface SchemaViewConfig {
+    templates?: Record<string, ViewSpec>;
 }
 
-interface CoreSchemaUnitSpec
-    extends Omit<UnitSpec, "templates">, CoreSchemaViewConfig {}
+interface UnitSpec extends Omit<CoreUnitSpec, "templates">, SchemaViewConfig {}
 
-interface CoreSchemaLayerSpec
-    extends Omit<LayerSpec, "templates" | "layer">, CoreSchemaViewConfig {
-    layer: (CoreSchemaLayerSpec | CoreSchemaUnitSpec | ImportSpec)[];
+interface LayerSpec
+    extends Omit<CoreLayerSpec, "templates" | "layer">, SchemaViewConfig {
+    layer: (LayerSpec | UnitSpec | ImportSpec)[];
 }
 
-interface CoreSchemaVConcatSpec
-    extends Omit<VConcatSpec, "templates" | "vconcat">, CoreSchemaViewConfig {
-    vconcat: (CoreSchemaViewSpec | ImportSpec)[];
+interface VConcatSpec
+    extends Omit<CoreVConcatSpec, "templates" | "vconcat">, SchemaViewConfig {
+    vconcat: (ViewSpec | ImportSpec)[];
 }
 
-interface CoreSchemaHConcatSpec
-    extends Omit<HConcatSpec, "templates" | "hconcat">, CoreSchemaViewConfig {
-    hconcat: (CoreSchemaViewSpec | ImportSpec)[];
+interface HConcatSpec
+    extends Omit<CoreHConcatSpec, "templates" | "hconcat">, SchemaViewConfig {
+    hconcat: (ViewSpec | ImportSpec)[];
 }
 
-interface CoreSchemaConcatSpec
-    extends Omit<ConcatSpec, "templates" | "concat">, CoreSchemaViewConfig {
-    concat: (CoreSchemaViewSpec | ImportSpec)[];
+interface ConcatSpec
+    extends Omit<CoreConcatSpec, "templates" | "concat">, SchemaViewConfig {
+    concat: (ViewSpec | ImportSpec)[];
 }
 
-type CoreSchemaViewSpec =
-    | CoreSchemaUnitSpec
-    | CoreSchemaLayerSpec
-    | CoreSchemaVConcatSpec
-    | CoreSchemaHConcatSpec
-    | CoreSchemaConcatSpec;
+type ViewSpec = UnitSpec | LayerSpec | VConcatSpec | HConcatSpec | ConcatSpec;
 
-export type CoreRootSpec = CoreSchemaViewSpec & RootConfig;
+export type CoreRootSpec = ViewSpec & RootConfig;
