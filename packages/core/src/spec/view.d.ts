@@ -59,7 +59,7 @@ export interface DynamicOpacity {
      *
      * Each stop is paired with an opacity in `values` at the same index.
      */
-    unitsPerPixel: number[];
+    unitsPerPixel: NumericArrayExprDef;
 
     /**
      * Opacity values that match the given `unitsPerPixel` stops.
@@ -68,6 +68,10 @@ export interface DynamicOpacity {
      */
     values: number[];
 }
+
+export type NumericArrayExprDef = number[] | ExprRef;
+
+export type NumericStopDef = number | ExprRef;
 
 export type ViewOpacityDef = number | DynamicOpacity | ExprRef;
 
@@ -305,7 +309,7 @@ export interface MultiscaleStops {
     /**
      * Stop values in descending order.
      */
-    values: number[];
+    values: NumericArrayExprDef;
 
     /**
      * Which positional channel controls the stop metric.
@@ -331,7 +335,7 @@ export interface MultiscaleStops {
     fade?: number;
 }
 
-export type MultiscaleStopsDef = number[] | MultiscaleStops;
+export type MultiscaleStopsDef = NumericStopDef[] | ExprRef | MultiscaleStops;
 
 export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
     view?: ViewBackground;
@@ -345,6 +349,8 @@ export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
      * Stop definition that controls transitions between the multiscale levels.
      *
      * - `number[]` is shorthand for `{ metric: "unitsPerPixel", values: ... }`
+     * - `ExprRef[]` is shorthand for `{ metric: "unitsPerPixel", values: [ ... ] }`
+     * - `ExprRef` is shorthand for `{ metric: "unitsPerPixel", values: <expr result> }`
      * - Object form allows configuring metric, channel, and fade.
      */
     stops: MultiscaleStopsDef;
