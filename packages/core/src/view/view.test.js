@@ -220,6 +220,64 @@ describe("Trivial creations and initializations", () => {
             "Cannot find a resolved quantitative x or y scale for dynamic opacity!"
         );
     });
+
+    test("Dynamic opacity updates when unitsPerPixel is expression-driven", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "stop", value: 1 }],
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: { expr: "[stop, stop / 100]" },
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        view.configureViewOpacity();
+
+        const initialOpacity = view.getEffectiveOpacity();
+        view.paramRuntime.setValue("stop", 10);
+        const updatedOpacity = view.getEffectiveOpacity();
+
+        expect(updatedOpacity).toBeGreaterThan(initialOpacity);
+    });
+
+    test("Dynamic opacity fails if unitsPerPixel expression does not return an array", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "stop", value: 1 }],
+                data: {
+                    values: [{ x: 0, y: 0 }],
+                },
+                mark: "point",
+                opacity: {
+                    unitsPerPixel: { expr: "stop" },
+                    values: [1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.configureViewOpacity()).toThrow(
+            '"opacity.unitsPerPixel" must evaluate to an array.'
+        );
+    });
 });
 
 describe("Test domain handling", () => {

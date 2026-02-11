@@ -78,6 +78,51 @@ describe("multiscale", () => {
         });
     });
 
+    test("supports top-level ExprRef shorthand for stops", () => {
+        const normalized = normalizeMultiscaleSpec({
+            multiscale: [unit("point"), unit("rect")],
+            stops: {
+                expr: "[windowSize / max(width, 1)]",
+            },
+        });
+
+        const firstUnitsPerPixel = asLayer(normalized.layer[0]).opacity
+            .unitsPerPixel;
+        const secondUnitsPerPixel = asLayer(normalized.layer[1]).opacity
+            .unitsPerPixel;
+
+        expect(firstUnitsPerPixel).toEqual({
+            expr: expect.stringContaining("windowSize / max(width, 1)"),
+        });
+        expect(secondUnitsPerPixel).toEqual({
+            expr: expect.stringContaining("windowSize / max(width, 1)"),
+        });
+    });
+
+    test("supports top-level array of ExprRefs for stops", () => {
+        const normalized = normalizeMultiscaleSpec({
+            multiscale: [unit("point"), unit("rect"), unit("rule")],
+            stops: [{ expr: "outerStop" }, { expr: "innerStop" }],
+        });
+
+        const middleOpacity = asLayer(normalized.layer[1]).opacity;
+        expect(middleOpacity.unitsPerPixel).toEqual({
+            expr: expect.stringContaining("outerStop"),
+        });
+        expect(middleOpacity.unitsPerPixel).toEqual({
+            expr: expect.stringContaining("innerStop"),
+        });
+    });
+
+    test("fails if top-level ExprRef stop array has invalid length", () => {
+        expect(() =>
+            normalizeMultiscaleSpec({
+                multiscale: [unit("point"), unit("rect"), unit("rule")],
+                stops: [{ expr: "onlyOneStop" }],
+            })
+        ).toThrow("Invalid stop count");
+    });
+
     test("keeps a single level as a plain child", () => {
         const child = unit("point");
         const normalized = normalizeMultiscaleSpec({
