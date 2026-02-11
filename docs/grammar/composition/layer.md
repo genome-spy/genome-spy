@@ -93,6 +93,17 @@ The opacity is interpolated between the stops. In the example above, the layer
 is invisible at `100000` units/pixel and fully visible at `40000` units/pixel.
 Outside the range, the nearest stop value is used.
 
+`unitsPerPixel` can also be expression-driven:
+
+```json
+{
+  "opacity": {
+    "unitsPerPixel": { "expr": "[windowSize / max(width, 1), 0.5 * windowSize / max(width, 1)]" },
+    "values": [0, 1]
+  }
+}
+```
+
 ### Cross-fading overview and detail layers
 
 Use opposite stop orders in two layers to cross-fade between them while
