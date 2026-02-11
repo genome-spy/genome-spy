@@ -385,6 +385,7 @@ export interface ResolveSpec {
     >;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ViewSpecExtensions {}
 
 export type ViewSpecExtension = ViewSpecExtensions[keyof ViewSpecExtensions];
