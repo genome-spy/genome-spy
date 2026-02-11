@@ -20,6 +20,9 @@ aware interactions.
 - Monorepo managed with lerna-lite
 - TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
 - When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
+- Docs can embed schema-derived property docs with `SCHEMA <TypeName>` (for example, `SCHEMA ExprRef`)
+  - The macro is implemented in `utils/markdown_extension/extension/extension.py`
+  - If a new or renamed type is missing during docs build, regenerate schema/docs artifacts (for example, `npm run build && npm run build:docs`)
 
 ### Core
 
