@@ -995,15 +995,22 @@ function createViewOpacityFunction(view) {
                 view
             );
 
+            if (!isArray(opacityDef.unitsPerPixel)) {
+                throw new ViewError(
+                    '"opacity.unitsPerPixel" must be an array.',
+                    view
+                );
+            }
+
             /** @type {function(number): number} */
             let interpolate = () => 1;
 
-            /**
-             * @param {unknown} unitsPerPixelDef
-             */
-            const updateInterpolator = (unitsPerPixelDef) => {
+            /** @type {(() => number)[]} */
+            let stopReaders = [];
+
+            const updateInterpolator = () => {
                 const unitsPerPixel = asFiniteNumberArray(
-                    unitsPerPixelDef,
+                    stopReaders.map((readStop) => readStop()),
                     "opacity.unitsPerPixel",
                     view
                 );
@@ -1018,18 +1025,22 @@ function createViewOpacityFunction(view) {
                 interpolate = (value) => scale(value);
             };
 
-            if (isExprRef(opacityDef.unitsPerPixel)) {
-                const fn = view.paramRuntime.watchExpression(
-                    opacityDef.unitsPerPixel.expr,
-                    () => {
-                        updateInterpolator(fn(null));
-                        view.context.animator.requestRender();
-                    }
-                );
-                updateInterpolator(fn(null));
-            } else {
-                updateInterpolator(opacityDef.unitsPerPixel);
-            }
+            stopReaders = opacityDef.unitsPerPixel.map((stop) => {
+                if (isExprRef(stop)) {
+                    const fn = view.paramRuntime.watchExpression(
+                        stop.expr,
+                        () => {
+                            updateInterpolator();
+                            view.context.animator.requestRender();
+                        }
+                    );
+                    return () => fn(null);
+                } else {
+                    return () => stop;
+                }
+            });
+
+            updateInterpolator();
 
             /**
              * @param {{ scale: any, scaleResolution: import("../scales/scaleResolution.js").default }} scaleContext

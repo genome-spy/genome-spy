@@ -93,15 +93,13 @@ describe("multiscale", () => {
                 asLayer(normalized.layer[1]).opacity
             );
 
-        expect(firstOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("(5000)"),
-        });
-        expect(firstOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("windowSize / max(width, 1)"),
-        });
-        expect(secondOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("windowSize / max(width, 1)"),
-        });
+        expect(firstOpacity.unitsPerPixel).toEqual([7500, 2500]);
+        expect(secondOpacity.unitsPerPixel).toEqual([
+            7500,
+            2500,
+            { expr: "(windowSize / max(width, 1)) * 1.5" },
+            { expr: "(windowSize / max(width, 1)) * 0.5" },
+        ]);
     });
 
     test("supports top-level array of ExprRefs for stops", () => {
@@ -114,12 +112,12 @@ describe("multiscale", () => {
             /** @type {import("../spec/view.js").DynamicOpacity} */ (
                 asLayer(normalized.layer[1]).opacity
             );
-        expect(middleOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("outerStop"),
-        });
-        expect(middleOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("innerStop"),
-        });
+        expect(middleOpacity.unitsPerPixel).toEqual([
+            { expr: "(outerStop) * 1.5" },
+            { expr: "(outerStop) * 0.5" },
+            { expr: "(innerStop) * 1.5" },
+            { expr: "(innerStop) * 0.5" },
+        ]);
     });
 
     test("supports mixed constants and ExprRefs in object stop values", () => {
@@ -135,12 +133,12 @@ describe("multiscale", () => {
             /** @type {import("../spec/view.js").DynamicOpacity} */ (
                 asLayer(normalized.layer[1]).opacity
             );
-        expect(middleOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("(6000)"),
-        });
-        expect(middleOpacity.unitsPerPixel).toEqual({
-            expr: expect.stringContaining("innerStop"),
-        });
+        expect(middleOpacity.unitsPerPixel).toEqual([
+            9000,
+            3000,
+            { expr: "(innerStop) * 1.5" },
+            { expr: "(innerStop) * 0.5" },
+        ]);
     });
 
     test("fails if top-level ExprRef stop array has invalid length", () => {

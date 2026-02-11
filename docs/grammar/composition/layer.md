@@ -98,7 +98,10 @@ Outside the range, the nearest stop value is used.
 ```json
 {
   "opacity": {
-    "unitsPerPixel": { "expr": "[windowSize / max(width, 1), 0.5 * windowSize / max(width, 1)]" },
+    "unitsPerPixel": [
+      { "expr": "windowSize / max(width, 1)" },
+      { "expr": "0.5 * windowSize / max(width, 1)" }
+    ],
     "values": [0, 1]
   }
 }

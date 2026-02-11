@@ -234,7 +234,7 @@ describe("Trivial creations and initializations", () => {
                 mark: "point",
                 opacity: {
                     channel: "auto",
-                    unitsPerPixel: { expr: "[stop, stop / 100]" },
+                    unitsPerPixel: [{ expr: "stop" }, { expr: "stop / 100" }],
                     values: [0, 1],
                 },
                 encoding: {
@@ -254,7 +254,7 @@ describe("Trivial creations and initializations", () => {
         expect(updatedOpacity).toBeGreaterThan(initialOpacity);
     });
 
-    test("Dynamic opacity fails if unitsPerPixel expression does not return an array", async () => {
+    test("Dynamic opacity fails if unitsPerPixel is not an array", async () => {
         const view = await createAndInitialize(
             {
                 params: [{ name: "stop", value: 1 }],
@@ -263,7 +263,7 @@ describe("Trivial creations and initializations", () => {
                 },
                 mark: "point",
                 opacity: {
-                    unitsPerPixel: { expr: "stop" },
+                    unitsPerPixel: /** @type {any} */ ({ expr: "stop" }),
                     values: [1],
                 },
                 encoding: {
@@ -275,7 +275,7 @@ describe("Trivial creations and initializations", () => {
         );
 
         expect(() => view.configureViewOpacity()).toThrow(
-            '"opacity.unitsPerPixel" must evaluate to an array.'
+            '"opacity.unitsPerPixel" must be an array.'
         );
     });
 });

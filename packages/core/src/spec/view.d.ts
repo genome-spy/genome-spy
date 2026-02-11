@@ -58,8 +58,9 @@ export interface DynamicOpacity {
      * The values must be positive.
      *
      * Each stop is paired with an opacity in `values` at the same index.
+     * Stops can be constants or expression references.
      */
-    unitsPerPixel: NumericArrayExprDef;
+    unitsPerPixel: NumericStopDef[];
 
     /**
      * Opacity values that match the given `unitsPerPixel` stops.
@@ -68,8 +69,6 @@ export interface DynamicOpacity {
      */
     values: number[];
 }
-
-export type NumericArrayExprDef = number[] | ExprRef;
 
 export type NumericStopDef = number | ExprRef;
 

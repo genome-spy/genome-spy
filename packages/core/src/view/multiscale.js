@@ -6,10 +6,11 @@ const DEFAULT_FADE = 0.5;
 /**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
  * @typedef {"x" | "y" | "auto"} MultiscaleChannel
+ * @typedef {number | import("../spec/parameter.js").ExprRef} StopValue
  *
  * @typedef {{
  *     metric: MultiscaleMetric;
- *     values: number[] | import("../spec/parameter.js").ExprRef;
+ *     values: StopValue[];
  *     channel: MultiscaleChannel;
  *     fade: number;
  * }} ParsedStops
@@ -67,7 +68,7 @@ export function normalizeMultiscaleSpec(spec) {
 function parseStops(stops, stageCount) {
     /** @type {MultiscaleMetric} */
     let metric = "unitsPerPixel";
-    /** @type {number[] | import("../spec/parameter.js").ExprRef} */
+    /** @type {StopValue[]} */
     let values;
     /** @type {MultiscaleChannel} */
     let channel = "auto";
@@ -100,34 +101,8 @@ function parseStops(stops, stageCount) {
         );
     }
 
-    if (isExprRef(values)) {
-        return {
-            metric,
-            values,
-            channel,
-            fade,
-        };
-    }
-
-    if (!isArray(values)) {
-        throw new Error(
-            '"stops.values" must be an array of numbers or ExprRef.'
-        );
-    }
-
-    const expectedStopCount = stageCount - 1;
-    if (values.length !== expectedStopCount) {
-        throw new Error(
-            "Invalid stop count for multiscale. Expected " +
-                expectedStopCount +
-                ", got " +
-                values.length +
-                "."
-        );
-    }
-
     values.forEach((value, index) => {
-        if (!Number.isFinite(value) || value <= 0) {
+        if (!isExprRef(value) && (!Number.isFinite(value) || value <= 0)) {
             throw new Error(
                 "Invalid stop value at index " +
                     index +
@@ -136,21 +111,25 @@ function parseStops(stops, stageCount) {
         }
     });
 
-    for (let i = 1; i < values.length; i++) {
-        if (values[i - 1] <= values[i]) {
-            throw new Error(
-                '"stops.values" must be strictly decreasing for "unitsPerPixel".'
-            );
-        }
-    }
+    if (!values.some(isExprRef)) {
+        const numericValues = /** @type {number[]} */ (values);
 
-    for (let i = 0; i < values.length - 1; i++) {
-        const leftLower = values[i] * (1 - fade);
-        const rightUpper = values[i + 1] * (1 + fade);
-        if (leftLower <= rightUpper) {
-            throw new Error(
-                "Adjacent transitions overlap. Reduce fade or increase stop spacing."
-            );
+        for (let i = 1; i < numericValues.length; i++) {
+            if (numericValues[i - 1] <= numericValues[i]) {
+                throw new Error(
+                    '"stops.values" must be strictly decreasing for "unitsPerPixel".'
+                );
+            }
+        }
+
+        for (let i = 0; i < numericValues.length - 1; i++) {
+            const leftLower = numericValues[i] * (1 - fade);
+            const rightUpper = numericValues[i + 1] * (1 + fade);
+            if (leftLower <= rightUpper) {
+                throw new Error(
+                    "Adjacent transitions overlap. Reduce fade or increase stop spacing."
+                );
+            }
         }
     }
 
@@ -166,7 +145,7 @@ function parseStops(stops, stageCount) {
  * @param {unknown} rawValues
  * @param {number} stageCount
  * @param {string} path
- * @returns {number[] | import("../spec/parameter.js").ExprRef}
+ * @returns {StopValue[]}
  */
 function parseStopValues(rawValues, stageCount, path) {
     if (!isArray(rawValues)) {
@@ -186,33 +165,15 @@ function parseStopValues(rawValues, stageCount, path) {
         );
     }
 
-    let hasExpr = false;
     for (const value of rawValues) {
-        if (isExprRef(value)) {
-            hasExpr = true;
-        } else if (!Number.isFinite(value)) {
+        if (!isExprRef(value) && !Number.isFinite(value)) {
             throw new Error(
                 '"' + path + '" must contain only numbers or ExprRefs.'
             );
         }
     }
 
-    if (hasExpr) {
-        return {
-            expr:
-                "[" +
-                rawValues
-                    .map((value) =>
-                        isExprRef(value)
-                            ? "(" + value.expr + ")"
-                            : "(" + value + ")"
-                    )
-                    .join(", ") +
-                "]",
-        };
-    } else {
-        return /** @type {number[]} */ (rawValues);
-    }
+    return /** @type {StopValue[]} */ (rawValues);
 }
 
 /**
@@ -222,37 +183,25 @@ function parseStopValues(rawValues, stageCount, path) {
  * @returns {import("../spec/view.js").DynamicOpacity}
  */
 function createStageOpacity(stageIndex, stageCount, stops) {
-    /** @type {number[] | import("../spec/parameter.js").ExprRef} */
+    /** @type {StopValue[]} */
     let unitsPerPixel;
     /** @type {number[]} */
     let values;
+    const transitions = stops.values.map((stop) => ({
+        hi: scaleStop(stop, 1 + stops.fade),
+        lo: scaleStop(stop, 1 - stops.fade),
+    }));
 
-    if (isExprRef(stops.values)) {
-        unitsPerPixel = {
-            expr: createStageOpacityExpr(
-                stageIndex,
-                stageCount,
-                stops.values.expr,
-                stops.fade
-            ),
-        };
+    if (stageIndex === 0) {
+        unitsPerPixel = [transitions[0].hi, transitions[0].lo];
+    } else if (stageIndex === stageCount - 1) {
+        const last = transitions.at(-1);
+        unitsPerPixel = [last.hi, last.lo];
     } else {
-        const transitions = stops.values.map((stop) => ({
-            hi: stop * (1 + stops.fade),
-            lo: stop * (1 - stops.fade),
-        }));
+        const previous = transitions[stageIndex - 1];
+        const next = transitions[stageIndex];
 
-        if (stageIndex === 0) {
-            unitsPerPixel = [transitions[0].hi, transitions[0].lo];
-        } else if (stageIndex === stageCount - 1) {
-            const last = transitions.at(-1);
-            unitsPerPixel = [last.hi, last.lo];
-        } else {
-            const previous = transitions[stageIndex - 1];
-            const next = transitions[stageIndex];
-
-            unitsPerPixel = [previous.hi, previous.lo, next.hi, next.lo];
-        }
+        unitsPerPixel = [previous.hi, previous.lo, next.hi, next.lo];
     }
 
     if (stageIndex === 0) {
@@ -271,49 +220,14 @@ function createStageOpacity(stageIndex, stageCount, stops) {
 }
 
 /**
- * Builds a runtime expression that computes `opacity.unitsPerPixel` for one
- * generated multiscale stage.
- *
- * @param {number} stageIndex
- * @param {number} stageCount
- * @param {string} stopsExpr
- * @param {number} fade
- * @returns {string}
+ * @param {StopValue} stop
+ * @param {number} factor
+ * @returns {StopValue}
  */
-function createStageOpacityExpr(stageIndex, stageCount, stopsExpr, fade) {
-    const upperScale = 1 + fade;
-    const lowerScale = 1 - fade;
-    const stopsArrayExpr = `(${stopsExpr})`;
-
-    /**
-     * @param {number} index
-     * @param {number} scale
-     */
-    const scaledStop = (index, scale) =>
-        `(${stopsArrayExpr}[${index}]) * ${scale}`;
-
-    /**
-     * @param {number} index
-     * @returns {string[]}
-     */
-    const transitionPair = (index) => [
-        scaledStop(index, upperScale),
-        scaledStop(index, lowerScale),
-    ];
-
-    /** @type {string[]} */
-    let terms;
-
-    if (stageIndex === 0) {
-        terms = transitionPair(0);
-    } else if (stageIndex === stageCount - 1) {
-        terms = transitionPair(stageCount - 2);
+function scaleStop(stop, factor) {
+    if (isExprRef(stop)) {
+        return { expr: "(" + stop.expr + ") * " + factor };
     } else {
-        terms = [
-            ...transitionPair(stageIndex - 1),
-            ...transitionPair(stageIndex),
-        ];
+        return stop * factor;
     }
-
-    return `[${terms.join(", ")}]`;
 }
