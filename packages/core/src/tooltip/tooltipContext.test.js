@@ -363,4 +363,32 @@ describe("Tooltip context rows", () => {
             )
         ).toThrow('Unknown genomic coordinate display mode: "banana"');
     });
+
+    test("Caches linearization mapping per mark", () => {
+        let getCollectorCalls = 0;
+
+        const mark = /** @type {any} */ ({
+            encoders: {},
+            unitView: {
+                getCollector: () => {
+                    getCollectorCalls += 1;
+                    return {
+                        parent: {
+                            params: {
+                                type: "linearizeGenomicCoordinate",
+                                chrom: "chrom",
+                                pos: "start",
+                                as: "linearizedX",
+                            },
+                        },
+                    };
+                },
+            },
+        });
+
+        createTooltipContext({ linearizedX: 10 }, mark);
+        createTooltipContext({ linearizedX: 20 }, mark);
+
+        expect(getCollectorCalls).toBe(1);
+    });
 });

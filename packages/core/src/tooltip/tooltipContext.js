@@ -22,6 +22,9 @@ const GENOMIC_MODES = new Set([
     "disabled",
 ]);
 
+/** @type {WeakMap<object, Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>>} */
+const linearizationMappingCache = new WeakMap();
+
 /**
  * Creates a stable context object for tooltip handlers.
  *
@@ -31,7 +34,7 @@ const GENOMIC_MODES = new Set([
  * @returns {TooltipContext}
  */
 export default function createTooltipContext(datum, mark, params) {
-    const mappingByLinearizedField = collectLinearizationMappings(mark);
+    const mappingByLinearizedField = getLinearizationMappings(mark);
 
     const xGenomic = buildGenomicRowsForAxis(
         "x",
@@ -92,6 +95,21 @@ export default function createTooltipContext(datum, mark, params) {
         formatGenomicInterval: (axis, interval) =>
             formatGenomicInterval(mark, axis, interval),
     };
+}
+
+/**
+ * @param {import("../marks/mark.js").default} mark
+ * @returns {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>}
+ */
+function getLinearizationMappings(mark) {
+    const cached = linearizationMappingCache.get(mark);
+    if (cached) {
+        return cached;
+    }
+
+    const collected = collectLinearizationMappings(mark);
+    linearizationMappingCache.set(mark, collected);
+    return collected;
 }
 
 /**
