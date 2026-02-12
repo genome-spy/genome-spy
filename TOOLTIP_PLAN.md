@@ -6,9 +6,7 @@ Current tooltips show raw genomic fields as-is, which causes three practical pro
 
 1. Coordinate notation ambiguity:
    Values may originally be one-based or zero-based and closed or half-open.
-2. Readability:
-   Large coordinates are shown without thousands separators.
-3. Information quality:
+2. Information quality:
    Tooltips often expose implementation-oriented fields instead of human-readable genomic locations.
 
 GenomeSpy already normalizes genomic coordinates through `LinearizeGenomicCoordinate` when configured correctly, and normalized coordinates can be rendered reliably with genome-aware formatters (`formatInterval`, plus a new locus formatter).
@@ -57,6 +55,7 @@ Display mode is configurable via tooltip params (not inferred from mark type):
 - `locus`
 - `interval`
 - `endpoints`
+- `disabled`
 - `auto` (default)
 
 `auto` behavior:
@@ -64,6 +63,7 @@ Display mode is configurable via tooltip params (not inferred from mark type):
 1. One coordinate -> `locus`
 2. Two coordinates with same mapping group -> `interval`
 3. Two coordinates with different mapping groups -> `endpoints`
+4. `disabled` -> no special genomic formatting or hiding
 
 ### 5) Neutral naming
 
@@ -100,6 +100,16 @@ Planned (backward-compatible):
 ```
 
 If omitted, defaults are applied internally as `auto`.
+
+## Execution Cadence
+
+Each implementation step is completed using the following workflow:
+
+1. Implement only the current step's code changes.
+2. Run relevant Vitest tests for touched behavior/files.
+3. Run TypeScript checks:
+   - `npm -ws run test:tsc --if-present`
+4. Commit the step before moving to the next step.
 
 ## Implementation Plan
 
@@ -153,11 +163,12 @@ Changes:
 
 1. Use encoders/scales to identify active locus channels.
 2. Read encoded continuous values from datum for `x/x2/y/y2`.
-3. Resolve mode per axis (`locus`, `interval`, `endpoints`, `auto`).
+3. Resolve mode per axis (`locus`, `interval`, `endpoints`, `disabled`, `auto`).
 4. Build derived rows:
    - `locus` -> one row
    - `interval` -> one row
    - `endpoints` -> two rows: `endpoint 1`, `endpoint 2`
+   - `disabled` -> no derived genomic rows
 
 ### Step 5: Raw field hiding with verification
 
@@ -183,22 +194,13 @@ Files:
 
 Changes:
 
-1. Render derived genomic rows first (or grouped at top).
+1. Render derived genomic rows as the first data rows in the tooltip.
 2. Filter raw rows by `hiddenSourceFields`.
 3. Preserve existing title/table style.
-4. Keep underscore-prefixed field filtering.
+4. Show remaining raw datum fields after derived genomic rows.
+5. Keep underscore-prefixed field filtering.
 
-### Step 7: Improve number formatting
-
-Files:
-
-- `packages/core/src/utils/formatObject.js`
-
-Changes:
-
-1. Format integers using thousands separators (for generic readability).
-
-### Step 8: Documentation updates
+### Step 7: Documentation updates
 
 Files:
 
@@ -226,7 +228,7 @@ New/updated tests:
    - two coords in different mapping groups
    - renders `endpoint 1` and `endpoint 2`
 4. Forced mode override:
-   - `interval` / `endpoints` / `locus` honored with sensible fallback
+   - `interval` / `endpoints` / `locus` / `disabled` honored with sensible fallback
 5. Verified hiding:
    - hide only fields from mappings passing equality check
 6. Ambiguous or missing mapping:
@@ -271,10 +273,10 @@ Add optional context argument only; preserve old call contract.
 ## Acceptance Criteria
 
 1. Default tooltips show formatted genomic values for locus scales without requiring spec changes.
-2. Locus, interval, and endpoints modes are supported and configurable per axis.
+2. Locus, interval, endpoints, and disabled modes are supported and configurable per axis.
 3. `auto` chooses representation from mapping structure, not mark type.
-4. Manual `LinearizeGenomicCoordinate` workflows are supported.
+4. Derived genomic rows are shown as the first data rows in the tooltip.
 5. Raw fields are hidden only when mapping verification succeeds.
-6. Integer values in tooltip are formatted with thousands separators.
+6. Manual `LinearizeGenomicCoordinate` workflows are supported.
 7. Existing custom handlers that accept only `(datum, mark, params)` still work unchanged.
 8. SV-like two-endpoint examples render neutral endpoint labels with correct formatting.
