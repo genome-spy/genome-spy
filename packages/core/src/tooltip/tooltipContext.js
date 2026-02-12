@@ -253,7 +253,8 @@ function collectLinearizationMappings(mark) {
     const mappingByField = new Map();
 
     let group = 0;
-    let current = mark.unitView.getCollector()?.parent;
+    const collector = mark.unitView?.getCollector?.();
+    let current = collector?.parent;
     while (current) {
         const params = /** @type {any} */ (current).params;
         if (params?.type === "linearizeGenomicCoordinate") {

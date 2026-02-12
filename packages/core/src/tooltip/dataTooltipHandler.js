@@ -1,10 +1,11 @@
 import { html } from "lit";
 import formatObject from "../utils/formatObject.js";
+import createTooltipContext from "./tooltipContext.js";
 
 /**
  * @type {import("./tooltipHandler.js").TooltipHandler}
  */
-export default async function dataTooltipHandler(datum, mark, params) {
+export default async function dataTooltipHandler(datum, mark, params, context) {
     /**
      * @param {string} key
      * @param {object} datum
@@ -30,40 +31,31 @@ export default async function dataTooltipHandler(datum, mark, params) {
         return "";
     };
 
-    /**
-     *
-     * @param {[string, any][]} entries
-     * @param {string} [prefix]
-     * @returns {ReturnType<typeof html>[]}
-     */
-    const entriesToHtml = (entries, prefix) => {
-        const strippedEntries = entries.filter(
-            ([key, _value]) => !key.startsWith("_")
-        );
+    const tooltipContext = context ?? createTooltipContext(datum, mark, params);
+    const rawRows = tooltipContext.getRows
+        ? tooltipContext.getRows()
+        : (tooltipContext.rows ?? []);
+    const genomicRows = tooltipContext.getGenomicRows
+        ? tooltipContext.getGenomicRows()
+        : (tooltipContext.genomicRows ?? []);
+    const hiddenRowKeys = new Set(tooltipContext.hiddenRowKeys ?? []);
 
-        if (strippedEntries.length === 0) {
-            return;
-        }
-
-        return strippedEntries.map(([key, value]) =>
-            value !== null && typeof value === "object" && !Array.isArray(value)
-                ? html`${entriesToHtml(
-                      Object.entries(value),
-                      (prefix ? prefix : "") + key + "."
-                  )}`
-                : html`
-                      <tr>
-                          <th>${prefix}${key}</th>
-                          <td>${formatObject(value)} ${legend(key, datum)}</td>
-                      </tr>
-                  `
-        );
-    };
-
-    const tableContents = entriesToHtml(Object.entries(datum));
-    if (!tableContents) {
+    const visibleRawRows = rawRows.filter((row) => !hiddenRowKeys.has(row.key));
+    const orderedRows = [...genomicRows, ...visibleRawRows];
+    if (!orderedRows.length) {
         return;
     }
+
+    const tableContents = orderedRows.map((row) => {
+        const value = formatObject(row.value);
+        const valueLegend = legend(row.key, datum);
+        return html`
+            <tr>
+                <th>${row.key}</th>
+                <td>${value} ${valueLegend}</td>
+            </tr>
+        `;
+    });
 
     const table = html`
         <table class="attributes">
