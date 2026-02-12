@@ -3,6 +3,9 @@ import Mark from "../marks/mark.js";
 
 /**
  * Converts a datum to tooltip (HTMLElement or lit's TemplateResult).
+ *
+ * TODO: `mark` leaks internals. Keep it for compatibility in this major
+ * version and replace with a stable tooltip context in the next major.
  */
 export type TooltipHandler = (
     datum: Record<string, any>,
