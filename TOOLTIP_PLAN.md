@@ -40,6 +40,10 @@ Tooltip handlers will receive an optional 4th argument:
 
 Existing handlers with 3 arguments continue to work.
 
+The context may expose utility functions and lazily evaluated/computed
+properties when useful for ergonomics and performance. Any such helpers must be
+part of the stable context contract (not internal view/flow objects).
+
 ### 2) Genomic formatting source of truth: encoders
 
 Formatting will use encoded locus coordinates (`x`, `x2`, `y`, `y2`) from encoders and locus scales. This makes formatting robust regardless of whether linearization was inserted automatically or manually.
