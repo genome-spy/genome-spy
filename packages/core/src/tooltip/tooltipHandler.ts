@@ -49,6 +49,22 @@ export interface TooltipContext {
      * Optional lazy derived genomic row access.
      */
     getGenomicRows?: () => TooltipRow[];
+
+    /**
+     * Utility for formatting a continuous genomic position.
+     */
+    formatGenomicLocus?: (
+        axis: "x" | "y",
+        continuousPos: number
+    ) => string | undefined;
+
+    /**
+     * Utility for formatting a continuous genomic interval.
+     */
+    formatGenomicInterval?: (
+        axis: "x" | "y",
+        interval: [number, number]
+    ) => string | undefined;
 }
 
 /**
