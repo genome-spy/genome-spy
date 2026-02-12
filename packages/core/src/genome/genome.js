@@ -1,7 +1,7 @@
 import { bisect } from "d3-array";
 import { tsvParseRows } from "d3-dsv";
 import { isObject } from "vega-util";
-import { formatRange } from "./locusFormat.js";
+import { formatLocus as formatLocusLabel, formatRange } from "./locusFormat.js";
 import { getContigs } from "./genomes.js";
 import { concatUrl } from "../utils/url.js";
 
@@ -230,6 +230,21 @@ export default class Genome {
      */
     formatInterval(interval) {
         return formatRange(...this.toChromosomalInterval(interval));
+    }
+
+    /**
+     * Returns a UCSC Genome Browser -style string presentation of a single
+     * position.
+     *
+     * @param {number} continuousPos
+     * @returns {string}
+     */
+    formatLocus(continuousPos) {
+        const locus = this.toChromosomal(continuousPos);
+        if (!locus) {
+            return undefined;
+        }
+        return formatLocusLabel(locus);
     }
 
     /**

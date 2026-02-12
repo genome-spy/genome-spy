@@ -23,11 +23,17 @@ export default async function refseqGeneTooltipHandler(
 ) {
     const symbol = datum.symbol;
 
+    /** @type {Record<string, string>} */
     const term = {
         ...defaultParams,
-        ...params,
         GENE: symbol,
     };
+
+    for (const [key, value] of Object.entries(params)) {
+        if (typeof value === "string") {
+            term[key] = value;
+        }
+    }
 
     let summary =
         symbolSummaryCache.get(symbol) ??
