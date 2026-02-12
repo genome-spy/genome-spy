@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.69.1](https://github.com/genome-spy/genome-spy/compare/v0.69.0...v0.69.1) (2026-02-12)
+
+### Bug Fixes
+
+* **core:** keep existing visualizations working with unordered dynamic opacity stops ([6bb11fa](https://github.com/genome-spy/genome-spy/commit/6bb11fa6e3c13ada8dd10ee8f0bf6815454687b9)) by @tuner
+
+### Features
+
+* **core:** special treatment for genomic coordinates in tooltips ([#328](https://github.com/genome-spy/genome-spy/issues/328)) ([eac9fff](https://github.com/genome-spy/genome-spy/commit/eac9fff82e0b33f620ad7eb2dd0256a4e04bb14f)) by @tuner
+
 # [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
 
 ### Bug Fixes
