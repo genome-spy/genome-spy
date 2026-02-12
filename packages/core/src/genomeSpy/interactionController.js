@@ -5,6 +5,7 @@ import InteractionEvent from "../utils/interactionEvent.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
+import createTooltipContext from "../tooltip/tooltipContext.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -344,7 +345,12 @@ export default class InteractionController {
                         );
                     }
 
-                    return handler(datum, mark, tooltipProps?.params);
+                    const context = createTooltipContext(
+                        datum,
+                        mark,
+                        tooltipProps?.params
+                    );
+                    return handler(datum, mark, tooltipProps?.params, context);
                 }
             });
         }
