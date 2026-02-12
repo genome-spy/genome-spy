@@ -120,14 +120,6 @@ export default class RectMark extends Mark {
         return encoding;
     }
 
-    onBeforeSampleAnimation() {
-        // TODO: Tessellate rects inside the viewport
-    }
-
-    onAfterSampleAnimation() {
-        // TODO: Pop the previous buffers
-    }
-
     #isRoundedCorners() {
         const p = this.properties;
         return (

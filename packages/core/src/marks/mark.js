@@ -1151,14 +1151,6 @@ export default class Mark {
         return this.glHelper.gl;
     }
 
-    onBeforeSampleAnimation() {
-        // override
-    }
-
-    onAfterSampleAnimation() {
-        // override
-    }
-
     isReady() {
         return this.bufferInfo && this.programInfo;
     }
