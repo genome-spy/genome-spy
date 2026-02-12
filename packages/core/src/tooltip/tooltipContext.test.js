@@ -96,6 +96,9 @@ describe("Tooltip context rows", () => {
 
     test("Auto mode renders an interval row for two coordinates in the same group", () => {
         const datum = {
+            chrom: "chr1",
+            start: 10,
+            end: 20,
             linearizedStart: 10,
             linearizedEnd: 20,
         };
@@ -120,6 +123,7 @@ describe("Tooltip context rows", () => {
         expect(context.getGenomicRows?.()).toEqual([
             { key: "interval", value: "chr1:11-20" },
         ]);
+        expect(context.hiddenRowKeys).toEqual(["chrom", "start", "end"]);
     });
 
     test("Auto mode renders endpoint rows for coordinates in different groups", () => {
@@ -179,5 +183,71 @@ describe("Tooltip context rows", () => {
         });
 
         expect(context.getGenomicRows?.()).toEqual([]);
+    });
+
+    test("Keeps raw fields visible when verified mapping check fails", () => {
+        const datum = {
+            chrom: "chr1",
+            start: 10,
+            linearizedX: 999,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                x: makeLocusEncoder("linearizedX"),
+            },
+            parent: {
+                params: {
+                    type: "linearizeGenomicCoordinate",
+                    chrom: "chrom",
+                    pos: "start",
+                    as: "linearizedX",
+                },
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.getGenomicRows?.()).toEqual([
+            { key: "locus", value: "999" },
+        ]);
+        expect(context.hiddenRowKeys).toEqual([]);
+    });
+
+    test("Keeps raw fields visible when mapping is ambiguous", () => {
+        const datum = {
+            chrom: "chr1",
+            start: 10,
+            linearizedX: 10,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                x: makeLocusEncoder("linearizedX"),
+            },
+            parent: {
+                params: {
+                    type: "linearizeGenomicCoordinate",
+                    chrom: "chrom",
+                    pos: "start",
+                    as: "linearizedX",
+                },
+                parent: {
+                    params: {
+                        type: "linearizeGenomicCoordinate",
+                        chrom: "chrom",
+                        pos: "start",
+                        as: "linearizedX",
+                    },
+                },
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.getGenomicRows?.()).toEqual([
+            { key: "locus", value: "chr1:11" },
+        ]);
+        expect(context.hiddenRowKeys).toEqual([]);
     });
 });

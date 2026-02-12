@@ -39,22 +39,40 @@ export default function createTooltipContext(datum, mark, params) {
 
     /** @type {TooltipRow[]} */
     const genomicRows = [];
+    /** @type {Set<string>} */
+    const hiddenRowKeys = new Set();
     for (const axis of PRIMARY_AXES) {
-        genomicRows.push(
-            ...buildGenomicRowsForAxis(
-                axis,
-                datum,
-                mark,
-                mappingByLinearizedField,
-                getConfiguredMode(params, axis)
-            )
+        const axisGenomic = buildGenomicRowsForAxis(
+            axis,
+            datum,
+            mark,
+            mappingByLinearizedField,
+            getConfiguredMode(params, axis)
         );
+        genomicRows.push(...axisGenomic.rows);
+        for (const field of axisGenomic.usedLinearizedFields) {
+            const mapping = mappingByLinearizedField.get(field);
+            if (!mapping || mapping.ambiguous) {
+                continue;
+            }
+
+            const verified = verifyLinearizationMapping(
+                datum,
+                field,
+                mapping,
+                mark
+            );
+            if (verified) {
+                hiddenRowKeys.add(mapping.chrom);
+                hiddenRowKeys.add(mapping.pos);
+            }
+        }
     }
 
     return {
         rows,
         getRows: () => rows,
-        hiddenRowKeys: [],
+        hiddenRowKeys: [...hiddenRowKeys],
         genomicRows,
         getGenomicRows: () => genomicRows,
         formatGenomicLocus: (axis, continuousPos) =>
@@ -68,9 +86,9 @@ export default function createTooltipContext(datum, mark, params) {
  * @param {"x" | "y"} axis
  * @param {Record<string, any>} datum
  * @param {import("../marks/mark.js").default} mark
- * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number}>} mappingByLinearizedField
+ * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
  * @param {TooltipGenomicDisplayMode} mode
- * @returns {TooltipRow[]}
+ * @returns {{ rows: TooltipRow[], usedLinearizedFields: Set<string> }}
  */
 function buildGenomicRowsForAxis(
     axis,
@@ -79,16 +97,31 @@ function buildGenomicRowsForAxis(
     mappingByLinearizedField,
     mode
 ) {
+    /** @type {Set<string>} */
+    const usedLinearizedFields = new Set();
+
     if (mode === "disabled") {
-        return [];
+        return {
+            rows: [],
+            usedLinearizedFields,
+        };
     }
 
     const primary = readLocusCoordinate(mark, axis, datum);
     if (!primary) {
-        return [];
+        return {
+            rows: [],
+            usedLinearizedFields,
+        };
+    }
+    if (primary.field) {
+        usedLinearizedFields.add(primary.field);
     }
 
     const secondary = readLocusCoordinate(mark, SECONDARY_AXIS[axis], datum);
+    if (secondary?.field) {
+        usedLinearizedFields.add(secondary.field);
+    }
 
     /** @type {TooltipGenomicDisplayMode} */
     const effectiveMode =
@@ -99,49 +132,58 @@ function buildGenomicRowsForAxis(
     const keyPrefix = axis === "x" ? "" : axis + " ";
 
     if (effectiveMode === "endpoints" && secondary) {
-        return [
+        return {
+            rows: [
+                {
+                    key: keyPrefix + "endpoint 1",
+                    value:
+                        formatGenomicLocus(mark, axis, primary.value) ??
+                        String(primary.value),
+                },
+                {
+                    key: keyPrefix + "endpoint 2",
+                    value:
+                        formatGenomicLocus(mark, axis, secondary.value) ??
+                        String(secondary.value),
+                },
+            ],
+            usedLinearizedFields,
+        };
+    }
+
+    if (effectiveMode === "interval" && secondary) {
+        return {
+            rows: [
+                {
+                    key: keyPrefix + "interval",
+                    value:
+                        formatGenomicInterval(mark, axis, [
+                            primary.value,
+                            secondary.value,
+                        ]) ?? primary.value + " - " + secondary.value,
+                },
+            ],
+            usedLinearizedFields,
+        };
+    }
+
+    return {
+        rows: [
             {
-                key: keyPrefix + "endpoint 1",
+                key: keyPrefix + "locus",
                 value:
                     formatGenomicLocus(mark, axis, primary.value) ??
                     String(primary.value),
             },
-            {
-                key: keyPrefix + "endpoint 2",
-                value:
-                    formatGenomicLocus(mark, axis, secondary.value) ??
-                    String(secondary.value),
-            },
-        ];
-    }
-
-    if (effectiveMode === "interval" && secondary) {
-        return [
-            {
-                key: keyPrefix + "interval",
-                value:
-                    formatGenomicInterval(mark, axis, [
-                        primary.value,
-                        secondary.value,
-                    ]) ?? primary.value + " - " + secondary.value,
-            },
-        ];
-    }
-
-    return [
-        {
-            key: keyPrefix + "locus",
-            value:
-                formatGenomicLocus(mark, axis, primary.value) ??
-                String(primary.value),
-        },
-    ];
+        ],
+        usedLinearizedFields,
+    };
 }
 
 /**
  * @param {{ field?: string }} primary
  * @param {{ field?: string } | undefined} secondary
- * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number}>} mappingByLinearizedField
+ * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
  * @returns {TooltipGenomicDisplayMode}
  */
 function resolveAutoMode(primary, secondary, mappingByLinearizedField) {
@@ -149,18 +191,29 @@ function resolveAutoMode(primary, secondary, mappingByLinearizedField) {
         return "locus";
     }
 
-    const primaryGroup = primary.field
-        ? mappingByLinearizedField.get(primary.field)?.groupId
-        : undefined;
-    const secondaryGroup = secondary.field
-        ? mappingByLinearizedField.get(secondary.field)?.groupId
-        : undefined;
+    const primaryGroup = getMappingGroup(
+        primary.field,
+        mappingByLinearizedField
+    );
+    const secondaryGroup = getMappingGroup(
+        secondary.field,
+        mappingByLinearizedField
+    );
 
     if (primaryGroup && secondaryGroup && primaryGroup !== secondaryGroup) {
         return "endpoints";
     }
 
     return "interval";
+}
+
+/**
+ * @param {string | undefined} field
+ * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
+ */
+function getMappingGroup(field, mappingByLinearizedField) {
+    const mapping = field ? mappingByLinearizedField.get(field) : undefined;
+    return mapping && !mapping.ambiguous ? mapping.groupId : undefined;
 }
 
 /**
@@ -193,10 +246,10 @@ function readLocusCoordinate(mark, channel, datum) {
 
 /**
  * @param {import("../marks/mark.js").default} mark
- * @returns {Map<string, {groupId: string, chrom: string, pos: string, offset: number}>}
+ * @returns {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>}
  */
 function collectLinearizationMappings(mark) {
-    /** @type {Map<string, {groupId: string, chrom: string, pos: string, offset: number}>} */
+    /** @type {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} */
     const mappingByField = new Map();
 
     let group = 0;
@@ -208,14 +261,24 @@ function collectLinearizationMappings(mark) {
             const pos = asArray(params.pos);
             const offsets = normalizeOffsets(params.offset, pos.length);
             const groupId = "g" + group++;
+            const channel = params.channel === "y" ? "y" : "x";
 
             for (let i = 0; i < as.length; i++) {
-                if (i < pos.length && !mappingByField.has(as[i])) {
+                if (i >= pos.length) {
+                    continue;
+                }
+
+                const existing = mappingByField.get(as[i]);
+                if (existing) {
+                    existing.ambiguous = true;
+                } else {
                     mappingByField.set(as[i], {
                         groupId,
                         chrom: params.chrom,
                         pos: pos[i],
                         offset: offsets[i],
+                        channel,
+                        ambiguous: false,
                     });
                 }
             }
@@ -299,6 +362,43 @@ function getConfiguredMode(params, axis) {
     }
 
     return /** @type {TooltipGenomicDisplayMode} */ (mode);
+}
+
+/**
+ * @param {Record<string, any>} datum
+ * @param {string} linearizedField
+ * @param {{ chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean }} mapping
+ * @param {import("../marks/mark.js").default} mark
+ */
+function verifyLinearizationMapping(datum, linearizedField, mapping, mark) {
+    const genome = getGenome(mark, mapping.channel);
+    if (!genome) {
+        return false;
+    }
+
+    const chrom = datum[mapping.chrom];
+    const pos = datum[mapping.pos];
+    const linearized = datum[linearizedField];
+
+    if (chrom === undefined || pos === undefined || linearized === undefined) {
+        return false;
+    }
+
+    const numericPos = +pos;
+    const numericLinearized = +linearized;
+
+    if (!Number.isFinite(numericPos) || !Number.isFinite(numericLinearized)) {
+        return false;
+    }
+
+    let expected;
+    try {
+        expected = genome.toContinuous(chrom, numericPos - mapping.offset);
+    } catch (_error) {
+        return false;
+    }
+
+    return Math.abs(expected - numericLinearized) < 1e-6;
 }
 
 /**
