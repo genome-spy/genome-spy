@@ -49,7 +49,7 @@ function makeMark({ encoders, parent }) {
 }
 
 describe("Tooltip context rows", () => {
-    test("Creates context with flattened rows", () => {
+    test("Creates context with datum row flattening utility", () => {
         const datum = {
             sample: "S1",
             nested: { value: 42, deeper: { leaf: "ok" } },
@@ -58,7 +58,7 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, makeMark({ encoders: {} }));
 
-        expect(context.rows).toEqual([
+        expect(context.flattenDatumRows?.()).toEqual([
             { key: "sample", value: "S1" },
             { key: "nested.value", value: 42 },
             { key: "nested.deeper.leaf", value: "ok" },

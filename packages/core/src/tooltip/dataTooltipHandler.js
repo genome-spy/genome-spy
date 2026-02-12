@@ -1,5 +1,6 @@
 import { html } from "lit";
 import formatObject from "../utils/formatObject.js";
+import { flattenDatumRows } from "./flattenDatumRows.js";
 import createTooltipContext from "./tooltipContext.js";
 
 /**
@@ -32,7 +33,9 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
     };
 
     const tooltipContext = context ?? createTooltipContext(datum, mark, params);
-    const rawRows = tooltipContext.rows ?? [];
+    const rawRows = tooltipContext.flattenDatumRows
+        ? tooltipContext.flattenDatumRows()
+        : flattenDatumRows(datum);
     const genomicRows = tooltipContext.genomicRows ?? [];
     const hiddenRowKeys = new Set(tooltipContext.hiddenRowKeys ?? []);
 

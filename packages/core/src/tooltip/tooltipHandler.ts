@@ -26,11 +26,6 @@ export interface TooltipRow {
 
 export interface TooltipContext {
     /**
-     * Raw tooltip rows.
-     */
-    rows?: TooltipRow[];
-
-    /**
      * A list of row keys that should be hidden from the default tooltip table.
      */
     hiddenRowKeys?: string[];
@@ -39,6 +34,11 @@ export interface TooltipContext {
      * Derived genomic rows to render before raw data rows.
      */
     genomicRows?: TooltipRow[];
+
+    /**
+     * Utility for flattening datum fields into tooltip rows.
+     */
+    flattenDatumRows?: () => TooltipRow[];
 
     /**
      * Utility for formatting a continuous genomic position.

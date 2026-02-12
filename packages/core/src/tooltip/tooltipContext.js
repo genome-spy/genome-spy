@@ -5,6 +5,7 @@
  */
 
 import { asArray } from "../utils/arrayUtils.js";
+import { flattenDatumRows } from "./flattenDatumRows.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
 const SECONDARY_AXIS = {
@@ -30,10 +31,6 @@ const GENOMIC_MODES = new Set([
  * @returns {TooltipContext}
  */
 export default function createTooltipContext(datum, mark, params) {
-    /** @type {TooltipRow[]} */
-    const rows = [];
-    collectRows(Object.entries(datum), rows);
-
     const mappingByLinearizedField = collectLinearizationMappings(mark);
 
     const xGenomic = buildGenomicRowsForAxis(
@@ -87,9 +84,9 @@ export default function createTooltipContext(datum, mark, params) {
     }
 
     return {
-        rows,
         hiddenRowKeys: [...hiddenRowKeys],
         genomicRows,
+        flattenDatumRows: () => flattenDatumRows(datum),
         formatGenomicLocus: (axis, continuousPos) =>
             formatGenomicLocus(mark, axis, continuousPos),
         formatGenomicInterval: (axis, interval) =>
@@ -429,34 +426,4 @@ function verifyLinearizationMapping(datum, linearizedField, mapping, mark) {
     }
 
     return Math.abs(expected - numericLinearized) < 1e-6;
-}
-
-/**
- * @param {[string, any][]} entries
- * @param {TooltipRow[]} output
- * @param {string} [prefix]
- */
-function collectRows(entries, output, prefix) {
-    for (const [key, value] of entries) {
-        if (key.startsWith("_")) {
-            continue;
-        }
-
-        if (
-            value !== null &&
-            typeof value === "object" &&
-            !Array.isArray(value)
-        ) {
-            collectRows(
-                Object.entries(value),
-                output,
-                (prefix ? prefix : "") + key + "."
-            );
-        } else {
-            output.push({
-                key: (prefix ? prefix : "") + key,
-                value: value,
-            });
-        }
-    }
 }

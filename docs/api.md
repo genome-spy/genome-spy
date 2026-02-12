@@ -71,9 +71,9 @@ export type TooltipHandler = (
 
 `TooltipContext` may include:
 
-- `rows`: raw tooltip rows
 - `genomicRows`: derived genomic rows
 - `hiddenRowKeys`: raw row keys hidden by the default handler
+- `flattenDatumRows()`: utility for flattening datum fields
 - formatting utilities such as `formatGenomicLocus()` and
   `formatGenomicInterval()`
 
