@@ -155,19 +155,25 @@ function buildGenomicRowsForAxis(
             : mode;
 
     if (effectiveMode === "endpoints" && secondary) {
+        const [endpoint1, endpoint2] = orderEndpointsByFieldHints(
+            primary,
+            secondary,
+            mappingByLinearizedField
+        );
+
         return {
             rows: [
                 {
                     key: "Endpoint 1",
                     value:
-                        formatGenomicLocus(mark, axis, primary.value) ??
-                        String(primary.value),
+                        formatGenomicLocus(mark, axis, endpoint1.value) ??
+                        String(endpoint1.value),
                 },
                 {
                     key: "Endpoint 2",
                     value:
-                        formatGenomicLocus(mark, axis, secondary.value) ??
-                        String(secondary.value),
+                        formatGenomicLocus(mark, axis, endpoint2.value) ??
+                        String(endpoint2.value),
                 },
             ],
             usedLinearizedFields,
@@ -238,6 +244,96 @@ function resolveAutoMode(primary, secondary, mappingByLinearizedField) {
 function getMappingGroup(field, mappingByLinearizedField) {
     const mapping = field ? mappingByLinearizedField.get(field) : undefined;
     return mapping && !mapping.ambiguous ? mapping.groupId : undefined;
+}
+
+/**
+ * Heuristically preserves endpoint numbering from source fields. If one
+ * endpoint is recognized as "2" (or the other as "1"), swap display order.
+ *
+ * @param {{ value: number, field?: string }} primary
+ * @param {{ value: number, field?: string }} secondary
+ * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
+ */
+function orderEndpointsByFieldHints(
+    primary,
+    secondary,
+    mappingByLinearizedField
+) {
+    const firstHint = inferEndpointOrdinal(
+        primary.field,
+        mappingByLinearizedField
+    );
+    const secondHint = inferEndpointOrdinal(
+        secondary.field,
+        mappingByLinearizedField
+    );
+
+    if (firstHint === 2 && secondHint !== 2) {
+        return [secondary, primary];
+    }
+
+    if (secondHint === 1 && firstHint !== 1) {
+        return [secondary, primary];
+    }
+
+    if (firstHint === 2 && secondHint === 1) {
+        return [secondary, primary];
+    }
+
+    return [primary, secondary];
+}
+
+/**
+ * @param {string | undefined} linearizedField
+ * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
+ * @returns {1 | 2 | undefined}
+ */
+function inferEndpointOrdinal(linearizedField, mappingByLinearizedField) {
+    const mapping = linearizedField
+        ? mappingByLinearizedField.get(linearizedField)
+        : undefined;
+    /** @type {(string | undefined)[]} */
+    const candidates = [mapping?.pos, mapping?.chrom, linearizedField];
+
+    /** @type {1 | 2 | undefined} */
+    let ordinal;
+    for (const candidate of candidates) {
+        const detected = detectEndpointOrdinal(candidate);
+        if (detected === undefined) {
+            continue;
+        }
+        if (ordinal === undefined) {
+            ordinal = detected;
+        } else if (ordinal !== detected) {
+            return undefined;
+        }
+    }
+
+    return ordinal;
+}
+
+/**
+ * @param {string | undefined} fieldName
+ * @returns {1 | 2 | undefined}
+ */
+function detectEndpointOrdinal(fieldName) {
+    if (!fieldName) {
+        return undefined;
+    }
+
+    const normalized = fieldName.toLowerCase();
+
+    const trailing = normalized.match(/(?:^|[^0-9])(1|2)$/);
+    if (trailing) {
+        return trailing[1] === "1" ? 1 : 2;
+    }
+
+    const word = normalized.match(/(?:^|[_-])(first|second)(?:[_-]|$)/);
+    if (word) {
+        return word[1] === "first" ? 1 : 2;
+    }
+
+    return undefined;
 }
 
 /**

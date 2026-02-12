@@ -175,6 +175,48 @@ describe("Tooltip context rows", () => {
         ]);
     });
 
+    test("Endpoint rows follow source endpoint numbering hints", () => {
+        const datum = {
+            chrom1: "chr1",
+            start1: 10,
+            chrom2: "chr2",
+            start2: 5,
+            linearizedA: 10,
+            linearizedB: 105,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                // Reversed encoder order: x is endpoint 2 and x2 is endpoint 1.
+                x: makeLocusEncoder("linearizedB"),
+                x2: makeLocusEncoder("linearizedA"),
+            },
+            parent: {
+                params: {
+                    type: "linearizeGenomicCoordinate",
+                    chrom: "chrom2",
+                    pos: "start2",
+                    as: "linearizedB",
+                },
+                parent: {
+                    params: {
+                        type: "linearizeGenomicCoordinate",
+                        chrom: "chrom1",
+                        pos: "start1",
+                        as: "linearizedA",
+                    },
+                },
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.genomicRows).toEqual([
+            { key: "Endpoint 1", value: "chr1:11" },
+            { key: "Endpoint 2", value: "chr2:6" },
+        ]);
+    });
+
     test("Disabled mode turns off genomic row generation", () => {
         const datum = {
             linearizedX: 10,
