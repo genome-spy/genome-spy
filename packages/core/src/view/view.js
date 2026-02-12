@@ -1009,17 +1009,21 @@ function createViewOpacityFunction(view) {
             let stopReaders = [];
 
             const updateInterpolator = () => {
-                const unitsPerPixel = asFiniteNumberArray(
+                const rawUnitsPerPixel = asFiniteNumberArray(
                     stopReaders.map((readStop) => readStop()),
                     "opacity.unitsPerPixel",
                     view
                 );
 
-                validateDynamicOpacityStops(unitsPerPixel, opacityValues, view);
+                const normalizedStops = normalizeDynamicOpacityStops(
+                    rawUnitsPerPixel,
+                    opacityValues,
+                    view
+                );
 
                 const scale = scaleLog()
-                    .domain(unitsPerPixel)
-                    .range(opacityValues)
+                    .domain(normalizedStops.unitsPerPixel)
+                    .range(normalizedStops.values)
                     .clamp(true);
 
                 interpolate = (value) => scale(value);
@@ -1105,7 +1109,7 @@ function createViewOpacityFunction(view) {
  * @param {number[]} values
  * @param {View} view
  */
-function validateDynamicOpacityStops(unitsPerPixel, values, view) {
+function normalizeDynamicOpacityStops(unitsPerPixel, values, view) {
     if (!unitsPerPixel.length) {
         throw new ViewError(
             '"opacity.unitsPerPixel" must contain at least one stop.',
@@ -1131,14 +1135,28 @@ function validateDynamicOpacityStops(unitsPerPixel, values, view) {
         }
     });
 
+    const pairs = unitsPerPixel.map((stop, index) => ({
+        stop,
+        value: values[index],
+    }));
+    pairs.sort((a, b) => b.stop - a.stop);
+
+    const sortedUnits = pairs.map((pair) => pair.stop);
+    const sortedValues = pairs.map((pair) => pair.value);
+
     for (let i = 1; i < unitsPerPixel.length; i++) {
-        if (unitsPerPixel[i - 1] <= unitsPerPixel[i]) {
+        if (sortedUnits[i - 1] <= sortedUnits[i]) {
             throw new ViewError(
                 '"opacity.unitsPerPixel" must be strictly decreasing.',
                 view
             );
         }
     }
+
+    return {
+        unitsPerPixel: sortedUnits,
+        values: sortedValues,
+    };
 }
 
 /**

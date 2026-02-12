@@ -203,6 +203,87 @@ describe("Trivial creations and initializations", () => {
         expect(view.getEffectiveOpacity()).toBeCloseTo(0.1505, 3);
     });
 
+    test("Dynamic opacity accepts ascending unitsPerPixel by reordering pairs", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [0.01, 1],
+                    values: [1, 0],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        view.configureViewOpacity();
+
+        expect(view.getEffectiveOpacity()).toBeCloseTo(0.1505, 3);
+    });
+
+    test("Dynamic opacity reorders shuffled stop-value pairs consistently", async () => {
+        const canonical = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [1, 0.1, 0.01],
+                    values: [0, 0.5, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+        canonical.configureViewOpacity();
+
+        const shuffled = await createAndInitialize(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 0 },
+                        { x: 100, y: 900 },
+                    ],
+                },
+                mark: "point",
+                opacity: {
+                    channel: "auto",
+                    unitsPerPixel: [0.01, 1, 0.1],
+                    values: [1, 0, 0.5],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+        shuffled.configureViewOpacity();
+
+        expect(shuffled.getEffectiveOpacity()).toBeCloseTo(
+            canonical.getEffectiveOpacity(),
+            6
+        );
+    });
+
     test("Dynamic opacity channel auto fails if no positional scales exist", async () => {
         const view = await create(
             {
@@ -218,6 +299,30 @@ describe("Trivial creations and initializations", () => {
 
         expect(() => view.configureViewOpacity()).toThrow(
             "Cannot find a resolved quantitative x or y scale for dynamic opacity!"
+        );
+    });
+
+    test("Dynamic opacity still fails on duplicate unitsPerPixel stops", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [{ x: 0, y: 0 }],
+                },
+                mark: "point",
+                opacity: {
+                    unitsPerPixel: [1, 1],
+                    values: [0, 1],
+                },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.configureViewOpacity()).toThrow(
+            '"opacity.unitsPerPixel" must be strictly decreasing.'
         );
     });
 
