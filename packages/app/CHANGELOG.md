@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
+
+### Bug Fixes
+
+* **app:** clear legacy visibility overrides on restore ([44fd563](https://github.com/genome-spy/genome-spy/commit/44fd563b9e23a498e323e8a0d86a6ee0e227e796)) by @tuner
+* **app:** missing icon for "set value" param action ([324a955](https://github.com/genome-spy/genome-spy/commit/324a95532969911b7b121fbc0fa7f5d19c606e14)) by @tuner
+
+### Features
+
+* **core:** add multiscale semantic zoom composition ([#326](https://github.com/genome-spy/genome-spy/issues/326)) ([8399ce5](https://github.com/genome-spy/genome-spy/commit/8399ce564f38a5f46f97e81f733945b4173ea213)), closes [#258](https://github.com/genome-spy/genome-spy/issues/258) by @tuner
+
 # [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
 ### Bug Fixes
