@@ -33,6 +33,16 @@ The
 handler displays the underlying datum's properties in a table. Property names
 starting with an underscore are omitted. The values are formatted nicely.
 
+When positional channels use a `"locus"` scale, the default handler also shows
+derived genomic rows before raw rows:
+
+- `locus` for single positions
+- `interval` for genomic ranges
+- `endpoint 1` / `endpoint 2` for two independent endpoints
+
+Raw source fields are hidden only when the mapping from source fields to
+linearized coordinates can be verified for the hovered datum.
+
 The
 [`refseqgene`](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/tooltip/refseqGeneTooltipHandler.js)
 handler fetches a summary description for a gene symbol using the
@@ -52,9 +62,39 @@ export type TooltipHandler = (
   datum: Record<string, any>,
   mark: Mark,
   /** Optional parameters from the view specification */
-  params?: Record<string, any>
+  params?: TooltipHandlerParams,
+  /** Optional precomputed context */
+  context?: TooltipContext
 ) => Promise<string | TemplateResult | HTMLElement>;
 ```
+
+`TooltipContext` may include eager or lazy row access:
+
+- `rows` / `getRows()`: raw tooltip rows
+- `genomicRows` / `getGenomicRows()`: derived genomic rows
+- `hiddenRowKeys`: raw row keys hidden by the default handler
+- formatting utilities such as `formatGenomicLocus()` and
+  `formatGenomicInterval()`
+
+The `default` handler accepts optional genomic display mode configuration in
+`params`:
+
+```json
+{
+  "genomicCoordinates": {
+    "x": { "mode": "auto" },
+    "y": { "mode": "disabled" }
+  }
+}
+```
+
+Supported `mode` values:
+
+- `"auto"` (default)
+- `"locus"`
+- `"interval"`
+- `"endpoints"`
+- `"disabled"`
 
 Use the `tooltipHandlers` option to register custom handlers or override the
 default. See the example below.
