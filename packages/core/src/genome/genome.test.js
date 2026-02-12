@@ -57,6 +57,14 @@ describe("Human genome, chromosome names prefixed with 'chr'", () => {
         expect(g.toChromosomal(101)).toBeUndefined();
     });
 
+    test("Formats a continuous locus into a human-readable label", () => {
+        expect(g.formatLocus(0)).toEqual("chr1:1");
+        expect(g.formatLocus(10)).toEqual("chr2:1");
+        expect(g.formatLocus(62)).toEqual("chrX:3");
+        expect(g.formatLocus(100)).toEqual("chrX:41");
+        expect(g.formatLocus(101)).toBeUndefined();
+    });
+
     // Testing half-open intervals
     test("Maps continuous interval to chromosomal interval", () => {
         expect(g.toChromosomalInterval([0, 10])).toEqual([
