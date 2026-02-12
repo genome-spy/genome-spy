@@ -58,13 +58,13 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, makeMark({ encoders: {} }));
 
-        expect(context.getRows?.()).toEqual([
+        expect(context.rows).toEqual([
             { key: "sample", value: "S1" },
             { key: "nested.value", value: 42 },
             { key: "nested.deeper.leaf", value: "ok" },
         ]);
 
-        expect(context.getGenomicRows?.()).toEqual([]);
+        expect(context.genomicRows).toEqual([]);
         expect(context.hiddenRowKeys).toEqual([]);
     });
 
@@ -89,7 +89,7 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, mark);
 
-        expect(context.getGenomicRows?.()).toEqual([
+        expect(context.genomicRows).toEqual([
             { key: "Coordinate", value: "chr1:11" },
         ]);
     });
@@ -120,7 +120,7 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, mark);
 
-        expect(context.getGenomicRows?.()).toEqual([
+        expect(context.genomicRows).toEqual([
             { key: "Interval", value: "chr1:11-20" },
         ]);
         expect(context.hiddenRowKeys).toEqual(["chrom", "start", "end"]);
@@ -163,7 +163,7 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, mark);
 
-        expect(context.getGenomicRows?.()).toEqual([
+        expect(context.genomicRows).toEqual([
             { key: "Endpoint 1", value: "chr1:11" },
             { key: "Endpoint 2", value: "chr2:6" },
         ]);
@@ -194,7 +194,7 @@ describe("Tooltip context rows", () => {
             },
         });
 
-        expect(context.getGenomicRows?.()).toEqual([]);
+        expect(context.genomicRows).toEqual([]);
     });
 
     test("Keeps raw fields visible when verified mapping check fails", () => {
@@ -220,7 +220,7 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, mark);
 
-        expect(context.getGenomicRows?.()).toEqual([
+        expect(context.genomicRows).toEqual([
             { key: "Coordinate", value: "999" },
         ]);
         expect(context.hiddenRowKeys).toEqual([]);
@@ -257,9 +257,68 @@ describe("Tooltip context rows", () => {
 
         const context = createTooltipContext(datum, mark);
 
-        expect(context.getGenomicRows?.()).toEqual([
+        expect(context.genomicRows).toEqual([
             { key: "Coordinate", value: "chr1:11" },
         ]);
         expect(context.hiddenRowKeys).toEqual([]);
+    });
+
+    test("Auto mode defaults to interval when grouping cannot be inferred", () => {
+        const datum = {
+            linearizedStart: 10,
+            linearizedEnd: 20,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                x: makeLocusEncoder("linearizedStart"),
+                x2: makeLocusEncoder("linearizedEnd"),
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.genomicRows).toEqual([
+            { key: "Interval", value: "chr1:11-20" },
+        ]);
+    });
+
+    test("Prefixes genomic row labels with axis when both axes are genomic", () => {
+        const datum = {
+            linearizedX: 10,
+            linearizedY: 120,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                x: makeLocusEncoder("linearizedX"),
+                y: makeLocusEncoder("linearizedY"),
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.genomicRows).toEqual([
+            { key: "X Coordinate", value: "chr1:11" },
+            { key: "Y Coordinate", value: "chr2:21" },
+        ]);
+    });
+
+    test("Fails fast on unknown genomic coordinate display mode", () => {
+        expect(() =>
+            createTooltipContext(
+                { linearizedX: 10 },
+                makeMark({
+                    encoders: {
+                        x: makeLocusEncoder("linearizedX"),
+                    },
+                }),
+                {
+                    genomicCoordinates: {
+                        x: /** @type {any} */ ({ mode: "banana" }),
+                    },
+                }
+            )
+        ).toThrow('Unknown genomic coordinate display mode: "banana"');
     });
 });

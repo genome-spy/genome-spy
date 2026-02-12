@@ -26,14 +26,9 @@ export interface TooltipRow {
 
 export interface TooltipContext {
     /**
-     * Optional eager rows.
+     * Raw tooltip rows.
      */
     rows?: TooltipRow[];
-
-    /**
-     * Optional lazy row access.
-     */
-    getRows?: () => TooltipRow[];
 
     /**
      * A list of row keys that should be hidden from the default tooltip table.
@@ -41,14 +36,9 @@ export interface TooltipContext {
     hiddenRowKeys?: string[];
 
     /**
-     * Optional eager derived genomic rows to render before raw data rows.
+     * Derived genomic rows to render before raw data rows.
      */
     genomicRows?: TooltipRow[];
-
-    /**
-     * Optional lazy derived genomic row access.
-     */
-    getGenomicRows?: () => TooltipRow[];
 
     /**
      * Utility for formatting a continuous genomic position.

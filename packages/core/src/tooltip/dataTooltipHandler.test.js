@@ -29,12 +29,12 @@ test("Renders genomic rows first and hides configured raw rows", async () => {
     });
 
     const context = {
-        getRows: () => [
+        rows: [
             { key: "chrom", value: "chr1" },
             { key: "start", value: 10 },
             { key: "score", value: 5 },
         ],
-        getGenomicRows: () => [{ key: "locus", value: "chr1:11" }],
+        genomicRows: [{ key: "locus", value: "chr1:11" }],
         hiddenRowKeys: ["chrom", "start"],
     };
 

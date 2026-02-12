@@ -32,12 +32,8 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
     };
 
     const tooltipContext = context ?? createTooltipContext(datum, mark, params);
-    const rawRows = tooltipContext.getRows
-        ? tooltipContext.getRows()
-        : (tooltipContext.rows ?? []);
-    const genomicRows = tooltipContext.getGenomicRows
-        ? tooltipContext.getGenomicRows()
-        : (tooltipContext.genomicRows ?? []);
+    const rawRows = tooltipContext.rows ?? [];
+    const genomicRows = tooltipContext.genomicRows ?? [];
     const hiddenRowKeys = new Set(tooltipContext.hiddenRowKeys ?? []);
 
     const visibleRawRows = rawRows.filter((row) => !hiddenRowKeys.has(row.key));

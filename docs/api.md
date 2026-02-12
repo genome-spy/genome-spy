@@ -39,6 +39,7 @@ derived genomic rows before raw rows:
 - `Coordinate` for single positions
 - `Interval` for genomic ranges
 - `Endpoint 1` / `Endpoint 2` for two independent endpoints
+- `X ...` / `Y ...` prefixes when both axes contribute genomic rows
 
 Raw source fields are hidden only when the mapping from source fields to
 linearized coordinates can be verified for the hovered datum.
@@ -68,10 +69,10 @@ export type TooltipHandler = (
 ) => Promise<string | TemplateResult | HTMLElement>;
 ```
 
-`TooltipContext` may include eager or lazy row access:
+`TooltipContext` may include:
 
-- `rows` / `getRows()`: raw tooltip rows
-- `genomicRows` / `getGenomicRows()`: derived genomic rows
+- `rows`: raw tooltip rows
+- `genomicRows`: derived genomic rows
 - `hiddenRowKeys`: raw row keys hidden by the default handler
 - formatting utilities such as `formatGenomicLocus()` and
   `formatGenomicInterval()`

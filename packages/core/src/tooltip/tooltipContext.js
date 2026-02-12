@@ -6,7 +6,6 @@
 
 import { asArray } from "../utils/arrayUtils.js";
 
-const PRIMARY_AXES = /** @type {const} */ (["x", "y"]);
 /** @type {Record<"x" | "y", "x2" | "y2">} */
 const SECONDARY_AXIS = {
     x: "x2",
@@ -37,19 +36,37 @@ export default function createTooltipContext(datum, mark, params) {
 
     const mappingByLinearizedField = collectLinearizationMappings(mark);
 
+    const xGenomic = buildGenomicRowsForAxis(
+        "x",
+        datum,
+        mark,
+        mappingByLinearizedField,
+        getConfiguredMode(params, "x")
+    );
+    const yGenomic = buildGenomicRowsForAxis(
+        "y",
+        datum,
+        mark,
+        mappingByLinearizedField,
+        getConfiguredMode(params, "y")
+    );
+
+    const useAxisPrefixes =
+        xGenomic.rows.length > 0 && yGenomic.rows.length > 0;
+
     /** @type {TooltipRow[]} */
-    const genomicRows = [];
+    const genomicRows = [
+        ...(useAxisPrefixes
+            ? prefixGenomicRows("x", xGenomic.rows)
+            : xGenomic.rows),
+        ...(useAxisPrefixes
+            ? prefixGenomicRows("y", yGenomic.rows)
+            : yGenomic.rows),
+    ];
+
     /** @type {Set<string>} */
     const hiddenRowKeys = new Set();
-    for (const axis of PRIMARY_AXES) {
-        const axisGenomic = buildGenomicRowsForAxis(
-            axis,
-            datum,
-            mark,
-            mappingByLinearizedField,
-            getConfiguredMode(params, axis)
-        );
-        genomicRows.push(...axisGenomic.rows);
+    for (const axisGenomic of [xGenomic, yGenomic]) {
         for (const field of axisGenomic.usedLinearizedFields) {
             const mapping = mappingByLinearizedField.get(field);
             if (!mapping || mapping.ambiguous) {
@@ -71,15 +88,26 @@ export default function createTooltipContext(datum, mark, params) {
 
     return {
         rows,
-        getRows: () => rows,
         hiddenRowKeys: [...hiddenRowKeys],
         genomicRows,
-        getGenomicRows: () => genomicRows,
         formatGenomicLocus: (axis, continuousPos) =>
             formatGenomicLocus(mark, axis, continuousPos),
         formatGenomicInterval: (axis, interval) =>
             formatGenomicInterval(mark, axis, interval),
     };
+}
+
+/**
+ * @param {"x" | "y"} axis
+ * @param {TooltipRow[]} rows
+ * @returns {TooltipRow[]}
+ */
+function prefixGenomicRows(axis, rows) {
+    const axisPrefix = axis.toUpperCase() + " ";
+    return rows.map((row) => ({
+        key: axisPrefix + row.key,
+        value: row.value,
+    }));
 }
 
 /**
@@ -129,19 +157,17 @@ function buildGenomicRowsForAxis(
             ? resolveAutoMode(primary, secondary, mappingByLinearizedField)
             : mode;
 
-    const keyPrefix = axis === "x" ? "" : axis.toUpperCase() + " ";
-
     if (effectiveMode === "endpoints" && secondary) {
         return {
             rows: [
                 {
-                    key: keyPrefix + "Endpoint 1",
+                    key: "Endpoint 1",
                     value:
                         formatGenomicLocus(mark, axis, primary.value) ??
                         String(primary.value),
                 },
                 {
-                    key: keyPrefix + "Endpoint 2",
+                    key: "Endpoint 2",
                     value:
                         formatGenomicLocus(mark, axis, secondary.value) ??
                         String(secondary.value),
@@ -155,7 +181,7 @@ function buildGenomicRowsForAxis(
         return {
             rows: [
                 {
-                    key: keyPrefix + "Interval",
+                    key: "Interval",
                     value:
                         formatGenomicInterval(mark, axis, [
                             primary.value,
@@ -170,7 +196,7 @@ function buildGenomicRowsForAxis(
     return {
         rows: [
             {
-                key: keyPrefix + "Coordinate",
+                key: "Coordinate",
                 value:
                     formatGenomicLocus(mark, axis, primary.value) ??
                     String(primary.value),
@@ -204,6 +230,7 @@ function resolveAutoMode(primary, secondary, mappingByLinearizedField) {
         return "endpoints";
     }
 
+    // Default to interval when grouping cannot be inferred.
     return "interval";
 }
 
@@ -372,6 +399,8 @@ function getConfiguredMode(params, axis) {
  * @param {import("../marks/mark.js").default} mark
  */
 function verifyLinearizationMapping(datum, linearizedField, mapping, mark) {
+    // TODO: This picks a genome by transform channel. In mixed-axis or
+    // mixed-assembly cases, verify against both active genomic axes.
     const genome = getGenome(mark, mapping.channel);
     if (!genome) {
         return false;
