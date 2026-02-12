@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.69.0](https://github.com/genome-spy/genome-spy/compare/v0.68.0...v0.69.0) (2026-02-12)
+
+### Bug Fixes
+
+* **core:** avoid rewriting synthesized locus secondary channels ([9fdd1be](https://github.com/genome-spy/genome-spy/commit/9fdd1bec1db53624a4dd5c7b9eab54725febd532)) by @tuner
+* **core:** initialize lazy sources before binding expr refs ([2485e52](https://github.com/genome-spy/genome-spy/commit/2485e520279918f8e3deeebf9736d6b3a9760eb5)) by @tuner
+* **core:** restore canonical schema type names for docs macro ([2d5109c](https://github.com/genome-spy/genome-spy/commit/2d5109c37a0f416181d0dba3156f7cd7da268cc9)) by @tuner
+
+### Features
+
+* **core:** add genome formatLocus helper ([6c35d0e](https://github.com/genome-spy/genome-spy/commit/6c35d0eaad126154b79a8b0522428651cf93cc28)) by @tuner
+* **core:** add multiscale semantic zoom composition ([#326](https://github.com/genome-spy/genome-spy/issues/326)) ([8399ce5](https://github.com/genome-spy/genome-spy/commit/8399ce564f38a5f46f97e81f733945b4173ea213)), closes [#258](https://github.com/genome-spy/genome-spy/issues/258) by @tuner
+* **core:** add tooltip context scaffolding ([64fd38a](https://github.com/genome-spy/genome-spy/commit/64fd38aaf941f285fb78770bcabb8f8559d8fda9)) by @tuner
+* **core:** capitalize and rename tooltip coordinate labels ([d57c747](https://github.com/genome-spy/genome-spy/commit/d57c747d593c282f82f399aeccc992f5a296dd6e)) by @tuner
+* **core:** derive genomic tooltip rows from encoders ([774c36e](https://github.com/genome-spy/genome-spy/commit/774c36e60dcdd9a29a332ad553d2bc00cc030839)) by @tuner
+* **core:** extend tooltip handler context typing ([f4b559b](https://github.com/genome-spy/genome-spy/commit/f4b559b01665d9ebe7c1adefe64a6b1a60a8e918)) by @tuner
+* **core:** preserve endpoint label order using field hints ([840bcb4](https://github.com/genome-spy/genome-spy/commit/840bcb462bf6d5de69285af053d3ad1de4caec84)) by @tuner
+* **core:** render genomic tooltip rows before raw fields ([359e90d](https://github.com/genome-spy/genome-spy/commit/359e90d7c6d7f3b3acf93b1432e56d39169e9f4c)) by @tuner
+* **core:** support expression-driven semantic zoom stops ([#327](https://github.com/genome-spy/genome-spy/issues/327)) ([ded0b00](https://github.com/genome-spy/genome-spy/commit/ded0b00b9d92be139556057809f96408075b49bf)) by @tuner
+* **core:** support visibility override in imports ([0ec8570](https://github.com/genome-spy/genome-spy/commit/0ec85707c69348b63fb928bac726842485f596e5)), closes [#292](https://github.com/genome-spy/genome-spy/issues/292) by @tuner
+* **core:** verify genomic source fields before hiding ([a00d200](https://github.com/genome-spy/genome-spy/commit/a00d2003a67b6b8b41386db19c81526230a68999)) by @tuner
+
+### Performance Improvements
+
+* **core:** cache tooltip linearization mappings per mark ([c2fee08](https://github.com/genome-spy/genome-spy/commit/c2fee0872ef4f1b0f22d0b6fdf35d96c427ebaf7)) by @tuner
+
 # [0.68.0](https://github.com/genome-spy/genome-spy/compare/v0.67.0...v0.68.0) (2026-02-09)
 
 ### Bug Fixes
