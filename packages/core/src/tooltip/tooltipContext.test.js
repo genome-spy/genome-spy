@@ -128,6 +128,12 @@ describe("Tooltip context rows", () => {
 
     test("Auto mode renders endpoint rows for coordinates in different groups", () => {
         const datum = {
+            chrom1: "chr1",
+            start1: 10,
+            end1: 12,
+            chrom2: "chr2",
+            start2: 5,
+            end2: 9,
             linearizedA: 10,
             linearizedB: 105,
         };
@@ -160,6 +166,12 @@ describe("Tooltip context rows", () => {
         expect(context.getGenomicRows?.()).toEqual([
             { key: "endpoint 1", value: "chr1:11" },
             { key: "endpoint 2", value: "chr2:6" },
+        ]);
+        expect(context.hiddenRowKeys).toEqual([
+            "chrom1",
+            "start1",
+            "chrom2",
+            "start2",
         ]);
     });
 
