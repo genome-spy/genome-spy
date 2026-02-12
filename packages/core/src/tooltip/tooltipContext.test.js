@@ -90,7 +90,7 @@ describe("Tooltip context rows", () => {
         const context = createTooltipContext(datum, mark);
 
         expect(context.getGenomicRows?.()).toEqual([
-            { key: "locus", value: "chr1:11" },
+            { key: "Coordinate", value: "chr1:11" },
         ]);
     });
 
@@ -121,7 +121,7 @@ describe("Tooltip context rows", () => {
         const context = createTooltipContext(datum, mark);
 
         expect(context.getGenomicRows?.()).toEqual([
-            { key: "interval", value: "chr1:11-20" },
+            { key: "Interval", value: "chr1:11-20" },
         ]);
         expect(context.hiddenRowKeys).toEqual(["chrom", "start", "end"]);
     });
@@ -164,8 +164,8 @@ describe("Tooltip context rows", () => {
         const context = createTooltipContext(datum, mark);
 
         expect(context.getGenomicRows?.()).toEqual([
-            { key: "endpoint 1", value: "chr1:11" },
-            { key: "endpoint 2", value: "chr2:6" },
+            { key: "Endpoint 1", value: "chr1:11" },
+            { key: "Endpoint 2", value: "chr2:6" },
         ]);
         expect(context.hiddenRowKeys).toEqual([
             "chrom1",
@@ -221,7 +221,7 @@ describe("Tooltip context rows", () => {
         const context = createTooltipContext(datum, mark);
 
         expect(context.getGenomicRows?.()).toEqual([
-            { key: "locus", value: "999" },
+            { key: "Coordinate", value: "999" },
         ]);
         expect(context.hiddenRowKeys).toEqual([]);
     });
@@ -258,7 +258,7 @@ describe("Tooltip context rows", () => {
         const context = createTooltipContext(datum, mark);
 
         expect(context.getGenomicRows?.()).toEqual([
-            { key: "locus", value: "chr1:11" },
+            { key: "Coordinate", value: "chr1:11" },
         ]);
         expect(context.hiddenRowKeys).toEqual([]);
     });

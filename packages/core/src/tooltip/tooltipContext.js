@@ -129,19 +129,19 @@ function buildGenomicRowsForAxis(
             ? resolveAutoMode(primary, secondary, mappingByLinearizedField)
             : mode;
 
-    const keyPrefix = axis === "x" ? "" : axis + " ";
+    const keyPrefix = axis === "x" ? "" : axis.toUpperCase() + " ";
 
     if (effectiveMode === "endpoints" && secondary) {
         return {
             rows: [
                 {
-                    key: keyPrefix + "endpoint 1",
+                    key: keyPrefix + "Endpoint 1",
                     value:
                         formatGenomicLocus(mark, axis, primary.value) ??
                         String(primary.value),
                 },
                 {
-                    key: keyPrefix + "endpoint 2",
+                    key: keyPrefix + "Endpoint 2",
                     value:
                         formatGenomicLocus(mark, axis, secondary.value) ??
                         String(secondary.value),
@@ -155,7 +155,7 @@ function buildGenomicRowsForAxis(
         return {
             rows: [
                 {
-                    key: keyPrefix + "interval",
+                    key: keyPrefix + "Interval",
                     value:
                         formatGenomicInterval(mark, axis, [
                             primary.value,
@@ -170,7 +170,7 @@ function buildGenomicRowsForAxis(
     return {
         rows: [
             {
-                key: keyPrefix + "locus",
+                key: keyPrefix + "Coordinate",
                 value:
                     formatGenomicLocus(mark, axis, primary.value) ??
                     String(primary.value),

@@ -36,9 +36,9 @@ starting with an underscore are omitted. The values are formatted nicely.
 When positional channels use a `"locus"` scale, the default handler also shows
 derived genomic rows before raw rows:
 
-- `locus` for single positions
-- `interval` for genomic ranges
-- `endpoint 1` / `endpoint 2` for two independent endpoints
+- `Coordinate` for single positions
+- `Interval` for genomic ranges
+- `Endpoint 1` / `Endpoint 2` for two independent endpoints
 
 Raw source fields are hidden only when the mapping from source fields to
 linearized coordinates can be verified for the hovered datum.
