@@ -27,6 +27,7 @@ const ENABLE_INTENT_ERROR_SIMULATION = false;
 /**
  * @typedef {object} ActionHook
  * @prop {(action: Action) => boolean} predicate
+ * @prop {(context: IntentContext, action: Action) => Promise<Action | void>} [augment]
  * @prop {(context: IntentContext, action: Action) => Promise<void>} [ensure]
  * @prop {(context: IntentContext, action: Action) => Promise<void>} [awaitProcessed]
  */
@@ -292,7 +293,22 @@ export default class IntentPipeline {
             });
         }
 
-        context.intentExecutor.dispatch(action);
+        let actionToDispatch = action;
+
+        for (const hook of this.#actionHooks) {
+            if (!hook.predicate(actionToDispatch)) {
+                continue;
+            }
+            if (!hook.augment) {
+                continue;
+            }
+            const augmented = await hook.augment(context, actionToDispatch);
+            if (augmented) {
+                actionToDispatch = augmented;
+            }
+        }
+
+        context.intentExecutor.dispatch(actionToDispatch);
 
         // Await any post-dispatch processing that feeds back into state or data.
         if (attributeInfo?.awaitProcessed) {
@@ -301,18 +317,17 @@ export default class IntentPipeline {
             });
         }
 
-        // Run additional hooks for actions that don't use AttributeInfo.
-        // TODO: If a hook needs pre-dispatch work, split hooks into explicit
-        // before/after phases instead of assuming post-dispatch execution.
+        // Run additional post-dispatch hooks for actions that don't use
+        // AttributeInfo. Pre-dispatch work should use the `augment` hook.
         for (const hook of this.#actionHooks) {
-            if (!hook.predicate(action)) {
+            if (!hook.predicate(actionToDispatch)) {
                 continue;
             }
             if (hook.ensure) {
-                await hook.ensure(context, action);
+                await hook.ensure(context, actionToDispatch);
             }
             if (hook.awaitProcessed) {
-                await hook.awaitProcessed(context, action);
+                await hook.awaitProcessed(context, actionToDispatch);
             }
         }
     }

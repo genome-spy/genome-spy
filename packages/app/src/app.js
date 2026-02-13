@@ -36,6 +36,7 @@ import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
+import { augmentAddMetadataFromSourceAction } from "./sampleView/metadata/metadataSourceFlow.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
@@ -295,7 +296,21 @@ export default class App {
                     awaitProcessed: (context) =>
                         sampleView.awaitMetadataReady(context.signal),
                 });
+
+            const unregisterMetadataSourceAugmenter =
+                this.intentPipeline.registerActionHook({
+                    predicate: (action) =>
+                        action.type ===
+                        sampleSlice.actions.addMetadataFromSource.type,
+                    augment: (context, action) =>
+                        augmentAddMetadataFromSourceAction(
+                            action,
+                            sampleView,
+                            context.signal
+                        ),
+                });
             sampleView.registerDisposer(unregisterMetadataHook);
+            sampleView.registerDisposer(unregisterMetadataSourceAugmenter);
         }
 
         // Make it focusable so that keyboard shortcuts can be caught

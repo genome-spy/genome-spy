@@ -344,6 +344,98 @@ describe("IntentPipeline", () => {
         ]);
     });
 
+    it("applies action-hook augmentation before dispatch", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        pipeline.registerActionHook({
+            predicate: (action) => action.type === "sample/augment",
+            augment: async (context, action) => {
+                if (!context.signal) {
+                    throw new Error("Missing signal");
+                }
+                return {
+                    ...action,
+                    payload: {
+                        ...action.payload,
+                        augmented: true,
+                    },
+                };
+            },
+        });
+
+        await pipeline.submit(
+            { type: "sample/augment", payload: { original: true } },
+            {}
+        );
+
+        expect(deps.intentExecutor.dispatch).toHaveBeenCalledTimes(1);
+        expect(deps.intentExecutor.dispatch.mock.calls[0][0]).toEqual({
+            type: "sample/augment",
+            payload: { original: true, augmented: true },
+        });
+    });
+
+    it("rejects and skips dispatch when action-hook augmentation fails", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        pipeline.registerActionHook({
+            predicate: (action) => action.type === "sample/augment-error",
+            augment: async () => {
+                throw new Error('Metadata source "missing" was not found.');
+            },
+        });
+
+        await expect(
+            pipeline.submit(
+                {
+                    type: "sample/augment-error",
+                    payload: { sourceId: "missing" },
+                },
+                {}
+            )
+        ).rejects.toThrow('Metadata source "missing" was not found.');
+
+        expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("aborts action-hook augmentation when the current action is canceled", async () => {
+        const deps = createDeps();
+        const pipeline = new IntentPipeline(deps);
+
+        const started = createDeferred();
+        const finish = createDeferred();
+
+        pipeline.registerActionHook({
+            predicate: (action) => action.type === "sample/augment-abort",
+            augment: async (context) => {
+                if (!context.signal) {
+                    throw new Error("Missing abort signal");
+                }
+                context.signal.addEventListener(
+                    "abort",
+                    () => finish.reject(new Error("Aborted by user")),
+                    { once: true }
+                );
+                started.resolve();
+                await finish.promise;
+                return undefined;
+            },
+        });
+
+        const submitPromise = pipeline.submit(
+            { type: "sample/augment-abort", payload: {} },
+            {}
+        );
+
+        await started.promise;
+        pipeline.abortCurrent();
+
+        await expect(submitPromise).rejects.toThrow("Aborted by user");
+        expect(deps.intentExecutor.dispatch).not.toHaveBeenCalled();
+    });
+
     it("aborts in-flight work when abortCurrent is called", async () => {
         const deps = createDeps();
         const pipeline = new IntentPipeline(deps);

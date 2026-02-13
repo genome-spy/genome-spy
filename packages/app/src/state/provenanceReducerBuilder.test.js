@@ -59,4 +59,33 @@ describe("createProvenanceReducer", () => {
         expect(state.present.sample.count).toBe(1);
         expect(state.present.lastAction.payload).toEqual({ value: 1 });
     });
+
+    it("keeps provenance payload compact for metadata source actions", () => {
+        const reducer = createProvenanceReducer({ sample: sampleReducer });
+
+        /** @type {number[]} */
+        const wideColumn = Array.from({ length: 1000 }, (_, i) => i);
+
+        let state = reducer(undefined, { type: "@@INIT" });
+        state = reducer(state, {
+            type: "sample/importFromSource",
+            payload: {
+                sourceId: "clinical",
+                columnIds: ["x"],
+                [AUGMENTED_KEY]: {
+                    metadata: {
+                        columnarMetadata: {
+                            sample: ["s1"],
+                            x: wideColumn,
+                        },
+                    },
+                },
+            },
+        });
+
+        expect(state.present.lastAction.payload).toEqual({
+            sourceId: "clinical",
+            columnIds: ["x"],
+        });
+    });
 });
