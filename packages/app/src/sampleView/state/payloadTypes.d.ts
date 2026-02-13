@@ -76,6 +76,36 @@ export interface DeriveMetadata extends PayloadWithAttribute {
     scale?: SampleAttributeDef["scale"];
 }
 
+export interface AddMetadataFromSource {
+    /**
+     * Optional source identifier.
+     * If omitted, source resolution is allowed only when exactly one source exists.
+     */
+    sourceId?: string;
+
+    /**
+     * Columns requested from the source.
+     */
+    columnIds: string[];
+
+    /**
+     * Optional metadata group path override.
+     */
+    groupPath?: string;
+
+    /**
+     * If true, replace existing metadata instead of merging.
+     */
+    replace?: boolean;
+
+    /**
+     * @internal
+     */
+    _augmented?: {
+        metadata: SetMetadata;
+    };
+}
+
 export type ThresholdOperator = "lt" | "lte";
 
 export interface Threshold {

@@ -13,6 +13,43 @@ import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 
 describe("SampleView", () => {
+    test("warns once when deprecated legacy sample metadata fields are used", async () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                ],
+            },
+            samples: {
+                data: {
+                    values: [
+                        { sample: "A", clinical: "yes" },
+                        { sample: "B", clinical: "no" },
+                    ],
+                },
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        };
+
+        await createSampleViewForTest({
+            spec,
+            disableGroupUpdates: true,
+        });
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        warnSpy.mockRestore();
+    });
+
     test("extracts samples from main data subtree on subtreeDataReady", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {

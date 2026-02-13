@@ -288,7 +288,10 @@ export default class App {
                 this.intentPipeline.registerActionHook({
                     predicate: (action) =>
                         action.type === sampleSlice.actions.addMetadata.type ||
-                        action.type === sampleSlice.actions.deriveMetadata.type,
+                        action.type ===
+                            sampleSlice.actions.deriveMetadata.type ||
+                        action.type ===
+                            sampleSlice.actions.addMetadataFromSource.type,
                     awaitProcessed: (context) =>
                         sampleView.awaitMetadataReady(context.signal),
                 });

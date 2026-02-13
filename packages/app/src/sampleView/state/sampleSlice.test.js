@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
-import { SAMPLE_SLICE_NAME, augmentAttributeAction } from "./sampleSlice.js";
+import {
+    SAMPLE_SLICE_NAME,
+    augmentAttributeAction,
+    sampleSlice,
+} from "./sampleSlice.js";
 
 /**
  * @returns {import("./sampleState.js").SampleHierarchy}
@@ -119,5 +123,68 @@ describe("augmentAttributeAction", () => {
                 },
             },
         });
+    });
+});
+
+describe("sampleSlice reducers", () => {
+    it("adds metadata payload for addMetadataFromSource actions", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.addMetadataFromSource({
+                sourceId: "rna_expression",
+                columnIds: ["TP53"],
+                [AUGMENTED_KEY]: {
+                    metadata: {
+                        columnarMetadata: {
+                            sample: ["s1", "s2"],
+                            TP53: [1.2, -0.3],
+                        },
+                        attributeDefs: {
+                            TP53: {
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                },
+            })
+        );
+
+        expect(state.sampleMetadata.attributeNames).toEqual(["TP53"]);
+        expect(state.sampleMetadata.entities.s1.TP53).toBe(1.2);
+        expect(state.sampleMetadata.entities.s2.TP53).toBe(-0.3);
+    });
+
+    it("throws if augmented payload is missing for addMetadataFromSource", () => {
+        const state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                ],
+            })
+        );
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.addMetadataFromSource({
+                    sourceId: "rna_expression",
+                    columnIds: ["TP53"],
+                })
+            )
+        ).toThrow(
+            "Metadata source payload is missing. Did you remember to use IntentExecutor.dispatch()?"
+        );
     });
 });

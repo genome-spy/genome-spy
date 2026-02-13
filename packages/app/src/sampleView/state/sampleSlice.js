@@ -209,6 +209,20 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        addMetadataFromSource: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").AddMetadataFromSource>} */ action
+        ) => {
+            const metadata = action.payload[AUGMENTED_KEY]?.metadata;
+            if (!metadata) {
+                throw new Error(
+                    "Metadata source payload is missing. Did you remember to use IntentExecutor.dispatch()?"
+                );
+            }
+
+            applyMetadataPayload(state, metadata);
+        },
+
         sortBy: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action

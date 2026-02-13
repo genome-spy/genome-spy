@@ -4,6 +4,7 @@ import {
     faCheck,
     faCircle,
     faSortAmountDown,
+    faTable,
 } from "@fortawesome/free-solid-svg-icons";
 import { getActionInfo } from "./actionInfo.js";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
@@ -36,6 +37,24 @@ describe("getActionInfo", () => {
         expect(info.title).toBe("Sort by");
         expect(info.provenanceTitle).toBeDefined();
         expect(info.icon).toBe(faSortAmountDown);
+    });
+
+    it("describes source metadata import actions", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/addMetadataFromSource`,
+            payload: {
+                sourceId: "rna_expression",
+                columnIds: ["TP53", "MYC"],
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+
+        expect(info.title).toBe("Add metadata from source");
+        expect(templateResultToString(info.provenanceTitle)).toContain(
+            "rna_expression"
+        );
+        expect(info.icon).toBe(faTable);
     });
 
     it("keeps selection-source wording in sort provenance titles", () => {

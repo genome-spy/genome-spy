@@ -78,6 +78,24 @@ const actionHandlers = {
         };
     },
 
+    addMetadataFromSource: ({ template, payload }) => {
+        const columnIds = Array.isArray(payload.columnIds)
+            ? payload.columnIds
+            : [];
+        const sourceLabel = payload.sourceId
+            ? html` from <strong>${payload.sourceId}</strong>`
+            : "";
+        const noun = columnIds.length === 1 ? "attribute" : "attributes";
+
+        return {
+            ...template,
+            title: "Add metadata from source",
+            provenanceTitle: html`Add
+                <strong>${columnIds.length}</strong> ${noun}${sourceLabel}`,
+            icon: faTable,
+        };
+    },
+
     sortBy: ({ template, attributeTitle }) => ({
         ...template,
         title: "Sort by",

@@ -52,6 +52,10 @@ import {
     replacePathSeparatorInKeys,
     wrangleMetadata,
 } from "./metadata/metadataUtils.js";
+import {
+    LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
+    normalizeSampleDefMetadataSources,
+} from "./metadata/metadataSourceSpec.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 import { resolveViewRef } from "./viewRef.js";
@@ -140,7 +144,17 @@ export default class SampleView extends ContainerView {
 
         this.provenance = provenance;
 
-        this.spec = spec;
+        const normalizedSampleDef = normalizeSampleDefMetadataSources(
+            spec.samples
+        );
+        if (normalizedSampleDef.usesLegacyMetadata) {
+            console.warn(LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING);
+        }
+
+        this.spec = {
+            ...spec,
+            samples: normalizedSampleDef.sampleDef,
+        };
         this.#stickySummaries = spec.stickySummaries ?? true;
 
         this.#initViewHelpers();
