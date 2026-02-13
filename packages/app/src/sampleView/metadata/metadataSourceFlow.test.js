@@ -74,6 +74,26 @@ describe("augmentAddMetadataFromSourceAction", () => {
         ).rejects.toThrow('Metadata source "missing" was not found.');
     });
 
+    it("imports resolvable columns even when some requested columns are missing", async () => {
+        const sampleView = createSampleViewStub();
+        const action = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "clinical",
+            columnIds: ["TP53", "MISSING"],
+        });
+
+        const augmented = await augmentAddMetadataFromSourceAction(
+            action,
+            sampleView
+        );
+
+        expect(
+            augmented.payload[AUGMENTED_KEY].metadata.columnarMetadata
+        ).toEqual({
+            sample: ["s1", "s2"],
+            TP53: [1.2, -0.2],
+        });
+    });
+
     it("throws when import size exceeds the limit", async () => {
         const sampleView = createSampleViewStub();
         const action = sampleSlice.actions.addMetadataFromSource({

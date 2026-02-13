@@ -1,5 +1,9 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
+import {
+    faDatabase,
+    faFileUpload,
+    faSlidersH,
+} from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
@@ -23,6 +27,7 @@ import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
+import { showImportMetadataFromSourceDialog } from "../../sampleView/metadata/importMetadataFromSourceDialog.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
 
 class ViewSettingsButton extends LitElement {
@@ -243,6 +248,12 @@ class ViewSettingsButton extends LitElement {
                         label: "Upload custom metadata",
                         icon: faFileUpload,
                         callback: () => this.#showUploadMetadataDialog(),
+                    },
+                    {
+                        label: "Import metadata from source",
+                        icon: faDatabase,
+                        callback: () =>
+                            this.#showImportMetadataFromSourceDialog(),
                     }
                 );
             }
@@ -364,6 +375,18 @@ class ViewSettingsButton extends LitElement {
             throw new Error("Cannot upload metadata without SampleView");
         } else {
             showUploadMetadataDialog(sampleView);
+        }
+    }
+
+    #showImportMetadataFromSourceDialog() {
+        const sampleView = this.#app.getSampleView();
+        if (!sampleView) {
+            throw new Error("Cannot import metadata without SampleView");
+        } else {
+            showImportMetadataFromSourceDialog(
+                sampleView,
+                this.#app.intentPipeline
+            );
         }
     }
 }
