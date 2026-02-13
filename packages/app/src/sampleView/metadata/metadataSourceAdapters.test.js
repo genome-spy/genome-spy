@@ -67,7 +67,7 @@ describe("createMetadataSourceAdapter", () => {
         expect(adapter.constructor.name).toBe("DataMetadataSourceAdapter");
     });
 
-    it("throws for unsupported backends", () => {
+    it("creates a zarr backend adapter", () => {
         const source = {
             backend: {
                 backend: "zarr",
@@ -76,8 +76,21 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
+        const adapter = createMetadataSourceAdapter(source);
+        expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
+    });
+
+    it("throws for unsupported backends", () => {
+        const source = {
+            backend: {
+                backend: "parquet",
+                url: "https://example.org/data.parquet",
+                sampleIdField: "sample",
+            },
+        };
+
         expect(() => createMetadataSourceAdapter(source)).toThrow(
-            'Metadata backend "zarr" is not implemented yet.'
+            'Metadata backend "parquet" is not implemented yet.'
         );
     });
 });

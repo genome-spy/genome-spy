@@ -6,6 +6,13 @@ import {
 } from "./metadataSourceAdapters.js";
 
 /**
+ * @typedef {object} ResolvedColumns
+ * @property {string[]} columnIds
+ * @property {string[]} missing
+ * @property {string[]} [ambiguous]
+ */
+
+/**
  * @param {import("@reduxjs/toolkit").Action} action
  * @param {import("../sampleView.js").default} sampleView
  * @param {AbortSignal} [signal]
@@ -58,7 +65,16 @@ export async function augmentAddMetadataFromSourceAction(
         baseUrl: sampleView.getBaseUrl(),
     });
 
-    const resolved = await adapter.resolveColumns(payload.columnIds, signal);
+    const resolved =
+        /** @type {ResolvedColumns} */
+        (await adapter.resolveColumns(payload.columnIds, signal));
+    if (resolved.ambiguous && resolved.ambiguous.length > 0) {
+        throw new Error(
+            "Metadata source column queries are ambiguous: " +
+                resolved.ambiguous.join(", ")
+        );
+    }
+
     if (resolved.missing.length > 0) {
         throw new Error(
             "Metadata source columns were not found: " +

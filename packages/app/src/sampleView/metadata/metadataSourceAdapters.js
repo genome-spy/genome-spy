@@ -1,4 +1,5 @@
 import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
+import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleDef} SampleDef
@@ -66,6 +67,10 @@ export function resolveMetadataSource(sampleDef, sourceId) {
 export function createMetadataSourceAdapter(source, options = {}) {
     if (source.backend.backend === "data") {
         return new DataMetadataSourceAdapter(source, options);
+    }
+
+    if (source.backend.backend === "zarr") {
+        return new ZarrMetadataSourceAdapter(source, options);
     }
 
     throw new Error(
