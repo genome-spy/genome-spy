@@ -30,6 +30,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _columnPlaceholder: { state: true },
         _availableColumnCount: { state: true },
         _alignmentIssue: { state: true },
+        _showAlignmentDetails: { state: true },
     };
 
     static styles = [
@@ -56,6 +57,17 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 min-height: 10rem;
                 resize: vertical;
                 width: 100%;
+            }
+
+            .inline-link {
+                appearance: none;
+                background: none;
+                border: 0;
+                color: inherit;
+                cursor: pointer;
+                font: inherit;
+                padding: 0;
+                text-decoration: underline;
             }
         `,
     ];
@@ -84,6 +96,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentVersion = 0;
         this._previewQueryKey = "";
         this._alignmentIssue = null;
+        this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
         /** @type {ReturnType<typeof createMetadataSourceAdapter> | null} */
         this._adapter = null;
@@ -159,7 +172,25 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                                     ? faExclamationCircle
                                     : faTimesCircle
                           ).node[0]}
-                          ${this._alignmentIssue.message}
+                          <span>
+                              ${this._alignmentIssue.summary}${this
+                                  ._alignmentIssue.details
+                                  ? this._showAlignmentDetails
+                                      ? html` ${this._alignmentIssue.details}`
+                                      : html` <button
+                                            class="inline-link"
+                                            type="button"
+                                            @click=${(
+                                                /** @type {MouseEvent} */ event
+                                            ) =>
+                                                this.#showAlignmentDetails(
+                                                    event
+                                                )}
+                                        >
+                                            Show the problems
+                                        </button>`
+                                  : nothing}
+                          </span>
                       </div>`
                     : nothing}
 
@@ -222,6 +253,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._error = "";
         this._preview = null;
         this._alignmentIssue = null;
+        this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
         const sourceLabel = this.source.name ?? this.source.id ?? "source";
         this.dialogTitle = html`Import metadata from
@@ -379,9 +411,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         : "Invalid sample ids in metadata source.";
                 this._alignmentIssue = {
                     severity: "error",
-                    message:
+                    summary:
                         "Sample-id alignment check failed: " + String(message),
                 };
+                this._showAlignmentDetails = false;
                 return;
             }
 
@@ -399,10 +432,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         : "";
                 this._alignmentIssue = {
                     severity: "error",
-                    message:
-                        "No matching sample IDs. Import cannot continue." +
-                        sourceOnly,
+                    summary: "No matching sample IDs. Import cannot continue.",
+                    details: sourceOnly.trim(),
                 };
+                this._showAlignmentDetails = false;
                 return;
             }
 
@@ -412,37 +445,48 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 if (unknownCount > 0) {
                     parts.push(
                         String(unknownCount) +
-                            " source sample ids are not in the current view" +
+                            " source sample IDs are not in the loaded sample set" +
                             this.#formatCases(stats.unknownSamples)
                     );
                 }
                 if (notCoveredCount > 0) {
                     parts.push(
                         String(notCoveredCount) +
-                            " current-view sample ids are not in the source" +
+                            " loaded sample-set IDs are not in the source" +
                             this.#formatCases(stats.notCoveredSamples)
                     );
                 }
                 this._alignmentIssue = {
                     severity: "warning",
-                    message:
-                        "Some sample IDs do not match. Only matched samples will receive imported values. " +
-                        parts.join("; "),
+                    summary:
+                        "Some sample IDs do not match. Import can continue: values will be added only to matched samples.",
+                    details: parts.join("; "),
                 };
+                this._showAlignmentDetails = false;
                 return;
             }
 
             this._alignmentIssue = null;
+            this._showAlignmentDetails = false;
         } catch (error) {
             if (version !== this._alignmentVersion) {
                 return;
             }
             this._alignmentIssue = {
                 severity: "error",
-                message:
+                summary:
                     "Could not validate sample-id alignment: " + String(error),
             };
+            this._showAlignmentDetails = false;
         }
+    }
+
+    /**
+     * @param {MouseEvent} event
+     */
+    #showAlignmentDetails(event) {
+        event.preventDefault();
+        this._showAlignmentDetails = true;
     }
 
     #canImport() {
