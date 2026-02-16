@@ -13,6 +13,7 @@ import {
     createMetadataSourceAdapter,
     resolveMetadataSources,
 } from "./metadataSourceAdapters.js";
+import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
 import { readTextFile } from "./metadataFileUtils.js";
 
 /**
@@ -125,6 +126,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const warnings = readiness?.warnings;
         const blocking = readiness?.blocking;
         const sourceCount = this._availableSources.length;
+        const noImportableSources =
+            !this._loading && !this._error && sourceCount === 0;
         const selectedSource = this.#getSelectedSourceRef();
         const missingStableSourceId =
             sourceCount > 1 && selectedSource && !selectedSource.source.id;
@@ -164,6 +167,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                                       </option>`
                               )}
                           </select>
+                      </div>`
+                    : nothing}
+                ${noImportableSources
+                    ? html`<div class="gs-alert info">
+                          All eager metadata sources are already fully loaded.
+                          There are no additional columns to import.
                       </div>`
                     : nothing}
 
@@ -285,7 +294,15 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 return;
             }
 
-            this._availableSources = sources.map((source, index) => {
+            const importableSources = sources.filter(
+                (source) =>
+                    !(
+                        source.backend.backend === "data" &&
+                        getEffectiveInitialLoad(source) === "*"
+                    )
+            );
+
+            this._availableSources = importableSources.map((source, index) => {
                 const fallbackId = "source_" + String(index + 1);
                 return {
                     id: source.id ?? fallbackId,
