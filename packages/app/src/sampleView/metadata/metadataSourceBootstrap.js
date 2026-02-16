@@ -16,6 +16,9 @@ import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentatio
  * @returns {Promise<string[]>}
  */
 async function awaitSampleIds(sampleView) {
+    // TODO: Replace this with a first-class readiness primitive (e.g.
+    // SampleView-level "samples ready" awaitable or generic waitForSelector)
+    // so metadata bootstrap does not own subscribe/timeout plumbing.
     const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
     if (sampleIds && sampleIds.length > 0) {
         return sampleIds;
