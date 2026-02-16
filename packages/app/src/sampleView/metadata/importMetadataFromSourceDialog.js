@@ -16,6 +16,77 @@ import {
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./uploadMetadataDialog.js";
 
+const DEFAULT_COLUMN_PLACEHOLDER = "One column id per line";
+
+/**
+ * @typedef {{ severity: "info" | "warning" | "error", summary: string, details?: string }} AlignmentIssue
+ */
+
+/**
+ * @param {ReturnType<typeof validateMetadata>} validation
+ * @param {(values: Iterable<string>) => string} formatCases
+ * @returns {AlignmentIssue | null}
+ */
+function buildAlignmentIssue(validation, formatCases) {
+    if ("error" in validation) {
+        const first = validation.error[0];
+        const message =
+            typeof first?.message === "string"
+                ? first.message
+                : "Invalid sample ids in metadata source.";
+        return {
+            severity: "error",
+            summary: "Sample-id alignment check failed: " + String(message),
+        };
+    }
+
+    const stats = validation.statistics;
+    const unknownCount = stats.unknownSamples.size;
+    const notCoveredCount = stats.notCoveredSamples.size;
+    const overlapCount = stats.samplesInBoth.size;
+
+    if (overlapCount === 0) {
+        const sourceOnly =
+            unknownCount > 0
+                ? " source-only IDs: " +
+                  String(unknownCount) +
+                  formatCases(stats.unknownSamples)
+                : "";
+        return {
+            severity: "error",
+            summary: "No matching sample IDs. Import cannot continue.",
+            details: sourceOnly.trim(),
+        };
+    }
+
+    if (unknownCount > 0 || notCoveredCount > 0) {
+        /** @type {string[]} */
+        const parts = [];
+        if (unknownCount > 0) {
+            parts.push(
+                String(unknownCount) +
+                    " source sample IDs are not in the loaded sample set" +
+                    formatCases(stats.unknownSamples)
+            );
+        }
+        if (notCoveredCount > 0) {
+            parts.push(
+                String(notCoveredCount) +
+                    " loaded sample-set IDs are not in the source" +
+                    formatCases(stats.notCoveredSamples)
+            );
+        }
+        return {
+            severity: "warning",
+            summary:
+                "Some sample IDs do not match. Import can continue: values will be added only to matched samples.",
+            details: parts.join("; "),
+        };
+    }
+
+    return null;
+}
+
 export class ImportMetadataFromSourceDialog extends BaseDialog {
     static properties = {
         ...super.properties,
@@ -89,12 +160,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._loading = false;
         this._error = "";
         this._preview = null;
-        this._columnPlaceholder = "One column id per line";
+        this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
         this._availableColumnCount = undefined;
         this._previewVersion = 0;
-        this._placeholderVersion = 0;
-        this._alignmentVersion = 0;
+        this._sourceContextVersion = 0;
         this._previewQueryKey = "";
+        /** @type {AlignmentIssue | null} */
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
@@ -141,6 +212,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
         const readiness = this._preview?.readiness;
         const blocking = readiness?.blocking;
+        /** @type {AlignmentIssue | null} */
+        const alignmentIssue = this._alignmentIssue;
         const columnsLabel =
             typeof this._availableColumnCount === "number"
                 ? "Columns to import (" +
@@ -158,25 +231,23 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     </div>
                 </div>
 
-                ${this._alignmentIssue
+                ${alignmentIssue
                     ? html`<div
-                          class="gs-alert ${this._alignmentIssue.severity ===
-                          "error"
+                          class="gs-alert ${alignmentIssue.severity === "error"
                               ? "danger"
-                              : this._alignmentIssue.severity}"
+                              : alignmentIssue.severity}"
                       >
                           ${icon(
-                              this._alignmentIssue.severity === "info"
+                              alignmentIssue.severity === "info"
                                   ? faInfoCircle
-                                  : this._alignmentIssue.severity === "warning"
+                                  : alignmentIssue.severity === "warning"
                                     ? faExclamationCircle
                                     : faTimesCircle
                           ).node[0]}
                           <span>
-                              ${this._alignmentIssue.summary}${this
-                                  ._alignmentIssue.details
+                              ${alignmentIssue.summary}${alignmentIssue.details
                                   ? this._showAlignmentDetails
-                                      ? html` ${this._alignmentIssue.details}`
+                                      ? html` ${alignmentIssue.details}`
                                       : html` <button
                                             class="inline-link"
                                             type="button"
@@ -259,8 +330,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
         this.groupPath = this.source.groupPath ?? "";
-        void this.#updateColumnPlaceholder();
-        void this.#updateAlignmentIssue();
+        void this.#refreshSourceContext();
         void this.#updatePreview();
     }
 
@@ -342,143 +412,95 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
     }
 
-    async #updateColumnPlaceholder() {
-        if (!this.source) {
-            this._columnPlaceholder = "One column id per line";
-            this._availableColumnCount = undefined;
-            return;
-        }
-
-        const version = ++this._placeholderVersion;
-
-        try {
-            const adapter = this.#getAdapter();
-            const columns = await adapter.listColumns();
-            if (version !== this._placeholderVersion) {
-                return;
-            }
-
-            this._availableColumnCount = columns.length;
-            if (columns.length === 0) {
-                this._columnPlaceholder = "One column id per line";
-                return;
-            }
-
-            const examples = columns
-                .slice(0, 3)
-                .map((column) => column.id)
-                .join("\n");
-            this._columnPlaceholder = "e.g.\n" + examples;
-        } catch (_error) {
-            if (version !== this._placeholderVersion) {
-                return;
-            }
-            this._columnPlaceholder = "One column id per line";
-            this._availableColumnCount = undefined;
-        }
-    }
-
-    async #updateAlignmentIssue() {
+    #refreshSourceContext() {
         if (!this.sampleView || !this.source) {
             return;
         }
 
-        const version = ++this._alignmentVersion;
+        const version = ++this._sourceContextVersion;
+        const adapter = this.#getAdapter();
 
-        try {
-            const adapter = this.#getAdapter();
-            const sourceSampleIds = await adapter.listSampleIds();
-            if (version !== this._alignmentVersion) {
-                return;
-            }
+        void adapter
+            .listColumns()
+            .then((columns) => {
+                if (version !== this._sourceContextVersion) {
+                    return;
+                }
+                this.#applyColumns(columns);
+            })
+            .catch(() => {
+                if (version !== this._sourceContextVersion) {
+                    return;
+                }
+                this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
+                this._availableColumnCount = undefined;
+            });
 
-            const viewSampleIds =
-                this.sampleView.sampleHierarchy.sampleData?.ids;
-            if (!viewSampleIds) {
-                throw new Error("Sample data has not been initialized.");
-            }
-
-            const validation = validateMetadata(
-                viewSampleIds,
-                sourceSampleIds.map((sampleId) => ({ sample: sampleId }))
-            );
-
-            if ("error" in validation) {
-                const first = validation.error[0];
-                const message =
-                    typeof first?.message === "string"
-                        ? first.message
-                        : "Invalid sample ids in metadata source.";
+        void adapter
+            .listSampleIds()
+            .then((sourceSampleIds) => {
+                if (version !== this._sourceContextVersion) {
+                    return;
+                }
+                this.#applyAlignmentIssue(sourceSampleIds);
+                this._showAlignmentDetails = false;
+            })
+            .catch((error) => {
+                if (version !== this._sourceContextVersion) {
+                    return;
+                }
                 this._alignmentIssue = {
                     severity: "error",
                     summary:
-                        "Sample-id alignment check failed: " + String(message),
+                        "Could not validate sample-id alignment: " +
+                        String(error),
                 };
                 this._showAlignmentDetails = false;
-                return;
-            }
+            });
+    }
 
-            const stats = validation.statistics;
-            const unknownCount = stats.unknownSamples.size;
-            const notCoveredCount = stats.notCoveredSamples.size;
-            const overlapCount = stats.samplesInBoth.size;
+    /**
+     * @param {{ id: string }[]} columns
+     */
+    #applyColumns(columns) {
+        this._availableColumnCount = columns.length;
+        if (columns.length === 0) {
+            this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
+            return;
+        }
 
-            if (overlapCount === 0) {
-                const sourceOnly =
-                    unknownCount > 0
-                        ? " source-only IDs: " +
-                          String(unknownCount) +
-                          this.#formatCases(stats.unknownSamples)
-                        : "";
-                this._alignmentIssue = {
-                    severity: "error",
-                    summary: "No matching sample IDs. Import cannot continue.",
-                    details: sourceOnly.trim(),
-                };
-                this._showAlignmentDetails = false;
-                return;
-            }
+        const examples = columns
+            .slice(0, 3)
+            .map((column) => column.id)
+            .join("\n");
+        this._columnPlaceholder = "e.g.\n" + examples;
+    }
 
-            if (unknownCount > 0 || notCoveredCount > 0) {
-                /** @type {string[]} */
-                const parts = [];
-                if (unknownCount > 0) {
-                    parts.push(
-                        String(unknownCount) +
-                            " source sample IDs are not in the loaded sample set" +
-                            this.#formatCases(stats.unknownSamples)
-                    );
-                }
-                if (notCoveredCount > 0) {
-                    parts.push(
-                        String(notCoveredCount) +
-                            " loaded sample-set IDs are not in the source" +
-                            this.#formatCases(stats.notCoveredSamples)
-                    );
-                }
-                this._alignmentIssue = {
-                    severity: "warning",
-                    summary:
-                        "Some sample IDs do not match. Import can continue: values will be added only to matched samples.",
-                    details: parts.join("; "),
-                };
-                this._showAlignmentDetails = false;
-                return;
-            }
+    /**
+     * @param {string[]} sourceSampleIds
+     */
+    #applyAlignmentIssue(sourceSampleIds) {
+        if (!this.sampleView) {
+            return;
+        }
 
-            this._alignmentIssue = null;
-            this._showAlignmentDetails = false;
-        } catch (error) {
-            if (version !== this._alignmentVersion) {
-                return;
-            }
+        const viewSampleIds = this.sampleView.sampleHierarchy.sampleData?.ids;
+        if (!viewSampleIds) {
             this._alignmentIssue = {
                 severity: "error",
                 summary:
-                    "Could not validate sample-id alignment: " + String(error),
+                    "Could not validate sample-id alignment: Sample data has not been initialized.",
             };
-            this._showAlignmentDetails = false;
+            return;
         }
+
+        const validation = validateMetadata(
+            viewSampleIds,
+            sourceSampleIds.map((sampleId) => ({ sample: sampleId }))
+        );
+        this._alignmentIssue = buildAlignmentIssue(validation, (values) =>
+            this.#formatCases(values)
+        );
     }
 
     /**
