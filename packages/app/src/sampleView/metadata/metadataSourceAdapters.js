@@ -1,4 +1,8 @@
 import { resolveUrl } from "@genome-spy/core/utils/url.js";
+import {
+    fetchJson,
+    JsonParseError,
+} from "@genome-spy/core/utils/fetchUtils.js";
 import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
 import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
@@ -23,37 +27,23 @@ export const MAX_METADATA_SOURCE_COLUMNS = 100;
  * @returns {Promise<unknown>}
  */
 async function defaultLoadJson(url, signal) {
-    let response;
     try {
-        response = await fetch(url, { signal });
+        return await fetchJson(url, { signal });
     } catch (error) {
+        if (error instanceof JsonParseError) {
+            throw new Error(
+                "Invalid JSON in metadata source import " +
+                    url +
+                    ": " +
+                    String(error.message)
+            );
+        }
+
         throw new Error(
             "Could not load metadata source import from " +
                 url +
                 ": " +
-                String(error)
-        );
-    }
-
-    if (!response.ok) {
-        throw new Error(
-            "Could not load metadata source import from " +
-                url +
-                ": " +
-                String(response.status) +
-                " " +
-                response.statusText
-        );
-    }
-
-    try {
-        return await response.json();
-    } catch (error) {
-        throw new Error(
-            "Invalid JSON in metadata source import " +
-                url +
-                ": " +
-                String(error)
+                String(error.message)
         );
     }
 }
