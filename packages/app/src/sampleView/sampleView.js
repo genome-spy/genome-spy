@@ -47,11 +47,6 @@ import {
     isIntervalSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
 import {
-    METADATA_PATH_SEPARATOR,
-    replacePathSeparatorInKeys,
-    wrangleMetadata,
-} from "./metadata/metadataUtils.js";
-import {
     LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
     normalizeSampleDefMetadataSources,
 } from "./metadata/metadataSourceSpec.js";
@@ -71,7 +66,6 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { resetProvenanceHistory } from "../state/provenanceBaseline.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -168,8 +162,6 @@ export default class SampleView extends ContainerView {
 
         if (this.spec.samples.identity?.data) {
             this.#loadSampleIdentity();
-        } else if (this.spec.samples.data) {
-            this.#loadSamples();
         } else {
             // TODO: schedule: extractSamplesFromData()
         }
@@ -702,73 +694,6 @@ export default class SampleView extends ContainerView {
         yield this.#sidebarView;
 
         yield* this.#gridChild.getChildren();
-    }
-
-    #loadSamples() {
-        if (!this.spec.samples.data) {
-            throw new Error(
-                "SampleView has no explicit sample metadata specified! Cannot load anything."
-            );
-        }
-
-        const { dataSource, collector } = createChain(
-            createDataSource(this.spec.samples.data, this),
-            new ProcessSample()
-        );
-
-        // Here's quite a bit of wrangling but the number of samples is so low that
-        // performance doesn't really matter.
-
-        const stop = collector.observe(() => {
-            const result =
-                /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
-                    collector.getData()
-                );
-
-            const samples = result.map((d) => d.sample);
-            this.provenance.store.dispatch(
-                this.actions.setSamples({ samples })
-            );
-
-            const attributesNames = result[0]?.attributes;
-            if (attributesNames && Object.keys(attributesNames).length > 0) {
-                const rowMetadata = result.map((r) => ({
-                    sample: r.sample.id,
-                    ...r.attributes,
-                }));
-
-                const attributeSeparator =
-                    this.spec.samples.attributeGroupSeparator;
-                const attributeDefs = attributeSeparator
-                    ? replacePathSeparatorInKeys(
-                          this.spec.samples.attributes ?? {},
-                          attributeSeparator,
-                          METADATA_PATH_SEPARATOR
-                      )
-                    : this.spec.samples.attributes;
-
-                const setMetadata = wrangleMetadata(
-                    rowMetadata,
-                    attributeDefs,
-                    attributeSeparator
-                );
-
-                this.provenance.store.dispatch(
-                    this.actions.addMetadata({
-                        ...setMetadata,
-                        replace: true,
-                    })
-                );
-
-                // Clear history, since if initial metadata is being set, it
-                // should represent the initial state.
-                resetProvenanceHistory(this.provenance.store, sampleSlice.name);
-            }
-        });
-        this.registerDisposer(stop);
-
-        // Synchronize loading with other data
-        this.context.dataFlow.addDataSource(dataSource);
     }
 
     #extractSamplesFromData() {
@@ -1453,33 +1378,6 @@ export default class SampleView extends ContainerView {
     dispose() {
         super.dispose();
         this.intentExecutor.removeActionAugmenter(this.#actionAugmenter);
-    }
-}
-
-class ProcessSample extends FlowNode {
-    constructor() {
-        super();
-        this.reset();
-    }
-
-    reset() {
-        this._index = 0;
-    }
-
-    /**
-     *
-     * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
-     */
-    handle(datum) {
-        const { sample, displayName, ...attributes } = datum;
-        this._propagate({
-            sample: {
-                id: sample,
-                displayName: displayName ?? sample,
-                indexNumber: this._index++,
-            },
-            attributes,
-        });
     }
 }
 

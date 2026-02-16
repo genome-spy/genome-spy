@@ -42,6 +42,12 @@ function isUrlOrInlineData(data) {
 export function normalizeSampleDefMetadataSources(sampleDef) {
     const usesLegacyMetadata = hasLegacyMetadataFields(sampleDef);
 
+    if (sampleDef.metadataSources && usesLegacyMetadata) {
+        throw new Error(
+            "Cannot combine legacy sample metadata fields (samples.data, samples.attributeGroupSeparator, samples.attributes) with samples.metadataSources. Use samples.metadataSources only."
+        );
+    }
+
     if (sampleDef.metadataSources || sampleDef.data === undefined) {
         return { sampleDef, usesLegacyMetadata };
     }

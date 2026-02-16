@@ -40,7 +40,6 @@ describe("normalizeSampleDefMetadataSources", () => {
 
     it("does not inject an implicit source when metadataSources already exist", () => {
         const sampleDef = {
-            data: { url: "samples.tsv" },
             metadataSources: [
                 {
                     id: "source",
@@ -54,7 +53,7 @@ describe("normalizeSampleDefMetadataSources", () => {
 
         const normalized = normalizeSampleDefMetadataSources(sampleDef);
         expect(normalized.sampleDef).toBe(sampleDef);
-        expect(normalized.usesLegacyMetadata).toBe(true);
+        expect(normalized.usesLegacyMetadata).toBe(false);
     });
 
     it("returns the original object for non-legacy sample defs", () => {
@@ -99,5 +98,24 @@ describe("normalizeSampleDefMetadataSources", () => {
                 },
             },
         ]);
+    });
+
+    it("throws an actionable error when mixing legacy fields with metadataSources", () => {
+        const sampleDef = {
+            data: { url: "samples.tsv" },
+            metadataSources: [
+                {
+                    id: "source",
+                    backend: {
+                        backend: "data",
+                        data: { url: "metadata.tsv" },
+                    },
+                },
+            ],
+        };
+
+        expect(() => normalizeSampleDefMetadataSources(sampleDef)).toThrow(
+            "Cannot combine legacy sample metadata fields"
+        );
     });
 });
