@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { concatUrl, getDirectory } from "./url.js";
+import { concatUrl, getDirectory, resolveUrl } from "./url.js";
 
 test("getDirectory", () => {
     expect(getDirectory("foo")).toBeUndefined();
@@ -25,4 +25,26 @@ test("concatUrl", () => {
     expect(concatUrl("foo/baz", "bar")).toEqual("foo/bar");
     expect(concatUrl(undefined, "bar")).toEqual("bar");
     expect(concatUrl("bar", undefined)).toEqual("bar");
+});
+
+test("resolveUrl", () => {
+    expect(
+        resolveUrl(
+            "private/decider_set2-19/",
+            "metadata/source.json",
+            "https://host.example/app/index.html"
+        )
+    ).toEqual(
+        "https://host.example/app/private/decider_set2-19/metadata/source.json"
+    );
+
+    expect(
+        resolveUrl(
+            "https://example.org/spec/metadata/source.json",
+            "../data/samples.tsv",
+            null
+        )
+    ).toEqual("https://example.org/spec/data/samples.tsv");
+
+    expect(resolveUrl("foo/", "bar", null)).toEqual("foo/bar");
 });

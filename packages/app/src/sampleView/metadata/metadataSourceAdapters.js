@@ -1,4 +1,4 @@
-import { concatUrl } from "@genome-spy/core/utils/url.js";
+import { resolveUrl } from "@genome-spy/core/utils/url.js";
 import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
 import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
@@ -16,35 +16,6 @@ export const MAX_METADATA_SOURCE_COLUMNS = 100;
  * @property {AbortSignal} [signal]
  * @property {(url: string, signal?: AbortSignal) => Promise<unknown>} [loadJson]
  */
-
-/**
- * Resolves URLs robustly even when baseUrl is relative.
- *
- * @param {string | undefined} baseUrl
- * @param {string} url
- * @returns {string}
- */
-function resolveUrl(baseUrl, url) {
-    try {
-        const runtimeBase =
-            typeof document !== "undefined" && document.baseURI
-                ? document.baseURI
-                : typeof window !== "undefined" && window.location?.href
-                  ? window.location.href
-                  : undefined;
-        const base = baseUrl
-            ? runtimeBase
-                ? new URL(baseUrl, runtimeBase).href
-                : new URL(baseUrl).href
-            : runtimeBase;
-        if (!base) {
-            return url;
-        }
-        return new URL(url, base).href;
-    } catch (_error) {
-        return concatUrl(baseUrl, url);
-    }
-}
 
 /**
  * @param {string} url

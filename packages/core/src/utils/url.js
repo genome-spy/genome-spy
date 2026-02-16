@@ -33,6 +33,39 @@ export function concatUrl(base, append) {
 }
 
 /**
+ * Resolves a URL against a possibly relative base URL and runtime location.
+ *
+ * Unlike concatUrl, this function can normalize path segments ("..", ".")
+ * when enough context exists (absolute base or runtime base URI).
+ *
+ * @param {string | (() => string)} base
+ * @param {string} append
+ * @param {string | null} [runtimeBase]
+ * @returns {string}
+ */
+export function resolveUrl(base, append, runtimeBase = getRuntimeBase()) {
+    const baseString = typeof base == "function" ? base() : base;
+    if (!append) {
+        return baseString;
+    }
+
+    try {
+        if (baseString) {
+            const absoluteBase = runtimeBase
+                ? new URL(baseString, runtimeBase).href
+                : new URL(baseString).href;
+            return new URL(append, absoluteBase).href;
+        } else if (runtimeBase) {
+            return new URL(append, runtimeBase).href;
+        }
+    } catch (_error) {
+        // Fall back to simple concatenation below.
+    }
+
+    return concatUrl(baseString, append);
+}
+
+/**
  * @param {string} url
  */
 export function getDirectory(url) {
@@ -42,4 +75,16 @@ export function getDirectory(url) {
         : directory.endsWith("://")
           ? url + "/"
           : directory;
+}
+
+/**
+ * @returns {string | undefined}
+ */
+function getRuntimeBase() {
+    if (typeof document !== "undefined" && document.baseURI) {
+        return document.baseURI;
+    }
+    if (typeof window !== "undefined" && window.location?.href) {
+        return window.location.href;
+    }
 }
