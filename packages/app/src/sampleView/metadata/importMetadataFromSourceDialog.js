@@ -185,10 +185,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         @input=${(/** @type {Event} */ event) =>
                             this.#handleColumnInput(event)}
                     ></textarea>
-                    <small
-                        >Delimiters: newline, comma, tab, semicolon, or
-                        whitespace.</small
-                    >
+                    <small>Enter one column id per line.</small>
                 </div>
 
                 <div class="gs-form-group">

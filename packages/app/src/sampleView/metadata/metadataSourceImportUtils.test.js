@@ -5,12 +5,10 @@ import {
 } from "./metadataSourceImportUtils.js";
 
 describe("parseColumnQueries", () => {
-    it("tokenizes by common delimiters and deduplicates tokens", () => {
-        const queries = parseColumnQueries(
-            "TP53,MYC\nBRCA1\tBRCA2;TP53   EGFR"
-        );
+    it("tokenizes by line and deduplicates tokens", () => {
+        const queries = parseColumnQueries("TP53\nMYC\nBRCA1\nTP53\n  EGFR  ");
 
-        expect(queries).toEqual(["TP53", "MYC", "BRCA1", "BRCA2", "EGFR"]);
+        expect(queries).toEqual(["TP53", "MYC", "BRCA1", "EGFR"]);
     });
 });
 

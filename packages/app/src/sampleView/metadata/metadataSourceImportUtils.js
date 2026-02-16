@@ -7,8 +7,8 @@ import { MAX_METADATA_SOURCE_COLUMNS } from "./metadataSourceAdapters.js";
 export function parseColumnQueries(input) {
     /** @type {string[]} */
     const queries = [];
-    for (const token of input.split(/[\s,;\t\r\n]+/g)) {
-        const value = token.trim();
+    for (const line of input.split(/\r?\n/g)) {
+        const value = line.trim();
         if (!value) {
             continue;
         }
