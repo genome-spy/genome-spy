@@ -14,7 +14,6 @@ import {
     resolveMetadataSources,
 } from "./metadataSourceAdapters.js";
 import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
-import { readTextFile } from "./metadataFileUtils.js";
 
 /**
  * @typedef {object} SourceOption
@@ -62,12 +61,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 flex-wrap: wrap;
                 color: var(--gs-muted-color, #666);
                 font-size: 0.9rem;
-            }
-
-            .file-input {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
             }
         `,
     ];
@@ -189,17 +182,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         >Delimiters: newline, comma, tab, semicolon, or
                         whitespace.</small
                     >
-                </div>
-
-                <div class="file-input">
-                    <label for="columnFile">Load from file</label>
-                    <input
-                        id="columnFile"
-                        type="file"
-                        accept=".txt,.tsv,.csv"
-                        @change=${(/** @type {Event} */ event) =>
-                            this.#handleFileInput(event)}
-                    />
                 </div>
 
                 <div class="gs-form-group">
@@ -381,18 +363,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      */
     #handleGroupPathInput(event) {
         this.groupPath = /** @type {HTMLInputElement} */ (event.target).value;
-    }
-
-    /**
-     * @param {Event} event
-     */
-    async #handleFileInput(event) {
-        const fileInput = /** @type {HTMLInputElement} */ (event.target);
-        const file = fileInput.files?.[0];
-        if (!file) {
-            return;
-        }
-        this.columnInput = await readTextFile(file);
     }
 
     async #updatePreview() {
