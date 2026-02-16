@@ -30,13 +30,11 @@ test("concatUrl", () => {
 test("resolveUrl", () => {
     expect(
         resolveUrl(
-            "private/decider_set2-19/",
+            "private/foo123/",
             "metadata/source.json",
             "https://host.example/app/index.html"
         )
-    ).toEqual(
-        "https://host.example/app/private/decider_set2-19/metadata/source.json"
-    );
+    ).toEqual("https://host.example/app/private/foo123/metadata/source.json");
 
     expect(
         resolveUrl(
