@@ -298,9 +298,12 @@ export function getActionInfo(action, getAttributeInfo) {
         return handler({ payload, template, attributeName, attributeTitle });
     }
 
+    // Unknown actions should still be renderable in provenance menus. Avoid
+    // JSON-stringifying whole actions because payloads can be large or cyclic.
     return {
         ...template,
-        title: JSON.stringify(action),
+        title: actionType,
+        provenanceTitle: actionType,
         icon: faCircle,
     };
 }

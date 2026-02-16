@@ -107,6 +107,22 @@ describe("getActionInfo", () => {
         expect(info.title).toContain("unknownAction");
     });
 
+    it("handles unknown actions with cyclic payloads", () => {
+        /** @type {{self?: any}} */
+        const cyclicPayload = {};
+        cyclicPayload.self = cyclicPayload;
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/unknownAction`,
+            payload: cyclicPayload,
+        };
+
+        const info = getActionInfo(action, () => undefined);
+
+        expect(info.icon).toBe(faCircle);
+        expect(info.title).toBe("unknownAction");
+    });
+
     it("handles sample actions without payload", () => {
         const action = {
             type: `${SAMPLE_SLICE_NAME}/__baseline__`,
