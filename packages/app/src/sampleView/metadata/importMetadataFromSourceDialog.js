@@ -182,7 +182,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         id="columnInput"
                         placeholder=${this._columnPlaceholder}
                         .value=${this.columnInput}
-                        @input=${(/** @type {Event} */ event) =>
+                        @change=${(/** @type {Event} */ event) =>
                             this.#handleColumnInput(event)}
                     ></textarea>
                     <small>Enter one column id per line.</small>
