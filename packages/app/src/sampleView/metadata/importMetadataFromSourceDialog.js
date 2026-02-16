@@ -34,6 +34,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _error: { state: true },
         _preview: { state: true },
         _availableSources: { state: true },
+        _columnPlaceholder: { state: true },
     };
 
     static styles = [
@@ -82,8 +83,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._preview = null;
         /** @type {SourceOption[]} */
         this._availableSources = [];
+        this._columnPlaceholder = "One column id per line";
         this._sourceLoadVersion = 0;
         this._previewVersion = 0;
+        this._placeholderVersion = 0;
         /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
         this._adapterCache = new Map();
 
@@ -107,6 +110,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             changedProperties.has("columnInput")
         ) {
             void this.#updatePreview();
+        }
+
+        if (changedProperties.has("sourceId")) {
+            void this.#updateColumnPlaceholder();
         }
     }
 
@@ -173,7 +180,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     <label for="columnInput">Columns to import</label>
                     <textarea
                         id="columnInput"
-                        placeholder="e.g. TP53, MYC, BRCA1"
+                        placeholder=${this._columnPlaceholder}
                         .value=${this.columnInput}
                         @input=${(/** @type {Event} */ event) =>
                             this.#handleColumnInput(event)}
@@ -300,6 +307,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this.sourceId = this._availableSources[0].id;
             } else {
                 this.sourceId = "";
+                this._columnPlaceholder = "One column id per line";
             }
         } catch (error) {
             if (loadVersion !== this._sourceLoadVersion) {
@@ -308,6 +316,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
             this._availableSources = [];
             this.sourceId = "";
+            this._columnPlaceholder = "One column id per line";
             this._error = String(error);
         } finally {
             if (loadVersion === this._sourceLoadVersion) {
@@ -416,6 +425,40 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             }
             this._error = String(error);
             this._preview = null;
+        }
+    }
+
+    async #updateColumnPlaceholder() {
+        const sourceRef = this.#getSelectedSourceRef();
+        if (!sourceRef) {
+            this._columnPlaceholder = "One column id per line";
+            return;
+        }
+
+        const version = ++this._placeholderVersion;
+
+        try {
+            const adapter = this.#getAdapter(sourceRef);
+            const columns = await adapter.listColumns();
+            if (version !== this._placeholderVersion) {
+                return;
+            }
+
+            if (columns.length === 0) {
+                this._columnPlaceholder = "One column id per line";
+                return;
+            }
+
+            const examples = columns
+                .slice(0, 3)
+                .map((column) => column.id)
+                .join("\n");
+            this._columnPlaceholder = "e.g.\n" + examples;
+        } catch (_error) {
+            if (version !== this._placeholderVersion) {
+                return;
+            }
+            this._columnPlaceholder = "One column id per line";
         }
     }
 
