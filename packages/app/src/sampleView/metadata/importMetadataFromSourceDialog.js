@@ -15,26 +15,17 @@ import {
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./uploadMetadataDialog.js";
 
-/**
- * @typedef {object} SourceOption
- * @property {string} id
- * @property {string} label
- * @property {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} source
- */
-
 export class ImportMetadataFromSourceDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         sampleView: {},
         intentPipeline: {},
         source: {},
-        sourceId: { state: true },
         columnInput: { state: true },
         groupPath: { state: true },
         _loading: { state: true },
         _error: { state: true },
         _preview: { state: true },
-        _availableSources: { state: true },
         _columnPlaceholder: { state: true },
         _availableColumnCount: { state: true },
         _alignmentIssue: { state: true },
@@ -80,14 +71,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         /** @type {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef | null} */
         this.source = null;
 
-        this.sourceId = "";
         this.columnInput = "";
         this.groupPath = "";
         this._loading = false;
         this._error = "";
         this._preview = null;
-        /** @type {SourceOption[]} */
-        this._availableSources = [];
         this._columnPlaceholder = "One column id per line";
         this._availableColumnCount = undefined;
         this._previewVersion = 0;
@@ -96,8 +84,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._previewQueryKey = "";
         this._alignmentIssue = null;
         this._columnValidationEnabled = false;
-        /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
-        this._adapterCache = new Map();
+        /** @type {ReturnType<typeof createMetadataSourceAdapter> | null} */
+        this._adapter = null;
 
         /** @type {FormController} */
         this._form = new FormController(this);
@@ -126,19 +114,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             changedProperties.has("sampleView") ||
             changedProperties.has("source")
         ) {
-            void this.#loadSources();
-        }
-
-        if (changedProperties.has("sourceId")) {
-            void this.#updatePreview();
-        }
-
-        if (changedProperties.has("sourceId")) {
-            void this.#updateColumnPlaceholder();
-        }
-
-        if (changedProperties.has("sourceId")) {
-            void this.#updateAlignmentIssue();
+            void this.#loadSource();
         }
     }
 
@@ -228,7 +204,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         ];
     }
 
-    async #loadSources() {
+    async #loadSource() {
         if (!this.sampleView || !this.source) {
             throw new Error(
                 "Import metadata dialog requires SampleView and a metadata source."
@@ -236,7 +212,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         this._previewVersion++;
-        this._adapterCache.clear();
+        this._adapter = null;
         this._error = "";
         this._preview = null;
         this._alignmentIssue = null;
@@ -244,44 +220,27 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const sourceLabel = this.source.name ?? this.source.id ?? "source";
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
-        this._availableSources = [
-            {
-                id: this.source.id ?? "selected_source",
-                source: this.source,
-                label: sourceLabel,
-            },
-        ];
-        this.sourceId = this._availableSources[0].id;
         this.groupPath = this.source.groupPath ?? "";
         void this.#updateColumnPlaceholder();
         void this.#updateAlignmentIssue();
         void this.#updatePreview();
     }
 
-    #getSelectedSourceRef() {
-        return this._availableSources.find(
-            (source) => source.id === this.sourceId
-        );
-    }
-
-    /**
-     * @param {SourceOption} sourceRef
-     */
-    #getAdapter(sourceRef) {
-        const existing = this._adapterCache.get(sourceRef.id);
-        if (existing) {
-            return existing;
+    #getAdapter() {
+        if (!this.sampleView || !this.source) {
+            throw new Error(
+                "Import metadata dialog requires SampleView and a metadata source."
+            );
         }
 
-        if (!this.sampleView) {
-            throw new Error("Import metadata dialog requires SampleView.");
+        if (this._adapter) {
+            return this._adapter;
         }
 
-        const adapter = createMetadataSourceAdapter(sourceRef.source, {
+        this._adapter = createMetadataSourceAdapter(this.source, {
             baseUrl: this.sampleView.getBaseUrl(),
         });
-        this._adapterCache.set(sourceRef.id, adapter);
-        return adapter;
+        return this._adapter;
     }
 
     /**
@@ -298,13 +257,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     async #updatePreview() {
-        if (!this.sampleView) {
-            return;
-        }
-
-        const sourceRef = this.#getSelectedSourceRef();
-        if (!sourceRef) {
-            this._preview = null;
+        if (!this.sampleView || !this.source) {
             return;
         }
 
@@ -328,7 +281,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return;
         }
 
-        const adapter = this.#getAdapter(sourceRef);
+        const adapter = this.#getAdapter();
 
         try {
             const resolved = await adapter.resolveColumns(queries);
@@ -352,8 +305,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     async #updateColumnPlaceholder() {
-        const sourceRef = this.#getSelectedSourceRef();
-        if (!sourceRef) {
+        if (!this.source) {
             this._columnPlaceholder = "One column id per line";
             this._availableColumnCount = undefined;
             return;
@@ -362,7 +314,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const version = ++this._placeholderVersion;
 
         try {
-            const adapter = this.#getAdapter(sourceRef);
+            const adapter = this.#getAdapter();
             const columns = await adapter.listColumns();
             if (version !== this._placeholderVersion) {
                 return;
@@ -389,20 +341,14 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     async #updateAlignmentIssue() {
-        if (!this.sampleView) {
-            return;
-        }
-
-        const sourceRef = this.#getSelectedSourceRef();
-        if (!sourceRef) {
-            this._alignmentIssue = null;
+        if (!this.sampleView || !this.source) {
             return;
         }
 
         const version = ++this._alignmentVersion;
 
         try {
-            const adapter = this.#getAdapter(sourceRef);
+            const adapter = this.#getAdapter();
             const sourceSampleIds = await adapter.listSampleIds();
             if (version !== this._alignmentVersion) {
                 return;
@@ -500,8 +446,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return false;
         }
 
-        const sourceRef = this.#getSelectedSourceRef();
-        if (!sourceRef) {
+        if (!this.source) {
             return false;
         }
 
@@ -532,8 +477,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return true;
         }
 
-        const sourceRef = this.#getSelectedSourceRef();
-        if (!sourceRef) {
+        if (!this.source) {
             return true;
         }
 
@@ -545,8 +489,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             const actionPayload = {
                 columnIds: this._preview.readiness.resolved.columnIds,
             };
-            if (sourceRef.source.id) {
-                actionPayload.sourceId = sourceRef.source.id;
+            if (this.source.id) {
+                actionPayload.sourceId = this.source.id;
             }
             if (this.groupPath.trim().length > 0) {
                 actionPayload.groupPath = this.groupPath.trim();
