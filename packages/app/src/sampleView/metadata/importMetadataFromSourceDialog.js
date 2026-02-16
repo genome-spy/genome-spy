@@ -51,9 +51,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             }
 
             .stack {
-                display: flex;
-                flex-direction: column;
-                gap: 0.75rem;
+                display: block;
+            }
+
+            .stack > .gs-form-group {
+                margin-top: 0;
+                margin-bottom: 0;
+            }
+
+            .stack > .gs-form-group + .gs-form-group {
+                margin-top: var(--gs-basic-spacing, 10px);
             }
 
             textarea {
