@@ -35,6 +35,8 @@ describe("DataMetadataSourceAdapter", () => {
 
         const columns = await adapter.listColumns();
         expect(columns.map((column) => column.id)).toEqual(["TP53", "status"]);
+        const sampleIds = await adapter.listSampleIds();
+        expect(sampleIds).toEqual(["s1", "s2"]);
 
         const resolved = await adapter.resolveColumns([
             "status",

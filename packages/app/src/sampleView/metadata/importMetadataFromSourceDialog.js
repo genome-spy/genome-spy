@@ -2,6 +2,7 @@ import { css, html, nothing } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faExclamationCircle,
+    faInfoCircle,
     faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
@@ -16,6 +17,7 @@ import {
     resolveMetadataSources,
 } from "./metadataSourceAdapters.js";
 import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
+import { validateMetadata } from "./uploadMetadataDialog.js";
 
 /**
  * @typedef {object} SourceOption
@@ -37,6 +39,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _preview: { state: true },
         _availableSources: { state: true },
         _columnPlaceholder: { state: true },
+        _alignmentIssue: { state: true },
     };
 
     static styles = [
@@ -81,7 +84,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._sourceLoadVersion = 0;
         this._previewVersion = 0;
         this._placeholderVersion = 0;
+        this._alignmentVersion = 0;
         this._previewQueryKey = "";
+        this._alignmentIssue = null;
+        this._columnValidationEnabled = false;
         /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
         this._adapterCache = new Map();
 
@@ -118,6 +124,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         if (changedProperties.has("sourceId")) {
             void this.#updateColumnPlaceholder();
         }
+
+        if (changedProperties.has("sourceId")) {
+            void this.#updateAlignmentIssue();
+        }
     }
 
     renderBody() {
@@ -137,11 +147,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         return html`
             <div class="stack">
                 <div class="gs-alert info">
-                    ${icon(faExclamationCircle).node[0]}
+                    ${icon(faInfoCircle).node[0]}
                     <div>
                         Import one or more metadata columns by typing or pasting
-                        one column id per line. Sample-id alignment is validated
-                        during import.
+                        one column id per line.
                     </div>
                 </div>
 
@@ -169,6 +178,18 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                           There are no additional columns to import.
                       </div>`
                     : nothing}
+                ${this._alignmentIssue
+                    ? html`<div
+                          class="gs-alert ${this._alignmentIssue.severity}"
+                      >
+                          ${icon(
+                              this._alignmentIssue.severity === "info"
+                                  ? faInfoCircle
+                                  : faExclamationCircle
+                          ).node[0]}
+                          ${this._alignmentIssue.message}
+                      </div>`
+                    : nothing}
 
                 <div class="gs-form-group">
                     <label for="columnInput">Columns to import</label>
@@ -176,6 +197,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         id="columnInput"
                         placeholder=${this._columnPlaceholder}
                         ${formField(this._form, "columns")}
+                        @focus=${() => this.#handleColumnsFocus()}
                         @change=${(/** @type {Event} */ event) =>
                             this.#handleColumnsCommit(event)}
                     ></textarea>
@@ -233,6 +255,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._loading = true;
         this._error = "";
         this._preview = null;
+        this._alignmentIssue = null;
+        this._columnValidationEnabled = false;
 
         try {
             const sources = await resolveMetadataSources(
@@ -270,6 +294,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this.sourceId = this._availableSources[0].id;
                 this.groupPath =
                     this._availableSources[0].source.groupPath ?? "";
+                void this.#updateColumnPlaceholder();
+                void this.#updateAlignmentIssue();
+                void this.#updatePreview();
             } else {
                 this.sourceId = "";
                 this.groupPath = "";
@@ -335,7 +362,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      */
     #handleColumnsCommit(event) {
         event.preventDefault();
+        this._columnValidationEnabled = true;
         void this.#updatePreview();
+    }
+
+    #handleColumnsFocus() {
+        this._columnValidationEnabled = true;
     }
 
     async #updatePreview() {
@@ -426,8 +458,110 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
     }
 
+    async #updateAlignmentIssue() {
+        if (!this.sampleView) {
+            return;
+        }
+
+        const sourceRef = this.#getSelectedSourceRef();
+        if (!sourceRef) {
+            this._alignmentIssue = null;
+            return;
+        }
+
+        const version = ++this._alignmentVersion;
+
+        try {
+            const adapter = this.#getAdapter(sourceRef);
+            const sourceSampleIds = await adapter.listSampleIds();
+            if (version !== this._alignmentVersion) {
+                return;
+            }
+
+            const viewSampleIds =
+                this.sampleView.sampleHierarchy.sampleData?.ids;
+            if (!viewSampleIds) {
+                throw new Error("Sample data has not been initialized.");
+            }
+
+            const validation = validateMetadata(
+                viewSampleIds,
+                sourceSampleIds.map((sampleId) => ({ sample: sampleId }))
+            );
+
+            if ("error" in validation) {
+                const first = validation.error[0];
+                const message =
+                    typeof first?.message === "string"
+                        ? first.message
+                        : "Invalid sample ids in metadata source.";
+                this._alignmentIssue = {
+                    severity: "error",
+                    message:
+                        "Sample-id alignment check failed: " + String(message),
+                };
+                return;
+            }
+
+            const stats = validation.statistics;
+            const unknownCount = stats.unknownSamples.size;
+            const notCoveredCount = stats.notCoveredSamples.size;
+            const overlapCount = stats.samplesInBoth.size;
+
+            if (overlapCount === 0) {
+                this._alignmentIssue = {
+                    severity: "error",
+                    message:
+                        "No matching sample ids between this source and the current view.",
+                };
+                return;
+            }
+
+            if (unknownCount > 0 || notCoveredCount > 0) {
+                /** @type {string[]} */
+                const parts = [];
+                if (unknownCount > 0) {
+                    parts.push(
+                        String(unknownCount) +
+                            " source sample ids are not in the current view" +
+                            this.#formatCases(stats.unknownSamples)
+                    );
+                }
+                if (notCoveredCount > 0) {
+                    parts.push(
+                        String(notCoveredCount) +
+                            " current-view sample ids are not in the source" +
+                            this.#formatCases(stats.notCoveredSamples)
+                    );
+                }
+                this._alignmentIssue = {
+                    severity: "warning",
+                    message:
+                        "Some sample IDs do not match. Only matched samples will receive imported values. " +
+                        parts.join("; "),
+                };
+                return;
+            }
+
+            this._alignmentIssue = null;
+        } catch (error) {
+            if (version !== this._alignmentVersion) {
+                return;
+            }
+            this._alignmentIssue = {
+                severity: "error",
+                message:
+                    "Could not validate sample-id alignment: " + String(error),
+            };
+        }
+    }
+
     #canImport() {
         if (this._loading || this._form.hasErrors()) {
+            return false;
+        }
+
+        if (this._alignmentIssue?.severity === "error") {
             return false;
         }
 
@@ -463,6 +597,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             );
         }
 
+        this._columnValidationEnabled = true;
         await this.#updatePreview();
         if (this._form.validateAll()) {
             return true;
@@ -510,7 +645,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     #validateColumns() {
         const queries = parseColumnQueries(this.columnInput);
         if (queries.length === 0) {
-            return "Enter at least one column id.";
+            return this._columnValidationEnabled
+                ? "Enter at least one column id."
+                : null;
         }
 
         const readiness = this._preview?.readiness;
@@ -569,6 +706,27 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             " more"
         );
     }
+
+    /**
+     * @param {Iterable<string>} values
+     * @param {number} [maxCasesToShow]
+     */
+    #formatCases(values, maxCasesToShow = 3) {
+        const cases = Array.from(values);
+        if (cases.length === 0) {
+            return "";
+        }
+        if (cases.length <= maxCasesToShow) {
+            return " (e.g. " + cases.join(", ") + ")";
+        }
+        return (
+            " (e.g. " +
+            cases.slice(0, maxCasesToShow).join(", ") +
+            " and " +
+            String(cases.length - maxCasesToShow) +
+            " more)"
+        );
+    }
 }
 
 customElements.define(
@@ -586,6 +744,7 @@ export function showImportMetadataFromSourceDialog(sampleView, intentPipeline) {
         (/** @type {ImportMetadataFromSourceDialog} */ dialog) => {
             dialog.sampleView = sampleView;
             dialog.intentPipeline = intentPipeline;
+            dialog._columnValidationEnabled = false;
             dialog._form.reset();
         }
     );

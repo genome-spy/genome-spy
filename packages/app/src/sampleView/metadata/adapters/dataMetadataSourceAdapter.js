@@ -61,6 +61,16 @@ export default class DataMetadataSourceAdapter {
     }
 
     /**
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<string[]>}
+     */
+    async listSampleIds(signal) {
+        const rows = await this.#loadRows(signal);
+        const sampleIdField = this.#backend.sampleIdField ?? "sample";
+        return rows.map((row) => String(row[sampleIdField] ?? ""));
+    }
+
+    /**
      * @param {string[]} queries
      * @param {AbortSignal} [signal]
      * @returns {Promise<{ columnIds: string[]; missing: string[] }>}

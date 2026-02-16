@@ -124,6 +124,14 @@ export default class ZarrMetadataSourceAdapter {
     }
 
     /**
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<string[]>}
+     */
+    async listSampleIds(signal) {
+        return this.#getRowIds(signal);
+    }
+
+    /**
      * @param {string[]} queries
      * @param {AbortSignal} [signal]
      * @returns {Promise<{ columnIds: string[]; missing: string[]; ambiguous: string[] }>}
