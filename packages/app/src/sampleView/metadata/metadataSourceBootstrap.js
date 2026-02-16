@@ -1,6 +1,7 @@
-import { ActionCreators } from "redux-undo";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { sampleSlice } from "../state/sampleSlice.js";
+import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
+import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import {
     createMetadataSourceAdapter,
     resolveMetadataSources,
@@ -89,18 +90,23 @@ export async function bootstrapInitialMetadataSources(
         const chunks = chunkInitialLoadColumns(columnIds);
 
         for (const chunk of chunks) {
+            const metadata = await adapter.fetchColumns({
+                columnIds: chunk,
+                sampleIds,
+                replace,
+            });
+
             /** @type {import("../state/payloadTypes.js").AddMetadataFromSource} */
             const payload = {
                 columnIds: chunk,
                 replace,
+                [AUGMENTED_KEY]: {
+                    metadata,
+                },
             };
 
             if (source.id) {
                 payload.sourceId = source.id;
-            } else if (sources.length > 1) {
-                throw new Error(
-                    "Metadata source id is required when multiple initial-load sources are configured."
-                );
             }
 
             actions.push(sampleSlice.actions.addMetadataFromSource(payload));
@@ -113,5 +119,5 @@ export async function bootstrapInitialMetadataSources(
     }
 
     await intentPipeline.submit(actions);
-    sampleView.provenance.store.dispatch(ActionCreators.clearHistory());
+    resetProvenanceHistory(sampleView.provenance.store, sampleSlice.name);
 }

@@ -36,7 +36,6 @@ import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
-import { ActionCreators } from "redux-undo";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -72,6 +71,7 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { resetProvenanceHistory } from "../state/provenanceBaseline.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -753,16 +753,16 @@ export default class SampleView extends ContainerView {
                     attributeSeparator
                 );
 
-                // Clear history, since if initial metadata is being set, it
-                // should represent the initial state.
-                this.provenance.store.dispatch(ActionCreators.clearHistory());
-
                 this.provenance.store.dispatch(
                     this.actions.addMetadata({
                         ...setMetadata,
                         replace: true,
                     })
                 );
+
+                // Clear history, since if initial metadata is being set, it
+                // should represent the initial state.
+                resetProvenanceHistory(this.provenance.store, sampleSlice.name);
             }
         });
         this.registerDisposer(stop);

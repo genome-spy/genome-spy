@@ -106,4 +106,15 @@ describe("getActionInfo", () => {
         expect(info.icon).toBe(faCircle);
         expect(info.title).toContain("unknownAction");
     });
+
+    it("handles sample actions without payload", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/__baseline__`,
+        };
+
+        const info = getActionInfo(action, () => undefined);
+
+        expect(info.icon).toBe(faCircle);
+        expect(info.title).toContain("__baseline__");
+    });
 });

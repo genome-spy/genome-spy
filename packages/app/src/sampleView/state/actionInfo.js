@@ -269,10 +269,14 @@ export function getActionInfo(action, getAttributeInfo) {
         return;
     }
 
-    const payload = action.payload;
+    const payload =
+        action.payload && typeof action.payload === "object"
+            ? action.payload
+            : {};
 
-    const attributeInfo =
-        payload.attribute && getAttributeInfo(payload.attribute);
+    const attribute =
+        "attribute" in payload && payload.attribute ? payload.attribute : null;
+    const attributeInfo = attribute && getAttributeInfo(attribute);
     const attributeName =
         attributeInfo?.emphasizedName ??
         (attributeInfo?.name
