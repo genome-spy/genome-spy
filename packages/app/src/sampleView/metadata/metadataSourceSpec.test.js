@@ -14,20 +14,28 @@ describe("normalizeSampleDefMetadataSources", () => {
         const normalized = normalizeSampleDefMetadataSources(sampleDef);
 
         expect(normalized.usesLegacyMetadata).toBe(true);
-        expect(normalized.sampleDef.metadataSources).toEqual([
-            {
-                initialLoad: "*",
-                attributeGroupSeparator: ".",
-                columnDefs: {
-                    clinical: { type: "quantitative" },
-                },
-                backend: {
-                    backend: "data",
-                    data: { url: "samples.tsv" },
-                    sampleIdField: "sample",
-                },
+        expect(normalized.sampleDef).toEqual({
+            ...sampleDef,
+            identity: {
+                data: { url: "samples.tsv" },
+                idField: "sample",
+                displayNameField: "displayName",
             },
-        ]);
+            metadataSources: [
+                {
+                    initialLoad: "*",
+                    attributeGroupSeparator: ".",
+                    columnDefs: {
+                        clinical: { type: "quantitative" },
+                    },
+                    backend: {
+                        backend: "data",
+                        data: { url: "samples.tsv" },
+                        sampleIdField: "sample",
+                    },
+                },
+            ],
+        });
     });
 
     it("does not inject an implicit source when metadataSources already exist", () => {
@@ -66,5 +74,30 @@ describe("normalizeSampleDefMetadataSources", () => {
         const normalized = normalizeSampleDefMetadataSources(sampleDef);
         expect(normalized.sampleDef).toBe(sampleDef);
         expect(normalized.usesLegacyMetadata).toBe(false);
+    });
+
+    it("preserves explicit identity when mapping legacy metadata fields", () => {
+        const sampleDef = {
+            identity: {
+                data: { url: "identity.tsv" },
+                idField: "sid",
+                displayNameField: "label",
+            },
+            data: { url: "samples.tsv" },
+        };
+
+        const normalized = normalizeSampleDefMetadataSources(sampleDef);
+
+        expect(normalized.sampleDef.identity).toEqual(sampleDef.identity);
+        expect(normalized.sampleDef.metadataSources).toEqual([
+            {
+                initialLoad: "*",
+                backend: {
+                    backend: "data",
+                    data: { url: "samples.tsv" },
+                    sampleIdField: "sample",
+                },
+            },
+        ]);
     });
 });

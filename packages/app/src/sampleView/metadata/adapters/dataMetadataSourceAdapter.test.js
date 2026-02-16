@@ -86,4 +86,26 @@ describe("DataMetadataSourceAdapter", () => {
             "Metadata source rows do not match any sample ids in the current view."
         );
     });
+
+    it("preserves source column order when listing columns", async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        { sample: "s1", status: "A", TP53: 2.1 },
+                        { sample: "s2", TP53: -0.4, purity: 0.8 },
+                    ],
+                },
+                sampleIdField: "sample",
+            },
+        });
+
+        const columns = await adapter.listColumns();
+        expect(columns.map((column) => column.id)).toEqual([
+            "status",
+            "TP53",
+            "purity",
+        ]);
+    });
 });

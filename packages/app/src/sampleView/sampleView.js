@@ -166,10 +166,10 @@ export default class SampleView extends ContainerView {
 
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
-        if (this.spec.samples.data) {
-            this.#loadSamples();
-        } else if (this.spec.samples.identity?.data) {
+        if (this.spec.samples.identity?.data) {
             this.#loadSampleIdentity();
+        } else if (this.spec.samples.data) {
+            this.#loadSamples();
         } else {
             // TODO: schedule: extractSamplesFromData()
         }
@@ -1509,9 +1509,13 @@ class ProcessSampleIdentity extends FlowNode {
      */
     handle(datum) {
         const sampleId = String(datum[this.#idField]);
-        const displayName = this.#displayNameField
-            ? String(datum[this.#displayNameField])
-            : sampleId;
+        const displayNameValue = this.#displayNameField
+            ? datum[this.#displayNameField]
+            : undefined;
+        const displayName =
+            displayNameValue === undefined || displayNameValue === null
+                ? sampleId
+                : String(displayNameValue);
 
         this._propagate({
             id: sampleId,

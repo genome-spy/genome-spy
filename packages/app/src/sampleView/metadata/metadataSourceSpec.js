@@ -74,6 +74,11 @@ export function normalizeSampleDefMetadataSources(sampleDef) {
     return {
         sampleDef: {
             ...sampleDef,
+            identity: sampleDef.identity ?? {
+                data: sampleDef.data,
+                idField: "sample",
+                displayNameField: "displayName",
+            },
             metadataSources: [metadataSource],
         },
         usesLegacyMetadata,

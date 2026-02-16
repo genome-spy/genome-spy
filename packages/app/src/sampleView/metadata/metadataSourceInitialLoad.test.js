@@ -31,7 +31,7 @@ describe("getEffectiveInitialLoad", () => {
 });
 
 describe("resolveInitialLoadColumnIds", () => {
-    it("resolves wildcard from listed columns", async () => {
+    it("resolves wildcard from listed columns in adapter order", async () => {
         const source = {
             initialLoad: "*",
             backend: {
@@ -41,13 +41,13 @@ describe("resolveInitialLoadColumnIds", () => {
         };
 
         const adapter = {
-            listColumns: async () => [{ id: "A" }, { id: "B" }],
+            listColumns: async () => [{ id: "B" }, { id: "A" }],
             resolveColumns: async () => ({ columnIds: [] }),
         };
 
         await expect(
             resolveInitialLoadColumnIds(source, adapter)
-        ).resolves.toEqual(["A", "B"]);
+        ).resolves.toEqual(["B", "A"]);
     });
 
     it("resolves explicit lists through adapter lookup", async () => {

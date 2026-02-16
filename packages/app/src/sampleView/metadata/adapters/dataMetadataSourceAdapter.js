@@ -57,9 +57,7 @@ export default class DataMetadataSourceAdapter {
             }
         }
 
-        return Array.from(columns)
-            .sort()
-            .map((id) => ({ id }));
+        return Array.from(columns).map((id) => ({ id }));
     }
 
     /**
