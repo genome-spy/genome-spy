@@ -1,34 +1,42 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { augmentAddMetadataFromSourceAction } from "./metadataSourceFlow.js";
 
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
+
 /**
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef["metadataSources"]} [metadataSources]
+ * @param {string | undefined} [baseUrl]
  * @returns {import("../sampleView.js").default}
  */
-function createSampleViewStub() {
+function createSampleViewStub(metadataSources, baseUrl) {
+    const sources = metadataSources ?? [
+        {
+            id: "clinical",
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        { sample: "s1", TP53: 1.2 },
+                        { sample: "s2", TP53: -0.2 },
+                    ],
+                },
+            },
+            defaultAttributeDef: {
+                type: "quantitative",
+            },
+        },
+    ];
+
     return /** @type {import("../sampleView.js").default} */ (
         /** @type {unknown} */ ({
             actions: sampleSlice.actions,
             spec: {
                 samples: {
-                    metadataSources: [
-                        {
-                            id: "clinical",
-                            backend: {
-                                backend: "data",
-                                data: {
-                                    values: [
-                                        { sample: "s1", TP53: 1.2 },
-                                        { sample: "s2", TP53: -0.2 },
-                                    ],
-                                },
-                            },
-                            defaultAttributeDef: {
-                                type: "quantitative",
-                            },
-                        },
-                    ],
+                    metadataSources: sources,
                 },
             },
             sampleHierarchy: {
@@ -36,7 +44,7 @@ function createSampleViewStub() {
                     ids: ["s1", "s2"],
                 },
             },
-            getBaseUrl: () => undefined,
+            getBaseUrl: () => baseUrl,
         })
     );
 }
@@ -104,6 +112,63 @@ describe("augmentAddMetadataFromSourceAction", () => {
         await expect(
             augmentAddMetadataFromSourceAction(action, sampleView)
         ).rejects.toThrow("Metadata import exceeds the column limit (100).");
+    });
+
+    it("loads imported source definitions before augmenting metadata", async () => {
+        const fetchMock = vi.fn();
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            json: async () => ({
+                id: "clinical",
+                backend: {
+                    backend: "data",
+                    data: {
+                        url: "../data/samples.tsv",
+                    },
+                    sampleIdField: "sample",
+                },
+            }),
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: "OK",
+            text: async () => "sample\tTP53\ns1\t1.2\ns2\t-0.2\n",
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const sampleView = createSampleViewStub(
+            [{ import: { url: "metadata/clinical.json" } }],
+            "https://example.org/spec/"
+        );
+        const action = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "clinical",
+            columnIds: ["TP53"],
+        });
+
+        const augmented = await augmentAddMetadataFromSourceAction(
+            action,
+            sampleView
+        );
+
+        expect(
+            augmented.payload[AUGMENTED_KEY].metadata.columnarMetadata
+        ).toEqual({
+            sample: ["s1", "s2"],
+            TP53: [1.2, -0.2],
+        });
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            1,
+            "https://example.org/spec/metadata/clinical.json",
+            { signal: undefined }
+        );
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            "https://example.org/spec/data/samples.tsv",
+            { signal: undefined }
+        );
     });
 
     it("integrates from augmentation to reducer-applied metadata", async () => {

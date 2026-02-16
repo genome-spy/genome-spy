@@ -57,9 +57,13 @@ export async function augmentAddMetadataFromSourceAction(
         );
     }
 
-    const source = resolveMetadataSource(
+    const source = await resolveMetadataSource(
         sampleView.spec.samples,
-        payload.sourceId
+        payload.sourceId,
+        {
+            baseUrl: sampleView.getBaseUrl(),
+            signal,
+        }
     );
     const adapter = createMetadataSourceAdapter(source, {
         baseUrl: sampleView.getBaseUrl(),

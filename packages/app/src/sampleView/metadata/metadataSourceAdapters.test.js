@@ -1,11 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     createMetadataSourceAdapter,
+    resolveMetadataSources,
     resolveMetadataSource,
 } from "./metadataSourceAdapters.js";
 
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
+
 describe("resolveMetadataSource", () => {
-    it("resolves the only configured source when sourceId is omitted", () => {
+    it("resolves the only configured source when sourceId is omitted", async () => {
         const source = {
             id: "clinical",
             backend: {
@@ -15,10 +20,12 @@ describe("resolveMetadataSource", () => {
         };
         const sampleDef = { metadataSources: [source] };
 
-        expect(resolveMetadataSource(sampleDef, undefined)).toBe(source);
+        await expect(resolveMetadataSource(sampleDef, undefined)).resolves.toBe(
+            source
+        );
     });
 
-    it("throws when sourceId is omitted and multiple sources are configured", () => {
+    it("throws when sourceId is omitted and multiple sources are configured", async () => {
         const sampleDef = {
             metadataSources: [
                 {
@@ -38,19 +45,127 @@ describe("resolveMetadataSource", () => {
             ],
         };
 
-        expect(() => resolveMetadataSource(sampleDef, undefined)).toThrow(
+        await expect(
+            resolveMetadataSource(sampleDef, undefined)
+        ).rejects.toThrow(
             "Metadata source id is required when multiple sources are configured."
         );
     });
 
-    it("throws when source entry is import-based", () => {
+    it("resolves imported metadata sources", async () => {
         const sampleDef = {
             metadataSources: [{ import: { url: "metadata/source.json" } }],
         };
 
-        expect(() => resolveMetadataSource(sampleDef, undefined)).toThrow(
-            "Imported metadata sources are not yet supported in metadata source actions."
+        await expect(
+            resolveMetadataSource(sampleDef, undefined, {
+                baseUrl: "https://example.org/spec/",
+                loadJson: async (url) => ({
+                    id: "clinical",
+                    backend: {
+                        backend: "data",
+                        data: {
+                            url,
+                        },
+                        sampleIdField: "sample",
+                    },
+                }),
+            })
+        ).resolves.toMatchObject({
+            id: "clinical",
+            backend: {
+                data: {
+                    url: "https://example.org/spec/metadata/source.json",
+                },
+            },
+        });
+    });
+});
+
+describe("resolveMetadataSources", () => {
+    it("rewrites imported backend urls relative to the import file", async () => {
+        const sampleDef = {
+            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        };
+
+        await expect(
+            resolveMetadataSources(sampleDef, {
+                baseUrl: "https://example.org/spec/",
+                loadJson: async () => ({
+                    id: "clinical",
+                    backend: {
+                        backend: "data",
+                        data: {
+                            url: "../data/samples.tsv",
+                        },
+                        sampleIdField: "sample",
+                    },
+                }),
+            })
+        ).resolves.toMatchObject([
+            {
+                backend: {
+                    data: {
+                        url: "https://example.org/spec/data/samples.tsv",
+                    },
+                },
+            },
+        ]);
+    });
+
+    it("resolves imported backend urls correctly when baseUrl is relative", async () => {
+        vi.stubGlobal(
+            "window",
+            /** @type {Window & typeof globalThis} */ (
+                /** @type {unknown} */ ({
+                    location: {
+                        href: "https://host.example/app/index.html",
+                    },
+                })
+            )
         );
+
+        const sampleDef = {
+            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        };
+
+        await expect(
+            resolveMetadataSources(sampleDef, {
+                baseUrl: "private/decider_set2-19/",
+                loadJson: async () => ({
+                    id: "clinical",
+                    backend: {
+                        backend: "data",
+                        data: {
+                            url: "../data/samples.tsv",
+                        },
+                        sampleIdField: "sample",
+                    },
+                }),
+            })
+        ).resolves.toMatchObject([
+            {
+                backend: {
+                    data: {
+                        url: "https://host.example/app/private/decider_set2-19/data/samples.tsv",
+                    },
+                },
+            },
+        ]);
+    });
+
+    it("rejects nested imports", async () => {
+        const sampleDef = {
+            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        };
+
+        await expect(
+            resolveMetadataSources(sampleDef, {
+                loadJson: async () => ({
+                    import: { url: "nested.json" },
+                }),
+            })
+        ).rejects.toThrow("Nested metadata source imports are not supported");
     });
 });
 

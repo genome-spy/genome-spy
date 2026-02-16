@@ -91,4 +91,51 @@ describe("SampleView", () => {
         const state = store.getState().provenance.present?.[SAMPLE_SLICE_NAME];
         expect(state?.sampleData?.ids).toEqual(["A", "B"]);
     });
+
+    test("loads sample ids from samples.identity when configured", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                ],
+            },
+            samples: {
+                identity: {
+                    data: {
+                        values: [
+                            { sid: "B", label: "Sample B" },
+                            { sid: "A", label: "Sample A" },
+                        ],
+                    },
+                    idField: "sid",
+                    displayNameField: "label",
+                },
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        };
+
+        const { context, store } = await createSampleViewForTest({
+            spec,
+            disableGroupUpdates: true,
+        });
+
+        await Promise.all(
+            context.dataFlow.dataSources
+                .filter((source) => source.constructor.name !== "NamedSource")
+                .map((source) => source.load())
+        );
+
+        const state = store.getState().provenance.present?.[SAMPLE_SLICE_NAME];
+        expect(state?.sampleData?.ids).toEqual(["B", "A"]);
+        expect(state?.sampleData?.entities.B.displayName).toBe("Sample B");
+        expect(state?.sampleData?.entities.A.displayName).toBe("Sample A");
+    });
 });

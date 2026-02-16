@@ -37,6 +37,7 @@ import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
 import { sampleSlice } from "./sampleView/state/sampleSlice.js";
 import { augmentAddMetadataFromSourceAction } from "./sampleView/metadata/metadataSourceFlow.js";
+import { bootstrapInitialMetadataSources } from "./sampleView/metadata/metadataSourceBootstrap.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
@@ -311,6 +312,22 @@ export default class App {
                 });
             sampleView.registerDisposer(unregisterMetadataHook);
             sampleView.registerDisposer(unregisterMetadataSourceAugmenter);
+
+            try {
+                await bootstrapInitialMetadataSources(
+                    sampleView,
+                    this.intentPipeline
+                );
+            } catch (error) {
+                console.error(error);
+                showMessageDialog(
+                    "Could not load initial metadata sources: " + String(error),
+                    {
+                        title: "Metadata source warning",
+                        type: "warning",
+                    }
+                );
+            }
         }
 
         // Make it focusable so that keyboard shortcuts can be caught

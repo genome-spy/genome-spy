@@ -9,7 +9,10 @@ import {
     classifyImportReadiness,
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
-import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
+import {
+    createMetadataSourceAdapter,
+    resolveMetadataSources,
+} from "./metadataSourceAdapters.js";
 
 /**
  * @typedef {object} SourceOption
@@ -84,6 +87,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._preview = null;
         /** @type {SourceOption[]} */
         this._availableSources = [];
+        this._sourceLoadVersion = 0;
 
         this.dialogTitle = "Import metadata from source";
     }
@@ -97,7 +101,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         if (changedProperties.has("sampleView")) {
-            this.#loadSources();
+            void this.#loadSources();
         }
 
         if (
@@ -255,19 +259,29 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         ];
     }
 
-    #loadSources() {
+    async #loadSources() {
         if (!this.sampleView) {
             throw new Error("Import metadata dialog requires SampleView.");
         }
 
-        const entries = this.sampleView.spec.samples.metadataSources ?? [];
-        this._availableSources = entries
-            .filter((entry) => !("import" in entry))
-            .map((entry, index) => {
-                const source =
-                    /** @type {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} */ (
-                        entry
-                    );
+        const loadVersion = ++this._sourceLoadVersion;
+        this._loading = true;
+        this._error = "";
+        this._preview = null;
+
+        try {
+            const sources = await resolveMetadataSources(
+                this.sampleView.spec.samples,
+                {
+                    baseUrl: this.sampleView.getBaseUrl(),
+                }
+            );
+
+            if (loadVersion !== this._sourceLoadVersion) {
+                return;
+            }
+
+            this._availableSources = sources.map((source, index) => {
                 const fallbackId = "source_" + String(index + 1);
                 return {
                     id: source.id ?? fallbackId,
@@ -279,8 +293,23 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 };
             });
 
-        if (this._availableSources.length > 0) {
-            this.sourceId = this._availableSources[0].id;
+            if (this._availableSources.length > 0) {
+                this.sourceId = this._availableSources[0].id;
+            } else {
+                this.sourceId = "";
+            }
+        } catch (error) {
+            if (loadVersion !== this._sourceLoadVersion) {
+                return;
+            }
+
+            this._availableSources = [];
+            this.sourceId = "";
+            this._error = String(error);
+        } finally {
+            if (loadVersion === this._sourceLoadVersion) {
+                this._loading = false;
+            }
         }
     }
 

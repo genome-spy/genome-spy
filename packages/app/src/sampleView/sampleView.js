@@ -168,6 +168,8 @@ export default class SampleView extends ContainerView {
 
         if (this.spec.samples.data) {
             this.#loadSamples();
+        } else if (this.spec.samples.identity?.data) {
+            this.#loadSampleIdentity();
         } else {
             // TODO: schedule: extractSamplesFromData()
         }
@@ -794,6 +796,31 @@ export default class SampleView extends ContainerView {
                 "No explicit sample data nor sample channels found!"
             );
         }
+    }
+
+    #loadSampleIdentity() {
+        const identity = this.spec.samples.identity;
+        if (!identity) {
+            throw new Error("Sample identity definition is missing.");
+        }
+
+        const { dataSource, collector } = createChain(
+            createDataSource(identity.data, this),
+            new ProcessSampleIdentity(
+                identity.idField ?? "sample",
+                identity.displayNameField
+            )
+        );
+
+        const stop = collector.observe(() => {
+            const samples = /** @type {Sample[]} */ (collector.getData());
+            this.provenance.store.dispatch(
+                this.actions.setSamples({ samples })
+            );
+        });
+        this.registerDisposer(stop);
+
+        this.context.dataFlow.addDataSource(dataSource);
     }
 
     /**
@@ -1452,6 +1479,44 @@ class ProcessSample extends FlowNode {
                 indexNumber: this._index++,
             },
             attributes,
+        });
+    }
+}
+
+class ProcessSampleIdentity extends FlowNode {
+    #idField;
+
+    #displayNameField;
+
+    #index = 0;
+
+    /**
+     * @param {string} idField
+     * @param {string | undefined} displayNameField
+     */
+    constructor(idField, displayNameField) {
+        super();
+        this.#idField = idField;
+        this.#displayNameField = displayNameField;
+    }
+
+    reset() {
+        this.#index = 0;
+    }
+
+    /**
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
+     */
+    handle(datum) {
+        const sampleId = String(datum[this.#idField]);
+        const displayName = this.#displayNameField
+            ? String(datum[this.#displayNameField])
+            : sampleId;
+
+        this._propagate({
+            id: sampleId,
+            displayName,
+            indexNumber: this.#index++,
         });
     }
 }
