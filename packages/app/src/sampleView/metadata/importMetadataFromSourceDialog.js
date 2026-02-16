@@ -57,14 +57,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 resize: vertical;
                 width: 100%;
             }
-
-            .stats {
-                display: flex;
-                gap: 1rem;
-                flex-wrap: wrap;
-                color: var(--gs-muted-color, #666);
-                font-size: 0.9rem;
-            }
         `,
     ];
 
@@ -89,6 +81,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._sourceLoadVersion = 0;
         this._previewVersion = 0;
         this._placeholderVersion = 0;
+        this._previewQueryKey = "";
         /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
         this._adapterCache = new Map();
 
@@ -133,7 +126,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         const readiness = this._preview?.readiness;
-        const warnings = readiness?.warnings;
         const blocking = readiness?.blocking;
         const sourceCount = this._availableSources.length;
         const noImportableSources =
@@ -200,20 +192,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     />
                 </div>
 
-                ${this._preview
-                    ? html`<div class="stats">
-                          <span
-                              >Samples in view:
-                              ${this._preview.sampleCount}</span
-                          >
-                          <span
-                              >Resolved:
-                              ${readiness.resolved.columnIds.length}</span
-                          >
-                          <span>Missing: ${warnings.missing.length}</span>
-                          <span>Ambiguous: ${warnings.ambiguous.length}</span>
-                      </div>`
-                    : nothing}
                 ${blocking?.overLimit
                     ? html`<div class="gs-alert error">
                           Import exceeds the hard limit of 100 columns.
@@ -223,13 +201,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     ? html`<div class="gs-alert error">
                           Source id is required when multiple metadata sources
                           are configured.
-                      </div>`
-                    : nothing}
-                ${warnings &&
-                (warnings.missing.length > 0 || warnings.ambiguous.length > 0)
-                    ? html`<div class="gs-alert warning">
-                          Missing or ambiguous entries are skipped. Import can
-                          continue with resolved columns.
                       </div>`
                     : nothing}
                 ${this._error
@@ -380,6 +351,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
         const previewVersion = ++this._previewVersion;
         const queries = parseColumnQueries(this.columnInput);
+        const queryKey = this.#toQueryKey(queries);
         if (queries.length === 0) {
             const readiness = classifyImportReadiness({
                 queries,
@@ -391,11 +363,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             });
             this._preview = {
                 readiness,
-                sampleCount:
-                    this.sampleView.sampleHierarchy.sampleData?.ids.length ?? 0,
             };
+            this._previewQueryKey = queryKey;
             this._error = "";
-            this._form.revalidate("columns");
             return;
         }
 
@@ -409,18 +379,16 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             const readiness = classifyImportReadiness({ queries, resolved });
             this._preview = {
                 readiness,
-                sampleCount:
-                    this.sampleView.sampleHierarchy.sampleData?.ids.length ?? 0,
             };
+            this._previewQueryKey = queryKey;
             this._error = "";
-            this._form.revalidate("columns");
         } catch (error) {
             if (previewVersion !== this._previewVersion) {
                 return;
             }
             this._error = String(error);
             this._preview = null;
-            this._form.revalidate("columns");
+            this._previewQueryKey = "";
         }
     }
 
@@ -459,23 +427,33 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     #canImport() {
-        if (!this._preview || this._loading || this._form.hasErrors()) {
+        if (this._loading || this._form.hasErrors()) {
             return false;
         }
+
+        const queries = parseColumnQueries(this.columnInput);
+        if (queries.length === 0) {
+            return false;
+        }
+
         const sourceRef = this.#getSelectedSourceRef();
         if (
-            this._availableSources.length > 1 &&
-            sourceRef &&
-            !sourceRef.source.id
+            !sourceRef ||
+            (this._availableSources.length > 1 &&
+                sourceRef &&
+                !sourceRef.source.id)
         ) {
             return false;
         }
-        const blocking = this._preview.readiness.blocking;
-        return (
-            !blocking.emptyInput &&
-            !blocking.noResolvableColumns &&
-            !blocking.overLimit
-        );
+
+        if (this.#isPreviewCurrent(queries) && this._preview) {
+            const blocking = this._preview.readiness.blocking;
+            if (blocking.noResolvableColumns || blocking.overLimit) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     async #handleImport() {
@@ -536,7 +514,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         const readiness = this._preview?.readiness;
-        if (!readiness) {
+        if (!readiness || !this.#isPreviewCurrent(queries)) {
             return null;
         }
 
@@ -547,8 +525,49 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         if (blocking.noResolvableColumns) {
             return "No matching columns were found.";
         }
+        const unresolved = [
+            ...readiness.warnings.missing,
+            ...readiness.warnings.ambiguous,
+        ];
+        if (unresolved.length > 0) {
+            return (
+                "Columns not found: " +
+                this.#formatColumnList(unresolved) +
+                ". Fix the list before importing."
+            );
+        }
 
         return null;
+    }
+
+    /**
+     * @param {string[]} queries
+     */
+    #isPreviewCurrent(queries) {
+        return this._previewQueryKey === this.#toQueryKey(queries);
+    }
+
+    /**
+     * @param {string[]} queries
+     */
+    #toQueryKey(queries) {
+        return queries.join("\n");
+    }
+
+    /**
+     * @param {string[]} columns
+     */
+    #formatColumnList(columns) {
+        const unique = Array.from(new Set(columns));
+        if (unique.length <= 8) {
+            return unique.join(", ");
+        }
+        return (
+            unique.slice(0, 8).join(", ") +
+            " and " +
+            String(unique.length - 8) +
+            " more"
+        );
     }
 }
 
