@@ -4,6 +4,7 @@ import {
     faExclamationCircle,
     faInfoCircle,
     faFileImport,
+    faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { FormController } from "../../components/forms/formController.js";
@@ -146,12 +147,17 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
                 ${this._alignmentIssue
                     ? html`<div
-                          class="gs-alert ${this._alignmentIssue.severity}"
+                          class="gs-alert ${this._alignmentIssue.severity ===
+                          "error"
+                              ? "danger"
+                              : this._alignmentIssue.severity}"
                       >
                           ${icon(
                               this._alignmentIssue.severity === "info"
                                   ? faInfoCircle
-                                  : faExclamationCircle
+                                  : this._alignmentIssue.severity === "warning"
+                                    ? faExclamationCircle
+                                    : faTimesCircle
                           ).node[0]}
                           ${this._alignmentIssue.message}
                       </div>`
@@ -181,12 +187,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 </div>
 
                 ${blocking?.overLimit
-                    ? html`<div class="gs-alert error">
+                    ? html`<div class="gs-alert danger">
                           Import exceeds the hard limit of 100 columns.
                       </div>`
                     : nothing}
                 ${this._error
-                    ? html`<div class="gs-alert error">${this._error}</div>`
+                    ? html`<div class="gs-alert danger">${this._error}</div>`
                     : nothing}
             </div>
         `;
@@ -385,10 +391,17 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             const overlapCount = stats.samplesInBoth.size;
 
             if (overlapCount === 0) {
+                const sourceOnly =
+                    unknownCount > 0
+                        ? " source-only IDs: " +
+                          String(unknownCount) +
+                          this.#formatCases(stats.unknownSamples)
+                        : "";
                 this._alignmentIssue = {
                     severity: "error",
                     message:
-                        "No matching sample ids between this source and the current view.",
+                        "No matching sample IDs. Import cannot continue." +
+                        sourceOnly,
                 };
                 return;
             }

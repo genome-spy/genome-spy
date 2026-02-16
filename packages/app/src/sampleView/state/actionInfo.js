@@ -39,6 +39,21 @@ export function formatSet(values, braces = true) {
 }
 
 /**
+ * @param {string[]} columnIds
+ * @returns {import("lit").TemplateResult}
+ */
+function formatColumnNameList(columnIds) {
+    const names = columnIds.slice(0, 3).map((name) => html`<em>${name}</em>`);
+    if (names.length === 1) {
+        return html`${names[0]}`;
+    } else if (names.length === 2) {
+        return html`${names[0]} and ${names[1]}`;
+    } else {
+        return html`${names[0]}, ${names[1]}, and ${names[2]}`;
+    }
+}
+
+/**
  * @typedef {Object} ActionHandlerContext
  * @property {any} payload
  * @property {Object} template
@@ -83,15 +98,18 @@ const actionHandlers = {
             ? payload.columnIds
             : [];
         const sourceLabel = payload.sourceId
-            ? html` from <strong>${payload.sourceId}</strong>`
+            ? html` from <strong>${payload.sourceId}</strong> source`
             : "";
         const noun = columnIds.length === 1 ? "attribute" : "attributes";
+        const listNames = columnIds.length > 0 && columnIds.length <= 3;
+        const attributeLabel = listNames
+            ? formatColumnNameList(columnIds)
+            : html`<strong>${columnIds.length}</strong> ${noun}`;
 
         return {
             ...template,
-            title: "Add metadata from source",
-            provenanceTitle: html`Add
-                <strong>${columnIds.length}</strong> ${noun}${sourceLabel}`,
+            title: "Import metadata from source",
+            provenanceTitle: html`Import ${attributeLabel}${sourceLabel}`,
             icon: faTable,
         };
     },

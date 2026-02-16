@@ -49,12 +49,29 @@ describe("getActionInfo", () => {
         };
 
         const info = getActionInfo(action, () => undefined);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
 
-        expect(info.title).toBe("Add metadata from source");
-        expect(templateResultToString(info.provenanceTitle)).toContain(
-            "rna_expression"
-        );
+        expect(info.title).toBe("Import metadata from source");
+        expect(provenanceTitle).toContain("TP53");
+        expect(provenanceTitle).toContain("MYC");
+        expect(provenanceTitle).toContain("from rna_expression source");
         expect(info.icon).toBe(faTable);
+    });
+
+    it("uses count-based wording for larger source metadata imports", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/addMetadataFromSource`,
+            payload: {
+                sourceId: "rna_expression",
+                columnIds: ["TP53", "MYC", "EGFR", "KRAS"],
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(provenanceTitle).toContain("4 attributes");
+        expect(provenanceTitle).toContain("from rna_expression source");
     });
 
     it("keeps selection-source wording in sort provenance titles", () => {
