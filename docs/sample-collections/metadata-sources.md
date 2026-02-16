@@ -169,20 +169,24 @@ In this example, imported clinical columns are nominal by default. `purity` and
 a custom title. If no explicit `type` is provided for a column, GenomeSpy
 infers it from values.
 
-## Grouping imported attributes
+## Grouping and hierarchy
 
-Metadata can be flat or hierarchical. `groupPath` controls where imported
-columns are placed in that hierarchy.
+Metadata organization is controlled by two related properties:
 
-- without `groupPath`: imported columns are added at the root
-- with `groupPath`: imported columns are prefixed under that group path
+- `groupPath`: where imported columns are placed
+- `attributeGroupSeparator`: how path-like column names are split into groups
+
+### Placement with `groupPath`
+
+Without `groupPath`, imported columns are added at the root. With `groupPath`,
+imported columns are prefixed under that path.
 
 Example:
 
 ```json
 {
   "id": "expression",
-  "groupPath": "Expression/RNA",
+  "groupPath": "Expression",
   "backend": {
     "backend": "zarr",
     "url": "data/expr.zarr",
@@ -192,11 +196,72 @@ Example:
 ```
 
 Importing column `TP53` from this source creates attribute path
-`Expression/RNA/TP53`.
+`Expression/TP53`.
 
-If `attributeGroupSeparator` is set for the source, it is also used to parse
-`groupPath`. For example, with `attributeGroupSeparator: "."`, value
-`groupPath: "Expression.RNA"` resolves to the same hierarchy path.
+### Hierarchy with `attributeGroupSeparator`
+
+`attributeGroupSeparator` lets grouped column names define hierarchy levels. It
+also enables group-level definitions in `columnDefs`.
+
+Suppose you have columns such as:
+
+- `patientId`
+- `clinical.PFI`
+- `clinical.OS`
+- `signature.HRD`
+- `signature.APOBEC`
+
+With `attributeGroupSeparator: "."`, the `clinical.*` and `signature.*`
+columns are grouped under `clinical` and `signature`. This is useful when the
+number of metadata attributes is large, because users can toggle group
+visibility from the hierarchy. It also makes source configuration more
+ergonomic, because shared defaults (such as `type` and `scale`) can be defined
+once at group level instead of repeating them for every child column.
+
+Inheritance rules are straightforward: child columns inherit `type` and `scale`
+from the nearest parent group unless overridden by a more specific key.
+`visible` and `title` apply to the group node itself (for example `clinical`)
+rather than to all child columns.
+
+Example configuration:
+
+```json
+{
+  "id": "clinical",
+  "name": "Clinical",
+  "attributeGroupSeparator": ".",
+  "columnDefs": {
+    "patientId": {
+      "type": "nominal"
+    },
+    "clinical": {
+      "type": "quantitative",
+      "scale": { "scheme": "blues" }
+    },
+    "clinical.OS": {
+      "visible": false
+    },
+    "signature": {
+      "type": "quantitative",
+      "scale": { "scheme": "yelloworangered" },
+      "visible": false
+    }
+  },
+  "backend": {
+    "backend": "data",
+    "data": { "url": "samples.tsv" },
+    "sampleIdField": "sample"
+  }
+}
+```
+
+In this configuration, `clinical.PFI` inherits quantitative/blues defaults from
+`clinical`, while `clinical.OS` applies its own override (`visible: false`).
+
+### Using both together
+
+When both are set, `groupPath` places imported attributes under a destination
+group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
 ## Schema reference
 
