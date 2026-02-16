@@ -9,14 +9,16 @@ $basic-spacing: 10px;
 $dialog-stroke-color: #d0d0d0;
 
 // https://css-tricks.com/snippets/css/system-font-stack/
-$font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+$font-family:
+    system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
 $font-size: 14px;
 
 :root {
-    --gs-font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial,
-        sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    --gs-font-family:
+        system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     --gs-font-size: 14px;
     --gs-basic-spacing: 10px;
 }
@@ -71,6 +73,11 @@ $menu-line-height: 22px;
                 width: 1em;
                 margin-right: 0.2em;
             }
+        }
+
+        > .submenu-item svg:first-child {
+            width: 1em;
+            margin-right: 0.2em;
         }
     }
 

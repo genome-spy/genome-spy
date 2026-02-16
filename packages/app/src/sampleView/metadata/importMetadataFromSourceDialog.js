@@ -12,11 +12,7 @@ import {
     classifyImportReadiness,
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
-import {
-    createMetadataSourceAdapter,
-    resolveMetadataSources,
-} from "./metadataSourceAdapters.js";
-import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
+import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./uploadMetadataDialog.js";
 
 /**
@@ -31,6 +27,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         ...super.properties,
         sampleView: {},
         intentPipeline: {},
+        source: {},
         sourceId: { state: true },
         columnInput: { state: true },
         groupPath: { state: true },
@@ -80,6 +77,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         /** @type {import("../../state/intentPipeline.js").default | null} */
         this.intentPipeline = null;
 
+        /** @type {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef | null} */
+        this.source = null;
+
         this.sourceId = "";
         this.columnInput = "";
         this.groupPath = "";
@@ -90,7 +90,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._availableSources = [];
         this._columnPlaceholder = "One column id per line";
         this._availableColumnCount = undefined;
-        this._sourceLoadVersion = 0;
         this._previewVersion = 0;
         this._placeholderVersion = 0;
         this._alignmentVersion = 0;
@@ -111,6 +110,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             validate: () => null,
         });
 
+        /** @type {string | import("lit").TemplateResult} */
         this.dialogTitle = "Import metadata from source";
     }
 
@@ -118,11 +118,14 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @param {import("lit").PropertyValues<this>} changedProperties
      */
     willUpdate(changedProperties) {
-        if (!this.sampleView) {
+        if (!this.sampleView || !this.source) {
             return;
         }
 
-        if (changedProperties.has("sampleView")) {
+        if (
+            changedProperties.has("sampleView") ||
+            changedProperties.has("source")
+        ) {
             void this.#loadSources();
         }
 
@@ -140,18 +143,14 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     renderBody() {
-        if (!this.sampleView) {
-            throw new Error("Import metadata dialog requires SampleView.");
+        if (!this.sampleView || !this.source) {
+            throw new Error(
+                "Import metadata dialog requires SampleView and a metadata source."
+            );
         }
 
         const readiness = this._preview?.readiness;
         const blocking = readiness?.blocking;
-        const sourceCount = this._availableSources.length;
-        const noImportableSources =
-            !this._loading && !this._error && sourceCount === 0;
-        const selectedSource = this.#getSelectedSourceRef();
-        const missingStableSourceId =
-            sourceCount > 1 && selectedSource && !selectedSource.source.id;
         const columnsLabel =
             typeof this._availableColumnCount === "number"
                 ? "Columns to import (" +
@@ -169,30 +168,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     </div>
                 </div>
 
-                ${sourceCount > 1
-                    ? html`<div class="gs-form-group">
-                          <label for="sourceSelect">Source</label>
-                          <select
-                              id="sourceSelect"
-                              .value=${this.sourceId}
-                              @change=${(/** @type {Event} */ event) =>
-                                  this.#handleSourceChange(event)}
-                          >
-                              ${this._availableSources.map(
-                                  (source) =>
-                                      html`<option value=${source.id}>
-                                          ${source.label}
-                                      </option>`
-                              )}
-                          </select>
-                      </div>`
-                    : nothing}
-                ${noImportableSources
-                    ? html`<div class="gs-alert info">
-                          All eager metadata sources are already fully loaded.
-                          There are no additional columns to import.
-                      </div>`
-                    : nothing}
                 ${this._alignmentIssue
                     ? html`<div
                           class="gs-alert ${this._alignmentIssue.severity}"
@@ -234,12 +209,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                           Import exceeds the hard limit of 100 columns.
                       </div>`
                     : nothing}
-                ${missingStableSourceId
-                    ? html`<div class="gs-alert error">
-                          Source id is required when multiple metadata sources
-                          are configured.
-                      </div>`
-                    : nothing}
                 ${this._error
                     ? html`<div class="gs-alert error">${this._error}</div>`
                     : nothing}
@@ -260,80 +229,33 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     async #loadSources() {
-        if (!this.sampleView) {
-            throw new Error("Import metadata dialog requires SampleView.");
+        if (!this.sampleView || !this.source) {
+            throw new Error(
+                "Import metadata dialog requires SampleView and a metadata source."
+            );
         }
 
-        const loadVersion = ++this._sourceLoadVersion;
         this._previewVersion++;
         this._adapterCache.clear();
-        this._loading = true;
         this._error = "";
         this._preview = null;
         this._alignmentIssue = null;
         this._columnValidationEnabled = false;
-
-        try {
-            const sources = await resolveMetadataSources(
-                this.sampleView.spec.samples,
-                {
-                    baseUrl: this.sampleView.getBaseUrl(),
-                }
-            );
-
-            if (loadVersion !== this._sourceLoadVersion) {
-                return;
-            }
-
-            const importableSources = sources.filter(
-                (source) =>
-                    !(
-                        source.backend.backend === "data" &&
-                        getEffectiveInitialLoad(source) === "*"
-                    )
-            );
-
-            this._availableSources = importableSources.map((source, index) => {
-                const fallbackId = "source_" + String(index + 1);
-                return {
-                    id: source.id ?? fallbackId,
-                    source,
-                    label:
-                        source.name ??
-                        source.id ??
-                        "Source " + String(index + 1),
-                };
-            });
-
-            if (this._availableSources.length > 0) {
-                this.sourceId = this._availableSources[0].id;
-                this.groupPath =
-                    this._availableSources[0].source.groupPath ?? "";
-                void this.#updateColumnPlaceholder();
-                void this.#updateAlignmentIssue();
-                void this.#updatePreview();
-            } else {
-                this.sourceId = "";
-                this.groupPath = "";
-                this._columnPlaceholder = "One column id per line";
-                this._availableColumnCount = undefined;
-            }
-        } catch (error) {
-            if (loadVersion !== this._sourceLoadVersion) {
-                return;
-            }
-
-            this._availableSources = [];
-            this.sourceId = "";
-            this.groupPath = "";
-            this._columnPlaceholder = "One column id per line";
-            this._availableColumnCount = undefined;
-            this._error = String(error);
-        } finally {
-            if (loadVersion === this._sourceLoadVersion) {
-                this._loading = false;
-            }
-        }
+        const sourceLabel = this.source.name ?? this.source.id ?? "source";
+        this.dialogTitle = html`Import metadata from
+            <em>${sourceLabel}</em> source`;
+        this._availableSources = [
+            {
+                id: this.source.id ?? "selected_source",
+                source: this.source,
+                label: sourceLabel,
+            },
+        ];
+        this.sourceId = this._availableSources[0].id;
+        this.groupPath = this.source.groupPath ?? "";
+        void this.#updateColumnPlaceholder();
+        void this.#updateAlignmentIssue();
+        void this.#updatePreview();
     }
 
     #getSelectedSourceRef() {
@@ -360,18 +282,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         });
         this._adapterCache.set(sourceRef.id, adapter);
         return adapter;
-    }
-
-    /**
-     * @param {Event} event
-     */
-    #handleSourceChange(event) {
-        const sourceId = /** @type {HTMLSelectElement} */ (event.target).value;
-        this.sourceId = sourceId;
-        const sourceRef = this._availableSources.find(
-            (source) => source.id === sourceId
-        );
-        this.groupPath = sourceRef?.source.groupPath ?? "";
     }
 
     /**
@@ -591,12 +501,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         const sourceRef = this.#getSelectedSourceRef();
-        if (
-            !sourceRef ||
-            (this._availableSources.length > 1 &&
-                sourceRef &&
-                !sourceRef.source.id)
-        ) {
+        if (!sourceRef) {
             return false;
         }
 
@@ -757,13 +662,23 @@ customElements.define(
 /**
  * @param {import("../sampleView.js").default} sampleView
  * @param {import("../../state/intentPipeline.js").default} intentPipeline
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} source
  */
-export function showImportMetadataFromSourceDialog(sampleView, intentPipeline) {
+export function showImportMetadataFromSourceDialog(
+    sampleView,
+    intentPipeline,
+    source
+) {
+    if (!source) {
+        throw new Error("Import metadata dialog requires a metadata source.");
+    }
+
     return showDialog(
         "gs-import-metadata-source-dialog",
         (/** @type {ImportMetadataFromSourceDialog} */ dialog) => {
             dialog.sampleView = sampleView;
             dialog.intentPipeline = intentPipeline;
+            dialog.source = source;
             dialog._columnValidationEnabled = false;
             dialog._form.reset();
         }

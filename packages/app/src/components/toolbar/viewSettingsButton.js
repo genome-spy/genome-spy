@@ -1,9 +1,5 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faDatabase,
-    faFileUpload,
-    faSlidersH,
-} from "@fortawesome/free-solid-svg-icons";
+import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
@@ -27,8 +23,8 @@ import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
-import { showImportMetadataFromSourceDialog } from "../../sampleView/metadata/importMetadataFromSourceDialog.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
+import { MetadataSourceMenuController } from "../../sampleView/metadata/metadataSourceMenu.js";
 
 class ViewSettingsButton extends LitElement {
     /** @type {import("../../app.js").default} */
@@ -38,6 +34,8 @@ class ViewSettingsButton extends LitElement {
     #nestedPaths;
 
     #buttonRef = createRef();
+
+    #metadataSourceMenuController = new MetadataSourceMenuController();
 
     /**
      * @typedef {import("@genome-spy/core/view/view.js").default} View
@@ -132,7 +130,7 @@ class ViewSettingsButton extends LitElement {
         this.requestUpdate();
 
         // Update reset item
-        this.#showDropdown();
+        void this.#showDropdown();
 
         event.stopPropagation();
     }
@@ -142,7 +140,7 @@ class ViewSettingsButton extends LitElement {
             viewSettingsSlice.actions.restoreDefaultVisibilities()
         );
         // Update checkboxes
-        this.#showDropdown();
+        void this.#showDropdown();
     }
 
     #updateNestedPaths() {
@@ -248,20 +246,30 @@ class ViewSettingsButton extends LitElement {
                         label: "Upload custom metadata",
                         icon: faFileUpload,
                         callback: () => this.#showUploadMetadataDialog(),
-                    },
-                    {
-                        label: "Import metadata from source",
-                        icon: faDatabase,
-                        callback: () =>
-                            this.#showImportMetadataFromSourceDialog(),
                     }
                 );
             }
 
-            /** @type {() => import("../../utils/ui/contextMenu.js").MenuItem[]} */
+            /**
+             * @type {(() => import("../../utils/ui/contextMenu.js").MenuItem[] | Promise<import("../../utils/ui/contextMenu.js").MenuItem[]>) | undefined}
+             */
             let submenuOpener;
 
-            if (submenuItems.length) {
+            if (view instanceof MetadataView) {
+                const staticSubmenuItems = submenuItems.slice();
+                submenuOpener = async () => {
+                    const importAction =
+                        await this.#metadataSourceMenuController.createImportMenuItem(
+                            this.#app.getSampleView(),
+                            this.#app.intentPipeline
+                        );
+                    if (importAction) {
+                        return [...staticSubmenuItems, importAction];
+                    } else {
+                        return staticSubmenuItems;
+                    }
+                };
+            } else if (submenuItems.length) {
                 submenuOpener = () => submenuItems;
             }
 
@@ -313,7 +321,6 @@ class ViewSettingsButton extends LitElement {
 
     #showDropdown() {
         this.#updateNestedPaths();
-
         const items = this.#makeToggles();
 
         const defaultVis = !Object.keys(this.getVisibilities()).length;
@@ -337,6 +344,10 @@ class ViewSettingsButton extends LitElement {
         );
     }
 
+    #handleDropdownClick() {
+        this.#showDropdown();
+    }
+
     render() {
         // TODO: Highlight the button when the dropdown is open.
         return html`
@@ -345,7 +356,7 @@ class ViewSettingsButton extends LitElement {
                     ${ref(this.#buttonRef)}
                     class="tool-btn"
                     title="Toggle view visibilities"
-                    @click=${this.#showDropdown.bind(this)}
+                    @click=${this.#handleDropdownClick.bind(this)}
                 >
                     ${icon(faSlidersH).node[0]}
                 </button>
@@ -375,18 +386,6 @@ class ViewSettingsButton extends LitElement {
             throw new Error("Cannot upload metadata without SampleView");
         } else {
             showUploadMetadataDialog(sampleView);
-        }
-    }
-
-    #showImportMetadataFromSourceDialog() {
-        const sampleView = this.#app.getSampleView();
-        if (!sampleView) {
-            throw new Error("Cannot import metadata without SampleView");
-        } else {
-            showImportMetadataFromSourceDialog(
-                sampleView,
-                this.#app.intentPipeline
-            );
         }
     }
 }
