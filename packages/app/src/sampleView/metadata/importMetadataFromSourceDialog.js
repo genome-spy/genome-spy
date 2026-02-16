@@ -39,6 +39,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _preview: { state: true },
         _availableSources: { state: true },
         _columnPlaceholder: { state: true },
+        _availableColumnCount: { state: true },
         _alignmentIssue: { state: true },
     };
 
@@ -81,6 +82,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         /** @type {SourceOption[]} */
         this._availableSources = [];
         this._columnPlaceholder = "One column id per line";
+        this._availableColumnCount = undefined;
         this._sourceLoadVersion = 0;
         this._previewVersion = 0;
         this._placeholderVersion = 0;
@@ -143,6 +145,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const selectedSource = this.#getSelectedSourceRef();
         const missingStableSourceId =
             sourceCount > 1 && selectedSource && !selectedSource.source.id;
+        const columnsLabel =
+            typeof this._availableColumnCount === "number"
+                ? "Columns to import (" +
+                  String(this._availableColumnCount) +
+                  " available)"
+                : "Columns to import";
 
         return html`
             <div class="stack">
@@ -192,7 +200,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     : nothing}
 
                 <div class="gs-form-group">
-                    <label for="columnInput">Columns to import</label>
+                    <label for="columnInput">${columnsLabel}</label>
                     <textarea
                         id="columnInput"
                         placeholder=${this._columnPlaceholder}
@@ -301,6 +309,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 this.sourceId = "";
                 this.groupPath = "";
                 this._columnPlaceholder = "One column id per line";
+                this._availableColumnCount = undefined;
             }
         } catch (error) {
             if (loadVersion !== this._sourceLoadVersion) {
@@ -311,6 +320,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             this.sourceId = "";
             this.groupPath = "";
             this._columnPlaceholder = "One column id per line";
+            this._availableColumnCount = undefined;
             this._error = String(error);
         } finally {
             if (loadVersion === this._sourceLoadVersion) {
@@ -428,6 +438,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const sourceRef = this.#getSelectedSourceRef();
         if (!sourceRef) {
             this._columnPlaceholder = "One column id per line";
+            this._availableColumnCount = undefined;
             return;
         }
 
@@ -440,6 +451,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 return;
             }
 
+            this._availableColumnCount = columns.length;
             if (columns.length === 0) {
                 this._columnPlaceholder = "One column id per line";
                 return;
@@ -455,6 +467,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 return;
             }
             this._columnPlaceholder = "One column id per line";
+            this._availableColumnCount = undefined;
         }
     }
 
