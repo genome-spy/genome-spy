@@ -302,8 +302,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
             if (this._availableSources.length > 0) {
                 this.sourceId = this._availableSources[0].id;
+                this.groupPath =
+                    this._availableSources[0].source.groupPath ?? "";
             } else {
                 this.sourceId = "";
+                this.groupPath = "";
                 this._columnPlaceholder = "One column id per line";
             }
         } catch (error) {
@@ -313,6 +316,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
 
             this._availableSources = [];
             this.sourceId = "";
+            this.groupPath = "";
             this._columnPlaceholder = "One column id per line";
             this._error = String(error);
         } finally {
@@ -352,7 +356,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @param {Event} event
      */
     #handleSourceChange(event) {
-        this.sourceId = /** @type {HTMLSelectElement} */ (event.target).value;
+        const sourceId = /** @type {HTMLSelectElement} */ (event.target).value;
+        this.sourceId = sourceId;
+        const sourceRef = this._availableSources.find(
+            (source) => source.id === sourceId
+        );
+        this.groupPath = sourceRef?.source.groupPath ?? "";
     }
 
     /**
