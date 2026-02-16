@@ -69,19 +69,23 @@ export interface SampleAttributeDef {
 
 export interface SampleIdentityDef {
     /**
-     * Data source used to resolve sample identifiers.
+     * Data source that defines the canonical sample set for the view.
+     *
+     * The source must contain one row per sample and is used to resolve sample
+     * ids and optional display names before metadata imports are applied.
      */
     data: Data;
 
     /**
-     * Field containing the sample id.
+     * Field that contains the canonical sample id.
      *
-     * **Default value:** `"sample"`
+     * __Default value:__ `"sample"`
      */
     idField?: string;
 
     /**
      * Field containing a user-visible sample label.
+     *
      * If omitted, sample ids are used.
      */
     displayNameField?: string;
@@ -89,27 +93,34 @@ export interface SampleIdentityDef {
 
 export interface ColumnIdentifierField {
     /**
-     * Identifier field name for UI and diagnostics.
+     * Logical identifier name shown in UI and diagnostics.
+     *
+     * Example values: `"symbol"`, `"ensembl"`, `"entrez"`.
      */
     name: string;
 
     /**
-     * Backend path that provides identifier values.
+     * Backend path that provides identifier values aligned to matrix columns.
+     *
+     * The array length must equal the number of columns in the matrix.
      */
     path: string;
 
     /**
-     * Whether this is the primary identifier field.
+     * Marks this identifier as the primary, canonical identifier.
      */
     primary?: boolean;
 
     /**
-     * Use case-insensitive matching for this identifier field.
+     * Enables case-insensitive matching for this identifier field.
      */
     caseInsensitive?: boolean;
 
     /**
      * Remove version suffixes during matching (for example, ENSG...`.12`).
+     *
+     * Useful for identifiers such as Ensembl ids that may contain version
+     * suffixes in some datasets but not in user queries.
      */
     stripVersionSuffix?: boolean;
 }
@@ -117,16 +128,21 @@ export interface ColumnIdentifierField {
 export interface ColumnSynonymIndex {
     /**
      * Backend path containing synonym terms.
+     *
+     * Terms are matched against user queries.
      */
     termPath: string;
 
     /**
-     * Backend path containing resolved column indices for terms.
+     * Backend path containing resolved matrix column indices for terms.
+     *
+     * Must be aligned with `termPath` (same length, row-by-row mapping).
      */
     columnIndexPath: string;
 
     /**
-     * Optional backend path describing synonym provenance.
+     * Optional backend path describing synonym provenance (for example, source
+     * database or curation source) for diagnostics.
      */
     sourcePath?: string;
 }
@@ -135,14 +151,51 @@ export interface DataBackendDef {
     backend: "data";
 
     /**
-     * Eager tabular data source using the standard data contract.
+     * Eager tabular metadata source using the standard data contract.
+     *
+     * Supports `UrlData` and `InlineData`.
      */
     data: UrlData | InlineData;
 
     /**
-     * Field name in the table that matches sample ids.
+     * Field name in the table that matches sample ids in the view.
      *
-     * **Default value:** `"sample"`
+     * __Default value:__ `"sample"`
+     */
+    sampleIdField?: string;
+}
+
+export interface ZarrMatrixLayoutDef {
+    /**
+     * Path to matrix values (sample rows x metadata columns).
+     *
+     * __Default value:__ `"X"`
+     */
+    valuesPath?: string;
+
+    /**
+     * Path to matrix row identifiers (sample ids).
+     *
+     * __Default value:__ `"obs_names"`
+     */
+    rowIdsPath?: string;
+
+    /**
+     * Path to matrix column identifiers.
+     *
+     * __Default value:__ `"var_names"`
+     */
+    columnIdsPath?: string;
+}
+
+export interface ZarrTableLayoutDef {
+    /**
+     * Path to the table-like array or group in the store.
+     */
+    path?: string;
+
+    /**
+     * Field containing sample ids in table rows.
      */
     sampleIdField?: string;
 }
@@ -151,63 +204,41 @@ export interface ZarrBackendDef {
     backend: "zarr";
 
     /**
-     * URL to the Zarr store.
+     * URL to the root of the Zarr store.
      */
     url: string;
 
     /**
-     * Layout style used by the source.
+     * Declares how metadata is represented in the store.
+     *
+     * - `"matrix"`: sample-by-column matrix with separate row/column id arrays
+     * - `"table"`: tabular representation
      */
     layout: "matrix" | "table";
 
     /**
      * Matrix layout configuration.
+     *
+     * Required when `layout` is `"matrix"`.
      */
-    matrix?: {
-        /**
-         * Path to matrix values.
-         *
-         * **Default value:** `"X"`
-         */
-        valuesPath?: string;
-
-        /**
-         * Path to row identifiers.
-         *
-         * **Default value:** `"obs_names"`
-         */
-        rowIdsPath?: string;
-
-        /**
-         * Path to column identifiers.
-         *
-         * **Default value:** `"var_names"`
-         */
-        columnIdsPath?: string;
-    };
+    matrix?: ZarrMatrixLayoutDef;
 
     /**
      * Table layout configuration.
+     *
+     * Required when `layout` is `"table"`.
      */
-    table?: {
-        /**
-         * Path to the table-like array/group.
-         */
-        path?: string;
-
-        /**
-         * Field containing sample ids.
-         */
-        sampleIdField?: string;
-    };
+    table?: ZarrTableLayoutDef;
 
     /**
-     * Optional identifier fields for resolving user queries to columns.
+     * Optional identifier arrays used to resolve user queries to columns.
+     *
+     * If omitted, only primary column ids are used for lookup.
      */
     identifiers?: ColumnIdentifierField[];
 
     /**
-     * Optional synonym index for query expansion.
+     * Optional synonym index for expanding lookup terms to matrix columns.
      */
     synonymIndex?: ColumnSynonymIndex;
 }
@@ -217,6 +248,8 @@ export interface ParquetBackendDef {
 
     /**
      * URL to a Parquet data source.
+     *
+     * Reserved for future use.
      */
     url: string;
 
@@ -231,6 +264,8 @@ export interface ArrowBackendDef {
 
     /**
      * URL to an Arrow data source.
+     *
+     * Reserved for future use.
      */
     url: string;
 
@@ -248,49 +283,77 @@ export type MetadataBackendDef =
 
 export interface MetadataSourceDef {
     /**
-     * Stable identifier used in actions and provenance entries.
+     * Stable source identifier used in actions, provenance, and configuration.
+     *
+     * Should remain stable across spec revisions if bookmarks/provenance replay
+     * must keep working.
      */
     id?: string;
 
     /**
-     * Optional label shown to users.
+     * Optional user-facing label shown in menus and dialogs.
+     *
      * If omitted, UI falls back to `id`.
      */
     name?: string;
 
     /**
-     * Optional concise context for users and automation.
+     * Optional short description of what this source contains.
+     *
+     * Can be shown in UI and can help automated agents choose the correct
+     * source.
      */
     description?: string;
 
     /**
      * Startup loading behavior.
+     *
+     * - `false`: do not load at startup
+     * - `"*"`: load all columns allowed by this source
+     * - `string[]`: resolve and load only the listed columns
+     *
      * Omitted value uses backend defaults.
      */
     initialLoad?: false | "*" | string[];
 
     /**
      * Column ids that must never be imported from this source.
+     *
+     * Useful for excluding identity/helper columns such as `sample` and
+     * `displayName`.
      */
     excludeColumns?: string[];
 
     /**
-     * Default metadata group path for imported attributes.
+     * Default destination group path for imported attributes.
+     *
+     * Imported column names are placed under this path, which effectively
+     * creates (or reuses) a metadata hierarchy node.
+     *
+     * This value is parsed as a path using `attributeGroupSeparator` when that
+     * separator is defined for the source.
+     *
+     * Users can override this per import in the dialog.
      */
     groupPath?: string;
 
     /**
-     * Separator for source-side attribute hierarchy.
+     * Separator used by source-side attribute names to express hierarchy.
+     *
+     * Example: if separator is `"."`, column `clinical.OS` is interpreted as
+     * group `clinical` and attribute `OS`.
      */
     attributeGroupSeparator?: string;
 
     /**
-     * Default attribute definition for imported columns.
+     * Default attribute definition applied to imported columns.
+     *
+     * Per-column definitions in `columnDefs` take precedence.
      */
     defaultAttributeDef?: SampleAttributeDef;
 
     /**
-     * Per-column attribute definitions.
+     * Per-column attribute definitions keyed by column id.
      */
     columnDefs?: Record<string, SampleAttributeDef>;
 
@@ -303,6 +366,9 @@ export interface MetadataSourceDef {
 export interface MetadataSourceImportDef {
     /**
      * URL to a standalone metadata source definition file.
+     *
+     * Imports are shallow: imported files must define exactly one source and
+     * cannot contain nested `import` entries.
      */
     url: string;
 }
@@ -318,7 +384,10 @@ export interface SampleDef {
     identity?: SampleIdentityDef;
 
     /**
-     * Metadata source definitions used for eager and on-demand imports.
+     * Metadata source definitions used for startup and on-demand imports.
+     *
+     * Source order is significant for startup loading: eager startup imports are
+     * applied in declaration order.
      */
     metadataSources?: MetadataSourceEntry[];
 

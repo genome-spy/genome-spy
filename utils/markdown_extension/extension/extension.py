@@ -36,9 +36,10 @@ types_with_descriptions = {
 
 refPattern = re.compile('^#/definitions/(\\w+)$')
 class MyPreprocessor(Preprocessor):
-    def __init__(self, schema):
+    def __init__(self, schema, app_schema):
         self.schema = schema
-        self.pattern = re.compile(r'^SCHEMA\s+(\w+)(?:\s+(.+))?$')
+        self.app_schema = app_schema
+        self.pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
 
     def run(self, lines):
         new_lines = []
@@ -46,26 +47,27 @@ class MyPreprocessor(Preprocessor):
             m = self.pattern.match(line)
             if m:
                 prop_list = []
-                if m.group(2):
-                    prop_list = m.group(2).split()
-                new_lines.extend(self.getType(m.group(1), prop_list))
+                if m.group(3):
+                    prop_list = m.group(3).split()
+                schema = self.schema if m.group(1) == 'SCHEMA' else self.app_schema
+                new_lines.extend(self.getType(m.group(2), prop_list, schema))
             else:
                 new_lines.append(line)
 
         return new_lines
 
 
-    def refToString(self, ref):
+    def refToString(self, ref, schema):
         m = refPattern.match(ref)
         if m:
             type_name = m.group(1)
-            ref_type = self.schema['definitions'][type_name]
+            ref_type = schema['definitions'][type_name]
             any_of = ref_type.get('anyOf')
             enum = ref_type.get('enum')
             type = ref_type.get('type')
 
             if any_of:
-                return self.propTypesToString(any_of)
+                return self.propTypesToString(any_of, schema)
             if enum:
                 if type == 'string':
                     return ' | '.join(['`"{}"`'.format(e) for e in enum])
@@ -79,7 +81,7 @@ class MyPreprocessor(Preprocessor):
                 return '[{}]({})'.format(type_name, docs_baseurl + types_with_links['default'])
         return ref
 
-    def propTypeToString(self, prop_type):
+    def propTypeToString(self, prop_type, schema):
         const = prop_type.get('const')
         type = prop_type.get('type')
         ref = prop_type.get('$ref')
@@ -95,9 +97,12 @@ class MyPreprocessor(Preprocessor):
                 items = prop_type.get('items')
                 if items:
                     if prop_type.get('minItems') == 2 and prop_type.get('maxItems') == 2:
-                        return '[{}, {}]'.format(self.propTypeToString(items), self.propTypeToString(items))
+                        return '[{}, {}]'.format(
+                            self.propTypeToString(items, schema),
+                            self.propTypeToString(items, schema),
+                        )
                     else:
-                        string = self.propTypeToString(items)
+                        string = self.propTypeToString(items, schema)
                         if "|" in string:
                             return '({})[]'.format(string)
                         else:
@@ -107,14 +112,17 @@ class MyPreprocessor(Preprocessor):
             else:
                 return str(type)
         if ref:
-            return self.refToString(ref)
+            return self.refToString(ref, schema)
         return str(prop_type)
 
-    def propTypesToString(self, propTypes):
-        return ' | '.join([self.propTypeToString(p) for p in propTypes])
+    def propTypesToString(self, propTypes, schema):
+        return ' | '.join([self.propTypeToString(p, schema) for p in propTypes])
 
-    def getType(self, type_name, included_properties=None):
-        type = self.schema['definitions'][type_name]
+    def getType(self, type_name, included_properties=None, schema=None):
+        if schema is None:
+            schema = self.schema
+
+        type = schema['definitions'].get(type_name)
         if not type:
             return ['Unknown type: ' + type_name]
         
@@ -124,7 +132,7 @@ class MyPreprocessor(Preprocessor):
 
         anyOf = type.get('anyOf')
         if anyOf:
-            lines.append('Type: ' + self.propTypesToString(anyOf))
+            lines.append('Type: ' + self.propTypesToString(anyOf, schema))
             return lines
 
         properties = type.get('properties')
@@ -159,7 +167,7 @@ class MyPreprocessor(Preprocessor):
 
             ref = value.get('$ref')
             if ref:
-                paragraphs.insert(0, 'Type: ' + self.refToString(ref))
+                paragraphs.insert(0, 'Type: ' + self.refToString(ref, schema))
 
             propType = value.get('type')
             if propType:
@@ -169,7 +177,7 @@ class MyPreprocessor(Preprocessor):
             
             propTypes = value.get('anyOf')
             if propTypes:
-                paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes))
+                paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes, schema))
 
             continuation_indent = '  '
 
@@ -188,7 +196,8 @@ class MyPreprocessor(Preprocessor):
 class GenomeSpyExtension(Extension):
     def __init__(self, **kwargs):
         self.config = {
-            'schemaPath' : [ 'docs/schema.json', 'Path to schema']
+            'schemaPath' : [ 'docs/schema.json', 'Path to core schema'],
+            'appSchemaPath' : [ 'docs/app-schema.json', 'Path to app schema'],
         }
         super(GenomeSpyExtension, self).__init__(**kwargs)
 
@@ -200,4 +209,14 @@ class GenomeSpyExtension(Extension):
             logging.error('Cannot open ' + self.getConfig('schemaPath'))
             raise
 
-        md.preprocessors.register(MyPreprocessor(schema), 'GenomeSpy', 175)
+        try:
+            with open(self.getConfig('appSchemaPath'), 'r') as f:
+                app_schema = json.load(f)
+        except IOError:
+            logging.warning(
+                'Cannot open %s. APP_SCHEMA falls back to SCHEMA.',
+                self.getConfig('appSchemaPath'),
+            )
+            app_schema = schema
+
+        md.preprocessors.register(MyPreprocessor(schema, app_schema), 'GenomeSpy', 175)

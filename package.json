@@ -40,7 +40,7 @@
   },
   "scripts": {
     "build": "lerna run build",
-    "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/schema.json docs/ && mkdocs build",
+    "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/schema.json docs/ && cp packages/app/dist/schema.json docs/app-schema.json && mkdocs build",
     "build:dependency-graph": "depcruise packages/core/src/index.js --include-only '^packages/core/src' --output-type dot | dot -T svg | depcruise-wrap-stream-in-html > core-dependency-graph.html",
     "lint": "eslint packages/*/src/",
     "test": "vitest run",

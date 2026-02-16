@@ -35,6 +35,11 @@ from what is shown below.
 8. **Metadata** such as clinical attributes or computed variables shown as a heatmap.
 9. **Genomic data** is shown here.
 
+## Importing metadata
+
+For metadata import workflows (uploading tabular metadata and importing from
+preconfigured sources), see [Importing Metadata](importing-metadata.md).
+
 ## Navigation interactions
 
 ### Navigating around the genome

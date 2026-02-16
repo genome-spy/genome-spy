@@ -463,6 +463,9 @@ export function applyGroupToColumnarMetadata(
     placeUnderGroup,
     separator
 ) {
+    // TODO(metadata-sources): If separator is undefined, groupPath should be
+    // treated as a single segment (no implicit splitting).
+    // Current behavior delegates to splitPath default "/" semantics.
     return placeMetadataUnderGroup(
         columnarMetadata,
         splitPath(placeUnderGroup, separator)
@@ -482,6 +485,9 @@ export function applyGroupToAttributeDefs(
     placeUnderGroup,
     separator
 ) {
+    // TODO(metadata-sources): If separator is undefined, groupPath should be
+    // treated as a single segment (no implicit splitting).
+    // Current behavior delegates to splitPath default "/" semantics.
     return placeKeysUnderGroup(
         attributeDefs,
         splitPath(placeUnderGroup, separator)
