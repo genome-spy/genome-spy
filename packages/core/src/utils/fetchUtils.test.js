@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchJson } from "./fetchUtils.js";
+import { fetchJson, FetchJsonError } from "./fetchUtils.js";
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -32,7 +32,12 @@ describe("fetchJson", () => {
 
         await expect(
             fetchJson("https://example.org/missing.json")
-        ).rejects.toThrow("HTTP 404 Not Found");
+        ).rejects.toEqual(
+            expect.objectContaining({
+                kind: "http",
+                message: "404 Not Found",
+            })
+        );
     });
 
     it("throws when JSON parsing fails", async () => {
@@ -46,8 +51,10 @@ describe("fetchJson", () => {
             }))
         );
 
-        await expect(fetchJson("https://example.org/bad.json")).rejects.toThrow(
-            "Invalid JSON:"
+        await expect(fetchJson("https://example.org/bad.json")).rejects.toEqual(
+            expect.objectContaining({
+                kind: "json",
+            })
         );
     });
 
@@ -61,6 +68,26 @@ describe("fetchJson", () => {
 
         await expect(
             fetchJson("https://example.org/offline.json")
-        ).rejects.toThrow("Network error:");
+        ).rejects.toEqual(
+            expect.objectContaining({
+                kind: "network",
+                message: "Error: Network down",
+            })
+        );
+    });
+
+    it("throws FetchJsonError instances", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => ({
+                ok: false,
+                status: 500,
+                statusText: "Server Error",
+            }))
+        );
+
+        await expect(
+            fetchJson("https://example.org/fail.json")
+        ).rejects.toBeInstanceOf(FetchJsonError);
     });
 });
