@@ -13,6 +13,7 @@ import {
     createMetadataSourceAdapter,
     resolveMetadataSources,
 } from "./metadataSourceAdapters.js";
+import { readTextFile } from "./metadataFileUtils.js";
 
 /**
  * @typedef {object} SourceOption
@@ -88,6 +89,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         /** @type {SourceOption[]} */
         this._availableSources = [];
         this._sourceLoadVersion = 0;
+        this._previewVersion = 0;
+        /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
+        this._adapterCache = new Map();
 
         this.dialogTitle = "Import metadata from source";
     }
@@ -121,9 +125,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const warnings = readiness?.warnings;
         const blocking = readiness?.blocking;
         const sourceCount = this._availableSources.length;
-        const selectedSource = this._availableSources.find(
-            (source) => source.id === this.sourceId
-        );
+        const selectedSource = this.#getSelectedSourceRef();
         const missingStableSourceId =
             sourceCount > 1 && selectedSource && !selectedSource.source.id;
         const canImport =
@@ -265,6 +267,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
 
         const loadVersion = ++this._sourceLoadVersion;
+        this._previewVersion++;
+        this._adapterCache.clear();
         this._loading = true;
         this._error = "";
         this._preview = null;
@@ -313,6 +317,32 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         }
     }
 
+    #getSelectedSourceRef() {
+        return this._availableSources.find(
+            (source) => source.id === this.sourceId
+        );
+    }
+
+    /**
+     * @param {SourceOption} sourceRef
+     */
+    #getAdapter(sourceRef) {
+        const existing = this._adapterCache.get(sourceRef.id);
+        if (existing) {
+            return existing;
+        }
+
+        if (!this.sampleView) {
+            throw new Error("Import metadata dialog requires SampleView.");
+        }
+
+        const adapter = createMetadataSourceAdapter(sourceRef.source, {
+            baseUrl: this.sampleView.getBaseUrl(),
+        });
+        this._adapterCache.set(sourceRef.id, adapter);
+        return adapter;
+    }
+
     /**
      * @param {Event} event
      */
@@ -345,7 +375,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         if (!file) {
             return;
         }
-        this.columnInput = await file.text();
+        this.columnInput = await readTextFile(file);
     }
 
     async #updatePreview() {
@@ -353,21 +383,39 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return;
         }
 
-        const sourceRef = this._availableSources.find(
-            (source) => source.id === this.sourceId
-        );
+        const sourceRef = this.#getSelectedSourceRef();
         if (!sourceRef) {
             this._preview = null;
             return;
         }
 
+        const previewVersion = ++this._previewVersion;
         const queries = parseColumnQueries(this.columnInput);
-        const adapter = createMetadataSourceAdapter(sourceRef.source, {
-            baseUrl: this.sampleView.getBaseUrl(),
-        });
+        if (queries.length === 0) {
+            const readiness = classifyImportReadiness({
+                queries,
+                resolved: {
+                    columnIds: [],
+                    missing: [],
+                    ambiguous: [],
+                },
+            });
+            this._preview = {
+                readiness,
+                sampleCount:
+                    this.sampleView.sampleHierarchy.sampleData?.ids.length ?? 0,
+            };
+            this._error = "";
+            return;
+        }
+
+        const adapter = this.#getAdapter(sourceRef);
 
         try {
             const resolved = await adapter.resolveColumns(queries);
+            if (previewVersion !== this._previewVersion) {
+                return;
+            }
             const readiness = classifyImportReadiness({ queries, resolved });
             this._preview = {
                 readiness,
@@ -376,6 +424,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             };
             this._error = "";
         } catch (error) {
+            if (previewVersion !== this._previewVersion) {
+                return;
+            }
             this._error = String(error);
             this._preview = null;
         }
@@ -385,9 +436,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         if (!this._preview || this._loading) {
             return false;
         }
-        const sourceRef = this._availableSources.find(
-            (source) => source.id === this.sourceId
-        );
+        const sourceRef = this.#getSelectedSourceRef();
         if (
             this._availableSources.length > 1 &&
             sourceRef &&
@@ -414,9 +463,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return true;
         }
 
-        const sourceRef = this._availableSources.find(
-            (source) => source.id === this.sourceId
-        );
+        const sourceRef = this.#getSelectedSourceRef();
         if (!sourceRef) {
             return true;
         }

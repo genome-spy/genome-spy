@@ -17,6 +17,7 @@ import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { buildSetMetadataPayload } from "./metadataUtils.js";
+import { inferMetadataFileType, readTextFile } from "./metadataFileUtils.js";
 
 /**
  * A multi-step dialog for uploading sample metadata, validating it against
@@ -126,11 +127,11 @@ class UploadMetadataDialog extends BaseDialog {
      * @param {File} file
      */
     async #processFile(file) {
-        const textContent = await readFileAsync(file);
+        const textContent = await readTextFile(file);
 
         // TODO: Do all sorts of validation. There must be a sample column, etc.
 
-        const type = inferFileType(textContent, file.name);
+        const type = inferMetadataFileType(textContent, file.name);
 
         this._parsedItems =
             /** @type {import("@genome-spy/core/data/flowNode.js").Data} */
@@ -475,35 +476,5 @@ function formatErrorEntry(entry) {
         return html`${entry.message} (occurred ${entry.count} times)`;
     } else {
         return entry.message;
-    }
-}
-
-// --- copypasted from playground ---
-
-/**
- * https://simon-schraeder.de/posts/filereader-async/
- *
- * @param {File} file
- * @returns {Promise<string>}
- */
-function readFileAsync(file) {
-    return new Promise((resolve, reject) => {
-        let reader = new FileReader();
-        reader.onload = () => resolve(/** @type {string} */ (reader.result));
-        reader.onerror = reject;
-        reader.readAsText(file);
-    });
-}
-
-/**
- * @param {string} contents
- * @param {string} name
- */
-function inferFileType(contents, name) {
-    if (/\.json$/.test(name)) {
-        return "json";
-    } else {
-        // In bioinformatics, csv files are often actually tsv files
-        return contents.indexOf("\t") >= 0 ? "tsv" : "csv";
     }
 }
