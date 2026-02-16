@@ -35,9 +35,7 @@ import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
-import { sampleSlice } from "./sampleView/state/sampleSlice.js";
-import { augmentAddMetadataFromSourceAction } from "./sampleView/metadata/metadataSourceFlow.js";
-import { bootstrapInitialMetadataSources } from "./sampleView/metadata/metadataSourceBootstrap.js";
+import { setupMetadataSourceRuntime } from "./sampleView/metadata/metadataSourceRuntime.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
@@ -280,41 +278,8 @@ export default class App {
 
         const sampleView = this.getSampleView();
         if (sampleView) {
-            this.intentPipeline.setResolvers({
-                getAttributeInfo:
-                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-                        sampleView.compositeAttributeInfoSource
-                    ),
-            });
-            const unregisterMetadataHook =
-                this.intentPipeline.registerActionHook({
-                    predicate: (action) =>
-                        action.type === sampleSlice.actions.addMetadata.type ||
-                        action.type ===
-                            sampleSlice.actions.deriveMetadata.type ||
-                        action.type ===
-                            sampleSlice.actions.addMetadataFromSource.type,
-                    awaitProcessed: (context) =>
-                        sampleView.awaitMetadataReady(context.signal),
-                });
-
-            const unregisterMetadataSourceAugmenter =
-                this.intentPipeline.registerActionHook({
-                    predicate: (action) =>
-                        action.type ===
-                        sampleSlice.actions.addMetadataFromSource.type,
-                    augment: (context, action) =>
-                        augmentAddMetadataFromSourceAction(
-                            action,
-                            sampleView,
-                            context.signal
-                        ),
-                });
-            sampleView.registerDisposer(unregisterMetadataHook);
-            sampleView.registerDisposer(unregisterMetadataSourceAugmenter);
-
             try {
-                await bootstrapInitialMetadataSources(
+                await setupMetadataSourceRuntime(
                     sampleView,
                     this.intentPipeline
                 );
