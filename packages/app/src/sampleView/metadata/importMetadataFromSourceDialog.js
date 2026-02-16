@@ -170,7 +170,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     : nothing}
 
                 <div class="gs-form-group">
-                    <label for="columnInput">Attributes / genes</label>
+                    <label for="columnInput">Columns to import</label>
                     <textarea
                         id="columnInput"
                         placeholder="e.g. TP53, MYC, BRCA1"
