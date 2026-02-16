@@ -5,6 +5,8 @@ import {
     faFileImport,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import { FormController } from "../../components/forms/formController.js";
+import { formField } from "../../components/forms/formField.js";
 import {
     classifyImportReadiness,
     parseColumnQueries,
@@ -90,6 +92,17 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         /** @type {Map<string, ReturnType<typeof createMetadataSourceAdapter>>} */
         this._adapterCache = new Map();
 
+        /** @type {FormController} */
+        this._form = new FormController(this);
+        this._form.defineField("columns", {
+            valueKey: "columnInput",
+            validate: () => this.#validateColumns(),
+        });
+        this._form.defineField("group", {
+            valueKey: "groupPath",
+            validate: () => null,
+        });
+
         this.dialogTitle = "Import metadata from source";
     }
 
@@ -105,10 +118,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             void this.#loadSources();
         }
 
-        if (
-            changedProperties.has("sourceId") ||
-            changedProperties.has("columnInput")
-        ) {
+        if (changedProperties.has("sourceId")) {
             void this.#updatePreview();
         }
 
@@ -131,23 +141,15 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         const selectedSource = this.#getSelectedSourceRef();
         const missingStableSourceId =
             sourceCount > 1 && selectedSource && !selectedSource.source.id;
-        const canImport =
-            !!readiness &&
-            !blocking.emptyInput &&
-            !blocking.noResolvableColumns &&
-            !blocking.overLimit &&
-            !missingStableSourceId &&
-            !this._loading;
 
         return html`
             <div class="stack">
                 <div class="gs-alert info">
                     ${icon(faExclamationCircle).node[0]}
                     <div>
-                        Import one or more metadata attributes by typing or
-                        pasting identifiers (one per line, or comma/space
-                        separated). Sample-id alignment is validated during
-                        import.
+                        Import one or more metadata columns by typing or pasting
+                        one column id per line. Sample-id alignment is validated
+                        during import.
                     </div>
                 </div>
 
@@ -181,10 +183,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     <textarea
                         id="columnInput"
                         placeholder=${this._columnPlaceholder}
-                        .value=${this.columnInput}
+                        ${formField(this._form, "columns")}
                         @change=${(/** @type {Event} */ event) =>
-                            this.#handleColumnInput(event)}
+                            this.#handleColumnsCommit(event)}
                     ></textarea>
+                    ${this._form.feedback("columns")}
                     <small>Enter one column id per line.</small>
                 </div>
 
@@ -193,9 +196,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     <input
                         id="groupPath"
                         type="text"
-                        .value=${this.groupPath}
-                        @input=${(/** @type {Event} */ event) =>
-                            this.#handleGroupPathInput(event)}
+                        ${formField(this._form, "group")}
                     />
                 </div>
 
@@ -234,12 +235,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 ${this._error
                     ? html`<div class="gs-alert error">${this._error}</div>`
                     : nothing}
-                ${canImport
-                    ? nothing
-                    : html`<small
-                          >Import becomes available after at least one column
-                          resolves.</small
-                      >`}
             </div>
         `;
     }
@@ -367,17 +362,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     /**
      * @param {Event} event
      */
-    #handleColumnInput(event) {
-        this.columnInput = /** @type {HTMLTextAreaElement} */ (
-            event.target
-        ).value;
-    }
-
-    /**
-     * @param {Event} event
-     */
-    #handleGroupPathInput(event) {
-        this.groupPath = /** @type {HTMLInputElement} */ (event.target).value;
+    #handleColumnsCommit(event) {
+        event.preventDefault();
+        void this.#updatePreview();
     }
 
     async #updatePreview() {
@@ -408,6 +395,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     this.sampleView.sampleHierarchy.sampleData?.ids.length ?? 0,
             };
             this._error = "";
+            this._form.revalidate("columns");
             return;
         }
 
@@ -425,12 +413,14 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     this.sampleView.sampleHierarchy.sampleData?.ids.length ?? 0,
             };
             this._error = "";
+            this._form.revalidate("columns");
         } catch (error) {
             if (previewVersion !== this._previewVersion) {
                 return;
             }
             this._error = String(error);
             this._preview = null;
+            this._form.revalidate("columns");
         }
     }
 
@@ -469,7 +459,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     }
 
     #canImport() {
-        if (!this._preview || this._loading) {
+        if (!this._preview || this._loading || this._form.hasErrors()) {
             return false;
         }
         const sourceRef = this.#getSelectedSourceRef();
@@ -493,6 +483,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             throw new Error(
                 "Import metadata dialog requires SampleView and IntentPipeline."
             );
+        }
+
+        await this.#updatePreview();
+        if (this._form.validateAll()) {
+            return true;
         }
 
         if (!this.#canImport()) {
@@ -530,6 +525,31 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return true;
         }
     }
+
+    /**
+     * @returns {string | null}
+     */
+    #validateColumns() {
+        const queries = parseColumnQueries(this.columnInput);
+        if (queries.length === 0) {
+            return "Enter at least one column id.";
+        }
+
+        const readiness = this._preview?.readiness;
+        if (!readiness) {
+            return null;
+        }
+
+        const blocking = readiness.blocking;
+        if (blocking.overLimit) {
+            return "Import exceeds the hard limit of 100 columns.";
+        }
+        if (blocking.noResolvableColumns) {
+            return "No matching columns were found.";
+        }
+
+        return null;
+    }
 }
 
 customElements.define(
@@ -547,6 +567,7 @@ export function showImportMetadataFromSourceDialog(sampleView, intentPipeline) {
         (/** @type {ImportMetadataFromSourceDialog} */ dialog) => {
             dialog.sampleView = sampleView;
             dialog.intentPipeline = intentPipeline;
+            dialog._form.reset();
         }
     );
 }
