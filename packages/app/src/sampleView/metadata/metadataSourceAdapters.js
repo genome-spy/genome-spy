@@ -141,14 +141,11 @@ function resolveImportedBackendUrls(source, importUrl) {
                     },
                 },
             };
-        } else {
-            return source;
         }
-    } else if (
-        source.backend.backend === "zarr" ||
-        source.backend.backend === "parquet" ||
-        source.backend.backend === "arrow"
-    ) {
+        return source;
+    }
+
+    if ("url" in source.backend && typeof source.backend.url === "string") {
         return {
             ...source,
             backend: {
@@ -156,9 +153,9 @@ function resolveImportedBackendUrls(source, importUrl) {
                 url: resolveUrl(importUrl, source.backend.url),
             },
         };
-    } else {
-        return source;
     }
+
+    return source;
 }
 
 /**
@@ -172,20 +169,18 @@ export async function resolveMetadataSources(sampleDef, options = {}) {
     );
     const loadJson = options.loadJson ?? defaultLoadJson;
 
-    const sources = await Promise.all(
+    return Promise.all(
         entries.map(async (entry) => {
             if (!("import" in entry)) {
                 return entry;
             }
 
-            const url = resolveUrl(options.baseUrl, entry.import.url);
-            const imported = await loadJson(url, options.signal);
-            const source = asMetadataSourceDef(imported, url);
-            return resolveImportedBackendUrls(source, url);
+            const importUrl = resolveUrl(options.baseUrl, entry.import.url);
+            const imported = await loadJson(importUrl, options.signal);
+            const source = asMetadataSourceDef(imported, importUrl);
+            return resolveImportedBackendUrls(source, importUrl);
         })
     );
-
-    return sources;
 }
 
 /**

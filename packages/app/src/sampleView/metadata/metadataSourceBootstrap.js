@@ -7,7 +7,6 @@ import {
 } from "./metadataSourceAdapters.js";
 import {
     chunkInitialLoadColumns,
-    getEffectiveInitialLoad,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
@@ -78,15 +77,13 @@ export async function bootstrapInitialMetadataSources(
     let replace = true;
 
     for (const source of sources) {
-        const initialLoad = getEffectiveInitialLoad(source);
-        if (initialLoad === false) {
-            continue;
-        }
-
         const adapter = createMetadataSourceAdapter(source, {
             baseUrl: sampleView.getBaseUrl(),
         });
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
+        if (columnIds.length === 0) {
+            continue;
+        }
         const chunks = chunkInitialLoadColumns(columnIds);
 
         for (const chunk of chunks) {
@@ -104,7 +101,6 @@ export async function bootstrapInitialMetadataSources(
                 source,
                 payload: rawPayload,
                 sampleIds,
-                signal: undefined,
                 adapter,
                 resolveColumns: false,
             });
