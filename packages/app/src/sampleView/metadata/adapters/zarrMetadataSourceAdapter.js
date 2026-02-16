@@ -100,6 +100,9 @@ export default class ZarrMetadataSourceAdapter {
     /** @type {Promise<Map<string, Set<number>>> | undefined} */
     #lookupPromise;
 
+    /** @type {Set<string>} */
+    #excludedColumns;
+
     /**
      * @param {MetadataSourceDef} source
      * @param {{ baseUrl?: string }} [options]
@@ -112,6 +115,7 @@ export default class ZarrMetadataSourceAdapter {
         this.#store = new FetchStore(
             concatUrl(options.baseUrl, this.#backend.url)
         );
+        this.#excludedColumns = new Set(source.excludeColumns ?? []);
     }
 
     /**
@@ -120,7 +124,9 @@ export default class ZarrMetadataSourceAdapter {
      */
     async listColumns(signal) {
         const columnIds = await this.#getColumnIds(signal);
-        return columnIds.map((id) => ({ id }));
+        return columnIds
+            .filter((id) => !this.#isExcludedColumn(id))
+            .map((id) => ({ id }));
     }
 
     /**
@@ -200,6 +206,16 @@ export default class ZarrMetadataSourceAdapter {
             throw new Error(
                 "Metadata source rows do not match any sample ids in the current view."
             );
+        }
+
+        for (const columnId of request.columnIds) {
+            if (this.#isExcludedColumn(columnId)) {
+                throw new Error(
+                    'Column "' +
+                        columnId +
+                        '" is excluded by metadata source configuration.'
+                );
+            }
         }
 
         /** @type {Record<string, any>[]} */
@@ -339,6 +355,9 @@ export default class ZarrMetadataSourceAdapter {
         const lookup = new Map();
 
         for (let i = 0; i < columnIds.length; i++) {
+            if (this.#isExcludedColumn(columnIds[i])) {
+                continue;
+            }
             addTerm(lookup, columnIds[i], i);
         }
 
@@ -356,6 +375,9 @@ export default class ZarrMetadataSourceAdapter {
             }
 
             for (let i = 0; i < identifierValues.length; i++) {
+                if (this.#isExcludedColumn(columnIds[i])) {
+                    continue;
+                }
                 addTerm(lookup, identifierValues[i], i, {
                     stripVersionSuffix: identifier.stripVersionSuffix,
                 });
@@ -384,6 +406,9 @@ export default class ZarrMetadataSourceAdapter {
                     continue;
                 }
                 if (columnIndex < 0 || columnIndex >= columnIds.length) {
+                    continue;
+                }
+                if (this.#isExcludedColumn(columnIds[columnIndex])) {
                     continue;
                 }
                 addTerm(lookup, terms[i], columnIndex);
@@ -429,5 +454,13 @@ export default class ZarrMetadataSourceAdapter {
         throw new Error(
             'Only Zarr metadata sources with layout "matrix" are supported in MVP.'
         );
+    }
+
+    /**
+     * @param {string} columnId
+     * @returns {boolean}
+     */
+    #isExcludedColumn(columnId) {
+        return this.#excludedColumns.has(columnId);
     }
 }

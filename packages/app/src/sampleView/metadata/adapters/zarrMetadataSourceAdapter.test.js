@@ -165,4 +165,44 @@ describe("ZarrMetadataSourceAdapter", () => {
         expect(resolved.ambiguous).toEqual(["shared"]);
         expect(resolved.missing).toEqual([]);
     });
+
+    it("excludes configured columns from listing, lookup, and import", async () => {
+        const adapter = new ZarrMetadataSourceAdapter({
+            excludeColumns: ["ENSG2"],
+            backend: {
+                backend: "zarr",
+                url: "https://example.org/expression.zarr",
+                layout: "matrix",
+                identifiers: [
+                    {
+                        name: "symbol",
+                        path: "var/symbol",
+                        primary: true,
+                        caseInsensitive: true,
+                    },
+                ],
+            },
+        });
+
+        const columns = await adapter.listColumns();
+        expect(columns.map((column) => column.id)).toEqual(["ENSG1"]);
+
+        const resolved = await adapter.resolveColumns([
+            "MYC",
+            "ENSG2",
+            "ENSG1",
+        ]);
+        expect(resolved.columnIds).toEqual(["ENSG1"]);
+        expect(resolved.missing).toEqual(["MYC", "ENSG2"]);
+        expect(resolved.ambiguous).toEqual([]);
+
+        await expect(
+            adapter.fetchColumns({
+                columnIds: ["ENSG2"],
+                sampleIds: ["s1"],
+            })
+        ).rejects.toThrow(
+            'Column "ENSG2" is excluded by metadata source configuration.'
+        );
+    });
 });

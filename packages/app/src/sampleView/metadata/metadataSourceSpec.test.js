@@ -24,6 +24,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             metadataSources: [
                 {
                     initialLoad: "*",
+                    excludeColumns: ["displayName"],
                     attributeGroupSeparator: ".",
                     columnDefs: {
                         clinical: { type: "quantitative" },
@@ -91,6 +92,7 @@ describe("normalizeSampleDefMetadataSources", () => {
         expect(normalized.sampleDef.metadataSources).toEqual([
             {
                 initialLoad: "*",
+                excludeColumns: ["displayName"],
                 backend: {
                     backend: "data",
                     data: { url: "samples.tsv" },

@@ -110,4 +110,27 @@ describe("DataMetadataSourceAdapter", () => {
             "purity",
         ]);
     });
+
+    it("excludes configured columns from listing and importing", async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            ...createSourceDef(),
+            excludeColumns: ["status"],
+        });
+
+        const columns = await adapter.listColumns();
+        expect(columns.map((column) => column.id)).toEqual(["TP53"]);
+
+        const resolved = await adapter.resolveColumns(["status", "TP53"]);
+        expect(resolved.columnIds).toEqual(["TP53"]);
+        expect(resolved.missing).toEqual(["status"]);
+
+        await expect(
+            adapter.fetchColumns({
+                columnIds: ["status"],
+                sampleIds: ["s1"],
+            })
+        ).rejects.toThrow(
+            'Column "status" is excluded by metadata source configuration.'
+        );
+    });
 });

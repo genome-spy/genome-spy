@@ -61,6 +61,7 @@ export function normalizeSampleDefMetadataSources(sampleDef) {
     /** @type {MetadataSourceDef} */
     const metadataSource = {
         initialLoad: "*",
+        excludeColumns: ["displayName"],
         backend: {
             backend: "data",
             data: sampleDef.data,

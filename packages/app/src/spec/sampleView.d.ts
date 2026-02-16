@@ -270,6 +270,11 @@ export interface MetadataSourceDef {
     initialLoad?: false | "*" | string[];
 
     /**
+     * Column ids that must never be imported from this source.
+     */
+    excludeColumns?: string[];
+
+    /**
      * Default metadata group path for imported attributes.
      */
     groupPath?: string;

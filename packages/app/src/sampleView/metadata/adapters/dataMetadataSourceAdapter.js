@@ -26,6 +26,9 @@ export default class DataMetadataSourceAdapter {
     /** @type {Promise<Record<string, any>[]> | undefined} */
     #rowsPromise;
 
+    /** @type {Set<string>} */
+    #excludedColumns;
+
     /**
      * @param {MetadataSourceDef} source
      * @param {{ baseUrl?: string }} [options]
@@ -36,6 +39,7 @@ export default class DataMetadataSourceAdapter {
             /** @type {DataBackendDef} */
             (source.backend);
         this.#baseUrl = options.baseUrl;
+        this.#excludedColumns = new Set(source.excludeColumns ?? []);
     }
 
     /**
@@ -51,6 +55,9 @@ export default class DataMetadataSourceAdapter {
         for (const row of rows) {
             for (const key of Object.keys(row)) {
                 if (key === sampleIdField) {
+                    continue;
+                }
+                if (this.#isExcludedColumn(key)) {
                     continue;
                 }
                 columns.add(key);
@@ -111,6 +118,16 @@ export default class DataMetadataSourceAdapter {
         const rows = await this.#loadRows(signal);
         const sampleIdField = this.#backend.sampleIdField ?? "sample";
         const sampleIdSet = new Set(request.sampleIds);
+
+        for (const columnId of request.columnIds) {
+            if (this.#isExcludedColumn(columnId)) {
+                throw new Error(
+                    'Column "' +
+                        columnId +
+                        '" is excluded by metadata source configuration.'
+                );
+            }
+        }
 
         /** @type {Record<string, any>[]} */
         const selectedRows = [];
@@ -296,5 +313,13 @@ export default class DataMetadataSourceAdapter {
         }
 
         return rows;
+    }
+
+    /**
+     * @param {string} columnId
+     * @returns {boolean}
+     */
+    #isExcludedColumn(columnId) {
+        return this.#excludedColumns.has(columnId);
     }
 }
