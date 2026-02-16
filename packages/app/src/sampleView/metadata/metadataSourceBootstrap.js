@@ -1,7 +1,6 @@
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
-import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import {
     createMetadataSourceAdapter,
     resolveMetadataSources,
@@ -11,6 +10,7 @@ import {
     getEffectiveInitialLoad,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
+import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
 
 /**
  * @param {import("../sampleView.js").default} sampleView
@@ -90,24 +90,24 @@ export async function bootstrapInitialMetadataSources(
         const chunks = chunkInitialLoadColumns(columnIds);
 
         for (const chunk of chunks) {
-            const metadata = await adapter.fetchColumns({
-                columnIds: chunk,
-                sampleIds,
-                replace,
-            });
-
             /** @type {import("../state/payloadTypes.js").AddMetadataFromSource} */
-            const payload = {
+            const rawPayload = {
                 columnIds: chunk,
                 replace,
-                [AUGMENTED_KEY]: {
-                    metadata,
-                },
             };
 
             if (source.id) {
-                payload.sourceId = source.id;
+                rawPayload.sourceId = source.id;
             }
+
+            const payload = await augmentMetadataSourcePayload({
+                source,
+                payload: rawPayload,
+                sampleIds,
+                signal: undefined,
+                adapter,
+                resolveColumns: false,
+            });
 
             actions.push(sampleSlice.actions.addMetadataFromSource(payload));
             replace = false;

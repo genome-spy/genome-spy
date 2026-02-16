@@ -1,16 +1,5 @@
-import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
-import {
-    createMetadataSourceAdapter,
-    MAX_METADATA_SOURCE_COLUMNS,
-    resolveMetadataSource,
-} from "./metadataSourceAdapters.js";
-
-/**
- * @typedef {object} ResolvedColumns
- * @property {string[]} columnIds
- * @property {string[]} missing
- * @property {string[]} [ambiguous]
- */
+import { resolveMetadataSource } from "./metadataSourceAdapters.js";
+import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
 
 /**
  * @param {import("@reduxjs/toolkit").Action} action
@@ -36,25 +25,9 @@ export async function augmentAddMetadataFromSourceAction(
             action.payload
         );
 
-    if (payload[AUGMENTED_KEY]?.metadata) {
-        return action;
-    }
-
     const sampleIds = sampleView.sampleHierarchy.sampleData?.ids;
     if (!sampleIds) {
         throw new Error("Sample data has not been initialized.");
-    }
-
-    if (payload.columnIds.length === 0) {
-        throw new Error("No metadata columns requested from source.");
-    }
-
-    if (payload.columnIds.length > MAX_METADATA_SOURCE_COLUMNS) {
-        throw new Error(
-            "Metadata import exceeds the column limit (" +
-                String(MAX_METADATA_SOURCE_COLUMNS) +
-                ")."
-        );
     }
 
     const source = await resolveMetadataSource(
@@ -65,34 +38,16 @@ export async function augmentAddMetadataFromSourceAction(
             signal,
         }
     );
-    const adapter = createMetadataSourceAdapter(source, {
+    const augmentedPayload = await augmentMetadataSourcePayload({
+        source,
+        payload,
+        sampleIds,
         baseUrl: sampleView.getBaseUrl(),
+        signal,
     });
-
-    const resolved =
-        /** @type {ResolvedColumns} */
-        (await adapter.resolveColumns(payload.columnIds, signal));
-    if (resolved.columnIds.length === 0) {
-        throw new Error("No resolvable metadata columns were found.");
-    }
-
-    const metadata = await adapter.fetchColumns(
-        {
-            columnIds: resolved.columnIds,
-            sampleIds,
-            groupPath: payload.groupPath,
-            replace: payload.replace,
-        },
-        signal
-    );
 
     return /** @type {import("@reduxjs/toolkit").Action} */ ({
         ...action,
-        payload: {
-            ...payload,
-            [AUGMENTED_KEY]: {
-                metadata,
-            },
-        },
+        payload: augmentedPayload,
     });
 }
