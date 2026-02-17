@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
+
+### Bug Fixes
+
+* **app:** fallback action labels for missing sample attributes ([17012e2](https://github.com/genome-spy/genome-spy/commit/17012e222ca3ea77b76c7a9cb0826e934667a8a4)) by @tuner
+* **app:** improve multiselect blur and escape behavior ([0807328](https://github.com/genome-spy/genome-spy/commit/0807328a23e7d295751d529c25aecdfe8c5dac3c)) by @tuner
+* **app:** indicate hidden view children in visibility menu ([70cc52c](https://github.com/genome-spy/genome-spy/commit/70cc52c598da1a9a28fb5453312c539fd930daef)) by @tuner
+* **app:** make metadata def merges idempotent ([fc0cc8f](https://github.com/genome-spy/genome-spy/commit/fc0cc8f80bd474c2e33ea348dbb2eca8451bc831)) by @tuner
+* **app:** polish metadata source import dialog alerts ([c95db04](https://github.com/genome-spy/genome-spy/commit/c95db0489afbf978bb4e84099c49e7ac45a00e8b)) by @tuner
+* **app:** refresh metadata suggestions after source columns load ([a8da18d](https://github.com/genome-spy/genome-spy/commit/a8da18d3493412a91d04c919bcc974188c1bdf7e)) by @tuner
+* **app:** respect cleared metadata group path and root defaults ([fc8eb81](https://github.com/genome-spy/genome-spy/commit/fc8eb816aeb01f7bc5de1025841cd12063fea534)) by @tuner
+* **app:** restore metadata hierarchy in view settings menu ([c0a5584](https://github.com/genome-spy/genome-spy/commit/c0a558420649ccf076cd5c51904e077a11d0787e)) by @tuner
+* **core:** honor reverse for WebGL scheme scales ([0801399](https://github.com/genome-spy/genome-spy/commit/0801399c6f21d7d34f08c109061460f3f7ff4bfa)), closes [#173](https://github.com/genome-spy/genome-spy/issues/173) by @tuner
+
+### Features
+
+* **app:** metadata sources for expression data and others ([#329](https://github.com/genome-spy/genome-spy/issues/329)) ([b650c60](https://github.com/genome-spy/genome-spy/commit/b650c60dc9cda698e0b18fbaf4926e68f54bc4fc)) by @tuner
+* **app:** typeahead multiselect for better UX in metadata import ([#330](https://github.com/genome-spy/genome-spy/issues/330)) ([e127892](https://github.com/genome-spy/genome-spy/commit/e127892f6423dc0039778e99f34e118a1d93525f)) by @tuner
+
 ## [0.69.1](https://github.com/genome-spy/genome-spy/compare/v0.69.0...v0.69.1) (2026-02-12)
 
 ### Bug Fixes

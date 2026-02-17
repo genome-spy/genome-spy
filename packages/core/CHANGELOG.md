@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
+
+### Bug Fixes
+
+* **app:** make metadata def merges idempotent ([fc0cc8f](https://github.com/genome-spy/genome-spy/commit/fc0cc8f80bd474c2e33ea348dbb2eca8451bc831)) by @tuner
+* **core:** honor reverse for WebGL scheme scales ([0801399](https://github.com/genome-spy/genome-spy/commit/0801399c6f21d7d34f08c109061460f3f7ff4bfa)), closes [#173](https://github.com/genome-spy/genome-spy/issues/173) by @tuner
+
+### Features
+
+* **app:** metadata sources for expression data and others ([#329](https://github.com/genome-spy/genome-spy/issues/329)) ([b650c60](https://github.com/genome-spy/genome-spy/commit/b650c60dc9cda698e0b18fbaf4926e68f54bc4fc)) by @tuner
+
 ## [0.69.1](https://github.com/genome-spy/genome-spy/compare/v0.69.0...v0.69.1) (2026-02-12)
 
 ### Bug Fixes
