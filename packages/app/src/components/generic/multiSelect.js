@@ -84,10 +84,6 @@ export default class MultiSelect extends LitElement {
                 display: block;
             }
 
-            .wrapper {
-                position: relative;
-            }
-
             .control {
                 display: flex;
                 flex-wrap: wrap;
@@ -176,6 +172,7 @@ export default class MultiSelect extends LitElement {
             .option {
                 padding: 0.35em 0.75em;
                 cursor: pointer;
+                background: transparent;
             }
 
             .option.active {
@@ -721,96 +718,92 @@ export default class MultiSelect extends LitElement {
                 : nothing;
 
         return html`
-            <div class="wrapper">
-                <div
-                    class="control ${this.disabled ? "disabled" : ""}"
-                    @mousedown=${(/** @type {MouseEvent} */ event) =>
-                        this.#onControlMouseDown(event)}
-                >
-                    ${this.selectedValues.map(
-                        (value) =>
-                            html`<span class="pill">
-                                <span class="pill-label">${value}</span>
-                                <button
-                                    class="pill-remove"
-                                    type="button"
-                                    aria-label=${"Remove " + value}
-                                    ?disabled=${this.disabled}
-                                    @click=${() => {
-                                        this.#removeValue(value);
-                                        this.#focusInput();
-                                    }}
-                                >
-                                    ×
-                                </button>
-                            </span>`
-                    )}
-
-                    <input
-                        class="query"
-                        type="text"
-                        role="combobox"
-                        aria-controls=${this.#listboxId}
-                        aria-expanded=${this._open ? "true" : "false"}
-                        aria-autocomplete="list"
-                        aria-activedescendant=${activeId}
-                        placeholder=${this.placeholder}
-                        .value=${this._query}
-                        ?disabled=${this.disabled}
-                        @focus=${() => this.#onInputFocus()}
-                        @blur=${() => this.#onInputBlur()}
-                        @paste=${(/** @type {ClipboardEvent} */ event) =>
-                            this.#onInputPaste(event)}
-                        @input=${(/** @type {InputEvent} */ event) =>
-                            this.#onInput(event)}
-                        @keydown=${(/** @type {KeyboardEvent} */ event) =>
-                            this.#onInputKeyDown(event)}
-                    />
-                </div>
-
-                <div
-                    id=${this.#listboxId}
-                    class="dropdown"
-                    popover="auto"
-                    ?hidden=${!this._open}
-                    role="listbox"
-                    @toggle=${(/** @type {ToggleEvent} */ event) => {
-                        if (event.newState === "closed" && this._open) {
-                            this._open = false;
-                            this._activeIndex = -1;
-                        }
-                    }}
-                >
-                    ${this._loading
-                        ? html`<div class="status">Loading...</div>`
-                        : nothing}
-                    ${!this._loading && this._suggestions.length === 0
-                        ? html`<div class="status">No matches</div>`
-                        : nothing}
-                    ${this._suggestions.map(
-                        (suggestion, index) =>
-                            html`<div
-                                id=${this.#optionDomId(String(index))}
-                                class="option ${index === this._activeIndex
-                                    ? "active"
-                                    : ""}"
-                                role="option"
-                                aria-selected=${index === this._activeIndex
-                                    ? "true"
-                                    : "false"}
-                                @mousedown=${(
-                                    /** @type {MouseEvent} */ event
-                                ) => event.preventDefault()}
-                                @mouseenter=${() => {
-                                    this._activeIndex = index;
+            <div
+                class="control ${this.disabled ? "disabled" : ""}"
+                @mousedown=${(/** @type {MouseEvent} */ event) =>
+                    this.#onControlMouseDown(event)}
+            >
+                ${this.selectedValues.map(
+                    (value) =>
+                        html`<span class="pill">
+                            <span class="pill-label">${value}</span>
+                            <button
+                                class="pill-remove"
+                                type="button"
+                                aria-label=${"Remove " + value}
+                                ?disabled=${this.disabled}
+                                @click=${() => {
+                                    this.#removeValue(value);
+                                    this.#focusInput();
                                 }}
-                                @click=${() =>
-                                    this.#selectSuggestionByIndex(index)}
                             >
-                                ${suggestion.label ?? suggestion.id}
-                            </div>`
-                    )}
-                </div>
+                                ×
+                            </button>
+                        </span>`
+                )}
+
+                <input
+                    class="query"
+                    type="text"
+                    role="combobox"
+                    aria-controls=${this.#listboxId}
+                    aria-expanded=${this._open ? "true" : "false"}
+                    aria-autocomplete="list"
+                    aria-activedescendant=${activeId}
+                    placeholder=${this.placeholder}
+                    .value=${this._query}
+                    ?disabled=${this.disabled}
+                    @focus=${() => this.#onInputFocus()}
+                    @blur=${() => this.#onInputBlur()}
+                    @paste=${(/** @type {ClipboardEvent} */ event) =>
+                        this.#onInputPaste(event)}
+                    @input=${(/** @type {InputEvent} */ event) =>
+                        this.#onInput(event)}
+                    @keydown=${(/** @type {KeyboardEvent} */ event) =>
+                        this.#onInputKeyDown(event)}
+                />
+            </div>
+
+            <div
+                id=${this.#listboxId}
+                class="dropdown"
+                popover="auto"
+                ?hidden=${!this._open}
+                role="listbox"
+                @toggle=${(/** @type {ToggleEvent} */ event) => {
+                    if (event.newState === "closed" && this._open) {
+                        this._open = false;
+                        this._activeIndex = -1;
+                    }
+                }}
+            >
+                ${this._loading
+                    ? html`<div class="status">Loading...</div>`
+                    : nothing}
+                ${!this._loading && this._suggestions.length === 0
+                    ? html`<div class="status">No matches</div>`
+                    : nothing}
+                ${this._suggestions.map(
+                    (suggestion, index) =>
+                        html`<div
+                            id=${this.#optionDomId(String(index))}
+                            class="option ${index === this._activeIndex
+                                ? "active"
+                                : ""}"
+                            role="option"
+                            aria-selected=${index === this._activeIndex
+                                ? "true"
+                                : "false"}
+                            @mousedown=${(/** @type {MouseEvent} */ event) =>
+                                event.preventDefault()}
+                            @mouseenter=${() => {
+                                this._activeIndex = index;
+                            }}
+                            @click=${() => this.#selectSuggestionByIndex(index)}
+                        >
+                            ${suggestion.label ?? suggestion.id}
+                        </div>`
+                )}
             </div>
         `;
     }
