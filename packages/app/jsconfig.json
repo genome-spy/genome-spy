@@ -1,8 +1,9 @@
 {
-  "compilerOptions": {
-    "target": "es2017",
-    "checkJs": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "coverage", "dist"]
+  "extends": "./tsconfig.tests.json",
+  "include": [
+    "src/**/*.test.js",
+    "src/testTypes/**/*.d.ts",
+    "../../external-typings/**/*"
+  ],
+  "exclude": ["node_modules"]
 }
