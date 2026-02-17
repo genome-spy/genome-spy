@@ -330,4 +330,95 @@ describe("MetadataView", () => {
 
         metadataView.dispose();
     });
+
+    it("renders hierarchy for uploaded metadata converted with a separator", async () => {
+        const { MetadataView } = await import("./metadataView.js");
+        const context = createTestViewContext();
+        context.animator = {
+            transition: () => Promise.resolve(),
+            requestRender: () => undefined,
+        };
+        context.requestLayoutReflow = () => undefined;
+        context.updateTooltip = () => undefined;
+        context.getCurrentHover = () => undefined;
+        context.addKeyboardListener = () => undefined;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+        context.getNamedDataFromProvider = () => [];
+
+        const store = createStoreStub({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata: {
+                            attributeNames: [],
+                            attributeDefs: {},
+                            entities: {},
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {SampleHierarchyStub} */
+        const sampleHierarchy = {
+            sampleMetadata: {
+                attributeNames: [],
+                attributeDefs: {},
+                entities: {},
+            },
+            sampleData: {
+                entities: {
+                    s1: { indexNumber: 0 },
+                    s2: { indexNumber: 1 },
+                },
+            },
+        };
+
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
+        const metadataView = new MetadataView(sampleView, sampleView);
+
+        // Simulates uploaded metadata where delimiter "." was converted to "/".
+        const sampleMetadata = {
+            attributeNames: ["clinical/age", "clinical/status", "plain"],
+            attributeDefs: {
+                "clinical/age": { type: "quantitative" },
+                "clinical/status": { type: "nominal" },
+                plain: { type: "nominal" },
+            },
+            entities: {
+                s1: { "clinical/age": 10, "clinical/status": "A", plain: "X" },
+                s2: { "clinical/age": 20, "clinical/status": "B", plain: "Y" },
+            },
+        };
+
+        sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+        await store.setState({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata,
+                    },
+                },
+            },
+        });
+
+        await waitForCondition(() =>
+            metadataView
+                .getDescendants()
+                .some((view) => view.name === "attributeGroup-clinical")
+        );
+
+        const clinicalGroupView = metadataView
+            .getDescendants()
+            .find((view) => view.name === "attributeGroup-clinical");
+        expect(clinicalGroupView).toBeDefined();
+        expect(clinicalGroupView?.explicitName).toBe("attributeGroup-clinical");
+
+        metadataView.dispose();
+    });
 });

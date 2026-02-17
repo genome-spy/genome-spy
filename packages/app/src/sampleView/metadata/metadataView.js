@@ -476,7 +476,6 @@ export class MetadataView extends ConcatView {
 
         // TODO: If the spec specifies a separator (in this.#sampleView.spec.samples.attributeGroupSeparator),
         // convert them to METADATA_PATH_SEPARATOR
-
         const nestedAttributes = buildPathTree(
             this.getAttributeNames(),
             METADATA_PATH_SEPARATOR
@@ -529,9 +528,11 @@ export class MetadataView extends ConcatView {
                     this.#viewToAttribute.set(view, attributeName);
                 } else {
                     const attributeDef = attributeDefs?.[node.path] ?? {};
+                    const groupViewName = `attributeGroup-${node.path}`;
 
                     const view = new ConcatView(
                         {
+                            name: groupViewName,
                             hconcat: [],
                             configurableVisibility: true,
                             title: attributeDef.title ?? node.part,
@@ -548,7 +549,7 @@ export class MetadataView extends ConcatView {
                         this.context,
                         container,
                         container,
-                        `attributeGroup-${node.path}`
+                        groupViewName
                     );
                     container.appendChild(view);
 
