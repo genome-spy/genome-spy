@@ -8,7 +8,7 @@ import {
 } from "zarrita";
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
-import { resolveMetadataSourceColumnDefs } from "../metadataSourceColumnDefs.js";
+import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
@@ -256,7 +256,7 @@ export default class ZarrMetadataSourceAdapter {
             );
         }
 
-        const attributeDefs = resolveMetadataSourceColumnDefs(
+        const attributeDefs = resolveMetadataSourceAttributes(
             this.#source,
             request.columnIds
         );

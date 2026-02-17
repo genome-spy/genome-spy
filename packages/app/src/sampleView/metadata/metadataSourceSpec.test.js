@@ -26,7 +26,7 @@ describe("normalizeSampleDefMetadataSources", () => {
                     initialLoad: "*",
                     excludeColumns: ["displayName"],
                     attributeGroupSeparator: ".",
-                    columnDefs: {
+                    attributes: {
                         clinical: { type: "quantitative" },
                     },
                     backend: {

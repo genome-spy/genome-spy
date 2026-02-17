@@ -7,7 +7,7 @@ import {
 import { concatUrl } from "@genome-spy/core/utils/url.js";
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
-import { resolveMetadataSourceColumnDefs } from "../metadataSourceColumnDefs.js";
+import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
@@ -167,7 +167,7 @@ export default class DataMetadataSourceAdapter {
             );
         }
 
-        const attributeDefs = resolveMetadataSourceColumnDefs(
+        const attributeDefs = resolveMetadataSourceAttributes(
             this.#source,
             request.columnIds
         );

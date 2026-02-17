@@ -167,6 +167,27 @@ describe("resolveMetadataSources", () => {
             })
         ).rejects.toThrow("Nested metadata source imports are not supported");
     });
+
+    it('rejects removed "columnDefs" property', async () => {
+        const sampleDef = {
+            metadataSources: [
+                {
+                    id: "clinical",
+                    columnDefs: {
+                        TP53: { type: "quantitative" },
+                    },
+                    backend: {
+                        backend: "data",
+                        data: { values: [{ sample: "s1", TP53: 1 }] },
+                    },
+                },
+            ],
+        };
+
+        await expect(resolveMetadataSources(sampleDef)).rejects.toThrow(
+            'uses removed property "columnDefs". Use "attributes" instead.'
+        );
+    });
 });
 
 describe("createMetadataSourceAdapter", () => {

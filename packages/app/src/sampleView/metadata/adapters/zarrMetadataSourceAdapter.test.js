@@ -114,7 +114,7 @@ describe("ZarrMetadataSourceAdapter", () => {
     it("fetches selected matrix columns and applies configured column defs", async () => {
         const adapter = new ZarrMetadataSourceAdapter({
             groupPath: "expression",
-            columnDefs: {
+            attributes: {
                 ENSG2: {
                     type: "quantitative",
                     scale: { domainMid: 0, scheme: "redblue" },
@@ -146,10 +146,10 @@ describe("ZarrMetadataSourceAdapter", () => {
         expect(metadata.replace).toBe(true);
     });
 
-    it('applies columnDefs[""] as source-level default for imported columns', async () => {
+    it('applies attributes[""] as source-level default for imported columns', async () => {
         const adapter = new ZarrMetadataSourceAdapter({
             groupPath: "expression",
-            columnDefs: {
+            attributes: {
                 "": {
                     type: "quantitative",
                     scale: { domainMid: 0, scheme: "redblue" },

@@ -25,7 +25,7 @@ function createSampleViewStub(metadataSources, baseUrl) {
                     ],
                 },
             },
-            columnDefs: {
+            attributes: {
                 TP53: {
                     type: "quantitative",
                 },

@@ -23,7 +23,7 @@ function toInternalPath(key, separator) {
 }
 
 /**
- * Resolves applicable `columnDefs` for the imported columns.
+ * Resolves applicable source attribute definitions for the imported columns.
  *
  * Includes both leaf column definitions and relevant ancestor group
  * definitions (for hierarchical inheritance).
@@ -32,9 +32,9 @@ function toInternalPath(key, separator) {
  * @param {string[]} columnIds
  * @returns {Record<string, SampleAttributeDef>}
  */
-export function resolveMetadataSourceColumnDefs(source, columnIds) {
-    const rawColumnDefs = source.columnDefs;
-    if (!rawColumnDefs) {
+export function resolveMetadataSourceAttributes(source, columnIds) {
+    const rawAttributeDefs = source.attributes;
+    if (!rawAttributeDefs) {
         return {};
     }
 
@@ -58,7 +58,7 @@ export function resolveMetadataSourceColumnDefs(source, columnIds) {
     /** @type {Map<string, string>} */
     const pathOrigin = new Map();
 
-    for (const [rawPath, rawDef] of Object.entries(rawColumnDefs)) {
+    for (const [rawPath, rawDef] of Object.entries(rawAttributeDefs)) {
         const internalPath = toInternalPath(rawPath, separator);
         if (!eligiblePaths.has(internalPath)) {
             continue;
@@ -67,7 +67,7 @@ export function resolveMetadataSourceColumnDefs(source, columnIds) {
         const existingOrigin = pathOrigin.get(internalPath);
         if (existingOrigin) {
             throw new Error(
-                'Metadata source columnDefs has conflicting keys "' +
+                'Metadata source attributes has conflicting keys "' +
                     existingOrigin +
                     '" and "' +
                     rawPath +

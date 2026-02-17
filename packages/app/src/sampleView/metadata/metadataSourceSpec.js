@@ -75,7 +75,7 @@ export function normalizeSampleDefMetadataSources(sampleDef) {
     }
 
     if (sampleDef.attributes !== undefined) {
-        metadataSource.columnDefs = sampleDef.attributes;
+        metadataSource.attributes = sampleDef.attributes;
     }
 
     return {

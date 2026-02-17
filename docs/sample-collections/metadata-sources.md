@@ -47,7 +47,7 @@ of one monolithic metadata table. This enables:
         "name": "Expression",
         "initialLoad": false,
         "groupPath": "Expression",
-        "columnDefs": {
+        "attributes": {
           "TP53": {
             "type": "quantitative",
             "scale": { "scheme": "redblue", "domainMid": 0 }
@@ -123,8 +123,8 @@ Import behavior:
 
 Attribute configuration can be attached directly to a source:
 
-- `columnDefs` applies to specific columns
-- `columnDefs[""]` sets a source-level default for all imported columns
+- `attributes` applies to specific columns
+- `attributes[""]` sets a source-level default for all imported columns
 
 Example:
 
@@ -135,7 +135,7 @@ Example:
   "groupPath": "Clinical",
   "initialLoad": "*",
   "excludeColumns": ["sample", "displayName"],
-  "columnDefs": {
+  "attributes": {
     "purity": {
       "type": "quantitative",
       "scale": {
@@ -166,12 +166,12 @@ Example:
 In this example, `purity` and `ploidy` are configured as quantitative with
 custom scales, and `treatment` gets a custom title. Other imported columns
 without explicit defs still work: GenomeSpy infers their type from values.
-When using grouped/hierarchical names (`attributeGroupSeparator`), `columnDefs`
+When using grouped/hierarchical names (`attributeGroupSeparator`), `attributes`
 can also target group nodes for shared defaults. See
 [`Grouping and hierarchy`](#grouping-and-hierarchy).
 
 If you need an explicit source-wide default (instead of inference), define
-`columnDefs[""]` and then override selected columns with specific keys.
+`attributes[""]` and then override selected columns with specific keys.
 
 ## Grouping and hierarchy
 
@@ -210,7 +210,7 @@ Importing column `TP53` from this source creates attribute path
 ### Hierarchy with `attributeGroupSeparator`
 
 `attributeGroupSeparator` lets grouped column names define hierarchy levels. It
-also enables group-level definitions in `columnDefs`.
+also enables group-level definitions in `attributes`.
 
 Suppose you have columns such as:
 
@@ -235,7 +235,7 @@ Example configuration:
   "id": "clinical",
   "name": "Clinical",
   "attributeGroupSeparator": ".",
-  "columnDefs": {
+  "attributes": {
     "patientId": {
       "type": "nominal"
     },

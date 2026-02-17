@@ -48,6 +48,20 @@ async function defaultLoadJson(url, signal) {
 }
 
 /**
+ * @param {MetadataSourceDef} source
+ */
+function assertNoLegacyColumnDefs(source) {
+    if ("columnDefs" in source) {
+        const sourceLabel = source.id ?? source.name ?? "(unnamed source)";
+        throw new Error(
+            'Metadata source "' +
+                sourceLabel +
+                '" uses removed property "columnDefs". Use "attributes" instead.'
+        );
+    }
+}
+
+/**
  * @param {unknown} source
  * @param {string} importUrl
  * @returns {MetadataSourceDef}
@@ -132,13 +146,19 @@ export async function resolveMetadataSources(sampleDef, options = {}) {
     return Promise.all(
         entries.map(async (entry) => {
             if (!("import" in entry)) {
+                assertNoLegacyColumnDefs(entry);
                 return entry;
             }
 
             const importUrl = resolveUrl(options.baseUrl, entry.import.url);
             const imported = await loadJson(importUrl, options.signal);
             const source = asMetadataSourceDef(imported, importUrl);
-            return resolveImportedBackendUrls(source, importUrl);
+            const sourceWithResolvedUrls = resolveImportedBackendUrls(
+                source,
+                importUrl
+            );
+            assertNoLegacyColumnDefs(sourceWithResolvedUrls);
+            return sourceWithResolvedUrls;
         })
     );
 }

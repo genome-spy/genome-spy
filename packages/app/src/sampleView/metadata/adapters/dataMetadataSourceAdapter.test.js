@@ -17,7 +17,7 @@ function createSourceDef() {
             },
             sampleIdField: "sample",
         },
-        columnDefs: {
+        attributes: {
             TP53: {
                 type: "quantitative",
                 scale: { domainMid: 0, scheme: "redblue" },
@@ -138,7 +138,7 @@ describe("DataMetadataSourceAdapter", () => {
         const adapter = new DataMetadataSourceAdapter({
             id: "clinical",
             attributeGroupSeparator: ".",
-            columnDefs: {
+            attributes: {
                 patientId: {
                     type: "nominal",
                 },
@@ -206,10 +206,10 @@ describe("DataMetadataSourceAdapter", () => {
         });
     });
 
-    it('applies columnDefs[""] as source-level default for flat columns', async () => {
+    it('applies attributes[""] as source-level default for flat columns', async () => {
         const adapter = new DataMetadataSourceAdapter({
             id: "expression",
-            columnDefs: {
+            attributes: {
                 "": {
                     type: "quantitative",
                     scale: { domainMid: 0, scheme: "redblue" },
@@ -246,11 +246,11 @@ describe("DataMetadataSourceAdapter", () => {
         });
     });
 
-    it('maps columnDefs[""] to groupPath when imported under a group', async () => {
+    it('maps attributes[""] to groupPath when imported under a group', async () => {
         const adapter = new DataMetadataSourceAdapter({
             id: "expression",
             groupPath: "Expression",
-            columnDefs: {
+            attributes: {
                 "": {
                     type: "quantitative",
                     scale: { domainMid: 0, scheme: "redblue" },

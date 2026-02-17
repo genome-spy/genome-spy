@@ -346,11 +346,11 @@ export interface MetadataSourceDef {
     attributeGroupSeparator?: string;
 
     /**
-     * Attribute definitions keyed by column id (and optionally by group path).
+     * Attribute definitions keyed by attribute/column id (and optionally by group path).
      *
      * Special key `""` defines source-level defaults for all imported columns.
      */
-    columnDefs?: Record<string, SampleAttributeDef>;
+    attributes?: Record<string, SampleAttributeDef>;
 
     /**
      * Backend-specific source configuration.
@@ -404,7 +404,7 @@ export interface SampleDef {
     /**
      * Explicitly specify the sample attributes.
      *
-     * @deprecated Configure per-source `columnDefs` in `metadataSources`.
+     * @deprecated Configure per-source `attributes` in `metadataSources`.
      */
     attributes?: Record<string, SampleAttributeDef>;
 
