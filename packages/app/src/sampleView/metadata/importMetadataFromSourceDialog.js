@@ -271,6 +271,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     <div class="label">${columnsLabel}</div>
                     <gs-multi-select
                         id="columnInput"
+                        autofocus
                         class=${this._form.error("columns") ? "is-invalid" : ""}
                         .debounceMs=${50}
                         .selectedValues=${parseColumnQueries(this.columnInput)}
