@@ -11,7 +11,8 @@ GenomeSpy supports two import workflows:
 
 1. **Upload metadata** for ad hoc files (TSV/CSV and similar tabular data).
 2. **Import metadata from source** for preconfigured metadata sources provided
-   by the visualization author.
+   by the visualization author (see
+   [metadata source configuration](./metadata-sources.md)).
 
 Both workflows add attributes to the metadata panel and are tracked in
 provenance, so you can undo or replay them.
