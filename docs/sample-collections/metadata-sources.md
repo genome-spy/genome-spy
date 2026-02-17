@@ -266,6 +266,14 @@ In this configuration, `clinical.PFI` inherits quantitative/blues defaults from
 When both are set, `groupPath` places imported attributes under a destination
 group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
+`attributeGroupSeparator` also affects how `groupPath` itself is parsed:
+
+- with `attributeGroupSeparator: "."`, `groupPath: "Expression.RNA"` becomes
+  `Expression/RNA`
+- without `attributeGroupSeparator`, `groupPath` is split by `/` (so
+  `"Expression/RNA"` becomes `Expression/RNA`, but `"Expression.RNA"` stays a
+  single group name)
+
 ## Schema reference
 
 ### `samples` entry points
