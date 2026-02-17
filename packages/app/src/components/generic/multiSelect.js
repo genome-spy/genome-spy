@@ -46,6 +46,14 @@ function uniqueValues(values) {
 }
 
 /**
+ * @param {string} text
+ * @returns {string[]}
+ */
+function parseMultilineValues(text) {
+    return uniqueValues(text.split(/\r?\n/g));
+}
+
+/**
  * Searchable multi-select input for choosing multiple string values with
  * typeahead suggestions, pill/tag rendering, and keyboard-first navigation.
  *
@@ -469,16 +477,37 @@ export default class MultiSelect extends LitElement {
     }
 
     /**
+     * @param {string[]} values
+     * @returns {boolean}
+     */
+    #addValues(values) {
+        const seen = new Set(this.selectedValues);
+        /** @type {string[]} */
+        const additions = [];
+
+        for (const value of values) {
+            const normalized = String(value).trim();
+            if (normalized.length === 0 || seen.has(normalized)) {
+                continue;
+            }
+            seen.add(normalized);
+            additions.push(normalized);
+        }
+
+        if (additions.length === 0) {
+            return false;
+        }
+
+        this.selectedValues = [...this.selectedValues, ...additions];
+        this.#emitChange();
+        return true;
+    }
+
+    /**
      * @param {string} id
      */
     #addValue(id) {
-        const value = String(id).trim();
-        if (value.length === 0 || this.selectedValues.includes(value)) {
-            return;
-        }
-
-        this.selectedValues = [...this.selectedValues, value];
-        this.#emitChange();
+        this.#addValues([id]);
     }
 
     /**
@@ -584,6 +613,29 @@ export default class MultiSelect extends LitElement {
 
     #onInputBlur() {
         this._inputHasFocus = false;
+    }
+
+    /**
+     * @param {ClipboardEvent} event
+     */
+    #onInputPaste(event) {
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        if (!text.includes("\n")) {
+            return;
+        }
+
+        const values = parseMultilineValues(text);
+        if (values.length === 0) {
+            return;
+        }
+
+        event.preventDefault();
+        this.#addValues(values);
+        this._query = "";
+        this._open = false;
+        this._activeIndex = -1;
+        this.#queueSearch("");
+        this.#focusInput();
     }
 
     /**
@@ -707,6 +759,8 @@ export default class MultiSelect extends LitElement {
                         ?disabled=${this.disabled}
                         @focus=${() => this.#onInputFocus()}
                         @blur=${() => this.#onInputBlur()}
+                        @paste=${(/** @type {ClipboardEvent} */ event) =>
+                            this.#onInputPaste(event)}
                         @input=${(/** @type {InputEvent} */ event) =>
                             this.#onInput(event)}
                         @keydown=${(/** @type {KeyboardEvent} */ event) =>
