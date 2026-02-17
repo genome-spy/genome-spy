@@ -7,16 +7,19 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import "../../components/generic/multiSelect.js";
 import { FormController } from "../../components/forms/formController.js";
 import { formField } from "../../components/forms/formField.js";
 import {
     classifyImportReadiness,
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
+import ObjectSearchIndex from "../../utils/objectSearchIndex.js";
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./metadataValidation.js";
 
-const DEFAULT_COLUMN_PLACEHOLDER = "One column id per line";
+const DEFAULT_COLUMN_PLACEHOLDER = "Type to search or paste one id per line";
+const MAX_SEARCH_SUGGESTIONS = 100;
 
 /**
  * @typedef {{ severity: "info" | "warning" | "error", summary: string, details?: string }} AlignmentIssue
@@ -124,12 +127,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 margin-top: var(--gs-basic-spacing, 10px);
             }
 
-            textarea {
-                min-height: 10rem;
-                resize: vertical;
-                width: 100%;
-            }
-
             .inline-link {
                 appearance: none;
                 background: none;
@@ -162,6 +159,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._preview = null;
         this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
         this._availableColumnCount = undefined;
+        /** @type {ObjectSearchIndex<{ id: string }>} */
+        this._columnSearchIndex = new ObjectSearchIndex(
+            [],
+            (column) => column.id
+        );
         this._previewVersion = 0;
         this._sourceContextVersion = 0;
         this._previewQueryKey = "";
@@ -226,8 +228,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 <div class="gs-alert info">
                     ${icon(faInfoCircle).node[0]}
                     <div>
-                        Import one or more metadata columns by typing or pasting
-                        one column id per line.
+                        Import one or more metadata columns by searching,
+                        selecting, or pasting column ids.
                     </div>
                 </div>
 
@@ -266,17 +268,26 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     : nothing}
 
                 <div class="gs-form-group">
-                    <label for="columnInput">${columnsLabel}</label>
-                    <textarea
+                    <div class="label">${columnsLabel}</div>
+                    <gs-multi-select
                         id="columnInput"
-                        placeholder=${this._columnPlaceholder}
-                        ${formField(this._form, "columns")}
-                        @focus=${() => this.#handleColumnsFocus()}
+                        autofocus
+                        class=${this._form.error("columns") ? "is-invalid" : ""}
+                        .debounceMs=${50}
+                        .selectedValues=${parseColumnQueries(this.columnInput)}
+                        .placeholder=${this._columnPlaceholder}
+                        .search=${(/** @type {string} */ query) =>
+                            this.#searchAvailableColumns(query)}
+                        .allowUnknown=${true}
+                        .maxSuggestions=${MAX_SEARCH_SUGGESTIONS}
+                        aria-invalid=${this._form.error("columns")
+                            ? "true"
+                            : "false"}
+                        @focusin=${() => this.#handleColumnsFocus()}
                         @change=${(/** @type {Event} */ event) =>
-                            this.#handleColumnsCommit(event)}
-                    ></textarea>
+                            this.#handleColumnSelectionChange(event)}
+                    ></gs-multi-select>
                     ${this._form.feedback("columns")}
-                    <small>Enter one column id per line.</small>
                 </div>
 
                 <div class="gs-form-group">
@@ -326,6 +337,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
+        this._columnSearchIndex.replace([]);
         const sourceLabel = this.source.name ?? this.source.id ?? "source";
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
@@ -351,17 +363,46 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         return this._adapter;
     }
 
+    #handleColumnsFocus() {
+        this._columnValidationEnabled = true;
+    }
+
     /**
      * @param {Event} event
      */
-    #handleColumnsCommit(event) {
-        event.preventDefault();
-        this._columnValidationEnabled = true;
+    #handleColumnSelectionChange(event) {
+        const change =
+            /** @type {import("../../components/generic/multiSelect.js").MultiSelectChangeEvent} */ (
+                event
+            );
+        this.#setColumnSelection(change.values);
+    }
+
+    /**
+     * @param {string[]} columnIds
+     */
+    #setColumnSelection(columnIds) {
+        const normalized = parseColumnQueries(columnIds.join("\n"));
+        this.columnInput = normalized.join("\n");
         void this.#updatePreview();
     }
 
-    #handleColumnsFocus() {
-        this._columnValidationEnabled = true;
+    #revalidateColumnsAfterPreview() {
+        if (this._columnValidationEnabled || this._form.error("columns")) {
+            this._form.revalidate("columns");
+        }
+    }
+
+    /**
+     * @param {string} query
+     * @returns {Promise<string[]>}
+     */
+    async #searchAvailableColumns(query) {
+        const term = query.trim();
+        return Array.from(
+            this._columnSearchIndex.searchByPrefix(term),
+            (column) => column.id
+        );
     }
 
     async #updatePreview() {
@@ -386,6 +427,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             };
             this._previewQueryKey = queryKey;
             this._error = "";
+            this.#revalidateColumnsAfterPreview();
             return;
         }
 
@@ -402,6 +444,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             };
             this._previewQueryKey = queryKey;
             this._error = "";
+            this.#revalidateColumnsAfterPreview();
         } catch (error) {
             if (previewVersion !== this._previewVersion) {
                 return;
@@ -409,6 +452,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             this._error = String(error);
             this._preview = null;
             this._previewQueryKey = "";
+            this.#revalidateColumnsAfterPreview();
         }
     }
 
@@ -434,6 +478,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 }
                 this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
                 this._availableColumnCount = undefined;
+                this._columnSearchIndex.replace([]);
             });
 
         void adapter
@@ -463,17 +508,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @param {{ id: string }[]} columns
      */
     #applyColumns(columns) {
+        this._columnSearchIndex.replace(columns);
         this._availableColumnCount = columns.length;
-        if (columns.length === 0) {
-            this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
-            return;
-        }
-
-        const examples = columns
-            .slice(0, 3)
-            .map((column) => column.id)
-            .join("\n");
-        this._columnPlaceholder = "e.g.\n" + examples;
+        this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
     }
 
     /**

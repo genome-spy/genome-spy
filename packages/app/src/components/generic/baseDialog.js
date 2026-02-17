@@ -252,6 +252,33 @@ export default class BaseDialog extends LitElement {
         } else {
             this.#dialog.show();
         }
+
+        this.#focusAutofocusTarget();
+    }
+
+    #focusAutofocusTarget() {
+        const autofocusTarget = /** @type {HTMLElement | null} */ (
+            this.renderRoot.querySelector("[autofocus]")
+        );
+        if (!autofocusTarget) {
+            return;
+        }
+
+        // Queue once immediately and once on the next frame so custom elements
+        // have time to render internal focus targets.
+        queueMicrotask(() => {
+            if (!this.isConnected) {
+                return;
+            }
+            autofocusTarget.focus();
+        });
+
+        requestAnimationFrame(() => {
+            if (!this.isConnected) {
+                return;
+            }
+            autofocusTarget.focus();
+        });
     }
 
     /**
