@@ -9,6 +9,7 @@ import {
     inferColumnSeparator,
     replacePathSeparator,
     inferMetadataTypesForNodes,
+    normalizeColumnarKeys,
     wrangleMetadata,
 } from "./metadataUtils.js";
 
@@ -74,6 +75,15 @@ describe("buildPathTree", () => {
         const ab = root.children.get("a.b");
         expect(ab.path).toBe("a.b");
         expect(ab.children.size).toBe(0);
+    });
+
+    it("escapes slashes in internal paths when separator is not defined", () => {
+        const paths = ["A/B"];
+        const root = buildPathTree(paths, null);
+        const node = root.children.get("A/B");
+        expect(node).toBeDefined();
+        expect(node.path).toBe("A\\/B");
+        expect(node.children.size).toBe(0);
     });
 });
 
@@ -565,6 +575,23 @@ describe("replacePathSeparatorInKeys", () => {
     });
 });
 
+describe("normalizeColumnarKeys", () => {
+    it("escapes slashes when separator is not defined", () => {
+        const result = normalizeColumnarKeys(
+            {
+                sample: ["s1", "s2"],
+                "A/B": [1, 2],
+            },
+            null
+        );
+
+        expect(result).toEqual({
+            sample: ["s1", "s2"],
+            "A\\/B": [1, 2],
+        });
+    });
+});
+
 describe("wrangleMetadata", () => {
     it("replaces separators and applies group prefixes", () => {
         const rows = [
@@ -625,6 +652,26 @@ describe("wrangleMetadata", () => {
         });
         expect(result.attributeDefs).toEqual({
             "clinical/age": { type: "quantitative" },
+        });
+    });
+
+    it("does not split groupPath on slash unless separator is defined", () => {
+        const rows = [{ sample: "s1", age: 30 }];
+
+        const result = wrangleMetadata(
+            rows,
+            { age: { type: "quantitative" }, "": { type: "quantitative" } },
+            null,
+            "Expression/RNA"
+        );
+
+        expect(result.columnarMetadata).toEqual({
+            sample: ["s1"],
+            "Expression\\/RNA/age": [30],
+        });
+        expect(result.attributeDefs).toEqual({
+            "Expression\\/RNA/age": { type: "quantitative" },
+            "Expression\\/RNA": { type: "quantitative" },
         });
     });
 

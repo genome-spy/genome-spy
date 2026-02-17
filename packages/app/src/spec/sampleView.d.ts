@@ -275,7 +275,8 @@ export interface MetadataSourceDef {
      * creates (or reuses) a metadata hierarchy node.
      *
      * This value is parsed as a path using `attributeGroupSeparator` when that
-     * separator is defined for the source.
+     * separator is defined for the source. Without an explicit separator, the
+     * whole value is treated as one group name (including any `/` characters).
      *
      * Users can override this per import in the dialog.
      */
@@ -293,6 +294,7 @@ export interface MetadataSourceDef {
      * Attribute definitions keyed by attribute/column id (and optionally by group path).
      *
      * Special key `""` defines source-level defaults for all imported columns.
+     * Path splitting is applied only when `attributeGroupSeparator` is defined.
      */
     attributes?: Record<string, SampleAttributeDef>;
 

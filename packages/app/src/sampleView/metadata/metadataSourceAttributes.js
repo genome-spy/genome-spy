@@ -16,7 +16,7 @@ import { joinPathParts, splitPath } from "../../utils/escapeSeparator.js";
  */
 function toInternalPath(key, separator) {
     if (!separator) {
-        return key;
+        return joinPathParts([key], METADATA_PATH_SEPARATOR);
     } else {
         return replacePathSeparator(key, separator, METADATA_PATH_SEPARATOR);
     }

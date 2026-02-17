@@ -260,6 +260,8 @@ Example configuration:
 
 In this configuration, `clinical.PFI` inherits quantitative/blues defaults from
 `clinical`, while `clinical.OS` applies its own override (`visible: false`).
+Without `attributeGroupSeparator`, no path splitting is applied: column names
+and `attributes` keys are treated as flat ids.
 
 ### Using both together
 
@@ -270,9 +272,9 @@ group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
 - with `attributeGroupSeparator: "."`, `groupPath: "Expression.RNA"` becomes
   `Expression/RNA`
-- without `attributeGroupSeparator`, `groupPath` is split by `/` (so
-  `"Expression/RNA"` becomes `Expression/RNA`, but `"Expression.RNA"` stays a
-  single group name)
+- without `attributeGroupSeparator`, `groupPath` is not split. The whole value
+  is treated as one group name (for example `"Expression/RNA"` stays one group
+  id).
 
 ## Schema reference
 

@@ -177,4 +177,25 @@ describe("buildSetMetadataPayload", () => {
             "group/sub": { type: "quantitative", scale: { type: "linear" } },
         });
     });
+
+    it("treats slash in addUnderGroup as literal when separator is not defined", () => {
+        const parsedItems = [{ sample: "s1", value: 10 }];
+
+        const metadataConfig = {
+            separator: null,
+            addUnderGroup: "group/sub",
+            scales: new Map([["", { type: "linear" }]]),
+            metadataNodeTypes: new Map([["", "quantitative"]]),
+        };
+
+        const result = buildSetMetadataPayload(
+            parsedItems,
+            new Set(["s1"]),
+            metadataConfig
+        );
+
+        expect(result.attributeDefs).toEqual({
+            "group\\/sub": { type: "quantitative", scale: { type: "linear" } },
+        });
+    });
 });
