@@ -40,7 +40,8 @@
   },
   "scripts": {
     "build": "lerna run build",
-    "build:docs": "mkdir -p docs/app && cp packages/doc-embed/dist/* docs/app/ && cp packages/core/dist/schema.json docs/ && cp packages/app/dist/schema.json docs/app-schema.json && mkdocs build",
+    "build:docs:prepare": "npm -w @genome-spy/doc-embed run build && npm -w @genome-spy/core run build:schema && npm -w @genome-spy/app run build:schema && node scripts/prepare-docs-assets.mjs",
+    "build:docs": "npm run build:docs:prepare && mkdocs build",
     "build:dependency-graph": "depcruise packages/core/src/index.js --include-only '^packages/core/src' --output-type dot | dot -T svg | depcruise-wrap-stream-in-html > core-dependency-graph.html",
     "lint": "eslint packages/*/src/",
     "test": "vitest run",
