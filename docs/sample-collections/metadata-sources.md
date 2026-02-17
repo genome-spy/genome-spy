@@ -70,6 +70,10 @@ second source (`expression`) points to a Zarr matrix, is lazy by default
 (`initialLoad: false`), and defines quantitative styling for selected
 expression columns under the `Expression` group.
 
+If you omit `initialLoad`, backend defaults apply. For `backend: "data"`, that
+means load all columns by default; use `excludeColumns` to keep helper fields
+such as `sample` and `displayName` out of metadata attributes.
+
 ## Splitting configuration into files
 
 When source definitions become long, you can keep `samples.metadataSources`
@@ -356,12 +360,3 @@ These optional definitions improve column lookup from user-entered terms. Use
 `identifiers` for aligned identifier arrays (for example symbol and Ensembl).
 
 APP_SCHEMA ColumnIdentifierField
-
-## Notes
-
-- Omitted `initialLoad` uses backend defaults. For `backend: "data"`, this is
-  equivalent to `initialLoad: "*"` for convenience.
-- `excludeColumns` is useful when the same table contains identity fields (for
-  example, `sample` or `displayName`) that should not become metadata
-  attributes.
-- Keep `metadataSources` flat: nested source imports are not supported.
