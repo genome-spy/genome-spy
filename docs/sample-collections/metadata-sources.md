@@ -321,11 +321,7 @@ Example with optional lookup helpers and matrix path overrides:
         "path": "var/ensembl_id",
         "stripVersionSuffix": true
       }
-    ],
-    "synonymIndex": {
-      "termPath": "var_synonyms/term",
-      "columnIndexPath": "var_synonyms/column_index"
-    }
+    ]
   }
 }
 ```
@@ -347,12 +343,9 @@ APP_SCHEMA ZarrMatrixLayoutDef
 ##### Zarr identifier helpers
 
 These optional definitions improve column lookup from user-entered terms. Use
-`identifiers` for aligned identifier arrays (for example symbol and Ensembl),
-and `synonymIndex` for separate synonym-to-column mappings.
+`identifiers` for aligned identifier arrays (for example symbol and Ensembl).
 
 APP_SCHEMA ColumnIdentifierField
-
-APP_SCHEMA ColumnSynonymIndex
 
 ## Notes
 

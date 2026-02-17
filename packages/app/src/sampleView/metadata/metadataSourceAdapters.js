@@ -59,6 +59,15 @@ function assertNoLegacyColumnDefs(source) {
                 '" uses removed property "columnDefs". Use "attributes" instead.'
         );
     }
+
+    if (source.backend.backend === "zarr" && "synonymIndex" in source.backend) {
+        const sourceLabel = source.id ?? source.name ?? "(unnamed source)";
+        throw new Error(
+            'Metadata source "' +
+                sourceLabel +
+                '" uses removed property "backend.synonymIndex". Use "backend.identifiers" instead.'
+        );
+    }
 }
 
 /**

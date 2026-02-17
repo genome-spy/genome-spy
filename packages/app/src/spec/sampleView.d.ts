@@ -125,28 +125,6 @@ export interface ColumnIdentifierField {
     stripVersionSuffix?: boolean;
 }
 
-export interface ColumnSynonymIndex {
-    /**
-     * Backend path containing synonym terms.
-     *
-     * Terms are matched against user queries.
-     */
-    termPath: string;
-
-    /**
-     * Backend path containing resolved matrix column indices for terms.
-     *
-     * Must be aligned with `termPath` (same length, row-by-row mapping).
-     */
-    columnIndexPath: string;
-
-    /**
-     * Optional backend path describing synonym provenance (for example, source
-     * database or curation source) for diagnostics.
-     */
-    sourcePath?: string;
-}
-
 export interface DataBackendDef {
     backend: "data";
 
@@ -207,11 +185,6 @@ export interface ZarrBackendDef {
      * If omitted, only primary column ids are used for lookup.
      */
     identifiers?: ColumnIdentifierField[];
-
-    /**
-     * Optional synonym index for expanding lookup terms to matrix columns.
-     */
-    synonymIndex?: ColumnSynonymIndex;
 }
 
 export interface ParquetBackendDef {

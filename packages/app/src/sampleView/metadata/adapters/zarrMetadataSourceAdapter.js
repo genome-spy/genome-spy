@@ -372,37 +372,6 @@ export default class ZarrMetadataSourceAdapter {
             }
         }
 
-        if (this.#backend.synonymIndex) {
-            const terms = await this.#readArray(
-                this.#backend.synonymIndex.termPath,
-                signal
-            );
-            const columnIndices = await this.#readArray(
-                this.#backend.synonymIndex.columnIndexPath,
-                signal
-            );
-
-            if (terms.length !== columnIndices.length) {
-                throw new Error(
-                    "Synonym index arrays termPath and columnIndexPath have different lengths."
-                );
-            }
-
-            for (let i = 0; i < terms.length; i++) {
-                const columnIndex = Number(columnIndices[i]);
-                if (!Number.isInteger(columnIndex)) {
-                    continue;
-                }
-                if (columnIndex < 0 || columnIndex >= columnIds.length) {
-                    continue;
-                }
-                if (this.#isExcludedColumn(columnIds[columnIndex])) {
-                    continue;
-                }
-                addTerm(lookup, terms[i], columnIndex);
-            }
-        }
-
         return lookup;
     }
 

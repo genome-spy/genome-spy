@@ -62,12 +62,10 @@ describe("ZarrMetadataSourceAdapter", () => {
             var_names: ["ENSG1", "ENSG2"],
             "var/symbol": ["TP53", "MYC"],
             "var/ensembl_id": ["ENSG1.1", "ENSG2.3"],
-            "var_synonyms/term": ["P53", "c-Myc"],
-            "var_synonyms/column_index": [0, 1],
         };
     });
 
-    it("lists columns and resolves queries using identifiers and synonyms", async () => {
+    it("lists columns and resolves queries using identifiers", async () => {
         const adapter = new ZarrMetadataSourceAdapter({
             backend: {
                 backend: "zarr",
@@ -85,10 +83,6 @@ describe("ZarrMetadataSourceAdapter", () => {
                         stripVersionSuffix: true,
                     },
                 ],
-                synonymIndex: {
-                    termPath: "var_synonyms/term",
-                    columnIndexPath: "var_synonyms/column_index",
-                },
             },
         });
 
@@ -101,7 +95,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             "TP53",
             "ENSG2",
             "ENSG1.1",
-            "P53",
             "missing",
         ]);
 
@@ -173,17 +166,19 @@ describe("ZarrMetadataSourceAdapter", () => {
     });
 
     it("reports ambiguous query terms when lookup maps to multiple columns", async () => {
-        mockArrays["var_synonyms/term"] = ["shared", "shared"];
-        mockArrays["var_synonyms/column_index"] = [0, 1];
+        mockArrays["var/symbol"] = ["shared", "shared"];
 
         const adapter = new ZarrMetadataSourceAdapter({
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                synonymIndex: {
-                    termPath: "var_synonyms/term",
-                    columnIndexPath: "var_synonyms/column_index",
-                },
+                identifiers: [
+                    {
+                        name: "symbol",
+                        path: "var/symbol",
+                        primary: true,
+                    },
+                ],
             },
         });
 

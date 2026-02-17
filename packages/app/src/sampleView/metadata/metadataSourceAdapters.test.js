@@ -188,6 +188,28 @@ describe("resolveMetadataSources", () => {
             'uses removed property "columnDefs". Use "attributes" instead.'
         );
     });
+
+    it('rejects removed "backend.synonymIndex" property', async () => {
+        const sampleDef = {
+            metadataSources: [
+                {
+                    id: "expression",
+                    backend: {
+                        backend: "zarr",
+                        url: "https://example.org/expression.zarr",
+                        synonymIndex: {
+                            termPath: "var_synonyms/term",
+                            columnIndexPath: "var_synonyms/column_index",
+                        },
+                    },
+                },
+            ],
+        };
+
+        await expect(resolveMetadataSources(sampleDef)).rejects.toThrow(
+            'uses removed property "backend.synonymIndex". Use "backend.identifiers" instead.'
+        );
+    });
 });
 
 describe("createMetadataSourceAdapter", () => {
