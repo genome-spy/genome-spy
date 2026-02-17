@@ -35,7 +35,7 @@ import IntentExecutor from "./state/intentExecutor.js";
 import { lifecycleSlice } from "./lifecycleSlice.js";
 import setupStore from "./state/setupStore.js";
 import IntentPipeline from "./state/intentPipeline.js";
-import { sampleSlice } from "./sampleView/state/sampleSlice.js";
+import { setupMetadataSourceRuntime } from "./sampleView/metadata/metadataSourceRuntime.js";
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
@@ -278,21 +278,21 @@ export default class App {
 
         const sampleView = this.getSampleView();
         if (sampleView) {
-            this.intentPipeline.setResolvers({
-                getAttributeInfo:
-                    sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-                        sampleView.compositeAttributeInfoSource
-                    ),
-            });
-            const unregisterMetadataHook =
-                this.intentPipeline.registerActionHook({
-                    predicate: (action) =>
-                        action.type === sampleSlice.actions.addMetadata.type ||
-                        action.type === sampleSlice.actions.deriveMetadata.type,
-                    awaitProcessed: (context) =>
-                        sampleView.awaitMetadataReady(context.signal),
-                });
-            sampleView.registerDisposer(unregisterMetadataHook);
+            try {
+                await setupMetadataSourceRuntime(
+                    sampleView,
+                    this.intentPipeline
+                );
+            } catch (error) {
+                console.error(error);
+                showMessageDialog(
+                    "Could not load initial metadata sources: " + String(error),
+                    {
+                        title: "Metadata source warning",
+                        type: "warning",
+                    }
+                );
+            }
         }
 
         // Make it focusable so that keyboard shortcuts can be caught

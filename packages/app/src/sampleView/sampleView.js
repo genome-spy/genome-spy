@@ -36,7 +36,6 @@ import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
-import { ActionCreators } from "redux-undo";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -48,10 +47,9 @@ import {
     isIntervalSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
 import {
-    METADATA_PATH_SEPARATOR,
-    replacePathSeparatorInKeys,
-    wrangleMetadata,
-} from "./metadata/metadataUtils.js";
+    LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
+    normalizeSampleDefMetadataSources,
+} from "./metadata/metadataSourceSpec.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 import { resolveViewRef } from "./viewRef.js";
@@ -140,7 +138,17 @@ export default class SampleView extends ContainerView {
 
         this.provenance = provenance;
 
-        this.spec = spec;
+        const normalizedSampleDef = normalizeSampleDefMetadataSources(
+            spec.samples
+        );
+        if (normalizedSampleDef.usesLegacyMetadata) {
+            console.warn(LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING);
+        }
+
+        this.spec = {
+            ...spec,
+            samples: normalizedSampleDef.sampleDef,
+        };
         this.#stickySummaries = spec.stickySummaries ?? true;
 
         this.#initViewHelpers();
@@ -152,8 +160,8 @@ export default class SampleView extends ContainerView {
 
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
-        if (this.spec.samples.data) {
-            this.#loadSamples();
+        if (this.spec.samples.identity?.data) {
+            this.#loadSampleIdentity();
         } else {
             // TODO: schedule: extractSamplesFromData()
         }
@@ -688,73 +696,6 @@ export default class SampleView extends ContainerView {
         yield* this.#gridChild.getChildren();
     }
 
-    #loadSamples() {
-        if (!this.spec.samples.data) {
-            throw new Error(
-                "SampleView has no explicit sample metadata specified! Cannot load anything."
-            );
-        }
-
-        const { dataSource, collector } = createChain(
-            createDataSource(this.spec.samples.data, this),
-            new ProcessSample()
-        );
-
-        // Here's quite a bit of wrangling but the number of samples is so low that
-        // performance doesn't really matter.
-
-        const stop = collector.observe(() => {
-            const result =
-                /** @type {{sample: Sample, attributes: import("./state/sampleState.js").Metadatum}[]} */ (
-                    collector.getData()
-                );
-
-            const samples = result.map((d) => d.sample);
-            this.provenance.store.dispatch(
-                this.actions.setSamples({ samples })
-            );
-
-            const attributesNames = result[0]?.attributes;
-            if (attributesNames && Object.keys(attributesNames).length > 0) {
-                const rowMetadata = result.map((r) => ({
-                    sample: r.sample.id,
-                    ...r.attributes,
-                }));
-
-                const attributeSeparator =
-                    this.spec.samples.attributeGroupSeparator;
-                const attributeDefs = attributeSeparator
-                    ? replacePathSeparatorInKeys(
-                          this.spec.samples.attributes ?? {},
-                          attributeSeparator,
-                          METADATA_PATH_SEPARATOR
-                      )
-                    : this.spec.samples.attributes;
-
-                const setMetadata = wrangleMetadata(
-                    rowMetadata,
-                    attributeDefs,
-                    attributeSeparator
-                );
-
-                // Clear history, since if initial metadata is being set, it
-                // should represent the initial state.
-                this.provenance.store.dispatch(ActionCreators.clearHistory());
-
-                this.provenance.store.dispatch(
-                    this.actions.addMetadata({
-                        ...setMetadata,
-                        replace: true,
-                    })
-                );
-            }
-        });
-        this.registerDisposer(stop);
-
-        // Synchronize loading with other data
-        this.context.dataFlow.addDataSource(dataSource);
-    }
-
     #extractSamplesFromData() {
         if (this.getSamples()) {
             return; // NOP
@@ -780,6 +721,31 @@ export default class SampleView extends ContainerView {
                 "No explicit sample data nor sample channels found!"
             );
         }
+    }
+
+    #loadSampleIdentity() {
+        const identity = this.spec.samples.identity;
+        if (!identity) {
+            throw new Error("Sample identity definition is missing.");
+        }
+
+        const { dataSource, collector } = createChain(
+            createDataSource(identity.data, this),
+            new ProcessSampleIdentity(
+                identity.idField ?? "sample",
+                identity.displayNameField
+            )
+        );
+
+        const stop = collector.observe(() => {
+            const samples = /** @type {Sample[]} */ (collector.getData());
+            this.provenance.store.dispatch(
+                this.actions.setSamples({ samples })
+            );
+        });
+        this.registerDisposer(stop);
+
+        this.context.dataFlow.addDataSource(dataSource);
     }
 
     /**
@@ -1415,29 +1381,44 @@ export default class SampleView extends ContainerView {
     }
 }
 
-class ProcessSample extends FlowNode {
-    constructor() {
+class ProcessSampleIdentity extends FlowNode {
+    #idField;
+
+    #displayNameField;
+
+    #index = 0;
+
+    /**
+     * @param {string} idField
+     * @param {string | undefined} displayNameField
+     */
+    constructor(idField, displayNameField) {
         super();
-        this.reset();
+        this.#idField = idField;
+        this.#displayNameField = displayNameField;
     }
 
     reset() {
-        this._index = 0;
+        this.#index = 0;
     }
 
     /**
-     *
      * @param {import("@genome-spy/core/data/flowNode.js").Datum} datum
      */
     handle(datum) {
-        const { sample, displayName, ...attributes } = datum;
+        const sampleId = String(datum[this.#idField]);
+        const displayNameValue = this.#displayNameField
+            ? datum[this.#displayNameField]
+            : undefined;
+        const displayName =
+            displayNameValue === undefined || displayNameValue === null
+                ? sampleId
+                : String(displayNameValue);
+
         this._propagate({
-            sample: {
-                id: sample,
-                displayName: displayName ?? sample,
-                indexNumber: this._index++,
-            },
-            attributes,
+            id: sampleId,
+            displayName,
+            indexNumber: this.#index++,
         });
     }
 }

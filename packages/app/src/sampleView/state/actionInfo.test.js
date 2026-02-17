@@ -4,6 +4,7 @@ import {
     faCheck,
     faCircle,
     faSortAmountDown,
+    faTable,
 } from "@fortawesome/free-solid-svg-icons";
 import { getActionInfo } from "./actionInfo.js";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
@@ -36,6 +37,41 @@ describe("getActionInfo", () => {
         expect(info.title).toBe("Sort by");
         expect(info.provenanceTitle).toBeDefined();
         expect(info.icon).toBe(faSortAmountDown);
+    });
+
+    it("describes source metadata import actions", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/addMetadataFromSource`,
+            payload: {
+                sourceId: "rna_expression",
+                columnIds: ["TP53", "MYC"],
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(info.title).toBe("Import metadata from source");
+        expect(provenanceTitle).toContain("TP53");
+        expect(provenanceTitle).toContain("MYC");
+        expect(provenanceTitle).toContain("from rna_expression source");
+        expect(info.icon).toBe(faTable);
+    });
+
+    it("uses count-based wording for larger source metadata imports", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/addMetadataFromSource`,
+            payload: {
+                sourceId: "rna_expression",
+                columnIds: ["TP53", "MYC", "EGFR", "KRAS"],
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(provenanceTitle).toContain("4 attributes");
+        expect(provenanceTitle).toContain("from rna_expression source");
     });
 
     it("keeps selection-source wording in sort provenance titles", () => {
@@ -86,5 +122,32 @@ describe("getActionInfo", () => {
 
         expect(info.icon).toBe(faCircle);
         expect(info.title).toContain("unknownAction");
+    });
+
+    it("handles unknown actions with cyclic payloads", () => {
+        /** @type {{self?: any}} */
+        const cyclicPayload = {};
+        cyclicPayload.self = cyclicPayload;
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/unknownAction`,
+            payload: cyclicPayload,
+        };
+
+        const info = getActionInfo(action, () => undefined);
+
+        expect(info.icon).toBe(faCircle);
+        expect(info.title).toBe("unknownAction");
+    });
+
+    it("handles sample actions without payload", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/__baseline__`,
+        };
+
+        const info = getActionInfo(action, () => undefined);
+
+        expect(info.icon).toBe(faCircle);
+        expect(info.title).toContain("__baseline__");
     });
 });

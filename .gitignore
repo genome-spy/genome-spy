@@ -17,6 +17,7 @@ node_modules/
 
 /docs/app/
 /docs/schema.json
+/docs/app-schema.json
 /docs/genome-spy-schema.json
 
 build/

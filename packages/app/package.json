@@ -45,6 +45,7 @@
     "lz-string": "^1.4.4",
     "mapsort": "^1.0.5",
     "micromark": "^4.0.0",
-    "redux-undo": "^1.0.1"
+    "redux-undo": "^1.0.1",
+    "zarrita": "^0.6.1"
   }
 }

@@ -3,9 +3,9 @@ import {
     validateMetadata,
     MISSING_SAMPLE_FIELD_ERROR,
     NO_VALID_SAMPLES_ERROR,
-} from "./uploadMetadataDialog.js";
-import { EMPTY_SAMPLE_FIELD_ERROR } from "./uploadMetadataDialog.js";
-import { DUPLICATE_SAMPLE_IDS_ERROR } from "./uploadMetadataDialog.js";
+    EMPTY_SAMPLE_FIELD_ERROR,
+    DUPLICATE_SAMPLE_IDS_ERROR,
+} from "./metadataValidation.js";
 import { buildSetMetadataPayload } from "./metadataUtils.js";
 
 describe("validateMetadata", () => {
@@ -175,6 +175,27 @@ describe("buildSetMetadataPayload", () => {
 
         expect(result.attributeDefs).toEqual({
             "group/sub": { type: "quantitative", scale: { type: "linear" } },
+        });
+    });
+
+    it("treats slash in addUnderGroup as literal when separator is not defined", () => {
+        const parsedItems = [{ sample: "s1", value: 10 }];
+
+        const metadataConfig = {
+            separator: null,
+            addUnderGroup: "group/sub",
+            scales: new Map([["", { type: "linear" }]]),
+            metadataNodeTypes: new Map([["", "quantitative"]]),
+        };
+
+        const result = buildSetMetadataPayload(
+            parsedItems,
+            new Set(["s1"]),
+            metadataConfig
+        );
+
+        expect(result.attributeDefs).toEqual({
+            "group\\/sub": { type: "quantitative", scale: { type: "linear" } },
         });
     });
 });

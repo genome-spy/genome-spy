@@ -4,6 +4,7 @@ import { html } from "lit";
 import GenomeSpy from "./genomeSpy.js";
 import icon from "./img/bowtie.svg";
 import favIcon from "./img/genomespy-favicon.svg";
+import { fetchJson } from "./utils/fetchUtils.js";
 
 export { GenomeSpy, html, icon, favIcon };
 
@@ -103,11 +104,7 @@ export async function loadSpec(url) {
     let spec;
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`${response.status} ${response.statusText}`);
-        }
-        spec = await response.json();
+        spec = /** @type {any} */ (await fetchJson(url));
     } catch (e) {
         throw new Error(
             `Could not load or parse configuration: ${url}, reason: ${e.message}`

@@ -6,6 +6,7 @@ import View, { VISIT_SKIP, VISIT_STOP } from "./view.js";
 import { isFieldDef, primaryPositionalChannels } from "../encoder/encoder.js";
 import { rollup } from "d3-array";
 import { concatUrl, getDirectory } from "../utils/url.js";
+import { fetchJson } from "../utils/fetchUtils.js";
 
 /**
  *
@@ -160,11 +161,9 @@ export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
     let importedSpec;
 
     try {
-        const result = await fetch(url);
-        if (!result.ok) {
-            throw new Error(`${result.status} ${result.statusText}`);
-        }
-        importedSpec = await result.json();
+        importedSpec = /** @type {import("../spec/view.js").ViewSpec} */ (
+            await fetchJson(url)
+        );
     } catch (e) {
         throw new Error(
             `Could not load imported view spec: ${url}. Reason: ${e.message}`

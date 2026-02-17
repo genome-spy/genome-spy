@@ -209,6 +209,20 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        addMetadataFromSource: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").AddMetadataFromSource>} */ action
+        ) => {
+            const metadata = action.payload[AUGMENTED_KEY]?.metadata;
+            if (!metadata) {
+                throw new Error(
+                    "Metadata source payload is missing. Did you remember to use IntentExecutor.dispatch()?"
+                );
+            }
+
+            applyMetadataPayload(state, metadata);
+        },
+
         sortBy: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
@@ -626,11 +640,13 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
             ? {
                   columnarMetadata: applyGroupToColumnarMetadata(
                       columnarMetadata,
-                      groupPath
+                      groupPath,
+                      METADATA_PATH_SEPARATOR
                   ),
                   attributeDefs: applyGroupToAttributeDefs(
                       attributeDefs,
-                      groupPath
+                      groupPath,
+                      METADATA_PATH_SEPARATOR
                   ),
               }
             : { columnarMetadata, attributeDefs };

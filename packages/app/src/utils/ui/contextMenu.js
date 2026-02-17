@@ -14,7 +14,7 @@ import { faEllipsisV } from "@fortawesome/free-solid-svg-icons";
  * @prop {function} [ellipsisCallback]
  * @prop {"divider" | "header" | undefined} [type]
  * @prop {import("@fortawesome/free-solid-svg-icons").IconDefinition} [icon]
- * @prop {MenuItem[] | (() => MenuItem[])} [submenu]
+ * @prop {MenuItem[] | (() => MenuItem[] | Promise<MenuItem[]>)} [submenu]
  *
  * @typedef {Object} MenuOptions
  * @prop {MenuItem[]} items
@@ -97,21 +97,52 @@ const createSubmenu = (item, level) => html`
                     const li = /** @type {HTMLElement} */ (
                         event.target
                     ).closest("li");
-                    const submenu =
-                        typeof item.submenu == "function"
-                            ? item.submenu()
-                            : item.submenu;
-                    renderAndPositionSubmenu(submenu, li, level + 1);
+                    void openSubmenu(item, li, level + 1);
                     event.stopPropagation();
                 })}
             @mouseleave=${() => debouncer(() => clearSubmenus(level + 1))}
         >
             ${item.customContent
                 ? item.customContent
-                : html`<span>${item.label}</span>`}
+                : html`<span
+                      >${item.icon ? icon(item.icon).node[0] : nothing}
+                      ${item.label}</span
+                  >`}
         </div>
     </li>
 `;
+
+/**
+ * @param {MenuItem} item
+ * @param {HTMLElement} li
+ * @param {number} level
+ */
+async function openSubmenu(item, li, level) {
+    try {
+        const submenuSource =
+            typeof item.submenu == "function" ? item.submenu() : item.submenu;
+
+        if (submenuSource instanceof Promise) {
+            renderAndPositionSubmenu([{ label: "Loading..." }], li, level);
+            const submenu = await submenuSource;
+            if (!li.isConnected || !li.classList.contains("active")) {
+                return;
+            }
+            renderAndPositionSubmenu(submenu, li, level);
+        } else {
+            renderAndPositionSubmenu(submenuSource, li, level);
+        }
+    } catch (_error) {
+        if (!li.isConnected) {
+            return;
+        }
+        renderAndPositionSubmenu(
+            [{ label: "Could not open submenu." }],
+            li,
+            level
+        );
+    }
+}
 
 const createChoice = (/** @type {MenuItem} */ item) => html`
     <li>

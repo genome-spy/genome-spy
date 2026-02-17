@@ -14,4 +14,6 @@ The documentation of the app package is split into two parts serving different
 audiences:
 
 1. [Visualizing Sample Collections](visualizing.md) (for method developers)
-2. [Analyzing Sample Collections](analyzing.md) (for end users)
+2. [Configuring Metadata Sources](metadata-sources.md) (for method developers)
+3. [Analyzing Sample Collections](analyzing.md) (for end users)
+4. [Importing Metadata](importing-metadata.md) (for end users)

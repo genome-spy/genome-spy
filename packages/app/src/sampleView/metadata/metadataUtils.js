@@ -70,12 +70,10 @@ export function buildPathTree(items, separator) {
             if (!currentNode.children.has(part)) {
                 const node = {
                     part,
-                    path: useSeparator
-                        ? joinPathParts(
-                              parts.slice(0, i + 1),
-                              METADATA_PATH_SEPARATOR
-                          )
-                        : part,
+                    path: joinPathParts(
+                        parts.slice(0, i + 1),
+                        METADATA_PATH_SEPARATOR
+                    ),
                     attribute,
                     children: new Map(),
                     parent: currentNode,
@@ -391,13 +389,13 @@ export function buildSetMetadataPayload(
     );
 
     if (metadataConfig.addUnderGroup && hasRootDef) {
-        const groupPath = metadataConfig.separator
-            ? replacePathSeparator(
-                  metadataConfig.addUnderGroup,
-                  metadataConfig.separator,
-                  METADATA_PATH_SEPARATOR
-              )
-            : metadataConfig.addUnderGroup;
+        const groupPath = joinPathParts(
+            parseGroupPath(
+                metadataConfig.addUnderGroup,
+                metadataConfig.separator ?? undefined
+            ),
+            METADATA_PATH_SEPARATOR
+        );
         if (groupPath && !setMetadata.attributeDefs[groupPath]) {
             /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
             const def = {
@@ -436,18 +434,38 @@ export function toColumnarMetadata(rowMetadata, skipColumns = new Set()) {
  * @returns {import("../state/payloadTypes.js").ColumnarMetadata}
  */
 export function normalizeColumnarKeys(columnarMetadata, separator) {
-    if (!separator) {
-        return columnarMetadata;
+    /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */
+    const normalized = { sample: columnarMetadata.sample };
+
+    for (const [key, values] of Object.entries(columnarMetadata)) {
+        if (key === "sample") {
+            continue;
+        }
+        const internalKey =
+            typeof separator === "string" && separator.length > 0
+                ? replacePathSeparator(key, separator, METADATA_PATH_SEPARATOR)
+                : joinPathParts([key], METADATA_PATH_SEPARATOR);
+        normalized[internalKey] = values;
     }
 
-    return /** @type {import("../state/payloadTypes.js").ColumnarMetadata} */ (
-        replacePathSeparatorInKeys(
-            columnarMetadata,
-            separator,
-            METADATA_PATH_SEPARATOR,
-            ["sample"]
-        )
-    );
+    return normalized;
+}
+
+/**
+ * Convert a user-provided group path into internal path segments.
+ *
+ * The path is split only when an explicit separator is configured.
+ * Otherwise, the whole string is treated as a single segment.
+ *
+ * @param {string} groupPath
+ * @param {string} [separator]
+ * @returns {string[]}
+ */
+export function parseGroupPath(groupPath, separator) {
+    if (typeof separator === "string" && separator.length > 0) {
+        return splitPath(groupPath, separator);
+    }
+    return [groupPath];
 }
 
 /**
@@ -465,7 +483,7 @@ export function applyGroupToColumnarMetadata(
 ) {
     return placeMetadataUnderGroup(
         columnarMetadata,
-        splitPath(placeUnderGroup, separator)
+        parseGroupPath(placeUnderGroup, separator)
     );
 }
 
@@ -482,10 +500,28 @@ export function applyGroupToAttributeDefs(
     placeUnderGroup,
     separator
 ) {
-    return placeKeysUnderGroup(
-        attributeDefs,
-        splitPath(placeUnderGroup, separator)
+    const groupPath = parseGroupPath(placeUnderGroup, separator);
+    const normalizedGroupPath = joinPathParts(
+        groupPath,
+        METADATA_PATH_SEPARATOR
     );
+
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
+    const nonRootAttributeDefs = {};
+    let rootDef = undefined;
+    for (const [key, value] of Object.entries(attributeDefs)) {
+        if (key === "") {
+            rootDef = value;
+        } else {
+            nonRootAttributeDefs[key] = value;
+        }
+    }
+
+    const prefixed = placeKeysUnderGroup(nonRootAttributeDefs, groupPath);
+    if (rootDef && !prefixed[normalizedGroupPath]) {
+        prefixed[normalizedGroupPath] = rootDef;
+    }
+    return prefixed;
 }
 
 /**

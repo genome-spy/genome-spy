@@ -101,137 +101,46 @@ while the top layer might show single-nucleotide variants.
 By default, the identifiers of the samples are extracted from the
 data, and each sample gets its own track.
 
-### Explicit sample identifiers and metadata attributes
+### Defining samples (minimal example)
 
-Genomic data is commonly supplemented with metadata that contains various
-clinical and computational annotations. To show such metadata alongside the
-genomic data as a color-coded heat map, you can provide a
-[`data`](../grammar/data/eager.md) source with sample identifiers and metadata
-columns.
+For most sample-collection visualizations, define:
 
-```json title="Explicit sample identifiers"
+1. sample identity (`identity`)
+2. one or more metadata sources (`metadataSources`)
+
+```json title="Minimal sample definition"
 {
   "samples": {
-    "data": { "url": "samples.tsv" }
-  },
-  "spec": {
-    ...
-  }
-}
-```
-
-The data source must have a `sample` field matching the sample identifiers used
-in the genomic data. In addition, an optional `displayName` field can be
-provided if the sample names should be shown, for example, in a shortened form.
-All other fields are shown as metadata attributes, and their data types are
-inferred automatically from the data: numeric attributes are interpreted as
-`"quantitative"` data, all others as `"nominal"`.
-
-An example of a metadata file (`samples.tsv`):
-
-| sample             | displayName   | treatment | ploidy | purity |
-| ------------------ | ------------- | --------- | ------ | ------ |
-| EOC52_pPer_DNA4    | EOC52_pPer    | NACT      | 3.37   | 0.29   |
-| EOC702_pOme1_DNA1  | EOC702_pOme1  | PDS       | 3.74   | 0.155  |
-| EOC912_p2Bow2_DNA1 | EOC912_p2Bow2 | PDS       | 3.29   | 0.53   |
-
-#### Specifying data types of metadata attributes
-
-To adjust the data types, [scales](../grammar/scale.md), and default visibility
-of the attributes, they can be specified explicitly using the `attributes`
-object, as shown in the example below:
-
-```json title="Specifying a purity attribute"
-{
-  "samples": {
-    "data": { "url": "samples.tsv" },
-    "attributes": {
-      "purity": {
-        "type": "quantitative",
-        "scale": {
-          "domain": [0, 1],
-          "scheme": "yellowgreenblue"
-        },
-        "barScale": { },
-        "visible": false
-      },
-      ...
-    }
+    "identity": {
+      "data": { "url": "samples.tsv" },
+      "idField": "sample",
+      "displayNameField": "displayName"
+    },
+    "metadataSources": [
+      {
+        "id": "clinical",
+        "name": "Clinical metadata",
+        "initialLoad": "*",
+        "excludeColumns": ["sample", "displayName"],
+        "backend": {
+          "backend": "data",
+          "data": { "url": "samples.tsv" },
+          "sampleIdField": "sample"
+        }
+      }
+    ]
   },
   ...
 }
 ```
 
-The `scale` property specifies a scale for the `color` channel used to encode
-the values on the metadata heatmap. The optional `barScale` property enables
-positional encoding, changing the heatmap cells into a horizontal bar chart. The
-`visible` property configures the default visibility for the attribute.
+This configuration reads sample ids and display names from `samples.tsv`, then
+loads metadata columns from the same file at startup. The `sample` and
+`displayName` columns are excluded from metadata import, so only actual metadata
+attributes are shown in the metadata panel.
 
-### Hierarchical metadata attributes
-
-Metadata attributes can be grouped into hierarchical categories, which is
-practical when the number of attributes is large. You only need to define the
-data types and scales for the categories, and the attributes inherit these
-settings. Moreover, the user can easily toggle the visibility of the entire
-category with a single checkbox.
-
-Suppose you have the following metadata attributes that you would like to
-configure hierarchically:
-
-- patientId
-- Clinical data
-  - PFI
-  - OS
-- Mutational signatures
-  - HRD
-  - APOBEC
-
-To use hierarchical metadata attributes, the attribute names must have a
-(multi-level) group prefix, where a designated character separates the levels of
-the hierarchy. Use the `attributeGroupSeparator` property to delimit attribute
-names into groups. Then, specify settings for both individual attributes and
-groups if needed. The `visible` and `title` properties are not inherited; they
-only apply to the group itself.
-
-#### Example
-
-The above-mentioned metadata attributes could be named as follows:
-
-- `patientId`
-- `clinical.PFI`
-- `clinical.OS`
-- `signature.HRD`
-- `signature.APOBEC`
-
-... and configured as follows:
-
-```json title="Hierarchical metadata attributes"
-{
-  "samples": {
-    "data": { "url": "samples.tsv" },
-    "attributeGroupSeparator": ".",
-    "attributes": {
-      "patientId": {
-        "type": "nominal"
-      },
-      "clinical": {
-        "type": "quantitative",
-        "scale": {
-          "scheme": "blues"
-        }
-      },
-      "clinical.OS": {
-        "visible": false
-      },
-      "signature": {
-        "type": "quantitative",
-        "scale": { "scheme": "yelloworangered" },
-        "visible": false
-      }
-    }
-  }
-}
-```
+For advanced metadata-source configuration (for example, lazy Zarr-backed
+imports), see [Configuring Metadata Sources](metadata-sources.md).
 
 ### Adjusting font sizes, etc.
 

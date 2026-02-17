@@ -17,6 +17,8 @@ import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { buildSetMetadataPayload } from "./metadataUtils.js";
+import { inferMetadataFileType, readTextFile } from "./metadataFileUtils.js";
+import { validateMetadata } from "./metadataValidation.js";
 
 /**
  * A multi-step dialog for uploading sample metadata, validating it against
@@ -126,11 +128,11 @@ class UploadMetadataDialog extends BaseDialog {
      * @param {File} file
      */
     async #processFile(file) {
-        const textContent = await readFileAsync(file);
+        const textContent = await readTextFile(file);
 
         // TODO: Do all sorts of validation. There must be a sample column, etc.
 
-        const type = inferFileType(textContent, file.name);
+        const type = inferMetadataFileType(textContent, file.name);
 
         this._parsedItems =
             /** @type {import("@genome-spy/core/data/flowNode.js").Data} */
@@ -345,101 +347,6 @@ export function showUploadMetadataDialog(sampleView) {
 }
 
 /**
- * Does the following validations:
- * - `metadataRecords` all have 'sample' field (called newSamples from now on)
- * - `metadataRecords` all have a proper value in 'sample' field
- * - no duplicate sample IDs in newSamples
- * - newSamples has at least one sample
- *
- * On error, return an object with `error` array containing error messages.
- *
- * Does the following calculations:
- * - number of duplicate sample IDs in newSamples
- * - number of unique samples in newSamples that are not in existingSamples
- * - number of samples in existingSamples that are not in newSamples
- * - number of samples in both existingSamples and newSamples
- *
- * Returns an object with `statistics` field containing the calculated statistics.
- *
- * @param {Iterable<string>} existingSamples
- * @param {Iterable<Record<string, any>>} metadataRecords New metadata records to be added
- *
- * @typedef {{message: string | import("lit").TemplateResult<1>, count: number, cases: string[]}} ErrorEntry
- */
-export function validateMetadata(existingSamples, metadataRecords) {
-    /**
-     * @type {Map<any, ErrorEntry>}
-     */
-    const errorMap = new Map();
-
-    /**
-     * @param {string | import("lit").TemplateResult<1>} msg
-     * @param {number} [n]
-     * @param {string} [caseInfo]
-     */
-    function addError(msg, n = 1, caseInfo = null) {
-        // Use object identity as the key.
-        const key = msg;
-        let entry = errorMap.get(key);
-        if (!entry) {
-            entry = { message: msg, count: 0, cases: [] };
-            errorMap.set(key, entry);
-        }
-        entry.count += n;
-        if (caseInfo) {
-            entry.cases.push(caseInfo);
-        }
-    }
-
-    const existingSamplesSet = new Set(existingSamples);
-    /** @type {Set<string>} */
-    const metadataSamplesSet = new Set();
-
-    for (const record of metadataRecords) {
-        if (!("sample" in record)) {
-            addError(MISSING_SAMPLE_FIELD_ERROR);
-            continue;
-        }
-
-        if (record.sample == null || record.sample === "") {
-            addError(EMPTY_SAMPLE_FIELD_ERROR);
-            continue;
-        }
-
-        const sampleId = String(record.sample);
-        if (metadataSamplesSet.has(sampleId)) {
-            addError(DUPLICATE_SAMPLE_IDS_ERROR, 1, sampleId);
-        }
-        metadataSamplesSet.add(sampleId);
-    }
-
-    if (metadataSamplesSet.size === 0) {
-        addError(NO_VALID_SAMPLES_ERROR);
-    }
-
-    if (errorMap.size > 0) {
-        return { error: Array.from(errorMap.values()) };
-    }
-
-    return {
-        statistics: {
-            unknownSamples: metadataSamplesSet.difference(existingSamplesSet),
-            notCoveredSamples:
-                existingSamplesSet.difference(metadataSamplesSet),
-            samplesInBoth: metadataSamplesSet.intersection(existingSamplesSet),
-        },
-    };
-}
-
-export const MISSING_SAMPLE_FIELD_ERROR = html`Missing <em>sample</em> field in
-    metadata record`;
-export const EMPTY_SAMPLE_FIELD_ERROR = html`Empty <em>sample</em> field in
-    metadata record`;
-export const DUPLICATE_SAMPLE_IDS_ERROR =
-    "Duplicate sample IDs found in metadata";
-export const NO_VALID_SAMPLES_ERROR = "No valid samples found in metadata";
-
-/**
  * @param {Iterable<string>} cases
  * @param {number} [maxCasesToShow]
  */
@@ -466,7 +373,7 @@ function formatCases(cases, maxCasesToShow = 3) {
 
 /**
  *
- * @param {ErrorEntry} entry
+ * @param {{message: string, count: number, cases: string[]}} entry
  */
 function formatErrorEntry(entry) {
     if (entry.cases.length > 0) {
@@ -475,35 +382,5 @@ function formatErrorEntry(entry) {
         return html`${entry.message} (occurred ${entry.count} times)`;
     } else {
         return entry.message;
-    }
-}
-
-// --- copypasted from playground ---
-
-/**
- * https://simon-schraeder.de/posts/filereader-async/
- *
- * @param {File} file
- * @returns {Promise<string>}
- */
-function readFileAsync(file) {
-    return new Promise((resolve, reject) => {
-        let reader = new FileReader();
-        reader.onload = () => resolve(/** @type {string} */ (reader.result));
-        reader.onerror = reject;
-        reader.readAsText(file);
-    });
-}
-
-/**
- * @param {string} contents
- * @param {string} name
- */
-function inferFileType(contents, name) {
-    if (/\.json$/.test(name)) {
-        return "json";
-    } else {
-        // In bioinformatics, csv files are often actually tsv files
-        return contents.indexOf("\t") >= 0 ? "tsv" : "csv";
     }
 }

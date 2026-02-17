@@ -24,6 +24,7 @@ import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js
 import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
+import { MetadataSourceMenuController } from "../../sampleView/metadata/metadataSourceMenu.js";
 
 class ViewSettingsButton extends LitElement {
     /** @type {import("../../app.js").default} */
@@ -33,6 +34,8 @@ class ViewSettingsButton extends LitElement {
     #nestedPaths;
 
     #buttonRef = createRef();
+
+    #metadataSourceMenuController = new MetadataSourceMenuController();
 
     /**
      * @typedef {import("@genome-spy/core/view/view.js").default} View
@@ -127,7 +130,7 @@ class ViewSettingsButton extends LitElement {
         this.requestUpdate();
 
         // Update reset item
-        this.#showDropdown();
+        void this.#showDropdown();
 
         event.stopPropagation();
     }
@@ -137,7 +140,7 @@ class ViewSettingsButton extends LitElement {
             viewSettingsSlice.actions.restoreDefaultVisibilities()
         );
         // Update checkboxes
-        this.#showDropdown();
+        void this.#showDropdown();
     }
 
     #updateNestedPaths() {
@@ -247,10 +250,26 @@ class ViewSettingsButton extends LitElement {
                 );
             }
 
-            /** @type {() => import("../../utils/ui/contextMenu.js").MenuItem[]} */
+            /**
+             * @type {(() => import("../../utils/ui/contextMenu.js").MenuItem[] | Promise<import("../../utils/ui/contextMenu.js").MenuItem[]>) | undefined}
+             */
             let submenuOpener;
 
-            if (submenuItems.length) {
+            if (view instanceof MetadataView) {
+                const staticSubmenuItems = submenuItems.slice();
+                submenuOpener = async () => {
+                    const importAction =
+                        await this.#metadataSourceMenuController.createImportMenuItem(
+                            this.#app.getSampleView(),
+                            this.#app.intentPipeline
+                        );
+                    if (importAction) {
+                        return [...staticSubmenuItems, importAction];
+                    } else {
+                        return staticSubmenuItems;
+                    }
+                };
+            } else if (submenuItems.length) {
                 submenuOpener = () => submenuItems;
             }
 
@@ -302,7 +321,6 @@ class ViewSettingsButton extends LitElement {
 
     #showDropdown() {
         this.#updateNestedPaths();
-
         const items = this.#makeToggles();
 
         const defaultVis = !Object.keys(this.getVisibilities()).length;
@@ -326,6 +344,10 @@ class ViewSettingsButton extends LitElement {
         );
     }
 
+    #handleDropdownClick() {
+        this.#showDropdown();
+    }
+
     render() {
         // TODO: Highlight the button when the dropdown is open.
         return html`
@@ -334,7 +356,7 @@ class ViewSettingsButton extends LitElement {
                     ${ref(this.#buttonRef)}
                     class="tool-btn"
                     title="Toggle view visibilities"
-                    @click=${this.#showDropdown.bind(this)}
+                    @click=${this.#handleDropdownClick.bind(this)}
                 >
                     ${icon(faSlidersH).node[0]}
                 </button>

@@ -90,6 +90,8 @@ nav:
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"
+          - Configuring Metadata Sources: "sample-collections/metadata-sources.md"
           - Analyzing: "sample-collections/analyzing.md"
+          - Importing Metadata: "sample-collections/importing-metadata.md"
     - JavaScript API: "api.md"
     - License: "license.md"

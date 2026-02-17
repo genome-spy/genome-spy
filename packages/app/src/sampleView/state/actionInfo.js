@@ -39,6 +39,21 @@ export function formatSet(values, braces = true) {
 }
 
 /**
+ * @param {string[]} columnIds
+ * @returns {import("lit").TemplateResult}
+ */
+function formatColumnNameList(columnIds) {
+    const names = columnIds.slice(0, 3).map((name) => html`<em>${name}</em>`);
+    if (names.length === 1) {
+        return html`${names[0]}`;
+    } else if (names.length === 2) {
+        return html`${names[0]} and ${names[1]}`;
+    } else {
+        return html`${names[0]}, ${names[1]}, and ${names[2]}`;
+    }
+}
+
+/**
  * @typedef {Object} ActionHandlerContext
  * @property {any} payload
  * @property {Object} template
@@ -74,6 +89,27 @@ const actionHandlers = {
             title: "Add derived metadata",
             provenanceTitle: html`Add derived metadata
                 <strong>${name}</strong> from ${source}`,
+            icon: faTable,
+        };
+    },
+
+    addMetadataFromSource: ({ template, payload }) => {
+        const columnIds = Array.isArray(payload.columnIds)
+            ? payload.columnIds
+            : [];
+        const sourceLabel = payload.sourceId
+            ? html` from <strong>${payload.sourceId}</strong> source`
+            : "";
+        const noun = columnIds.length === 1 ? "attribute" : "attributes";
+        const listNames = columnIds.length > 0 && columnIds.length <= 3;
+        const attributeLabel = listNames
+            ? formatColumnNameList(columnIds)
+            : html`<strong>${columnIds.length}</strong> ${noun}`;
+
+        return {
+            ...template,
+            title: "Import metadata from source",
+            provenanceTitle: html`Import ${attributeLabel}${sourceLabel}`,
             icon: faTable,
         };
     },
@@ -251,10 +287,14 @@ export function getActionInfo(action, getAttributeInfo) {
         return;
     }
 
-    const payload = action.payload;
+    const payload =
+        action.payload && typeof action.payload === "object"
+            ? action.payload
+            : {};
 
-    const attributeInfo =
-        payload.attribute && getAttributeInfo(payload.attribute);
+    const attribute =
+        "attribute" in payload && payload.attribute ? payload.attribute : null;
+    const attributeInfo = attribute && getAttributeInfo(attribute);
     const attributeName =
         attributeInfo?.emphasizedName ??
         (attributeInfo?.name
@@ -276,9 +316,12 @@ export function getActionInfo(action, getAttributeInfo) {
         return handler({ payload, template, attributeName, attributeTitle });
     }
 
+    // Unknown actions should still be renderable in provenance menus. Avoid
+    // JSON-stringifying whole actions because payloads can be large or cyclic.
     return {
         ...template,
-        title: JSON.stringify(action),
+        title: actionType,
+        provenanceTitle: actionType,
         icon: faCircle,
     };
 }
