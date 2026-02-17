@@ -294,12 +294,26 @@ export function getActionInfo(action, getAttributeInfo) {
 
     const attribute =
         "attribute" in payload && payload.attribute ? payload.attribute : null;
-    const attributeInfo = attribute && getAttributeInfo(attribute);
+    let attributeInfo;
+    if (attribute) {
+        try {
+            attributeInfo = getAttributeInfo(attribute);
+        } catch (error) {
+            attributeInfo = undefined;
+        }
+    }
+    const fallbackAttributeName =
+        attribute &&
+        typeof attribute === "object" &&
+        "specifier" in attribute &&
+        typeof attribute.specifier === "string"
+            ? html` <em>${attribute.specifier}</em> `
+            : undefined;
     const attributeName =
         attributeInfo?.emphasizedName ??
         (attributeInfo?.name
             ? html` <em>${attributeInfo.name}</em> `
-            : undefined);
+            : fallbackAttributeName);
     const attributeTitle = attributeInfo?.title ?? attributeName;
 
     const template = {
