@@ -213,7 +213,9 @@ export default class MultiSelect extends LitElement {
 
     constructor() {
         super();
+        /** @type {string[]} */
         this.selectedValues = [];
+        /** @type {((query: string) => Promise<MultiSelectSearchResult[]>) | null} */
         this.search = null;
         this.placeholder = "Type to search";
         this.disabled = false;
@@ -224,6 +226,7 @@ export default class MultiSelect extends LitElement {
         this._loading = false;
         this._open = false;
         this._activeIndex = -1;
+        /** @type {MultiSelectOption[]} */
         this._suggestions = [];
         this._inputHasFocus = false;
 
@@ -291,10 +294,11 @@ export default class MultiSelect extends LitElement {
      */
     #queueSearch(query) {
         this.#clearDebounceTimer();
-        this.#debounceTimer = window.setTimeout(
-            () => void this.#executeSearch(query),
-            this.debounceMs
-        );
+        /** @type {() => void} */
+        const runSearch = () => {
+            void this.#executeSearch(query);
+        };
+        this.#debounceTimer = window.setTimeout(runSearch, this.debounceMs);
     }
 
     #clearDebounceTimer() {

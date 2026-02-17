@@ -90,7 +90,8 @@ if (!customElements.get("gs-multi-select-demo")) {
                 <div class="stack">
                     <gs-multi-select
                         .selectedValues=${this._selected}
-                        .search=${(query) => this.#search(query)}
+                        .search=${(/** @type {string} */ query) =>
+                            this.#search(query)}
                         .placeholder=${this.placeholder}
                         .debounceMs=${this.debounceMs}
                         .maxSuggestions=${this.maxSuggestions}
