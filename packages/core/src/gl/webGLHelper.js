@@ -291,7 +291,8 @@ export default class WebGLHelper {
                         props.scheme,
                         this.gl,
                         count,
-                        existingTexture
+                        existingTexture,
+                        !!props.reverse
                     );
                 }
             } else if (

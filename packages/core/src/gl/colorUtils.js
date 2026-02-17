@@ -10,8 +10,15 @@ import { createOrUpdateTexture } from "./webGLHelper.js";
  * @param {WebGL2RenderingContext} gl
  * @param {number} [count]
  * @param {WebGLTexture} [existingTexture]
+ * @param {boolean} [reverse]
  */
-export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
+export function createSchemeTexture(
+    schemeParams,
+    gl,
+    count,
+    existingTexture,
+    reverse = false
+) {
     const schemeName = isString(schemeParams)
         ? schemeParams
         : schemeParams.name;
@@ -24,10 +31,10 @@ export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
     if (schemeName) {
         const scheme = vegaScheme(schemeName);
         if (isFunction(scheme)) {
-            // TODO: Reverse
             const textureData = interpolatorToTextureData(scheme, {
                 extent,
                 count,
+                reverse,
             });
             return createOrUpdateTexture(
                 gl,
@@ -41,7 +48,12 @@ export function createSchemeTexture(schemeParams, gl, count, existingTexture) {
                 existingTexture
             );
         } else if (isArray(scheme)) {
-            return createDiscreteColorTexture(scheme, gl);
+            return createDiscreteColorTexture(
+                reverse ? Array.from(scheme).reverse() : scheme,
+                gl,
+                count,
+                existingTexture
+            );
         } else {
             throw new Error("Unknown scheme: " + schemeName);
         }
