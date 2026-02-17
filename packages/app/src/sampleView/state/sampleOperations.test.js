@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import {
     filterNominal,
@@ -63,16 +63,25 @@ describe("sampleOperations", () => {
         const accessor = (id) => samples[id];
 
         // Minimal ordinal scale stub to exercise the wrapper's ordering behavior.
-        const quantitative = wrapAccessorForComparison(accessor, {
-            type: "quantitative",
-        });
-        const ordinal = wrapAccessorForComparison(accessor, {
-            type: "ordinal",
-            scale: createOrdinalScale(["low", "medium", "high"]),
-        });
-        const nominal = wrapAccessorForComparison(accessor, {
-            type: "nominal",
-        });
+        const quantitative = wrapAccessorForComparison(
+            accessor,
+            /** @type {any} */ ({
+                type: "quantitative",
+            })
+        );
+        const ordinal = wrapAccessorForComparison(
+            accessor,
+            /** @type {any} */ ({
+                type: "ordinal",
+                scale: createOrdinalScale(["low", "medium", "high"]),
+            })
+        );
+        const nominal = wrapAccessorForComparison(
+            accessor,
+            /** @type {any} */ ({
+                type: "nominal",
+            })
+        );
 
         expect(quantitative("a")).toBe(3);
         expect(quantitative("b")).toBe(-Infinity);

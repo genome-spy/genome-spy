@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
 import { createDefaultValuesProvider } from "../sampleView/attributeValues.js";
@@ -149,7 +149,7 @@ describe("buildHierarchyBoxplotData", () => {
 
     it("uses interval aggregation scope for values", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "mean(score)",
             title: "mean(score)",
             emphasizedName: "mean(score)",
@@ -168,7 +168,7 @@ describe("buildHierarchyBoxplotData", () => {
                     interval && aggregation ? 100 : Number.NaN
                 ),
             type: "quantitative",
-        };
+        });
 
         // Non-obvious setup: values provider only yields finite values when scoped.
         const { statsRows } = buildHierarchyBoxplotData(

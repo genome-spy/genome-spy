@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("@fortawesome/fontawesome-svg-core", () => ({
@@ -77,11 +77,9 @@ describe("SampleView", () => {
 
         // Ensure sample extraction relies on a predictable domain for the test.
         view.getScaleResolution = () =>
-            /** @type {import("@genome-spy/core/view/scaleResolution.js").default} */ (
-                /** @type {unknown} */ ({
-                    getDataDomain: () => ["A", "B"],
-                })
-            );
+            /** @type {any} */ ({
+                getDataDomain: () => ["A", "B"],
+            });
 
         // Guard that subtree readiness triggers sample extraction when no metadata ids exist.
         view.handleBroadcast({

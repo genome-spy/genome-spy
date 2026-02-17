@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import {
@@ -6,6 +6,10 @@ import {
     augmentAttributeAction,
     sampleSlice,
 } from "./sampleSlice.js";
+/**
+ * @typedef {import("../types.js").AttributeIdentifier} AttributeIdentifier
+ * @typedef {import("./payloadTypes.js").AugmentedAttribute} AugmentedAttribute
+ */
 
 /**
  * @returns {import("./sampleState.js").SampleHierarchy}
@@ -15,8 +19,8 @@ function createSampleHierarchy() {
         sampleData: {
             ids: ["s1", "s2"],
             entities: {
-                s1: { id: "s1" },
-                s2: { id: "s2" },
+                s1: { id: "s1", displayName: "s1", indexNumber: 0 },
+                s2: { id: "s2", displayName: "s2", indexNumber: 1 },
             },
         },
         sampleMetadata: {
@@ -39,7 +43,10 @@ describe("augmentAttributeAction", () => {
         const action = {
             type: `${SAMPLE_SLICE_NAME}/filterByNominal`,
             payload: {
-                attribute: "status",
+                attribute: /** @type {AttributeIdentifier} */ ({
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "status",
+                }),
                 values: ["A"],
                 remove: false,
             },
@@ -49,14 +56,18 @@ describe("augmentAttributeAction", () => {
         const augmented = augmentAttributeAction(
             action,
             sampleHierarchy,
-            () => ({
-                name: "status",
-                accessor: (sampleId) => (sampleId == "s1" ? "A" : "B"),
-            })
+            () =>
+                /** @type {any} */ ({
+                    name: "status",
+                    accessor: (sampleId) => (sampleId == "s1" ? "A" : "B"),
+                })
         );
 
         expect(augmented).not.toBe(action);
-        expect(augmented.payload[AUGMENTED_KEY].values).toEqual({
+        const augmentedAttribute = /** @type {AugmentedAttribute} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.values).toEqual({
             s1: "A",
             s2: "B",
         });
@@ -69,23 +80,30 @@ describe("augmentAttributeAction", () => {
         const action = {
             type: `${SAMPLE_SLICE_NAME}/groupByNominal`,
             payload: {
-                attribute: "status",
+                attribute: /** @type {AttributeIdentifier} */ ({
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "status",
+                }),
             },
         };
 
         const augmented = augmentAttributeAction(
             action,
             sampleHierarchy,
-            () => ({
-                name: "status",
-                accessor: (sampleId) => (sampleId == "s1" ? "A" : "B"),
-                scale: {
-                    domain: () => ["A", "B"],
-                },
-            })
+            () =>
+                /** @type {any} */ ({
+                    name: "status",
+                    accessor: (sampleId) => (sampleId == "s1" ? "A" : "B"),
+                    scale: {
+                        domain: () => ["A", "B"],
+                    },
+                })
         );
 
-        expect(augmented.payload[AUGMENTED_KEY].domain).toEqual(["A", "B"]);
+        const augmentedAttribute = /** @type {AugmentedAttribute} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.domain).toEqual(["A", "B"]);
     });
 
     it("adds derived metadata payload for deriveMetadata actions", () => {
@@ -104,15 +122,19 @@ describe("augmentAttributeAction", () => {
         const augmented = augmentAttributeAction(
             action,
             sampleHierarchy,
-            () => ({
-                name: "x",
-                type: "quantitative",
-                valuesProvider: ({ sampleIds }) =>
-                    sampleIds.map((id) => (id === "s1" ? 1 : 2)),
-            })
+            () =>
+                /** @type {any} */ ({
+                    name: "x",
+                    type: "quantitative",
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+                })
         );
 
-        expect(augmented.payload[AUGMENTED_KEY].metadata).toEqual({
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata).toEqual({
             columnarMetadata: {
                 sample: ["s1", "s2"],
                 "group/sub/derived": [1, 2],

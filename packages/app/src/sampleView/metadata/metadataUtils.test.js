@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, it, expect } from "vitest";
 import {
     buildPathTree,
@@ -13,6 +13,11 @@ import {
     normalizeColumnarKeys,
     wrangleMetadata,
 } from "./metadataUtils.js";
+/**
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} SampleAttributeType
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} SampleAttributeDef
+ * @typedef {import("../state/sampleState.js").SampleMetadata} SampleMetadata
+ */
 
 describe("buildPathTree", () => {
     it("builds a hierarchy including three levels from dotted path names", () => {
@@ -166,8 +171,9 @@ describe("computeAttributeDefs", () => {
             },
         };
 
+        /** @type {Record<string, SampleAttributeDef>} */
         const existingDefs = {
-            age: { type: "nominal", label: "age-as-label" },
+            age: { type: "nominal", title: "age-as-title" },
         };
 
         const defs = computeAttributeDefs(sampleMetadata, existingDefs);
@@ -175,7 +181,7 @@ describe("computeAttributeDefs", () => {
         // existing def preserved (not overwritten)
         expect(defs.age).toBeDefined();
         expect(defs.age.type).toBe("nominal");
-        expect(defs.age.label).toBe("age-as-label");
+        expect(defs.age.title).toBe("age-as-title");
 
         // inferred fields added
         expect(defs.gender).toBeDefined();
@@ -207,6 +213,7 @@ describe("computeAttributeDefs", () => {
             },
         };
 
+        /** @type {Record<string, SampleAttributeDef>} */
         const existingDefs = {
             group: { type: "nominal", title: "Group" },
         };
@@ -272,6 +279,7 @@ describe("inferMetadataTypesForNodes", () => {
         const r = (s) => replacePathSeparator(s, ".");
 
         // Define raw types for attributes
+        /** @type {Map<string, SampleAttributeType>} */
         const rawTypes = new Map([
             ["sample", "nominal"],
             ["cohort", "nominal"],
@@ -328,6 +336,7 @@ describe("inferMetadataTypesForNodes", () => {
 
 describe("combineSampleMetadata", () => {
     it("merges two disjoint sample metadata objects", () => {
+        /** @type {SampleMetadata} */
         const a = {
             entities: {
                 s1: { a1: 1 },
@@ -337,6 +346,7 @@ describe("combineSampleMetadata", () => {
             attributeDefs: { a1: { type: "quantitative" } },
         };
 
+        /** @type {SampleMetadata} */
         const b = {
             entities: {
                 s2: { b1: "x" },
@@ -372,6 +382,7 @@ describe("combineSampleMetadata", () => {
     });
 
     it("merges duplicate attributeDefs keys when defs are identical", () => {
+        /** @type {SampleMetadata} */
         const a = {
             entities: {},
             attributeNames: ["a"],
@@ -382,6 +393,7 @@ describe("combineSampleMetadata", () => {
                 },
             },
         };
+        /** @type {SampleMetadata} */
         const b = {
             entities: {},
             attributeNames: ["b"],
@@ -403,6 +415,7 @@ describe("combineSampleMetadata", () => {
     });
 
     it("merges duplicate attributeDefs keys when defs are complementary", () => {
+        /** @type {SampleMetadata} */
         const a = {
             entities: {},
             attributeNames: ["a"],
@@ -410,6 +423,7 @@ describe("combineSampleMetadata", () => {
                 expression: { type: "quantitative" },
             },
         };
+        /** @type {SampleMetadata} */
         const b = {
             entities: {},
             attributeNames: ["b"],
@@ -428,11 +442,13 @@ describe("combineSampleMetadata", () => {
     });
 
     it("throws on conflicting duplicate attributeDefs keys", () => {
+        /** @type {SampleMetadata} */
         const a = {
             entities: {},
             attributeNames: ["a"],
             attributeDefs: { x: { type: "nominal" } },
         };
+        /** @type {SampleMetadata} */
         const b = {
             entities: {},
             attributeNames: ["b"],
@@ -656,6 +672,7 @@ describe("wrangleMetadata", () => {
             { sample: "s2", "group.a": 3, "group.b": 4 },
         ];
 
+        /** @type {Record<string, SampleAttributeDef>} */
         const attributeDefs = {
             "group/a": { type: "quantitative" },
             "group/b": { type: "quantitative" },
@@ -698,7 +715,9 @@ describe("wrangleMetadata", () => {
 
         const result = wrangleMetadata(
             rows,
-            { age: { type: "quantitative" } },
+            /** @type {Record<string, SampleAttributeDef>} */ ({
+                age: { type: "quantitative" },
+            }),
             null,
             "clinical"
         );
@@ -717,7 +736,10 @@ describe("wrangleMetadata", () => {
 
         const result = wrangleMetadata(
             rows,
-            { age: { type: "quantitative" }, "": { type: "quantitative" } },
+            /** @type {Record<string, SampleAttributeDef>} */ ({
+                age: { type: "quantitative" },
+                "": { type: "quantitative" },
+            }),
             null,
             "Expression/RNA"
         );
@@ -738,10 +760,13 @@ describe("wrangleMetadata", () => {
             { sample: "s2", TP53: -0.2, status: "B" },
         ];
 
-        const result = wrangleMetadata(rows, {
-            "": { type: "quantitative", scale: { domainMid: 0 } },
-            status: { type: "nominal" },
-        });
+        const result = wrangleMetadata(
+            rows,
+            /** @type {Record<string, SampleAttributeDef>} */ ({
+                "": { type: "quantitative", scale: { domainMid: 0 } },
+                status: { type: "nominal" },
+            })
+        );
 
         expect(result.attributeDefs).toEqual({
             TP53: { type: "quantitative", scale: { domainMid: 0 } },
@@ -757,10 +782,10 @@ describe("wrangleMetadata", () => {
 
         const result = wrangleMetadata(
             rows,
-            {
+            /** @type {Record<string, SampleAttributeDef>} */ ({
                 "": { type: "nominal" },
                 clinical: { type: "quantitative" },
-            },
+            }),
             "."
         );
 
@@ -777,7 +802,10 @@ describe("wrangleMetadata", () => {
 
         const result = wrangleMetadata(
             rows,
-            { a: { type: "quantitative" }, b: { type: "quantitative" } },
+            /** @type {Record<string, SampleAttributeDef>} */ ({
+                a: { type: "quantitative" },
+                b: { type: "quantitative" },
+            }),
             null,
             null,
             new Set(["b"])

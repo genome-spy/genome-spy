@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import setupStore from "./setupStore.js";
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
@@ -12,7 +12,10 @@ describe("setupStore", () => {
 
         store.dispatch(
             sampleSlice.actions.setSamples({
-                samples: [{ id: "s1" }, { id: "s2" }],
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                ],
             })
         );
         const afterSamples = store.getState().provenance.past.length;

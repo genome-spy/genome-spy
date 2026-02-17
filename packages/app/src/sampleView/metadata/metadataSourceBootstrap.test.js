@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 import { ActionCreators } from "redux-undo";
 import { sampleSlice } from "../state/sampleSlice.js";
@@ -141,9 +141,10 @@ describe("bootstrapInitialMetadataSources", () => {
 
         await bootstrapInitialMetadataSourcesAny(sampleView, intentPipeline);
 
-        const dispatchCalls = /** @type {any[]} */ (
+        const dispatchMock = /** @type {any} */ (
             sampleView.provenance.store.dispatch
-        ).mock.calls.map((call) => call[0]);
+        );
+        const dispatchCalls = dispatchMock.mock.calls.map((call) => call[0]);
         // Non-obvious: baseline marker primes redux-undo so next user action is undoable.
         expect(dispatchCalls).toEqual([
             { type: ActionCreators.clearHistory().type },

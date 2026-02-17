@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, it, expect, vi } from "vitest";
 import { subscribeTo, withMicrotask } from "./subscribeTo.js";
 
@@ -56,7 +56,11 @@ describe("subscribeTo", () => {
         /** @type {Listener<number>} */
         const listener = vi.fn();
 
-        const unsubscribe = subscribeTo(store, selector, listener);
+        const unsubscribe = subscribeTo(
+            /** @type {any} */ (store),
+            selector,
+            listener
+        );
 
         // changing an unrelated property does not trigger listener
         store.setState({ a: 1, b: 11 });
@@ -86,7 +90,12 @@ describe("subscribeTo", () => {
         /** @type {Listener<number>} */
         const listener = vi.fn();
 
-        const unsubscribe = subscribeTo(store, selector, listener, equals);
+        const unsubscribe = subscribeTo(
+            /** @type {any} */ (store),
+            selector,
+            listener,
+            equals
+        );
 
         // change from 0 -> 1 (parity differs) -> should notify
         store.setState({ v: 1 });

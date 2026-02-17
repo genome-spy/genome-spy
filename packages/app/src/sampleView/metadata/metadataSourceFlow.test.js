@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import { sampleSlice } from "../state/sampleSlice.js";
@@ -229,7 +229,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             groupPath: "",
         });
 
-        const augmented = await augmentAddMetadataFromSourceAction(
+        const augmented = await augmentAddMetadataFromSourceActionAny(
             action,
             sampleView
         );

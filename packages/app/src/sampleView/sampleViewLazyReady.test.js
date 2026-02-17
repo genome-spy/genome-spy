@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@fortawesome/fontawesome-svg-core", () => ({
@@ -30,7 +30,7 @@ describe("SampleView lazy readiness", () => {
         try {
             // Non-obvious: use fake timers to control the mock lazy delay.
             unregister = registerLazyDataSource(
-                (params) => params?.type === "mockLazy",
+                (params) => /** @type {any} */ (params)?.type === "mockLazy",
                 MockLazySource
             );
 
@@ -82,6 +82,7 @@ describe("SampleView lazy readiness", () => {
                 view: "beta-values",
                 field: "beta",
                 interval: [0, 10],
+                aggregation: { op: "count" },
             });
 
             let resolved = false;
@@ -104,7 +105,7 @@ describe("SampleView lazy readiness", () => {
 
             // After readiness resolves, the collector has completed and the
             // subtree is ready for the current x-domain.
-            const collector = trackView.getCollector();
+            const collector = /** @type {any} */ (trackView).getCollector();
             expect(collector).toBeDefined();
             expect(collector.completed).toBe(true);
             expect(isSubtreeLazyReady(trackView, readinessRequest)).toBe(true);

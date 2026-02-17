@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, it, expect, beforeEach } from "vitest";
 import {
     validateMetadata,
@@ -84,12 +84,13 @@ describe("buildSetMetadataPayload", () => {
                 ["a", "quantitative"],
                 ["b", "unset"],
             ]),
+            invalidInheritLeafNodes: [],
         };
 
         const result = buildSetMetadataPayload(
             parsedItems,
             new Set(["s1"]),
-            metadataConfig
+            /** @type {any} */ (metadataConfig)
         );
 
         expect(result.columnarMetadata).toEqual({
@@ -113,12 +114,13 @@ describe("buildSetMetadataPayload", () => {
             addUnderGroup: "extra.group",
             scales: new Map(),
             metadataNodeTypes: new Map([["clin/age", "quantitative"]]),
+            invalidInheritLeafNodes: [],
         };
 
         const result = buildSetMetadataPayload(
             parsedItems,
             new Set(["s1", "s2"]),
-            metadataConfig
+            /** @type {any} */ (metadataConfig)
         );
 
         expect(result.columnarMetadata).toEqual({
@@ -145,12 +147,13 @@ describe("buildSetMetadataPayload", () => {
                 ["", "nominal"],
                 ["child", "inherit"],
             ]),
+            invalidInheritLeafNodes: [],
         };
 
         const result = buildSetMetadataPayload(
             parsedItems,
             new Set(["s1", "s2"]),
-            metadataConfig
+            /** @type {any} */ (metadataConfig)
         );
 
         expect(result.attributeDefs).toEqual({
@@ -166,12 +169,13 @@ describe("buildSetMetadataPayload", () => {
             addUnderGroup: "group.sub",
             scales: new Map([["", { type: "linear" }]]),
             metadataNodeTypes: new Map([["", "quantitative"]]),
+            invalidInheritLeafNodes: [],
         };
 
         const result = buildSetMetadataPayload(
             parsedItems,
             new Set(["s1"]),
-            metadataConfig
+            /** @type {any} */ (metadataConfig)
         );
 
         expect(result.attributeDefs).toEqual({
@@ -187,12 +191,13 @@ describe("buildSetMetadataPayload", () => {
             addUnderGroup: "group/sub",
             scales: new Map([["", { type: "linear" }]]),
             metadataNodeTypes: new Map([["", "quantitative"]]),
+            invalidInheritLeafNodes: [],
         };
 
         const result = buildSetMetadataPayload(
             parsedItems,
             new Set(["s1"]),
-            metadataConfig
+            /** @type {any} */ (metadataConfig)
         );
 
         expect(result.attributeDefs).toEqual({

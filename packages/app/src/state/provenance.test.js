@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
@@ -14,16 +14,14 @@ import {
  * @prop {object} [lastPayload]
  */
 
-/**
- * @typedef {{ type: string, payload?: any }} Action
- */
+/** @typedef {{ type: string, payload?: any }} Action */
 
 /**
- * @param {SampleState} [state]
- * @param {Action} action
+ * @param {SampleState} state
+ * @param {Action} [action]
  * @returns {SampleState}
  */
-function sampleReducer(state = { count: 0 }, action) {
+function sampleReducer(state = { count: 0 }, action = { type: "" }) {
     if (action.type == "sample/add") {
         return {
             count: state.count + 1,
@@ -51,38 +49,46 @@ function createStore() {
 describe("Provenance", () => {
     it("exposes action history in order", () => {
         const store = createStore();
-        const intentExecutor = new IntentExecutor(store);
+        const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
         const provenance = new Provenance(store);
 
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 1 },
-        });
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 2 },
-        });
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1 },
+            })
+        );
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 2 },
+            })
+        );
 
         const history = provenance.getActionHistory();
         expect(history.length).toBe(2);
         expect(history[0].type).toBe("sample/add");
-        expect(history[1].payload).toEqual({ value: 2 });
+        expect(/** @type {any} */ (history[1]).payload).toEqual({ value: 2 });
     });
 
     it("serializes bookmark actions without augmentation data", () => {
         const store = createStore();
-        const intentExecutor = new IntentExecutor(store);
+        const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
         const provenance = new Provenance(store);
 
         // Use two actions so bookmarkable history isn't empty (it skips the first).
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 1, [AUGMENTED_KEY]: { values: { a: 1 } } },
-        });
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 2, [AUGMENTED_KEY]: { values: { b: 2 } } },
-        });
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1, [AUGMENTED_KEY]: { values: { a: 1 } } },
+            })
+        );
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 2, [AUGMENTED_KEY]: { values: { b: 2 } } },
+            })
+        );
 
         const bookmark = {
             actions: provenance.getBookmarkableActionHistory(),
@@ -96,21 +102,27 @@ describe("Provenance", () => {
 
     it("activates past and future states by index", () => {
         const store = createStore();
-        const intentExecutor = new IntentExecutor(store);
+        const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
         const provenance = new Provenance(store);
 
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 1 },
-        });
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 2 },
-        });
-        intentExecutor.dispatch({
-            type: "sample/add",
-            payload: { value: 3 },
-        });
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1 },
+            })
+        );
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 2 },
+            })
+        );
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 3 },
+            })
+        );
 
         // Index 1 maps to the second action (count=2) in redux-undo history.
         provenance.activateState(1);

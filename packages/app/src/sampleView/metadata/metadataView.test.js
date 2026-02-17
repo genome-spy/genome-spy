@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 
 import UnitView from "@genome-spy/core/view/unitView.js";
@@ -61,10 +61,13 @@ describe("MetadataView", () => {
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();
-        context.animator = {
-            transition: () => Promise.resolve(),
-            requestRender: () => undefined,
-        };
+        context.animator =
+            /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+                /** @type {any} */ ({
+                    transition: () => Promise.resolve(),
+                    requestRender: () => undefined,
+                })
+            );
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
@@ -109,7 +112,10 @@ describe("MetadataView", () => {
             store,
             sampleHierarchy,
         });
-        const metadataView = new MetadataView(sampleView, sampleView);
+        const metadataView = new MetadataView(
+            /** @type {any} */ (sampleView),
+            /** @type {any} */ (sampleView)
+        );
         expect(store.getListenerCount()).toBe(1);
         expect(
             sampleView.compositeAttributeInfoSource.attributeInfoSourcesByType
@@ -232,10 +238,13 @@ describe("MetadataView", () => {
     it("escapes dotted attribute names in encoding fields", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();
-        context.animator = {
-            transition: () => Promise.resolve(),
-            requestRender: () => undefined,
-        };
+        context.animator =
+            /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+                /** @type {any} */ ({
+                    transition: () => Promise.resolve(),
+                    requestRender: () => undefined,
+                })
+            );
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
@@ -278,7 +287,10 @@ describe("MetadataView", () => {
             store,
             sampleHierarchy,
         });
-        const metadataView = new MetadataView(sampleView, sampleView);
+        const metadataView = new MetadataView(
+            /** @type {any} */ (sampleView),
+            /** @type {any} */ (sampleView)
+        );
 
         const sampleMetadata = {
             attributeNames: ["group1.foo", "plain"],
@@ -320,12 +332,15 @@ describe("MetadataView", () => {
             );
 
         const dottedView = unitViews.find(
-            (view) => view.spec.encoding.color.field === "group1\\.foo"
+            (view) =>
+                /** @type {any} */ (view.spec.encoding?.color).field ===
+                "group1\\.foo"
         );
         expect(dottedView).toBeDefined();
 
         const plainView = unitViews.find(
-            (view) => view.spec.encoding.color.field === "plain"
+            (view) =>
+                /** @type {any} */ (view.spec.encoding?.color).field === "plain"
         );
         expect(plainView).toBeDefined();
 
@@ -335,10 +350,13 @@ describe("MetadataView", () => {
     it("renders hierarchy for uploaded metadata converted with a separator", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();
-        context.animator = {
-            transition: () => Promise.resolve(),
-            requestRender: () => undefined,
-        };
+        context.animator =
+            /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+                /** @type {any} */ ({
+                    transition: () => Promise.resolve(),
+                    requestRender: () => undefined,
+                })
+            );
         context.requestLayoutReflow = () => undefined;
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
@@ -381,7 +399,10 @@ describe("MetadataView", () => {
             store,
             sampleHierarchy,
         });
-        const metadataView = new MetadataView(sampleView, sampleView);
+        const metadataView = new MetadataView(
+            /** @type {any} */ (sampleView),
+            /** @type {any} */ (sampleView)
+        );
 
         // Simulates uploaded metadata where delimiter "." was converted to "/".
         const sampleMetadata = {

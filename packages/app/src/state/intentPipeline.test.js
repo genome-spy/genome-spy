@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 import IntentPipeline from "./intentPipeline.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
@@ -347,7 +347,7 @@ describe("IntentPipeline", () => {
 
     it("applies action-hook augmentation before dispatch", async () => {
         const deps = createDeps();
-        const pipeline = /**  {any} */ new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         pipeline.registerActionHook({
             predicate: (action) => action.type === "sample/augment",
@@ -355,10 +355,11 @@ describe("IntentPipeline", () => {
                 if (!context.signal) {
                     throw new Error("Missing signal");
                 }
+                const payload = /** @type {any} */ (action).payload;
                 return {
                     ...action,
                     payload: {
-                        ...action.payload,
+                        ...payload,
                         augmented: true,
                     },
                 };
@@ -379,7 +380,7 @@ describe("IntentPipeline", () => {
 
     it("rejects and skips dispatch when action-hook augmentation fails", async () => {
         const deps = createDeps();
-        const pipeline = /**  {any} */ new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         pipeline.registerActionHook({
             predicate: (action) => action.type === "sample/augment-error",
@@ -403,7 +404,7 @@ describe("IntentPipeline", () => {
 
     it("aborts action-hook augmentation when the current action is canceled", async () => {
         const deps = createDeps();
-        const pipeline = /**  {any} */ new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const started = createDeferred();
         const finish = createDeferred();
@@ -439,7 +440,7 @@ describe("IntentPipeline", () => {
 
     it("aborts in-flight work when abortCurrent is called", async () => {
         const deps = createDeps();
-        const pipeline = /**  {any} */ new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureStarted = createDeferred();
         const ensureDeferred = createDeferred();

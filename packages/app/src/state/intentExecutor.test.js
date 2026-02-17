@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
 
@@ -37,7 +37,7 @@ describe("IntentExecutor", () => {
 
         const result = executor.dispatch(action);
 
-        const dispatched = store.dispatch.mock.calls[0][0];
+        const dispatched = /** @type {any} */ (store.dispatch).mock.calls[0][0];
         expect(dispatched.payload).toEqual({
             value: 1,
             first: true,
@@ -69,9 +69,11 @@ describe("IntentExecutor", () => {
 
         executor.dispatchBatch(actions);
 
-        expect(store.dispatch.mock.calls.map((call) => call[0])).toEqual(
-            actions
-        );
+        expect(
+            /** @type {any} */ (store.dispatch).mock.calls.map(
+                (call) => call[0]
+            )
+        ).toEqual(actions);
     });
 
     it("removes augmenters so they no longer apply", () => {
@@ -86,12 +88,14 @@ describe("IntentExecutor", () => {
         executor.addActionAugmenter(augmenter);
         executor.removeActionAugmenter(augmenter);
 
-        executor.dispatch({
-            type: "sample/add",
-            payload: { value: 1 },
-        });
+        executor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1 },
+            })
+        );
 
-        const dispatched = store.dispatch.mock.calls[0][0];
+        const dispatched = /** @type {any} */ (store.dispatch).mock.calls[0][0];
         expect(dispatched.payload).toEqual({ value: 1 });
     });
 });

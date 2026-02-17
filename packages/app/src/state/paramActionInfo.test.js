@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
@@ -66,7 +66,7 @@ class FakeView {
      * @returns {import("@genome-spy/core/view/view.js").VisitResult}
      */
     visit(visitor) {
-        const result = visitor(this);
+        const result = visitor(/** @type {any} */ (this));
         if (result === VISIT_STOP) {
             return VISIT_STOP;
         }
@@ -105,7 +105,7 @@ describe("getParamActionInfo", () => {
             value: { type: "value", value: 5 },
         });
 
-        const info = getParamActionInfo(action, view);
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
         expect(title).toContain("Set threshold = 5 in Overview");
@@ -122,7 +122,10 @@ describe("getParamActionInfo", () => {
             selector: { scope: [], param: "selected" },
             value: { type: "point", keyFields: ["id"], keys: [] },
         });
-        const clearInfo = getParamActionInfo(clearAction, view);
+        const clearInfo = getParamActionInfo(
+            clearAction,
+            /** @type {any} */ (view)
+        );
         const clearTitle = normalizeTitle(clearInfo);
 
         expect(clearTitle).toContain("Clear selection selected in points");
@@ -135,7 +138,10 @@ describe("getParamActionInfo", () => {
                 keys: [["a"], ["b"]],
             },
         });
-        const multiInfo = getParamActionInfo(multiAction, view);
+        const multiInfo = getParamActionInfo(
+            multiAction,
+            /** @type {any} */ (view)
+        );
         const multiTitle = normalizeTitle(multiInfo);
 
         expect(multiTitle).toContain("Select selected (2 points) in points");
@@ -156,7 +162,7 @@ describe("getParamActionInfo", () => {
             },
         });
 
-        const info = getParamActionInfo(action, view);
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
         expect(title).toContain("Brush brush");
@@ -178,7 +184,7 @@ describe("getParamActionInfo", () => {
         });
 
         root.visit = (visitor) => {
-            const result = visitor(root);
+            const result = visitor(/** @type {any} */ (root));
             if (result === VISIT_STOP) {
                 return VISIT_STOP;
             }
@@ -204,7 +210,7 @@ describe("getParamActionInfo", () => {
             },
         });
 
-        const info = getParamActionInfo(action, root);
+        const info = getParamActionInfo(action, /** @type {any} */ (root));
         const title = normalizeTitle(info);
 
         expect(title).toContain("from Origin");
@@ -227,7 +233,7 @@ describe("getParamActionInfo", () => {
             value: { type: "value", value: 0.75 },
         });
 
-        const info = getParamActionInfo(action, view);
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
         expect(title).toContain("in ExplicitView");

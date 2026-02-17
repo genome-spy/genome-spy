@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import {
     AUGMENTED_KEY,
@@ -13,11 +13,15 @@ import {
  */
 
 /**
- * @param {SampleState} [state]
- * @param {import("@reduxjs/toolkit").Action} action
+ * @typedef {{ type: string, payload?: any }} Action
+ */
+
+/**
+ * @param {SampleState} state
+ * @param {Action} [action]
  * @returns {SampleState}
  */
-function sampleReducer(state = { count: 0 }, action) {
+function sampleReducer(state = { count: 0 }, action = { type: "" }) {
     if (action.type == "sample/inc") {
         return { count: state.count + 1 };
     }

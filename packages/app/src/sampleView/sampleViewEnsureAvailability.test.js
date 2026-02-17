@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
@@ -13,10 +13,10 @@ vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
 }));
 
 /**
- * @returns {{resolve: () => void, promise: Promise<void>}}
+ * @returns {{resolve: (value?: void) => void, promise: Promise<void>}}
  */
 function createDeferred() {
-    /** @type {() => void} */
+    /** @type {(value?: void) => void} */
     let resolve;
     const promise = new Promise((res) => {
         resolve = res;
@@ -48,7 +48,10 @@ describe("SampleView ensureViewAttributeAvailability", () => {
         });
 
         // Prevent sample extraction from running during subtree readiness.
-        view.getSamples = () => ["dummy"];
+        view.getSamples = () =>
+            /** @type {any} */ ([
+                { id: "dummy", displayName: "dummy", indexNumber: 0 },
+            ]);
 
         const target = view.findDescendantByName("target-view");
         const zoomDeferred = createDeferred();
@@ -56,7 +59,7 @@ describe("SampleView ensureViewAttributeAvailability", () => {
 
         // Non-obvious: patch zoomTo to control the async sequence.
         target.getScaleResolution = () =>
-            /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").default} */ ({
+            /** @type {any} */ ({
                 getDomain: () => [0, 10],
                 zoomTo,
             });

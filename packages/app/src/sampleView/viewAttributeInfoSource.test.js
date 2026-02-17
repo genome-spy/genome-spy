@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./viewRef.js", () => ({
@@ -20,6 +20,8 @@ vi.mock("./attributeAggregation/intervalFormatting.js", () => ({
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { resolveViewRef } from "./viewRef.js";
 import templateResultToString from "../utils/templateResultToString.js";
+
+const resolveViewRefMock = /** @type {any} */ (resolveViewRef);
 
 /**
  * @returns {import("@genome-spy/core/view/unitView.js").default}
@@ -45,7 +47,7 @@ function createViewStub() {
 describe("getViewAttributeInfo", () => {
     it("shows selection source labels using the param name", () => {
         const view = createViewStub();
-        resolveViewRef.mockReturnValue(view);
+        resolveViewRefMock.mockReturnValue(view);
 
         const info = getViewAttributeInfo(/** @type {any} */ ({}), {
             type: "VALUE_AT_LOCUS",
@@ -66,7 +68,7 @@ describe("getViewAttributeInfo", () => {
 
     it("shows literal interval labels using formatted coordinates", () => {
         const view = createViewStub();
-        resolveViewRef.mockReturnValue(view);
+        resolveViewRefMock.mockReturnValue(view);
 
         const info = getViewAttributeInfo(/** @type {any} */ ({}), {
             type: "VALUE_AT_LOCUS",

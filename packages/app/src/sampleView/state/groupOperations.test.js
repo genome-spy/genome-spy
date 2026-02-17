@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import {
     createThresholdGroupAccessor,
@@ -55,33 +55,33 @@ describe("groupOperations", () => {
         const sampleGroup = {
             name: "root",
             title: "Root",
-            samples: [1, 2, 3, 4],
+            samples: ["1", "2", "3", "4"],
         };
 
-        groupSamplesByThresholds(sampleGroup, (value) => value, [
+        groupSamplesByThresholds(sampleGroup, (value) => Number(value), [
             { operator: "lt", operand: 2 },
             { operator: "lt", operand: 4 },
         ]);
 
         expect(sampleGroup.groups).toHaveLength(3);
         // Threshold groups are ordered from highest to lowest by design.
-        expect(sampleGroup.groups[0].samples).toEqual([4]);
-        expect(sampleGroup.groups[1].samples).toEqual([2, 3]);
-        expect(sampleGroup.groups[2].samples).toEqual([1]);
+        expect(sampleGroup.groups[0].samples).toEqual(["4"]);
+        expect(sampleGroup.groups[1].samples).toEqual(["2", "3"]);
+        expect(sampleGroup.groups[2].samples).toEqual(["1"]);
     });
 
     it("handles quartile grouping when all values are equal", () => {
         const sampleGroup = {
             name: "root",
             title: "Root",
-            samples: [2, 2, 2],
+            samples: ["2", "2", "2"],
         };
 
         // All values equal should collapse into a single group.
-        groupSamplesByQuartiles(sampleGroup, (value) => value);
+        groupSamplesByQuartiles(sampleGroup, (value) => Number(value));
 
         expect(sampleGroup.groups).toHaveLength(1);
-        expect(sampleGroup.groups[0].samples).toEqual([2, 2, 2]);
+        expect(sampleGroup.groups[0].samples).toEqual(["2", "2", "2"]);
     });
 
     it("creates a threshold accessor with lt and lte semantics", () => {

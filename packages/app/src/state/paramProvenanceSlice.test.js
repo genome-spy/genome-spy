@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
 import {
@@ -57,6 +57,9 @@ describe("paramProvenanceSlice", () => {
 
         expect(state.past.length).toBe(0);
         const key = makeParamSelectorKey(selector);
-        expect(state.present.paramProvenance.entries[key].value.value).toBe(2);
+        expect(
+            /** @type {any} */ (state.present.paramProvenance.entries[key])
+                .value.value
+        ).toBe(2);
     });
 });

@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { html } from "lit";
 import {
@@ -11,6 +11,21 @@ import { getActionInfo } from "./actionInfo.js";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
 import templateResultToString from "../../utils/templateResultToString.js";
 
+/**
+ * @returns {import("../types.js").AttributeInfo}
+ */
+function makeAttributeInfo() {
+    return {
+        name: "age",
+        title: "Age",
+        emphasizedName: "Age",
+        attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "age" },
+        accessor: () => undefined,
+        valuesProvider: () => [],
+        type: "nominal",
+    };
+}
+
 describe("getActionInfo", () => {
     it("returns info for known sample actions", () => {
         const action = {
@@ -18,7 +33,10 @@ describe("getActionInfo", () => {
             payload: { samples: [] },
         };
 
-        const info = getActionInfo(action, () => undefined);
+        const info = getActionInfo(
+            /** @type {any} */ (action),
+            () => undefined
+        );
 
         expect(info.title).toBe("Set samples");
         expect(info.icon).toBe(faCheck);
@@ -30,10 +48,7 @@ describe("getActionInfo", () => {
             payload: { attribute: "age" },
         };
 
-        const info = getActionInfo(action, () => ({
-            name: "age",
-            title: "Age",
-        }));
+        const info = getActionInfo(action, () => makeAttributeInfo());
 
         expect(info.title).toBe("Sort by");
         expect(info.provenanceTitle).toBeDefined();
@@ -49,7 +64,10 @@ describe("getActionInfo", () => {
             },
         };
 
-        const info = getActionInfo(action, () => undefined);
+        const info = getActionInfo(
+            /** @type {any} */ (action),
+            () => undefined
+        );
         const provenanceTitle = templateResultToString(info.provenanceTitle);
 
         expect(info.title).toBe("Import metadata from source");
@@ -95,8 +113,10 @@ describe("getActionInfo", () => {
         };
 
         const info = getActionInfo(action, () => ({
+            ...makeAttributeInfo(),
             name: "count(value)",
             title: html`count(value) in selection <strong>brush</strong>`,
+            emphasizedName: "count(value)",
         }));
 
         const provenanceTitle = templateResultToString(info.provenanceTitle);
@@ -146,7 +166,10 @@ describe("getActionInfo", () => {
             type: `${SAMPLE_SLICE_NAME}/__baseline__`,
         };
 
-        const info = getActionInfo(action, () => undefined);
+        const info = getActionInfo(
+            /** @type {any} */ (action),
+            () => undefined
+        );
 
         expect(info.icon).toBe(faCircle);
         expect(info.title).toContain("__baseline__");

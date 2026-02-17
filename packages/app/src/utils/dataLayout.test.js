@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-check
 import { describe, it, expect } from "vitest";
 import { rowsToColumns, columnsToRows } from "./dataLayout.js";
 
@@ -99,7 +99,9 @@ describe("columnsToRows", () => {
             a: [1, 2],
             b: "not-an-array",
         };
-        expect(() => columnsToRows(columns)).toThrow(/not an array/);
+        expect(() => columnsToRows(/** @type {any} */ (columns))).toThrow(
+            /not an array/
+        );
     });
 
     it("preserves order of keys", () => {
