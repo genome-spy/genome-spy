@@ -7,6 +7,7 @@ import {
     faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import "../../components/generic/multiSelect.js";
 import { FormController } from "../../components/forms/formController.js";
 import { formField } from "../../components/forms/formField.js";
 import {
@@ -16,7 +17,101 @@ import {
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./metadataValidation.js";
 
-const DEFAULT_COLUMN_PLACEHOLDER = "One column id per line";
+const DEFAULT_COLUMN_PLACEHOLDER = "Search column ids";
+const DEFAULT_PASTE_PLACEHOLDER = "One column id per line";
+const MAX_SEARCH_SUGGESTIONS = 100;
+
+class PasteColumnIdsDialog extends BaseDialog {
+    static properties = {
+        ...super.properties,
+        pasteInput: { state: true },
+        placeholder: { state: true },
+    };
+
+    static styles = [
+        ...super.styles,
+        css`
+            dialog {
+                width: min(560px, calc(100vw - 2rem));
+            }
+
+            textarea {
+                min-height: 12rem;
+                resize: vertical;
+                width: 100%;
+            }
+        `,
+    ];
+
+    constructor() {
+        super();
+        this.dialogTitle = "Paste column ids";
+        this.pasteInput = "";
+        this.placeholder = DEFAULT_PASTE_PLACEHOLDER;
+    }
+
+    renderBody() {
+        return html`
+            <div class="gs-form-group">
+                <label for="pastedColumns">Column ids</label>
+                <textarea
+                    id="pastedColumns"
+                    autofocus
+                    placeholder=${this.placeholder}
+                    .value=${this.pasteInput}
+                    @input=${(/** @type {InputEvent} */ event) => {
+                        const target =
+                            /** @type {HTMLTextAreaElement | null} */ (
+                                event.currentTarget
+                            );
+                        this.pasteInput = target?.value ?? "";
+                    }}
+                ></textarea>
+                <small>Enter one column id per line.</small>
+            </div>
+        `;
+    }
+
+    renderButtons() {
+        return [
+            this.makeCloseButton("Cancel"),
+            this.makeButton(
+                "Use selected columns",
+                () => {
+                    this.finish({
+                        ok: true,
+                        data: {
+                            columnIds: parseColumnQueries(this.pasteInput),
+                        },
+                    });
+                },
+                { isPrimary: true }
+            ),
+        ];
+    }
+}
+
+customElements.define("gs-paste-column-ids-dialog", PasteColumnIdsDialog);
+
+/**
+ * @param {string} input
+ * @param {string} placeholder
+ */
+async function showPasteColumnIdsDialog(input, placeholder) {
+    const detail = await showDialog(
+        "gs-paste-column-ids-dialog",
+        (/** @type {PasteColumnIdsDialog} */ dialog) => {
+            dialog.pasteInput = input;
+            dialog.placeholder = placeholder;
+        }
+    );
+
+    if (!detail.ok) {
+        return null;
+    }
+
+    return /** @type {{ columnIds: string[] }} */ (detail.data).columnIds;
+}
 
 /**
  * @typedef {{ severity: "info" | "warning" | "error", summary: string, details?: string }} AlignmentIssue
@@ -100,6 +195,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _preview: { state: true },
         _columnPlaceholder: { state: true },
         _availableColumnCount: { state: true },
+        _availableColumnIds: { state: true },
         _alignmentIssue: { state: true },
         _showAlignmentDetails: { state: true },
     };
@@ -124,10 +220,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 margin-top: var(--gs-basic-spacing, 10px);
             }
 
-            textarea {
-                min-height: 10rem;
-                resize: vertical;
-                width: 100%;
+            .column-toolbar {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                margin-top: 0.5em;
             }
 
             .inline-link {
@@ -162,6 +259,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._preview = null;
         this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
         this._availableColumnCount = undefined;
+        /** @type {string[]} */
+        this._availableColumnIds = [];
         this._previewVersion = 0;
         this._sourceContextVersion = 0;
         this._previewQueryKey = "";
@@ -226,8 +325,8 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 <div class="gs-alert info">
                     ${icon(faInfoCircle).node[0]}
                     <div>
-                        Import one or more metadata columns by typing or pasting
-                        one column id per line.
+                        Import one or more metadata columns by searching,
+                        selecting, or pasting column ids.
                     </div>
                 </div>
 
@@ -266,17 +365,37 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     : nothing}
 
                 <div class="gs-form-group">
-                    <label for="columnInput">${columnsLabel}</label>
-                    <textarea
+                    <div class="label">${columnsLabel}</div>
+                    <gs-multi-select
                         id="columnInput"
-                        placeholder=${this._columnPlaceholder}
-                        ${formField(this._form, "columns")}
-                        @focus=${() => this.#handleColumnsFocus()}
+                        class=${this._form.error("columns") ? "is-invalid" : ""}
+                        .selectedValues=${parseColumnQueries(this.columnInput)}
+                        .placeholder=${this._columnPlaceholder}
+                        .search=${(/** @type {string} */ query) =>
+                            this.#searchAvailableColumns(query)}
+                        .allowUnknown=${true}
+                        .maxSuggestions=${MAX_SEARCH_SUGGESTIONS}
+                        aria-invalid=${this._form.error("columns")
+                            ? "true"
+                            : "false"}
+                        @focusin=${() => this.#handleColumnsFocus()}
                         @change=${(/** @type {Event} */ event) =>
-                            this.#handleColumnsCommit(event)}
-                    ></textarea>
+                            this.#handleColumnSelectionChange(event)}
+                    ></gs-multi-select>
+                    <div class="column-toolbar">
+                        <button
+                            class="btn"
+                            type="button"
+                            @click=${() => void this.#handlePasteColumns()}
+                        >
+                            Paste column ids
+                        </button>
+                    </div>
                     ${this._form.feedback("columns")}
-                    <small>Enter one column id per line.</small>
+                    <small>
+                        Start typing to search. Press Enter to add the active
+                        suggestion.
+                    </small>
                 </div>
 
                 <div class="gs-form-group">
@@ -326,6 +445,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
+        this._availableColumnIds = [];
         const sourceLabel = this.source.name ?? this.source.id ?? "source";
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
@@ -351,17 +471,58 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         return this._adapter;
     }
 
+    #handleColumnsFocus() {
+        this._columnValidationEnabled = true;
+    }
+
     /**
      * @param {Event} event
      */
-    #handleColumnsCommit(event) {
-        event.preventDefault();
+    #handleColumnSelectionChange(event) {
+        const change =
+            /** @type {import("../../components/generic/multiSelect.js").MultiSelectChangeEvent} */ (
+                event
+            );
+        this.#setColumnSelection(change.values);
+    }
+
+    async #handlePasteColumns() {
         this._columnValidationEnabled = true;
+        const pasted = await showPasteColumnIdsDialog(
+            this.columnInput,
+            DEFAULT_PASTE_PLACEHOLDER
+        );
+
+        if (!pasted) {
+            return;
+        }
+
+        this.#setColumnSelection(pasted);
+    }
+
+    /**
+     * @param {string[]} columnIds
+     */
+    #setColumnSelection(columnIds) {
+        const normalized = parseColumnQueries(columnIds.join("\n"));
+        this.columnInput = normalized.join("\n");
+        this._form.revalidate("columns");
         void this.#updatePreview();
     }
 
-    #handleColumnsFocus() {
-        this._columnValidationEnabled = true;
+    /**
+     * @param {string} query
+     * @returns {Promise<string[]>}
+     */
+    async #searchAvailableColumns(query) {
+        const term = query.trim().toLowerCase();
+        if (term.length === 0) {
+            return this._availableColumnIds;
+        }
+
+        return this._availableColumnIds.filter((columnId) =>
+            columnId.toLowerCase().includes(term)
+        );
     }
 
     async #updatePreview() {
@@ -434,6 +595,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 }
                 this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
                 this._availableColumnCount = undefined;
+                this._availableColumnIds = [];
             });
 
         void adapter
@@ -463,17 +625,18 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @param {{ id: string }[]} columns
      */
     #applyColumns(columns) {
+        // Cache a sorted column-id list once and reuse it for all search queries.
+        this._availableColumnIds = columns
+            .map((column) => column.id)
+            .sort((a, b) => a.localeCompare(b));
         this._availableColumnCount = columns.length;
         if (columns.length === 0) {
             this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
             return;
         }
 
-        const examples = columns
-            .slice(0, 3)
-            .map((column) => column.id)
-            .join("\n");
-        this._columnPlaceholder = "e.g.\n" + examples;
+        const examples = this._availableColumnIds.slice(0, 3).join(", ");
+        this._columnPlaceholder = "e.g. " + examples;
     }
 
     /**
