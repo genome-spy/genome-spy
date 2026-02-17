@@ -80,8 +80,8 @@ This project has received funding from the European Union's Horizon 2020
 research and innovation programme under grant agreement No. 965193
 ([DECIDER](https://www.deciderproject.eu/)) and No. 847912
 ([RESCUER](https://www.rescuer.uio.no/)), as well as from the Biomedicum
-Helsinki Foundation, the Sigrid Jusélius Foundation, and the Cancer Foundation
-Finland.
+Helsinki Foundation, the Sigrid Jusélius Foundation, the Cancer Foundation
+Finland, and Orion Research Foundation.
 
 Contains some code copied and adapted from the following projects:
 
