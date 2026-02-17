@@ -17,11 +17,11 @@ function createSourceDef() {
             },
             sampleIdField: "sample",
         },
-        defaultAttributeDef: {
-            type: "quantitative",
-            scale: { domainMid: 0, scheme: "redblue" },
-        },
         columnDefs: {
+            TP53: {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
             status: {
                 type: "nominal",
             },
@@ -48,7 +48,7 @@ describe("DataMetadataSourceAdapter", () => {
         expect(resolved.missing).toEqual(["missing"]);
     });
 
-    it("fetches selected columns and applies attribute defaults", async () => {
+    it("fetches selected columns and applies configured attribute defs", async () => {
         const adapter = new DataMetadataSourceAdapter(createSourceDef());
 
         const metadata = await adapter.fetchColumns({
@@ -132,5 +132,149 @@ describe("DataMetadataSourceAdapter", () => {
         ).rejects.toThrow(
             'Column "status" is excluded by metadata source configuration.'
         );
+    });
+
+    it("applies hierarchy-aware column defs with attributeGroupSeparator", async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            id: "clinical",
+            attributeGroupSeparator: ".",
+            columnDefs: {
+                patientId: {
+                    type: "nominal",
+                },
+                clinical: {
+                    type: "quantitative",
+                    scale: { scheme: "blues" },
+                },
+                "clinical.OS": {
+                    visible: false,
+                },
+                signature: {
+                    type: "quantitative",
+                    scale: { scheme: "yelloworangered" },
+                    visible: false,
+                },
+            },
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        {
+                            sample: "s1",
+                            patientId: "p1",
+                            "clinical.PFI": 10,
+                            "clinical.OS": 5,
+                            "signature.HRD": 1.3,
+                        },
+                        {
+                            sample: "s2",
+                            patientId: "p2",
+                            "clinical.PFI": 20,
+                            "clinical.OS": 8,
+                            "signature.HRD": 0.7,
+                        },
+                    ],
+                },
+                sampleIdField: "sample",
+            },
+        });
+
+        const metadata = await adapter.fetchColumns({
+            columnIds: ["clinical.PFI", "clinical.OS", "signature.HRD"],
+            sampleIds: ["s1", "s2"],
+        });
+
+        expect(metadata.columnarMetadata).toEqual({
+            sample: ["s1", "s2"],
+            "clinical/PFI": [10, 20],
+            "clinical/OS": [5, 8],
+            "signature/HRD": [1.3, 0.7],
+        });
+        expect(metadata.attributeDefs).toEqual({
+            clinical: {
+                type: "quantitative",
+                scale: { scheme: "blues" },
+            },
+            "clinical/OS": {
+                visible: false,
+            },
+            signature: {
+                type: "quantitative",
+                scale: { scheme: "yelloworangered" },
+                visible: false,
+            },
+        });
+    });
+
+    it('applies columnDefs[""] as source-level default for flat columns', async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            id: "expression",
+            columnDefs: {
+                "": {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+                status: {
+                    type: "nominal",
+                },
+            },
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        { sample: "s1", TP53: 1.2, status: "A" },
+                        { sample: "s2", TP53: -0.2, status: "B" },
+                    ],
+                },
+                sampleIdField: "sample",
+            },
+        });
+
+        const metadata = await adapter.fetchColumns({
+            columnIds: ["TP53", "status"],
+            sampleIds: ["s1", "s2"],
+        });
+
+        expect(metadata.attributeDefs).toEqual({
+            "": {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
+            status: {
+                type: "nominal",
+            },
+        });
+    });
+
+    it('maps columnDefs[""] to groupPath when imported under a group', async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            id: "expression",
+            groupPath: "Expression",
+            columnDefs: {
+                "": {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+            },
+            backend: {
+                backend: "data",
+                data: {
+                    values: [{ sample: "s1", TP53: 1.2 }],
+                },
+                sampleIdField: "sample",
+            },
+        });
+
+        const metadata = await adapter.fetchColumns({
+            columnIds: ["TP53"],
+            sampleIds: ["s1"],
+        });
+
+        expect(metadata.attributeDefs).toEqual({
+            Expression: {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
+        });
     });
 });

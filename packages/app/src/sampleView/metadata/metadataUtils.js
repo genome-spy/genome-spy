@@ -485,13 +485,31 @@ export function applyGroupToAttributeDefs(
     placeUnderGroup,
     separator
 ) {
+    const groupPath = splitPath(placeUnderGroup, separator);
+    const normalizedGroupPath = joinPathParts(
+        groupPath,
+        METADATA_PATH_SEPARATOR
+    );
+
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
+    const nonRootAttributeDefs = {};
+    let rootDef = undefined;
+    for (const [key, value] of Object.entries(attributeDefs)) {
+        if (key === "") {
+            rootDef = value;
+        } else {
+            nonRootAttributeDefs[key] = value;
+        }
+    }
+
     // TODO(metadata-sources): If separator is undefined, groupPath should be
     // treated as a single segment (no implicit splitting).
     // Current behavior delegates to splitPath default "/" semantics.
-    return placeKeysUnderGroup(
-        attributeDefs,
-        splitPath(placeUnderGroup, separator)
-    );
+    const prefixed = placeKeysUnderGroup(nonRootAttributeDefs, groupPath);
+    if (rootDef && !prefixed[normalizedGroupPath]) {
+        prefixed[normalizedGroupPath] = rootDef;
+    }
+    return prefixed;
 }
 
 /**

@@ -14,7 +14,7 @@ import {
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
-import { validateMetadata } from "./uploadMetadataDialog.js";
+import { validateMetadata } from "./metadataValidation.js";
 
 const DEFAULT_COLUMN_PLACEHOLDER = "One column id per line";
 

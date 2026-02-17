@@ -47,9 +47,11 @@ of one monolithic metadata table. This enables:
         "name": "Expression",
         "initialLoad": false,
         "groupPath": "Expression",
-        "defaultAttributeDef": {
-          "type": "quantitative",
-          "scale": { "scheme": "redblue", "domainMid": 0 }
+        "columnDefs": {
+          "TP53": {
+            "type": "quantitative",
+            "scale": { "scheme": "redblue", "domainMid": 0 }
+          }
         },
         "backend": {
           "backend": "zarr",
@@ -66,7 +68,7 @@ In this example, `identity` reads the canonical sample ids and display names
 from `samples.tsv`. The first metadata source (`clinical`) uses the same TSV as
 an eager table source and autoloads all non-excluded columns at startup. The
 second source (`expression`) points to a Zarr matrix, is lazy by default
-(`initialLoad: false`), and defines default quantitative styling for imported
+(`initialLoad: false`), and defines quantitative styling for selected
 expression columns under the `Expression` group.
 
 ## Splitting configuration into files
@@ -121,8 +123,8 @@ Import behavior:
 
 Attribute configuration can be attached directly to a source:
 
-- `defaultAttributeDef` applies to all imported columns from that source
-- `columnDefs` applies to specific columns and overrides defaults
+- `columnDefs` applies to specific columns
+- `columnDefs[""]` sets a source-level default for all imported columns
 
 Example:
 
@@ -133,9 +135,6 @@ Example:
   "groupPath": "Clinical",
   "initialLoad": "*",
   "excludeColumns": ["sample", "displayName"],
-  "defaultAttributeDef": {
-    "type": "nominal"
-  },
   "columnDefs": {
     "purity": {
       "type": "quantitative",
@@ -164,12 +163,22 @@ Example:
 }
 ```
 
-In this example, imported clinical columns are nominal by default. `purity` and
-`ploidy` are overridden as quantitative with custom scales, and `treatment` gets
-a custom title. If no explicit `type` is provided for a column, GenomeSpy
-infers it from values.
+In this example, `purity` and `ploidy` are configured as quantitative with
+custom scales, and `treatment` gets a custom title. Other imported columns
+without explicit defs still work: GenomeSpy infers their type from values.
+When using grouped/hierarchical names (`attributeGroupSeparator`), `columnDefs`
+can also target group nodes for shared defaults. See
+[`Grouping and hierarchy`](#grouping-and-hierarchy).
+
+If you need an explicit source-wide default (instead of inference), define
+`columnDefs[""]` and then override selected columns with specific keys.
 
 ## Grouping and hierarchy
+
+Grouping helps when metadata has many attributes: users can collapse and expand
+groups in the hierarchy, and authors can configure shared defaults once at
+group level (for example `type` and `scale`) instead of repeating them for
+every child column.
 
 Metadata organization is controlled by two related properties:
 
@@ -212,11 +221,7 @@ Suppose you have columns such as:
 - `signature.APOBEC`
 
 With `attributeGroupSeparator: "."`, the `clinical.*` and `signature.*`
-columns are grouped under `clinical` and `signature`. This is useful when the
-number of metadata attributes is large, because users can toggle group
-visibility from the hierarchy. It also makes source configuration more
-ergonomic, because shared defaults (such as `type` and `scale`) can be defined
-once at group level instead of repeating them for every child column.
+columns are grouped under `clinical` and `signature`.
 
 Inheritance rules are straightforward: child columns inherit `type` and `scale`
 from the nearest parent group unless overridden by a more specific key.

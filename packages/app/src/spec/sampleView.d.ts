@@ -346,14 +346,9 @@ export interface MetadataSourceDef {
     attributeGroupSeparator?: string;
 
     /**
-     * Default attribute definition applied to imported columns.
+     * Attribute definitions keyed by column id (and optionally by group path).
      *
-     * Per-column definitions in `columnDefs` take precedence.
-     */
-    defaultAttributeDef?: SampleAttributeDef;
-
-    /**
-     * Per-column attribute definitions keyed by column id.
+     * Special key `""` defines source-level defaults for all imported columns.
      */
     columnDefs?: Record<string, SampleAttributeDef>;
 

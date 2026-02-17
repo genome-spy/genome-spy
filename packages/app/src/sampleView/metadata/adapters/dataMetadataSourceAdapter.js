@@ -5,8 +5,9 @@ import {
     responseType,
 } from "@genome-spy/core/data/sources/dataUtils.js";
 import { concatUrl } from "@genome-spy/core/utils/url.js";
-import { validateMetadata } from "../uploadMetadataDialog.js";
+import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
+import { resolveMetadataSourceColumnDefs } from "../metadataSourceColumnDefs.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
@@ -166,19 +167,10 @@ export default class DataMetadataSourceAdapter {
             );
         }
 
-        /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
-        const attributeDefs = {};
-        for (const columnId of request.columnIds) {
-            if (this.#source.columnDefs?.[columnId]) {
-                attributeDefs[columnId] = {
-                    ...this.#source.columnDefs[columnId],
-                };
-            } else if (this.#source.defaultAttributeDef) {
-                attributeDefs[columnId] = {
-                    ...this.#source.defaultAttributeDef,
-                };
-            }
-        }
+        const attributeDefs = resolveMetadataSourceColumnDefs(
+            this.#source,
+            request.columnIds
+        );
 
         const groupPath = request.groupPath ?? this.#source.groupPath;
         const setMetadata = wrangleMetadata(

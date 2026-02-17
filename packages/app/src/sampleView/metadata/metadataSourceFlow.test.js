@@ -25,8 +25,10 @@ function createSampleViewStub(metadataSources, baseUrl) {
                     ],
                 },
             },
-            defaultAttributeDef: {
-                type: "quantitative",
+            columnDefs: {
+                TP53: {
+                    type: "quantitative",
+                },
             },
         },
     ];

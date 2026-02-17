@@ -111,12 +111,14 @@ describe("ZarrMetadataSourceAdapter", () => {
         expect(resolved.missing).toEqual(["missing"]);
     });
 
-    it("fetches selected matrix columns and applies metadata defaults", async () => {
+    it("fetches selected matrix columns and applies configured column defs", async () => {
         const adapter = new ZarrMetadataSourceAdapter({
             groupPath: "expression",
-            defaultAttributeDef: {
-                type: "quantitative",
-                scale: { domainMid: 0, scheme: "redblue" },
+            columnDefs: {
+                ENSG2: {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
             },
             backend: {
                 backend: "zarr",
@@ -142,6 +144,35 @@ describe("ZarrMetadataSourceAdapter", () => {
             },
         });
         expect(metadata.replace).toBe(true);
+    });
+
+    it('applies columnDefs[""] as source-level default for imported columns', async () => {
+        const adapter = new ZarrMetadataSourceAdapter({
+            groupPath: "expression",
+            columnDefs: {
+                "": {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+            },
+            backend: {
+                backend: "zarr",
+                url: "https://example.org/expression.zarr",
+                layout: "matrix",
+            },
+        });
+
+        const metadata = await adapter.fetchColumns({
+            columnIds: ["ENSG2"],
+            sampleIds: ["s2"],
+        });
+
+        expect(metadata.attributeDefs).toEqual({
+            expression: {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
+        });
     });
 
     it("reports ambiguous query terms when lookup maps to multiple columns", async () => {

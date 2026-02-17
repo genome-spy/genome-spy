@@ -208,4 +208,21 @@ describe("createMetadataSourceAdapter", () => {
             'Metadata backend "parquet" is not implemented yet.'
         );
     });
+
+    it("ignores defaultAttributeDef for compatibility", () => {
+        const source = {
+            id: "expression",
+            defaultAttributeDef: {
+                type: "quantitative",
+            },
+            backend: {
+                backend: "zarr",
+                url: "https://example.org/data.zarr",
+                layout: "matrix",
+            },
+        };
+
+        const adapter = createMetadataSourceAdapter(source);
+        expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
+    });
 });
