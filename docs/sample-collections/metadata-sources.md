@@ -292,13 +292,13 @@ APP_SCHEMA MetadataSourceEntry
 
 APP_SCHEMA MetadataSourceDef
 
-### Backends
+## Backends
 
-#### `data` backend
+### `data` backend
 
 APP_SCHEMA DataBackendDef
 
-#### `zarr` backend
+### `zarr` backend
 
 Example with optional lookup helpers and matrix path overrides:
 
@@ -345,18 +345,58 @@ you can omit the entire `matrix` block. Identifier helpers are optional too:
 if omitted, only primary column ids are used for lookup. For a minimal setup,
 see the simpler Zarr example near the top of this page.
 
+#### AnnData context and current scope
+
+GenomeSpy currently supports an
+[AnnData](https://anndata.readthedocs.io/)-compatible **matrix subset** for
+metadata import.
+
+This is aimed at expression-style workflows where users import selected genes
+as metadata attributes. It is not full AnnData object support. Zarr metadata
+sources are primarily useful for large matrices with selective loading; for
+small tabular metadata, `backend: "data"` is usually simpler.
+
+!!! info "AnnData compatibility checklist"
+
+    - matrix values array (`valuesPath`, default `X`) with shape
+      `(n_samples, n_features)`
+    - sample id array (`rowIdsPath`, default `obs_names`) with length
+      `n_samples`
+    - feature id array (`columnIdsPath`, default `var_names`) with length
+      `n_features`
+    - optional lookup arrays via `identifiers` (for example `var/symbol`,
+      `var/ensembl_id`) with length `n_features`
+
+Current limitations:
+
+- sparse matrix handling is not supported in this metadata-source path
+- AnnData `layers` are not exposed as selectable alternatives to `X`
+- `obs`, `var`, `obsm`, `varm`, `obsp`, `varp`, `uns` are not ingested directly
+
+Implementation note: browser-side Zarr access is done with
+[`zarrita`](https://github.com/manzt/zarrita.js), fetching only requested
+arrays/chunks over HTTP.
+
+#### Zarr backend schema
+
 APP_SCHEMA ZarrBackendDef
 
-##### Zarr layout details
+#### Zarr layout details
 
 These definitions describe where matrix content lives inside the Zarr store.
 Use these path overrides for expression-style sample-by-feature arrays.
 
 APP_SCHEMA ZarrMatrixLayoutDef
 
-##### Zarr identifier helpers
+#### Zarr identifier helpers
 
 These optional definitions improve column lookup from user-entered terms. Use
 `identifiers` for aligned identifier arrays (for example symbol and Ensembl).
 
 APP_SCHEMA ColumnIdentifierField
+
+#### Background references
+
+- AnnData docs: <https://anndata.readthedocs.io/>
+- Zarr specs: <https://zarr-specs.readthedocs.io/en/latest/>
+- zarrita: <https://github.com/manzt/zarrita.js>
