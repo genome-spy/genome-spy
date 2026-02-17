@@ -14,6 +14,7 @@ import {
     classifyImportReadiness,
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
+import ObjectSearchIndex from "../../utils/objectSearchIndex.js";
 import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
 import { validateMetadata } from "./metadataValidation.js";
 
@@ -102,7 +103,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         _preview: { state: true },
         _columnPlaceholder: { state: true },
         _availableColumnCount: { state: true },
-        _availableColumnIds: { state: true },
         _alignmentIssue: { state: true },
         _showAlignmentDetails: { state: true },
     };
@@ -159,8 +159,11 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._preview = null;
         this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
         this._availableColumnCount = undefined;
-        /** @type {string[]} */
-        this._availableColumnIds = [];
+        /** @type {ObjectSearchIndex<{ id: string }>} */
+        this._columnSearchIndex = new ObjectSearchIndex(
+            [],
+            (column) => column.id
+        );
         this._previewVersion = 0;
         this._sourceContextVersion = 0;
         this._previewQueryKey = "";
@@ -269,6 +272,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                     <gs-multi-select
                         id="columnInput"
                         class=${this._form.error("columns") ? "is-invalid" : ""}
+                        .debounceMs=${50}
                         .selectedValues=${parseColumnQueries(this.columnInput)}
                         .placeholder=${this._columnPlaceholder}
                         .search=${(/** @type {string} */ query) =>
@@ -332,7 +336,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
-        this._availableColumnIds = [];
+        this._columnSearchIndex.replace([]);
         const sourceLabel = this.source.name ?? this.source.id ?? "source";
         this.dialogTitle = html`Import metadata from
             <em>${sourceLabel}</em> source`;
@@ -393,13 +397,10 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @returns {Promise<string[]>}
      */
     async #searchAvailableColumns(query) {
-        const term = query.trim().toLowerCase();
-        if (term.length === 0) {
-            return this._availableColumnIds;
-        }
-
-        return this._availableColumnIds.filter((columnId) =>
-            columnId.toLowerCase().includes(term)
+        const term = query.trim();
+        return Array.from(
+            this._columnSearchIndex.searchByPrefix(term),
+            (column) => column.id
         );
     }
 
@@ -476,7 +477,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                 }
                 this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
                 this._availableColumnCount = undefined;
-                this._availableColumnIds = [];
+                this._columnSearchIndex.replace([]);
             });
 
         void adapter
@@ -506,10 +507,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
      * @param {{ id: string }[]} columns
      */
     #applyColumns(columns) {
-        // Cache a sorted column-id list once and reuse it for all search queries.
-        this._availableColumnIds = columns
-            .map((column) => column.id)
-            .sort((a, b) => a.localeCompare(b));
+        this._columnSearchIndex.replace(columns);
         this._availableColumnCount = columns.length;
         this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
     }
