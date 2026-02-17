@@ -290,6 +290,14 @@ export function wrangleMetadata(
             placeUnderGroup,
             separator
         );
+    } else if (attributeDefs[""]) {
+        // Source-level defaults are materialized to leaf attributes instead of
+        // relying on root-group inheritance in the view layer.
+        attributeDefs = materializeRootAttributeDef(attributeDefs, {
+            attributeNames: /** @type {string[]} */ (
+                Object.keys(columnarMetadata).filter((key) => key !== "sample")
+            ),
+        });
     }
 
     /** @type {import("../state/payloadTypes.js").SetMetadata} */
@@ -299,6 +307,55 @@ export function wrangleMetadata(
     };
 
     return result;
+}
+
+/**
+ * Materialize root-level attribute defaults (`attributes[""]`) to concrete
+ * leaf attributes that do not already have a definition and are not covered by
+ * a non-root ancestor definition.
+ *
+ * @param {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} attributeDefs
+ * @param {{ attributeNames: string[] }} metadata
+ * @returns {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>}
+ */
+function materializeRootAttributeDef(attributeDefs, metadata) {
+    const rootDef = attributeDefs[""];
+    if (!rootDef) {
+        return attributeDefs;
+    }
+
+    /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
+    const materialized = {};
+    for (const [key, value] of Object.entries(attributeDefs)) {
+        if (key !== "") {
+            materialized[key] = value;
+        }
+    }
+
+    for (const attributeName of metadata.attributeNames) {
+        if (materialized[attributeName]) {
+            continue;
+        }
+
+        const parts = splitPath(attributeName, METADATA_PATH_SEPARATOR);
+        let hasNonRootAncestorDef = false;
+        for (let i = 1; i < parts.length; i++) {
+            const ancestorPath = joinPathParts(
+                parts.slice(0, i),
+                METADATA_PATH_SEPARATOR
+            );
+            if (materialized[ancestorPath]) {
+                hasNonRootAncestorDef = true;
+                break;
+            }
+        }
+
+        if (!hasNonRootAncestorDef) {
+            materialized[attributeName] = { ...rootDef };
+        }
+    }
+
+    return materialized;
 }
 
 /**
@@ -342,7 +399,7 @@ export function buildSetMetadataPayload(
     );
 
     /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */
-    const attributeDefs = Object.fromEntries(
+    let attributeDefs = Object.fromEntries(
         nodeKeys.map((key) => {
             /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
             const def = {
@@ -359,25 +416,30 @@ export function buildSetMetadataPayload(
     );
 
     if (!metadataConfig.addUnderGroup && hasRootDef) {
-        for (const [key, type] of metadataConfig.metadataNodeTypes.entries()) {
-            if (type !== "inherit") {
-                continue;
-            }
-            if (attributeDefs[key]) {
-                continue;
-            }
-            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
-            const def = {
-                type: /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */ (
-                    rootType
-                ),
-            };
-            const scale = metadataConfig.scales.get(key) ?? rootScale;
-            if (scale) {
-                def.scale = scale;
-            }
-            attributeDefs[key] = def;
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} */
+        const rootDef = {
+            type: /** @type {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} */ (
+                rootType
+            ),
+        };
+        if (rootScale) {
+            rootDef.scale = rootScale;
         }
+
+        attributeDefs = materializeRootAttributeDef(
+            {
+                ...attributeDefs,
+                "": rootDef,
+            },
+            {
+                attributeNames: Array.from(
+                    metadataConfig.metadataNodeTypes
+                        .entries()
+                        .filter(([, type]) => type === "inherit")
+                        .map(([key]) => key)
+                ),
+            }
+        );
     }
 
     const setMetadata = wrangleMetadata(

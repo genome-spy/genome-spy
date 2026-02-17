@@ -236,7 +236,7 @@ describe("DataMetadataSourceAdapter", () => {
         });
 
         expect(metadata.attributeDefs).toEqual({
-            "": {
+            TP53: {
                 type: "quantitative",
                 scale: { domainMid: 0, scheme: "redblue" },
             },

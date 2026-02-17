@@ -675,6 +675,43 @@ describe("wrangleMetadata", () => {
         });
     });
 
+    it('materializes attributes[""] to flat imported attributes when no group is set', () => {
+        const rows = [
+            { sample: "s1", TP53: 1.2, status: "A" },
+            { sample: "s2", TP53: -0.2, status: "B" },
+        ];
+
+        const result = wrangleMetadata(rows, {
+            "": { type: "quantitative", scale: { domainMid: 0 } },
+            status: { type: "nominal" },
+        });
+
+        expect(result.attributeDefs).toEqual({
+            TP53: { type: "quantitative", scale: { domainMid: 0 } },
+            status: { type: "nominal" },
+        });
+    });
+
+    it('does not materialize attributes[""] to leaves that inherit from non-root ancestors', () => {
+        const rows = [
+            { sample: "s1", "clinical.OS": 5, "clinical.PFI": 10 },
+            { sample: "s2", "clinical.OS": 8, "clinical.PFI": 20 },
+        ];
+
+        const result = wrangleMetadata(
+            rows,
+            {
+                "": { type: "nominal" },
+                clinical: { type: "quantitative" },
+            },
+            "."
+        );
+
+        expect(result.attributeDefs).toEqual({
+            clinical: { type: "quantitative" },
+        });
+    });
+
     it("skips columns marked for exclusion", () => {
         const rows = [
             { sample: "s1", a: 1, b: 2 },

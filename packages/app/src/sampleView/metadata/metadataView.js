@@ -563,8 +563,7 @@ export class MetadataView extends ConcatView {
             }
         };
 
-        const rootAttributeDef = attributeDefs?.[""] ?? {};
-        createAttributeViews(nestedAttributes, this, rootAttributeDef);
+        createAttributeViews(nestedAttributes, this, {});
 
         // This is a hack to ensure that the title views are not clipped.
         // TODO: Clipping should only be applied to the unit views inside GridChilds
