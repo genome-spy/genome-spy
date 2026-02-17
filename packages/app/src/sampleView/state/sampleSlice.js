@@ -640,11 +640,13 @@ function augmentDerivedMetadataAction(action, sampleHierarchy, attributeInfo) {
             ? {
                   columnarMetadata: applyGroupToColumnarMetadata(
                       columnarMetadata,
-                      groupPath
+                      groupPath,
+                      METADATA_PATH_SEPARATOR
                   ),
                   attributeDefs: applyGroupToAttributeDefs(
                       attributeDefs,
-                      groupPath
+                      groupPath,
+                      METADATA_PATH_SEPARATOR
                   ),
               }
             : { columnarMetadata, attributeDefs };

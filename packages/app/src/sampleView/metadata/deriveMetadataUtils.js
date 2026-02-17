@@ -1,4 +1,7 @@
-import { applyGroupToAttributeDefs } from "./metadataUtils.js";
+import {
+    applyGroupToAttributeDefs,
+    METADATA_PATH_SEPARATOR,
+} from "./metadataUtils.js";
 import emptyToUndefined from "../../utils/emptyToUndefined.js";
 import { compressAttributeName } from "./derivedMetadataNameUtils.js";
 
@@ -81,7 +84,11 @@ export function deriveAttributeName(attributeName, groupPath, dataType) {
         return Object.keys(attributeDefs)[0];
     }
 
-    const groupedDefs = applyGroupToAttributeDefs(attributeDefs, groupPath);
+    const groupedDefs = applyGroupToAttributeDefs(
+        attributeDefs,
+        groupPath,
+        METADATA_PATH_SEPARATOR
+    );
     return Object.keys(groupedDefs)[0];
 }
 
