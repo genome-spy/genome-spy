@@ -10,17 +10,26 @@ vi.mock("./webGLHelper.js", () => ({
 
 import { createSchemeTexture } from "./colorUtils.js";
 
-const gl = {
-    LINEAR: 9729,
-    NEAREST: 9728,
-    RGB: 6407,
-    RED: 6403,
-    R32F: 33326,
-    CLAMP_TO_EDGE: 33071,
-};
+const gl = /** @type {WebGL2RenderingContext} */ (
+    /** @type {unknown} */ ({
+        LINEAR: 9729,
+        NEAREST: 9728,
+        RGB: 6407,
+        RED: 6403,
+        R32F: 33326,
+        CLAMP_TO_EDGE: 33071,
+    })
+);
 
-const firstColor = (texture) => Array.from(texture.slice(0, 3));
-const lastColor = (texture) => Array.from(texture.slice(texture.length - 3));
+/** @param {unknown} texture */
+const firstColor = (texture) =>
+    Array.from(/** @type {Uint8Array} */ (texture).slice(0, 3));
+
+/** @param {unknown} texture */
+const lastColor = (texture) => {
+    const bytes = /** @type {Uint8Array} */ (texture);
+    return Array.from(bytes.slice(bytes.length - 3));
+};
 
 describe("createSchemeTexture", () => {
     beforeEach(() => {
