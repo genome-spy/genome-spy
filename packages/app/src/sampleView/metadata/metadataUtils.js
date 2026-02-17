@@ -1,6 +1,7 @@
 import { inferType } from "vega-loader";
 import { joinPathParts, splitPath } from "../../utils/escapeSeparator.js";
 import { rowsToColumns } from "../../utils/dataLayout.js";
+import deepEqual from "@genome-spy/core/utils/deepEqual.js";
 
 /**
  * @typedef {Object} PathTreeNode
@@ -791,13 +792,20 @@ export function combineSampleMetadata(a, b) {
 
     const attributeNames = [...aNames, ...bNames];
 
-    // Merge attributeDefs, throwing on duplicate keys
+    // Merge attributeDefs. Repeated imports may legitimately repeat the same
+    // group-level definitions (e.g. "expression"), so identical/complementary
+    // defs are merged idempotently and only true conflicts fail.
     const aDefs = a.attributeDefs ?? {};
     const bDefs = b.attributeDefs ?? {};
     const attributeDefs = { ...aDefs };
     for (const k of Object.keys(bDefs)) {
         if (k in attributeDefs) {
-            throw new Error(`Duplicate attribute definition key: ${k}`);
+            attributeDefs[k] = mergeAttributeDefs(
+                /** @type {Record<string, any>} */ (attributeDefs[k]),
+                /** @type {Record<string, any>} */ (bDefs[k]),
+                k
+            );
+            continue;
         }
         attributeDefs[k] = bDefs[k];
     }
@@ -836,4 +844,83 @@ export function combineSampleMetadata(a, b) {
     };
 
     return result;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
+function isPlainObject(value) {
+    return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * @param {Record<string, any>} a
+ * @param {Record<string, any>} b
+ * @param {string} key
+ * @param {string} [path]
+ * @returns {Record<string, any>}
+ */
+function mergeAttributeDefs(a, b, key, path = "") {
+    if (deepEqual(a, b)) {
+        return a;
+    }
+
+    /** @type {Record<string, any>} */
+    const merged = { ...a };
+    for (const [field, incoming] of Object.entries(b)) {
+        if (!(field in merged)) {
+            merged[field] = incoming;
+            continue;
+        }
+
+        const existing = merged[field];
+        if (deepEqual(existing, incoming)) {
+            continue;
+        }
+
+        if (isPlainObject(existing) && isPlainObject(incoming)) {
+            merged[field] = mergeAttributeDefs(
+                existing,
+                incoming,
+                key,
+                path ? path + "." + field : field
+            );
+            continue;
+        }
+
+        const conflictPath = path ? path + "." + field : field;
+        // TODO: Throwing from reducers is pragmatic here because IntentPipeline
+        // catches it and enters intent error state. A more idiomatic approach
+        // would be returning a Result/error payload from reducers and letting
+        // the pipeline transition to error state without exceptions.
+        const existingText = safeStringify(existing);
+        const incomingText = safeStringify(incoming);
+        throw new Error(
+            'Conflicting attribute definition for key "' +
+                key +
+                '" at "' +
+                conflictPath +
+                '". Existing value: ' +
+                existingText +
+                "; incoming value: " +
+                incomingText +
+                ". Align the source-level/group defaults (type/scale/visibility) before importing into the same group."
+        );
+    }
+
+    return merged;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function safeStringify(value) {
+    try {
+        const json = JSON.stringify(value);
+        return json ?? String(value);
+    } catch (error) {
+        return String(value);
+    }
 }

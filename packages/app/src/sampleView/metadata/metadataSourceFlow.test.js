@@ -236,4 +236,67 @@ describe("augmentAddMetadataFromSourceAction", () => {
             TP53: [1.2, -0.2],
         });
     });
+
+    it("allows repeated imports into the same group without duplicate def conflicts", async () => {
+        const sampleView = createSampleViewStub([
+            {
+                id: "expression",
+                groupPath: "expression",
+                attributes: {
+                    "": {
+                        type: "quantitative",
+                        scale: { domainMid: 0, scheme: "redblue" },
+                    },
+                },
+                backend: {
+                    backend: "data",
+                    data: {
+                        values: [
+                            { sample: "s1", TP53: 1.2, BRCA1: 0.2 },
+                            { sample: "s2", TP53: -0.2, BRCA1: -0.3 },
+                        ],
+                    },
+                },
+            },
+        ]);
+
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                ],
+            })
+        );
+
+        const firstAction = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "expression",
+            columnIds: ["TP53"],
+        });
+        const firstAugmented = await augmentAddMetadataFromSourceAction(
+            firstAction,
+            sampleView
+        );
+        state = sampleSlice.reducer(state, firstAugmented);
+
+        const secondAction = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "expression",
+            columnIds: ["BRCA1"],
+        });
+        const secondAugmented = await augmentAddMetadataFromSourceAction(
+            secondAction,
+            sampleView
+        );
+        state = sampleSlice.reducer(state, secondAugmented);
+
+        expect(state.sampleMetadata.attributeNames).toEqual([
+            "expression/TP53",
+            "expression/BRCA1",
+        ]);
+        expect(state.sampleMetadata.attributeDefs?.expression).toEqual({
+            type: "quantitative",
+            scale: { domainMid: 0, scheme: "redblue" },
+        });
+    });
 });

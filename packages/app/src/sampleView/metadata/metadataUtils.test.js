@@ -370,7 +370,63 @@ describe("combineSampleMetadata", () => {
         );
     });
 
-    it("throws on duplicate attributeDefs keys", () => {
+    it("merges duplicate attributeDefs keys when defs are identical", () => {
+        const a = {
+            entities: {},
+            attributeNames: ["a"],
+            attributeDefs: {
+                expression: {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+            },
+        };
+        const b = {
+            entities: {},
+            attributeNames: ["b"],
+            attributeDefs: {
+                expression: {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+            },
+        };
+
+        const combined = combineSampleMetadata(a, b);
+        expect(combined.attributeDefs).toEqual({
+            expression: {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
+        });
+    });
+
+    it("merges duplicate attributeDefs keys when defs are complementary", () => {
+        const a = {
+            entities: {},
+            attributeNames: ["a"],
+            attributeDefs: {
+                expression: { type: "quantitative" },
+            },
+        };
+        const b = {
+            entities: {},
+            attributeNames: ["b"],
+            attributeDefs: {
+                expression: { scale: { domainMid: 0, scheme: "redblue" } },
+            },
+        };
+
+        const combined = combineSampleMetadata(a, b);
+        expect(combined.attributeDefs).toEqual({
+            expression: {
+                type: "quantitative",
+                scale: { domainMid: 0, scheme: "redblue" },
+            },
+        });
+    });
+
+    it("throws on conflicting duplicate attributeDefs keys", () => {
         const a = {
             entities: {},
             attributeNames: ["a"],
@@ -382,7 +438,7 @@ describe("combineSampleMetadata", () => {
             attributeDefs: { x: { type: "quantitative" } },
         };
         expect(() => combineSampleMetadata(a, b)).toThrow(
-            /Duplicate attribute definition key/
+            /Conflicting attribute definition/
         );
     });
 });
