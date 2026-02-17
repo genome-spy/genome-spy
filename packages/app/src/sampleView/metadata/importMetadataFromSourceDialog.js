@@ -266,6 +266,12 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                           </span>
                       </div>`
                     : nothing}
+                ${this._error
+                    ? html`<div class="gs-alert danger">
+                          ${icon(faTimesCircle).node[0]}
+                          <span>${this._error}</span>
+                      </div>`
+                    : nothing}
 
                 <div class="gs-form-group">
                     <div class="label">${columnsLabel}</div>
@@ -304,9 +310,6 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                           Import exceeds the hard limit of 100 columns.
                       </div>`
                     : nothing}
-                ${this._error
-                    ? html`<div class="gs-alert danger">${this._error}</div>`
-                    : nothing}
             </div>
         `;
     }
@@ -314,7 +317,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
     renderButtons() {
         const canImport = this.#canImport();
         return [
-            this.makeCloseButton(),
+            this.makeCloseButton("Cancel"),
             this.makeButton("Import", () => this.#handleImport(), {
                 iconDef: faFileImport,
                 isPrimary: true,
