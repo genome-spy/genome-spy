@@ -274,6 +274,11 @@ class ViewSettingsButton extends LitElement {
             }
 
             if (depth >= 0) {
+                const title = view.getTitleText() ?? view.name ?? "";
+                const label =
+                    !checked && item.children.length > 0
+                        ? title + "..."
+                        : title;
                 const template = html` <label
                     class="checkbox"
                     @mouseover=${(/** @type {MouseEvent} */ event) =>
@@ -290,7 +295,7 @@ class ViewSettingsButton extends LitElement {
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             this.#handleCheckboxClick(event, view)}
-                    />${view.getTitleText() ?? view.name}
+                    />${label}
                 </label>`;
 
                 items.push({
