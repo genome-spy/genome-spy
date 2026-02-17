@@ -22,7 +22,6 @@ describe("getEffectiveInitialLoad", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expr.zarr",
-                layout: "matrix",
             },
         };
 
@@ -56,7 +55,6 @@ describe("resolveInitialLoadColumnIds", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expr.zarr",
-                layout: "matrix",
             },
         };
 

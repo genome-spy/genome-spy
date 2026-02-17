@@ -55,8 +55,7 @@ of one monolithic metadata table. This enables:
         },
         "backend": {
           "backend": "zarr",
-          "url": "data/expr.zarr",
-          "layout": "matrix"
+          "url": "data/expr.zarr"
         }
       }
     ]
@@ -198,8 +197,7 @@ Example:
   "groupPath": "Expression",
   "backend": {
     "backend": "zarr",
-    "url": "data/expr.zarr",
-    "layout": "matrix"
+    "url": "data/expr.zarr"
   }
 }
 ```
@@ -288,13 +286,10 @@ APP_SCHEMA ZarrBackendDef
 
 ### Zarr layout details
 
-These definitions describe where the matrix/table content lives inside the
-Zarr store. Use matrix layout for expression-style sample-by-feature arrays, and
-table layout for row-oriented Zarr representations.
+These definitions describe where matrix content lives inside the Zarr store.
+Use these path overrides for expression-style sample-by-feature arrays.
 
 APP_SCHEMA ZarrMatrixLayoutDef
-
-APP_SCHEMA ZarrTableLayoutDef
 
 ### Zarr identifier helpers
 

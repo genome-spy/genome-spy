@@ -277,8 +277,6 @@ export default class ZarrMetadataSourceAdapter {
     }
 
     async #getValuesArray() {
-        this.#requireMatrixLayout();
-
         const path = normalizePath(this.#backend.matrix?.valuesPath ?? "X");
         const location = zarrRoot(this.#store).resolve(path);
         return zarrOpen(location, { kind: "array" });
@@ -340,8 +338,6 @@ export default class ZarrMetadataSourceAdapter {
      * @returns {Promise<Map<string, Set<number>>>}
      */
     async #buildLookup(signal) {
-        this.#requireMatrixLayout();
-
         const columnIds = await this.#getColumnIds(signal);
         /** @type {Map<string, Set<number>>} */
         const lookup = new Map();
@@ -437,15 +433,6 @@ export default class ZarrMetadataSourceAdapter {
     async #readStringArray(path, signal) {
         const values = await this.#readArray(path, signal);
         return values.map((value) => String(value));
-    }
-
-    #requireMatrixLayout() {
-        if (this.#backend.layout === "matrix") {
-            return;
-        }
-        throw new Error(
-            'Only Zarr metadata sources with layout "matrix" are supported in MVP.'
-        );
     }
 
     /**

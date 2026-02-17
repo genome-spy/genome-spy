@@ -188,18 +188,6 @@ export interface ZarrMatrixLayoutDef {
     columnIdsPath?: string;
 }
 
-export interface ZarrTableLayoutDef {
-    /**
-     * Path to the table-like array or group in the store.
-     */
-    path?: string;
-
-    /**
-     * Field containing sample ids in table rows.
-     */
-    sampleIdField?: string;
-}
-
 export interface ZarrBackendDef {
     backend: "zarr";
 
@@ -209,26 +197,9 @@ export interface ZarrBackendDef {
     url: string;
 
     /**
-     * Declares how metadata is represented in the store.
-     *
-     * - `"matrix"`: sample-by-column matrix with separate row/column id arrays
-     * - `"table"`: tabular representation
-     */
-    layout: "matrix" | "table";
-
-    /**
-     * Matrix layout configuration.
-     *
-     * Required when `layout` is `"matrix"`.
+     * Optional path overrides for the expression-style matrix layout.
      */
     matrix?: ZarrMatrixLayoutDef;
-
-    /**
-     * Table layout configuration.
-     *
-     * Required when `layout` is `"table"`.
-     */
-    table?: ZarrTableLayoutDef;
 
     /**
      * Optional identifier arrays used to resolve user queries to columns.

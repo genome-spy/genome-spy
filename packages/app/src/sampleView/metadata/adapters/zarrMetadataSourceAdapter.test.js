@@ -72,7 +72,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                layout: "matrix",
                 identifiers: [
                     {
                         name: "symbol",
@@ -123,7 +122,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                layout: "matrix",
             },
         });
 
@@ -158,7 +156,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                layout: "matrix",
             },
         });
 
@@ -183,7 +180,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                layout: "matrix",
                 synonymIndex: {
                     termPath: "var_synonyms/term",
                     columnIndexPath: "var_synonyms/column_index",
@@ -203,7 +199,6 @@ describe("ZarrMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/expression.zarr",
-                layout: "matrix",
                 identifiers: [
                     {
                         name: "symbol",

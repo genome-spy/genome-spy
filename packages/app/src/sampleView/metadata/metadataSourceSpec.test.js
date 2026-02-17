@@ -65,7 +65,6 @@ describe("normalizeSampleDefMetadataSources", () => {
                     backend: {
                         backend: "zarr",
                         url: "https://example.org/expression.zarr",
-                        layout: "matrix",
                     },
                 },
             ],

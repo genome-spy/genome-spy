@@ -208,7 +208,6 @@ describe("createMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/data.zarr",
-                layout: "matrix",
             },
         };
 
@@ -239,7 +238,6 @@ describe("createMetadataSourceAdapter", () => {
             backend: {
                 backend: "zarr",
                 url: "https://example.org/data.zarr",
-                layout: "matrix",
             },
         };
 
