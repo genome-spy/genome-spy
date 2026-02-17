@@ -1,5 +1,8 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
 
   "include": ["src/**/*", "../../external-typings/**/*"],
   "exclude": ["node_modules"]
