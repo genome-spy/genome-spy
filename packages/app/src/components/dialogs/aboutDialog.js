@@ -24,7 +24,7 @@ export default class AboutDialog extends BaseDialog {
                     >.
                 </p>
                 <p>
-                    Copyright 2025 ${packageJson.author?.name ?? "The author"}
+                    Copyright 2026 ${packageJson.author?.name ?? "The author"}
                     and contributors.<br />
                     ${packageJson.license} license.
                 </p>
