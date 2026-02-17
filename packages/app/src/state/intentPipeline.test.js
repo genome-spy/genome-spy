@@ -1,12 +1,13 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import IntentPipeline from "./intentPipeline.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
 
 /**
- * @returns {{resolve: () => void, reject: (error: Error) => void, promise: Promise<void>}}
+ * @returns {{resolve: (value?: void) => void, reject: (error: Error) => void, promise: Promise<void>}}
  */
 function createDeferred() {
-    /** @type {() => void} */
+    /** @type {(value?: void) => void} */
     let resolve;
     /** @type {(error: Error) => void} */
     let reject;
@@ -48,7 +49,7 @@ function createDeps() {
 describe("IntentPipeline", () => {
     it("processes actions sequentially and resolves submissions", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureDeferred = createDeferred();
         const processedDeferred = createDeferred();
@@ -86,7 +87,7 @@ describe("IntentPipeline", () => {
 
     it("queues single actions and rejects batches while running", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureDeferred = createDeferred();
         /** @type {import("../sampleView/types.js").AttributeInfo} */
@@ -127,7 +128,7 @@ describe("IntentPipeline", () => {
 
     it("rejects submissions while a batch is running", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureDeferred = createDeferred();
         /** @type {import("../sampleView/types.js").AttributeInfo} */
@@ -167,7 +168,7 @@ describe("IntentPipeline", () => {
 
     it("rejects queued submissions after a processing failure", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureDeferred = createDeferred();
         /** @type {import("../sampleView/types.js").AttributeInfo} */
@@ -200,7 +201,7 @@ describe("IntentPipeline", () => {
 
     it("rejects and skips dispatch when ensureAvailability fails", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
@@ -235,7 +236,7 @@ describe("IntentPipeline", () => {
 
     it("dispatches actions without attributes", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const submitPromise = pipeline.submit({ type: "sample/no-attr" }, {});
 
@@ -245,7 +246,7 @@ describe("IntentPipeline", () => {
 
     it("processes batch actions sequentially with ensure ordering", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const firstEnsure = createDeferred();
         const secondEnsure = createDeferred();
@@ -297,7 +298,7 @@ describe("IntentPipeline", () => {
 
     it("awaits action hooks before resolving submissions", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /** @type {any} */ (new IntentPipeline(deps));
 
         const ensureDeferred = createDeferred();
         const processedDeferred = createDeferred();
@@ -346,7 +347,7 @@ describe("IntentPipeline", () => {
 
     it("applies action-hook augmentation before dispatch", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /**  {any} */ new IntentPipeline(deps);
 
         pipeline.registerActionHook({
             predicate: (action) => action.type === "sample/augment",
@@ -378,7 +379,7 @@ describe("IntentPipeline", () => {
 
     it("rejects and skips dispatch when action-hook augmentation fails", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /**  {any} */ new IntentPipeline(deps);
 
         pipeline.registerActionHook({
             predicate: (action) => action.type === "sample/augment-error",
@@ -402,7 +403,7 @@ describe("IntentPipeline", () => {
 
     it("aborts action-hook augmentation when the current action is canceled", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /**  {any} */ new IntentPipeline(deps);
 
         const started = createDeferred();
         const finish = createDeferred();
@@ -438,7 +439,7 @@ describe("IntentPipeline", () => {
 
     it("aborts in-flight work when abortCurrent is called", async () => {
         const deps = createDeps();
-        const pipeline = new IntentPipeline(deps);
+        const pipeline = /**  {any} */ new IntentPipeline(deps);
 
         const ensureStarted = createDeferred();
         const ensureDeferred = createDeferred();

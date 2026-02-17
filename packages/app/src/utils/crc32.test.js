@@ -1,3 +1,4 @@
+// @ts-check
 import { expect, test } from "vitest";
 import { crc32, crc32hex } from "./crc32.js";
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
 import { createDefaultValuesProvider } from "../sampleView/attributeValues.js";
@@ -10,15 +11,15 @@ function createSampleHierarchy() {
         sampleData: {
             ids: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"],
             entities: {
-                s1: { id: "s1" },
-                s2: { id: "s2" },
-                s3: { id: "s3" },
-                s4: { id: "s4" },
-                s5: { id: "s5" },
-                s6: { id: "s6" },
-                s7: { id: "s7" },
-                s8: { id: "s8" },
-                s9: { id: "s9" },
+                s1: { id: "s1", displayName: "S1", indexNumber: 0 },
+                s2: { id: "s2", displayName: "S2", indexNumber: 1 },
+                s3: { id: "s3", displayName: "S3", indexNumber: 2 },
+                s4: { id: "s4", displayName: "S4", indexNumber: 3 },
+                s5: { id: "s5", displayName: "S5", indexNumber: 4 },
+                s6: { id: "s6", displayName: "S6", indexNumber: 5 },
+                s7: { id: "s7", displayName: "S7", indexNumber: 6 },
+                s8: { id: "s8", displayName: "S8", indexNumber: 7 },
+                s9: { id: "s9", displayName: "S9", indexNumber: 8 },
             },
         },
         sampleMetadata: {
@@ -157,7 +158,7 @@ describe("buildHierarchyBoxplotData", () => {
                 specifier: {
                     view: "view",
                     field: "score",
-                    interval: [0, 1],
+                    interval: /** @type {[number, number]} */ ([0, 1]),
                     aggregation: { op: "mean" },
                 },
             },

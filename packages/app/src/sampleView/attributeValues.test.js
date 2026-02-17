@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import {
     createDefaultValuesProvider,
@@ -17,10 +18,14 @@ describe("extractAttributeValues", () => {
             ),
             type: "quantitative",
         };
-        const values = extractAttributeValues(attributeInfo, ["a", "b"], {
-            a: 3,
-            b: 4,
-        });
+        const values = extractAttributeValues(
+            attributeInfo,
+            ["a", "b"],
+            /** @type {any} */ ({
+                a: 3,
+                b: 4,
+            })
+        );
 
         expect(values).toEqual([3, 4]);
     });
@@ -36,7 +41,11 @@ describe("extractAttributeValues", () => {
             type: "quantitative",
         };
 
-        const values = extractAttributeValues(attributeInfo, ["a"], {});
+        const values = extractAttributeValues(
+            attributeInfo,
+            ["a"],
+            /** @type {any} */ ({})
+        );
 
         expect(values).toEqual([1, 2]);
     });

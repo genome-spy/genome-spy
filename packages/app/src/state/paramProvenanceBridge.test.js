@@ -1,3 +1,4 @@
+// @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
@@ -57,6 +58,9 @@ class FakeView {
         this.paramRuntime = new ViewParamRuntime();
         this.explicitName = "root";
         this.spec = {};
+        this.encoding = {};
+        this.scaleResolution = null;
+        this.getCollector = () => undefined;
     }
 
     visit(visitor) {
@@ -93,6 +97,28 @@ function createStore() {
     });
 }
 
+/**
+ * @param {FakeView} view
+ * @param {import("@reduxjs/toolkit").EnhancedStore<any>} store
+ * @param {IntentExecutor} intentExecutor
+ */
+function createBridge(view, store, intentExecutor) {
+    return new ParamProvenanceBridge({
+        root: /** @type {any} */ (view),
+        store,
+        intentExecutor,
+    });
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+async function getShowMessageDialogMock() {
+    const { showMessageDialog } =
+        await import("../components/generic/messageDialog.js");
+    return /** @type {any} */ (showMessageDialog);
+}
+
 describe("ParamProvenanceBridge", () => {
     it("captures param changes into provenance", () => {
         const view = new FakeView();
@@ -104,11 +130,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         setter(5);
 
@@ -134,11 +156,7 @@ describe("ParamProvenanceBridge", () => {
 
             const store = createStore();
             const intentExecutor = new IntentExecutor(store);
-            new ParamProvenanceBridge({
-                root: view,
-                store,
-                intentExecutor,
-            });
+            createBridge(view, store, intentExecutor);
 
             const selection = createIntervalSelection(["x"]);
             selection.intervals.x = [10, 20];
@@ -174,11 +192,7 @@ describe("ParamProvenanceBridge", () => {
             const store = createStore();
             const intentExecutor = new IntentExecutor(store);
             const dispatchSpy = vi.spyOn(intentExecutor, "dispatch");
-            new ParamProvenanceBridge({
-                root: view,
-                store,
-                intentExecutor,
-            });
+            createBridge(view, store, intentExecutor);
 
             setter(1);
             await flushMicrotasks();
@@ -214,11 +228,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         const action = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "alpha" },
@@ -242,11 +252,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        const bridge = new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        const bridge = createBridge(view, store, intentExecutor);
 
         const action = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "alpha" },
@@ -269,11 +275,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         const datum = { id: "A", _uniqueId: 1 };
         setter(createMultiPointSelection([datum]));
@@ -302,11 +304,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         setter(
             createMultiPointSelection([
@@ -329,8 +327,7 @@ describe("ParamProvenanceBridge", () => {
     });
 
     it("warns and skips point selections when encoding.key is missing", async () => {
-        const { showMessageDialog } =
-            await import("../components/generic/messageDialog.js");
+        const showMessageDialog = await getShowMessageDialogMock();
 
         const view = new FakeView();
         const setter = view.paramRuntime.registerParam({
@@ -340,11 +337,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
         await flushMicrotasks();
@@ -358,8 +351,7 @@ describe("ParamProvenanceBridge", () => {
     });
 
     it("warns and skips point selections when encoding.key is not unique", async () => {
-        const { showMessageDialog } =
-            await import("../components/generic/messageDialog.js");
+        const showMessageDialog = await getShowMessageDialogMock();
         showMessageDialog.mockClear();
 
         const view = new FakeView();
@@ -378,11 +370,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         setter(
             createMultiPointSelection([{ name: "duplicate-id", _uniqueId: 1 }])
@@ -400,8 +388,7 @@ describe("ParamProvenanceBridge", () => {
     });
 
     it("restores point selections and warns on unresolved keys", async () => {
-        const { showMessageDialog } =
-            await import("../components/generic/messageDialog.js");
+        const showMessageDialog = await getShowMessageDialogMock();
 
         const view = new FakeView();
         view.encoding = { key: { field: "id" } };
@@ -420,11 +407,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
@@ -445,8 +428,7 @@ describe("ParamProvenanceBridge", () => {
     });
 
     it("shows key field names when restore fails due to duplicate keys", async () => {
-        const { showMessageDialog } =
-            await import("../components/generic/messageDialog.js");
+        const showMessageDialog = await getShowMessageDialogMock();
         showMessageDialog.mockClear();
 
         const view = new FakeView();
@@ -464,11 +446,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
@@ -491,8 +469,7 @@ describe("ParamProvenanceBridge", () => {
     });
 
     it("warns when bookmark key fields do not match the current view", async () => {
-        const { showMessageDialog } =
-            await import("../components/generic/messageDialog.js");
+        const showMessageDialog = await getShowMessageDialogMock();
         showMessageDialog.mockClear();
 
         const view = new FakeView();
@@ -507,11 +484,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
@@ -544,11 +517,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
@@ -573,11 +542,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         setter(createMultiPointSelection());
         await flushMicrotasks();
@@ -604,11 +569,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         otherSetter(2);
         await flushMicrotasks();
@@ -644,11 +605,7 @@ describe("ParamProvenanceBridge", () => {
 
             const store = createStore();
             const intentExecutor = new IntentExecutor(store);
-            new ParamProvenanceBridge({
-                root: view,
-                store,
-                intentExecutor,
-            });
+            createBridge(view, store, intentExecutor);
 
             setter(createMultiPointSelection([{ id: "A", _uniqueId: 1 }]));
             await flushMicrotasks();
@@ -701,11 +658,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({
@@ -734,11 +687,7 @@ describe("ParamProvenanceBridge", () => {
 
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        new ParamProvenanceBridge({
-            root: view,
-            store,
-            intentExecutor,
-        });
+        createBridge(view, store, intentExecutor);
 
         store.dispatch(
             paramProvenanceSlice.actions.paramChange({

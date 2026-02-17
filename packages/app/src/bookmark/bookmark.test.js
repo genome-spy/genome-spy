@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import { ActionCreators } from "redux-undo";
 import { restoreBookmark } from "./bookmark.js";
@@ -7,10 +8,10 @@ describe("bookmark restore", () => {
         // Non-obvious: we stub only the pieces used by restoreBookmark.
         /** @type {import("./databaseSchema.js").BookmarkEntry} */
         const entry = {
-            actions: [
+            actions: /** @type {any} */ ([
                 { type: "sample/add", payload: { value: 1 } },
                 { type: "sample/add", payload: { value: 2 } },
-            ],
+            ]),
         };
 
         const storeDispatch = vi.fn();

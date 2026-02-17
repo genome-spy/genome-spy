@@ -1,5 +1,10 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { resolveMetadataSourceAttributes } from "./metadataSourceAttributes.js";
+
+const resolveMetadataSourceAttributesAny = /** @type {any} */ (
+    resolveMetadataSourceAttributes
+);
 
 describe("resolveMetadataSourceAttributes", () => {
     it("treats slash-containing keys as flat ids when separator is not defined", () => {
@@ -12,7 +17,7 @@ describe("resolveMetadataSourceAttributes", () => {
             },
         };
 
-        const resolved = resolveMetadataSourceAttributes(source, ["A/B"]);
+        const resolved = resolveMetadataSourceAttributesAny(source, ["A/B"]);
         expect(resolved).toEqual({
             "A\\/B": {
                 type: "quantitative",
@@ -37,7 +42,7 @@ describe("resolveMetadataSourceAttributes", () => {
             },
         };
 
-        const resolved = resolveMetadataSourceAttributes(source, [
+        const resolved = resolveMetadataSourceAttributesAny(source, [
             "clinical.OS",
         ]);
         expect(resolved).toEqual({

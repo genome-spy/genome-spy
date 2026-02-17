@@ -1,9 +1,15 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import {
     chunkInitialLoadColumns,
     getEffectiveInitialLoad,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
+
+const getEffectiveInitialLoadAny = /** @type {any} */ (getEffectiveInitialLoad);
+const resolveInitialLoadColumnIdsAny = /** @type {any} */ (
+    resolveInitialLoadColumnIds
+);
 
 describe("getEffectiveInitialLoad", () => {
     it("defaults data backends to eager wildcard loading", () => {
@@ -14,7 +20,7 @@ describe("getEffectiveInitialLoad", () => {
             },
         };
 
-        expect(getEffectiveInitialLoad(source)).toBe("*");
+        expect(getEffectiveInitialLoadAny(source)).toBe("*");
     });
 
     it("defaults non-data backends to disabled initial loading", () => {
@@ -25,7 +31,7 @@ describe("getEffectiveInitialLoad", () => {
             },
         };
 
-        expect(getEffectiveInitialLoad(source)).toBe(false);
+        expect(getEffectiveInitialLoadAny(source)).toBe(false);
     });
 });
 
@@ -45,7 +51,7 @@ describe("resolveInitialLoadColumnIds", () => {
         };
 
         await expect(
-            resolveInitialLoadColumnIds(source, adapter)
+            resolveInitialLoadColumnIdsAny(source, adapter)
         ).resolves.toEqual(["B", "A"]);
     });
 
@@ -66,7 +72,7 @@ describe("resolveInitialLoadColumnIds", () => {
         };
 
         await expect(
-            resolveInitialLoadColumnIds(source, adapter)
+            resolveInitialLoadColumnIdsAny(source, adapter)
         ).resolves.toEqual(["A"]);
     });
 });

@@ -1,3 +1,4 @@
+// @ts-check
 import { expect, test } from "vitest";
 import { nestPaths } from "./nestPaths.js";
 

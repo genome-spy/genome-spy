@@ -1,9 +1,16 @@
+// @ts-check
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     createMetadataSourceAdapter,
     resolveMetadataSources,
     resolveMetadataSource,
 } from "./metadataSourceAdapters.js";
+
+const createMetadataSourceAdapterAny = /** @type {any} */ (
+    createMetadataSourceAdapter
+);
+const resolveMetadataSourceAny = /** @type {any} */ (resolveMetadataSource);
+const resolveMetadataSourcesAny = /** @type {any} */ (resolveMetadataSources);
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -20,9 +27,9 @@ describe("resolveMetadataSource", () => {
         };
         const sampleDef = { metadataSources: [source] };
 
-        await expect(resolveMetadataSource(sampleDef, undefined)).resolves.toBe(
-            source
-        );
+        await expect(
+            resolveMetadataSourceAny(sampleDef, undefined)
+        ).resolves.toBe(source);
     });
 
     it("throws when sourceId is omitted and multiple sources are configured", async () => {
@@ -46,7 +53,7 @@ describe("resolveMetadataSource", () => {
         };
 
         await expect(
-            resolveMetadataSource(sampleDef, undefined)
+            resolveMetadataSourceAny(sampleDef, undefined)
         ).rejects.toThrow(
             "Metadata source id is required when multiple sources are configured."
         );
@@ -58,7 +65,7 @@ describe("resolveMetadataSource", () => {
         };
 
         await expect(
-            resolveMetadataSource(sampleDef, undefined, {
+            resolveMetadataSourceAny(sampleDef, undefined, {
                 baseUrl: "https://example.org/spec/",
                 loadJson: async (url) => ({
                     id: "clinical",
@@ -89,7 +96,7 @@ describe("resolveMetadataSources", () => {
         };
 
         await expect(
-            resolveMetadataSources(sampleDef, {
+            resolveMetadataSourcesAny(sampleDef, {
                 baseUrl: "https://example.org/spec/",
                 loadJson: async () => ({
                     id: "clinical",
@@ -130,7 +137,7 @@ describe("resolveMetadataSources", () => {
         };
 
         await expect(
-            resolveMetadataSources(sampleDef, {
+            resolveMetadataSourcesAny(sampleDef, {
                 baseUrl: "private/decider_set2-19/",
                 loadJson: async () => ({
                     id: "clinical",
@@ -160,7 +167,7 @@ describe("resolveMetadataSources", () => {
         };
 
         await expect(
-            resolveMetadataSources(sampleDef, {
+            resolveMetadataSourcesAny(sampleDef, {
                 loadJson: async () => ({
                     import: { url: "nested.json" },
                 }),
@@ -184,7 +191,7 @@ describe("resolveMetadataSources", () => {
             ],
         };
 
-        await expect(resolveMetadataSources(sampleDef)).rejects.toThrow(
+        await expect(resolveMetadataSourcesAny(sampleDef)).rejects.toThrow(
             'uses removed property "columnDefs". Use "attributes" instead.'
         );
     });
@@ -206,7 +213,7 @@ describe("resolveMetadataSources", () => {
             ],
         };
 
-        await expect(resolveMetadataSources(sampleDef)).rejects.toThrow(
+        await expect(resolveMetadataSourcesAny(sampleDef)).rejects.toThrow(
             'uses removed property "backend.synonymIndex". Use "backend.identifiers" instead.'
         );
     });
@@ -221,7 +228,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapter(source);
+        const adapter = createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("DataMetadataSourceAdapter");
     });
 
@@ -233,7 +240,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapter(source);
+        const adapter = createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 
@@ -246,7 +253,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        expect(() => createMetadataSourceAdapter(source)).toThrow(
+        expect(() => createMetadataSourceAdapterAny(source)).toThrow(
             'Metadata backend "parquet" is not implemented yet.'
         );
     });
@@ -263,7 +270,7 @@ describe("createMetadataSourceAdapter", () => {
             },
         };
 
-        const adapter = createMetadataSourceAdapter(source);
+        const adapter = createMetadataSourceAdapterAny(source);
         expect(adapter.constructor.name).toBe("ZarrMetadataSourceAdapter");
     });
 });

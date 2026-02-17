@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, it, expect } from "vitest";
 import { createDerivedAttributeName } from "./deriveMetadataUtils.js";
 

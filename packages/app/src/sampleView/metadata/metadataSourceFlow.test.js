@@ -1,7 +1,12 @@
+// @ts-nocheck
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AUGMENTED_KEY } from "../../state/provenanceReducerBuilder.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { augmentAddMetadataFromSourceAction } from "./metadataSourceFlow.js";
+
+const augmentAddMetadataFromSourceActionAny = /** @type {any} */ (
+    augmentAddMetadataFromSourceAction
+);
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -59,7 +64,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             columnIds: ["TP53"],
         });
 
-        const augmented = await augmentAddMetadataFromSourceAction(
+        const augmented = await augmentAddMetadataFromSourceActionAny(
             action,
             sampleView
         );
@@ -80,7 +85,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
         });
 
         await expect(
-            augmentAddMetadataFromSourceAction(action, sampleView)
+            augmentAddMetadataFromSourceActionAny(action, sampleView)
         ).rejects.toThrow('Metadata source "missing" was not found.');
     });
 
@@ -91,7 +96,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             columnIds: ["TP53", "MISSING"],
         });
 
-        const augmented = await augmentAddMetadataFromSourceAction(
+        const augmented = await augmentAddMetadataFromSourceActionAny(
             action,
             sampleView
         );
@@ -112,7 +117,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
         });
 
         await expect(
-            augmentAddMetadataFromSourceAction(action, sampleView)
+            augmentAddMetadataFromSourceActionAny(action, sampleView)
         ).rejects.toThrow("Metadata import exceeds the column limit (100).");
     });
 
@@ -150,7 +155,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             columnIds: ["TP53"],
         });
 
-        const augmented = await augmentAddMetadataFromSourceAction(
+        const augmented = await augmentAddMetadataFromSourceActionAny(
             action,
             sampleView
         );
@@ -180,7 +185,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             columnIds: ["TP53"],
         });
 
-        const augmented = await augmentAddMetadataFromSourceAction(
+        const augmented = await augmentAddMetadataFromSourceActionAny(
             action,
             sampleView
         );
@@ -274,7 +279,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             sourceId: "expression",
             columnIds: ["TP53"],
         });
-        const firstAugmented = await augmentAddMetadataFromSourceAction(
+        const firstAugmented = await augmentAddMetadataFromSourceActionAny(
             firstAction,
             sampleView
         );
@@ -284,7 +289,7 @@ describe("augmentAddMetadataFromSourceAction", () => {
             sourceId: "expression",
             columnIds: ["BRCA1"],
         });
-        const secondAugmented = await augmentAddMetadataFromSourceAction(
+        const secondAugmented = await augmentAddMetadataFromSourceActionAny(
             secondAction,
             sampleView
         );

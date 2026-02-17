@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 
 import UnitView from "@genome-spy/core/view/unitView.js";

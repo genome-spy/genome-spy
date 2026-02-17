@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, test } from "vitest";
 import { InternMap } from "internmap";
 
@@ -7,12 +8,17 @@ import { createIntervalSelection } from "@genome-spy/core/selection/selection.js
 
 import { createViewAttributeAccessor } from "./attributeAccessors.js";
 
+const createViewAttributeAccessorAny = /** @type {any} */ (
+    createViewAttributeAccessor
+);
+
 /**
  * @param {object} options
  * @param {Array<{ pos: number, value: number }>} options.data
  * @param {import("@genome-spy/core/types/encoder.js").Accessor} options.xAccessor
  * @param {import("@genome-spy/core/types/encoder.js").Accessor} options.x2Accessor
  * @param {string} [options.hitTestMode]
+ * @param {object} [options.root]
  */
 function createView({
     data,
@@ -53,7 +59,7 @@ describe("createViewAttributeAccessor", () => {
             x2Accessor,
         });
 
-        const accessor = createViewAttributeAccessor(view, {
+        const accessor = createViewAttributeAccessorAny(view, {
             view: "test",
             field: "value",
             interval: [5, 5],
@@ -92,7 +98,7 @@ describe("createViewAttributeAccessor", () => {
             root,
         });
 
-        const accessor = createViewAttributeAccessor(view, {
+        const accessor = createViewAttributeAccessorAny(view, {
             view: "test",
             field: "value",
             interval: {
@@ -128,7 +134,7 @@ describe("createViewAttributeAccessor", () => {
             root,
         });
 
-        const accessor = createViewAttributeAccessor(view, {
+        const accessor = createViewAttributeAccessorAny(view, {
             view: "test",
             field: "value",
             interval: {

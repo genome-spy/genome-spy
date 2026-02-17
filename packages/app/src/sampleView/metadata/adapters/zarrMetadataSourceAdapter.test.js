@@ -1,3 +1,4 @@
+// @ts-check
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ZarrMetadataSourceAdapter from "./zarrMetadataSourceAdapter.js";
 

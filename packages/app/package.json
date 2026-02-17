@@ -27,7 +27,8 @@
     "dev": "node dev-server.mjs",
     "build": "rm -rf dist && mkdir -p dist && vite build && npm run build:schema",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.d.ts' --type AppRootSpec > dist/schema.json",
-    "test:tsc": "tsc -p tsconfig.json --noEmit",
+    "test:tsc": "tsc -p tsconfig.tests.json --noEmit",
+    "test:tsc:src": "tsc -p tsconfig.json --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepublishOnly": "npm run build"

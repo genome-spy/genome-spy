@@ -1,5 +1,10 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { normalizeSampleDefMetadataSources } from "./metadataSourceSpec.js";
+
+const normalizeSampleDefMetadataSourcesAny = /** @type {any} */ (
+    normalizeSampleDefMetadataSources
+);
 
 describe("normalizeSampleDefMetadataSources", () => {
     it("maps legacy metadata fields to an implicit data backend source", () => {
@@ -11,7 +16,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             },
         };
 
-        const normalized = normalizeSampleDefMetadataSources(sampleDef);
+        const normalized = normalizeSampleDefMetadataSourcesAny(sampleDef);
 
         expect(normalized.usesLegacyMetadata).toBe(true);
         expect(normalized.sampleDef).toEqual({
@@ -52,7 +57,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             ],
         };
 
-        const normalized = normalizeSampleDefMetadataSources(sampleDef);
+        const normalized = normalizeSampleDefMetadataSourcesAny(sampleDef);
         expect(normalized.sampleDef).toBe(sampleDef);
         expect(normalized.usesLegacyMetadata).toBe(false);
     });
@@ -70,7 +75,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             ],
         };
 
-        const normalized = normalizeSampleDefMetadataSources(sampleDef);
+        const normalized = normalizeSampleDefMetadataSourcesAny(sampleDef);
         expect(normalized.sampleDef).toBe(sampleDef);
         expect(normalized.usesLegacyMetadata).toBe(false);
     });
@@ -85,7 +90,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             data: { url: "samples.tsv" },
         };
 
-        const normalized = normalizeSampleDefMetadataSources(sampleDef);
+        const normalized = normalizeSampleDefMetadataSourcesAny(sampleDef);
 
         expect(normalized.sampleDef.identity).toEqual(sampleDef.identity);
         expect(normalized.sampleDef.metadataSources).toEqual([
@@ -115,7 +120,7 @@ describe("normalizeSampleDefMetadataSources", () => {
             ],
         };
 
-        expect(() => normalizeSampleDefMetadataSources(sampleDef)).toThrow(
+        expect(() => normalizeSampleDefMetadataSourcesAny(sampleDef)).toThrow(
             "Cannot combine legacy sample metadata fields"
         );
     });

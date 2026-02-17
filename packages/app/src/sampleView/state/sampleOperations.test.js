@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from "vitest";
 import {
     filterNominal,
@@ -11,18 +12,32 @@ import {
 } from "./sampleOperations.js";
 
 /**
+ * @typedef {((value: string) => number) & {
+ *   _domain: string[];
+ *   _range: number[];
+ *   _unknown: number;
+ *   domain: () => string[];
+ *   range: (values: number[]) => OrdinalScale;
+ *   unknown: (value: number) => OrdinalScale;
+ *   copy: () => OrdinalScale;
+ * }} OrdinalScale
+ */
+
+/**
  * @param {string[]} domain
- * @returns {(value: string) => number}
+ * @returns {OrdinalScale}
  */
 function createOrdinalScale(domain) {
-    /** @type {(value: string) => number} */
-    const scale = (value) => {
-        const index = domain.indexOf(value);
-        if (index < 0) {
-            return scale._unknown;
+    /** @type {OrdinalScale} */
+    const scale = /** @type {OrdinalScale} */ (
+        (value) => {
+            const index = domain.indexOf(value);
+            if (index < 0) {
+                return scale._unknown;
+            }
+            return scale._range[index];
         }
-        return scale._range[index];
-    };
+    );
 
     scale._domain = domain;
     scale._range = [];

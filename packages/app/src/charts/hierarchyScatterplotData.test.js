@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
 import { createDefaultValuesProvider } from "../sampleView/attributeValues.js";
@@ -10,10 +11,10 @@ function createSampleHierarchy() {
         sampleData: {
             ids: ["s1", "s2", "s3", "s4"],
             entities: {
-                s1: { id: "s1" },
-                s2: { id: "s2" },
-                s3: { id: "s3" },
-                s4: { id: "s4" },
+                s1: { id: "s1", displayName: "S1", indexNumber: 0 },
+                s2: { id: "s2", displayName: "S2", indexNumber: 1 },
+                s3: { id: "s3", displayName: "S3", indexNumber: 2 },
+                s4: { id: "s4", displayName: "S4", indexNumber: 3 },
             },
         },
         sampleMetadata: {

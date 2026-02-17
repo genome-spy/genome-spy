@@ -1,3 +1,4 @@
+// @ts-check
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import { ActionCreators } from "redux-undo";

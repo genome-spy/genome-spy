@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, test } from "vitest";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { VIEW_ROOT_NAME } from "@genome-spy/core/view/viewFactory.js";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 

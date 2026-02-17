@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { intentStatusSlice } from "./intentStatusSlice.js";
 

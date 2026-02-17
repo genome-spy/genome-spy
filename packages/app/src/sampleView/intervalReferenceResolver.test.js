@@ -1,3 +1,4 @@
+// @ts-check
 import { describe, expect, it, vi } from "vitest";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
 

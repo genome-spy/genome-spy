@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
@@ -14,8 +15,12 @@ import {
  */
 
 /**
+ * @typedef {{ type: string, payload?: any }} Action
+ */
+
+/**
  * @param {SampleState} [state]
- * @param {import("@reduxjs/toolkit").Action} action
+ * @param {Action} action
  * @returns {SampleState}
  */
 function sampleReducer(state = { count: 0 }, action) {

@@ -1,6 +1,9 @@
+// @ts-check
 import { describe, expect, it } from "vitest";
 import { InternMap } from "internmap";
 import { createDatumAtAccessor } from "./datumLookup.js";
+
+const createDatumAtAccessorAny = /** @type {any} */ (createDatumAtAccessor);
 
 describe("createDatumAtAccessor", () => {
     /**
@@ -27,7 +30,7 @@ describe("createDatumAtAccessor", () => {
             scaleType: "ordinal",
             sampleId: "s1",
         });
-        const datumAt = createDatumAtAccessor(view);
+        const datumAt = createDatumAtAccessorAny(view);
 
         expect(datumAt("s1", "b")).toEqual({ x: "b" });
     });
@@ -43,7 +46,7 @@ describe("createDatumAtAccessor", () => {
             scaleType: "linear",
             sampleId: "s1",
         });
-        const datumAt = createDatumAtAccessor(view);
+        const datumAt = createDatumAtAccessorAny(view);
 
         expect(datumAt("s1", 15)).toEqual({ x: 10, x2: 20, value: 2 });
     });
@@ -55,7 +58,7 @@ describe("createDatumAtAccessor", () => {
             scaleType: "linear",
             sampleId: "s1",
         });
-        const datumAt = createDatumAtAccessor(view);
+        const datumAt = createDatumAtAccessorAny(view);
 
         expect(datumAt("s1", 5)).toEqual({ x: 5, value: 7 });
     });

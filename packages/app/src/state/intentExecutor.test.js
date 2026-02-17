@@ -1,8 +1,9 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
 
 /**
- * @typedef {import("@reduxjs/toolkit").Action} Action
+ * @typedef {{type: string, payload?: any}} Action
  *
  * @typedef {object} StoreStub
  * @prop {(action: Action) => Action} dispatch
@@ -20,7 +21,7 @@ function createStoreStub() {
 describe("IntentExecutor", () => {
     it("applies augmenters in order and returns the dispatched action", () => {
         const store = createStoreStub();
-        const executor = new IntentExecutor(store);
+        const executor = new IntentExecutor(/** @type {any} */ (store));
 
         executor.addActionAugmenter((action) => ({
             ...action,
@@ -47,7 +48,7 @@ describe("IntentExecutor", () => {
 
     it("passes non-payload actions through unchanged", () => {
         const store = createStoreStub();
-        const executor = new IntentExecutor(store);
+        const executor = new IntentExecutor(/** @type {any} */ (store));
 
         /** @type {Action} */
         const action = { type: "sample/no-payload" };
@@ -58,7 +59,7 @@ describe("IntentExecutor", () => {
 
     it("dispatches batches in order", () => {
         const store = createStoreStub();
-        const executor = new IntentExecutor(store);
+        const executor = new IntentExecutor(/** @type {any} */ (store));
 
         const actions = [
             { type: "sample/one" },
@@ -75,7 +76,7 @@ describe("IntentExecutor", () => {
 
     it("removes augmenters so they no longer apply", () => {
         const store = createStoreStub();
-        const executor = new IntentExecutor(store);
+        const executor = new IntentExecutor(/** @type {any} */ (store));
 
         const augmenter = (action) => ({
             ...action,

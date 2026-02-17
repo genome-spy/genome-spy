@@ -102,28 +102,32 @@ export default class App {
                     "genome-spy-container"
                 )[0]
             ),
-            this.rootSpec,
+            /** @type {any} */ (this.rootSpec),
             this.options
         );
 
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
-            (
-                /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */ spec,
-                context,
-                layoutParent,
-                dataParent,
-                defaultName
-            ) =>
-                new SampleView(
-                    spec,
-                    context,
-                    layoutParent,
-                    dataParent,
-                    defaultName,
-                    this.provenance,
-                    this.intentExecutor
-                )
+            /** @type {any} */ (
+                (
+                    /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */ spec,
+                    /** @type {any} */ context,
+                    /** @type {any} */ layoutParent,
+                    /** @type {any} */ dataParent,
+                    /** @type {any} */ defaultName
+                ) =>
+                    /** @type {any} */ (
+                        new SampleView(
+                            spec,
+                            context,
+                            layoutParent,
+                            dataParent,
+                            defaultName,
+                            this.provenance,
+                            this.intentExecutor
+                        )
+                    )
+            )
         );
         this.#setupViewVisibilityHandling();
     }

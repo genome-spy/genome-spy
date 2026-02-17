@@ -1,7 +1,12 @@
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import { ActionCreators } from "redux-undo";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { bootstrapInitialMetadataSources } from "./metadataSourceBootstrap.js";
+
+const bootstrapInitialMetadataSourcesAny = /** @type {any} */ (
+    bootstrapInitialMetadataSources
+);
 
 /**
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef["metadataSources"]} metadataSources
@@ -61,10 +66,12 @@ describe("bootstrapInitialMetadataSources", () => {
             submit: vi.fn(async () => {}),
         };
 
-        await bootstrapInitialMetadataSources(sampleView, intentPipeline);
+        await bootstrapInitialMetadataSourcesAny(sampleView, intentPipeline);
 
         expect(intentPipeline.submit).toHaveBeenCalledTimes(1);
-        const actions = intentPipeline.submit.mock.calls[0][0];
+        const actions = /** @type {any[]} */ (
+            intentPipeline.submit.mock.calls
+        )[0][0];
         expect(actions).toHaveLength(2);
         expect(actions[0].payload.columnIds).toEqual(["b", "a"]);
         expect(actions[0].payload.replace).toBe(true);
@@ -103,10 +110,12 @@ describe("bootstrapInitialMetadataSources", () => {
         };
 
         await expect(
-            bootstrapInitialMetadataSources(sampleView, intentPipeline)
+            bootstrapInitialMetadataSourcesAny(sampleView, intentPipeline)
         ).resolves.toBeUndefined();
 
-        const actions = intentPipeline.submit.mock.calls[0][0];
+        const actions = /** @type {any[]} */ (
+            intentPipeline.submit.mock.calls
+        )[0][0];
         expect(actions[0].payload.sourceId).toBeUndefined();
         expect(actions[1].payload.sourceId).toBeUndefined();
     });
@@ -130,12 +139,11 @@ describe("bootstrapInitialMetadataSources", () => {
             submit: vi.fn(async () => {}),
         };
 
-        await bootstrapInitialMetadataSources(sampleView, intentPipeline);
+        await bootstrapInitialMetadataSourcesAny(sampleView, intentPipeline);
 
-        const dispatchCalls =
-            sampleView.provenance.store.dispatch.mock.calls.map(
-                (call) => call[0]
-            );
+        const dispatchCalls = /** @type {any[]} */ (
+            sampleView.provenance.store.dispatch
+        ).mock.calls.map((call) => call[0]);
         // Non-obvious: baseline marker primes redux-undo so next user action is undoable.
         expect(dispatchCalls).toEqual([
             { type: ActionCreators.clearHistory().type },
