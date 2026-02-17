@@ -629,6 +629,45 @@ export default class MultiSelect extends LitElement {
 
     #onInputBlur() {
         this._inputHasFocus = false;
+        this._open = false;
+        this._activeIndex = -1;
+        void this.#commitExactMatchOnBlur();
+    }
+
+    async #commitExactMatchOnBlur() {
+        const query = this._query.trim();
+        if (query.length === 0) {
+            return;
+        }
+
+        const lower = query.toLowerCase();
+        let exact =
+            this._suggestions.find(
+                (suggestion) => suggestion.id.toLowerCase() === lower
+            ) ?? null;
+
+        if (!exact && this.search) {
+            try {
+                const results = await this.search(query);
+                exact =
+                    results
+                        .map((result) => normalizeResult(result))
+                        .find(
+                            (suggestion) =>
+                                suggestion.id.toLowerCase() === lower
+                        ) ?? null;
+            } catch {
+                return;
+            }
+        }
+
+        if (!exact) {
+            return;
+        }
+
+        this.#addValue(exact.id);
+        this._query = "";
+        this.#queueSearch("");
     }
 
     /**
@@ -707,6 +746,9 @@ export default class MultiSelect extends LitElement {
         }
 
         if (event.key === "Escape") {
+            if (!this._open) {
+                return;
+            }
             event.preventDefault();
             event.stopPropagation();
             this._open = false;
