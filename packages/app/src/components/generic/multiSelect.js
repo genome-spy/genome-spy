@@ -290,6 +290,21 @@ export default class MultiSelect extends LitElement {
     }
 
     /**
+     * Re-runs the async search for the current query text.
+     * Useful when backing suggestion data changes asynchronously.
+     */
+    refreshSuggestions() {
+        if (!this.search) {
+            return;
+        }
+
+        if (this._inputHasFocus) {
+            this._open = true;
+        }
+        this.#queueSearch(this._query);
+    }
+
+    /**
      * @param {string} query
      */
     #queueSearch(query) {

@@ -511,6 +511,13 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._columnSearchIndex.replace(columns);
         this._availableColumnCount = columns.length;
         this._columnPlaceholder = DEFAULT_COLUMN_PLACEHOLDER;
+        void this.updateComplete.then(() => {
+            const multiSelect =
+                /** @type {import("../../components/generic/multiSelect.js").default | null} */ (
+                    this.renderRoot.querySelector("#columnInput")
+                );
+            multiSelect?.refreshSuggestions();
+        });
     }
 
     /**
