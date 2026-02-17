@@ -421,4 +421,101 @@ describe("MetadataView", () => {
 
         metadataView.dispose();
     });
+
+    it('applies attributeDefs[""] as default for flat attributes', async () => {
+        const { MetadataView } = await import("./metadataView.js");
+        const context = createTestViewContext();
+        context.animator = {
+            transition: () => Promise.resolve(),
+            requestRender: () => undefined,
+        };
+        context.requestLayoutReflow = () => undefined;
+        context.updateTooltip = () => undefined;
+        context.getCurrentHover = () => undefined;
+        context.addKeyboardListener = () => undefined;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+        context.getNamedDataFromProvider = () => [];
+
+        const store = createStoreStub({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata: {
+                            attributeNames: [],
+                            attributeDefs: {},
+                            entities: {},
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {SampleHierarchyStub} */
+        const sampleHierarchy = {
+            sampleMetadata: {
+                attributeNames: [],
+                attributeDefs: {},
+                entities: {},
+            },
+            sampleData: {
+                entities: {
+                    s1: { indexNumber: 0 },
+                    s2: { indexNumber: 1 },
+                },
+            },
+        };
+
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
+        const metadataView = new MetadataView(sampleView, sampleView);
+
+        const sampleMetadata = {
+            attributeNames: ["TP53"],
+            attributeDefs: {
+                "": {
+                    type: "quantitative",
+                    scale: { domainMid: 0, scheme: "redblue" },
+                },
+            },
+            entities: {
+                s1: { TP53: 1.2 },
+                s2: { TP53: -0.2 },
+            },
+        };
+
+        sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+        await store.setState({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata,
+                    },
+                },
+            },
+        });
+
+        await waitForCondition(() =>
+            metadataView
+                .getDescendants()
+                .some((view) => view.name === "attribute-TP53")
+        );
+
+        const tp53View = /** @type {UnitView | undefined} */ (
+            metadataView
+                .getDescendants()
+                .find((view) => view.name === "attribute-TP53")
+        );
+        expect(tp53View).toBeDefined();
+        expect(tp53View?.spec.encoding?.color?.type).toBe("quantitative");
+        expect(tp53View?.spec.encoding?.color?.scale).toEqual({
+            domainMid: 0,
+            scheme: "redblue",
+        });
+
+        metadataView.dispose();
+    });
 });

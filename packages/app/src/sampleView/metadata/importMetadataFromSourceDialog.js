@@ -608,9 +608,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             if (this.source.id) {
                 actionPayload.sourceId = this.source.id;
             }
-            if (this.groupPath.trim().length > 0) {
-                actionPayload.groupPath = this.groupPath.trim();
-            }
+            // Always send the explicit dialog value so clearing the field
+            // overrides any source-level default group path.
+            actionPayload.groupPath = this.groupPath.trim();
 
             await this.intentPipeline.submit(
                 this.sampleView.actions.addMetadataFromSource(actionPayload)

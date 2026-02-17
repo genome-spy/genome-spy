@@ -200,4 +200,40 @@ describe("augmentAddMetadataFromSourceAction", () => {
         expect(state.sampleMetadata.entities.s1.TP53).toBe(1.2);
         expect(state.sampleMetadata.entities.s2.TP53).toBe(-0.2);
     });
+
+    it("uses empty groupPath from action to override source default grouping", async () => {
+        const sampleView = createSampleViewStub([
+            {
+                id: "clinical",
+                groupPath: "expression",
+                backend: {
+                    backend: "data",
+                    data: {
+                        values: [
+                            { sample: "s1", TP53: 1.2 },
+                            { sample: "s2", TP53: -0.2 },
+                        ],
+                    },
+                },
+            },
+        ]);
+
+        const action = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "clinical",
+            columnIds: ["TP53"],
+            groupPath: "",
+        });
+
+        const augmented = await augmentAddMetadataFromSourceAction(
+            action,
+            sampleView
+        );
+
+        expect(
+            augmented.payload[AUGMENTED_KEY].metadata.columnarMetadata
+        ).toEqual({
+            sample: ["s1", "s2"],
+            TP53: [1.2, -0.2],
+        });
+    });
 });
