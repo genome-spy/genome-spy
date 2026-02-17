@@ -280,18 +280,71 @@ APP_SCHEMA MetadataSourceDef
 
 ### Backends
 
+#### `data` backend
+
 APP_SCHEMA DataBackendDef
+
+#### `zarr` backend
+
+Example with optional lookup helpers and matrix path overrides:
+
+```json
+{
+  "id": "expression",
+  "name": "Expression (Zarr)",
+  "description": "Normalized expression matrix with identifier lookup.",
+  "initialLoad": false,
+  "groupPath": "Expression",
+  "attributes": {
+    "": {
+      "type": "quantitative",
+      "scale": { "scheme": "redblue", "domainMid": 0 }
+    }
+  },
+  "backend": {
+    "backend": "zarr",
+    "url": "data/expr.zarr",
+    "matrix": {
+      "valuesPath": "X",
+      "rowIdsPath": "obs_names",
+      "columnIdsPath": "var_names"
+    },
+    "identifiers": [
+      {
+        "name": "symbol",
+        "path": "var/symbol",
+        "primary": true,
+        "caseInsensitive": true
+      },
+      {
+        "name": "ensembl",
+        "path": "var/ensembl_id",
+        "stripVersionSuffix": true
+      }
+    ],
+    "synonymIndex": {
+      "termPath": "var_synonyms/term",
+      "columnIndexPath": "var_synonyms/column_index"
+    }
+  }
+}
+```
+
+If your store uses the default matrix paths (`X`, `obs_names`, `var_names`),
+you can omit the entire `matrix` block. Identifier helpers are optional too:
+if omitted, only primary column ids are used for lookup. For a minimal setup,
+see the simpler Zarr example near the top of this page.
 
 APP_SCHEMA ZarrBackendDef
 
-### Zarr layout details
+##### Zarr layout details
 
 These definitions describe where matrix content lives inside the Zarr store.
 Use these path overrides for expression-style sample-by-feature arrays.
 
 APP_SCHEMA ZarrMatrixLayoutDef
 
-### Zarr identifier helpers
+##### Zarr identifier helpers
 
 These optional definitions improve column lookup from user-entered terms. Use
 `identifiers` for aligned identifier arrays (for example symbol and Ensembl),
