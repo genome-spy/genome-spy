@@ -31,7 +31,7 @@
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.ts' --type CoreRootSpec > dist/schema.json",
-    "build:typings": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
+    "build:typings": "tsc -p tsconfig.build.json --declaration --emitDeclarationOnly --declarationMap --outDir dist/src",
     "prepack": "node scripts/prepack.mjs",
     "postpack": "node scripts/postpack.mjs"
   },

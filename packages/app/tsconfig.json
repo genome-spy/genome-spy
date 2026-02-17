@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
 
   "include": ["src/**/*", "../../external-typings/**/*"],
-  "exclude": ["node_modules", "**/*.test.js"],
+  "exclude": ["node_modules"],
   "compilerOptions": {
     "skipLibCheck": true
   }
