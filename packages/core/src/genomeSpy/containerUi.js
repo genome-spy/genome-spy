@@ -21,7 +21,6 @@ export function createContainerUi(container) {
     const loadingIndicatorsElement = element("div", {
         class: "loading-indicators",
     });
-    canvasWrapper.appendChild(loadingIndicatorsElement);
 
     const tooltip = new Tooltip(container);
 

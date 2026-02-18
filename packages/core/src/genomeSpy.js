@@ -253,6 +253,8 @@ export default class GenomeSpy {
             { powerPreference: this.options.powerPreference ?? "default" }
         );
 
+        canvasWrapper.appendChild(loadingIndicatorsElement);
+
         this.tooltip = tooltip;
         this.#loadingStatusRegistry = new LoadingStatusRegistry();
         this.#loadingIndicatorManager = new LoadingIndicatorManager(
