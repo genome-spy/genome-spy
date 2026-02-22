@@ -16,6 +16,10 @@ let smoother;
 
 let lastTimestamp = 0;
 
+export function markZoomActivity() {
+    lastTimestamp = performance.now();
+}
+
 export function isStillZooming() {
     const delta = performance.now() - lastTimestamp;
     return delta < 50;
@@ -30,7 +34,7 @@ export function isStillZooming() {
 function recordTimeStamp(fn) {
     // @ts-ignore
     return function (...args) {
-        lastTimestamp = performance.now();
+        markZoomActivity();
         fn(...args);
     };
 }

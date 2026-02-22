@@ -15,7 +15,7 @@ import ContainerView from "../containerView.js";
 import KeyboardZoomMotion from "../keyboardZoomMotion.js";
 import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
-import { interactionToZoom } from "../zoom.js";
+import { interactionToZoom, markZoomActivity } from "../zoom.js";
 import GridChild from "./gridChild.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import {
@@ -109,6 +109,7 @@ export default class GridView extends ContainerView {
                 motion.panDelta
             );
             if (changed) {
+                markZoomActivity();
                 this.context.animator.requestRender();
             }
         }
