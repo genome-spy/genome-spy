@@ -6,8 +6,10 @@ import { getKeyboardZoomTarget } from "./zoomNavigationUtils.js";
  * Handles WASD keyboard navigation for the root grid view.
  */
 export default class KeyboardZoomController {
+    /** @type {import("../../types/viewContext.js").default} */
     #context;
 
+    /** @type {import("../view.js").default} */
     #viewRoot;
 
     #keyboardZoomMotion = new KeyboardZoomMotion();
