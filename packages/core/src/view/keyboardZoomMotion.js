@@ -4,12 +4,12 @@
 
 /**
  * @typedef {object} AxisProfile
- * @prop {number} baseSpeed
- * @prop {number} maxExtraSpeed
- * @prop {number} pressHalfLifeMs
- * @prop {number} releaseHalfLifeMs
- * @prop {number} holdGrowthHalfLifeMs
- * @prop {number} stopVelocity
+ * @prop {number} baseSpeed Target speed reached rapidly after key press.
+ * @prop {number} maxExtraSpeed Additional speed gained during sustained hold.
+ * @prop {number} pressHalfLifeMs Half-life for accelerating toward target speed.
+ * @prop {number} releaseHalfLifeMs Half-life for braking velocity after release.
+ * @prop {number} holdGrowthHalfLifeMs Half-life for hold-time extra acceleration.
+ * @prop {number} stopVelocity Velocity threshold below which motion snaps to zero.
  */
 
 /**
@@ -32,19 +32,19 @@
  */
 export const DEFAULT_KEYBOARD_ZOOM_MOTION_CONFIG = {
     pan: {
-        baseSpeed: 0.9,
-        maxExtraSpeed: 2.5,
-        pressHalfLifeMs: 90,
-        releaseHalfLifeMs: 240,
-        holdGrowthHalfLifeMs: 900,
+        baseSpeed: 1,
+        maxExtraSpeed: 3,
+        pressHalfLifeMs: 30,
+        releaseHalfLifeMs: 100,
+        holdGrowthHalfLifeMs: 800,
         stopVelocity: 0.0005,
     },
     zoom: {
-        baseSpeed: 10.1,
-        maxExtraSpeed: 1.9,
-        pressHalfLifeMs: 80,
-        releaseHalfLifeMs: 120,
-        holdGrowthHalfLifeMs: 850,
+        baseSpeed: 3,
+        maxExtraSpeed: 15,
+        pressHalfLifeMs: 10,
+        releaseHalfLifeMs: 100,
+        holdGrowthHalfLifeMs: 800,
         stopVelocity: 0.0005,
     },
 };
