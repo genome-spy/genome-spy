@@ -37,6 +37,20 @@ describe("KeyboardZoomMotion", () => {
         expect(motion.isNavigationKey("KeyF")).toBe(false);
     });
 
+    test("maps D to right-pan sign and W to zoom-in sign", () => {
+        const motion = new KeyboardZoomMotion();
+
+        motion.handleKeyDown("KeyD");
+        const panStep = motion.step(16);
+        motion.handleKeyUp("KeyD");
+
+        motion.handleKeyDown("KeyW");
+        const zoomStep = motion.step(16);
+
+        expect(panStep.panDelta).toBeLessThan(0);
+        expect(zoomStep.zoomDelta).toBeLessThan(0);
+    });
+
     test("tap accelerates quickly and then brakes to halt", () => {
         const motion = new KeyboardZoomMotion();
         const dtMs = 16;

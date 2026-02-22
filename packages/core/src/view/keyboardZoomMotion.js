@@ -40,10 +40,10 @@ export const DEFAULT_KEYBOARD_ZOOM_MOTION_CONFIG = {
         stopVelocity: 0.0005,
     },
     zoom: {
-        baseSpeed: 1.1,
+        baseSpeed: 10.1,
         maxExtraSpeed: 1.9,
         pressHalfLifeMs: 80,
-        releaseHalfLifeMs: 220,
+        releaseHalfLifeMs: 120,
         holdGrowthHalfLifeMs: 850,
         stopVelocity: 0.0005,
     },
@@ -149,12 +149,12 @@ export default class KeyboardZoomMotion {
             };
         } else {
             const panDirection = axisDirection(
-                this.#pressed.KeyA,
-                this.#pressed.KeyD
+                this.#pressed.KeyD,
+                this.#pressed.KeyA
             );
             const zoomDirection = axisDirection(
-                this.#pressed.KeyS,
-                this.#pressed.KeyW
+                this.#pressed.KeyW,
+                this.#pressed.KeyS
             );
 
             const panVelocity = updateAxis(

@@ -105,7 +105,7 @@ describe("GridView keyboard navigation", () => {
             harness.resolution.zoom.mock.calls[0];
         expect(scaleFactor).toBe(1);
         expect(anchor).toBe(0.5);
-        expect(pan).toBeGreaterThan(0);
+        expect(pan).toBeLessThan(0);
         expect(harness.requestRender).toHaveBeenCalledTimes(1);
     });
 
