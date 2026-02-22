@@ -17,6 +17,7 @@ import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
+import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -947,31 +948,6 @@ export default class GridView extends ContainerView {
     getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
-}
-
-/**
- *
- * @param {View} view
- * @returns
- */
-function getZoomableResolutions(view) {
-    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, Set<import("../../scales/scaleResolution.js").default>>} */
-    const resolutions = {
-        x: new Set(),
-        y: new Set(),
-    };
-
-    // Find all resolutions (scales) that are candidates for zooming
-    view.visit((v) => {
-        for (const [channel, resolutionSet] of Object.entries(resolutions)) {
-            const resolution = v.getScaleResolution(channel);
-            if (resolution && resolution.isZoomable()) {
-                resolutionSet.add(resolution);
-            }
-        }
-    });
-
-    return resolutions;
 }
 
 /**
