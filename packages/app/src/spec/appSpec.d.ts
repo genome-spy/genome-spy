@@ -2,12 +2,17 @@ import { RootConfig } from "@genome-spy/core/spec/root.js";
 import { AppViewSpec } from "./view.js";
 
 export interface RemoteBookmarkConfig {
+    /**
+     * URL to the remote bookmark file.
+     */
     url: string;
 
     /**
      * Should the user be shown a tour of the remote bookmarks when the visualization
      * is launched? If the `initialBookmark` property is not defined, the tour starts
      * from the first bookmark.
+     *
+     * __Default value:__ `false`
      */
     tour?: boolean;
 
@@ -26,6 +31,9 @@ export interface RemoteBookmarkConfig {
 }
 
 export interface BookmarkConfig {
+    /**
+     * Configuration for loading bookmarks from a remote JSON file.
+     */
     remote?: RemoteBookmarkConfig;
 }
 
@@ -37,6 +45,9 @@ interface AppRootConfig {
      */
     specId?: string;
 
+    /**
+     * Bookmark configuration.
+     */
     bookmarks?: BookmarkConfig;
 }
 

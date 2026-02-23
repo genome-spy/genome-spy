@@ -160,40 +160,12 @@ attribute labels, use the following configuration:
 ```
 
 The following properties allow for fine-grained control of the font styles:
-`labelFont`, `labelFontSize`, `labelFontWeight`, `labelFontStyle`, `labelAlign`,
-`attributeLabelFont`, `attributeLabelFontSize`, `attributeLabelFontWeight`, `attributeLabelFontStyle`.
+
+APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign attributeLabelFont attributeLabelFontSize attributeLabelFontWeight attributeLabelFontStyle
 
 In addition, the following properties are supported:
 
-`labelTitleText`
-: The title of the sample labels.
-
-    **Default value:** `"Sample name"`
-
-`labelLength`
-: The space allocated for the sample labels in pixels.
-
-    **Default value:** `140`
-
-`labelAlign`
-: The horizontal alignment of the text. One of `"left"`, `"center"`, or `"right"`.
-
-    **Default value:** `"left"`
-
-`attributeSize`
-: Default size (width) of the metadata attribute columns. Can be configured per attribute using the `attributes` property.
-
-    **Default value:** `10`
-
-`attributeLabelAngle`
-: Angle to be added to the default label angle (-90).
-
-    **Default value:** `0`
-
-`attributeSpacing`
-: Spacing between attribute columns in pixels.
-
-    **Default value:** `1`
+APP_SCHEMA SampleDef labelTitleText labelLength attributeSize attributeLabelAngle attributeSpacing
 
 ### Handling variable sample heights
 
@@ -292,24 +264,7 @@ previous/next buttons.
 
 The `remote` object accepts the following properties:
 
-`url` (string)
-: A URL to the remote bookmark file.
-
-`initialBookmark` (string)
-: Name of the bookmark that should be loaded as the initial state. The bookmark
-description dialog is shown only if the `tour` property is set to `true`.
-
-`tour` (boolean, optional)
-: Should the user be shown a tour of the remote bookmarks when the visualization
-is launched? If the `initialBookmark` property is not defined, the tour starts
-from the first bookmark.
-
-    **Default:** `false`
-
-`afterTourBookmark` (string, optional)
-: Name of the bookmark that should be loaded when the user ends the tour.
-If `null`, the dialog will be closed and the current state is retained.
-If undefined, the default state without any performed actions will be loaded.
+APP_SCHEMA RemoteBookmarkConfig url initialBookmark tour afterTourBookmark
 
 #### The bookmark file
 
