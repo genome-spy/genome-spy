@@ -4,7 +4,7 @@ import View from "./view.js";
 import UnitView from "./unitView.js";
 import LayerView from "./layerView.js";
 import ConcatView from "./concatView.js";
-import { isArray, isObject, isString } from "vega-util";
+import { isArray, isObject } from "vega-util";
 import { loadExternalViewSpec } from "./viewUtils.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
@@ -15,6 +15,14 @@ import {
     registerImportInstance,
 } from "./viewSelectors.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
+import {
+    isConcatSpec,
+    isHConcatSpec,
+    isImportSpec,
+    isLayerSpec,
+    isUnitSpec,
+    isVConcatSpec,
+} from "./viewSpecGuards.js";
 
 export const VIEW_ROOT_NAME = "viewRoot";
 
@@ -335,73 +343,15 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
     }
 }
 
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is UnitSpec}
- */
-export function isUnitSpec(spec) {
-    return "mark" in spec && (isString(spec.mark) || isObject(spec.mark));
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is LayerSpec}
- */
-export function isLayerSpec(spec) {
-    return "layer" in spec && isObject(spec.layer);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is LayerSpec}
- */
-export function isFacetSpec(spec) {
-    return (
-        "facet" in spec &&
-        isObject(spec.facet) &&
-        "spec" in spec &&
-        isObject(spec.spec)
-    );
-}
-
-/**
- *
- * @param {object} spec
- * @returns {spec is import("../spec/view.js").ImportSpec}
- */
-export function isImportSpec(spec) {
-    return "import" in spec;
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is VConcatSpec}
- */
-export function isVConcatSpec(spec) {
-    return "vconcat" in spec && isArray(spec.vconcat);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is HConcatSpec}
- */
-export function isHConcatSpec(spec) {
-    return "hconcat" in spec && isArray(spec.hconcat);
-}
-
-/**
- *
- * @param {ViewSpec} spec
- * @returns {spec is ConcatSpec}
- */
-export function isConcatSpec(spec) {
-    return "concat" in spec && isArray(spec.concat);
-}
+export {
+    isConcatSpec,
+    isFacetSpec,
+    isHConcatSpec,
+    isImportSpec,
+    isLayerSpec,
+    isUnitSpec,
+    isVConcatSpec,
+} from "./viewSpecGuards.js";
 
 /**
  *

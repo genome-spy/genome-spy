@@ -1,4 +1,8 @@
-import { isConcatSpec, isHConcatSpec, isVConcatSpec } from "./viewFactory.js";
+import {
+    isConcatSpec,
+    isHConcatSpec,
+    isVConcatSpec,
+} from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 

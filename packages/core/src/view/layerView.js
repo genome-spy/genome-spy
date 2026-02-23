@@ -1,8 +1,8 @@
-import { isLayerSpec, isUnitSpec } from "./viewFactory.js";
 import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { isMultiscaleSpec } from "./multiscale.js";
+import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
 
 /**
  * @template {import("../spec/view.js").LayerSpec} [TSpec=import("../spec/view.js").LayerSpec]
