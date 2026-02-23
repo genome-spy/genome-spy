@@ -37,15 +37,15 @@ export const DEFAULT_KEYBOARD_ZOOM_MOTION_CONFIG = {
         pressHalfLifeMs: 30,
         releaseHalfLifeMs: 100,
         holdGrowthHalfLifeMs: 800,
-        stopVelocity: 0.0005,
+        stopVelocity: 0.01,
     },
     zoom: {
         baseSpeed: 3,
         maxExtraSpeed: 15,
         pressHalfLifeMs: 10,
         releaseHalfLifeMs: 100,
-        holdGrowthHalfLifeMs: 800,
-        stopVelocity: 0.0005,
+        holdGrowthHalfLifeMs: 600,
+        stopVelocity: 0.01,
     },
 };
 
