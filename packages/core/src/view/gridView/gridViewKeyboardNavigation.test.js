@@ -151,9 +151,11 @@ describe("GridView keyboard navigation", () => {
         expect(harness.requestTransition).not.toHaveBeenCalled();
     });
 
-    test("uses the most recent pointed x-position as zoom anchor", () => {
+    test("uses per-view keyboard anchor override when provided", () => {
         const harness = createKeyboardHarness();
         const nowSpy = vi.spyOn(performance, "now").mockReturnValue(0);
+
+        const getKeyboardZoomAnchorX = vi.fn(() => 0.25);
 
         const childView = /** @type {any} */ ({
             needsAxes: { x: false, y: false },
@@ -163,6 +165,7 @@ describe("GridView keyboard navigation", () => {
                 glHelper: { canvas: { style: {} } },
             }),
             isConfiguredVisible: () => true,
+            getKeyboardZoomAnchorX,
             getScaleResolution: /** @returns {undefined} */ () => undefined,
             propagateInteractionEvent: /** @returns {void} */ () => undefined,
             visit: /** @param {(view: any) => void} visitor */ (visitor) =>
@@ -192,6 +195,7 @@ describe("GridView keyboard navigation", () => {
         callback(5000);
 
         const [_scaleFactor, anchor] = harness.resolution.zoom.mock.calls[0];
-        expect(anchor).toBeCloseTo(0.75, 6);
+        expect(anchor).toBeCloseTo(0.25, 6);
+        expect(getKeyboardZoomAnchorX).toHaveBeenCalledTimes(1);
     });
 });

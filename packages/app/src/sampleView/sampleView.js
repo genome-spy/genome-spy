@@ -1231,6 +1231,18 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Returns keyboard-zoom anchor for the zoomable sample pane.
+     *
+     * @param {{x: number, y: number}} point
+     * @returns {number | undefined}
+     */
+    getKeyboardZoomAnchorX(point) {
+        if (this.childCoords.containsPoint(point.x, point.y)) {
+            return this.childCoords.normalizePoint(point.x, point.y).x;
+        }
+    }
+
+    /**
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {

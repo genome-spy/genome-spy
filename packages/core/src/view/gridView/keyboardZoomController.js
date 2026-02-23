@@ -79,11 +79,25 @@ export default class KeyboardZoomController {
         if (!pointedChild) {
             return;
         } else {
-            const normalizedPoint = pointedChild.coords.normalizePoint(
-                event.point.x,
-                event.point.y
-            );
-            this.#zoomAnchorX = normalizedPoint.x;
+            const viewWithAnchor =
+                /** @type {{getKeyboardZoomAnchorX?: (point: {x: number, y: number}) => number | undefined}} */ (
+                    pointedChild.view
+                );
+
+            if (typeof viewWithAnchor.getKeyboardZoomAnchorX === "function") {
+                const anchor = viewWithAnchor.getKeyboardZoomAnchorX(
+                    event.point
+                );
+                if (Number.isFinite(anchor)) {
+                    this.#zoomAnchorX = Math.max(0, Math.min(1, anchor));
+                }
+            } else {
+                const normalizedPoint = pointedChild.coords.normalizePoint(
+                    event.point.x,
+                    event.point.y
+                );
+                this.#zoomAnchorX = normalizedPoint.x;
+            }
         }
     }
 
