@@ -75,6 +75,9 @@ export default class GridView extends ContainerView {
     /** @type {Partial<Record<"horizontal" | "vertical", SeparatorView>>} */
     #separatorViews = {};
 
+    /** @type {KeyboardZoomController | null} */
+    #keyboardZoomController = null;
+
     /**
      *
      * @param {import("../../spec/view.js").AnyConcatSpec} spec
@@ -119,7 +122,7 @@ export default class GridView extends ContainerView {
         }
 
         if (!this.layoutParent) {
-            new KeyboardZoomController({
+            this.#keyboardZoomController = new KeyboardZoomController({
                 context: this.context,
                 viewRoot: this,
             });
@@ -865,6 +868,7 @@ export default class GridView extends ContainerView {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(event.point.x, event.point.y)
         );
+        this.#keyboardZoomController?.handlePointerEvent(pointedChild, event);
 
         for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
             if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {

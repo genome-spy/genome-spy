@@ -12,6 +12,8 @@ export default class KeyboardZoomController {
     /** @type {import("../view.js").default} */
     #viewRoot;
 
+    #zoomAnchorX = 0.5;
+
     #keyboardZoomMotion = new KeyboardZoomMotion();
 
     #keyboardNavigationActive = false;
@@ -39,7 +41,7 @@ export default class KeyboardZoomController {
         if (motion.panDelta !== 0 || motion.zoomDelta !== 0) {
             const changed = resolution.zoom(
                 2 ** motion.zoomDelta,
-                0.5,
+                this.#zoomAnchorX,
                 motion.panDelta
             );
             if (changed) {
@@ -67,6 +69,22 @@ export default class KeyboardZoomController {
         this.#context = context;
         this.#viewRoot = viewRoot;
         this.#setupKeyboardNavigation();
+    }
+
+    /**
+     * @param {import("./gridChild.js").default | undefined} pointedChild
+     * @param {import("../../utils/interactionEvent.js").default} event
+     */
+    handlePointerEvent(pointedChild, event) {
+        if (!pointedChild) {
+            return;
+        } else {
+            const normalizedPoint = pointedChild.coords.normalizePoint(
+                event.point.x,
+                event.point.y
+            );
+            this.#zoomAnchorX = normalizedPoint.x;
+        }
     }
 
     #setupKeyboardNavigation() {

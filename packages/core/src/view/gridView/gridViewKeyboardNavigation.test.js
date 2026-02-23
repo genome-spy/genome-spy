@@ -1,7 +1,12 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
+import Rectangle from "../layout/rectangle.js";
 import { createTestViewContext } from "../testUtils.js";
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 /**
  * @param {object} [options]
@@ -50,6 +55,7 @@ function createKeyboardHarness({ eligible = true } = {}) {
         transitions,
         requestTransition,
         requestRender,
+        view,
         resolution,
     };
 }
@@ -143,5 +149,49 @@ describe("GridView keyboard navigation", () => {
 
         expect(keydown.isPrevented()).toBe(false);
         expect(harness.requestTransition).not.toHaveBeenCalled();
+    });
+
+    test("uses the most recent pointed x-position as zoom anchor", () => {
+        const harness = createKeyboardHarness();
+        const nowSpy = vi.spyOn(performance, "now").mockReturnValue(0);
+
+        const childView = /** @type {any} */ ({
+            needsAxes: { x: false, y: false },
+            spec: {},
+            paramRuntime: { paramConfigs: new Map() },
+            context: /** @type {any} */ ({
+                glHelper: { canvas: { style: {} } },
+            }),
+            isConfiguredVisible: () => true,
+            getScaleResolution: /** @returns {undefined} */ () => undefined,
+            propagateInteractionEvent: /** @returns {void} */ () => undefined,
+            visit: /** @param {(view: any) => void} visitor */ (visitor) =>
+                visitor(childView),
+        });
+
+        // Non-obvious: we use a lightweight child mock and set coords manually
+        // so GridView can resolve a pointed child without rendering.
+        const gridChild = harness.view.appendChildView(childView);
+        gridChild.coords = Rectangle.create(0, 0, 200, 100);
+
+        harness.view.propagateInteractionEvent(
+            /** @type {any} */ ({
+                type: "mousemove",
+                point: { x: 150, y: 50 },
+                stopped: false,
+                stopPropagation: /** @returns {void} */ () => undefined,
+            })
+        );
+
+        const keydown = createKeyboardEvent("KeyD");
+        harness.listeners.keydown[0](keydown.event);
+
+        nowSpy.mockReturnValue(5000);
+
+        const callback = harness.transitions.shift();
+        callback(5000);
+
+        const [_scaleFactor, anchor] = harness.resolution.zoom.mock.calls[0];
+        expect(anchor).toBeCloseTo(0.75, 6);
     });
 });
