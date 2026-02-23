@@ -6,6 +6,7 @@ import {
 } from "@genome-spy/core/view/viewSelectors.js";
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 import {
+    getConfigurableVisibility,
     isExplicitlyVisibilityConfigurable,
     isVisibilityConfigurable,
 } from "./configurableVisibilityUtils.js";
@@ -25,10 +26,40 @@ export function validateSelectorConstraints(root) {
     /** @type {SelectorValidationIssue[]} */
     const issues = [...validateCoreSelectorConstraints(root)];
 
+    validateConfigurableVisibilityGroupSpecs(root, issues);
     validateConfigurableViewNames(root, issues);
     validateConfigurableImportInstanceNames(root, issues);
 
     return issues;
+}
+
+/**
+ * @param {View} root
+ * @param {SelectorValidationIssue[]} issues
+ */
+function validateConfigurableVisibilityGroupSpecs(root, issues) {
+    visitAddressableViews(root, (view) => {
+        const configurable = getConfigurableVisibility(view);
+        if (!configurable || typeof configurable != "object") {
+            return;
+        }
+
+        if (
+            typeof configurable.group != "string" ||
+            configurable.group.length === 0
+        ) {
+            const scope = getViewScopeChain(view);
+            issues.push({
+                message:
+                    "Configurable visibility group must be a non-empty string in " +
+                    formatScope(scope) +
+                    " for " +
+                    view.getPathString() +
+                    ".",
+                scope,
+            });
+        }
+    });
 }
 
 /**

@@ -176,6 +176,62 @@ describe("app selector constraints", () => {
         ).toBeTruthy();
     });
 
+    test("flags invalid configurable visibility group definitions", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            vconcat: [
+                {
+                    ...makeUnitSpec("coverage"),
+                    configurableVisibility: {
+                        group: "",
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(
+            issues.some((issue) =>
+                issue.message.includes(
+                    "Configurable visibility group must be a non-empty string"
+                )
+            )
+        ).toBeTruthy();
+    });
+
+    test("accepts configurable visibility group definitions", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            vconcat: [
+                {
+                    ...makeUnitSpec("coverage"),
+                    configurableVisibility: {
+                        group: "mode",
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const issues = validateSelectorConstraints(root);
+        expect(issues.length).toBe(0);
+    });
+
     test("flags duplicate import instance names for configurable views", async () => {
         const context = createTestViewContext();
 

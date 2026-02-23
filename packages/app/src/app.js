@@ -26,6 +26,7 @@ import {
     buildViewSettingsPayload,
     getViewVisibilityOverride,
     normalizeViewSettingsPayload,
+    resolveRadioVisibilityConflicts,
 } from "./viewSettingsUtils.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
@@ -185,10 +186,34 @@ export default class App {
             /** @type {ReturnType<typeof this.store.getState>} */ state
         ) => state.viewSettings?.visibilities ?? EMPTY_VISIBILITIES;
 
+        /** @type {Record<string, boolean>} */
+        let cachedInput = EMPTY_VISIBILITIES;
+        /** @type {import("@genome-spy/core/view/view.js").default | undefined} */
+        let cachedRoot;
+        /** @type {Record<string, boolean>} */
+        let cachedResolved = EMPTY_VISIBILITIES;
+
+        const getResolvedVisibilities = () => {
+            const input = visibilitiesSelector(this.store.getState());
+            const root = this.genomeSpy.viewRoot;
+
+            if (input === cachedInput && root === cachedRoot) {
+                return cachedResolved;
+            }
+
+            cachedInput = input;
+            cachedRoot = root;
+            cachedResolved = root
+                ? resolveRadioVisibilityConflicts(root, input)
+                : input;
+
+            return cachedResolved;
+        };
+
         const originalPredicate = this.genomeSpy.viewVisibilityPredicate;
         this.genomeSpy.viewVisibilityPredicate = (view) => {
             const override = getViewVisibilityOverride(
-                visibilitiesSelector(this.store.getState()),
+                getResolvedVisibilities(),
                 view
             );
             if (override !== undefined) {

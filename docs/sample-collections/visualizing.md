@@ -356,6 +356,18 @@ Views have two properties for controlling the visibility:
 
 APP_SCHEMA AppUnitSpec visible configurableVisibility
 
+Use object-form `configurableVisibility` to make views mutually exclusive in the
+menu. Views that share the same `group` in the same import scope are shown as
+radio buttons:
+
+```json
+{
+  "name": "rawCoverage",
+  "configurableVisibility": { "group": "coverageMode" },
+  ...
+}
+```
+
 ## Search
 
 The location/search field in the toolbar allows users to quickly navigate to
