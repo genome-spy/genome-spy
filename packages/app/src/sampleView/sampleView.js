@@ -1328,7 +1328,7 @@ export default class SampleView extends ContainerView {
                 const summaryView = /** @type { UnitView | LayerView } */ (
                     await this.context.createOrImportView(
                         aggSpec,
-                        this,
+                        this.#gridChild.summaryViews,
                         view,
                         "summaryView"
                     )
