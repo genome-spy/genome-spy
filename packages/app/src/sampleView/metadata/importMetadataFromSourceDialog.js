@@ -20,6 +20,7 @@ import { validateMetadata } from "./metadataValidation.js";
 
 const DEFAULT_COLUMN_PLACEHOLDER = "Type to search or paste one id per line";
 const MAX_SEARCH_SUGGESTIONS = 100;
+const COLUMN_COMMIT_DELIMITERS = [",", " "];
 
 /**
  * @typedef {{ severity: "info" | "warning" | "error", summary: string, details?: string }} AlignmentIssue
@@ -285,6 +286,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
                         .search=${(/** @type {string} */ query) =>
                             this.#searchAvailableColumns(query)}
                         .allowUnknown=${true}
+                        .commitDelimiters=${COLUMN_COMMIT_DELIMITERS}
                         .maxSuggestions=${MAX_SEARCH_SUGGESTIONS}
                         aria-invalid=${this._form.error("columns")
                             ? "true"

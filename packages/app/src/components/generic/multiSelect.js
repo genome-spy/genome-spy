@@ -64,6 +64,7 @@ export default class MultiSelect extends LitElement {
     static properties = {
         selectedValues: { attribute: false },
         search: { attribute: false },
+        commitDelimiters: { attribute: false },
         placeholder: { type: String },
         disabled: { type: Boolean },
         allowUnknown: { type: Boolean, attribute: "allow-unknown" },
@@ -217,6 +218,8 @@ export default class MultiSelect extends LitElement {
         this.selectedValues = [];
         /** @type {((query: string) => Promise<MultiSelectSearchResult[]>) | null} */
         this.search = null;
+        /** @type {string[]} */
+        this.commitDelimiters = [];
         this.placeholder = "Type to search";
         this.disabled = false;
         this.allowUnknown = false;
@@ -562,6 +565,44 @@ export default class MultiSelect extends LitElement {
         );
     }
 
+    /**
+     * @param {string} query
+     * @param {string} delimiter
+     * @returns {boolean}
+     */
+    #isDelimiterCommitAmbiguous(query, delimiter) {
+        const continuationPrefix = (query + delimiter).toLowerCase();
+        return this._suggestions.some((suggestion) =>
+            suggestion.id.toLowerCase().startsWith(continuationPrefix)
+        );
+    }
+
+    /**
+     * @param {string} delimiter
+     * @returns {boolean}
+     */
+    #commitExactMatchOnDelimiter(delimiter) {
+        const query = this._query.trim();
+        if (query.length === 0) {
+            return false;
+        }
+
+        const exact = this.#findExactMatch(query);
+        if (!exact) {
+            return false;
+        }
+
+        if (this.#isDelimiterCommitAmbiguous(query, delimiter)) {
+            return false;
+        }
+
+        this.#addValue(exact.id);
+        this._query = "";
+        this.#queueSearch("");
+        this.#focusInput();
+        return true;
+    }
+
     #confirmSelection() {
         const active =
             this._activeIndex >= 0 &&
@@ -698,6 +739,15 @@ export default class MultiSelect extends LitElement {
      */
     #onInputKeyDown(event) {
         if (this.disabled) {
+            return;
+        }
+
+        if (this.commitDelimiters.includes(event.key)) {
+            const committed = this.#commitExactMatchOnDelimiter(event.key);
+            if (committed) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             return;
         }
 
