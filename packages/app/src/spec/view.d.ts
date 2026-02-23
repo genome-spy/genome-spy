@@ -27,13 +27,16 @@ export interface AggregateSamplesSpec {
 
 /**
  * App-only visibility setting exposed in the view visibility menu.
- *
- * Configurability requires an explicit view name that is unique in its import
- * scope.
- *
- * __Default value:__ `false` for children of `layer`, `true` for others
  */
 export interface AppConfigurableVisibilitySpec {
+    /**
+     * Is the visibility configurable from the GenomeSpy App view visibility menu.
+     *
+     * Configurability requires an explicit view name that is unique in its import
+     * scope.
+     *
+     * __Default value:__ `false` for children of `layer`, `true` for others
+     */
     configurableVisibility?: boolean;
 }
 
