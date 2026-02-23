@@ -198,7 +198,8 @@ export function resolveViewSelector(root, selector) {
     const matches = [];
 
     visitViewsInScope(
-        scopeRoot,
+        root,
+        selector.scope,
         (view) => {
             if (view.explicitName === selector.view) {
                 matches.push(view);
@@ -239,7 +240,7 @@ export function resolveParamSelector(root, selector) {
     /** @type {ResolvedParam[]} */
     const matches = [];
 
-    visitViewsInScope(scopeRoot, (view) => {
+    visitViewsInScope(root, selector.scope, (view) => {
         for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (name !== selector.param) {
                 continue;
@@ -323,9 +324,9 @@ export function validateSelectorConstraints(root) {
 
     for (const scopeRoot of collectScopeRoots(root)) {
         const scope = getScopeChainForRoot(scopeRoot);
-        validateViewNamesInScope(scopeRoot, scope, issues);
-        validateParamNamesInScope(scopeRoot, scope, issues);
-        validateImportInstanceNames(scopeRoot, scope, issues);
+        validateViewNamesInScope(root, scope, issues);
+        validateParamNamesInScope(root, scope, issues);
+        validateImportInstanceNames(root, scope, issues);
     }
 
     return issues;
@@ -429,13 +430,7 @@ function collectScopeRoots(root) {
  * @returns {string[]}
  */
 function getScopeChainForRoot(scopeRoot) {
-    const chain = getViewScopeChain(scopeRoot);
-    const info = importScopes.get(scopeRoot);
-    if (info && typeof info.name === "string") {
-        return [...chain, info.name];
-    }
-
-    return chain;
+    return getViewScopeChain(scopeRoot);
 }
 
 /**
@@ -455,16 +450,17 @@ function formatScope(scope) {
 /**
  * Checks configurable view names for required explicit and unique naming.
  *
- * @param {import("./view.js").default} scopeRoot
+ * @param {import("./view.js").default} root
  * @param {string[]} scope
  * @param {SelectorValidationIssue[]} issues
  */
-function validateViewNamesInScope(scopeRoot, scope, issues) {
+function validateViewNamesInScope(root, scope, issues) {
     /** @type {Map<string, import("./view.js").default[]>} */
     const names = new Map();
 
     visitViewsInScope(
-        scopeRoot,
+        root,
+        scope,
         (view) => {
             const explicitName = view.explicitName;
             const isConfigurable = isConfigurableVisibility(view);
@@ -524,15 +520,15 @@ function validateViewNamesInScope(scopeRoot, scope, issues) {
 /**
  * Checks bookmarkable parameter names for uniqueness within a scope.
  *
- * @param {import("./view.js").default} scopeRoot
+ * @param {import("./view.js").default} root
  * @param {string[]} scope
  * @param {SelectorValidationIssue[]} issues
  */
-function validateParamNamesInScope(scopeRoot, scope, issues) {
+function validateParamNamesInScope(root, scope, issues) {
     /** @type {Map<string, import("./view.js").default[]>} */
     const names = new Map();
 
-    visitViewsInScope(scopeRoot, (view) => {
+    visitViewsInScope(root, scope, (view) => {
         for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (!isBookmarkableParam(param)) {
                 continue;
@@ -571,12 +567,12 @@ function validateParamNamesInScope(scopeRoot, scope, issues) {
 /**
  * Ensures addressable import instances are uniquely named in a scope.
  *
- * @param {import("./view.js").default} scopeRoot
+ * @param {import("./view.js").default} root
  * @param {string[]} scope
  * @param {SelectorValidationIssue[]} issues
  */
-function validateImportInstanceNames(scopeRoot, scope, issues) {
-    const importRoots = collectImmediateImportRoots(scopeRoot);
+function validateImportInstanceNames(root, scope, issues) {
+    const importRoots = collectImmediateImportRoots(root, scope);
     if (!importRoots.length) {
         return;
     }
@@ -620,29 +616,32 @@ function validateImportInstanceNames(scopeRoot, scope, issues) {
 /**
  * Collects direct import roots under a scope root.
  *
- * @param {import("./view.js").default} scopeRoot
+ * @param {import("./view.js").default} root
+ * @param {string[]} scope
  * @returns {import("./view.js").default[]}
  */
-function collectImmediateImportRoots(scopeRoot) {
+function collectImmediateImportRoots(root, scope) {
     /** @type {import("./view.js").default[]} */
     const roots = [];
 
-    scopeRoot.visit((view) => {
-        if (view === scopeRoot) {
-            return;
-        }
+    visitViewsInScope(
+        root,
+        scope,
+        (view) => {
+            const chain = getViewScopeChain(view);
+            if (chain.length !== scope.length + 1) {
+                return;
+            }
 
-        const behavior = addressableOverrides.get(view);
-        if (behavior === "excludeSubtree") {
-            return VISIT_SKIP;
-        }
+            const info = importScopes.get(view);
+            if (!info || typeof info.name !== "string") {
+                return;
+            }
 
-        const info = importScopes.get(view);
-        if (info) {
             roots.push(view);
-            return VISIT_SKIP;
-        }
-    });
+        },
+        { includeNamedImportRoots: true }
+    );
 
     return roots;
 }
@@ -698,6 +697,9 @@ function resolveScopeRoot(root, scope) {
     /** @type {import("./view.js").default} */
     let current = root;
 
+    /** @type {string[]} */
+    const parentScope = [];
+
     for (const name of scope) {
         if (typeof name !== "string" || !name.length) {
             throw new Error("Scope names must be non-empty strings.");
@@ -708,16 +710,24 @@ function resolveScopeRoot(root, scope) {
         let hasDuplicate = false;
 
         visitViewsInScope(
-            current,
+            root,
+            parentScope,
             (view) => {
                 const info = importScopes.get(view);
-                if (info && info.name === name) {
-                    if (match) {
-                        hasDuplicate = true;
-                        return VISIT_STOP;
-                    }
-                    match = view;
+                if (!info || info.name !== name) {
+                    return;
                 }
+
+                const chain = getViewScopeChain(view);
+                if (chain.length !== parentScope.length + 1) {
+                    return;
+                }
+
+                if (match) {
+                    hasDuplicate = true;
+                    return VISIT_STOP;
+                }
+                match = view;
             },
             { includeNamedImportRoots: true }
         );
@@ -730,6 +740,7 @@ function resolveScopeRoot(root, scope) {
 
         if (match) {
             current = match;
+            parentScope.push(name);
         } else {
             return;
         }
@@ -739,38 +750,92 @@ function resolveScopeRoot(root, scope) {
 }
 
 /**
- * Visits addressable views within a scope, skipping nested named import roots.
+ * Visits addressable views within a scope derived from data ancestry.
  *
- * @param {import("./view.js").default} scopeRoot
+ * @param {import("./view.js").default} root
+ * @param {string[]} scope
  * @param {import("./view.js").Visitor} visitor
  * @param {{ includeNamedImportRoots?: boolean }} [options]
  */
-function visitViewsInScope(scopeRoot, visitor, options = {}) {
+function visitViewsInScope(root, scope, visitor, options = {}) {
     const includeNamedImportRoots = options.includeNamedImportRoots ?? false;
 
-    scopeRoot.visit((view) => {
+    root.visit((view) => {
+        const info = importScopes.get(view);
         const behavior = addressableOverrides.get(view);
         if (behavior === "excludeSubtree") {
             return VISIT_SKIP;
         }
 
-        const info = importScopes.get(view);
-        const isNamedImportRoot =
-            view !== scopeRoot && info && typeof info.name === "string";
-
-        if (isNamedImportRoot) {
-            if (behavior !== "exclude" && includeNamedImportRoots) {
-                const result = visitor(view);
-                if (result === VISIT_STOP) {
-                    return result;
-                }
-            }
-
-            return VISIT_SKIP;
+        if (behavior === "exclude") {
+            return;
         }
 
-        if (behavior !== "exclude") {
-            return visitor(view);
+        if (!isViewInScope(view, scope, info, includeNamedImportRoots)) {
+            return;
         }
+
+        return visitor(view);
     });
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {string[]} scope
+ * @param {ImportScopeInfo | undefined} scopeInfo
+ * @param {boolean} includeNamedImportRoots
+ * @returns {boolean}
+ */
+function isViewInScope(view, scope, scopeInfo, includeNamedImportRoots) {
+    const chain = getViewScopeChain(view);
+
+    if (scopesEqual(chain, scope)) {
+        return true;
+    }
+
+    if (
+        !includeNamedImportRoots ||
+        !scopeInfo ||
+        typeof scopeInfo.name !== "string"
+    ) {
+        return false;
+    }
+
+    if (chain.length !== scope.length + 1) {
+        return false;
+    }
+
+    return isScopePrefix(scope, chain);
+}
+
+/**
+ * @param {string[]} a
+ * @param {string[]} b
+ * @returns {boolean}
+ */
+function scopesEqual(a, b) {
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    return isScopePrefix(a, b);
+}
+
+/**
+ * @param {string[]} prefix
+ * @param {string[]} scope
+ * @returns {boolean}
+ */
+function isScopePrefix(prefix, scope) {
+    if (prefix.length > scope.length) {
+        return false;
+    }
+
+    for (let i = 0; i < prefix.length; i++) {
+        if (prefix[i] !== scope[i]) {
+            return false;
+        }
+    }
+
+    return true;
 }

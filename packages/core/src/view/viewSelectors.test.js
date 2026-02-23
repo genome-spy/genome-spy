@@ -315,6 +315,169 @@ describe("view selectors", () => {
         expect(getViewScopeChain(innerRoot)).toEqual(["panelA", "innerA"]);
     });
 
+    test("resolveViewSelector resolves lifted views by data import scope", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                panel: {
+                    vconcat: [makeUnitSpec("track")],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+                {
+                    import: { template: "panel" },
+                    name: "panelB",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const panelATrack = resolveViewSelector(root, {
+            scope: ["panelA"],
+            view: "track",
+        });
+        const panelBTrack = resolveViewSelector(root, {
+            scope: ["panelB"],
+            view: "track",
+        });
+        const rootContainer =
+            /** @type {import("./containerView.js").default} */ (root);
+
+        const summaryA = await context.createOrImportView(
+            makeUnitSpec("summary"),
+            rootContainer,
+            panelATrack,
+            "summaryView"
+        );
+        const summaryB = await context.createOrImportView(
+            makeUnitSpec("summary"),
+            rootContainer,
+            panelBTrack,
+            "summaryView"
+        );
+
+        // Lifted summaries live under root in layout but inherit data scopes
+        // from imported tracks.
+        /** @type {import("./concatView.js").default} */ (root).appendChildView(
+            summaryA
+        );
+        /** @type {import("./concatView.js").default} */ (root).appendChildView(
+            summaryB
+        );
+
+        const resolvedA = resolveViewSelector(root, {
+            scope: ["panelA"],
+            view: "summary",
+        });
+        const resolvedB = resolveViewSelector(root, {
+            scope: ["panelB"],
+            view: "summary",
+        });
+
+        expect(resolvedA).toBe(summaryA);
+        expect(resolvedB).toBe(summaryB);
+    });
+
+    test("resolveParamSelector resolves lifted params by data import scope", async () => {
+        const context = createTestViewContext();
+
+        const rangeBind =
+            /** @type {import("../spec/parameter.js").BindRange} */ ({
+                input: "range",
+            });
+
+        const spec = {
+            templates: {
+                panel: {
+                    vconcat: [makeUnitSpec("track")],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+                {
+                    import: { template: "panel" },
+                    name: "panelB",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const panelATrack = resolveViewSelector(root, {
+            scope: ["panelA"],
+            view: "track",
+        });
+        const panelBTrack = resolveViewSelector(root, {
+            scope: ["panelB"],
+            view: "track",
+        });
+        const rootContainer =
+            /** @type {import("./containerView.js").default} */ (root);
+
+        const summarySpec = makeUnitSpecWithParams("summary", [
+            {
+                name: "threshold",
+                value: 0,
+                bind: rangeBind,
+            },
+        ]);
+
+        const summaryA = await context.createOrImportView(
+            structuredClone(summarySpec),
+            rootContainer,
+            panelATrack,
+            "summaryView"
+        );
+        const summaryB = await context.createOrImportView(
+            structuredClone(summarySpec),
+            rootContainer,
+            panelBTrack,
+            "summaryView"
+        );
+
+        // Lifted summaries live under root in layout but inherit data scopes
+        // from imported tracks.
+        /** @type {import("./concatView.js").default} */ (root).appendChildView(
+            summaryA
+        );
+        /** @type {import("./concatView.js").default} */ (root).appendChildView(
+            summaryB
+        );
+
+        const resolvedA = resolveParamSelector(root, {
+            scope: ["panelA"],
+            param: "threshold",
+        });
+        const resolvedB = resolveParamSelector(root, {
+            scope: ["panelB"],
+            param: "threshold",
+        });
+
+        expect(resolvedA).toBeDefined();
+        expect(resolvedB).toBeDefined();
+        expect(resolvedA.view).toBe(summaryA);
+        expect(resolvedB.view).toBe(summaryB);
+    });
+
     test("validateSelectorConstraints reports duplicate configurable view names", async () => {
         const context = createTestViewContext();
 

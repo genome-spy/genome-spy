@@ -82,6 +82,7 @@ describe("createViewAttributeAccessor", () => {
         const root = {
             paramRuntime: rootViewParamRuntime,
             visit: (visitor) => visitor(root),
+            getDataAncestors: () => [root],
         };
 
         const paramRuntime = new ViewParamRuntime(() => undefined);
@@ -121,6 +122,7 @@ describe("createViewAttributeAccessor", () => {
         const root = {
             paramRuntime: rootViewParamRuntime,
             visit: (visitor) => visitor(root),
+            getDataAncestors: () => [root],
         };
 
         const paramRuntime = new ViewParamRuntime(() => undefined);
