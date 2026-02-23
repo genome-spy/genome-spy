@@ -354,25 +354,7 @@ preferred configurations.
 
 Views have two properties for controlling the visibility:
 
-`visible` (boolean)
-: If true, the view is visible. This property can be used to set the default visibility.
-
-     **Default:** `true`
-
-`configurableVisibility` (boolean)
-: If true, the visibility is configurable from a menu in the app
-
-    This is an app-level property used by GenomeSpy App's view visibility menu.
-    It is not intended as a Core-only rendering concern.
-
-    Configurability requires an explicitly specified `name`. Views are
-    addressed by name within their
-    [import scope](../grammar/import.md#repeating-with-named-templates),
-    so if you instantiate the same template multiple times, give each
-    import instance a unique `name` to make its descendants addressable
-    for visibility toggles and bookmarks.
-
-    **Default:** `false` for children of `layer`, `true` for others
+APP_SCHEMA AppUnitSpec visible configurableVisibility
 
 ## Search
 
