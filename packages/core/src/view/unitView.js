@@ -47,6 +47,10 @@ export const markTypes = {
     text: TextMark,
 };
 
+/**
+ * @template {import("../spec/view.js").UnitSpec} [TSpec=import("../spec/view.js").UnitSpec]
+ * @extends {View<TSpec>}
+ */
 export default class UnitView extends View {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
@@ -73,7 +77,7 @@ export default class UnitView extends View {
 
     /**
      *
-     * @param {import("../spec/view.js").UnitSpec} spec
+     * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent

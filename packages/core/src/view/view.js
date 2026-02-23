@@ -63,7 +63,13 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  *      View's children are layered on top of each other and they have the same
  *      coordinates as their parent.
  */
+/**
+ * @template {import("../spec/view.js").ViewSpec} [TSpec=import("../spec/view.js").ViewSpec]
+ */
 export default class View {
+    /** @type {TSpec} */
+    spec;
+
     /** @type {string | undefined} */
     #defaultName;
 
@@ -110,7 +116,7 @@ export default class View {
 
     /**
      *
-     * @param {import("../spec/view.js").ViewSpec} spec
+     * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent Parent that handles rendering of this view
      * @param {import("./view.js").default} dataParent Parent that provides data, encodings, and is used in scale resolution

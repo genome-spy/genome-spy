@@ -33,6 +33,8 @@ const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
+ *
+ * @extends {ConcatView<import("../../spec/view.js").AppHConcatSpec>}
  */
 export class MetadataView extends ConcatView {
     /**
@@ -93,9 +95,7 @@ export class MetadataView extends ConcatView {
         };
 
         super(
-            /** @type {import("@genome-spy/core/spec/view.js").HConcatSpec} */ (
-                spec
-            ),
+            spec,
             sampleView.context,
             sidebarView,
             sidebarView,
@@ -551,9 +551,7 @@ export class MetadataView extends ConcatView {
                     };
 
                     const view = new ConcatView(
-                        /** @type {import("@genome-spy/core/spec/view.js").HConcatSpec} */ (
-                            groupSpec
-                        ),
+                        groupSpec,
                         this.context,
                         container,
                         container,

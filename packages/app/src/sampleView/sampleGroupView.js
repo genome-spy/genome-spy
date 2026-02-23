@@ -5,6 +5,9 @@ import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 
+/**
+ * @extends {LayerView<import("../spec/view.js").AppLayerSpec>}
+ */
 export default class SampleGroupView extends LayerView {
     /**
      * @param {import("./sampleView.js").default} sampleView
@@ -120,9 +123,7 @@ export default class SampleGroupView extends LayerView {
         };
 
         super(
-            /** @type {import("@genome-spy/core/spec/view.js").LayerSpec} */ (
-                spec
-            ),
+            spec,
             sampleView.context,
             sidebarView,
             sidebarView,

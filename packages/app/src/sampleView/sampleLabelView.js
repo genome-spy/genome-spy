@@ -21,6 +21,9 @@ const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     scale: undefined,
 });
 
+/**
+ * @extends {UnitView<import("../spec/view.js").AppUnitSpec>}
+ */
 export class SampleLabelView extends UnitView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;

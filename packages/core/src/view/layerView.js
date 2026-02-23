@@ -4,6 +4,10 @@ import ViewError from "./viewError.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { isMultiscaleSpec } from "./multiscale.js";
 
+/**
+ * @template {import("../spec/view.js").LayerSpec} [TSpec=import("../spec/view.js").LayerSpec]
+ * @extends {ContainerView<TSpec>}
+ */
 export default class LayerView extends ContainerView {
     /**
      * @typedef {import("./view.js").default} View
@@ -14,7 +18,7 @@ export default class LayerView extends ContainerView {
 
     /**
      *
-     * @param {import("../spec/view.js").LayerSpec} spec
+     * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
      * @param {import("./view.js").default} dataParent
