@@ -1,4 +1,4 @@
-import KeyboardZoomMotion from "../keyboardZoomMotion.js";
+import KeyboardZoomMotion from "../../utils/keyboardZoomMotion.js";
 import { markZoomActivity } from "../zoom.js";
 import { getKeyboardZoomTarget } from "./zoomNavigationUtils.js";
 
