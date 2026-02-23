@@ -16,7 +16,9 @@ import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
+import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
+import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
@@ -76,6 +78,9 @@ export default class GridView extends ContainerView {
     /** @type {Partial<Record<"horizontal" | "vertical", SeparatorView>>} */
     #separatorViews = {};
 
+    /** @type {KeyboardZoomController | null} */
+    #keyboardZoomController = null;
+
     /**
      *
      * @param {TSpec} spec
@@ -117,6 +122,13 @@ export default class GridView extends ContainerView {
                     getName: (prefix) => this.getNextAutoName(prefix),
                 });
             }
+        }
+
+        if (!this.layoutParent) {
+            this.#keyboardZoomController = new KeyboardZoomController({
+                context: this.context,
+                viewRoot: this,
+            });
         }
     }
 
@@ -859,6 +871,7 @@ export default class GridView extends ContainerView {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(event.point.x, event.point.y)
         );
+        this.#keyboardZoomController?.handlePointerEvent(pointedChild, event);
 
         for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
             if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
@@ -950,31 +963,6 @@ export default class GridView extends ContainerView {
     getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
-}
-
-/**
- *
- * @param {View} view
- * @returns
- */
-function getZoomableResolutions(view) {
-    /** @type {Record<import("../../spec/channel.js").PrimaryPositionalChannel, Set<import("../../scales/scaleResolution.js").default>>} */
-    const resolutions = {
-        x: new Set(),
-        y: new Set(),
-    };
-
-    // Find all resolutions (scales) that are candidates for zooming
-    view.visit((v) => {
-        for (const [channel, resolutionSet] of Object.entries(resolutions)) {
-            const resolution = v.getScaleResolution(channel);
-            if (resolution && resolution.isZoomable()) {
-                resolutionSet.add(resolution);
-            }
-        }
-    });
-
-    return resolutions;
 }
 
 /**

@@ -324,9 +324,11 @@ export default class GenomeSpy {
             getCurrentHover: () =>
                 this.#interactionController.getCurrentHover(),
             addKeyboardListener: (type, listener) => {
-                // TODO: Listeners should be called only when the mouse pointer is inside the
-                // container or the app covers the full document.
-                this.#keyboardListenerManager.add(type, listener);
+                this.#keyboardListenerManager.add(type, (event) => {
+                    if (this.#shouldDispatchKeyboardEvent(type, event)) {
+                        listener(event);
+                    }
+                });
             },
             addBroadcastListener: (type, listener) =>
                 this.#extraBroadcastListeners.add(type, listener),
@@ -352,6 +354,26 @@ export default class GenomeSpy {
                 ),
             highlightView: createViewHighlighter(this.container),
         });
+    }
+
+    /**
+     * Scopes keydown events to the active embed (focused container or hovered container).
+     * Keyup is always dispatched so key-state machines can reliably release keys.
+     *
+     * @param {"keydown" | "keyup"} type
+     * @param {KeyboardEvent} event
+     */
+    #shouldDispatchKeyboardEvent(type, event) {
+        if (type === "keyup") {
+            return true;
+        }
+
+        const activeElement = document.activeElement;
+        if (activeElement && activeElement !== document.body) {
+            return this.container.contains(activeElement);
+        } else {
+            return this.container.matches(":hover");
+        }
     }
 
     /**
