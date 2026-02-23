@@ -33,6 +33,9 @@ class ViewSettingsButton extends LitElement {
     /** @type {import("../../utils/nestPaths.js").NestedItem<View>} */
     #nestedPaths;
 
+    /** @type {View | null} */
+    #hoveredView = null;
+
     #buttonRef = createRef();
 
     #metadataSourceMenuController = new MetadataSourceMenuController();
@@ -126,6 +129,10 @@ class ViewSettingsButton extends LitElement {
             }
         }
 
+        if (checked) {
+            this.#restoreHoverHighlightAfterVisibilityUpdate(view);
+        }
+
         // Just to be sure...
         this.requestUpdate();
 
@@ -133,6 +140,24 @@ class ViewSettingsButton extends LitElement {
         void this.#showDropdown();
 
         event.stopPropagation();
+    }
+
+    /**
+     * Re-apply hover highlight after the visibility change has been processed.
+     * The App updates layout in a microtask, so we queue this after that.
+     *
+     * @param {View} view
+     */
+    #restoreHoverHighlightAfterVisibilityUpdate(view) {
+        queueMicrotask(() => {
+            if (this.#hoveredView !== view) {
+                return;
+            }
+            if (!view.isVisible()) {
+                return;
+            }
+            this.#app.genomeSpy.viewRoot.context.highlightView(view);
+        });
     }
 
     #handleResetClick() {
@@ -379,8 +404,12 @@ class ViewSettingsButton extends LitElement {
      */
     #handleViewHover(event, view) {
         if (event.type == "mouseover") {
+            this.#hoveredView = view;
             this.#app.genomeSpy.viewRoot.context.highlightView(view);
         } else {
+            if (this.#hoveredView === view) {
+                this.#hoveredView = null;
+            }
             this.#app.genomeSpy.viewRoot.context.highlightView(null);
         }
     }

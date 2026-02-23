@@ -316,6 +316,8 @@ export default class App {
                 );
 
                 const context = this.genomeSpy.viewRoot.context;
+                clearHiddenViewCoords(this.genomeSpy.viewRoot);
+                context.highlightView(null);
                 context.requestLayoutReflow();
                 context.animator.requestRender();
             })
@@ -638,4 +640,20 @@ function setFavicon(favImg) {
     setFavicon.setAttribute("rel", "shortcut icon");
     setFavicon.setAttribute("href", favImg);
     headTitle.appendChild(setFavicon);
+}
+
+/**
+ * Clears cached layout coordinates from views that are not effectively visible.
+ *
+ * Hidden views are skipped during layout/rendering and may otherwise keep stale
+ * coordinates from earlier passes.
+ *
+ * @param {import("@genome-spy/core/view/view.js").default} viewRoot
+ */
+function clearHiddenViewCoords(viewRoot) {
+    viewRoot.visit((view) => {
+        if (!view.isVisible()) {
+            view.facetCoords.clear();
+        }
+    });
 }

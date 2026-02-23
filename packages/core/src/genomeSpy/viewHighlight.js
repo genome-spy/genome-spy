@@ -8,7 +8,7 @@ export function createViewHighlighter(container) {
     return (view) => {
         container.querySelector(".view-highlight")?.remove();
         if (view) {
-            if (!view.isConfiguredVisible()) {
+            if (!view.isVisible()) {
                 return;
             }
             const coords = view.coords;
@@ -21,7 +21,7 @@ export function createViewHighlighter(container) {
                 div.style.width = coords.width + "px";
                 div.style.height = coords.height + "px";
                 div.style.border = "1px solid green";
-                div.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+                div.style.backgroundColor = "rgba(0, 255, 0, 0.05)";
                 div.style.pointerEvents = "none";
                 container.appendChild(div);
             }
