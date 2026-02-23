@@ -2,12 +2,24 @@ import { Data, InlineData, UrlData } from "@genome-spy/core/spec/data.js";
 import { Align, FontStyle, FontWeight } from "@genome-spy/core/spec/font.js";
 import { Scale } from "@genome-spy/core/spec/scale.js";
 import { ViewSpecBase, ViewBackground } from "@genome-spy/core/spec/view.js";
-import { AppLayerSpec, AppNestedViewSpec, AppUnitSpec } from "./view.js";
+import {
+    AppConfigurableVisibilitySpec,
+    AppLayerSpec,
+    AppNestedViewSpec,
+    AppUnitSpec,
+} from "./view.js";
 
 /**
  * A view specification for a SampleView.
  */
 export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
+    /**
+     * Is the SampleView visibility configurable from the GenomeSpy App toolbar.
+     *
+     * __Default value:__ `true`
+     */
+    configurableVisibility?: AppConfigurableVisibilitySpec["configurableVisibility"];
+
     /**
      * Sample metadata definition.
      * If the object is empty, the sample identifiers will be inferred from the data.

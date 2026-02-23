@@ -2,6 +2,9 @@ import View, { VISIT_STOP, VISIT_SKIP } from "./view.js";
 
 /**
  * Compositor view represents a non-leaf node in the view hierarchy.
+ *
+ * @template {import("../spec/view.js").ContainerSpec} [TSpec=import("../spec/view.js").ContainerSpec]
+ * @extends {View<TSpec>}
  */
 export default class ContainerView extends View {
     /** @type {Map<string, number>} */
@@ -9,7 +12,7 @@ export default class ContainerView extends View {
 
     /**
      *
-     * @param {import("../spec/view.js").ContainerSpec} spec
+     * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
      * @param {import("./view.js").default} dataParent

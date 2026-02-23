@@ -4,11 +4,14 @@ import ContainerMutationHelper from "./containerMutationHelper.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
+ *
+ * @template {import("../spec/view.js").AnyConcatSpec} [TSpec=import("../spec/view.js").AnyConcatSpec]
+ * @extends {GridView<TSpec>}
  */
 export default class ConcatView extends GridView {
     /**
      *
-     * @param {import("../spec/view.js").AnyConcatSpec} spec
+     * @param {TSpec} spec
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent

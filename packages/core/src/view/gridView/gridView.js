@@ -33,6 +33,9 @@ import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
  * - Zoom / pan
  * - Scrollable viewports (with scrollbars)
  * - And later on, brushing, legend(?)
+ *
+ * @template {import("../../spec/view.js").AnyConcatSpec} [TSpec=import("../../spec/view.js").AnyConcatSpec]
+ * @extends {ContainerView<TSpec>}
  */
 export default class GridView extends ContainerView {
     /**
@@ -75,7 +78,7 @@ export default class GridView extends ContainerView {
 
     /**
      *
-     * @param {import("../../spec/view.js").AnyConcatSpec} spec
+     * @param {TSpec} spec
      * @param {import("../../types/viewContext.js").default} context
      * @param {ContainerView} layoutParent
      * @param {View} dataParent

@@ -234,16 +234,6 @@ export interface ViewSpecBase extends ResolveSpec {
     visible?: boolean;
 
     /**
-     * Is the visibility configurable interactively from the [GenomeSpy
-     * App](https://genomespy.app/docs/sample-collections/).
-     * Configurability requires that the view has an explicitly specified name
-     * that is unique within its import scope.
-     *
-     * **Default:** `false` for children of `layer`, `true` for others.
-     */
-    configurableVisibility?: boolean;
-
-    /**
      * [Templates](https://genomespy.app/docs/grammar/import/#repeating-with-named-templates)
      * that can be reused within the view specification by importing them with the template key.
      */

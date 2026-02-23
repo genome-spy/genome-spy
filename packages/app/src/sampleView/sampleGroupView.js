@@ -5,119 +5,125 @@ import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 
+/**
+ * @extends {LayerView<import("../spec/view.js").AppLayerSpec>}
+ */
 export default class SampleGroupView extends LayerView {
     /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
     constructor(sampleView, sidebarView) {
-        super(
-            {
-                name: "sample-groups",
-                title: {
-                    text: "Groups",
-                    orient: "none",
+        /** @type {import("../spec/view.js").AppLayerSpec} */
+        const spec = {
+            name: "sample-groups",
+            title: {
+                text: "Groups",
+                orient: "none",
+            },
+            configurableVisibility: true,
+
+            padding: { right: 0 },
+
+            width: { step: 22 },
+            // TODO: Make step size, colors, font size, etc. configurable.
+
+            data: { name: null },
+
+            transform: [
+                { type: "filter", expr: "datum._depth > 0" },
+                { type: "formula", as: "_y1", expr: "datum._index * 2" },
+                {
+                    type: "formula",
+                    as: "_y2",
+                    expr: "datum._index * 2 + 1",
                 },
-                configurableVisibility: true,
+                {
+                    type: "formula",
+                    as: "_title",
+                    // The following fails if title is zero (number).
+                    // TODO: Implement isValid() from https://github.com/vega/vega/tree/main/packages/vega-functions
+                    expr: "datum.title || datum.name",
+                },
+                {
+                    type: "formula",
+                    as: "_NA",
+                    expr: "datum._title === null",
+                },
+                {
+                    type: "formula",
+                    as: "_title",
+                    expr: "datum._title !== null ? datum._title: 'NA'",
+                },
+            ],
 
-                padding: { right: 0 },
-
-                width: { step: 22 },
-                // TODO: Make step size, colors, font size, etc. configurable.
-
-                data: { name: null },
-
-                transform: [
-                    { type: "filter", expr: "datum._depth > 0" },
-                    { type: "formula", as: "_y1", expr: "datum._index * 2" },
-                    {
-                        type: "formula",
-                        as: "_y2",
-                        expr: "datum._index * 2 + 1",
+            encoding: {
+                x: {
+                    field: "_depth",
+                    type: "ordinal",
+                    scale: {
+                        align: 0,
+                        padding: 0.2272727,
                     },
-                    {
-                        type: "formula",
-                        as: "_title",
-                        // The following fails if title is zero (number).
-                        // TODO: Implement isValid() from https://github.com/vega/vega/tree/main/packages/vega-functions
-                        expr: "datum.title || datum.name",
-                    },
-                    {
-                        type: "formula",
-                        as: "_NA",
-                        expr: "datum._title === null",
-                    },
-                    {
-                        type: "formula",
-                        as: "_title",
-                        expr: "datum._title !== null ? datum._title: 'NA'",
-                    },
-                ],
-
-                encoding: {
-                    x: {
-                        field: "_depth",
+                    /*
+                    axis: {
+                        title: null
+                        domain: false
+                    }
+                    */
+                    axis: null,
+                },
+                // "Abuse" the ordinal scale on a positional channel.
+                // Its range encodes the positions of the groups and it is updated dynamically
+                // when the samples are peeked and scrolled.
+                y: {
+                    field: "_y1",
+                    type: "nominal",
+                    scale: {
                         type: "ordinal",
-                        scale: {
-                            align: 0,
-                            padding: 0.2272727,
-                        },
-                        /*
-                        axis: {
-                            title: null
-                            domain: false
-						}
-						*/
-                        axis: null,
+                        domain: range(500), // Hack needed because domains are not (yet) sorted
                     },
-                    // "Abuse" the ordinal scale on a positional channel.
-                    // Its range encodes the positions of the groups and it is updated dynamically
-                    // when the samples are peeked and scrolled.
-                    y: {
-                        field: "_y1",
-                        type: "nominal",
-                        scale: {
-                            type: "ordinal",
-                            domain: range(500), // Hack needed because domains are not (yet) sorted
-                        },
-                        axis: null,
-                    },
-                    y2: { field: "_y2" },
+                    axis: null,
                 },
-                layer: [
-                    {
-                        title: "Group",
-                        mark: {
-                            type: "rect",
-                            clip: true,
-                            color: "#e8e8e8",
-                            cornerRadiusBottomLeft: 14,
-                            cornerRadiusTopLeft: 14,
-                        },
+                y2: { field: "_y2" },
+            },
+            layer: [
+                {
+                    title: "Group",
+                    mark: {
+                        type: "rect",
+                        clip: true,
+                        color: "#e8e8e8",
+                        cornerRadiusBottomLeft: 14,
+                        cornerRadiusTopLeft: 14,
                     },
-                    {
-                        mark: {
-                            type: "text",
-                            clip: true,
-                            angle: -90,
-                            paddingY: 5,
-                            tooltip: null,
-                        },
-                        encoding: {
-                            text: { field: "_title" },
-                            opacity: {
-                                field: "_NA",
-                                type: "nominal",
-                                scale: {
-                                    type: "ordinal",
-                                    domain: [false, true],
-                                    range: [1.0, 0.3],
-                                },
+                },
+                {
+                    mark: {
+                        type: "text",
+                        clip: true,
+                        angle: -90,
+                        paddingY: 5,
+                        tooltip: null,
+                    },
+                    encoding: {
+                        text: { field: "_title" },
+                        opacity: {
+                            field: "_NA",
+                            type: "nominal",
+                            scale: {
+                                type: "ordinal",
+                                domain: [false, true],
+                                range: [1.0, 0.3],
                             },
                         },
                     },
-                ],
-            },
+                },
+            ],
+        };
+
+        super(
+            spec,
             sampleView.context,
             sidebarView,
             sidebarView,

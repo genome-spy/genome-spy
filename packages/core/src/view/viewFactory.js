@@ -56,7 +56,16 @@ export class ViewFactory {
         };
 
         const makeDefaultFactory =
-            (/** @type {typeof View} */ ViewClass) =>
+            (
+                /** @type {new (
+                 *   spec: ViewSpec,
+                 *   context: ViewContext,
+                 *   layoutParent?: import("./containerView.js").default,
+                 *   dataParent?: import("./view.js").default,
+                 *   defaultName?: string
+                 * ) => View} */
+                ViewClass
+            ) =>
             /** @type {Factory} */
             (spec, context, layoutParent, dataParent, defaultName) =>
                 /** @type {View} */ (

@@ -725,7 +725,6 @@ export function createBackground(viewBackground) {
     }
 
     return {
-        configurableVisibility: false,
         data: { values: [{}] },
         mark: {
             color: viewBackground.fill,
@@ -763,7 +762,6 @@ export function createBackgroundStroke(viewBackground) {
     // We are not using a rect mark because it is not optimized for outlines.
     // TODO: Implement "hollow" mesh for non-filled rectangles
     return {
-        configurableVisibility: false,
         resolve: {
             scale: { x: "excluded", y: "excluded" },
             axis: { x: "excluded", y: "excluded" },

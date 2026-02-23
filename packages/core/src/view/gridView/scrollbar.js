@@ -67,7 +67,6 @@ export default class Scrollbar extends UnitView {
                     cornerRadius: 5,
                     clip: false,
                 },
-                configurableVisibility: false,
             },
             gridChild.layoutParent.context,
             gridChild.layoutParent,

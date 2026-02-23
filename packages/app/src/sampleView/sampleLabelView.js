@@ -21,6 +21,9 @@ const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
     scale: undefined,
 });
 
+/**
+ * @extends {UnitView<import("../spec/view.js").AppUnitSpec>}
+ */
 export class SampleLabelView extends UnitView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;
@@ -138,7 +141,7 @@ export class SampleLabelView extends UnitView {
 function createLabelViewSpec(sampleDef) {
     // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
 
-    /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
+    /** @type {import("../spec/view.js").AppUnitSpec} */
     const labelSpec = {
         name: "sample-labels",
         data: { name: null },

@@ -27,7 +27,6 @@ import {
     getViewVisibilityOverride,
     normalizeViewSettingsPayload,
 } from "./viewSettingsUtils.js";
-import { validateSelectorConstraints } from "@genome-spy/core/view/viewSelectors.js";
 import { subscribeTo, withMicrotask } from "./state/subscribeTo.js";
 import SimpleBookmarkDatabase from "./bookmark/simpleBookmarkDatabase.js";
 import { isSampleSpec } from "./sampleView/specGuards.js";
@@ -39,6 +38,7 @@ import { setupMetadataSourceRuntime } from "./sampleView/metadata/metadataSource
 import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
+import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 

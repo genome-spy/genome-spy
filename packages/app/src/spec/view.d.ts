@@ -25,7 +25,23 @@ export interface AggregateSamplesSpec {
     aggregateSamples?: AggregatingSpec[];
 }
 
+/**
+ * App-only visibility setting exposed in the view visibility menu.
+ */
+export interface AppConfigurableVisibilitySpec {
+    /**
+     * Is the visibility configurable from the GenomeSpy App view visibility menu.
+     *
+     * Configurability requires an explicit view name that is unique in its import
+     * scope.
+     *
+     * __Default value:__ `false` for children of `layer`, `true` for others
+     */
+    configurableVisibility?: boolean;
+}
+
 export type AppUnitSpec = Omit<CoreUnitSpec, "aggregateSamples" | "templates"> &
+    AppConfigurableVisibilitySpec &
     AggregateSamplesSpec & {
         // Re-thread templates to the app union so nested views can use app-only
         // fields (e.g. aggregateSamples), but still exclude nested SampleSpec.
@@ -36,6 +52,7 @@ export type AppLayerSpec = Omit<
     CoreLayerSpec,
     "layer" | "aggregateSamples" | "templates"
 > &
+    AppConfigurableVisibilitySpec &
     AggregateSamplesSpec & {
         templates?: Record<string, AppNestedViewSpec>;
 
@@ -46,6 +63,7 @@ export type AppMultiscaleSpec = Omit<
     CoreMultiscaleSpec,
     "multiscale" | "aggregateSamples" | "templates"
 > &
+    AppConfigurableVisibilitySpec &
     AggregateSamplesSpec & {
         templates?: Record<string, AppNestedViewSpec>;
 
@@ -57,23 +75,26 @@ export type AppMultiscaleSpec = Omit<
         )[];
     };
 
-export type AppVConcatSpec = Omit<CoreVConcatSpec, "templates" | "vconcat"> & {
-    templates?: Record<string, AppNestedViewSpec>;
+export type AppVConcatSpec = Omit<CoreVConcatSpec, "templates" | "vconcat"> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
 
-    vconcat: (AppViewSpec | ImportSpec)[];
-};
+        vconcat: (AppViewSpec | ImportSpec)[];
+    };
 
-export type AppHConcatSpec = Omit<CoreHConcatSpec, "templates" | "hconcat"> & {
-    templates?: Record<string, AppNestedViewSpec>;
+export type AppHConcatSpec = Omit<CoreHConcatSpec, "templates" | "hconcat"> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
 
-    hconcat: (AppViewSpec | ImportSpec)[];
-};
+        hconcat: (AppViewSpec | ImportSpec)[];
+    };
 
-export type AppConcatSpec = Omit<CoreConcatSpec, "templates" | "concat"> & {
-    templates?: Record<string, AppNestedViewSpec>;
+export type AppConcatSpec = Omit<CoreConcatSpec, "templates" | "concat"> &
+    AppConfigurableVisibilitySpec & {
+        templates?: Record<string, AppNestedViewSpec>;
 
-    concat: (AppViewSpec | ImportSpec)[];
-};
+        concat: (AppViewSpec | ImportSpec)[];
+    };
 
 export type AppNestedViewSpec =
     | AppUnitSpec
