@@ -3,8 +3,7 @@ import { faFileUpload, faSlidersH } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, html } from "lit";
 import { live } from "lit/directives/live.js";
 import { ref, createRef } from "lit/directives/ref.js";
-import AxisView from "@genome-spy/core/view/axisView.js";
-import LayerView from "@genome-spy/core/view/layerView.js";
+import { visitAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { queryDependency } from "../../utils/dependency.js";
 import { nestPaths } from "../../utils/nestPaths.js";
@@ -14,10 +13,6 @@ import {
     getViewVisibilityKey,
     getViewVisibilityOverride,
 } from "../../viewSettingsUtils.js";
-import {
-    nodesToTreesWithAccessor,
-    visitTree,
-} from "@genome-spy/core/utils/trees.js";
 import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
@@ -25,6 +20,7 @@ import SubscriptionController from "../generic/subscriptionController.js";
 import { MetadataView } from "../../sampleView/metadata/metadataView.js";
 import { showUploadMetadataDialog } from "../../sampleView/metadata/uploadMetadataDialog.js";
 import { MetadataSourceMenuController } from "../../sampleView/metadata/metadataSourceMenu.js";
+import { isVisibilityConfigurable } from "../../configurableVisibilityUtils.js";
 
 class ViewSettingsButton extends LitElement {
     /** @type {import("../../app.js").default} */
@@ -177,20 +173,9 @@ class ViewSettingsButton extends LitElement {
         /** @type {View[]} */
         const nodes = [];
 
-        for (const tree of nodesToTreesWithAccessor(
-            viewRoot.getDescendants(),
-            (view) => view.dataParent
-        )) {
-            visitTree(tree, {
-                preOrder: (node) => {
-                    const view = node.ref;
-                    if (view instanceof AxisView) {
-                        return "skip";
-                    }
-                    nodes.push(view);
-                },
-            });
-        }
+        visitAddressableViews(viewRoot, (view) => {
+            nodes.push(view);
+        });
 
         // Do some flattening to the hierarchy, filter some levels out
         const paths = nodes
@@ -423,10 +408,6 @@ class ViewSettingsButton extends LitElement {
         }
     }
 }
-
-const isVisibilityConfigurable = (/** @type {View} */ view) =>
-    view.spec.configurableVisibility ??
-    !(view.layoutParent && view.layoutParent instanceof LayerView);
 
 const hasVariableBindings = (/** @type {View} */ view) =>
     [...view.paramRuntime.paramConfigs.values()].some(

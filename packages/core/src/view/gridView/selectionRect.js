@@ -28,7 +28,6 @@ export default class SelectionRect extends LayerView {
         /** @type {import("../../spec/view.js").LayerSpec} */
         const layerSpec = {
             name: "selectionRect",
-            configurableVisibility: false,
             domainInert: true,
             resolve: {
                 scale: {

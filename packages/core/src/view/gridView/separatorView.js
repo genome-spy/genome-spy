@@ -244,7 +244,6 @@ export function resolveSeparatorProps(separator) {
  */
 function createSeparatorSpec(props) {
     return {
-        configurableVisibility: false,
         domainInert: true,
         data: { values: [] },
         resolve: {

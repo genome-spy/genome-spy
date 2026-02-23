@@ -324,7 +324,6 @@ export function validateSelectorConstraints(root) {
 
     for (const scopeRoot of collectScopeRoots(root)) {
         const scope = getScopeChainForRoot(scopeRoot);
-        validateViewNamesInScope(root, scope, issues);
         validateParamNamesInScope(root, scope, issues);
         validateImportInstanceNames(root, scope, issues);
     }
@@ -360,25 +359,6 @@ function validateViewSelector(selector) {
     if (typeof selector.view !== "string" || !selector.view.length) {
         throw new Error("View selector view must be a non-empty string.");
     }
-}
-
-/**
- * Returns the effective configurableVisibility value for a view.
- *
- * @param {import("./view.js").default} view
- * @returns {boolean}
- */
-function isConfigurableVisibility(view) {
-    const explicit = view.spec.configurableVisibility;
-    if (explicit !== undefined) {
-        return explicit;
-    }
-
-    return !(
-        view.layoutParent &&
-        view.layoutParent.spec &&
-        "layer" in view.layoutParent.spec
-    );
 }
 
 /**
@@ -445,76 +425,6 @@ function formatScope(scope) {
     }
 
     return "import scope [" + scope.join(" / ") + "]";
-}
-
-/**
- * Checks configurable view names for required explicit and unique naming.
- *
- * @param {import("./view.js").default} root
- * @param {string[]} scope
- * @param {SelectorValidationIssue[]} issues
- */
-function validateViewNamesInScope(root, scope, issues) {
-    /** @type {Map<string, import("./view.js").default[]>} */
-    const names = new Map();
-
-    visitViewsInScope(
-        root,
-        scope,
-        (view) => {
-            const explicitName = view.explicitName;
-            const isConfigurable = isConfigurableVisibility(view);
-            const isExplicitlyConfigurable =
-                view.spec.configurableVisibility === true;
-
-            if (!isConfigurable) {
-                return;
-            }
-
-            if (!explicitName) {
-                if (!isExplicitlyConfigurable) {
-                    return;
-                }
-
-                issues.push({
-                    message:
-                        "Configurable view must have an explicit name in " +
-                        formatScope(scope) +
-                        ".",
-                    scope,
-                });
-                return;
-            }
-
-            const matches = names.get(explicitName);
-            if (matches) {
-                matches.push(view);
-            } else {
-                names.set(explicitName, [view]);
-            }
-        },
-        { includeNamedImportRoots: true }
-    );
-
-    for (const [name, matches] of names) {
-        if (matches.length <= 1) {
-            continue;
-        }
-
-        const paths = matches.map((view) => view.getPathString()).join(", ");
-
-        issues.push({
-            message:
-                'Configurable view name "' +
-                name +
-                '" is not unique within ' +
-                formatScope(scope) +
-                ". Found in: " +
-                paths +
-                ".",
-            scope,
-        });
-    }
 }
 
 /**
@@ -647,7 +557,7 @@ function collectImmediateImportRoots(root, scope) {
 }
 
 /**
- * Detects whether a subtree exposes configurable views or bookmarkable params.
+ * Detects whether a subtree exposes bookmarkable parameters.
  *
  * @param {import("./view.js").default} root
  * @returns {boolean}
@@ -662,18 +572,6 @@ function hasAddressableFeatures(root) {
         }
 
         if (behavior !== "exclude") {
-            const isConfigurable = isConfigurableVisibility(view);
-            const isExplicitlyConfigurable =
-                view.spec.configurableVisibility === true;
-
-            if (
-                isConfigurable &&
-                (view.explicitName || isExplicitlyConfigurable)
-            ) {
-                found = true;
-                return VISIT_STOP;
-            }
-
             for (const param of view.paramRuntime.paramConfigs.values()) {
                 if (isBookmarkableParam(param)) {
                     found = true;

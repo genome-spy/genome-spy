@@ -77,20 +77,25 @@ export class MetadataView extends ConcatView {
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
     constructor(sampleView, sidebarView) {
-        super(
-            {
-                name: "sample-metadata",
-                title: "Sample metadata",
-                configurableVisibility: true,
-                data: { name: null },
-                hconcat: [], // Contents are added dynamically
-                spacing: sampleView.spec.samples.attributeSpacing ?? 1,
-                padding: { right: 10 }, // TODO: Configurable
-                resolve: {
-                    scale: { default: "independent" },
-                    axis: { default: "independent" },
-                },
+        /** @type {import("../../spec/view.js").AppHConcatSpec} */
+        const spec = {
+            name: "sample-metadata",
+            title: "Sample metadata",
+            configurableVisibility: true,
+            data: { name: null },
+            hconcat: [], // Contents are added dynamically
+            spacing: sampleView.spec.samples.attributeSpacing ?? 1,
+            padding: { right: 10 }, // TODO: Configurable
+            resolve: {
+                scale: { default: "independent" },
+                axis: { default: "independent" },
             },
+        };
+
+        super(
+            /** @type {import("@genome-spy/core/spec/view.js").HConcatSpec} */ (
+                spec
+            ),
             sampleView.context,
             sidebarView,
             sidebarView,
@@ -529,23 +534,26 @@ export class MetadataView extends ConcatView {
                 } else {
                     const attributeDef = attributeDefs?.[node.path] ?? {};
                     const groupViewName = `attributeGroup-${node.path}`;
+                    /** @type {import("../../spec/view.js").AppHConcatSpec} */
+                    const groupSpec = {
+                        name: groupViewName,
+                        hconcat: [],
+                        configurableVisibility: true,
+                        title: attributeDef.title ?? node.part,
+                        visible: attributeDef.visible ?? true,
+                        spacing:
+                            this.#sampleView.spec.samples.attributeSpacing ?? 1,
+                        resolve: {
+                            // TODO: scale could be shared within groups
+                            scale: { default: "independent" },
+                            axis: { default: "independent" },
+                        },
+                    };
 
                     const view = new ConcatView(
-                        {
-                            name: groupViewName,
-                            hconcat: [],
-                            configurableVisibility: true,
-                            title: attributeDef.title ?? node.part,
-                            visible: attributeDef.visible ?? true,
-                            spacing:
-                                this.#sampleView.spec.samples
-                                    .attributeSpacing ?? 1,
-                            resolve: {
-                                // TODO: scale could be shared within groups
-                                scale: { default: "independent" },
-                                axis: { default: "independent" },
-                            },
-                        },
+                        /** @type {import("@genome-spy/core/spec/view.js").HConcatSpec} */ (
+                            groupSpec
+                        ),
                         this.context,
                         container,
                         container,

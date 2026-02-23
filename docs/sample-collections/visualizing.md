@@ -362,6 +362,9 @@ Views have two properties for controlling the visibility:
 `configurableVisibility` (boolean)
 : If true, the visibility is configurable from a menu in the app
 
+    This is an app-level property used by GenomeSpy App's view visibility menu.
+    It is not intended as a Core-only rendering concern.
+
     Configurability requires an explicitly specified `name`. Views are
     addressed by name within their
     [import scope](../grammar/import.md#repeating-with-named-templates),

@@ -138,7 +138,6 @@ export default function createTitle(title) {
     }
 
     return {
-        configurableVisibility: false,
         data: { values: [{}] },
         mark: {
             type: "text",
