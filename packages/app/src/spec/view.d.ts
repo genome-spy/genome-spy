@@ -28,6 +28,19 @@ export interface AggregateSamplesSpec {
 /**
  * App-only visibility setting exposed in the view visibility menu.
  */
+export interface AppVisibilityGroupSpec {
+    /**
+     * Name of a mutually exclusive visibility group.
+     *
+     * Views with the same group name in the same import scope are controlled
+     * with radio buttons in the view visibility menu.
+     */
+    group: string;
+}
+
+/**
+ * App-only visibility setting exposed in the view visibility menu.
+ */
 export interface AppConfigurableVisibilitySpec {
     /**
      * Is the visibility configurable from the GenomeSpy App view visibility menu.
@@ -35,9 +48,12 @@ export interface AppConfigurableVisibilitySpec {
      * Configurability requires an explicit view name that is unique in its import
      * scope.
      *
+     * Set to an object with `group` to make configurable views mutually
+     * exclusive in the menu (radio buttons) within the same import scope.
+     *
      * __Default value:__ `false` for children of `layer`, `true` for others
      */
-    configurableVisibility?: boolean;
+    configurableVisibility?: boolean | AppVisibilityGroupSpec;
 }
 
 export type AppUnitSpec = Omit<CoreUnitSpec, "aggregateSamples" | "templates"> &

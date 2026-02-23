@@ -9,9 +9,11 @@ import { queryDependency } from "../../utils/dependency.js";
 import { nestPaths } from "../../utils/nestPaths.js";
 import { viewSettingsSlice } from "../../viewSettingsSlice.js";
 import {
+    getRadioVisibilityGroupsBySelector,
     getUniqueViewSelectorKeys,
     getViewVisibilityKey,
     getViewVisibilityOverride,
+    resolveRadioVisibilityConflicts,
 } from "../../viewSettingsUtils.js";
 import { dropdownMenu } from "../../utils/ui/contextMenu.js";
 import createBindingInputs from "@genome-spy/core/utils/inputBinding.js";
@@ -139,6 +141,42 @@ class ViewSettingsButton extends LitElement {
     }
 
     /**
+     * @param {UIEvent} event
+     * @param {View} view
+     * @param {string[]} groupMemberKeys
+     */
+    #handleRadioClick(event, view, groupMemberKeys) {
+        const checked = /** @type {HTMLInputElement} */ (event.target).checked;
+        if (!checked) {
+            event.stopPropagation();
+            return;
+        }
+
+        const selectorKey = getViewVisibilityKey(view);
+        if (!selectorKey) {
+            throw new Error(
+                "Cannot toggle view visibility without an explicit name."
+            );
+        }
+
+        for (const memberKey of groupMemberKeys) {
+            this.#app.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    key: memberKey,
+                    visibility: memberKey === selectorKey,
+                })
+            );
+        }
+
+        this.#restoreHoverHighlightAfterVisibilityUpdate(view);
+
+        this.requestUpdate();
+        void this.#showDropdown();
+
+        event.stopPropagation();
+    }
+
+    /**
      * Re-apply hover highlight after the visibility change has been processed.
      * The App updates layout in a microtask, so we queue this after that.
      *
@@ -198,12 +236,17 @@ class ViewSettingsButton extends LitElement {
     }
 
     #makeToggles() {
-        const visibilities = this.getVisibilities();
-
         const viewRoot = this.#app.genomeSpy.viewRoot;
+        const visibilities = this.getVisibilities();
+        const effectiveVisibilities = viewRoot
+            ? resolveRadioVisibilityConflicts(viewRoot, visibilities)
+            : visibilities;
         const uniqueSelectorKeys = viewRoot
             ? getUniqueViewSelectorKeys(viewRoot)
             : new Set();
+        const radioGroupsBySelector = viewRoot
+            ? getRadioVisibilityGroupsBySelector(viewRoot)
+            : new Map();
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
@@ -215,7 +258,7 @@ class ViewSettingsButton extends LitElement {
         const nestedItemToHtml = (/** */ item, depth = -1) => {
             const view = item.item;
             const visibilityOverride = getViewVisibilityOverride(
-                visibilities,
+                effectiveVisibilities,
                 view
             );
             const checked =
@@ -223,6 +266,13 @@ class ViewSettingsButton extends LitElement {
                     ? visibilityOverride
                     : view.isVisibleInSpec();
             const selectorKey = getViewVisibilityKey(view);
+            const radioGroup =
+                selectorKey && radioGroupsBySelector.has(selectorKey)
+                    ? radioGroupsBySelector.get(selectorKey)
+                    : undefined;
+            const isRadioGroup = Boolean(
+                radioGroup && radioGroup.memberKeys.length > 1
+            );
 
             /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
             const submenuItems = [];
@@ -298,13 +348,21 @@ class ViewSettingsButton extends LitElement {
                 >
                     <input
                         style=${`margin-left: ${depth * 1.5}em;`}
-                        type="checkbox"
+                        type=${isRadioGroup ? "radio" : "checkbox"}
                         ?disabled=${!selectorKey ||
                         !uniqueSelectorKeys.has(selectorKey) ||
                         !isVisibilityConfigurable(view)}
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
-                            this.#handleCheckboxClick(event, view)}
+                            isRadioGroup
+                                ? this.#handleRadioClick(
+                                      event,
+                                      view,
+                                      /** @type {{ memberKeys: string[] }} */ (
+                                          radioGroup
+                                      ).memberKeys
+                                  )
+                                : this.#handleCheckboxClick(event, view)}
                     />${label}
                 </label>`;
 

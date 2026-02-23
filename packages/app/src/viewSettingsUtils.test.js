@@ -2,7 +2,11 @@
 import { describe, expect, test, vi } from "vitest";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { VIEW_ROOT_NAME } from "@genome-spy/core/view/viewFactory.js";
-import { buildViewVisibilityEntries } from "./viewSettingsUtils.js";
+import {
+    buildViewVisibilityEntries,
+    getRadioVisibilityGroupsBySelector,
+    resolveRadioVisibilityConflicts,
+} from "./viewSettingsUtils.js";
 
 /**
  * @param {string} name
@@ -75,5 +79,132 @@ describe("view visibility entries", () => {
         expect(warn).toHaveBeenCalled();
 
         warn.mockRestore();
+    });
+
+    test("resolves conflicting radio-group visibilities deterministically", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            vconcat: [
+                {
+                    ...makeUnitSpec("coverageA"),
+                    configurableVisibility: { group: "mode" },
+                },
+                {
+                    ...makeUnitSpec("coverageB"),
+                    configurableVisibility: { group: "mode" },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const bySelector = getRadioVisibilityGroupsBySelector(root);
+        const [{ memberKeys }] = Array.from(bySelector.values());
+
+        const resolved = resolveRadioVisibilityConflicts(root, {});
+
+        expect(resolved[memberKeys[0]]).toBeUndefined();
+        expect(resolved[memberKeys[1]]).toBe(false);
+    });
+
+    test("keeps radio groups scoped to import instances", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                panel: {
+                    vconcat: [
+                        {
+                            ...makeUnitSpec("coverageA"),
+                            configurableVisibility: { group: "mode" },
+                        },
+                        {
+                            ...makeUnitSpec("coverageB"),
+                            configurableVisibility: { group: "mode" },
+                        },
+                    ],
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+                {
+                    import: { template: "panel" },
+                    name: "panelB",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const bySelector = getRadioVisibilityGroupsBySelector(root);
+        const groupKeys = new Set(
+            Array.from(bySelector.values(), (entry) => entry.groupKey)
+        );
+
+        expect(groupKeys.size).toBe(2);
+        for (const entry of bySelector.values()) {
+            expect(entry.memberKeys.length).toBe(2);
+        }
+    });
+
+    test("groups named imported root views within their parent scope", async () => {
+        const context = createTestViewContext();
+
+        const spec = {
+            templates: {
+                panel: {
+                    ...makeUnitSpec("coverage"),
+                    configurableVisibility: { group: "mode" },
+                },
+            },
+            vconcat: [
+                {
+                    import: { template: "panel" },
+                    name: "panelA",
+                },
+                {
+                    import: { template: "panel" },
+                    name: "panelB",
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const bySelector = getRadioVisibilityGroupsBySelector(root);
+        expect(bySelector.size).toBe(2);
+
+        const groupKeys = new Set(
+            Array.from(bySelector.values(), (entry) => entry.groupKey)
+        );
+        expect(groupKeys.size).toBe(1);
+
+        for (const entry of bySelector.values()) {
+            expect(entry.memberKeys.length).toBe(2);
+        }
+
+        const resolved = resolveRadioVisibilityConflicts(root, {});
+        const entries = Array.from(bySelector.values());
+        expect(resolved[entries[0].memberKeys[0]]).toBeUndefined();
+        expect(resolved[entries[0].memberKeys[1]]).toBe(false);
     });
 });
