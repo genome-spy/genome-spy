@@ -127,9 +127,7 @@ class ViewSettingsButton extends LitElement {
             }
         }
 
-        if (checked) {
-            this.#restoreHoverHighlightAfterVisibilityUpdate(view);
-        }
+        this.#clearHoverHighlight();
 
         // Just to be sure...
         this.requestUpdate();
@@ -168,7 +166,7 @@ class ViewSettingsButton extends LitElement {
             );
         }
 
-        this.#restoreHoverHighlightAfterVisibilityUpdate(view);
+        this.#clearHoverHighlight();
 
         this.requestUpdate();
         void this.#showDropdown();
@@ -176,22 +174,9 @@ class ViewSettingsButton extends LitElement {
         event.stopPropagation();
     }
 
-    /**
-     * Re-apply hover highlight after the visibility change has been processed.
-     * The App updates layout in a microtask, so we queue this after that.
-     *
-     * @param {View} view
-     */
-    #restoreHoverHighlightAfterVisibilityUpdate(view) {
-        queueMicrotask(() => {
-            if (this.#hoveredView !== view) {
-                return;
-            }
-            if (!view.isVisible()) {
-                return;
-            }
-            this.#app.genomeSpy.viewRoot.context.highlightView(view);
-        });
+    #clearHoverHighlight() {
+        this.#hoveredView = null;
+        this.#app.genomeSpy.viewRoot.context.highlightView(null);
     }
 
     #handleResetClick() {
