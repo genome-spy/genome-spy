@@ -15,6 +15,10 @@ import {
     isLiteralInterval,
 } from "./sampleViewTypes.js";
 import { resolveViewRef } from "./viewRef.js";
+import {
+    formatScopedParamName,
+    formatScopedViewLabel,
+} from "../viewScopeUtils.js";
 
 /**
  *
@@ -31,6 +35,11 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         /** @type {import("@genome-spy/core/view/unitView.js").default} */ (
             resolveViewRef(rootView, specifier.view)
         );
+    const viewLabel = formatScopedViewLabel(
+        rootView,
+        view,
+        String(view.getTitleText() ?? view.name)
+    );
 
     const attributeLabel =
         "aggregation" in specifier
@@ -133,12 +142,13 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
                         >${formatInterval(view, specifier.interval)}</span
                     >`;
             } else if (isIntervalSource(specifier.interval)) {
+                const paramLabel = formatScopedParamName(
+                    rootView,
+                    specifier.interval.selector
+                );
                 return html`in
                     <span class="interval"
-                        >selection
-                        <strong
-                            >${specifier.interval.selector.param}</strong
-                        ></span
+                        >selection <strong>${paramLabel}</strong></span
                     >`;
             } else {
                 throw new Error("Unsupported interval reference.");
@@ -159,7 +169,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         attribute: attributeIdentifier,
         // TODO: Truncate view title: https://css-tricks.com/snippets/css/truncate-string-with-ellipsis/
         title: html`${attributeTitle}
-            <span class="viewTitle">(${view.getTitleText() ?? view.name})</span>
+            <span class="viewTitle">(${viewLabel})</span>
             ${locationLabel}`,
         accessor,
         valuesProvider,

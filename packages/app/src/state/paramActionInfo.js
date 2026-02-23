@@ -11,6 +11,10 @@ import {
     resolveParamSelector,
     resolveViewSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    formatScopedParamName,
+    formatScopedViewLabel,
+} from "../viewScopeUtils.js";
 
 /**
  * @typedef {import("@genome-spy/core/view/view.js").default} View
@@ -42,7 +46,7 @@ export function getParamActionInfo(action, root) {
 
     const resolved = safeResolve(resolveParamSelector, root, selector);
     const view = resolved ? resolved.view : undefined;
-    const viewLabel = view ? formatViewLabel(view) : null;
+    const viewLabel = view ? formatViewLabel(view, root) : null;
     const title = formatParamActionTitle(view, selector, value, origin, root);
 
     return {
@@ -60,8 +64,10 @@ export function getParamActionInfo(action, root) {
  * @returns {import("lit").TemplateResult}
  */
 function formatParamActionTitle(view, selector, value, origin, root) {
+    const paramLabel = formatScopedParamName(root, selector);
+
     if (value.type === "value") {
-        return html`Set <strong>${selector.param}</strong> =
+        return html`Set <strong>${paramLabel}</strong> =
             <strong>${formatScalar(value.value)}</strong>${formatOriginSuffix(
                 origin,
                 root
@@ -71,18 +77,18 @@ function formatParamActionTitle(view, selector, value, origin, root) {
     if (value.type === "point") {
         if (value.keys.length === 0) {
             return html`Clear selection
-                <strong>${selector.param}</strong> ${formatOriginSuffix(
+                <strong>${paramLabel}</strong> ${formatOriginSuffix(
                     origin,
                     root
                 )}`;
         }
         if (value.keys.length === 1) {
-            return html`Select <strong>${selector.param}</strong> =
+            return html`Select <strong>${paramLabel}</strong> =
                 ${formatStrong(
                     formatPointKeyTuple(value.keys[0])
                 )}${formatOriginSuffix(origin, root)}`;
         }
-        return html`Select <strong>${selector.param}</strong> (${formatStrong(
+        return html`Select <strong>${paramLabel}</strong> (${formatStrong(
                 value.keys.length
             )}
             points)${formatOriginSuffix(origin, root)}`;
@@ -98,18 +104,18 @@ function formatParamActionTitle(view, selector, value, origin, root) {
 
         if (!intervalLabel) {
             return html`Clear selection
-                <strong>${selector.param}</strong> ${formatOriginSuffix(
+                <strong>${paramLabel}</strong> ${formatOriginSuffix(
                     origin,
                     root
                 )}`;
         }
 
         return html`Brush
-            <strong>${selector.param}</strong>
+            <strong>${paramLabel}</strong>
             ${intervalLabel}${formatOriginSuffix(origin, root)}`;
     }
 
-    return html`Update <strong>${selector.param}</strong>`;
+    return html`Update <strong>${paramLabel}</strong>`;
 }
 
 /**
@@ -129,21 +135,23 @@ function formatOriginSuffix(origin, root) {
         return html``;
     }
 
-    return html` from ${formatViewLabel(originView)}`;
+    return html` from ${formatViewLabel(originView, root)}`;
 }
 
 /**
  * @param {View} view
+ * @param {View | undefined} root
  * @returns {import("lit").TemplateResult}
  */
-function formatViewLabel(view) {
+function formatViewLabel(view, root) {
     const title = view.getTitleText ? view.getTitleText() : undefined;
-    const label =
+    const rawLabel =
         title ||
         view.explicitName ||
         (view.spec && view.spec.name) ||
         view.name ||
         "view";
+    const label = formatScopedViewLabel(root, view, String(rawLabel));
     return html`<strong>${label}</strong>`;
 }
 

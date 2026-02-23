@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
+import { registerImportInstance } from "@genome-spy/core/view/viewSelectors.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { getParamActionInfo } from "./paramActionInfo.js";
 import templateResultToString from "../utils/templateResultToString.js";
@@ -21,6 +22,9 @@ class FakeView {
 
     /** @type {FakeView[]} */
     #children;
+
+    /** @type {FakeView | undefined} */
+    dataParent;
 
     /** @type {ViewParamRuntime} */
     paramRuntime;
@@ -42,6 +46,9 @@ class FakeView {
         this.spec = options.specName ? { name: options.specName } : undefined;
         this.#title = options.title;
         this.#children = options.children ? [...options.children] : [];
+        for (const child of this.#children) {
+            child.dataParent = this;
+        }
         this.paramRuntime = new ViewParamRuntime();
         this.#scaleResolution = { getScale: () => ({}) };
     }
@@ -59,6 +66,21 @@ class FakeView {
      */
     getScaleResolution(_channel) {
         return this.#scaleResolution;
+    }
+
+    /**
+     * @returns {FakeView[]}
+     */
+    getDataAncestors() {
+        /** @type {FakeView[]} */
+        const ancestors = [];
+        /** @type {FakeView | undefined} */
+        let current = this;
+        while (current) {
+            ancestors.push(current);
+            current = current.dataParent;
+        }
+        return ancestors;
     }
 
     /**
@@ -238,5 +260,44 @@ describe("getParamActionInfo", () => {
 
         expect(title).toContain("in ExplicitView");
         expect(title).not.toContain("SpecName");
+    });
+
+    it("prefixes scoped names only when names are ambiguous", () => {
+        const panelA = new FakeView({
+            title: "Track",
+            explicitName: "track",
+        });
+        panelA.paramRuntime.registerParam({
+            name: "brush",
+            select: { type: "interval", encodings: ["x"] },
+        });
+        registerImportInstance(/** @type {any} */ (panelA), "panelA");
+
+        const panelB = new FakeView({
+            title: "Track",
+            explicitName: "track",
+        });
+        panelB.paramRuntime.registerParam({
+            name: "brush",
+            select: { type: "interval", encodings: ["x"] },
+        });
+        registerImportInstance(/** @type {any} */ (panelB), "panelB");
+
+        const root = new FakeView({ children: [panelA, panelB] });
+
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: ["panelA"], param: "brush" },
+            value: {
+                type: "interval",
+                intervals: { x: [1, 2] },
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (root));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain("Brush panelA/brush");
+        expect(title).toContain("in panelA/Track");
+        expect(title).not.toContain("panelB/brush");
     });
 });
