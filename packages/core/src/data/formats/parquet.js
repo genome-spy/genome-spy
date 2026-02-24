@@ -1,7 +1,5 @@
 /*
  * Adapted from: https://github.com/vega/vega-loader-parquet/blob/main/src/index.js
- * Parquet parsing is lazy-loaded from ./parquetRead.js to avoid pulling
- * hyparquet internals into the initial bundle.
  */
 
 /**

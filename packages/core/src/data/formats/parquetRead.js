@@ -1,7 +1,33 @@
+/*
+ * Adapted from hyparquet internals:
+ * https://github.com/hyparam/hyparquet (notably src/read.js and src/rowgroup.js).
+ *
+ * GenomeSpy-specific changes in this copy:
+ * - object-row output only (array row format removed)
+ * - filtering support removed
+ * - hot row transpose path optimized with cached codegen for typical schemas
+ * - fallback to interpreted row builder for very wide schemas
+ */
+
 import { parquetMetadataAsync, parquetSchema } from "hyparquet/src/metadata.js";
 import { parquetPlan, prefetchAsyncBuffer } from "hyparquet/src/plan.js";
 import { assembleAsync, readRowGroup } from "hyparquet/src/rowgroup.js";
 import { concat } from "hyparquet/src/utils.js";
+
+/**
+ * @typedef {(
+ *  groupData: Record<string, any>[],
+ *  selectStart: number,
+ *  selectCount: number,
+ *  columnData: import("hyparquet").DecodedArray[],
+ *  columnSkipped: number[]
+ * ) => Record<string, any>[]} RowGroupObjectBuilder
+ */
+
+/** @type {Map<string, RowGroupObjectBuilder>} */
+const rowGroupObjectBuilderCache = new Map();
+
+const MAX_CODEGEN_COLUMNS = 200;
 
 /**
  * @param {Omit<import("hyparquet").ParquetReadOptions, "rowFormat" | "filter" | "filterStrict">} options
@@ -54,6 +80,84 @@ function flattenColumnChunks(chunks) {
 }
 
 /**
+ * @param {string[]} columnNames
+ * @returns {RowGroupObjectBuilder}
+ */
+function getRowGroupObjectBuilder(columnNames) {
+    // Compile one builder per column layout to keep object writes monomorphic.
+    const signature = columnNames.join("\u001f");
+    const cached = rowGroupObjectBuilderCache.get(signature);
+    if (cached) {
+        return cached;
+    }
+
+    const assignments = columnNames
+        .map(
+            (columnName, i) =>
+                JSON.stringify(columnName) +
+                ": columnData[" +
+                i +
+                "][row - columnSkipped[" +
+                i +
+                "]]"
+        )
+        .join(",\n");
+
+    const builder = /** @type {RowGroupObjectBuilder} */ (
+        new Function(
+            "groupData",
+            "selectStart",
+            "selectCount",
+            "columnData",
+            "columnSkipped",
+            // Keep generated code focused on the tight row loop only.
+            "for (let selectRow = 0; selectRow < selectCount; selectRow++) {\n" +
+                "    const row = selectStart + selectRow;\n" +
+                "    groupData[selectRow] = {\n" +
+                assignments +
+                "\n" +
+                "    };\n" +
+                "}\n" +
+                "return groupData;"
+        )
+    );
+
+    rowGroupObjectBuilderCache.set(signature, builder);
+
+    return builder;
+}
+
+/**
+ * @param {Record<string, any>[]} groupData
+ * @param {number} selectStart
+ * @param {number} selectCount
+ * @param {string[]} columnNames
+ * @param {import("hyparquet").DecodedArray[]} columnData
+ * @param {number[]} columnSkipped
+ * @returns {Record<string, any>[]}
+ */
+function buildRowsInterpreted(
+    groupData,
+    selectStart,
+    selectCount,
+    columnNames,
+    columnData,
+    columnSkipped
+) {
+    for (let selectRow = 0; selectRow < selectCount; selectRow++) {
+        const row = selectStart + selectRow;
+        /** @type {Record<string, any>} */
+        const rowData = {};
+        for (let i = 0; i < columnNames.length; i++) {
+            rowData[columnNames[i]] = columnData[i][row - columnSkipped[i]];
+        }
+        groupData[selectRow] = rowData;
+    }
+
+    return groupData;
+}
+
+/**
  * Object-only copy of hyparquet's asyncGroupToRows.
  *
  * @param {import("hyparquet").AsyncRowGroup} asyncGroup
@@ -66,33 +170,50 @@ async function asyncGroupToRowsObject(
     selectStart,
     selectEnd
 ) {
-    const asyncPages = await Promise.all(
-        asyncColumns.map(async ({ data }) => {
-            const pages = await data;
-            return {
-                skipped: pages.skipped,
-                data: flattenColumnChunks(pages.data),
-            };
-        })
-    );
+    // Resolve all async column pages once before entering the hot transpose loop.
+    const pages = await Promise.all(asyncColumns.map((column) => column.data));
+    const columnCount = asyncColumns.length;
 
-    const columnNames = asyncColumns.map((column) => column.pathInSchema[0]);
+    /** @type {string[]} */
+    const columnNames = Array(columnCount);
+    /** @type {import("hyparquet").DecodedArray[]} */
+    const columnData = Array(columnCount);
+    /** @type {number[]} */
+    const columnSkipped = Array(columnCount);
+
+    // Precompute all indirections outside the generated function.
+    for (let i = 0; i < columnCount; i++) {
+        columnNames[i] = asyncColumns[i].pathInSchema[0];
+        columnData[i] = flattenColumnChunks(pages[i].data);
+        columnSkipped[i] = pages[i].skipped;
+    }
+
     const selectCount = selectEnd - selectStart;
 
     /** @type {Record<string, any>[]} */
     const groupData = Array(selectCount);
-    for (let selectRow = 0; selectRow < selectCount; selectRow++) {
-        const row = selectStart + selectRow;
-        /** @type {Record<string, any>} */
-        const rowData = {};
-        for (let i = 0; i < asyncColumns.length; i++) {
-            const { data, skipped } = asyncPages[i];
-            rowData[columnNames[i]] = data[row - skipped];
-        }
-        groupData[selectRow] = rowData;
+
+    // Avoid excessively large generated functions for very wide schemas.
+    if (columnCount > MAX_CODEGEN_COLUMNS) {
+        return buildRowsInterpreted(
+            groupData,
+            selectStart,
+            selectCount,
+            columnNames,
+            columnData,
+            columnSkipped
+        );
     }
 
-    return groupData;
+    const buildRows = getRowGroupObjectBuilder(columnNames);
+
+    return buildRows(
+        groupData,
+        selectStart,
+        selectCount,
+        columnData,
+        columnSkipped
+    );
 }
 
 /**
