@@ -1360,6 +1360,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {{
+     *   hoveredView: UnitView,
      *   hoveredDatum: import("@genome-spy/core/data/flowNode.js").Datum,
      *   selector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
      *   originViewSelector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector,
@@ -1372,6 +1373,7 @@ export default class SampleView extends ContainerView {
      */
     #buildSelectionExpansionMenu(context) {
         const {
+            hoveredView,
             hoveredDatum,
             selector,
             originViewSelector,
@@ -1381,15 +1383,24 @@ export default class SampleView extends ContainerView {
             defaultScopeLabel,
         } = context;
 
-        const scalarValueFields = Object.entries(hoveredDatum)
-            .filter(([fieldName, value]) => {
-                if (fieldName.startsWith("_")) {
-                    return false;
-                }
+        const excludedFields = new Set([
+            ...originKeyFields,
+            ...(defaultPartitionBy ?? []),
+        ]);
 
-                return typeof value === "string" || typeof value === "boolean";
-            })
-            .map(([fieldName]) => fieldName);
+        const preferredFields = this.#getPreferredSelectionExpansionFields(
+            hoveredView,
+            hoveredDatum,
+            excludedFields
+        );
+
+        const scalarValueFields =
+            preferredFields.length > 0
+                ? preferredFields
+                : this.#getFallbackSelectionExpansionFields(
+                      hoveredDatum,
+                      excludedFields
+                  );
 
         if (scalarValueFields.length === 0) {
             return [{ label: "No expansion fields available." }];
@@ -1462,6 +1473,106 @@ export default class SampleView extends ContainerView {
         }
 
         return items;
+    }
+
+    /**
+     * @param {UnitView} hoveredView
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
+     * @param {Set<string>} excludedFields
+     * @returns {string[]}
+     */
+    #getPreferredSelectionExpansionFields(
+        hoveredView,
+        hoveredDatum,
+        excludedFields
+    ) {
+        const encoding = hoveredView.getEncoding();
+        /** @type {string[]} */
+        const orderedFields = [];
+        const seen = new Set();
+
+        /**
+         * @param {unknown} channelDef
+         */
+        const collectFromChannelDef = (channelDef) => {
+            if (
+                !channelDef ||
+                typeof channelDef !== "object" ||
+                Array.isArray(channelDef)
+            ) {
+                return;
+            }
+
+            /** @type {any} */
+            const definition = channelDef;
+            if (
+                typeof definition.field === "string" &&
+                (definition.type === "nominal" ||
+                    definition.type === "ordinal") &&
+                !seen.has(definition.field) &&
+                this.#isUsableSelectionExpansionField(
+                    definition.field,
+                    hoveredDatum,
+                    excludedFields
+                )
+            ) {
+                seen.add(definition.field);
+                orderedFields.push(definition.field);
+            }
+
+            if ("condition" in definition) {
+                const { condition } = definition;
+                if (Array.isArray(condition)) {
+                    for (const subCondition of condition) {
+                        collectFromChannelDef(subCondition);
+                    }
+                } else {
+                    collectFromChannelDef(condition);
+                }
+            }
+        };
+
+        for (const channelDef of Object.values(encoding)) {
+            collectFromChannelDef(channelDef);
+        }
+
+        return orderedFields;
+    }
+
+    /**
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
+     * @param {Set<string>} excludedFields
+     * @returns {string[]}
+     */
+    #getFallbackSelectionExpansionFields(hoveredDatum, excludedFields) {
+        return Object.keys(hoveredDatum).filter((fieldName) =>
+            this.#isUsableSelectionExpansionField(
+                fieldName,
+                hoveredDatum,
+                excludedFields
+            )
+        );
+    }
+
+    /**
+     * @param {string} fieldName
+     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
+     * @param {Set<string>} excludedFields
+     * @returns {boolean}
+     */
+    #isUsableSelectionExpansionField(fieldName, hoveredDatum, excludedFields) {
+        if (excludedFields.has(fieldName) || fieldName.startsWith("_")) {
+            return false;
+        }
+
+        const value = hoveredDatum[fieldName];
+        if (typeof value === "boolean") {
+            return true;
+        } else if (typeof value === "string") {
+            return value.trim().length > 0;
+        } else {
+            return false;
+        }
     }
 
     /**
