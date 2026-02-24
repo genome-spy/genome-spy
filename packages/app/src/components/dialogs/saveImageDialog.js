@@ -1,4 +1,4 @@
-import { html, nothing } from "lit";
+import { css, html, nothing } from "lit";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faDownload,
@@ -8,7 +8,7 @@ import {
 import BaseDialog from "../generic/baseDialog.js";
 
 const instructions = html`
-    <div class="gs-alert info" style="max-width: 500px">
+    <div class="gs-alert info">
         ${icon(faInfoCircle).node[0]}
         <span>
             <span
@@ -54,7 +54,14 @@ export default class SaveImageDialog extends BaseDialog {
         backgroundColor: { type: String },
     };
 
-    static styles = [...super.styles];
+    static styles = [
+        ...super.styles,
+        css`
+            dialog {
+                min-width: 500px;
+            }
+        `,
+    ];
 
     constructor() {
         super();
