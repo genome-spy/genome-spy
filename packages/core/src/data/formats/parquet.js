@@ -1,6 +1,16 @@
 /*
  * Adapted from: https://github.com/vega/vega-loader-parquet/blob/main/src/index.js
+ * Parquet parsing is lazy-loaded from ./parquetRead.js to avoid pulling
+ * hyparquet internals into the initial bundle.
  */
+
+/**
+ * @returns {Promise<typeof import("./parquetRead.js").parquetReadObjects>}
+ */
+async function loadParquetReadObjects() {
+    const { parquetReadObjects } = await import("./parquetRead.js");
+    return parquetReadObjects;
+}
 
 /**
  * Load a data set in Apache Parquet format for use in Vega.
@@ -9,12 +19,13 @@
  *  rows of a data table.
  */
 export default async function parquet(data) {
-    const hyparquet = await import("hyparquet");
+    const parquetReadObjects = await loadParquetReadObjects();
     const buffer =
         data instanceof Uint8Array
             ? /** @type {ArrayBuffer} */ (data.buffer)
             : data;
-    return await hyparquet.parquetReadObjects({ file: buffer });
+
+    return await parquetReadObjects({ file: buffer });
 }
 
 parquet.responseType = "arrayBuffer";
