@@ -169,6 +169,39 @@ describe("getParamActionInfo", () => {
         expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
+    it("formats point expansion titles using rule labels", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            partitionBy: ["patientId"],
+            origin: {
+                type: "datum",
+                view: { scope: [], view: "points" },
+                keyFields: ["id"],
+                keyTuple: ["seed"],
+            },
+            label: "same cluster in patient",
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Expand selected by same cluster in patient from points in points"
+        );
+    });
+
     it("formats interval selections with x and y ranges", () => {
         const view = new FakeView({ explicitName: "intervals" });
         view.paramRuntime.registerParam({

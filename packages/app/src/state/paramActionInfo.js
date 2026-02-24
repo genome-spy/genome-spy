@@ -22,10 +22,13 @@ import {
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
  * @typedef {import("@genome-spy/core/spec/genome.js").ChromosomalLocus} ChromosomalLocus
+ * @typedef {import("./selectionExpansion.js").SelectionExpansionPredicate} SelectionExpansionPredicate
  * @typedef {{ type: "value", value: any }} ParamValueLiteral
  * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [ChromosomalLocus, ChromosomalLocus] | null>> }} ParamValueInterval
  * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
- * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
+ * @typedef {{ type: "datum", view: ViewSelector, keyFields: string[], keyTuple: Scalar[] }} PointExpandOrigin
+ * @typedef {{ type: "pointExpand", operation: "replace" | "add" | "remove" | "toggle", predicate: SelectionExpansionPredicate, partitionBy?: string[], origin: PointExpandOrigin, label?: string }} ParamValuePointExpand
+ * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint | ParamValuePointExpand} ParamValue
  * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
  */
 
@@ -35,14 +38,32 @@ import {
  * @returns {import("./provenance.js").ActionInfo | undefined}
  */
 export function getParamActionInfo(action, root) {
-    if (!paramProvenanceSlice.actions.paramChange.match(action)) {
+    const isParamChange =
+        paramProvenanceSlice.actions.paramChange.match(action);
+    const isPointExpansion =
+        paramProvenanceSlice.actions.expandPointSelection.match(action);
+
+    if (!isParamChange && !isPointExpansion) {
         return;
     }
 
     const payload = /** @type {any} */ (action).payload;
     const selector = /** @type {ParamSelector} */ (payload.selector);
-    const value = /** @type {ParamValue} */ (payload.value);
-    const origin = /** @type {ParamOrigin | undefined} */ (payload.origin);
+    const value = /** @type {ParamValue} */ (
+        isPointExpansion
+            ? {
+                  type: "pointExpand",
+                  operation: payload.operation,
+                  predicate: payload.predicate,
+                  partitionBy: payload.partitionBy,
+                  origin: payload.origin,
+                  label: payload.label,
+              }
+            : payload.value
+    );
+    const origin = /** @type {ParamOrigin | undefined} */ (
+        isPointExpansion ? payload.origin : payload.origin
+    );
 
     const resolved = safeResolve(resolveParamSelector, root, selector);
     const view = resolved ? resolved.view : undefined;
@@ -94,6 +115,24 @@ function formatParamActionTitle(view, selector, value, origin, root) {
             points)${formatOriginSuffix(origin, root)}`;
     }
 
+    if (value.type === "pointExpand") {
+        const operationLabel = formatPointExpandOperation(value.operation);
+        if (value.label) {
+            return html`${operationLabel}
+                <strong>${paramLabel}</strong>
+                by <strong>${value.label}</strong>${formatOriginSuffix(
+                    value.origin,
+                    root
+                )}`;
+        }
+
+        return html`${operationLabel}
+            <strong>${paramLabel}</strong>${formatOriginSuffix(
+                value.origin,
+                root
+            )}`;
+    }
+
     if (value.type === "interval") {
         const intervals = value.intervals ?? {};
         const x = intervals.x;
@@ -119,7 +158,7 @@ function formatParamActionTitle(view, selector, value, origin, root) {
 }
 
 /**
- * @param {ParamOrigin | undefined} origin
+ * @param {(ParamOrigin | PointExpandOrigin) | undefined} origin
  * @param {View | undefined} root
  * @returns {import("lit").TemplateResult}
  */
@@ -229,6 +268,7 @@ function formatIntervalSummary(xLabel, yLabel) {
 function getParamActionIcon(value) {
     switch (value.type) {
         case "point":
+        case "pointExpand":
             return faArrowPointer;
         case "interval":
             return faBrush;
@@ -252,5 +292,24 @@ function safeResolve(resolver, ...args) {
         return resolver(...args);
     } catch (error) {
         return undefined;
+    }
+}
+
+/**
+ * @param {"replace" | "add" | "remove" | "toggle"} operation
+ * @returns {string}
+ */
+function formatPointExpandOperation(operation) {
+    switch (operation) {
+        case "replace":
+            return "Expand";
+        case "add":
+            return "Add expanded";
+        case "remove":
+            return "Remove expanded";
+        case "toggle":
+            return "Toggle expanded";
+        default:
+            return "Expand";
     }
 }

@@ -2,6 +2,7 @@ import { html } from "lit";
 import { ActionCreators } from "redux-undo";
 import {
     asSelectionConfig,
+    createMultiPointSelection,
     createIntervalSelection,
     getPointSelectionKeyTuples,
     isActiveIntervalSelection,
@@ -28,6 +29,11 @@ import throttle from "@genome-spy/core/utils/throttle.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { subscribeTo, withMicrotask } from "./subscribeTo.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
+import {
+    createSelectionExpansionPredicateFunction,
+    normalizeSelectionExpansionPredicate,
+    withPartitionBy,
+} from "./selectionExpansion.js";
 
 const THROTTLE_INTERVAL_MS = 150;
 
@@ -37,10 +43,13 @@ const THROTTLE_INTERVAL_MS = 150;
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
  * @typedef {import("@genome-spy/core/spec/parameter.js").Parameter} Parameter
  * @typedef {import("@genome-spy/core/view/view.js").default} View
+ * @typedef {import("./selectionExpansion.js").SelectionExpansionPredicate} SelectionExpansionPredicate
  * @typedef {{ type: "value", value: any }} ParamValueLiteral
  * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [import("@genome-spy/core/spec/genome.js").ChromosomalLocus, import("@genome-spy/core/spec/genome.js").ChromosomalLocus] | null>> }} ParamValueInterval
  * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
- * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
+ * @typedef {{ type: "datum", view: ViewSelector, keyFields: string[], keyTuple: Scalar[] }} PointExpandOrigin
+ * @typedef {{ type: "pointExpand", operation: "replace" | "add" | "remove" | "toggle", predicate: SelectionExpansionPredicate, partitionBy?: string[], origin: PointExpandOrigin, label?: string }} ParamValuePointExpand
+ * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint | ParamValuePointExpand} ParamValue
  * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
  * @typedef {{ selector: ParamSelector, value: ParamValue, origin?: ParamOrigin }} ParamProvenanceEntry
  * @typedef {{ view: View, param: Parameter, selector: ParamSelector }} BookmarkableParamEntry
@@ -310,6 +319,10 @@ export default class ParamProvenanceBridge {
 
         if (value.type === "point") {
             return value.keys.length === 0;
+        }
+
+        if (value.type === "pointExpand") {
+            return false;
         }
 
         if (value.type === "interval") {
@@ -651,6 +664,14 @@ export default class ParamProvenanceBridge {
             const select = asSelectionConfig(param.select);
 
             if (isPointSelectionConfig(select)) {
+                if (storedValue.type === "pointExpand") {
+                    return this.#resolvePointExpansionSelection(
+                        entry,
+                        storedValue,
+                        select
+                    );
+                }
+
                 if (storedValue.type !== "point") {
                     return this.#warnSelectionAndUseDefault(
                         entry,
@@ -790,6 +811,135 @@ export default class ParamProvenanceBridge {
         }
 
         return this.#getDefaultValue(entry);
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {ParamValuePointExpand} storedValue
+     * @param {import("@genome-spy/core/spec/parameter.js").PointSelectionConfig} select
+     */
+    #resolvePointExpansionSelection(entry, storedValue, select) {
+        if (!select.toggle) {
+            this.#warnSelection(
+                entry.param,
+                "cannot apply expansion because the target selection is not multi-point."
+            );
+            return this.#getDefaultValue(entry);
+        }
+
+        if (storedValue.operation !== "replace") {
+            this.#warnSelection(
+                entry.param,
+                `uses unsupported operation "${storedValue.operation}". Only "replace" is supported in this version.`
+            );
+            return this.#getDefaultValue(entry);
+        }
+
+        if (!this.#getPointSelectionKeyFields(entry, "restore")) {
+            return this.#getDefaultValue(entry);
+        }
+
+        const collector = this.#getCollector(entry.view);
+        if (!collector) {
+            return this.#warnSelectionAndUseDefault(
+                entry,
+                "cannot apply expansion because the view does not expose data."
+            );
+        }
+
+        if (!collector.completed) {
+            this.#scheduleReapply(collector);
+            return this.#getDefaultValue(entry);
+        }
+
+        const originDatum = this.#resolveExpansionOriginDatum(
+            storedValue,
+            collector
+        );
+        if (!originDatum) {
+            return this.#getDefaultValue(entry);
+        }
+
+        try {
+            let predicate = normalizeSelectionExpansionPredicate(
+                storedValue.predicate,
+                originDatum
+            );
+            predicate = withPartitionBy(
+                predicate,
+                storedValue.partitionBy,
+                originDatum
+            );
+            const test = createSelectionExpansionPredicateFunction(predicate);
+
+            /** @type {import("@genome-spy/core/data/flowNode.js").Datum[]} */
+            const matched = [];
+            collector.visitData((datum) => {
+                if (test(datum)) {
+                    matched.push(datum);
+                }
+            });
+
+            return createMultiPointSelection(matched);
+        } catch (error) {
+            this.#warnSelection(
+                entry.param,
+                `cannot apply expansion due to an error: ${error}`
+            );
+            return this.#getDefaultValue(entry);
+        }
+    }
+
+    /**
+     * @param {ParamValuePointExpand} storedValue
+     * @param {import("@genome-spy/core/data/collector.js").default} fallbackCollector
+     * @returns {import("@genome-spy/core/data/flowNode.js").Datum | undefined}
+     */
+    #resolveExpansionOriginDatum(storedValue, fallbackCollector) {
+        const origin = storedValue.origin;
+
+        const originView = resolveViewSelector(this.#root, origin.view);
+        if (!originView) {
+            this.#warnOrigin(
+                "the expansion origin view is missing in the current import scope."
+            );
+            return;
+        }
+
+        const originCollector =
+            this.#getCollector(originView) ?? fallbackCollector;
+        if (!originCollector.completed) {
+            this.#scheduleReapply(originCollector);
+            return;
+        }
+
+        if (
+            !Array.isArray(origin.keyFields) ||
+            !Array.isArray(origin.keyTuple) ||
+            origin.keyFields.length === 0 ||
+            origin.keyFields.length !== origin.keyTuple.length
+        ) {
+            this.#warnOrigin("the expansion origin key tuple is invalid.");
+            return;
+        }
+
+        try {
+            const datum = originCollector.findDatumByKey(
+                origin.keyFields,
+                origin.keyTuple
+            );
+            if (!datum) {
+                this.#warnOrigin(
+                    "the expansion origin datum is missing in current data."
+                );
+            }
+            return datum;
+        } catch (error) {
+            this.#warnOrigin(
+                "failed to resolve expansion origin datum: " + String(error)
+            );
+            return;
+        }
     }
 
     /**

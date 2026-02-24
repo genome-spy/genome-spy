@@ -28,8 +28,12 @@ class FakeCollector {
     /** @type {(fields: string[], tuple: import("@genome-spy/core/spec/channel.js").Scalar[]) => any} */
     #resolver;
 
-    constructor(resolver) {
+    /** @type {any[]} */
+    #data;
+
+    constructor(resolver, data = []) {
         this.#resolver = resolver;
+        this.#data = data;
     }
 
     findDatumByKey(fields, tuple) {
@@ -49,6 +53,12 @@ class FakeCollector {
     notify() {
         for (const listener of this.#listeners) {
             listener();
+        }
+    }
+
+    visitData(visitor) {
+        for (const datum of this.#data) {
+            visitor(datum);
         }
     }
 }
@@ -425,6 +435,185 @@ describe("ParamProvenanceBridge", () => {
         const selection = view.paramRuntime.getValue("selection");
         expect(selection.data.size).toBe(1);
         expect(showMessageDialog).toHaveBeenCalled();
+    });
+
+    it("applies point expansion using predicate and partition fields", async () => {
+        const view = new FakeView();
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const datums = [
+            { id: "seed", clusterId: "C1", patientId: "P1", _uniqueId: 1 },
+            { id: "A", clusterId: "C1", patientId: "P1", _uniqueId: 2 },
+            { id: "B", clusterId: "C1", patientId: "P2", _uniqueId: 3 },
+            { id: "C", clusterId: "C2", patientId: "P1", _uniqueId: 4 },
+        ];
+        const byId = new Map(datums.map((datum) => [datum.id, datum]));
+        view.getCollector = () =>
+            new FakeCollector((fields, tuple) => byId.get(tuple[0]), datums);
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        store.dispatch(
+            paramProvenanceSlice.actions.expandPointSelection({
+                selector: { scope: [], param: "selection" },
+                operation: "replace",
+                predicate: {
+                    field: "clusterId",
+                    op: "eq",
+                    valueFromField: "clusterId",
+                },
+                partitionBy: ["patientId"],
+                origin: {
+                    type: "datum",
+                    view: { scope: [], view: "root" },
+                    keyFields: ["id"],
+                    keyTuple: ["seed"],
+                },
+                label: "same cluster in patient",
+            })
+        );
+
+        await flushMicrotasks();
+
+        const selection = view.paramRuntime.getValue("selection");
+        expect(selection.data.size).toBe(2);
+        expect(selection.data.has(1)).toBe(true);
+        expect(selection.data.has(2)).toBe(true);
+    });
+
+    it("applies point expansion when origin uses composite key fields", async () => {
+        const view = new FakeView();
+        view.encoding = {
+            key: [{ field: "sample" }, { field: "CHROM" }, { field: "POS" }],
+        };
+        view.paramRuntime.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const datums = [
+            {
+                sample: "S1",
+                CHROM: "chr1",
+                POS: 100,
+                Func: "missense",
+                _uniqueId: 1,
+            },
+            {
+                sample: "S1",
+                CHROM: "chr2",
+                POS: 200,
+                Func: "missense",
+                _uniqueId: 2,
+            },
+            {
+                sample: "S2",
+                CHROM: "chr3",
+                POS: 300,
+                Func: "missense",
+                _uniqueId: 3,
+            },
+        ];
+
+        const byKey = new Map(
+            datums.map((datum) => [
+                datum.sample + "|" + datum.CHROM + "|" + datum.POS,
+                datum,
+            ])
+        );
+        view.getCollector = () =>
+            new FakeCollector(
+                (fields, tuple) => byKey.get(tuple.join("|")),
+                datums
+            );
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        store.dispatch(
+            paramProvenanceSlice.actions.expandPointSelection({
+                selector: { scope: [], param: "selection" },
+                operation: "replace",
+                predicate: {
+                    field: "Func",
+                    op: "eq",
+                    valueFromField: "Func",
+                },
+                partitionBy: ["sample"],
+                origin: {
+                    type: "datum",
+                    view: { scope: [], view: "root" },
+                    keyFields: ["sample", "CHROM", "POS"],
+                    keyTuple: ["S1", "chr1", 100],
+                },
+            })
+        );
+
+        await flushMicrotasks();
+
+        const selection = view.paramRuntime.getValue("selection");
+        expect(selection.data.size).toBe(2);
+        expect(selection.data.has(1)).toBe(true);
+        expect(selection.data.has(2)).toBe(true);
+        expect(selection.data.has(3)).toBe(false);
+    });
+
+    it("warns and falls back when non-replace expansion operation is used", async () => {
+        const showMessageDialog = await getShowMessageDialogMock();
+        showMessageDialog.mockClear();
+
+        const view = new FakeView();
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const datums = [
+            { id: "seed", clusterId: "C1", patientId: "P1", _uniqueId: 1 },
+        ];
+        const byId = new Map(datums.map((datum) => [datum.id, datum]));
+        view.getCollector = () =>
+            new FakeCollector((fields, tuple) => byId.get(tuple[0]), datums);
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        store.dispatch(
+            paramProvenanceSlice.actions.expandPointSelection({
+                selector: { scope: [], param: "selection" },
+                operation: "add",
+                predicate: {
+                    field: "clusterId",
+                    op: "eq",
+                    valueFromField: "clusterId",
+                },
+                origin: {
+                    type: "datum",
+                    view: { scope: [], view: "root" },
+                    keyFields: ["id"],
+                    keyTuple: ["seed"],
+                },
+            })
+        );
+
+        await flushMicrotasks();
+
+        const selection = view.paramRuntime.getValue("selection");
+        expect(selection.data.size).toBe(0);
+        expect(showMessageDialog).toHaveBeenCalled();
+        const call = showMessageDialog.mock.calls.at(-1);
+        expect(templateResultToString(call[0])).toContain(
+            'unsupported operation "add"'
+        );
     });
 
     it("shows key field names when restore fails due to duplicate keys", async () => {

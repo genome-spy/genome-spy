@@ -27,10 +27,74 @@ describe("paramProvenanceSlice", () => {
             value: { type: "value", value: "x" },
         });
 
+        const expandAction = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "bar" },
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            origin: {
+                type: "datum",
+                view: { scope: [], view: "points" },
+                keyFields: ["id"],
+                keyTuple: ["A"],
+            },
+        });
+
         expect(getParamChangeGroupKey(action)).toBe(
             makeParamSelectorKey(action.payload.selector)
         );
+        expect(getParamChangeGroupKey(expandAction)).toBe(
+            makeParamSelectorKey(expandAction.payload.selector)
+        );
         expect(getParamChangeGroupKey({ type: "other/action" })).toBeNull();
+    });
+
+    it("stores point expansion entries keyed by selector", () => {
+        const selector = { scope: [], param: "selection" };
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector,
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            partitionBy: ["patientId"],
+            origin: {
+                type: "datum",
+                view: { scope: [], view: "points" },
+                keyFields: ["id"],
+                keyTuple: ["seed"],
+            },
+            label: "same cluster in patient",
+        });
+
+        const state = paramProvenanceSlice.reducer(undefined, action);
+        const key = makeParamSelectorKey(selector);
+
+        expect(state.entries[key]).toEqual({
+            selector,
+            value: {
+                type: "pointExpand",
+                operation: "replace",
+                predicate: {
+                    field: "clusterId",
+                    op: "eq",
+                    valueFromField: "clusterId",
+                },
+                partitionBy: ["patientId"],
+                origin: {
+                    type: "datum",
+                    view: { scope: [], view: "points" },
+                    keyFields: ["id"],
+                    keyTuple: ["seed"],
+                },
+                label: "same cluster in patient",
+            },
+        });
     });
 
     it("coalesces consecutive param changes for the same selector", () => {

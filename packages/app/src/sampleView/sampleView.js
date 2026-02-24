@@ -45,7 +45,10 @@ import {
     asSelectionConfig,
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
+    isPointSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
+import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
+import { field } from "@genome-spy/core/utils/field.js";
 import {
     LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
     normalizeSampleDefMetadataSources,
@@ -64,8 +67,10 @@ import { ReadyWaiterSet } from "../utils/readyGate.js";
 import { resolveIntervalReference } from "./intervalReferenceResolver.js";
 import {
     getParamSelector,
+    getViewSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -114,6 +119,8 @@ export default class SampleView extends ContainerView {
 
     /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
     #sampleRenderLocationSource;
+
+    #selectionExpansionMultiParamWarningShown = false;
 
     /**
      *
@@ -1180,6 +1187,19 @@ export default class SampleView extends ContainerView {
             DIVIDER,
         ];
 
+        const selectionExpansionContext =
+            this.#resolveSelectionExpansionContext();
+        if (selectionExpansionContext) {
+            items.push({
+                label: "Expand Selection...",
+                submenu: () =>
+                    this.#buildSelectionExpansionMenu(
+                        selectionExpansionContext
+                    ),
+            });
+            items.push(DIVIDER);
+        }
+
         let previousContextTitle = "";
 
         for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
@@ -1228,6 +1248,232 @@ export default class SampleView extends ContainerView {
         }
 
         contextMenu({ items }, mouseEvent);
+    }
+
+    /**
+     * @returns {{
+     *   hoveredView: UnitView,
+     *   hoveredDatum: import("@genome-spy/core/data/flowNode.js").Datum,
+     *   selector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
+     *   originViewSelector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector,
+     *   originKeyFields: string[],
+     *   originKeyTuple: import("@genome-spy/core/spec/channel.js").Scalar[],
+     *   defaultPartitionBy: string[] | undefined,
+     *   defaultScopeLabel: string
+     * } | undefined}
+     */
+    #resolveSelectionExpansionContext() {
+        const hover = this.context.getCurrentHover();
+        if (!hover || !hover.datum || !hover.mark?.unitView) {
+            return;
+        }
+
+        const hoveredView = hover.mark.unitView;
+        const hoveredDatum = hover.datum;
+
+        /** @type {string[]} */
+        const pointParamNames = [];
+        for (const [name, param] of hoveredView.paramRuntime.paramConfigs) {
+            if (!("select" in param) || param.persist === false) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (isPointSelectionConfig(select) && select.toggle) {
+                pointParamNames.push(name);
+            }
+        }
+
+        if (pointParamNames.length === 0) {
+            return;
+        }
+
+        if (pointParamNames.length > 1) {
+            if (!this.#selectionExpansionMultiParamWarningShown) {
+                console.warn(
+                    "Selection expansion is disabled because multiple multi-point selection parameters are configured in the same UnitView."
+                );
+                this.#selectionExpansionMultiParamWarningShown = true;
+            }
+            return;
+        }
+
+        let keyFields;
+        try {
+            keyFields = getEncodingKeyFields(hoveredView.getEncoding());
+        } catch (_error) {
+            return;
+        }
+
+        if (!keyFields || keyFields.length === 0) {
+            return;
+        }
+
+        const originKeyTuple = keyFields.map((keyField) =>
+            field(keyField)(hoveredDatum)
+        );
+
+        if (originKeyTuple.some((value) => value == null)) {
+            return;
+        }
+
+        const paramName = pointParamNames[0];
+        const selector = getParamSelector(hoveredView, paramName);
+
+        try {
+            resolveParamSelector(this, selector);
+        } catch (_error) {
+            return;
+        }
+
+        let originViewSelector;
+        try {
+            originViewSelector = getViewSelector(hoveredView);
+        } catch (_error) {
+            return;
+        }
+
+        /** @type {string[] | undefined} */
+        let defaultPartitionBy;
+        let defaultScopeLabel = "this scope";
+        const sampleDef = hoveredView.getEncoding().sample;
+        if (
+            sampleDef &&
+            !Array.isArray(sampleDef) &&
+            typeof sampleDef.field === "string"
+        ) {
+            defaultPartitionBy = [sampleDef.field];
+            defaultScopeLabel = "this sample";
+        }
+
+        return {
+            hoveredView,
+            hoveredDatum,
+            selector,
+            originViewSelector,
+            originKeyFields: keyFields,
+            originKeyTuple,
+            defaultPartitionBy,
+            defaultScopeLabel,
+        };
+    }
+
+    /**
+     * @param {{
+     *   hoveredDatum: import("@genome-spy/core/data/flowNode.js").Datum,
+     *   selector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
+     *   originViewSelector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector,
+     *   originKeyFields: string[],
+     *   originKeyTuple: import("@genome-spy/core/spec/channel.js").Scalar[],
+     *   defaultPartitionBy: string[] | undefined,
+     *   defaultScopeLabel: string
+     * }} context
+     * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
+     */
+    #buildSelectionExpansionMenu(context) {
+        const {
+            hoveredDatum,
+            selector,
+            originViewSelector,
+            originKeyFields,
+            originKeyTuple,
+            defaultPartitionBy,
+            defaultScopeLabel,
+        } = context;
+
+        const scalarValueFields = Object.entries(hoveredDatum)
+            .filter(([fieldName, value]) => {
+                if (fieldName.startsWith("_")) {
+                    return false;
+                }
+
+                return typeof value === "string" || typeof value === "boolean";
+            })
+            .map(([fieldName]) => fieldName);
+
+        if (scalarValueFields.length === 0) {
+            return [{ label: "No expansion fields available." }];
+        }
+
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [];
+
+        for (const fieldName of scalarValueFields) {
+            const value = hoveredDatum[fieldName];
+            const valueLabel = this.#formatSelectionExpansionValue(value);
+            const scopedLabel =
+                "Match " +
+                fieldName +
+                " = " +
+                valueLabel +
+                " in " +
+                defaultScopeLabel;
+
+            items.push({
+                label: scopedLabel,
+                callback: () =>
+                    this.intentExecutor.dispatch(
+                        paramProvenanceSlice.actions.expandPointSelection({
+                            selector,
+                            operation: "replace",
+                            predicate: {
+                                field: fieldName,
+                                op: "eq",
+                                valueFromField: fieldName,
+                            },
+                            partitionBy: defaultPartitionBy,
+                            origin: {
+                                type: "datum",
+                                view: originViewSelector,
+                                keyFields: originKeyFields,
+                                keyTuple: originKeyTuple,
+                            },
+                            label: scopedLabel,
+                        })
+                    ),
+            });
+
+            if (defaultPartitionBy?.length) {
+                const globalLabel =
+                    "Match " + fieldName + " = " + valueLabel + " across all";
+                items.push({
+                    label: globalLabel,
+                    callback: () =>
+                        this.intentExecutor.dispatch(
+                            paramProvenanceSlice.actions.expandPointSelection({
+                                selector,
+                                operation: "replace",
+                                predicate: {
+                                    field: fieldName,
+                                    op: "eq",
+                                    valueFromField: fieldName,
+                                },
+                                origin: {
+                                    type: "datum",
+                                    view: originViewSelector,
+                                    keyFields: originKeyFields,
+                                    keyTuple: originKeyTuple,
+                                },
+                                label: globalLabel,
+                            })
+                        ),
+                });
+            }
+        }
+
+        return items;
+    }
+
+    /**
+     * @param {unknown} value
+     * @returns {string}
+     */
+    #formatSelectionExpansionValue(value) {
+        const text = String(value);
+        if (text.length > 20) {
+            return text.slice(0, 17) + "...";
+        }
+        return text;
     }
 
     /**
