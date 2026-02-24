@@ -35,7 +35,8 @@ export const MULTIPLE_POINT_SELECTION_PARAMS_REASON =
  *   defaultScopeLabel: string
  * }} SelectionExpansionContext
  *
- * @typedef {{ label: string, payload: ExpandPointSelectionActionPayload }} SelectionExpansionIntentOption
+ * @typedef {{ label: string, payload: ExpandPointSelectionActionPayload }} SelectionExpansionOperationOption
+ * @typedef {{ fieldName: string, valueLabel: string, operations: SelectionExpansionOperationOption[] }} SelectionExpansionFieldOption
  * @typedef {{ status: "available", context: SelectionExpansionContext } | { status: "disabled", reason: "multiplePointSelectionParams" } | { status: "unavailable" }} SelectionExpansionContextResolution
  */
 
@@ -140,9 +141,9 @@ export function resolveSelectionExpansionContext(rootView, hover) {
 
 /**
  * @param {SelectionExpansionContext} context
- * @returns {SelectionExpansionIntentOption[]}
+ * @returns {SelectionExpansionFieldOption[]}
  */
-export function createSelectionExpansionIntentOptions(context) {
+export function createSelectionExpansionFieldOptions(context) {
     const {
         hoveredView,
         hoveredDatum,
@@ -159,32 +160,42 @@ export function createSelectionExpansionIntentOptions(context) {
         ...(defaultPartitionBy ?? []),
     ]);
 
+    const encodingFields = getEncodingReferencedFields(hoveredView);
+
     const preferredFields = getPreferredSelectionExpansionFields(
         hoveredView,
         hoveredDatum,
         excludedFields
     );
 
-    const scalarValueFields =
-        preferredFields.length > 0
-            ? preferredFields
-            : getFallbackSelectionExpansionFields(hoveredDatum, excludedFields);
+    const additionalFields = getFallbackSelectionExpansionFields(
+        hoveredDatum,
+        excludedFields
+    ).filter((fieldName) => !encodingFields.has(fieldName));
 
-    /** @type {SelectionExpansionIntentOption[]} */
+    const scalarValueFields = [...preferredFields];
+    for (const fieldName of additionalFields) {
+        if (!scalarValueFields.includes(fieldName)) {
+            scalarValueFields.push(fieldName);
+        }
+    }
+
+    /** @type {SelectionExpansionFieldOption[]} */
     const options = [];
     for (const fieldName of scalarValueFields) {
         const value = hoveredDatum[fieldName];
         const valueLabel = formatSelectionExpansionValue(value);
-
-        const scopedLabel =
+        const scopedActionLabel =
             "Match " +
             fieldName +
             " = " +
             valueLabel +
             " in " +
             defaultScopeLabel;
-        options.push({
-            label: scopedLabel,
+        /** @type {SelectionExpansionOperationOption[]} */
+        const operationOptions = [];
+        operationOptions.push({
+            label: "Match in " + defaultScopeLabel,
             payload: {
                 selector,
                 operation: "replace",
@@ -200,15 +211,15 @@ export function createSelectionExpansionIntentOptions(context) {
                     keyFields: originKeyFields,
                     keyTuple: originKeyTuple,
                 },
-                label: scopedLabel,
+                label: scopedActionLabel,
             },
         });
 
         if (defaultPartitionBy?.length) {
-            const globalLabel =
+            const globalActionLabel =
                 "Match " + fieldName + " = " + valueLabel + " across all";
-            options.push({
-                label: globalLabel,
+            operationOptions.push({
+                label: "Match across all",
                 payload: {
                     selector,
                     operation: "replace",
@@ -223,13 +234,73 @@ export function createSelectionExpansionIntentOptions(context) {
                         keyFields: originKeyFields,
                         keyTuple: originKeyTuple,
                     },
-                    label: globalLabel,
+                    label: globalActionLabel,
                 },
             });
         }
+
+        options.push({
+            fieldName,
+            valueLabel,
+            operations: operationOptions,
+        });
     }
 
     return options;
+}
+
+/**
+ * @param {UnitView} hoveredView
+ * @returns {Set<string>}
+ */
+function getEncodingReferencedFields(hoveredView) {
+    const encoding = hoveredView.getEncoding();
+    const fields = new Set();
+
+    /**
+     * @param {unknown} channelDef
+     */
+    const collect = (channelDef) => {
+        if (
+            !channelDef ||
+            typeof channelDef !== "object" ||
+            Array.isArray(channelDef)
+        ) {
+            return;
+        }
+
+        /** @type {any} */
+        const definition = channelDef;
+
+        if (typeof definition.field === "string") {
+            fields.add(definition.field);
+        }
+
+        if (typeof definition.chrom === "string") {
+            fields.add(definition.chrom);
+        }
+
+        if (typeof definition.pos === "string") {
+            fields.add(definition.pos);
+        }
+
+        if ("condition" in definition) {
+            const { condition } = definition;
+            if (Array.isArray(condition)) {
+                for (const subCondition of condition) {
+                    collect(subCondition);
+                }
+            } else {
+                collect(condition);
+            }
+        }
+    };
+
+    for (const channelDef of Object.values(encoding)) {
+        collect(channelDef);
+    }
+
+    return fields;
 }
 
 /**

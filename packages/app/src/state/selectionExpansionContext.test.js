@@ -1,7 +1,7 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
 import {
-    createSelectionExpansionIntentOptions,
+    createSelectionExpansionFieldOptions,
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
     resolveSelectionExpansionContext,
 } from "./selectionExpansionContext.js";
@@ -113,7 +113,7 @@ describe("selectionExpansionContext", () => {
         });
     });
 
-    test("uses encoded categorical fields first when building options", () => {
+    test("puts encoded categorical fields first and appends non-encoding fields", () => {
         const hoveredView = createMockUnitView({
             encoding: {
                 key: [{ field: "id" }],
@@ -135,7 +135,7 @@ describe("selectionExpansionContext", () => {
             ],
         });
 
-        const options = createSelectionExpansionIntentOptions({
+        const options = createSelectionExpansionFieldOptions({
             hoveredView,
             hoveredDatum: {
                 id: "v1",
@@ -143,6 +143,7 @@ describe("selectionExpansionContext", () => {
                 CHROM: "chr7",
                 Func: "genic_other",
                 Consequence: "missense",
+                REF: "T",
                 POS: 42,
             },
             selector: { scope: [], param: "variantClick" },
@@ -153,17 +154,25 @@ describe("selectionExpansionContext", () => {
             defaultScopeLabel: "this sample",
         });
 
-        expect(options.map((option) => option.label)).toEqual([
-            "Match Func = genic_other in this sample",
-            "Match Func = genic_other across all",
-            "Match Consequence = missense in this sample",
-            "Match Consequence = missense across all",
+        expect(options.map((option) => option.fieldName)).toEqual([
+            "Func",
+            "Consequence",
+            "CHROM",
+            "REF",
         ]);
-        expect(options[0].payload.partitionBy).toEqual(["sample"]);
-        expect(options[1].payload.partitionBy).toBeUndefined();
+        expect(
+            options[0].operations.map((operation) => operation.label)
+        ).toEqual(["Match in this sample", "Match across all"]);
+        expect(options[0].operations[0].payload.label).toBe(
+            "Match Func = genic_other in this sample"
+        );
+        expect(options[0].operations[0].payload.partitionBy).toEqual([
+            "sample",
+        ]);
+        expect(options[0].operations[1].payload.partitionBy).toBeUndefined();
     });
 
-    test("falls back to non-empty string and boolean fields", () => {
+    test("includes non-empty string and boolean fields when no preferred fields exist", () => {
         const hoveredView = createMockUnitView({
             encoding: {
                 key: [{ field: "id" }],
@@ -179,7 +188,7 @@ describe("selectionExpansionContext", () => {
             ],
         });
 
-        const options = createSelectionExpansionIntentOptions({
+        const options = createSelectionExpansionFieldOptions({
             hoveredView,
             hoveredDatum: {
                 id: "v1",
@@ -196,9 +205,12 @@ describe("selectionExpansionContext", () => {
             defaultScopeLabel: "this scope",
         });
 
-        expect(options.map((option) => option.label)).toEqual([
-            "Match category = hotspot in this scope",
-            "Match flagged = true in this scope",
+        expect(options.map((option) => option.fieldName)).toEqual([
+            "category",
+            "flagged",
         ]);
+        expect(
+            options[0].operations.map((operation) => operation.label)
+        ).toEqual(["Match in this scope"]);
     });
 });

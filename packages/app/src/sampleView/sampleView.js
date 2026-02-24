@@ -68,7 +68,7 @@ import {
 } from "@genome-spy/core/view/viewSelectors.js";
 import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 import {
-    createSelectionExpansionIntentOptions,
+    createSelectionExpansionFieldOptions,
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
     resolveSelectionExpansionContext,
 } from "../state/selectionExpansionContext.js";
@@ -1192,6 +1192,8 @@ export default class SampleView extends ContainerView {
             this,
             this.context.getCurrentHover()
         );
+        /** @type {import("../state/selectionExpansionContext.js").SelectionExpansionContext | undefined} */
+        let selectionExpansionContext;
         if (
             selectionExpansionResolution.status === "disabled" &&
             selectionExpansionResolution.reason ===
@@ -1204,21 +1206,25 @@ export default class SampleView extends ContainerView {
                 this.#selectionExpansionMultiParamWarningShown = true;
             }
         } else if (selectionExpansionResolution.status === "available") {
-            items.push({
-                label: "Expand Selection...",
-                submenu: () =>
-                    this.#buildSelectionExpansionMenu(
-                        selectionExpansionResolution.context
-                    ),
-            });
-            items.push(DIVIDER);
+            selectionExpansionContext = selectionExpansionResolution.context;
         }
 
         let previousContextTitle = "";
+        let selectionExpansionItemInserted = false;
+
+        /**
+         * @param {UnitView} unitView
+         * @returns {string}
+         */
+        const getUnitViewContextTitle = (unitView) =>
+            unitView.getTitleText() ??
+            unitView.spec.name ??
+            unitView.explicitName ??
+            unitView.name ??
+            "View";
 
         for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
-            const contextTitle =
-                fieldInfo.view.getTitleText() ?? fieldInfo.view.spec.name;
+            const contextTitle = getUnitViewContextTitle(fieldInfo.view);
             if (contextTitle != previousContextTitle) {
                 if (i > 0) {
                     items.push({ type: "divider" });
@@ -1228,6 +1234,21 @@ export default class SampleView extends ContainerView {
                     type: "header",
                 });
                 previousContextTitle = contextTitle;
+            }
+
+            if (
+                selectionExpansionContext &&
+                !selectionExpansionItemInserted &&
+                fieldInfo.view === selectionExpansionContext.hoveredView
+            ) {
+                items.push({
+                    label: "Expand point selection",
+                    submenu: () =>
+                        this.#buildSelectionExpansionMenu(
+                            selectionExpansionContext
+                        ),
+                });
+                selectionExpansionItemInserted = true;
             }
 
             if (selectionInterval) {
@@ -1261,6 +1282,26 @@ export default class SampleView extends ContainerView {
             });
         }
 
+        if (selectionExpansionContext && !selectionExpansionItemInserted) {
+            if (items.at(-1)?.type !== "divider") {
+                items.push(DIVIDER);
+            }
+
+            items.push({
+                label: getUnitViewContextTitle(
+                    selectionExpansionContext.hoveredView
+                ),
+                type: "header",
+            });
+            items.push({
+                label: "Expand point selection",
+                submenu: () =>
+                    this.#buildSelectionExpansionMenu(
+                        selectionExpansionContext
+                    ),
+            });
+        }
+
         contextMenu({ items }, mouseEvent);
     }
 
@@ -1269,20 +1310,37 @@ export default class SampleView extends ContainerView {
      * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
      */
     #buildSelectionExpansionMenu(context) {
-        const options = createSelectionExpansionIntentOptions(context);
-        if (options.length === 0) {
+        const fieldOptions = createSelectionExpansionFieldOptions(context);
+        if (fieldOptions.length === 0) {
             return [{ label: "No expansion fields available." }];
         }
 
-        return options.map((option) => ({
-            label: option.label,
-            callback: () =>
-                this.intentExecutor.dispatch(
-                    paramProvenanceSlice.actions.expandPointSelection(
-                        option.payload
-                    )
-                ),
-        }));
+        return [
+            {
+                type: "header",
+                label: "Choose a field",
+            },
+            DIVIDER,
+            ...fieldOptions.map((fieldOption) => ({
+                label: fieldOption.fieldName,
+                submenu: () => [
+                    {
+                        type: "header",
+                        label: "Value: " + fieldOption.valueLabel,
+                    },
+                    DIVIDER,
+                    ...fieldOption.operations.map((operationOption) => ({
+                        label: operationOption.label,
+                        callback: () =>
+                            this.intentExecutor.dispatch(
+                                paramProvenanceSlice.actions.expandPointSelection(
+                                    operationOption.payload
+                                )
+                            ),
+                    })),
+                ],
+            })),
+        ];
     }
 
     /**
