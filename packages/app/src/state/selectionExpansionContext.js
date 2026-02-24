@@ -20,11 +20,9 @@ export const MULTIPLE_POINT_SELECTION_PARAMS_REASON =
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {import("@genome-spy/core/data/flowNode.js").Datum} Datum
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("./selectionExpansion.js").SelectionExpansionPredicate} SelectionExpansionPredicate
+ * @typedef {import("./paramProvenanceTypes.d.ts").ExpandPointSelectionActionPayload} ExpandPointSelectionActionPayload
  *
  * @typedef {{ mark?: { unitView?: UnitView }, datum?: Datum }} SelectionExpansionHover
- *
- * @typedef {{ selector: ParamSelector, operation: "replace" | "add" | "remove" | "toggle", predicate: SelectionExpansionPredicate, partitionBy?: string[], origin: { type: "datum", view: ViewSelector, keyFields: string[], keyTuple: Scalar[] }, label?: string }} ExpandPointSelectionActionPayload
  *
  * @typedef {{
  *   hoveredView: UnitView,

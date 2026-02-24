@@ -39,19 +39,12 @@ const THROTTLE_INTERVAL_MS = 150;
 
 /**
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} ParamSelector
- * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
- * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamValue} ParamValue
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamOrigin} ParamOrigin
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamProvenanceEntry} ParamProvenanceEntry
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamValuePointExpand} ParamValuePointExpand
  * @typedef {import("@genome-spy/core/spec/parameter.js").Parameter} Parameter
  * @typedef {import("@genome-spy/core/view/view.js").default} View
- * @typedef {import("./selectionExpansion.js").SelectionExpansionPredicate} SelectionExpansionPredicate
- * @typedef {{ type: "value", value: any }} ParamValueLiteral
- * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [import("@genome-spy/core/spec/genome.js").ChromosomalLocus, import("@genome-spy/core/spec/genome.js").ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
- * @typedef {{ type: "datum", view: ViewSelector, keyFields: string[], keyTuple: Scalar[] }} PointExpandOrigin
- * @typedef {{ type: "pointExpand", operation: "replace" | "add" | "remove" | "toggle", predicate: SelectionExpansionPredicate, partitionBy?: string[], origin: PointExpandOrigin, label?: string }} ParamValuePointExpand
- * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint | ParamValuePointExpand} ParamValue
- * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
- * @typedef {{ selector: ParamSelector, value: ParamValue, origin?: ParamOrigin }} ParamProvenanceEntry
  * @typedef {{ view: View, param: Parameter, selector: ParamSelector }} BookmarkableParamEntry
  */
 
