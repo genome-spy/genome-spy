@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+
+### Bug Fixes
+
+* **app:** align jsconfig with test type-check config ([8281ad3](https://github.com/genome-spy/genome-spy/commit/8281ad318fcd9bad9b1d661fc5e01875dec43208)) by @tuner
+* **app:** disambiguate provenance labels by import scope ([7587af0](https://github.com/genome-spy/genome-spy/commit/7587af0dfbf6b2f9df6dc7c9be5e0a1b09b109d0)) by @tuner
+* **app:** keep view highlight in sync with visibility toggles ([2045745](https://github.com/genome-spy/genome-spy/commit/204574501e92bd081c50db222d861b494db7cf60)) by @tuner
+* **app:** make test:tsc check source and tests ([819e91b](https://github.com/genome-spy/genome-spy/commit/819e91b7dc5013fd919b8f2b5b18e2b240ef4615)) by @tuner
+* **app:** parent summary views under summary container ([b6aa355](https://github.com/genome-spy/genome-spy/commit/b6aa355baad55728989792abf2d4ed4178320b6c)) by @tuner
+* **app:** require fresh hover for view highlight after toggles ([699046c](https://github.com/genome-spy/genome-spy/commit/699046c5d3397e819fc32fb4b54c2e664c6894ff)) by @tuner
+* **app:** saveImageDialog sizing ([116df34](https://github.com/genome-spy/genome-spy/commit/116df34a97eee05b61639c9ad08c8485c5701c73)) by @tuner
+* **app:** support delimiter commit in metadata multi-select ([a2724d1](https://github.com/genome-spy/genome-spy/commit/a2724d15dcd314c839b95c46d47a1eae82c28776)) by @tuner
+* **app:** type-check app tests without publishing test typings ([3745374](https://github.com/genome-spy/genome-spy/commit/37453749f5142743943ad0a800bcc966845565f9)) by @tuner
+* **core:** render loading indicators above canvas by DOM order ([be61f76](https://github.com/genome-spy/genome-spy/commit/be61f76b5c9d13bbffffed673f6ef4940398896b)) by @tuner
+* **core:** resolve scoped selectors by data ancestry ([81a9838](https://github.com/genome-spy/genome-spy/commit/81a9838373cd319ac2fcb1dddf86fb8d5c33c7b1)) by @tuner
+
+### Features
+
+* **app:** add radio groups for configurable visibility ([#332](https://github.com/genome-spy/genome-spy/issues/332)) ([99f44e0](https://github.com/genome-spy/genome-spy/commit/99f44e05efc53709ad5e3f0657b374dc1b74b055)) by @tuner
+* **app:** show GenomeSpy version in the toolbar ([123a252](https://github.com/genome-spy/genome-spy/commit/123a25205445534db9af79e7e87883b278de5552)) by @tuner
+* **core:** add smooth WASD keyboard pan/zoom navigation ([#333](https://github.com/genome-spy/genome-spy/issues/333)) ([46f3e7b](https://github.com/genome-spy/genome-spy/commit/46f3e7b66bb120a026f51bf8213c1f110a73fc49)) by @tuner
+
 # [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
 
 ### Bug Fixes

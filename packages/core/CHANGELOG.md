@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
+
+### Bug Fixes
+
+* **app:** keep view highlight in sync with visibility toggles ([2045745](https://github.com/genome-spy/genome-spy/commit/204574501e92bd081c50db222d861b494db7cf60)) by @tuner
+* **core:** render loading indicators above canvas by DOM order ([be61f76](https://github.com/genome-spy/genome-spy/commit/be61f76b5c9d13bbffffed673f6ef4940398896b)) by @tuner
+* **core:** resolve scoped selectors by data ancestry ([81a9838](https://github.com/genome-spy/genome-spy/commit/81a9838373cd319ac2fcb1dddf86fb8d5c33c7b1)) by @tuner
+
+### Features
+
+* **core:** add smooth WASD keyboard pan/zoom navigation ([#333](https://github.com/genome-spy/genome-spy/issues/333)) ([46f3e7b](https://github.com/genome-spy/genome-spy/commit/46f3e7b66bb120a026f51bf8213c1f110a73fc49)) by @tuner
+
 # [0.70.0](https://github.com/genome-spy/genome-spy/compare/v0.69.1...v0.70.0) (2026-02-17)
 
 ### Bug Fixes
