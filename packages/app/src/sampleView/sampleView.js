@@ -45,10 +45,7 @@ import {
     asSelectionConfig,
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
-    isPointSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
-import { getEncodingKeyFields } from "@genome-spy/core/encoder/metadataChannels.js";
-import { field } from "@genome-spy/core/utils/field.js";
 import {
     LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
     normalizeSampleDefMetadataSources,
@@ -67,10 +64,14 @@ import { ReadyWaiterSet } from "../utils/readyGate.js";
 import { resolveIntervalReference } from "./intervalReferenceResolver.js";
 import {
     getParamSelector,
-    getViewSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
+import {
+    createSelectionExpansionIntentOptions,
+    MULTIPLE_POINT_SELECTION_PARAMS_REASON,
+    resolveSelectionExpansionContext,
+} from "../state/selectionExpansionContext.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -1187,14 +1188,27 @@ export default class SampleView extends ContainerView {
             DIVIDER,
         ];
 
-        const selectionExpansionContext =
-            this.#resolveSelectionExpansionContext();
-        if (selectionExpansionContext) {
+        const selectionExpansionResolution = resolveSelectionExpansionContext(
+            this,
+            this.context.getCurrentHover()
+        );
+        if (
+            selectionExpansionResolution.status === "disabled" &&
+            selectionExpansionResolution.reason ===
+                MULTIPLE_POINT_SELECTION_PARAMS_REASON
+        ) {
+            if (!this.#selectionExpansionMultiParamWarningShown) {
+                console.warn(
+                    "Selection expansion is disabled because multiple multi-point selection parameters are configured in the same UnitView."
+                );
+                this.#selectionExpansionMultiParamWarningShown = true;
+            }
+        } else if (selectionExpansionResolution.status === "available") {
             items.push({
                 label: "Expand Selection...",
                 submenu: () =>
                     this.#buildSelectionExpansionMenu(
-                        selectionExpansionContext
+                        selectionExpansionResolution.context
                     ),
             });
             items.push(DIVIDER);
@@ -1251,340 +1265,24 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @returns {{
-     *   hoveredView: UnitView,
-     *   hoveredDatum: import("@genome-spy/core/data/flowNode.js").Datum,
-     *   selector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
-     *   originViewSelector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector,
-     *   originKeyFields: string[],
-     *   originKeyTuple: import("@genome-spy/core/spec/channel.js").Scalar[],
-     *   defaultPartitionBy: string[] | undefined,
-     *   defaultScopeLabel: string
-     * } | undefined}
-     */
-    #resolveSelectionExpansionContext() {
-        const hover = this.context.getCurrentHover();
-        if (!hover || !hover.datum || !hover.mark?.unitView) {
-            return;
-        }
-
-        const hoveredView = hover.mark.unitView;
-        const hoveredDatum = hover.datum;
-
-        /** @type {string[]} */
-        const pointParamNames = [];
-        for (const [name, param] of hoveredView.paramRuntime.paramConfigs) {
-            if (!("select" in param) || param.persist === false) {
-                continue;
-            }
-
-            const select = asSelectionConfig(param.select);
-            if (isPointSelectionConfig(select) && select.toggle) {
-                pointParamNames.push(name);
-            }
-        }
-
-        if (pointParamNames.length === 0) {
-            return;
-        }
-
-        if (pointParamNames.length > 1) {
-            if (!this.#selectionExpansionMultiParamWarningShown) {
-                console.warn(
-                    "Selection expansion is disabled because multiple multi-point selection parameters are configured in the same UnitView."
-                );
-                this.#selectionExpansionMultiParamWarningShown = true;
-            }
-            return;
-        }
-
-        let keyFields;
-        try {
-            keyFields = getEncodingKeyFields(hoveredView.getEncoding());
-        } catch (_error) {
-            return;
-        }
-
-        if (!keyFields || keyFields.length === 0) {
-            return;
-        }
-
-        const originKeyTuple = keyFields.map((keyField) =>
-            field(keyField)(hoveredDatum)
-        );
-
-        if (originKeyTuple.some((value) => value == null)) {
-            return;
-        }
-
-        const paramName = pointParamNames[0];
-        const selector = getParamSelector(hoveredView, paramName);
-
-        try {
-            resolveParamSelector(this, selector);
-        } catch (_error) {
-            return;
-        }
-
-        let originViewSelector;
-        try {
-            originViewSelector = getViewSelector(hoveredView);
-        } catch (_error) {
-            return;
-        }
-
-        /** @type {string[] | undefined} */
-        let defaultPartitionBy;
-        let defaultScopeLabel = "this scope";
-        const sampleDef = hoveredView.getEncoding().sample;
-        if (
-            sampleDef &&
-            !Array.isArray(sampleDef) &&
-            typeof sampleDef.field === "string"
-        ) {
-            defaultPartitionBy = [sampleDef.field];
-            defaultScopeLabel = "this sample";
-        }
-
-        return {
-            hoveredView,
-            hoveredDatum,
-            selector,
-            originViewSelector,
-            originKeyFields: keyFields,
-            originKeyTuple,
-            defaultPartitionBy,
-            defaultScopeLabel,
-        };
-    }
-
-    /**
-     * @param {{
-     *   hoveredView: UnitView,
-     *   hoveredDatum: import("@genome-spy/core/data/flowNode.js").Datum,
-     *   selector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
-     *   originViewSelector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector,
-     *   originKeyFields: string[],
-     *   originKeyTuple: import("@genome-spy/core/spec/channel.js").Scalar[],
-     *   defaultPartitionBy: string[] | undefined,
-     *   defaultScopeLabel: string
-     * }} context
+     * @param {import("../state/selectionExpansionContext.js").SelectionExpansionContext} context
      * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
      */
     #buildSelectionExpansionMenu(context) {
-        const {
-            hoveredView,
-            hoveredDatum,
-            selector,
-            originViewSelector,
-            originKeyFields,
-            originKeyTuple,
-            defaultPartitionBy,
-            defaultScopeLabel,
-        } = context;
-
-        const excludedFields = new Set([
-            ...originKeyFields,
-            ...(defaultPartitionBy ?? []),
-        ]);
-
-        const preferredFields = this.#getPreferredSelectionExpansionFields(
-            hoveredView,
-            hoveredDatum,
-            excludedFields
-        );
-
-        const scalarValueFields =
-            preferredFields.length > 0
-                ? preferredFields
-                : this.#getFallbackSelectionExpansionFields(
-                      hoveredDatum,
-                      excludedFields
-                  );
-
-        if (scalarValueFields.length === 0) {
+        const options = createSelectionExpansionIntentOptions(context);
+        if (options.length === 0) {
             return [{ label: "No expansion fields available." }];
         }
 
-        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-        const items = [];
-
-        for (const fieldName of scalarValueFields) {
-            const value = hoveredDatum[fieldName];
-            const valueLabel = this.#formatSelectionExpansionValue(value);
-            const scopedLabel =
-                "Match " +
-                fieldName +
-                " = " +
-                valueLabel +
-                " in " +
-                defaultScopeLabel;
-
-            items.push({
-                label: scopedLabel,
-                callback: () =>
-                    this.intentExecutor.dispatch(
-                        paramProvenanceSlice.actions.expandPointSelection({
-                            selector,
-                            operation: "replace",
-                            predicate: {
-                                field: fieldName,
-                                op: "eq",
-                                valueFromField: fieldName,
-                            },
-                            partitionBy: defaultPartitionBy,
-                            origin: {
-                                type: "datum",
-                                view: originViewSelector,
-                                keyFields: originKeyFields,
-                                keyTuple: originKeyTuple,
-                            },
-                            label: scopedLabel,
-                        })
-                    ),
-            });
-
-            if (defaultPartitionBy?.length) {
-                const globalLabel =
-                    "Match " + fieldName + " = " + valueLabel + " across all";
-                items.push({
-                    label: globalLabel,
-                    callback: () =>
-                        this.intentExecutor.dispatch(
-                            paramProvenanceSlice.actions.expandPointSelection({
-                                selector,
-                                operation: "replace",
-                                predicate: {
-                                    field: fieldName,
-                                    op: "eq",
-                                    valueFromField: fieldName,
-                                },
-                                origin: {
-                                    type: "datum",
-                                    view: originViewSelector,
-                                    keyFields: originKeyFields,
-                                    keyTuple: originKeyTuple,
-                                },
-                                label: globalLabel,
-                            })
-                        ),
-                });
-            }
-        }
-
-        return items;
-    }
-
-    /**
-     * @param {UnitView} hoveredView
-     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
-     * @param {Set<string>} excludedFields
-     * @returns {string[]}
-     */
-    #getPreferredSelectionExpansionFields(
-        hoveredView,
-        hoveredDatum,
-        excludedFields
-    ) {
-        const encoding = hoveredView.getEncoding();
-        /** @type {string[]} */
-        const orderedFields = [];
-        const seen = new Set();
-
-        /**
-         * @param {unknown} channelDef
-         */
-        const collectFromChannelDef = (channelDef) => {
-            if (
-                !channelDef ||
-                typeof channelDef !== "object" ||
-                Array.isArray(channelDef)
-            ) {
-                return;
-            }
-
-            /** @type {any} */
-            const definition = channelDef;
-            if (
-                typeof definition.field === "string" &&
-                (definition.type === "nominal" ||
-                    definition.type === "ordinal") &&
-                !seen.has(definition.field) &&
-                this.#isUsableSelectionExpansionField(
-                    definition.field,
-                    hoveredDatum,
-                    excludedFields
-                )
-            ) {
-                seen.add(definition.field);
-                orderedFields.push(definition.field);
-            }
-
-            if ("condition" in definition) {
-                const { condition } = definition;
-                if (Array.isArray(condition)) {
-                    for (const subCondition of condition) {
-                        collectFromChannelDef(subCondition);
-                    }
-                } else {
-                    collectFromChannelDef(condition);
-                }
-            }
-        };
-
-        for (const channelDef of Object.values(encoding)) {
-            collectFromChannelDef(channelDef);
-        }
-
-        return orderedFields;
-    }
-
-    /**
-     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
-     * @param {Set<string>} excludedFields
-     * @returns {string[]}
-     */
-    #getFallbackSelectionExpansionFields(hoveredDatum, excludedFields) {
-        return Object.keys(hoveredDatum).filter((fieldName) =>
-            this.#isUsableSelectionExpansionField(
-                fieldName,
-                hoveredDatum,
-                excludedFields
-            )
-        );
-    }
-
-    /**
-     * @param {string} fieldName
-     * @param {import("@genome-spy/core/data/flowNode.js").Datum} hoveredDatum
-     * @param {Set<string>} excludedFields
-     * @returns {boolean}
-     */
-    #isUsableSelectionExpansionField(fieldName, hoveredDatum, excludedFields) {
-        if (excludedFields.has(fieldName) || fieldName.startsWith("_")) {
-            return false;
-        }
-
-        const value = hoveredDatum[fieldName];
-        if (typeof value === "boolean") {
-            return true;
-        } else if (typeof value === "string") {
-            return value.trim().length > 0;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * @param {unknown} value
-     * @returns {string}
-     */
-    #formatSelectionExpansionValue(value) {
-        const text = String(value);
-        if (text.length > 20) {
-            return text.slice(0, 17) + "...";
-        }
-        return text;
+        return options.map((option) => ({
+            label: option.label,
+            callback: () =>
+                this.intentExecutor.dispatch(
+                    paramProvenanceSlice.actions.expandPointSelection(
+                        option.payload
+                    )
+                ),
+        }));
     }
 
     /**
