@@ -114,17 +114,10 @@ function formatParamActionTitle(view, selector, value, origin, root) {
         if (value.label) {
             return html`${operationLabel}
                 <strong>${paramLabel}</strong>
-                by <strong>${value.label}</strong>${formatOriginSuffix(
-                    value.origin,
-                    root
-                )}`;
+                by <strong>${value.label}</strong>`;
         }
 
-        return html`${operationLabel}
-            <strong>${paramLabel}</strong>${formatOriginSuffix(
-                value.origin,
-                root
-            )}`;
+        return html`${operationLabel} <strong>${paramLabel}</strong>`;
     }
 
     if (value.type === "interval") {

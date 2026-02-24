@@ -197,9 +197,9 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
-        expect(title).toContain(
-            "Expand selected by same cluster in patient from points in points"
-        );
+        expect(title).toContain("Expand selected by same cluster in patient");
+        expect(title).toContain("in points");
+        expect(title).not.toContain("from points in points");
     });
 
     it("formats interval selections with x and y ranges", () => {

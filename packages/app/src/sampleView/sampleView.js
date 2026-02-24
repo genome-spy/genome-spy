@@ -1321,25 +1321,35 @@ export default class SampleView extends ContainerView {
                 label: "Choose a field",
             },
             DIVIDER,
-            ...fieldOptions.map((fieldOption) => ({
-                label: fieldOption.fieldName,
-                submenu: () => [
-                    {
-                        type: "header",
-                        label: "Value: " + fieldOption.valueLabel,
-                    },
-                    DIVIDER,
-                    ...fieldOption.operations.map((operationOption) => ({
-                        label: operationOption.label,
-                        callback: () =>
-                            this.intentExecutor.dispatch(
-                                paramProvenanceSlice.actions.expandPointSelection(
-                                    operationOption.payload
-                                )
+            ...fieldOptions.map((fieldOption) => {
+                /** @type {import("../utils/ui/contextMenu.js").MenuItem} */
+                const fieldMenuItem = {
+                    label: fieldOption.fieldName,
+                    submenu: () => {
+                        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+                        const submenuItems = [
+                            {
+                                type: "header",
+                                label: "Value: " + fieldOption.valueLabel,
+                            },
+                            DIVIDER,
+                            ...fieldOption.operations.map(
+                                (operationOption) => ({
+                                    label: operationOption.label,
+                                    callback: () =>
+                                        this.intentExecutor.dispatch(
+                                            paramProvenanceSlice.actions.expandPointSelection(
+                                                operationOption.payload
+                                            )
+                                        ),
+                                })
                             ),
-                    })),
-                ],
-            })),
+                        ];
+                        return submenuItems;
+                    },
+                };
+                return fieldMenuItem;
+            }),
         ];
     }
 
