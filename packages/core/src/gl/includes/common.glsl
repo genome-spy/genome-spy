@@ -38,36 +38,41 @@ float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
 
-bool isEmptyBinarySearchTexture(highp usampler2D s) {
-    // The minimum texture size is 1x1. Zero is a special value that indicates
-    // an empty selection. Unique ids never start at zero.
-    return textureSize(s, 0).x == 1 && texelFetch(s, ivec2(0, 0), 0).r == 0u;
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
 }
 
-bool binarySearchTexture(highp usampler2D s, uint value) {
-    int texSize = textureSize(s, 0).x;
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
 
-    if (texSize == 1 && texelFetch(s, ivec2(0, 0), 0).r == 0u) {
-        return false;
-    }
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
 
-    int left = 0;
-    int right = texSize - 1;
-
-    while (left <= right) {
-        int mid = left + (right - left) / 2;
-
-        uint midValue = texelFetch(s, ivec2(mid, 0), 0).r;
-
-        if (midValue == value) {
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
             return true;
         }
-
-        if (midValue < value) {
-            left = mid + 1;
-        } else {
-            right = mid - 1;
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
         }
+        index = (index + 1u) & mask;
     }
 
     return false;

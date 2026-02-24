@@ -528,8 +528,7 @@ export default class Mark {
                 }
             } else if (isMultiPointSelection(selection)) {
                 // We need a texture for each multi-selection parameter.
-                // The texture contains the uniqueIds of the selected data objects sorted
-                // in ascending order, which allows for binary search.
+                // The texture stores an open-addressing hash table of selected uniqueIds.
                 if (!selectionParameterUniforms.has(param)) {
                     selectionParameterUniforms.set(param, "multi");
 
@@ -560,7 +559,7 @@ export default class Mark {
                     const texName = SELECTION_TEXTURE_PREFIX + param;
                     scaleCode.push(
                         `bool ${SELECTION_CHECKER_PREFIX}${param}(bool empty) {\n` +
-                            `   return binarySearchTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyBinarySearchTexture(${texName}));\n` +
+                            `   return hashContainsTexture(${texName}, ${uniqueIdAttr}) || (empty && isEmptyHashTexture(${texName}));\n` +
                             `}`
                     );
 

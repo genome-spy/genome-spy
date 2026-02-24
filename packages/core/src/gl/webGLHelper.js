@@ -27,6 +27,10 @@ import {
     isDiscreteChannel,
 } from "../encoder/encoder.js";
 import { isMultiPointSelection } from "../selection/selection.js";
+import {
+    buildHashTableSet,
+    computeHashTextureDimensions,
+} from "./hashTable.js";
 
 export default class WebGLHelper {
     /**
@@ -351,9 +355,11 @@ export default class WebGLHelper {
             );
         }
 
-        const keys = Array.from(selection.data.keys());
-        // Zero is a special value for no selection. The minimum texture size is 1.
-        const uniqueIds = keys.length > 0 ? keys.sort((a, b) => a - b) : [0];
+        const { table, capacity } = buildHashTableSet(selection.data.keys());
+        const { width, height } = computeHashTextureDimensions(
+            capacity,
+            this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE)
+        );
 
         const existingTexture = this.selectionTextures.get(selection);
 
@@ -365,10 +371,10 @@ export default class WebGLHelper {
                 minMag: gl.NEAREST,
                 format: gl.RED_INTEGER,
                 internalFormat: gl.R32UI,
-                height: 1,
-                width: uniqueIds.length,
+                width,
+                height,
             },
-            new Uint32Array(uniqueIds),
+            table,
             update ? existingTexture : false
         );
 
