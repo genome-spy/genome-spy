@@ -15,6 +15,17 @@ import { assembleAsync, readRowGroup } from "hyparquet/src/rowgroup.js";
 import { concat } from "hyparquet/src/utils.js";
 
 /**
+ * Object-row variant of Parquet read options used by this trimmed reader.
+ *
+ * @typedef {Omit<
+ *  import("hyparquet").ParquetReadOptions,
+ *  "rowFormat" | "filter" | "filterStrict" | "onComplete"
+ * > & {
+ *  onComplete?: (rows: Record<string, any>[]) => void
+ * }} ObjectParquetReadOptions
+ */
+
+/**
  * @typedef {(
  *  groupData: Record<string, any>[],
  *  selectStart: number,
@@ -30,7 +41,7 @@ const rowGroupObjectBuilderCache = new Map();
 const MAX_CODEGEN_COLUMNS = 200;
 
 /**
- * @param {Omit<import("hyparquet").ParquetReadOptions, "rowFormat" | "filter" | "filterStrict">} options
+ * @param {ObjectParquetReadOptions} options
  * @returns {import("hyparquet").AsyncRowGroup[]}
  */
 function parquetReadAsync(options) {
@@ -217,7 +228,7 @@ async function asyncGroupToRowsObject(
 }
 
 /**
- * @param {Omit<import("hyparquet").ParquetReadOptions, "rowFormat" | "filter" | "filterStrict">} options
+ * @param {ObjectParquetReadOptions} options
  * @returns {Promise<void>}
  */
 export async function parquetRead(options) {
@@ -253,18 +264,24 @@ export async function parquetRead(options) {
     if (onChunk) {
         for (const asyncGroup of assembled) {
             for (const asyncColumn of asyncGroup.asyncColumns) {
-                asyncColumn.data.then(({ data, skipped }) => {
-                    let chunkRowStart = asyncGroup.groupStart + skipped;
-                    for (const columnData of data) {
-                        onChunk({
-                            columnName: asyncColumn.pathInSchema[0],
-                            columnData,
-                            rowStart: chunkRowStart,
-                            rowEnd: chunkRowStart + columnData.length,
-                        });
-                        chunkRowStart += columnData.length;
+                asyncColumn.data.then(
+                    /**
+                     * @param {{ data: import("hyparquet").DecodedArray[]; skipped: number }} chunk
+                     */
+                    (chunk) => {
+                        let chunkRowStart =
+                            asyncGroup.groupStart + chunk.skipped;
+                        for (const columnData of chunk.data) {
+                            onChunk({
+                                columnName: asyncColumn.pathInSchema[0],
+                                columnData,
+                                rowStart: chunkRowStart,
+                                rowEnd: chunkRowStart + columnData.length,
+                            });
+                            chunkRowStart += columnData.length;
+                        }
                     }
-                });
+                );
             }
         }
     }
@@ -296,7 +313,7 @@ export async function parquetRead(options) {
 }
 
 /**
- * @param {Omit<import("hyparquet").ParquetReadOptions, "onComplete" | "rowFormat" | "filter" | "filterStrict">} options
+ * @param {Omit<ObjectParquetReadOptions, "onComplete">} options
  * @returns {Promise<Record<string, any>[]>}
  */
 export function parquetReadObjects(options) {
