@@ -6,10 +6,11 @@ support partial loading or loading in response to user interactions. However,
 eager data sources are often more flexible and straightforward than
 [lazy](lazy.md) ones.
 
-GenomeSpy inputs eager data as tabular `"csv"`, `"tsv"`, and `"json"` files or
-as non-indexed [`"fasta"`](#fasta) files. Data can be loaded from URLs or
-provided inline. You can also use generators to generate data on the fly and
-further modify them using [transforms](../transform/index.md).
+GenomeSpy inputs eager data as tabular `"csv"`, `"tsv"`, `"json"`, and
+[`"parquet"`](#parquet) files or as non-indexed [`"fasta"`](#fasta) files. Data
+can be loaded from URLs or provided inline. You can also use generators to
+generate data on the fly and further modify them using
+[transforms](../transform/index.md).
 
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, GenomeSpy infers the
@@ -115,10 +116,40 @@ named data, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
-## Bioinformatic Formats
+## Additional Formats
 
 Most bioinformatic data formats are supported through [lazy](lazy.md) data. The
-following formats are supported as eager data with the `url` source.
+following additional formats are supported as eager data with the `url` source.
+
+### Parquet
+
+[_Apache Parquet_](https://en.wikipedia.org/wiki/Apache_Parquet) is a
+column-oriented binary storage format designed for efficient analytics on large
+tables. Compared to row-oriented text formats, it usually provides better
+compression and faster column scans.
+In GenomeSpy, Parquet is decoded into row objects similarly to `"csv"` and
+`"tsv"` formats supported by the `url` data source.
+
+The type of _Parquet_ format is `"parquet"`:
+
+```json
+{
+  "data": {
+    "url": "data.parquet",
+    "format": {
+      "type": "parquet"
+    }
+  }
+}
+```
+
+Current constraints:
+
+- Only Snappy-compressed Parquet files are supported.
+- 64-bit integer values that require JavaScript `BigInt` are not supported.
+
+The implementation is based on
+[hyparquet](https://github.com/hyparam/hyparquet).
 
 ### FASTA
 

@@ -37,6 +37,7 @@ import {
 } from "./genomeSpy/viewHierarchyConfig.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
+import parquet from "./data/formats/parquet.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -44,6 +45,7 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
  */
 
 vegaFormats("fasta", fasta);
+vegaFormats("parquet", parquet);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
