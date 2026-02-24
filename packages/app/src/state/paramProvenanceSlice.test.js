@@ -21,10 +21,15 @@ describe("paramProvenanceSlice", () => {
         expect(state.entries[key]).toEqual(action.payload);
     });
 
-    it("returns a group key for paramChange actions", () => {
+    it("returns a group key for value and interval paramChange actions", () => {
         const action = paramProvenanceSlice.actions.paramChange({
             selector: { scope: [], param: "bar" },
             value: { type: "value", value: "x" },
+        });
+
+        const intervalAction = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "bar" },
+            value: { type: "interval", intervals: { x: [1, 2] } },
         });
 
         const expandAction = paramProvenanceSlice.actions.expandPointSelection({
@@ -46,9 +51,10 @@ describe("paramProvenanceSlice", () => {
         expect(getParamChangeGroupKey(action)).toBe(
             makeParamSelectorKey(action.payload.selector)
         );
-        expect(getParamChangeGroupKey(expandAction)).toBe(
-            makeParamSelectorKey(expandAction.payload.selector)
+        expect(getParamChangeGroupKey(intervalAction)).toBe(
+            makeParamSelectorKey(intervalAction.payload.selector)
         );
+        expect(getParamChangeGroupKey(expandAction)).toBeNull();
         expect(getParamChangeGroupKey({ type: "other/action" })).toBeNull();
     });
 
@@ -125,5 +131,33 @@ describe("paramProvenanceSlice", () => {
             /** @type {any} */ (state.present.paramProvenance.entries[key])
                 .value.value
         ).toBe(2);
+    });
+
+    it("coalesces point selection changes by selector", () => {
+        const reducer = createProvenanceReducer(
+            { paramProvenance: paramProvenanceSlice.reducer },
+            { groupBy: getParamChangeGroupKey }
+        );
+
+        const selector = { scope: [], param: "selection" };
+        const action1 = paramProvenanceSlice.actions.paramChange({
+            selector,
+            value: { type: "point", keyFields: ["id"], keys: [["A"]] },
+        });
+        const action2 = paramProvenanceSlice.actions.paramChange({
+            selector,
+            value: { type: "point", keyFields: ["id"], keys: [["B"]] },
+        });
+
+        let state = reducer(undefined, { type: "@@INIT" });
+        state = reducer(state, action1);
+        state = reducer(state, action2);
+
+        expect(state.past.length).toBe(0);
+        const key = makeParamSelectorKey(selector);
+        expect(
+            /** @type {any} */ (state.present.paramProvenance.entries[key])
+                .value.keys
+        ).toEqual([["B"]]);
     });
 });

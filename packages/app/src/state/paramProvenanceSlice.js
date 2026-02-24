@@ -52,16 +52,22 @@ export const paramProvenanceSlice = createSlice({
  * @returns {string | null}
  */
 export function getParamChangeGroupKey(action) {
-    if (
-        !paramProvenanceSlice.actions.paramChange.match(action) &&
-        !paramProvenanceSlice.actions.expandPointSelection.match(action)
-    ) {
+    if (paramProvenanceSlice.actions.expandPointSelection.match(action)) {
+        return null;
+    }
+
+    if (!paramProvenanceSlice.actions.paramChange.match(action)) {
         return null;
     }
 
     const payload = /** @type {any} */ (action).payload;
     const selector = payload?.selector;
     if (!selector || !Array.isArray(selector.scope) || !selector.param) {
+        return null;
+    }
+
+    const valueType = payload?.value?.type;
+    if (valueType === "pointExpand") {
         return null;
     }
 

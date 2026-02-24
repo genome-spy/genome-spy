@@ -40,6 +40,8 @@ import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
 import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
+import { resetProvenanceHistory } from "./state/provenanceBaseline.js";
+import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -142,6 +144,9 @@ export default class App {
             provenance: this.provenance,
             intentExecutor: this.intentExecutor,
         });
+
+        // Seed a baseline marker so the first bookmarkable action is undoable.
+        resetProvenanceHistory(this.store, paramProvenanceSlice.name);
     }
 
     #setupBookmarkDatabases() {

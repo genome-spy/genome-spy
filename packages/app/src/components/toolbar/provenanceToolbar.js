@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { toggleDropdown } from "../../utils/ui/dropdown.js";
 import SubscriptionController from "../generic/subscriptionController.js";
+import { isBaselineAction } from "../../state/provenanceBaseline.js";
 
 export default class ProvenanceButtons extends LitElement {
     constructor() {
@@ -43,17 +44,20 @@ export default class ProvenanceButtons extends LitElement {
                 return nothing;
             }
 
-            const info = this.provenance.getActionInfo(action);
-            if (!info) {
+            const baselineAction = isBaselineAction(action);
+            const info = baselineAction
+                ? undefined
+                : this.provenance.getActionInfo(action);
+
+            if (!baselineAction && !info) {
                 // Skip Redux' internal actions
                 return nothing;
             }
 
-            const infoTemplate =
-                index == 0
-                    ? html`${icon(faCheck).node[0]} Initial state`
-                    : html` ${icon(info.icon ?? faCircle).node[0]}
-                      ${info.provenanceTitle ?? info.title}`;
+            const infoTemplate = baselineAction
+                ? html`${icon(faCheck).node[0]} Initial state`
+                : html` ${icon(info.icon ?? faCircle).node[0]}
+                  ${info.provenanceTitle ?? info.title}`;
 
             return html`
                 <li>
