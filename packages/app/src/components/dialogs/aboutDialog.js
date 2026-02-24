@@ -1,7 +1,7 @@
 import { html, nothing } from "lit";
 import BaseDialog from "../generic/baseDialog.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
-import packageJson from "../../../package.json" with { type: "json" };
+import { renderVersionLink, packageJson } from "../../utils/version.js";
 
 export default class AboutDialog extends BaseDialog {
     constructor() {
@@ -29,11 +29,7 @@ export default class AboutDialog extends BaseDialog {
                     ${packageJson.license} license.
                 </p>
                 <p>
-                    Version:
-                    <a
-                        href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
-                        >v${packageJson.version}</a
-                    >
+                    Version: ${renderVersionLink(packageJson.version)}
                     ${"commitHash" in packageJson
                         ? `(${packageJson.commitHash})`
                         : nothing}

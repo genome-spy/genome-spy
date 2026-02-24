@@ -11,6 +11,7 @@ import {
 import { findGenomeScaleResolution } from "./searchField.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import bowtie from "@genome-spy/core/img/bowtie.svg";
+import { renderVersionLink, packageJson } from "../../utils/version.js";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
@@ -108,6 +109,10 @@ export default class Toolbar extends LitElement {
 
         elements.push(html`
             <span class="spacer"></span>
+
+            <span class="version"
+                >${renderVersionLink(packageJson.version)}</span
+            >
 
             <div class="dropdown bookmark-dropdown">
                 <button
