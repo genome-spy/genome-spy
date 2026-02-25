@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
+
+### Features
+
+* **core:** add eager parquet format support with optimized object-row reader ([#334](https://github.com/genome-spy/genome-spy/issues/334)) ([c8ebbc8](https://github.com/genome-spy/genome-spy/commit/c8ebbc849b8d5d2ef1afe5e8defb7769797a9e0e)) by @tuner
+
+### Performance Improvements
+
+* **core:** radix sort micro optimization ([d90011f](https://github.com/genome-spy/genome-spy/commit/d90011f6e544fe0bc2f4754d4734d12f19f051a8)) by @
+* **core:** switch point-selection lookup to hashed textures ([c770170](https://github.com/genome-spy/genome-spy/commit/c7701702deb2488496f7b83c290dcdc98aac39a7)) by @tuner
+
 # [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
 
 ### Bug Fixes

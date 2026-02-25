@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
+
+### Features
+
+* **app:** add provenance-aware related-item point selection expansion ([#335](https://github.com/genome-spy/genome-spy/issues/335)) ([a960c90](https://github.com/genome-spy/genome-spy/commit/a960c9000ab8904f1c47483a9417fd181c009483)) by @tuner
+
 # [0.71.0](https://github.com/genome-spy/genome-spy/compare/v0.70.0...v0.71.0) (2026-02-24)
 
 ### Bug Fixes
