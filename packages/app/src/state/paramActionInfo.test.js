@@ -175,6 +175,24 @@ describe("getParamActionInfo", () => {
             name: "selected",
             select: { type: "point", toggle: true },
         });
+        /** @type {any} */ (view).getCollector = () => ({
+            completed: true,
+            findDatumByKey: (keyFields, keyTuple) => {
+                if (
+                    keyFields.length === 1 &&
+                    keyFields[0] === "id" &&
+                    keyTuple.length === 1 &&
+                    keyTuple[0] === "seed"
+                ) {
+                    return {
+                        id: "seed",
+                        clusterId: "C42",
+                        patientId: "P1",
+                    };
+                }
+                return undefined;
+            },
+        });
 
         const action = paramProvenanceSlice.actions.expandPointSelection({
             selector: { scope: [], param: "selected" },
@@ -196,10 +214,44 @@ describe("getParamActionInfo", () => {
         const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
-        expect(title).toContain("Expand selected by clusterId = clicked value");
-        expect(title).toContain("in current patient");
+        expect(title).toContain(
+            "Replace selected in current patient by clusterId = C42 (from clicked item)"
+        );
         expect(title).toContain("in points");
         expect(title).not.toContain("from points in points");
+    });
+
+    it("falls back to clicked-item wording when expansion preview cannot be resolved", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            partitionBy: ["patientId"],
+            origin: {
+                type: "datum",
+                view: { scope: [], view: "points" },
+                keyFields: ["id"],
+                keyTuple: ["seed"],
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Replace selected in current patient by clusterId = same as clicked item"
+        );
+        expect(title).not.toContain("(C42)");
     });
 
     it("formats interval selections with x and y ranges", () => {

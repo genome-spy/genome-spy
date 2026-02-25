@@ -11,6 +11,7 @@ import {
     resolveParamSelector,
     resolveViewSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { field } from "@genome-spy/core/utils/field.js";
 import {
     formatScopedParamName,
     formatScopedViewLabel,
@@ -29,7 +30,11 @@ import {
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamValue} ParamValue
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamOrigin} ParamOrigin
  * @typedef {import("./paramProvenanceTypes.d.ts").PointExpandOrigin} PointExpandOrigin
+ * @typedef {{ completed: boolean, findDatumByKey: (keyFields: string[], keyTuple: Scalar[]) => import("@genome-spy/core/data/flowNode.js").Datum | undefined }} PointExpandPreviewCollector
  */
+
+/** @type {WeakMap<import("@reduxjs/toolkit").Action, Map<string, unknown>>} */
+const pointExpandValuePreviewCache = new WeakMap();
 
 /**
  * @param {import("@reduxjs/toolkit").Action} action
@@ -66,7 +71,14 @@ export function getParamActionInfo(action, root) {
     const resolved = safeResolve(resolveParamSelector, root, selector);
     const view = resolved ? resolved.view : undefined;
     const viewLabel = view ? formatViewLabel(view, root) : null;
-    const title = formatParamActionTitle(view, selector, value, origin, root);
+    const title = formatParamActionTitle(
+        action,
+        view,
+        selector,
+        value,
+        origin,
+        root
+    );
 
     return {
         title: viewLabel ? html`${title} in ${viewLabel}` : title,
@@ -75,6 +87,7 @@ export function getParamActionInfo(action, root) {
 }
 
 /**
+ * @param {import("@reduxjs/toolkit").Action} action
  * @param {View | undefined} view
  * @param {ParamSelector} selector
  * @param {ParamValue} value
@@ -82,7 +95,7 @@ export function getParamActionInfo(action, root) {
  * @param {View | undefined} root
  * @returns {import("lit").TemplateResult}
  */
-function formatParamActionTitle(view, selector, value, origin, root) {
+function formatParamActionTitle(action, view, selector, value, origin, root) {
     const paramLabel = formatScopedParamName(root, selector);
 
     if (value.type === "value") {
@@ -115,11 +128,15 @@ function formatParamActionTitle(view, selector, value, origin, root) {
 
     if (value.type === "pointExpand") {
         const operationLabel = formatPointExpandOperation(value.operation);
-        const predicateLabel = formatPointExpandPredicate(value.predicate);
+        const predicateLabel = formatPointExpandPredicate(value.predicate, {
+            action,
+            root,
+            origin: value.origin,
+        });
         const scopeSuffix = formatPointExpandScope(value.partitionBy);
         return html`${operationLabel}
             <strong>${paramLabel}</strong>
-            by ${predicateLabel}${scopeSuffix}`;
+            ${scopeSuffix} by ${predicateLabel}`;
     }
 
     if (value.type === "interval") {
@@ -271,6 +288,9 @@ function getParamActionIcon(value) {
 /**
  * Resolves values and returns undefined when resolution fails.
  *
+ * Intentionally swallows resolver exceptions so provenance labels can still be
+ * rendered even when view/selector lookups fail during replay or refactors.
+ *
  * @template T
  * @param {(...args: any[]) => T} resolver
  * @param {...any} args
@@ -291,7 +311,7 @@ function safeResolve(resolver, ...args) {
 function formatPointExpandOperation(operation) {
     switch (operation) {
         case "replace":
-            return "Expand";
+            return "Replace";
         case "add":
             return "Add expanded";
         case "remove":
@@ -299,29 +319,41 @@ function formatPointExpandOperation(operation) {
         case "toggle":
             return "Toggle expanded";
         default:
-            return "Expand";
+            return "Replace";
     }
 }
 
 /**
+ * Formats logical/leaf expansion predicates for provenance labels.
+ *
+ * For `valueFromField` leaves, this tries to enrich the label with a concrete
+ * preview value resolved from the origin datum (for example
+ * "clusterId = C42 (from clicked item)"). The preview is optional and never
+ * affects execution semantics.
+ *
  * @param {import("./selectionExpansion.js").SelectionExpansionPredicate} predicate
+ * @param {{ action: import("@reduxjs/toolkit").Action, root: View | undefined, origin: PointExpandOrigin }} context
  * @returns {import("lit").TemplateResult}
  */
-function formatPointExpandPredicate(predicate) {
+function formatPointExpandPredicate(predicate, context) {
     if (isLogicalNot(predicate)) {
-        return html`not (${formatPointExpandPredicate(predicate.not)})`;
+        return html`not (${formatPointExpandPredicate(predicate.not, context)})`;
     }
 
     if (isLogicalAnd(predicate)) {
         return joinTemplateParts(
-            predicate.and.map(formatPointExpandPredicate),
+            predicate.and.map((part) =>
+                formatPointExpandPredicate(part, context)
+            ),
             " and "
         );
     }
 
     if (isLogicalOr(predicate)) {
         return joinTemplateParts(
-            predicate.or.map(formatPointExpandPredicate),
+            predicate.or.map((part) =>
+                formatPointExpandPredicate(part, context)
+            ),
             " or "
         );
     }
@@ -334,13 +366,26 @@ function formatPointExpandPredicate(predicate) {
         }
 
         if ("valueFromField" in predicate) {
-            const sourceLabel =
-                predicate.valueFromField === predicate.field
-                    ? "clicked value"
-                    : "clicked " + predicate.valueFromField;
-            return html`${formatPredicateField(predicate.field)}
-                <span class="operator">=</span>
-                <strong>${sourceLabel}</strong>`;
+            const preview = resolvePointExpandValuePreview(
+                context.action,
+                context.root,
+                context.origin,
+                predicate.valueFromField
+            );
+            if (preview !== undefined) {
+                return html`${formatPredicateField(predicate.field)}
+                    <span class="operator">=</span>
+                    <strong>${formatScalar(preview)}</strong>
+                    (from clicked item)`;
+            } else {
+                const sourceLabel =
+                    predicate.valueFromField === predicate.field
+                        ? "same as clicked item"
+                        : "same as clicked " + predicate.valueFromField;
+                return html`${formatPredicateField(predicate.field)}
+                    <span class="operator">=</span>
+                    <strong>${sourceLabel}</strong>`;
+            }
         }
     } else if (predicate.op === "in") {
         return html`${formatPredicateField(predicate.field)}
@@ -371,6 +416,10 @@ function formatScalarSet(values) {
 }
 
 /**
+ * Joins template parts without flattening them into plain strings.
+ *
+ * Keeping parts as templates preserves markup in predicate clauses.
+ *
  * @param {import("lit").TemplateResult[]} parts
  * @param {string} separator
  * @returns {import("lit").TemplateResult}
@@ -379,6 +428,74 @@ function joinTemplateParts(parts, separator) {
     return html`${parts.map(
         (part, i) => html`${i > 0 ? separator : ""}${part}`
     )}`;
+}
+
+/**
+ * Resolves a display-only preview value for a `valueFromField` predicate leaf.
+ *
+ * The preview is derived from the origin datum referenced by expansion origin
+ * selectors/keys. Successful resolutions are cached per action to avoid
+ * repeated collector lookups while rendering provenance menus.
+ *
+ * This function does not modify payloads and does not affect selection replay;
+ * failures simply return `undefined` and callers fall back to generic wording.
+ *
+ * @param {import("@reduxjs/toolkit").Action} action
+ * @param {View | undefined} root
+ * @param {PointExpandOrigin} origin
+ * @param {string} fieldName
+ * @returns {unknown}
+ */
+function resolvePointExpandValuePreview(action, root, origin, fieldName) {
+    let byField = pointExpandValuePreviewCache.get(action);
+    if (byField?.has(fieldName)) {
+        return byField.get(fieldName);
+    }
+
+    if (!root) {
+        return undefined;
+    }
+
+    const originView = safeResolve(resolveViewSelector, root, origin.view);
+    if (!originView) {
+        return undefined;
+    }
+
+    const originViewWithCollector =
+        /** @type {{ getCollector?: () => PointExpandPreviewCollector | undefined }} */ (
+            originView
+        );
+    const collector = originViewWithCollector.getCollector?.() ?? undefined;
+    if (!collector || !collector.completed) {
+        return undefined;
+    }
+
+    let originDatum;
+    try {
+        originDatum = collector.findDatumByKey(
+            origin.keyFields,
+            origin.keyTuple
+        );
+    } catch (_error) {
+        return undefined;
+    }
+
+    if (!originDatum) {
+        return undefined;
+    }
+
+    const accessor = field(fieldName);
+    const value = accessor(originDatum);
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!byField) {
+        byField = new Map();
+        pointExpandValuePreviewCache.set(action, byField);
+    }
+    byField.set(fieldName, value);
+    return value;
 }
 
 /**
