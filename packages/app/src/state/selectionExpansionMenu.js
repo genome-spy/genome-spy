@@ -45,6 +45,20 @@ export function createSelectionExpansionSubmenu(context, dispatchAction) {
             fieldOption.fieldName,
             fieldOption.valueLabel
         );
+        if (fieldOption.operations.length === 1) {
+            const operationOption = fieldOption.operations[0];
+            submenu.push({
+                label: ruleLabel,
+                callback: () =>
+                    dispatchAction(
+                        paramProvenanceSlice.actions.expandPointSelection(
+                            operationOption.payload
+                        )
+                    ),
+            });
+            continue;
+        }
+
         submenu.push({
             label: ruleLabel,
             submenu: () => {

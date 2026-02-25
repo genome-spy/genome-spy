@@ -151,4 +151,53 @@ describe("selectionExpansionMenu", () => {
         );
         expect(submenu).toEqual([{ label: "No suitable fields available." }]);
     });
+
+    test("dispatches directly when a field has only one operation", () => {
+        const hoveredView = createMockUnitView({
+            encoding: {
+                key: [{ field: "id" }],
+                color: { field: "Func", type: "nominal" },
+            },
+            params: [
+                [
+                    "variantClick",
+                    {
+                        select: { type: "point" },
+                    },
+                ],
+            ],
+        });
+
+        /** @type {import("./selectionExpansionContext.js").SelectionExpansionContext} */
+        const context = {
+            hoveredView,
+            hoveredDatum: {
+                id: "v1",
+                Func: "genic_other",
+            },
+            selector: { scope: [], param: "variantClick" },
+            originViewSelector: { scope: [], view: "variants" },
+            originKeyFields: ["id"],
+            originKeyTuple: ["v1"],
+            defaultPartitionBy: undefined,
+            defaultScopeLabel: "this scope",
+        };
+
+        const dispatchAction = vi.fn();
+        const submenu = createSelectionExpansionSubmenu(
+            context,
+            dispatchAction
+        );
+        const fieldItem = submenu.find(
+            (entry) => toLabelText(entry) === "Func = genic_other"
+        );
+        expect(fieldItem).toBeDefined();
+        expect(fieldItem.submenu).toBeUndefined();
+        expect(typeof fieldItem.callback).toBe("function");
+
+        fieldItem.callback();
+        expect(dispatchAction).toHaveBeenCalledTimes(1);
+        const dispatchedAction = dispatchAction.mock.calls[0][0];
+        expect(dispatchedAction.payload.partitionBy).toBeUndefined();
+    });
 });
