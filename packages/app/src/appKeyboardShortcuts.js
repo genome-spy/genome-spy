@@ -1,6 +1,6 @@
 /**
  * @typedef {import("@genome-spy/core/view/view.js").default} View
- * @typedef {import("./provenance.js").default} Provenance
+ * @typedef {import("./state/provenance.js").default} Provenance
  *
  * @typedef {object} KeyboardShortcut
  * @prop {string} code

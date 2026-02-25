@@ -46,7 +46,7 @@ import { setupSelectionExpansionContextMenu } from "./state/selectionExpansionCo
 import {
     createDefaultAppKeyboardShortcuts,
     setupAppKeyboardShortcuts,
-} from "./state/appKeyboardShortcuts.js";
+} from "./appKeyboardShortcuts.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
