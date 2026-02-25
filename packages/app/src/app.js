@@ -297,25 +297,28 @@ export default class App {
         }
         this.#showSelectorConstraintWarnings();
 
-        if (this.genomeSpy.viewRoot) {
-            this.paramProvenanceBridge = new ParamProvenanceBridge({
-                root: this.genomeSpy.viewRoot,
-                store: this.store,
-                intentExecutor: this.intentExecutor,
-            });
-            this.genomeSpy.viewRoot.registerDisposer(() => {
-                this.paramProvenanceBridge.dispose();
-            });
-            this.provenance.addActionInfoSource((action) =>
-                getParamActionInfo(action, this.genomeSpy.viewRoot)
-            );
-            this.genomeSpy.viewRoot.registerDisposer(
-                setupSelectionExpansionContextMenu({
-                    viewRoot: this.genomeSpy.viewRoot,
-                    intentExecutor: this.intentExecutor,
-                })
-            );
+        const viewRoot = this.genomeSpy.viewRoot;
+        if (!viewRoot) {
+            throw new Error("No view root after launch");
         }
+
+        this.paramProvenanceBridge = new ParamProvenanceBridge({
+            root: viewRoot,
+            store: this.store,
+            intentExecutor: this.intentExecutor,
+        });
+        viewRoot.registerDisposer(() => {
+            this.paramProvenanceBridge.dispose();
+        });
+        this.provenance.addActionInfoSource((action) =>
+            getParamActionInfo(action, viewRoot)
+        );
+        viewRoot.registerDisposer(
+            setupSelectionExpansionContextMenu({
+                viewRoot,
+                intentExecutor: this.intentExecutor,
+            })
+        );
 
         const sampleView = this.getSampleView();
         if (sampleView) {
