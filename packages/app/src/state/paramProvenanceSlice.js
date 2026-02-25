@@ -24,6 +24,8 @@ export const paramProvenanceSlice = createSlice({
             state.entries[key] = action.payload;
         },
 
+        // Keep expansion as a dedicated intent action (instead of folding it
+        // into paramChange) so IntentPipeline hooks can target it explicitly.
         expandPointSelection: (
             state,
             /** @type {import("@reduxjs/toolkit").PayloadAction<ExpandPointSelectionActionPayload>} */ action
