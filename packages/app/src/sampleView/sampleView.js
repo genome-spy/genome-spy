@@ -66,12 +66,11 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 import {
-    createSelectionExpansionFieldOptions,
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
     resolveSelectionExpansionContext,
 } from "../state/selectionExpansionContext.js";
+import { createSelectionExpansionMenuItem } from "../state/selectionExpansionMenu.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -1241,13 +1240,12 @@ export default class SampleView extends ContainerView {
                 !selectionExpansionItemInserted &&
                 fieldInfo.view === selectionExpansionContext.hoveredView
             ) {
-                items.push({
-                    label: "Expand point selection",
-                    submenu: () =>
-                        this.#buildSelectionExpansionMenu(
-                            selectionExpansionContext
-                        ),
-                });
+                items.push(
+                    createSelectionExpansionMenuItem(
+                        selectionExpansionContext,
+                        (action) => this.intentExecutor.dispatch(action)
+                    )
+                );
                 selectionExpansionItemInserted = true;
             }
 
@@ -1293,64 +1291,15 @@ export default class SampleView extends ContainerView {
                 ),
                 type: "header",
             });
-            items.push({
-                label: "Expand point selection",
-                submenu: () =>
-                    this.#buildSelectionExpansionMenu(
-                        selectionExpansionContext
-                    ),
-            });
+            items.push(
+                createSelectionExpansionMenuItem(
+                    selectionExpansionContext,
+                    (action) => this.intentExecutor.dispatch(action)
+                )
+            );
         }
 
         contextMenu({ items }, mouseEvent);
-    }
-
-    /**
-     * @param {import("../state/selectionExpansionContext.js").SelectionExpansionContext} context
-     * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
-     */
-    #buildSelectionExpansionMenu(context) {
-        const fieldOptions = createSelectionExpansionFieldOptions(context);
-        if (fieldOptions.length === 0) {
-            return [{ label: "No expansion fields available." }];
-        }
-
-        return [
-            {
-                type: "header",
-                label: "Choose a field",
-            },
-            DIVIDER,
-            ...fieldOptions.map((fieldOption) => {
-                /** @type {import("../utils/ui/contextMenu.js").MenuItem} */
-                const fieldMenuItem = {
-                    label: fieldOption.fieldName,
-                    submenu: () => {
-                        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-                        const submenuItems = [
-                            {
-                                type: "header",
-                                label: "Value: " + fieldOption.valueLabel,
-                            },
-                            DIVIDER,
-                            ...fieldOption.operations.map(
-                                (operationOption) => ({
-                                    label: operationOption.label,
-                                    callback: () =>
-                                        this.intentExecutor.dispatch(
-                                            paramProvenanceSlice.actions.expandPointSelection(
-                                                operationOption.payload
-                                            )
-                                        ),
-                                })
-                            ),
-                        ];
-                        return submenuItems;
-                    },
-                };
-                return fieldMenuItem;
-            }),
-        ];
     }
 
     /**

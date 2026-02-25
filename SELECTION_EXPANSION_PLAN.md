@@ -315,6 +315,39 @@ Deliverable:
 
 - End-to-end user-triggered expansion through context menu.
 
+### Phase 6b: App-Level Context Menu Outside SampleView
+
+Goal: make expansion available for non-SampleView visualizations in App while keeping Core free of menu/UI code.
+
+1. Register an App-level `contextmenu` interaction handler after `viewRoot` is ready.
+2. Resolve expansion availability from current hover using `resolveSelectionExpansionContext(...)`.
+3. If hover is inside a `SampleView` subtree, do nothing and let SampleView own context-menu behavior.
+4. If hover is outside SampleView and expansion is available, open an App context menu containing expansion entries.
+5. Keep expensive field extraction lazy by building field/options only when submenu is opened.
+6. Keep dispatch path unchanged: menu callbacks dispatch `expandPointSelection` intent actions.
+
+Deliverable:
+
+- `Expand point selection` is available in App context menus for non-SampleView views.
+- No Core-level menu rendering logic is introduced.
+
+### Code Reuse and Duplication Control
+
+Use a shared App module so SampleView and App-level menus render the same expansion options.
+
+1. Extract expansion menu construction into a shared helper module (for example `selectionExpansionMenu.js`).
+2. Keep `selectionExpansionContext.js` responsible for context/field-option resolution only.
+3. Make both callers (`SampleView` and App-level context menu handler) use the same menu-construction helper.
+4. Keep host-specific wrappers minimal:
+   - SampleView wrapper only handles menu grouping/placement under view headers.
+   - App wrapper only handles root-level menu placement.
+5. Keep one canonical callback implementation that dispatches the same `expandPointSelection` payload shape from both hosts.
+
+Deliverable:
+
+- Single-source expansion menu logic in App.
+- No duplicated label/operation/payload assembly logic across contexts.
+
 ## Phase 7: Tests
 
 Add tests for:

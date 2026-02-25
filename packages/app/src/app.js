@@ -42,6 +42,12 @@ import { getParamActionInfo } from "./state/paramActionInfo.js";
 import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 import { resetProvenanceHistory } from "./state/provenanceBaseline.js";
 import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
+import { contextMenu } from "./utils/ui/contextMenu.js";
+import {
+    MULTIPLE_POINT_SELECTION_PARAMS_REASON,
+    resolveSelectionExpansionContext,
+} from "./state/selectionExpansionContext.js";
+import { createSelectionExpansionMenuItem } from "./state/selectionExpansionMenu.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -51,6 +57,8 @@ transforms.mergeFacets = MergeSampleFacets;
 export default class App {
     /** @type {(() => void) | undefined} */
     #intentStatusDisposer;
+
+    #selectionExpansionMultiParamWarningShown = false;
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
@@ -308,6 +316,7 @@ export default class App {
             this.provenance.addActionInfoSource((action) =>
                 getParamActionInfo(action, this.genomeSpy.viewRoot)
             );
+            this.#setupSelectionExpansionContextMenu(this.genomeSpy.viewRoot);
         }
 
         const sampleView = this.getSampleView();
@@ -400,6 +409,74 @@ export default class App {
         }
 
         this.store.dispatch(lifecycleSlice.actions.setInitialized());
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/view.js").default} viewRoot
+     */
+    #setupSelectionExpansionContextMenu(viewRoot) {
+        const listener = (
+            /** @type {import("@genome-spy/core/view/layout/rectangle.js").default | undefined} */ _coords,
+            /** @type {import("@genome-spy/core/utils/interactionEvent.js").default} */ event
+        ) => {
+            if (event.stopped || this.#isInsideSampleView(event.target)) {
+                return;
+            }
+
+            const resolution = resolveSelectionExpansionContext(
+                viewRoot,
+                viewRoot.context.getCurrentHover()
+            );
+
+            if (
+                resolution.status === "disabled" &&
+                resolution.reason === MULTIPLE_POINT_SELECTION_PARAMS_REASON
+            ) {
+                if (!this.#selectionExpansionMultiParamWarningShown) {
+                    console.warn(
+                        "Selection expansion is disabled because multiple multi-point selection parameters are configured in the same UnitView."
+                    );
+                    this.#selectionExpansionMultiParamWarningShown = true;
+                }
+                return;
+            }
+
+            if (resolution.status !== "available") {
+                return;
+            }
+
+            contextMenu(
+                {
+                    items: [
+                        createSelectionExpansionMenuItem(
+                            resolution.context,
+                            (action) => this.intentExecutor.dispatch(action)
+                        ),
+                    ],
+                },
+                event.mouseEvent
+            );
+            event.stopPropagation();
+        };
+
+        viewRoot.addInteractionEventListener("contextmenu", listener);
+        viewRoot.registerDisposer(() =>
+            viewRoot.removeInteractionEventListener("contextmenu", listener)
+        );
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/view.js").default | undefined} view
+     * @returns {boolean}
+     */
+    #isInsideSampleView(view) {
+        if (!view) {
+            return false;
+        }
+
+        return view
+            .getLayoutAncestors()
+            .some((ancestor) => ancestor instanceof SampleView);
     }
 
     /**
