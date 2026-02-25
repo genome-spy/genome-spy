@@ -1,0 +1,203 @@
+// @ts-check
+import { describe, expect, test, vi } from "vitest";
+import {
+    createSelectionExpansionMenuItem,
+    createSelectionExpansionSubmenu,
+} from "./selectionExpansionMenu.js";
+import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
+import templateResultToString from "../utils/templateResultToString.js";
+
+/**
+ * @param {{
+ *   encoding: any,
+ *   params: [string, any][]
+ * }} config
+ */
+function createMockUnitView(config) {
+    const { encoding, params } = config;
+
+    /** @type {any} */
+    const view = {
+        explicitName: "variants",
+        paramRuntime: {
+            paramConfigs: new Map(params),
+        },
+        getEncoding: () => encoding,
+    };
+
+    return view;
+}
+
+describe("selectionExpansionMenu", () => {
+    /**
+     * @param {any} menuEntry
+     * @returns {string}
+     */
+    const toLabelText = (menuEntry) =>
+        typeof menuEntry.label === "string"
+            ? menuEntry.label
+            : templateResultToString(menuEntry.label);
+
+    test("builds expansion menu and dispatches expansion intent from callbacks", () => {
+        const hoveredView = createMockUnitView({
+            encoding: {
+                key: [{ field: "id" }],
+                sample: { field: "sample" },
+                color: { field: "Func", type: "nominal" },
+            },
+            params: [
+                [
+                    "variantClick",
+                    {
+                        select: { type: "point" },
+                    },
+                ],
+            ],
+        });
+
+        /** @type {import("./selectionExpansionContext.js").SelectionExpansionContext} */
+        const context = {
+            hoveredView,
+            hoveredDatum: {
+                id: "v1",
+                sample: "S1",
+                Func: "genic_other",
+            },
+            selector: { scope: [], param: "variantClick" },
+            originViewSelector: { scope: [], view: "variants" },
+            originKeyFields: ["id"],
+            originKeyTuple: ["v1"],
+            defaultPartitionBy: ["sample"],
+            defaultScopeLabel: "this sample",
+        };
+
+        const dispatchAction = vi.fn();
+        const item = createSelectionExpansionMenuItem(context, dispatchAction);
+        expect(item.label).toBe("Select related items");
+        expect(typeof item.submenu).toBe("function");
+
+        const submenu = /** @type {() => any[]} */ (item.submenu)();
+        expect(submenu[0]).toEqual({
+            type: "header",
+            label: "Match values from clicked item",
+        });
+
+        const fieldItem = submenu.find(
+            (entry) => toLabelText(entry) === "Func = genic_other"
+        );
+        expect(fieldItem).toBeDefined();
+
+        const operations = /** @type {() => any[]} */ (fieldItem.submenu)();
+        expect(toLabelText(operations[0])).toBe("Func = genic_other");
+        const matchThisSample = operations.find(
+            (entry) => entry.label === "In current sample"
+        );
+        expect(matchThisSample).toBeDefined();
+
+        matchThisSample.callback();
+        expect(dispatchAction).toHaveBeenCalledTimes(1);
+
+        const dispatchedAction = dispatchAction.mock.calls[0][0];
+        expect(dispatchedAction.type).toBe(
+            paramProvenanceSlice.actions.expandPointSelection.type
+        );
+        expect(dispatchedAction.payload.selector).toEqual({
+            scope: [],
+            param: "variantClick",
+        });
+        expect(dispatchedAction.payload.rule).toEqual({
+            kind: "sameFieldValue",
+            field: "Func",
+        });
+        expect(dispatchedAction.payload.predicate).toBeUndefined();
+        expect(dispatchedAction.payload.origin).toEqual({
+            view: { scope: [], view: "variants" },
+            keyTuple: ["v1"],
+        });
+    });
+
+    test("returns a placeholder when no field can be expanded", () => {
+        const hoveredView = createMockUnitView({
+            encoding: {
+                key: [{ field: "id" }],
+            },
+            params: [
+                [
+                    "variantClick",
+                    {
+                        select: { type: "point" },
+                    },
+                ],
+            ],
+        });
+
+        /** @type {import("./selectionExpansionContext.js").SelectionExpansionContext} */
+        const context = {
+            hoveredView,
+            hoveredDatum: {
+                id: "v1",
+            },
+            selector: { scope: [], param: "variantClick" },
+            originViewSelector: { scope: [], view: "variants" },
+            originKeyFields: ["id"],
+            originKeyTuple: ["v1"],
+            defaultPartitionBy: undefined,
+            defaultScopeLabel: "this scope",
+        };
+
+        const submenu = createSelectionExpansionSubmenu(
+            context,
+            () => undefined
+        );
+        expect(submenu).toEqual([{ label: "No suitable fields available." }]);
+    });
+
+    test("dispatches directly when a field has only one operation", () => {
+        const hoveredView = createMockUnitView({
+            encoding: {
+                key: [{ field: "id" }],
+                color: { field: "Func", type: "nominal" },
+            },
+            params: [
+                [
+                    "variantClick",
+                    {
+                        select: { type: "point" },
+                    },
+                ],
+            ],
+        });
+
+        /** @type {import("./selectionExpansionContext.js").SelectionExpansionContext} */
+        const context = {
+            hoveredView,
+            hoveredDatum: {
+                id: "v1",
+                Func: "genic_other",
+            },
+            selector: { scope: [], param: "variantClick" },
+            originViewSelector: { scope: [], view: "variants" },
+            originKeyFields: ["id"],
+            originKeyTuple: ["v1"],
+            defaultPartitionBy: undefined,
+            defaultScopeLabel: "this scope",
+        };
+
+        const dispatchAction = vi.fn();
+        const submenu = createSelectionExpansionSubmenu(
+            context,
+            dispatchAction
+        );
+        const fieldItem = submenu.find(
+            (entry) => toLabelText(entry) === "Func = genic_other"
+        );
+        expect(fieldItem).toBeDefined();
+        expect(fieldItem.submenu).toBeUndefined();
+        expect(typeof fieldItem.callback).toBe("function");
+
+        fieldItem.callback();
+        expect(dispatchAction).toHaveBeenCalledTimes(1);
+        const dispatchedAction = dispatchAction.mock.calls[0][0];
+        expect(dispatchedAction.payload.partitionBy).toBeUndefined();
+    });
+});

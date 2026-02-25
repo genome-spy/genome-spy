@@ -2,20 +2,9 @@ import { createSlice } from "@reduxjs/toolkit";
 import { makeParamSelectorKey } from "@genome-spy/core/view/viewSelectors.js";
 
 /**
- * @typedef {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} ParamSelector
- * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
- * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("@genome-spy/core/spec/genome.js").ChromosomalLocus} ChromosomalLocus
- *
- * @typedef {{ type: "value", value: any }} ParamValueLiteral
- * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [ChromosomalLocus, ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
- * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
- *
- * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
- *
- * @typedef {{ selector: ParamSelector, value: ParamValue, origin?: ParamOrigin }} ParamProvenanceEntry
- * @typedef {{ entries: Record<string, ParamProvenanceEntry> }} ParamProvenanceState
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamProvenanceEntry} ParamProvenanceEntry
+ * @typedef {import("./paramProvenanceTypes.d.ts").ExpandPointSelectionActionPayload} ExpandPointSelectionActionPayload
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamProvenanceState} ParamProvenanceState
  */
 
 /** @type {ParamProvenanceState} */
@@ -34,6 +23,37 @@ export const paramProvenanceSlice = createSlice({
             const key = makeParamSelectorKey(action.payload.selector);
             state.entries[key] = action.payload;
         },
+
+        // Keep expansion as a dedicated intent action (instead of folding it
+        // into paramChange) so IntentPipeline hooks can target it explicitly.
+        expandPointSelection: (
+            state,
+            /** @type {import("@reduxjs/toolkit").PayloadAction<ExpandPointSelectionActionPayload>} */ action
+        ) => {
+            const payload = action.payload;
+            const key = makeParamSelectorKey(payload.selector);
+            let matcher;
+            if ("rule" in payload && payload.rule) {
+                matcher = { rule: payload.rule };
+            } else if ("predicate" in payload && payload.predicate) {
+                matcher = { predicate: payload.predicate };
+            } else {
+                throw new Error(
+                    "expandPointSelection requires either 'rule' or 'predicate'."
+                );
+            }
+
+            state.entries[key] = {
+                selector: payload.selector,
+                value: {
+                    type: "pointExpand",
+                    operation: payload.operation,
+                    partitionBy: payload.partitionBy,
+                    origin: payload.origin,
+                    ...matcher,
+                },
+            };
+        },
     },
 });
 
@@ -44,6 +64,10 @@ export const paramProvenanceSlice = createSlice({
  * @returns {string | null}
  */
 export function getParamChangeGroupKey(action) {
+    if (paramProvenanceSlice.actions.expandPointSelection.match(action)) {
+        return null;
+    }
+
     if (!paramProvenanceSlice.actions.paramChange.match(action)) {
         return null;
     }
@@ -51,6 +75,11 @@ export function getParamChangeGroupKey(action) {
     const payload = /** @type {any} */ (action).payload;
     const selector = payload?.selector;
     if (!selector || !Array.isArray(selector.scope) || !selector.param) {
+        return null;
+    }
+
+    const valueType = payload?.value?.type;
+    if (valueType === "pointExpand") {
         return null;
     }
 

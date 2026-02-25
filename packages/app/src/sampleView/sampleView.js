@@ -66,6 +66,11 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    MULTIPLE_POINT_SELECTION_PARAMS_REASON,
+    resolveSelectionExpansionContext,
+} from "../state/selectionExpansionContext.js";
+import { createSelectionExpansionMenuItem } from "../state/selectionExpansionMenu.js";
 
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
@@ -114,6 +119,8 @@ export default class SampleView extends ContainerView {
 
     /** @type {import("./sampleViewTypes.js").SampleLocation[] | undefined} */
     #sampleRenderLocationSource;
+
+    #selectionExpansionMultiParamWarningShown = false;
 
     /**
      *
@@ -1180,11 +1187,43 @@ export default class SampleView extends ContainerView {
             DIVIDER,
         ];
 
+        const selectionExpansionResolution = resolveSelectionExpansionContext(
+            this,
+            this.context.getCurrentHover()
+        );
+        /** @type {import("../state/selectionExpansionContext.js").SelectionExpansionContext | undefined} */
+        let selectionExpansionContext;
+        if (
+            selectionExpansionResolution.status === "disabled" &&
+            selectionExpansionResolution.reason ===
+                MULTIPLE_POINT_SELECTION_PARAMS_REASON
+        ) {
+            if (!this.#selectionExpansionMultiParamWarningShown) {
+                console.warn(
+                    "Selection expansion is disabled because multiple multi-point selection parameters are configured in the same UnitView."
+                );
+                this.#selectionExpansionMultiParamWarningShown = true;
+            }
+        } else if (selectionExpansionResolution.status === "available") {
+            selectionExpansionContext = selectionExpansionResolution.context;
+        }
+
         let previousContextTitle = "";
+        let selectionExpansionItemInserted = false;
+
+        /**
+         * @param {UnitView} unitView
+         * @returns {string}
+         */
+        const getUnitViewContextTitle = (unitView) =>
+            unitView.getTitleText() ??
+            unitView.spec.name ??
+            unitView.explicitName ??
+            unitView.name ??
+            "View";
 
         for (const [i, fieldInfo] of uniqueFieldInfos.entries()) {
-            const contextTitle =
-                fieldInfo.view.getTitleText() ?? fieldInfo.view.spec.name;
+            const contextTitle = getUnitViewContextTitle(fieldInfo.view);
             if (contextTitle != previousContextTitle) {
                 if (i > 0) {
                     items.push({ type: "divider" });
@@ -1225,6 +1264,41 @@ export default class SampleView extends ContainerView {
                     sampleView: this,
                 }),
             });
+
+            const nextFieldInfo = uniqueFieldInfos[i + 1];
+            if (
+                selectionExpansionContext &&
+                !selectionExpansionItemInserted &&
+                fieldInfo.view === selectionExpansionContext.hoveredView &&
+                (!nextFieldInfo || nextFieldInfo.view !== fieldInfo.view)
+            ) {
+                items.push(
+                    createSelectionExpansionMenuItem(
+                        selectionExpansionContext,
+                        (action) => this.intentExecutor.dispatch(action)
+                    )
+                );
+                selectionExpansionItemInserted = true;
+            }
+        }
+
+        if (selectionExpansionContext && !selectionExpansionItemInserted) {
+            if (items.at(-1)?.type !== "divider") {
+                items.push(DIVIDER);
+            }
+
+            items.push({
+                label: getUnitViewContextTitle(
+                    selectionExpansionContext.hoveredView
+                ),
+                type: "header",
+            });
+            items.push(
+                createSelectionExpansionMenuItem(
+                    selectionExpansionContext,
+                    (action) => this.intentExecutor.dispatch(action)
+                )
+            );
         }
 
         contextMenu({ items }, mouseEvent);

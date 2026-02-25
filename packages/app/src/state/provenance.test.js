@@ -47,6 +47,23 @@ function createStore() {
 }
 
 describe("Provenance", () => {
+    it("is not empty after a single recorded action", () => {
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
+        const provenance = new Provenance(store);
+
+        expect(provenance.isEmpty()).toBe(true);
+
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1 },
+            })
+        );
+
+        expect(provenance.isEmpty()).toBe(false);
+    });
+
     it("exposes action history in order", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
@@ -76,7 +93,7 @@ describe("Provenance", () => {
         const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
         const provenance = new Provenance(store);
 
-        // Use two actions so bookmarkable history isn't empty (it skips the first).
+        // Use two actions and verify augmentation data gets stripped.
         intentExecutor.dispatch(
             /** @type {any} */ ({
                 type: "sample/add",
@@ -95,9 +112,11 @@ describe("Provenance", () => {
         };
 
         const serialized = JSON.parse(JSON.stringify(bookmark));
-        expect(serialized.actions.length).toBe(1);
-        expect(serialized.actions[0].payload).toEqual({ value: 2 });
+        expect(serialized.actions.length).toBe(2);
+        expect(serialized.actions[0].payload).toEqual({ value: 1 });
+        expect(serialized.actions[1].payload).toEqual({ value: 2 });
         expect(serialized.actions[0].payload[AUGMENTED_KEY]).toBeUndefined();
+        expect(serialized.actions[1].payload[AUGMENTED_KEY]).toBeUndefined();
     });
 
     it("activates past and future states by index", () => {

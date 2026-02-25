@@ -40,6 +40,13 @@ import { attachIntentStatusUi } from "./state/intentStatusUi.js";
 import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
 import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
+import { resetProvenanceHistory } from "./state/provenanceBaseline.js";
+import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
+import { setupSelectionExpansionContextMenu } from "./state/selectionExpansionContextMenu.js";
+import {
+    createDefaultAppKeyboardShortcuts,
+    setupAppKeyboardShortcuts,
+} from "./state/appKeyboardShortcuts.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -142,6 +149,9 @@ export default class App {
             provenance: this.provenance,
             intentExecutor: this.intentExecutor,
         });
+
+        // Seed a baseline marker so the first bookmarkable action is undoable.
+        resetProvenanceHistory(this.store, paramProvenanceSlice.name);
     }
 
     #setupBookmarkDatabases() {
@@ -291,19 +301,52 @@ export default class App {
         }
         this.#showSelectorConstraintWarnings();
 
-        if (this.genomeSpy.viewRoot) {
-            this.paramProvenanceBridge = new ParamProvenanceBridge({
-                root: this.genomeSpy.viewRoot,
-                store: this.store,
-                intentExecutor: this.intentExecutor,
-            });
-            this.genomeSpy.viewRoot.registerDisposer(() => {
-                this.paramProvenanceBridge.dispose();
-            });
-            this.provenance.addActionInfoSource((action) =>
-                getParamActionInfo(action, this.genomeSpy.viewRoot)
-            );
+        const viewRoot = this.genomeSpy.viewRoot;
+        if (!viewRoot) {
+            throw new Error("No view root after launch");
         }
+
+        this.paramProvenanceBridge = new ParamProvenanceBridge({
+            root: viewRoot,
+            store: this.store,
+            intentExecutor: this.intentExecutor,
+        });
+        viewRoot.registerDisposer(() => {
+            this.paramProvenanceBridge.dispose();
+        });
+        this.provenance.addActionInfoSource((action) =>
+            getParamActionInfo(action, viewRoot)
+        );
+        setupAppKeyboardShortcuts({
+            viewRoot,
+            shortcuts: createDefaultAppKeyboardShortcuts({
+                provenance: this.provenance,
+                focusSearchField: () => {
+                    const searchField = this.appContainer.querySelector(
+                        "genome-spy-search-field"
+                    );
+                    if (!searchField) {
+                        return false;
+                    }
+
+                    if (
+                        "focusInput" in searchField &&
+                        typeof searchField.focusInput === "function"
+                    ) {
+                        searchField.focusInput();
+                        return true;
+                    } else {
+                        return false;
+                    }
+                },
+            }),
+        });
+        viewRoot.registerDisposer(
+            setupSelectionExpansionContextMenu({
+                viewRoot,
+                intentExecutor: this.intentExecutor,
+            })
+        );
 
         const sampleView = this.getSampleView();
         if (sampleView) {

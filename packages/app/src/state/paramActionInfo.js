@@ -15,19 +15,28 @@ import {
     formatScopedParamName,
     formatScopedViewLabel,
 } from "../viewScopeUtils.js";
+import {
+    createSelectionExpansionFieldAccessor,
+    isLogicalAnd,
+    isLogicalNot,
+    isLogicalOr,
+    toSelectionExpansionPredicate,
+} from "./selectionExpansion.js";
+import { tryResolvePointExpandOriginDatum } from "./selectionExpansionOrigin.js";
 
 /**
  * @typedef {import("@genome-spy/core/view/view.js").default} View
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} ParamSelector
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("@genome-spy/core/spec/genome.js").ChromosomalLocus} ChromosomalLocus
- * @typedef {{ type: "value", value: any }} ParamValueLiteral
- * @typedef {{ type: "interval", intervals: Partial<Record<"x" | "y", [number, number] | [ChromosomalLocus, ChromosomalLocus] | null>> }} ParamValueInterval
- * @typedef {{ type: "point", keyFields: string[], keys: Scalar[][] }} ParamValuePoint
- * @typedef {ParamValueLiteral | ParamValueInterval | ParamValuePoint} ParamValue
- * @typedef {{ type: "datum", view: ViewSelector, keyField: string, key: Scalar, intervalSources?: Record<string, { start?: string, end?: string }> }} ParamOrigin
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamValue} ParamValue
+ * @typedef {import("./paramProvenanceTypes.d.ts").ParamOrigin} ParamOrigin
+ * @typedef {import("./paramProvenanceTypes.d.ts").PointExpandOrigin} PointExpandOrigin
+ * @typedef {import("./selectionExpansion.js").SelectionExpansionMatcher} SelectionExpansionMatcher
  */
+
+/** @type {WeakMap<import("@reduxjs/toolkit").Action, Map<string, unknown>>} */
+const pointExpandValuePreviewCache = new WeakMap();
 
 /**
  * @param {import("@reduxjs/toolkit").Action} action
@@ -35,19 +44,49 @@ import {
  * @returns {import("./provenance.js").ActionInfo | undefined}
  */
 export function getParamActionInfo(action, root) {
-    if (!paramProvenanceSlice.actions.paramChange.match(action)) {
+    const isParamChange =
+        paramProvenanceSlice.actions.paramChange.match(action);
+    const isPointExpansion =
+        paramProvenanceSlice.actions.expandPointSelection.match(action);
+
+    if (!isParamChange && !isPointExpansion) {
         return;
     }
 
     const payload = /** @type {any} */ (action).payload;
     const selector = /** @type {ParamSelector} */ (payload.selector);
-    const value = /** @type {ParamValue} */ (payload.value);
-    const origin = /** @type {ParamOrigin | undefined} */ (payload.origin);
+    const pointExpandMatcher =
+        isPointExpansion && "rule" in payload
+            ? { rule: payload.rule }
+            : isPointExpansion
+              ? { predicate: payload.predicate }
+              : {};
+    const value = /** @type {ParamValue} */ (
+        isPointExpansion
+            ? {
+                  type: "pointExpand",
+                  operation: payload.operation,
+                  partitionBy: payload.partitionBy,
+                  origin: payload.origin,
+                  ...pointExpandMatcher,
+              }
+            : payload.value
+    );
+    const origin = /** @type {ParamOrigin | undefined} */ (
+        isPointExpansion ? payload.origin : payload.origin
+    );
 
     const resolved = safeResolve(resolveParamSelector, root, selector);
     const view = resolved ? resolved.view : undefined;
     const viewLabel = view ? formatViewLabel(view, root) : null;
-    const title = formatParamActionTitle(view, selector, value, origin, root);
+    const title = formatParamActionTitle(
+        action,
+        view,
+        selector,
+        value,
+        origin,
+        root
+    );
 
     return {
         title: viewLabel ? html`${title} in ${viewLabel}` : title,
@@ -56,6 +95,7 @@ export function getParamActionInfo(action, root) {
 }
 
 /**
+ * @param {import("@reduxjs/toolkit").Action} action
  * @param {View | undefined} view
  * @param {ParamSelector} selector
  * @param {ParamValue} value
@@ -63,7 +103,7 @@ export function getParamActionInfo(action, root) {
  * @param {View | undefined} root
  * @returns {import("lit").TemplateResult}
  */
-function formatParamActionTitle(view, selector, value, origin, root) {
+function formatParamActionTitle(action, view, selector, value, origin, root) {
     const paramLabel = formatScopedParamName(root, selector);
 
     if (value.type === "value") {
@@ -94,6 +134,22 @@ function formatParamActionTitle(view, selector, value, origin, root) {
             points)${formatOriginSuffix(origin, root)}`;
     }
 
+    if (value.type === "pointExpand") {
+        const operationLabel = formatPointExpandOperation(value.operation);
+        const predicateLabel = formatPointExpandMatcher(
+            getPointExpandMatcher(value),
+            {
+                action,
+                root,
+                origin: value.origin,
+            }
+        );
+        const scopeSuffix = formatPointExpandScope(value.partitionBy);
+        return html`${operationLabel}
+            <strong>${paramLabel}</strong>
+            ${scopeSuffix} by ${predicateLabel}`;
+    }
+
     if (value.type === "interval") {
         const intervals = value.intervals ?? {};
         const x = intervals.x;
@@ -119,7 +175,7 @@ function formatParamActionTitle(view, selector, value, origin, root) {
 }
 
 /**
- * @param {ParamOrigin | undefined} origin
+ * @param {(ParamOrigin | PointExpandOrigin) | undefined} origin
  * @param {View | undefined} root
  * @returns {import("lit").TemplateResult}
  */
@@ -229,6 +285,7 @@ function formatIntervalSummary(xLabel, yLabel) {
 function getParamActionIcon(value) {
     switch (value.type) {
         case "point":
+        case "pointExpand":
             return faArrowPointer;
         case "interval":
             return faBrush;
@@ -242,6 +299,9 @@ function getParamActionIcon(value) {
 /**
  * Resolves values and returns undefined when resolution fails.
  *
+ * Intentionally swallows resolver exceptions so provenance labels can still be
+ * rendered even when view/selector lookups fail during replay or refactors.
+ *
  * @template T
  * @param {(...args: any[]) => T} resolver
  * @param {...any} args
@@ -253,4 +313,239 @@ function safeResolve(resolver, ...args) {
     } catch (error) {
         return undefined;
     }
+}
+
+/**
+ * @param {"replace" | "add" | "remove" | "toggle"} operation
+ * @returns {string}
+ */
+function formatPointExpandOperation(operation) {
+    switch (operation) {
+        case "replace":
+            return "Replace";
+        case "add":
+            return "Add expanded";
+        case "remove":
+            return "Remove expanded";
+        case "toggle":
+            return "Toggle expanded";
+        default:
+            return "Replace";
+    }
+}
+
+/**
+ * @param {SelectionExpansionMatcher} matcher
+ * @param {{ action: import("@reduxjs/toolkit").Action, root: View | undefined, origin: PointExpandOrigin }} context
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandMatcher(matcher, context) {
+    return formatPointExpandPredicate(
+        toSelectionExpansionPredicate(matcher),
+        context
+    );
+}
+
+/**
+ * Formats logical/leaf expansion predicates for provenance labels.
+ *
+ * For `valueFromField` leaves, this tries to enrich the label with a concrete
+ * preview value resolved from the origin datum (for example
+ * "clusterId = C42 (from clicked item)"). The preview is optional and never
+ * affects execution semantics.
+ *
+ * @param {import("./selectionExpansion.js").SelectionExpansionPredicate} predicate
+ * @param {{ action: import("@reduxjs/toolkit").Action, root: View | undefined, origin: PointExpandOrigin }} context
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandPredicate(predicate, context) {
+    if (isLogicalNot(predicate)) {
+        return html`not (${formatPointExpandPredicate(predicate.not, context)})`;
+    }
+
+    if (isLogicalAnd(predicate)) {
+        return joinTemplateParts(
+            predicate.and.map((part) =>
+                formatPointExpandPredicate(part, context)
+            ),
+            " and "
+        );
+    }
+
+    if (isLogicalOr(predicate)) {
+        return joinTemplateParts(
+            predicate.or.map((part) =>
+                formatPointExpandPredicate(part, context)
+            ),
+            " or "
+        );
+    }
+
+    if (predicate.op === "eq") {
+        if ("value" in predicate) {
+            return html`${formatPredicateField(predicate.field)}
+                <span class="operator">=</span>
+                <strong>${formatScalar(predicate.value)}</strong>`;
+        }
+
+        if ("valueFromField" in predicate) {
+            const preview = resolvePointExpandValuePreview(
+                context.action,
+                context.root,
+                context.origin,
+                predicate.valueFromField
+            );
+            if (preview !== undefined) {
+                return html`${formatPredicateField(predicate.field)}
+                    <span class="operator">=</span>
+                    <strong>${formatScalar(preview)}</strong>
+                    (from clicked item)`;
+            } else {
+                const sourceLabel =
+                    predicate.valueFromField === predicate.field
+                        ? "same as clicked item"
+                        : "same as clicked " + predicate.valueFromField;
+                return html`${formatPredicateField(predicate.field)}
+                    <span class="operator">=</span>
+                    <strong>${sourceLabel}</strong>`;
+            }
+        }
+    } else if (predicate.op === "in") {
+        return html`${formatPredicateField(predicate.field)}
+            <span class="operator">in</span>
+            ${formatScalarSet(predicate.values)}`;
+    }
+
+    return html`predicate`;
+}
+
+/**
+ * @param {string} fieldName
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPredicateField(fieldName) {
+    return html`<em>${fieldName}</em>`;
+}
+
+/**
+ * @param {unknown[]} values
+ * @returns {import("lit").TemplateResult}
+ */
+function formatScalarSet(values) {
+    return html`{${values.map(
+        (value, i) =>
+            html`${i > 0 ? ", " : ""}<strong>${formatScalar(value)}</strong>`
+    )}}`;
+}
+
+/**
+ * Joins template parts without flattening them into plain strings.
+ *
+ * Keeping parts as templates preserves markup in predicate clauses.
+ *
+ * @param {import("lit").TemplateResult[]} parts
+ * @param {string} separator
+ * @returns {import("lit").TemplateResult}
+ */
+function joinTemplateParts(parts, separator) {
+    return html`${parts.map(
+        (part, i) => html`${i > 0 ? separator : ""}${part}`
+    )}`;
+}
+
+/**
+ * Resolves a display-only preview value for a `valueFromField` predicate leaf.
+ *
+ * The preview is derived from the origin datum referenced by expansion origin
+ * selectors/keys. Successful resolutions are cached per action to avoid
+ * repeated collector lookups while rendering provenance menus.
+ *
+ * This function does not modify payloads and does not affect selection replay;
+ * failures simply return `undefined` and callers fall back to generic wording.
+ *
+ * @param {import("@reduxjs/toolkit").Action} action
+ * @param {View | undefined} root
+ * @param {PointExpandOrigin} origin
+ * @param {string} fieldName
+ * @returns {unknown}
+ */
+function resolvePointExpandValuePreview(action, root, origin, fieldName) {
+    let byField = pointExpandValuePreviewCache.get(action);
+    if (byField?.has(fieldName)) {
+        return byField.get(fieldName);
+    }
+
+    if (!root) {
+        return undefined;
+    }
+
+    const originView = safeResolve(resolveViewSelector, root, origin.view);
+    if (!originView) {
+        return undefined;
+    }
+
+    const originResolution = tryResolvePointExpandOriginDatum(
+        originView,
+        origin
+    );
+    if (originResolution.reason !== "ok") {
+        return undefined;
+    }
+
+    const originDatum = originResolution.datum;
+    if (!originDatum) {
+        return undefined;
+    }
+
+    const accessor = createSelectionExpansionFieldAccessor(fieldName);
+    const value = accessor(originDatum);
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!byField) {
+        byField = new Map();
+        pointExpandValuePreviewCache.set(action, byField);
+    }
+    byField.set(fieldName, value);
+    return value;
+}
+
+/**
+ * @param {string[] | undefined} partitionBy
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandScope(partitionBy) {
+    if (!partitionBy?.length) {
+        return html` across all`;
+    }
+
+    const lowered = partitionBy.map((fieldName) => fieldName.toLowerCase());
+    if (lowered.some((fieldName) => fieldName.includes("sample"))) {
+        return html` in current sample`;
+    }
+
+    if (lowered.some((fieldName) => fieldName.includes("patient"))) {
+        return html` in current patient`;
+    }
+
+    return html` in current scope`;
+}
+
+/**
+ * @param {Extract<ParamValue, { type: "pointExpand" }>} value
+ * @returns {SelectionExpansionMatcher}
+ */
+function getPointExpandMatcher(value) {
+    if ("rule" in value && value.rule) {
+        return value.rule;
+    }
+
+    if ("predicate" in value && value.predicate) {
+        return value.predicate;
+    }
+
+    throw new Error(
+        "Point expansion payload must contain either 'rule' or 'predicate'."
+    );
 }

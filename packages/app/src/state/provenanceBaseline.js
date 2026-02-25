@@ -1,5 +1,15 @@
 import { ActionCreators } from "redux-undo";
 
+export const BASELINE_ACTION_SUFFIX = "/__baseline__";
+
+/**
+ * @param {import("@reduxjs/toolkit").Action | null | undefined} action
+ * @returns {boolean}
+ */
+export function isBaselineAction(action) {
+    return !!action && action.type.endsWith(BASELINE_ACTION_SUFFIX);
+}
+
 /**
  * Clears provenance history and seeds a baseline marker action so the next
  * meaningful action is immediately undoable.
@@ -21,6 +31,6 @@ export function resetProvenanceHistory(store, reducerPrefix) {
     //    initial state" for undo/redo and bookmarkable history.
     store.dispatch(ActionCreators.clearHistory());
     store.dispatch({
-        type: reducerPrefix + "/__baseline__",
+        type: reducerPrefix + BASELINE_ACTION_SUFFIX,
     });
 }

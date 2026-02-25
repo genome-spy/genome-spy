@@ -11,6 +11,7 @@
  */
 
 import { ActionCreators } from "redux-undo";
+import { isBaselineAction } from "./provenanceBaseline.js";
 
 /**
  * An API for undo/redo and action history.
@@ -97,8 +98,11 @@ export default class Provenance {
 
     isEmpty() {
         const state = this._provenanceState;
+        const lastAction = state.present?.lastAction;
+        const hasCurrentAction = !!lastAction && !isBaselineAction(lastAction);
         return (
-            !this.isEnabled() || state.past.length + state.future.length <= 0
+            !this.isEnabled() ||
+            (state.past.length + state.future.length <= 0 && !hasCurrentAction)
         );
     }
 
@@ -151,8 +155,8 @@ export default class Provenance {
      * to jump to a specific point in history.
      */
     getBookmarkableActionHistory() {
-        // Skip the initial action (that sets samples)
-        // TODO: Come up with something more robust
-        return this.getActionHistory()?.slice(1);
+        return this.getActionHistory()?.filter(
+            (action) => !isBaselineAction(action)
+        );
     }
 }

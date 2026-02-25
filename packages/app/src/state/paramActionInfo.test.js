@@ -32,6 +32,9 @@ class FakeView {
     /** @type {{ getScale: () => object }} */
     #scaleResolution;
 
+    /** @type {any} */
+    encoding;
+
     /**
      * @param {object} [options]
      * @param {string} [options.explicitName]
@@ -51,6 +54,7 @@ class FakeView {
         }
         this.paramRuntime = new ViewParamRuntime();
         this.#scaleResolution = { getScale: () => ({}) };
+        this.encoding = {};
     }
 
     /**
@@ -66,6 +70,13 @@ class FakeView {
      */
     getScaleResolution(_channel) {
         return this.#scaleResolution;
+    }
+
+    /**
+     * @returns {any}
+     */
+    getEncoding() {
+        return this.encoding;
     }
 
     /**
@@ -167,6 +178,129 @@ describe("getParamActionInfo", () => {
         const multiTitle = normalizeTitle(multiInfo);
 
         expect(multiTitle).toContain("Select selected (2 points) in points");
+    });
+
+    it("formats point expansion titles using rule formatting", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+        /** @type {any} */ (view).getCollector = () => ({
+            completed: true,
+            findDatumByKey: (keyFields, keyTuple) => {
+                if (
+                    keyFields.length === 1 &&
+                    keyFields[0] === "id" &&
+                    keyTuple.length === 1 &&
+                    keyTuple[0] === "seed"
+                ) {
+                    return {
+                        id: "seed",
+                        clusterId: "C42",
+                        patientId: "P1",
+                    };
+                }
+                return undefined;
+            },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            rule: {
+                kind: "sameFieldValue",
+                field: "clusterId",
+            },
+            partitionBy: ["patientId"],
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Replace selected in current patient by clusterId = C42 (from clicked item)"
+        );
+        expect(title).toContain("in points");
+        expect(title).not.toContain("from points in points");
+    });
+
+    it("falls back to clicked-item wording when expansion preview cannot be resolved", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            partitionBy: ["patientId"],
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Replace selected in current patient by clusterId = same as clicked item"
+        );
+        expect(title).not.toContain("(C42)");
+    });
+
+    it("formats point expansion titles for dotted literal fields", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+        /** @type {any} */ (view).getCollector = () => ({
+            completed: true,
+            findDatumByKey: (_keyFields, keyTuple) => {
+                if (keyTuple.length === 1 && keyTuple[0] === "seed") {
+                    return {
+                        id: "seed",
+                        "Gene.refGene": "GRM8",
+                    };
+                }
+                return undefined;
+            },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            rule: {
+                kind: "sameFieldValue",
+                field: "Gene.refGene",
+            },
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Replace selected across all by Gene.refGene = GRM8 (from clicked item)"
+        );
     });
 
     it("formats interval selections with x and y ranges", () => {
