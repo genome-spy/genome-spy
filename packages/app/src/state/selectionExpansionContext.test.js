@@ -163,9 +163,6 @@ describe("selectionExpansionContext", () => {
         expect(
             options[0].operations.map((operation) => operation.label)
         ).toEqual(["In current sample", "Across all samples"]);
-        expect(options[0].operations[0].payload.label).toBe(
-            "Func equals genic_other in current sample"
-        );
         expect(options[0].operations[0].payload.partitionBy).toEqual([
             "sample",
         ]);

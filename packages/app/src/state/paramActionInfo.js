@@ -15,6 +15,11 @@ import {
     formatScopedParamName,
     formatScopedViewLabel,
 } from "../viewScopeUtils.js";
+import {
+    isLogicalAnd,
+    isLogicalNot,
+    isLogicalOr,
+} from "./selectionExpansion.js";
 
 /**
  * @typedef {import("@genome-spy/core/view/view.js").default} View
@@ -51,7 +56,6 @@ export function getParamActionInfo(action, root) {
                   predicate: payload.predicate,
                   partitionBy: payload.partitionBy,
                   origin: payload.origin,
-                  label: payload.label,
               }
             : payload.value
     );
@@ -111,13 +115,11 @@ function formatParamActionTitle(view, selector, value, origin, root) {
 
     if (value.type === "pointExpand") {
         const operationLabel = formatPointExpandOperation(value.operation);
-        if (value.label) {
-            return html`${operationLabel}
-                <strong>${paramLabel}</strong>
-                by <strong>${value.label}</strong>`;
-        }
-
-        return html`${operationLabel} <strong>${paramLabel}</strong>`;
+        const predicateLabel = formatPointExpandPredicate(value.predicate);
+        const scopeSuffix = formatPointExpandScope(value.partitionBy);
+        return html`${operationLabel}
+            <strong>${paramLabel}</strong>
+            by ${predicateLabel}${scopeSuffix}`;
     }
 
     if (value.type === "interval") {
@@ -299,4 +301,103 @@ function formatPointExpandOperation(operation) {
         default:
             return "Expand";
     }
+}
+
+/**
+ * @param {import("./selectionExpansion.js").SelectionExpansionPredicate} predicate
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandPredicate(predicate) {
+    if (isLogicalNot(predicate)) {
+        return html`not (${formatPointExpandPredicate(predicate.not)})`;
+    }
+
+    if (isLogicalAnd(predicate)) {
+        return joinTemplateParts(
+            predicate.and.map(formatPointExpandPredicate),
+            " and "
+        );
+    }
+
+    if (isLogicalOr(predicate)) {
+        return joinTemplateParts(
+            predicate.or.map(formatPointExpandPredicate),
+            " or "
+        );
+    }
+
+    if (predicate.op === "eq") {
+        if ("value" in predicate) {
+            return html`${formatPredicateField(predicate.field)}
+                <span class="operator">=</span>
+                <strong>${formatScalar(predicate.value)}</strong>`;
+        }
+
+        if ("valueFromField" in predicate) {
+            const sourceLabel =
+                predicate.valueFromField === predicate.field
+                    ? "clicked value"
+                    : "clicked " + predicate.valueFromField;
+            return html`${formatPredicateField(predicate.field)}
+                <span class="operator">=</span>
+                <strong>${sourceLabel}</strong>`;
+        }
+    } else if (predicate.op === "in") {
+        return html`${formatPredicateField(predicate.field)}
+            <span class="operator">in</span>
+            ${formatScalarSet(predicate.values)}`;
+    }
+
+    return html`predicate`;
+}
+
+/**
+ * @param {string} fieldName
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPredicateField(fieldName) {
+    return html`<em>${fieldName}</em>`;
+}
+
+/**
+ * @param {unknown[]} values
+ * @returns {import("lit").TemplateResult}
+ */
+function formatScalarSet(values) {
+    return html`{${values.map(
+        (value, i) =>
+            html`${i > 0 ? ", " : ""}<strong>${formatScalar(value)}</strong>`
+    )}}`;
+}
+
+/**
+ * @param {import("lit").TemplateResult[]} parts
+ * @param {string} separator
+ * @returns {import("lit").TemplateResult}
+ */
+function joinTemplateParts(parts, separator) {
+    return html`${parts.map(
+        (part, i) => html`${i > 0 ? separator : ""}${part}`
+    )}`;
+}
+
+/**
+ * @param {string[] | undefined} partitionBy
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandScope(partitionBy) {
+    if (!partitionBy?.length) {
+        return html` across all`;
+    }
+
+    const lowered = partitionBy.map((fieldName) => fieldName.toLowerCase());
+    if (lowered.some((fieldName) => fieldName.includes("sample"))) {
+        return html` in current sample`;
+    }
+
+    if (lowered.some((fieldName) => fieldName.includes("patient"))) {
+        return html` in current patient`;
+    }
+
+    return html` in current scope`;
 }

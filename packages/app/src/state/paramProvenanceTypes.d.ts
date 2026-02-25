@@ -54,7 +54,6 @@ export type ParamValuePointExpand = {
     predicate: SelectionExpansionPredicate;
     partitionBy?: string[];
     origin: PointExpandOrigin;
-    label?: string;
 };
 
 export type ParamValue =
@@ -75,7 +74,6 @@ export type ExpandPointSelectionActionPayload = {
     predicate: SelectionExpansionPredicate;
     partitionBy?: string[];
     origin: PointExpandOrigin;
-    label?: string;
 };
 
 export type ParamProvenanceState = {

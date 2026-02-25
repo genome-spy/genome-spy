@@ -1,3 +1,4 @@
+import { html } from "lit";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import { createSelectionExpansionFieldOptions } from "./selectionExpansionContext.js";
 import { DIVIDER } from "../utils/ui/contextMenu.js";
@@ -79,7 +80,10 @@ export function createSelectionExpansionSubmenu(context, dispatchAction) {
 /**
  * @param {string} fieldName
  * @param {string} valueLabel
+ * @returns {import("lit").TemplateResult}
  */
 function formatRuleLabel(fieldName, valueLabel) {
-    return fieldName + " equals " + valueLabel;
+    return html`<em>${fieldName}</em>
+        <span class="operator">=</span>
+        <strong>${valueLabel}</strong>`;
 }

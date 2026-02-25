@@ -475,7 +475,6 @@ describe("ParamProvenanceBridge", () => {
                     keyFields: ["id"],
                     keyTuple: ["seed"],
                 },
-                label: "same cluster in patient",
             })
         );
 

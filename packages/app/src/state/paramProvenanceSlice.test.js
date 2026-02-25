@@ -75,7 +75,6 @@ describe("paramProvenanceSlice", () => {
                 keyFields: ["id"],
                 keyTuple: ["seed"],
             },
-            label: "same cluster in patient",
         });
 
         const state = paramProvenanceSlice.reducer(undefined, action);
@@ -98,7 +97,6 @@ describe("paramProvenanceSlice", () => {
                     keyFields: ["id"],
                     keyTuple: ["seed"],
                 },
-                label: "same cluster in patient",
             },
         });
     });

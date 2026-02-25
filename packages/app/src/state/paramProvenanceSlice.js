@@ -38,7 +38,6 @@ export const paramProvenanceSlice = createSlice({
                     predicate: payload.predicate,
                     partitionBy: payload.partitionBy,
                     origin: payload.origin,
-                    label: payload.label,
                 },
             };
         },

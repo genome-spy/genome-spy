@@ -169,7 +169,7 @@ describe("getParamActionInfo", () => {
         expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
-    it("formats point expansion titles using rule labels", () => {
+    it("formats point expansion titles using predicate formatting", () => {
         const view = new FakeView({ explicitName: "points" });
         view.paramRuntime.registerParam({
             name: "selected",
@@ -191,13 +191,13 @@ describe("getParamActionInfo", () => {
                 keyFields: ["id"],
                 keyTuple: ["seed"],
             },
-            label: "same cluster in patient",
         });
 
         const info = getParamActionInfo(action, /** @type {any} */ (view));
         const title = normalizeTitle(info);
 
-        expect(title).toContain("Expand selected by same cluster in patient");
+        expect(title).toContain("Expand selected by clusterId = clicked value");
+        expect(title).toContain("in current patient");
         expect(title).toContain("in points");
         expect(title).not.toContain("from points in points");
     });

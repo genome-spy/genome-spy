@@ -187,8 +187,6 @@ export function createSelectionExpansionFieldOptions(context) {
         const valueLabel = formatSelectionExpansionValue(value);
         const currentScopeLabel = formatCurrentScopeLabel(defaultScopeLabel);
         const acrossAllLabel = formatAcrossAllLabel(defaultScopeLabel);
-        const scopedActionLabel =
-            fieldName + " equals " + valueLabel + " in " + currentScopeLabel;
         /** @type {SelectionExpansionOperationOption[]} */
         const operationOptions = [];
         operationOptions.push({
@@ -208,13 +206,10 @@ export function createSelectionExpansionFieldOptions(context) {
                     keyFields: originKeyFields,
                     keyTuple: originKeyTuple,
                 },
-                label: scopedActionLabel,
             },
         });
 
         if (defaultPartitionBy?.length) {
-            const globalActionLabel =
-                fieldName + " equals " + valueLabel + " " + acrossAllLabel;
             operationOptions.push({
                 label:
                     acrossAllLabel.charAt(0).toUpperCase() +
@@ -233,7 +228,6 @@ export function createSelectionExpansionFieldOptions(context) {
                         keyFields: originKeyFields,
                         keyTuple: originKeyTuple,
                     },
-                    label: globalActionLabel,
                 },
             });
         }

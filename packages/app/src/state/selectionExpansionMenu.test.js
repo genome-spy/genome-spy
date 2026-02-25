@@ -5,6 +5,7 @@ import {
     createSelectionExpansionSubmenu,
 } from "./selectionExpansionMenu.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 /**
  * @param {{
@@ -28,6 +29,15 @@ function createMockUnitView(config) {
 }
 
 describe("selectionExpansionMenu", () => {
+    /**
+     * @param {any} menuEntry
+     * @returns {string}
+     */
+    const toLabelText = (menuEntry) =>
+        typeof menuEntry.label === "string"
+            ? menuEntry.label
+            : templateResultToString(menuEntry.label);
+
     test("builds expansion menu and dispatches expansion intent from callbacks", () => {
         const hoveredView = createMockUnitView({
             encoding: {
@@ -73,11 +83,12 @@ describe("selectionExpansionMenu", () => {
         });
 
         const fieldItem = submenu.find(
-            (entry) => entry.label === "Func equals genic_other"
+            (entry) => toLabelText(entry) === "Func = genic_other"
         );
         expect(fieldItem).toBeDefined();
 
         const operations = /** @type {() => any[]} */ (fieldItem.submenu)();
+        expect(toLabelText(operations[0])).toBe("Func = genic_other");
         const matchThisSample = operations.find(
             (entry) => entry.label === "In current sample"
         );
