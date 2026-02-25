@@ -367,8 +367,11 @@ export default class WebGLHelper {
         const texture = createOrUpdateTexture(
             this.gl,
             {
+                // Hash textures are point-lookups and must remain single-level.
+                auto: false,
                 level: 0,
-                minMag: gl.NEAREST,
+                min: gl.NEAREST,
+                mag: gl.NEAREST,
                 format: gl.RED_INTEGER,
                 internalFormat: gl.R32UI,
                 width,
@@ -377,6 +380,10 @@ export default class WebGLHelper {
             table,
             update ? existingTexture : false
         );
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_BASE_LEVEL, 0);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAX_LEVEL, 0);
+        gl.bindTexture(gl.TEXTURE_2D, null);
 
         this.selectionTextures.set(selection, texture);
     }
