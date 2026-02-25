@@ -79,7 +79,7 @@ describe("selectionExpansionMenu", () => {
         const submenu = /** @type {() => any[]} */ (item.submenu)();
         expect(submenu[0]).toEqual({
             type: "header",
-            label: "Choose matching rule",
+            label: "Match values from clicked item",
         });
 
         const fieldItem = submenu.find(

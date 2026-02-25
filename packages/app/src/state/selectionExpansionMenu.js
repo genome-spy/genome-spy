@@ -35,7 +35,7 @@ export function createSelectionExpansionSubmenu(context, dispatchAction) {
     const submenu = [
         {
             type: "header",
-            label: "Choose matching rule",
+            label: "Match values from clicked item",
         },
         DIVIDER,
     ];
