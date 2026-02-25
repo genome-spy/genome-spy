@@ -11,12 +11,12 @@ import {
     resolveParamSelector,
     resolveViewSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { field } from "@genome-spy/core/utils/field.js";
 import {
     formatScopedParamName,
     formatScopedViewLabel,
 } from "../viewScopeUtils.js";
 import {
+    createSelectionExpansionFieldAccessor,
     isLogicalAnd,
     isLogicalNot,
     isLogicalOr,
@@ -497,7 +497,7 @@ function resolvePointExpandValuePreview(action, root, origin, fieldName) {
         return undefined;
     }
 
-    const accessor = field(fieldName);
+    const accessor = createSelectionExpansionFieldAccessor(fieldName);
     const value = accessor(originDatum);
     if (value === undefined) {
         return undefined;

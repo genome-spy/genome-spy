@@ -262,6 +262,47 @@ describe("getParamActionInfo", () => {
         expect(title).not.toContain("(C42)");
     });
 
+    it("formats point expansion titles for dotted literal fields", () => {
+        const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selected",
+            select: { type: "point", toggle: true },
+        });
+        /** @type {any} */ (view).getCollector = () => ({
+            completed: true,
+            findDatumByKey: (_keyFields, keyTuple) => {
+                if (keyTuple.length === 1 && keyTuple[0] === "seed") {
+                    return {
+                        id: "seed",
+                        "Gene.refGene": "GRM8",
+                    };
+                }
+                return undefined;
+            },
+        });
+
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector: { scope: [], param: "selected" },
+            operation: "replace",
+            rule: {
+                kind: "sameFieldValue",
+                field: "Gene.refGene",
+            },
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+        });
+
+        const info = getParamActionInfo(action, /** @type {any} */ (view));
+        const title = normalizeTitle(info);
+
+        expect(title).toContain(
+            "Replace selected across all by Gene.refGene = GRM8 (from clicked item)"
+        );
+    });
+
     it("formats interval selections with x and y ranges", () => {
         const view = new FakeView({ explicitName: "intervals" });
         view.paramRuntime.registerParam({

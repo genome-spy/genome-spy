@@ -559,6 +559,51 @@ describe("ParamProvenanceBridge", () => {
         expect(selection.data.has(3)).toBe(false);
     });
 
+    it("applies point expansion for dotted literal fields in flat datums", async () => {
+        const view = new FakeView();
+        view.encoding = { key: { field: "id" } };
+        view.paramRuntime.registerParam({
+            name: "selection",
+            select: { type: "point", toggle: true },
+        });
+
+        const datums = [
+            { id: "seed", "Gene.refGene": "GRM8", _uniqueId: 1 },
+            { id: "A", "Gene.refGene": "GRM8", _uniqueId: 2 },
+            { id: "B", "Gene.refGene": "TP53", _uniqueId: 3 },
+        ];
+        const byId = new Map(datums.map((datum) => [datum.id, datum]));
+        view.getCollector = () =>
+            new FakeCollector((fields, tuple) => byId.get(tuple[0]), datums);
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        store.dispatch(
+            paramProvenanceSlice.actions.expandPointSelection({
+                selector: { scope: [], param: "selection" },
+                operation: "replace",
+                rule: {
+                    kind: "sameFieldValue",
+                    field: "Gene.refGene",
+                },
+                origin: {
+                    view: { scope: [], view: "root" },
+                    keyTuple: ["seed"],
+                },
+            })
+        );
+
+        await flushMicrotasks();
+
+        const selection = view.paramRuntime.getValue("selection");
+        expect(selection.data.size).toBe(2);
+        expect(selection.data.has(1)).toBe(true);
+        expect(selection.data.has(2)).toBe(true);
+        expect(selection.data.has(3)).toBe(false);
+    });
+
     it("warns and falls back when non-replace expansion operation is used", async () => {
         const showMessageDialog = await getShowMessageDialogMock();
         showMessageDialog.mockClear();

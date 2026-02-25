@@ -1,5 +1,3 @@
-import { field } from "@genome-spy/core/utils/field.js";
-
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
  * @typedef {import("@genome-spy/core/data/flowNode.js").Datum} Datum
@@ -129,7 +127,7 @@ export function withPartitionBy(predicate, partitionBy, originDatum) {
 
     /** @type {{ field: string, op: "eq", value: SelectionLeafValue }[]} */
     const clauses = partitionBy.map((partitionField) => {
-        const accessor = field(partitionField);
+        const accessor = createSelectionExpansionFieldAccessor(partitionField);
         return {
             field: partitionField,
             op: "eq",
@@ -170,6 +168,19 @@ export function createSelectionExpansionPredicateFunction(predicate) {
 }
 
 /**
+ * Returns a field accessor for literal datum keys.
+ *
+ * Note: nested field expressions are intentionally not supported in selection
+ * expansion for now.
+ *
+ * @param {string} fieldName
+ * @returns {(datum: Datum) => unknown}
+ */
+export function createSelectionExpansionFieldAccessor(fieldName) {
+    return (datum) => datum[fieldName];
+}
+
+/**
  * @param {SelectionExpansionLeafPredicate} leaf
  * @param {Datum} originDatum
  * @returns {ResolvedSelectionExpansionLeafPredicate}
@@ -199,7 +210,9 @@ function resolveLeafPredicate(leaf, originDatum) {
             );
         }
 
-        const accessor = field(leaf.valueFromField);
+        const accessor = createSelectionExpansionFieldAccessor(
+            leaf.valueFromField
+        );
         return {
             field: leaf.field,
             op: "eq",
@@ -232,7 +245,7 @@ function resolveLeafPredicate(leaf, originDatum) {
  * @returns {(datum: Datum) => boolean}
  */
 function createLeafPredicateFunction(leaf) {
-    const accessor = field(leaf.field);
+    const accessor = createSelectionExpansionFieldAccessor(leaf.field);
 
     if (leaf.op === "eq") {
         const value = leaf.value;

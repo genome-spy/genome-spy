@@ -77,4 +77,26 @@ describe("selectionExpansion", () => {
             value: "C1",
         });
     });
+
+    it("supports dotted literal field names in flat datums", () => {
+        const origin = {
+            "Gene.refGene": "GRM8",
+        };
+        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        const matcher = {
+            kind: "sameFieldValue",
+            field: "Gene.refGene",
+        };
+
+        const normalized = normalizeSelectionExpansionMatcher(matcher, origin);
+        expect(normalized).toEqual({
+            field: "Gene.refGene",
+            op: "eq",
+            value: "GRM8",
+        });
+
+        const test = createSelectionExpansionPredicateFunction(normalized);
+        expect(test({ "Gene.refGene": "GRM8" })).toBe(true);
+        expect(test({ "Gene.refGene": "TP53" })).toBe(false);
+    });
 });
