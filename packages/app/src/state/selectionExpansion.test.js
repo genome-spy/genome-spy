@@ -2,7 +2,9 @@
 import { describe, expect, it } from "vitest";
 import {
     createSelectionExpansionPredicateFunction,
+    normalizeSelectionExpansionMatcher,
     normalizeSelectionExpansionPredicate,
+    toSelectionExpansionPredicate,
     withPartitionBy,
 } from "./selectionExpansion.js";
 
@@ -43,5 +45,36 @@ describe("selectionExpansion", () => {
         expect(test({ clusterId: "C1", patientId: "P1" })).toBe(true);
         expect(test({ clusterId: "C1", patientId: "P2" })).toBe(false);
         expect(test({ clusterId: "C2", patientId: "P1" })).toBe(false);
+    });
+
+    it("converts sameFieldValue rules into valueFromField predicates", () => {
+        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        const matcher = {
+            kind: "sameFieldValue",
+            field: "clusterId",
+        };
+
+        expect(toSelectionExpansionPredicate(matcher)).toEqual({
+            field: "clusterId",
+            op: "eq",
+            valueFromField: "clusterId",
+        });
+    });
+
+    it("normalizes rules using the origin datum", () => {
+        const origin = { clusterId: "C1", patientId: "P1" };
+        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        const matcher = {
+            kind: "sameFieldValue",
+            field: "clusterId",
+        };
+
+        const normalized = normalizeSelectionExpansionMatcher(matcher, origin);
+
+        expect(normalized).toEqual({
+            field: "clusterId",
+            op: "eq",
+            value: "C1",
+        });
     });
 });

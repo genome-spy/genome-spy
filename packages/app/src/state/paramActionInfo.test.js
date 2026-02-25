@@ -32,6 +32,9 @@ class FakeView {
     /** @type {{ getScale: () => object }} */
     #scaleResolution;
 
+    /** @type {any} */
+    encoding;
+
     /**
      * @param {object} [options]
      * @param {string} [options.explicitName]
@@ -51,6 +54,7 @@ class FakeView {
         }
         this.paramRuntime = new ViewParamRuntime();
         this.#scaleResolution = { getScale: () => ({}) };
+        this.encoding = {};
     }
 
     /**
@@ -66,6 +70,13 @@ class FakeView {
      */
     getScaleResolution(_channel) {
         return this.#scaleResolution;
+    }
+
+    /**
+     * @returns {any}
+     */
+    getEncoding() {
+        return this.encoding;
     }
 
     /**
@@ -169,8 +180,9 @@ describe("getParamActionInfo", () => {
         expect(multiTitle).toContain("Select selected (2 points) in points");
     });
 
-    it("formats point expansion titles using predicate formatting", () => {
+    it("formats point expansion titles using rule formatting", () => {
         const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
         view.paramRuntime.registerParam({
             name: "selected",
             select: { type: "point", toggle: true },
@@ -197,16 +209,13 @@ describe("getParamActionInfo", () => {
         const action = paramProvenanceSlice.actions.expandPointSelection({
             selector: { scope: [], param: "selected" },
             operation: "replace",
-            predicate: {
+            rule: {
+                kind: "sameFieldValue",
                 field: "clusterId",
-                op: "eq",
-                valueFromField: "clusterId",
             },
             partitionBy: ["patientId"],
             origin: {
-                type: "datum",
                 view: { scope: [], view: "points" },
-                keyFields: ["id"],
                 keyTuple: ["seed"],
             },
         });
@@ -223,6 +232,7 @@ describe("getParamActionInfo", () => {
 
     it("falls back to clicked-item wording when expansion preview cannot be resolved", () => {
         const view = new FakeView({ explicitName: "points" });
+        view.encoding = { key: { field: "id" } };
         view.paramRuntime.registerParam({
             name: "selected",
             select: { type: "point", toggle: true },
@@ -238,9 +248,7 @@ describe("getParamActionInfo", () => {
             },
             partitionBy: ["patientId"],
             origin: {
-                type: "datum",
                 view: { scope: [], view: "points" },
-                keyFields: ["id"],
                 keyTuple: ["seed"],
             },
         });

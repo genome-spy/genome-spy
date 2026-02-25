@@ -194,16 +194,13 @@ export function createSelectionExpansionFieldOptions(context) {
             payload: {
                 selector,
                 operation: "replace",
-                predicate: {
+                rule: {
+                    kind: "sameFieldValue",
                     field: fieldName,
-                    op: "eq",
-                    valueFromField: fieldName,
                 },
                 partitionBy: defaultPartitionBy,
                 origin: {
-                    type: "datum",
                     view: originViewSelector,
-                    keyFields: originKeyFields,
                     keyTuple: originKeyTuple,
                 },
             },
@@ -217,15 +214,12 @@ export function createSelectionExpansionFieldOptions(context) {
                 payload: {
                     selector,
                     operation: "replace",
-                    predicate: {
+                    rule: {
+                        kind: "sameFieldValue",
                         field: fieldName,
-                        op: "eq",
-                        valueFromField: fieldName,
                     },
                     origin: {
-                        type: "datum",
                         view: originViewSelector,
-                        keyFields: originKeyFields,
                         keyTuple: originKeyTuple,
                     },
                 },

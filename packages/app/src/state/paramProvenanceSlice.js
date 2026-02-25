@@ -30,14 +30,25 @@ export const paramProvenanceSlice = createSlice({
         ) => {
             const payload = action.payload;
             const key = makeParamSelectorKey(payload.selector);
+            let matcher;
+            if ("rule" in payload && payload.rule) {
+                matcher = { rule: payload.rule };
+            } else if ("predicate" in payload && payload.predicate) {
+                matcher = { predicate: payload.predicate };
+            } else {
+                throw new Error(
+                    "expandPointSelection requires either 'rule' or 'predicate'."
+                );
+            }
+
             state.entries[key] = {
                 selector: payload.selector,
                 value: {
                     type: "pointExpand",
                     operation: payload.operation,
-                    predicate: payload.predicate,
                     partitionBy: payload.partitionBy,
                     origin: payload.origin,
+                    ...matcher,
                 },
             };
         },

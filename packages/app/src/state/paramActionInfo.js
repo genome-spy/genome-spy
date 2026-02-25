@@ -20,7 +20,9 @@ import {
     isLogicalAnd,
     isLogicalNot,
     isLogicalOr,
+    toSelectionExpansionPredicate,
 } from "./selectionExpansion.js";
+import { tryResolvePointExpandOriginDatum } from "./selectionExpansionOrigin.js";
 
 /**
  * @typedef {import("@genome-spy/core/view/view.js").default} View
@@ -30,7 +32,7 @@ import {
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamValue} ParamValue
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamOrigin} ParamOrigin
  * @typedef {import("./paramProvenanceTypes.d.ts").PointExpandOrigin} PointExpandOrigin
- * @typedef {{ completed: boolean, findDatumByKey: (keyFields: string[], keyTuple: Scalar[]) => import("@genome-spy/core/data/flowNode.js").Datum | undefined }} PointExpandPreviewCollector
+ * @typedef {import("./selectionExpansion.js").SelectionExpansionMatcher} SelectionExpansionMatcher
  */
 
 /** @type {WeakMap<import("@reduxjs/toolkit").Action, Map<string, unknown>>} */
@@ -53,14 +55,20 @@ export function getParamActionInfo(action, root) {
 
     const payload = /** @type {any} */ (action).payload;
     const selector = /** @type {ParamSelector} */ (payload.selector);
+    const pointExpandMatcher =
+        isPointExpansion && "rule" in payload
+            ? { rule: payload.rule }
+            : isPointExpansion
+              ? { predicate: payload.predicate }
+              : {};
     const value = /** @type {ParamValue} */ (
         isPointExpansion
             ? {
                   type: "pointExpand",
                   operation: payload.operation,
-                  predicate: payload.predicate,
                   partitionBy: payload.partitionBy,
                   origin: payload.origin,
+                  ...pointExpandMatcher,
               }
             : payload.value
     );
@@ -128,11 +136,14 @@ function formatParamActionTitle(action, view, selector, value, origin, root) {
 
     if (value.type === "pointExpand") {
         const operationLabel = formatPointExpandOperation(value.operation);
-        const predicateLabel = formatPointExpandPredicate(value.predicate, {
-            action,
-            root,
-            origin: value.origin,
-        });
+        const predicateLabel = formatPointExpandMatcher(
+            getPointExpandMatcher(value),
+            {
+                action,
+                root,
+                origin: value.origin,
+            }
+        );
         const scopeSuffix = formatPointExpandScope(value.partitionBy);
         return html`${operationLabel}
             <strong>${paramLabel}</strong>
@@ -324,6 +335,18 @@ function formatPointExpandOperation(operation) {
 }
 
 /**
+ * @param {SelectionExpansionMatcher} matcher
+ * @param {{ action: import("@reduxjs/toolkit").Action, root: View | undefined, origin: PointExpandOrigin }} context
+ * @returns {import("lit").TemplateResult}
+ */
+function formatPointExpandMatcher(matcher, context) {
+    return formatPointExpandPredicate(
+        toSelectionExpansionPredicate(matcher),
+        context
+    );
+}
+
+/**
  * Formats logical/leaf expansion predicates for provenance labels.
  *
  * For `valueFromField` leaves, this tries to enrich the label with a concrete
@@ -461,25 +484,15 @@ function resolvePointExpandValuePreview(action, root, origin, fieldName) {
         return undefined;
     }
 
-    const originViewWithCollector =
-        /** @type {{ getCollector?: () => PointExpandPreviewCollector | undefined }} */ (
-            originView
-        );
-    const collector = originViewWithCollector.getCollector?.() ?? undefined;
-    if (!collector || !collector.completed) {
+    const originResolution = tryResolvePointExpandOriginDatum(
+        originView,
+        origin
+    );
+    if (originResolution.reason !== "ok") {
         return undefined;
     }
 
-    let originDatum;
-    try {
-        originDatum = collector.findDatumByKey(
-            origin.keyFields,
-            origin.keyTuple
-        );
-    } catch (_error) {
-        return undefined;
-    }
-
+    const originDatum = originResolution.datum;
     if (!originDatum) {
         return undefined;
     }
@@ -517,4 +530,22 @@ function formatPointExpandScope(partitionBy) {
     }
 
     return html` in current scope`;
+}
+
+/**
+ * @param {Extract<ParamValue, { type: "pointExpand" }>} value
+ * @returns {SelectionExpansionMatcher}
+ */
+function getPointExpandMatcher(value) {
+    if ("rule" in value && value.rule) {
+        return value.rule;
+    }
+
+    if ("predicate" in value && value.predicate) {
+        return value.predicate;
+    }
+
+    throw new Error(
+        "Point expansion payload must contain either 'rule' or 'predicate'."
+    );
 }

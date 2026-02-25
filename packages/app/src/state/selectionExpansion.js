@@ -12,6 +12,8 @@ import { field } from "@genome-spy/core/utils/field.js";
  * @typedef {{ or: SelectionExpansionPredicate[] }} LogicalOr
  * @typedef {{ not: SelectionExpansionPredicate }} LogicalNot
  * @typedef {SelectionExpansionLeafPredicate | LogicalAnd | LogicalOr | LogicalNot} SelectionExpansionPredicate
+ * @typedef {{ kind: "sameFieldValue", field: string }} SelectionExpansionRule
+ * @typedef {SelectionExpansionPredicate | SelectionExpansionRule} SelectionExpansionMatcher
  *
  * @typedef {{ field: string, op: "eq", value: SelectionLeafValue } | { field: string, op: "in", values: SelectionLeafValue[] }} ResolvedSelectionExpansionLeafPredicate
  * @typedef {{ and: ResolvedSelectionExpansionPredicate[] }} ResolvedLogicalAnd
@@ -25,7 +27,7 @@ import { field } from "@genome-spy/core/utils/field.js";
  * @returns {op is LogicalOr | ResolvedLogicalOr}
  */
 export function isLogicalOr(op) {
-    return hasOwn(op, "or");
+    return "or" in op;
 }
 
 /**
@@ -33,7 +35,7 @@ export function isLogicalOr(op) {
  * @returns {op is LogicalAnd | ResolvedLogicalAnd}
  */
 export function isLogicalAnd(op) {
-    return hasOwn(op, "and");
+    return "and" in op;
 }
 
 /**
@@ -41,7 +43,7 @@ export function isLogicalAnd(op) {
  * @returns {op is LogicalNot | ResolvedLogicalNot}
  */
 export function isLogicalNot(op) {
-    return hasOwn(op, "not");
+    return "not" in op;
 }
 
 /**
@@ -73,6 +75,43 @@ export function normalizeSelectionExpansionPredicate(op, originDatum) {
     }
 
     return resolveLeafPredicate(op, originDatum);
+}
+
+/**
+ * Converts matcher shorthand into a predicate, then resolves origin-dependent
+ * references such as `valueFromField`.
+ *
+ * @param {SelectionExpansionMatcher} matcher
+ * @param {Datum} originDatum
+ * @returns {ResolvedSelectionExpansionPredicate}
+ */
+export function normalizeSelectionExpansionMatcher(matcher, originDatum) {
+    return normalizeSelectionExpansionPredicate(
+        toSelectionExpansionPredicate(matcher),
+        originDatum
+    );
+}
+
+/**
+ * @param {SelectionExpansionMatcher} matcher
+ * @returns {SelectionExpansionPredicate}
+ */
+export function toSelectionExpansionPredicate(matcher) {
+    if (isSelectionExpansionRule(matcher)) {
+        if (matcher.kind === "sameFieldValue") {
+            return {
+                field: matcher.field,
+                op: "eq",
+                valueFromField: matcher.field,
+            };
+        } else {
+            throw new Error(
+                "Unknown selection expansion rule: " + JSON.stringify(matcher)
+            );
+        }
+    }
+
+    return matcher;
 }
 
 /**
@@ -215,9 +254,9 @@ function createLeafPredicateFunction(leaf) {
 }
 
 /**
- * @param {object} obj
- * @param {string} key
+ * @param {SelectionExpansionMatcher} matcher
+ * @returns {matcher is SelectionExpansionRule}
  */
-function hasOwn(obj, key) {
-    return Object.prototype.hasOwnProperty.call(obj, key);
+function isSelectionExpansionRule(matcher) {
+    return "kind" in matcher;
 }

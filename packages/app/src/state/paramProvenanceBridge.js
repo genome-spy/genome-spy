@@ -31,9 +31,10 @@ import { subscribeTo, withMicrotask } from "./subscribeTo.js";
 import { paramProvenanceSlice } from "./paramProvenanceSlice.js";
 import {
     createSelectionExpansionPredicateFunction,
-    normalizeSelectionExpansionPredicate,
+    normalizeSelectionExpansionMatcher,
     withPartitionBy,
 } from "./selectionExpansion.js";
+import { tryResolvePointExpandOriginDatum } from "./selectionExpansionOrigin.js";
 
 const THROTTLE_INTERVAL_MS = 150;
 
@@ -845,17 +846,14 @@ export default class ParamProvenanceBridge {
             return this.#getDefaultValue(entry);
         }
 
-        const originDatum = this.#resolveExpansionOriginDatum(
-            storedValue,
-            collector
-        );
+        const originDatum = this.#resolveExpansionOriginDatum(storedValue);
         if (!originDatum) {
             return this.#getDefaultValue(entry);
         }
 
         try {
-            let predicate = normalizeSelectionExpansionPredicate(
-                storedValue.predicate,
+            let predicate = normalizeSelectionExpansionMatcher(
+                getPointExpandMatcher(storedValue),
                 originDatum
             );
             predicate = withPartitionBy(
@@ -885,10 +883,9 @@ export default class ParamProvenanceBridge {
 
     /**
      * @param {ParamValuePointExpand} storedValue
-     * @param {import("@genome-spy/core/data/collector.js").default} fallbackCollector
      * @returns {import("@genome-spy/core/data/flowNode.js").Datum | undefined}
      */
-    #resolveExpansionOriginDatum(storedValue, fallbackCollector) {
+    #resolveExpansionOriginDatum(storedValue) {
         const origin = storedValue.origin;
 
         const originView = resolveViewSelector(this.#root, origin.view);
@@ -899,39 +896,64 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        const originCollector =
-            this.#getCollector(originView) ?? fallbackCollector;
-        if (!originCollector.completed) {
-            this.#scheduleReapply(originCollector);
-            return;
-        }
-
-        if (
-            !Array.isArray(origin.keyFields) ||
-            !Array.isArray(origin.keyTuple) ||
-            origin.keyFields.length === 0 ||
-            origin.keyFields.length !== origin.keyTuple.length
-        ) {
-            this.#warnOrigin("the expansion origin key tuple is invalid.");
-            return;
-        }
-
-        try {
-            const datum = originCollector.findDatumByKey(
-                origin.keyFields,
-                origin.keyTuple
-            );
-            if (!datum) {
+        const originResolution = tryResolvePointExpandOriginDatum(
+            originView,
+            origin
+        );
+        switch (originResolution.reason) {
+            case "ok":
+                if (!originResolution.datum) {
+                    this.#warnOrigin(
+                        "the expansion origin datum is missing in current data."
+                    );
+                    return;
+                }
+                return originResolution.datum;
+            case "missingCollector":
                 this.#warnOrigin(
-                    "the expansion origin datum is missing in current data."
+                    "the expansion origin view does not expose data."
                 );
-            }
-            return datum;
-        } catch (error) {
-            this.#warnOrigin(
-                "failed to resolve expansion origin datum: " + String(error)
-            );
-            return;
+                return;
+            case "collectorNotCompleted":
+                this.#scheduleReapply(
+                    /** @type {import("@genome-spy/core/data/collector.js").default} */ (
+                        originResolution.collector
+                    )
+                );
+                return;
+            case "invalidOriginKeyTuple":
+                this.#warnOrigin("the expansion origin key tuple is invalid.");
+                return;
+            case "missingEncodingKey":
+                this.#warnOrigin(
+                    "the expansion origin view does not define encoding.key."
+                );
+                return;
+            case "incompatibleOriginKeyTuple":
+                this.#warnOrigin(
+                    "the expansion origin key tuple is incompatible with current encoding.key."
+                );
+                return;
+            case "legacyKeyFieldsMismatch":
+                this.#warnOrigin(
+                    `the expansion origin key fields [${originResolution.legacyKeyFields.join(
+                        ", "
+                    )}] differ from current encoding.key [${originResolution.keyFields.join(
+                        ", "
+                    )}].`
+                );
+                return;
+            case "lookupError":
+                this.#warnOrigin(
+                    "failed to resolve expansion origin datum: " +
+                        String(originResolution.error)
+                );
+                return;
+            default:
+                throw new Error(
+                    "Unknown origin resolution status: " +
+                        JSON.stringify(originResolution)
+                );
         }
     }
 
@@ -1275,4 +1297,22 @@ export default class ParamProvenanceBridge {
             );
         });
     }
+}
+
+/**
+ * @param {ParamValuePointExpand} value
+ * @returns {import("./selectionExpansion.js").SelectionExpansionMatcher}
+ */
+function getPointExpandMatcher(value) {
+    if ("rule" in value && value.rule) {
+        return value.rule;
+    }
+
+    if ("predicate" in value && value.predicate) {
+        return value.predicate;
+    }
+
+    throw new Error(
+        "Point expansion payload must contain either 'rule' or 'predicate'."
+    );
 }

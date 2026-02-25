@@ -105,6 +105,15 @@ describe("selectionExpansionMenu", () => {
             scope: [],
             param: "variantClick",
         });
+        expect(dispatchedAction.payload.rule).toEqual({
+            kind: "sameFieldValue",
+            field: "Func",
+        });
+        expect(dispatchedAction.payload.predicate).toBeUndefined();
+        expect(dispatchedAction.payload.origin).toEqual({
+            view: { scope: [], view: "variants" },
+            keyTuple: ["v1"],
+        });
     });
 
     test("returns a placeholder when no field can be expanded", () => {

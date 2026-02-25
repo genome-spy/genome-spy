@@ -470,9 +470,7 @@ describe("ParamProvenanceBridge", () => {
                 },
                 partitionBy: ["patientId"],
                 origin: {
-                    type: "datum",
                     view: { scope: [], view: "root" },
-                    keyFields: ["id"],
                     keyTuple: ["seed"],
                 },
             })
@@ -540,16 +538,13 @@ describe("ParamProvenanceBridge", () => {
             paramProvenanceSlice.actions.expandPointSelection({
                 selector: { scope: [], param: "selection" },
                 operation: "replace",
-                predicate: {
+                rule: {
+                    kind: "sameFieldValue",
                     field: "Func",
-                    op: "eq",
-                    valueFromField: "Func",
                 },
                 partitionBy: ["sample"],
                 origin: {
-                    type: "datum",
                     view: { scope: [], view: "root" },
-                    keyFields: ["sample", "CHROM", "POS"],
                     keyTuple: ["S1", "chr1", 100],
                 },
             })
@@ -596,9 +591,7 @@ describe("ParamProvenanceBridge", () => {
                     valueFromField: "clusterId",
                 },
                 origin: {
-                    type: "datum",
                     view: { scope: [], view: "root" },
-                    keyFields: ["id"],
                     keyTuple: ["seed"],
                 },
             })

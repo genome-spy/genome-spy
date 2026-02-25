@@ -35,15 +35,12 @@ describe("paramProvenanceSlice", () => {
         const expandAction = paramProvenanceSlice.actions.expandPointSelection({
             selector: { scope: [], param: "bar" },
             operation: "replace",
-            predicate: {
+            rule: {
+                kind: "sameFieldValue",
                 field: "clusterId",
-                op: "eq",
-                valueFromField: "clusterId",
             },
             origin: {
-                type: "datum",
                 view: { scope: [], view: "points" },
-                keyFields: ["id"],
                 keyTuple: ["A"],
             },
         });
@@ -63,16 +60,13 @@ describe("paramProvenanceSlice", () => {
         const action = paramProvenanceSlice.actions.expandPointSelection({
             selector,
             operation: "replace",
-            predicate: {
+            rule: {
+                kind: "sameFieldValue",
                 field: "clusterId",
-                op: "eq",
-                valueFromField: "clusterId",
             },
             partitionBy: ["patientId"],
             origin: {
-                type: "datum",
                 view: { scope: [], view: "points" },
-                keyFields: ["id"],
                 keyTuple: ["seed"],
             },
         });
@@ -85,19 +79,50 @@ describe("paramProvenanceSlice", () => {
             value: {
                 type: "pointExpand",
                 operation: "replace",
-                predicate: {
+                rule: {
+                    kind: "sameFieldValue",
                     field: "clusterId",
-                    op: "eq",
-                    valueFromField: "clusterId",
                 },
                 partitionBy: ["patientId"],
                 origin: {
-                    type: "datum",
                     view: { scope: [], view: "points" },
-                    keyFields: ["id"],
                     keyTuple: ["seed"],
                 },
             },
+        });
+    });
+
+    it("stores predicate-based expansion entries for compatibility", () => {
+        const selector = { scope: [], param: "selection" };
+        const action = paramProvenanceSlice.actions.expandPointSelection({
+            selector,
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+        });
+
+        const state = paramProvenanceSlice.reducer(undefined, action);
+        const key = makeParamSelectorKey(selector);
+        expect(state.entries[key].value).toEqual({
+            type: "pointExpand",
+            operation: "replace",
+            predicate: {
+                field: "clusterId",
+                op: "eq",
+                valueFromField: "clusterId",
+            },
+            origin: {
+                view: { scope: [], view: "points" },
+                keyTuple: ["seed"],
+            },
+            partitionBy: undefined,
         });
     });
 

@@ -4,7 +4,10 @@ import type {
     ParamSelector,
     ViewSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
-import type { SelectionExpansionPredicate } from "./selectionExpansion.js";
+import type {
+    SelectionExpansionPredicate,
+    SelectionExpansionRule,
+} from "./selectionExpansion.js";
 
 /**
  * Shared type aliases for param provenance payloads.
@@ -42,19 +45,26 @@ export type ParamOrigin = {
 };
 
 export type PointExpandOrigin = {
-    type: "datum";
     view: ViewSelector;
-    keyFields: string[];
     keyTuple: Scalar[];
+    /**
+     * Legacy support: older bookmarks may include these.
+     * New payloads should omit them.
+     */
+    keyFields?: string[];
+    type?: "datum";
 };
+
+export type PointExpandMatcher =
+    | { rule: SelectionExpansionRule; predicate?: never }
+    | { predicate: SelectionExpansionPredicate; rule?: never };
 
 export type ParamValuePointExpand = {
     type: "pointExpand";
     operation: "replace" | "add" | "remove" | "toggle";
-    predicate: SelectionExpansionPredicate;
     partitionBy?: string[];
     origin: PointExpandOrigin;
-};
+} & PointExpandMatcher;
 
 export type ParamValue =
     | ParamValueLiteral
@@ -71,10 +81,9 @@ export type ParamProvenanceEntry = {
 export type ExpandPointSelectionActionPayload = {
     selector: ParamSelector;
     operation: "replace" | "add" | "remove" | "toggle";
-    predicate: SelectionExpansionPredicate;
     partitionBy?: string[];
     origin: PointExpandOrigin;
-};
+} & PointExpandMatcher;
 
 export type ParamProvenanceState = {
     entries: Record<string, ParamProvenanceEntry>;
