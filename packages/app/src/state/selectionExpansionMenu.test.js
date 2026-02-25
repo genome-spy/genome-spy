@@ -140,6 +140,6 @@ describe("selectionExpansionMenu", () => {
             context,
             () => undefined
         );
-        expect(submenu).toEqual([{ label: "No expansion fields available." }]);
+        expect(submenu).toEqual([{ label: "No suitable fields available." }]);
     });
 });

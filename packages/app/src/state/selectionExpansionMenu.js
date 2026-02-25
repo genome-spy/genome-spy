@@ -28,7 +28,7 @@ export function createSelectionExpansionMenuItem(context, dispatchAction) {
 export function createSelectionExpansionSubmenu(context, dispatchAction) {
     const fieldOptions = createSelectionExpansionFieldOptions(context);
     if (fieldOptions.length === 0) {
-        return [{ label: "No expansion fields available." }];
+        return [{ label: "No suitable fields available." }];
     }
 
     /** @type {MenuItem[]} */

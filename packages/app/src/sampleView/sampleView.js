@@ -1235,20 +1235,6 @@ export default class SampleView extends ContainerView {
                 previousContextTitle = contextTitle;
             }
 
-            if (
-                selectionExpansionContext &&
-                !selectionExpansionItemInserted &&
-                fieldInfo.view === selectionExpansionContext.hoveredView
-            ) {
-                items.push(
-                    createSelectionExpansionMenuItem(
-                        selectionExpansionContext,
-                        (action) => this.intentExecutor.dispatch(action)
-                    )
-                );
-                selectionExpansionItemInserted = true;
-            }
-
             if (selectionInterval) {
                 items.push({
                     label: fieldInfo.field,
@@ -1278,6 +1264,22 @@ export default class SampleView extends ContainerView {
                     sampleView: this,
                 }),
             });
+
+            const nextFieldInfo = uniqueFieldInfos[i + 1];
+            if (
+                selectionExpansionContext &&
+                !selectionExpansionItemInserted &&
+                fieldInfo.view === selectionExpansionContext.hoveredView &&
+                (!nextFieldInfo || nextFieldInfo.view !== fieldInfo.view)
+            ) {
+                items.push(
+                    createSelectionExpansionMenuItem(
+                        selectionExpansionContext,
+                        (action) => this.intentExecutor.dispatch(action)
+                    )
+                );
+                selectionExpansionItemInserted = true;
+            }
         }
 
         if (selectionExpansionContext && !selectionExpansionItemInserted) {
