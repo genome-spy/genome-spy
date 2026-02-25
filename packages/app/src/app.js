@@ -43,6 +43,10 @@ import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 import { resetProvenanceHistory } from "./state/provenanceBaseline.js";
 import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
 import { setupSelectionExpansionContextMenu } from "./state/selectionExpansionContextMenu.js";
+import {
+    createDefaultAppKeyboardShortcuts,
+    setupAppKeyboardShortcuts,
+} from "./state/appKeyboardShortcuts.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -313,6 +317,30 @@ export default class App {
         this.provenance.addActionInfoSource((action) =>
             getParamActionInfo(action, viewRoot)
         );
+        setupAppKeyboardShortcuts({
+            viewRoot,
+            shortcuts: createDefaultAppKeyboardShortcuts({
+                provenance: this.provenance,
+                focusSearchField: () => {
+                    const searchField = this.appContainer.querySelector(
+                        "genome-spy-search-field"
+                    );
+                    if (!searchField) {
+                        return false;
+                    }
+
+                    if (
+                        "focusInput" in searchField &&
+                        typeof searchField.focusInput === "function"
+                    ) {
+                        searchField.focusInput();
+                        return true;
+                    } else {
+                        return false;
+                    }
+                },
+            }),
+        });
         viewRoot.registerDisposer(
             setupSelectionExpansionContextMenu({
                 viewRoot,

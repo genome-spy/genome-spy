@@ -42,21 +42,14 @@ export default class SearchField extends LitElement {
         super.connectedCallback();
         this._initializeGenome();
 
-        const keyListener = (/** @type {KeyboardEvent} */ event) => {
-            this._onKeyDown(event);
-        };
         const documentClickListener = (/** @type {InputEvent} */ event) => {
             if (event.target !== this._inputField) {
                 this._inputField?.blur();
             }
         };
 
-        document.addEventListener("keydown", keyListener);
         document.addEventListener("click", documentClickListener);
 
-        this._subscriptions.addUnsubscribeCallback(() =>
-            document.removeEventListener("keydown", keyListener)
-        );
         this._subscriptions.addUnsubscribeCallback(() =>
             document.removeEventListener("click", documentClickListener)
         );
@@ -70,28 +63,8 @@ export default class SearchField extends LitElement {
         return this;
     }
 
-    /**
-     *
-     * @param {KeyboardEvent} event
-     */
-    _onKeyDown(event) {
-        if (event.target instanceof HTMLInputElement) {
-            // Ignore, don't interfere with input fields
-            return;
-        }
-
-        switch (event.code) {
-            case "KeyF":
-                if (!(event.metaKey || event.altKey || event.ctrlKey)) {
-                    event.preventDefault();
-                    const input = /** @type {HTMLInputElement} */ (
-                        this.inputRef.value
-                    );
-                    input.focus();
-                }
-                break;
-            default:
-        }
+    focusInput() {
+        this._inputField?.focus();
     }
 
     _initializeGenome() {

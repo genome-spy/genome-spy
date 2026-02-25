@@ -3,7 +3,12 @@
 ## Status
 
 - Branch: `feature/selection-expansion`
+- Last revised: 2026-02-25
 - Document scope: design and implementation plan for point-selection expansion based on datum properties, with provenance-friendly intent actions.
+- Implementation snapshot:
+  - Complete: action contract/types, predicate utilities, provenance replay integration, provenance action-info rendering, shared expansion menu module, SampleView and App-level context-menu integration, core test coverage.
+  - In progress: cleanup/refinement only.
+  - Pending: documentation pass, optional operation modes (`add`/`remove`/`toggle`) runtime support, optional replay-drift diagnostics.
 
 ## Problem Summary
 
@@ -43,30 +48,36 @@ The existing context menu is available and can host a new top-level action. Exis
 
 ## Entry Point
 
-Add one new top-level context menu item in SampleView context menu:
+Current implementation adds one top-level item in both context-menu hosts:
 
-- Label: `Expand Selection...`
+- Label: `Select related items`
 - Visible only when all are true:
   - A hover/pointed datum exists.
   - A target bookmarkable point selection parameter exists.
   - Target selection is multi-capable (`toggle: true` in selection config).
-  - Data collector is complete for target view.
   - At least one expansion rule is applicable.
-- The top-level context menu must open immediately; expensive field discovery and heuristics are deferred until the `Expand Selection...` submenu is opened.
+- Placement:
+  - In SampleView, grouped under the hovered unit-view section header.
+  - Outside SampleView, shown by App-level context-menu handler.
+- Performance behavior:
+  - Top-level context menu opens immediately.
+  - Field extraction and heuristic work happen lazily when submenu is opened.
 
 ## Initial Menu Structure
 
-Example submenu:
+Current submenu shape (3 levels):
 
-1. `Match <fieldLabel> = <originValue> in <scopeLabel>` (default)
-2. `Match <fieldLabel> = <originValue> across all` (optional, if configured)
-3. `Replace selection` (initially only mode shown)
+1. `Select related items`
+2. `Choose matching rule`
+3. Rule item `<field> = <value>` -> operation submenu:
+   - `In current <scope>`
+   - `Across all <scopes>` (only when scoped mode is available)
 
 Examples (generated at runtime, not hardcoded):
 
-1. `Match clusterId = C42 in this patient`
-2. `Match fusionType = DEL in this sample`
-3. `Match eventClass = translocation across all`
+1. `clusterId = C42` -> `In current patient`
+2. `Func = genic_other` -> `In current sample`
+3. `eventClass = translocation` -> `Across all samples`
 
 Label generation rules:
 
@@ -76,7 +87,7 @@ Label generation rules:
 4. `scopeLabel` can also map `["sampleId"]` -> `this sample`.
 5. `scopeLabel` falls back to `this scope` for multiple keys or unknown semantics.
 6. If origin value is null/undefined, hide that rule by default unless explicitly configured.
-7. If no human-friendly label is available, fallback to generic text: `Match related records in this scope`.
+7. If no human-friendly label is available, fallback to generic text.
 
 Future submenu items:
 
@@ -181,17 +192,20 @@ type ExpandPointSelectionIntentV1 = {
 
 ## Execution Flow
 
-Implement as an `IntentPipeline` hook, similar to metadata action augmentation:
+Current execution path:
 
 1. Validate payload and resolve `selector`.
 2. Resolve origin datum.
 3. Normalize predicate (`valueFromField` to literal values).
-4. Compile/evaluate predicate against collector data.
-5. Convert matched datums to key tuples using `encoding.key` fields.
-6. Merge with existing selection by `operation`.
-7. Dispatch action through `IntentExecutor`.
-8. Reducer stores semantic intent entry.
-9. Param bridge re-evaluates intent and applies serialized point value to runtime param.
+4. Evaluate predicate against collector data.
+5. Build runtime point selection from matched datums.
+6. Store semantic expansion action in param-provenance entry.
+7. Param bridge re-evaluates action and applies runtime param value.
+
+Implementation note:
+
+- Dispatch currently happens directly from menu callbacks via `IntentExecutor` to `expandPointSelection` action.
+- A dedicated `IntentPipeline` hook remains an optional refactor, not a functional blocker.
 
 ## Provenance and Bookmarks
 
@@ -237,142 +251,95 @@ Optional overrides from config:
 
 ## Step-by-Step Implementation Plan
 
-## Phase 1: Types and Contracts
+### Phase 1: Types and Contracts (`Complete`)
 
-1. Add selection-expansion types in App type surface:
-   - `packages/app/src/state/paramProvenanceSlice.js` (or new dedicated type module).
-2. Add LogicalComposition and predicate leaf typings in Core/App shared typings as needed.
-3. Add runtime validators/type guards for action payload.
+Implemented:
 
-Deliverable:
+1. Expansion payload and provenance value types in `packages/app/src/state/paramProvenanceTypes.d.ts`.
+2. Dedicated `expandPointSelection` reducer action in `packages/app/src/state/paramProvenanceSlice.js`.
+3. Grouping behavior for provenance coalescing (`expandPointSelection` does not coalesce with normal `paramChange`).
 
-- Serializable action contract with tests for guard logic.
+### Phase 2: Predicate Utilities (`Complete`)
 
-## Phase 2: Predicate Utilities
+Implemented in `packages/app/src/state/selectionExpansion.js`:
 
-1. Add helper utilities to:
-   - Traverse leaves (`forEachLeaf` equivalent).
-   - Normalize leaf predicates from origin datum.
-   - Compile logical predicate tree to expression string.
-2. Reuse `createFunction` in `packages/core/src/utils/expression.js` for evaluation.
-3. Add fail-fast errors for invalid operators/fields/ambiguous nodes.
+1. Logical composition helpers (`isLogicalAnd`, `isLogicalOr`, `isLogicalNot`).
+2. Predicate normalization (`valueFromField` -> resolved literal values).
+3. Partition predicate composition (`withPartitionBy`).
+4. Predicate function creation with fail-fast validation/errors.
 
-Deliverable:
+### Phase 3: Intent Pipeline Integration (`Partially Complete`)
 
-- Unit-tested predicate normalization and evaluation utility.
+Current:
 
-## Phase 3: Intent Pipeline Integration
+1. Expansion actions are dispatched via `IntentExecutor` from menu callbacks.
+2. Runtime application occurs in `ParamProvenanceBridge`.
+3. `operation` field is future-ready in payload contract, but only `replace` is executed in runtime.
 
-1. Register a new `IntentPipeline` action hook:
-   - Predicate: expansion action type.
-   - Augment: resolve selector, origin datum, and collector.
-2. Merge behavior by `operation`:
-   - `replace`: result only.
-   - `add`: union with current keys.
-   - `remove`: subtract.
-   - `toggle`: symmetric difference.
-3. Ensure collector readiness and clear error messages if unavailable.
+Remaining:
 
-Deliverable:
+1. Optional refactor: route expansion through an explicit `IntentPipeline` hook for parity with metadata intent hooks.
+2. Implement runtime semantics for `add`/`remove`/`toggle` operations.
 
-- Expansion action dispatch path with compact, semantic payloads.
+### Phase 4: Provenance Reducer + Bridge (`Complete for v1`)
 
-## Phase 4: Provenance Reducer + Bridge
+Implemented:
 
-1. Add reducer handling for new expansion action:
-   - Store expansion intent as param provenance entry for the selected parameter.
-2. Ensure `ParamProvenanceBridge` apply logic can evaluate intent and produce point values without regressions.
-3. Decide grouping behavior for consecutive expansion actions.
+1. Reducer stores semantic expansion entries (`pointExpand` value type).
+2. Bridge resolves origin datum, applies normalized + partitioned predicate, and writes multi-point selection runtime values.
+3. Collector readiness handling and delayed reapply are in place.
 
-Deliverable:
+### Phase 5: Action Info and UX Strings (`Complete for v1`)
 
-- Undo/redo/bookmark behavior verified for expansion actions.
+Implemented:
 
-## Phase 5: Action Info and UX Strings
+1. `paramActionInfo` renders expansion-specific provenance labels.
+2. Predicate labels use markup for field/operator/value.
+3. Scope wording reflects partitioning (`current sample`, `current patient`, `current scope`, `across all`).
 
-1. Extend action info rendering in:
-   - `packages/app/src/state/paramActionInfo.js`
-2. Add concise titles and scope-aware wording.
-3. Ensure provenance timeline distinguishes expansion from plain selection click.
+### Phase 6: Context Menu UI (`Complete for v1`)
 
-Deliverable:
+Implemented:
 
-- Meaningful provenance entries for expansion intents.
+1. SampleView integration with per-unit-view grouping and warning behavior when multiple eligible point params exist.
+2. Lazy submenu construction and field-option extraction.
+3. Rule-first submenu, then operation submenu (`replace`-based actions in v1).
 
-## Phase 6: Context Menu UI
+### Phase 6b: App-Level Context Menu Outside SampleView (`Complete for v1`)
 
-1. Integrate menu item into SampleView context menu builder path:
-   - Add `Expand Selection...` top-level item.
-   - Resolve a single eligible multi-point selection target param.
-   - If multiple eligible multi-point params are found in the same UnitView, log a warning and disable expansion UI.
-2. Populate `Expand Selection...` submenu lazily on open (not during main menu creation).
-3. Run candidate-field extraction and heuristics only during submenu open.
-4. Show candidate categorical fields from heuristic/config.
-5. Build expansion actions from user choice and submit via `intentPipeline`.
-6. Initial UI only uses `operation: "replace"` but payload supports all modes.
+Implemented:
 
-Deliverable:
+1. App-level contextmenu handler for non-SampleView contexts.
+2. Uses same `resolveSelectionExpansionContext(...)` resolution logic.
+3. Skips handling inside SampleView to avoid duplicate ownership.
 
-- End-to-end user-triggered expansion through context menu.
+### Code Reuse and Duplication Control (`Complete`)
 
-### Phase 6b: App-Level Context Menu Outside SampleView
+Implemented:
 
-Goal: make expansion available for non-SampleView visualizations in App while keeping Core free of menu/UI code.
+1. Shared expansion menu builder in `selectionExpansionMenu.js`.
+2. Shared context resolution and field-option logic in `selectionExpansionContext.js`.
+3. Both SampleView and App-level wrappers dispatch identical `expandPointSelection` payloads.
 
-1. Register an App-level `contextmenu` interaction handler after `viewRoot` is ready.
-2. Resolve expansion availability from current hover using `resolveSelectionExpansionContext(...)`.
-3. If hover is inside a `SampleView` subtree, do nothing and let SampleView own context-menu behavior.
-4. If hover is outside SampleView and expansion is available, open an App context menu containing expansion entries.
-5. Keep expensive field extraction lazy by building field/options only when submenu is opened.
-6. Keep dispatch path unchanged: menu callbacks dispatch `expandPointSelection` intent actions.
+### Phase 7: Tests (`Complete for v1 scope`)
 
-Deliverable:
+Implemented coverage includes:
 
-- `Expand point selection` is available in App context menus for non-SampleView views.
-- No Core-level menu rendering logic is introduced.
+1. Predicate normalization and logical evaluation (`selectionExpansion.test.js`).
+2. Context resolution and menu option generation (`selectionExpansionContext.test.js`, `selectionExpansionMenu.test.js`).
+3. Reducer payload behavior (`paramProvenanceSlice.test.js`).
+4. Bridge replay + partition behavior + failure paths (`paramProvenanceBridge.test.js`).
+5. Provenance action-title formatting (`paramActionInfo.test.js`).
 
-### Code Reuse and Duplication Control
+### Phase 8: Documentation (`Pending`)
 
-Use a shared App module so SampleView and App-level menus render the same expansion options.
+Remaining:
 
-1. Extract expansion menu construction into a shared helper module (for example `selectionExpansionMenu.js`).
-2. Keep `selectionExpansionContext.js` responsible for context/field-option resolution only.
-3. Make both callers (`SampleView` and App-level context menu handler) use the same menu-construction helper.
-4. Keep host-specific wrappers minimal:
-   - SampleView wrapper only handles menu grouping/placement under view headers.
-   - App wrapper only handles root-level menu placement.
-5. Keep one canonical callback implementation that dispatches the same `expandPointSelection` payload shape from both hosts.
-
-Deliverable:
-
-- Single-source expansion menu logic in App.
-- No duplicated label/operation/payload assembly logic across contexts.
-
-## Phase 7: Tests
-
-Add tests for:
-
-1. Predicate tree validation, normalization, and expression compilation.
-2. Action hook augmentation and materialization.
-3. Partition behavior (`partitionBy`) with repeated IDs across scopes.
-4. Operation semantics for `replace` in v1.
-5. Provenance action titles and bookmark serialization.
-6. Failure paths (missing key fields, missing collector, unresolved origin, multiple eligible point-selection params in one UnitView).
-
-Likely test files:
-
-- `packages/app/src/state/intentPipeline.test.js`
-- `packages/app/src/state/paramProvenanceBridge.test.js`
-- `packages/app/src/state/paramActionInfo.test.js`
-- New tests near new utility modules.
-
-## Phase 8: Documentation
-
-1. Add user-facing docs for:
+1. User-facing docs for:
    - Expansion behavior.
-   - Partition semantics.
-   - Config examples.
-2. Add developer docs for action payload and replay behavior.
+   - Scope/partition semantics.
+   - Example configurations.
+2. Developer docs for payload contract and replay model.
 
 ## Risk Register and Mitigations
 
@@ -399,11 +366,12 @@ Run all commands from repo root.
 
 ### Test Execution Plan
 
-1. During implementation, run focused suites frequently:
-   - `npx vitest run packages/app/src/state/intentPipeline.test.js`
+1. During implementation and refinements, run focused suites frequently:
+   - `npx vitest run packages/app/src/state/selectionExpansion.test.js`
+   - `npx vitest run packages/app/src/state/selectionExpansionContext.test.js`
+   - `npx vitest run packages/app/src/state/selectionExpansionMenu.test.js`
    - `npx vitest run packages/app/src/state/paramProvenanceBridge.test.js`
    - `npx vitest run packages/app/src/state/paramActionInfo.test.js`
-   - Plus any new expansion-specific test files.
 2. Before final commit, run workspace-level checks:
    - `npm -ws run test:tsc --if-present`
    - `npm run lint`
@@ -412,11 +380,18 @@ Run all commands from repo root.
 
 ### Commit Plan
 
-1. `feat(app): add selection expansion intent contract and predicate utilities`
-2. `feat(app): add expansion intent pipeline and param provenance integration`
-3. `feat(app): add lazy expansion submenu in context menu`
-4. `test(app): add coverage for expansion intent and UI guard cases`
-5. `docs(app): document selection expansion behavior and constraints`
+Already landed (feature branch):
+
+1. Selection-expansion intent contract, predicate utilities, and provenance bridge integration.
+2. Shared menu generation and context resolution.
+3. SampleView and App-level context-menu integration.
+4. Test coverage across reducer/bridge/context/menu/action-info modules.
+
+Remaining commits:
+
+1. Optional: `refactor(app): route selection expansion through intent pipeline hook`.
+2. Optional: `feat(app): support add/remove/toggle expansion operations`.
+3. `docs(app): document selection expansion behavior and constraints`.
 
 ## Acceptance Criteria (Initial Release)
 
@@ -426,4 +401,4 @@ Run all commands from repo root.
 4. Provenance shows an explicit expansion action title.
 5. Undo/redo works.
 6. Bookmark payload size remains compact (no unbounded key tuple arrays) and URL-hash sharing remains practical.
-7. Bookmark replay is semantically consistent; when source data changes, UI reports potential drift.
+7. Bookmark replay is semantic and compact; source-data drift is accepted in v1 (dedicated drift diagnostics are future work).
