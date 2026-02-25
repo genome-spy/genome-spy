@@ -97,7 +97,7 @@ export default class ProvenanceButtons extends LitElement {
             >
                 <button
                     class="tool-btn"
-                    title="Backtrack samples (B)"
+                    title="Undo (Z)"
                     ?disabled=${!this.provenance.isUndoable()}
                     @click=${() => this.provenance.undo()}
                 >
