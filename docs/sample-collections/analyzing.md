@@ -210,6 +210,27 @@ patient attribute, you can ensure that your sample collection comprises only
 those patients with samples from both anatomical sites. In other words, the
 patients with only a single anatomical site are removed.
 
+### Selecting related items in genomic tracks
+
+In genomic tracks, the context menu may include a _Select related items_ action
+for point selections. This lets you click one item and then select all items
+that share the same field value.
+
+For example, if a clicked structural variant has `clusterId = cl121`, you can
+select all variants with the same `clusterId`.
+
+The menu shows candidate fields from the clicked datum, focusing on
+categorical-like fields (typically non-empty strings and booleans).
+
+When visualizing multiple samples, the menu can offer two scopes:
+
+- _In current sample_: match items in the same sample as the clicked item.
+- _Across all samples_: match items regardless of sample.
+
+The operation replaces the active point selection. The action is recorded in
+provenance and included in bookmarks, so it can be replayed like other
+interactive actions.
+
 ## Bookmarking and sharing
 
 Saving a visualization state together with provenance as a bookmark is a
