@@ -14,6 +14,8 @@ import { DIVIDER } from "../utils/ui/contextMenu.js";
  * @returns {MenuItem}
  */
 export function createSelectionExpansionMenuItem(context, dispatchAction) {
+    // TODO(app): Route this through IntentPipeline when expansion gets
+    // async ensures/augment hooks, mirroring metadata intent flow.
     return {
         label: "Select related items",
         submenu: () => createSelectionExpansionSubmenu(context, dispatchAction),

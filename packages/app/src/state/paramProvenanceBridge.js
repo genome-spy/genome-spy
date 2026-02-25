@@ -822,6 +822,7 @@ export default class ParamProvenanceBridge {
         }
 
         if (storedValue.operation !== "replace") {
+            // TODO(app): Implement add/remove/toggle semantics for pointExpand.
             this.#warnSelection(
                 entry.param,
                 `uses unsupported operation "${storedValue.operation}". Only "replace" is supported in this version.`

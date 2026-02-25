@@ -83,6 +83,8 @@ export type ExpandPointSelectionActionPayload = {
     operation: "replace" | "add" | "remove" | "toggle";
     partitionBy?: string[];
     origin: PointExpandOrigin;
+    // TODO(app): Consider optional replay-drift diagnostics here, for example
+    // expectedMatchCount/sourceDataFingerprint, if semantic replay warnings are needed.
 } & PointExpandMatcher;
 
 export type ParamProvenanceState = {

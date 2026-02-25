@@ -189,6 +189,8 @@ export function createSelectionExpansionFieldOptions(context) {
         const acrossAllLabel = formatAcrossAllLabel(defaultScopeLabel);
         /** @type {SelectionExpansionOperationOption[]} */
         const operationOptions = [];
+        // TODO(app): Add "add"/"remove"/"toggle" options once runtime support
+        // is implemented in ParamProvenanceBridge.
         operationOptions.push({
             label: "In " + currentScopeLabel,
             payload: {
