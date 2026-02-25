@@ -148,6 +148,25 @@ Current constraints:
 - Only Snappy-compressed Parquet files are supported.
 - 64-bit integer values that require JavaScript `BigInt` are not supported.
 
+!!! info "Writing compatible Parquet files in R"
+
+    The following example shows how to write compatible Parquet files in R
+    using the `arrow` package:
+
+    ```r
+    library(arrow)
+    library(dplyr)
+
+    data.frame(x = 123L, y = 1.23) |>
+      arrow_table() |>
+      mutate(
+        across(where(is.integer), ~ arrow::cast(., int32())),
+        # Using float32 instead of double is optional but can significantly reduce file size
+        across(where(is.double),  ~ arrow::cast(., float32()))
+      ) |>
+      write_parquet("data.parquet")
+    ```
+
 The implementation is based on
 [hyparquet](https://github.com/hyparam/hyparquet).
 
