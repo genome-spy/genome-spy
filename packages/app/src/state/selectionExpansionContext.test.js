@@ -162,9 +162,9 @@ describe("selectionExpansionContext", () => {
         ]);
         expect(
             options[0].operations.map((operation) => operation.label)
-        ).toEqual(["Match in this sample", "Match across all"]);
+        ).toEqual(["In current sample", "Across all samples"]);
         expect(options[0].operations[0].payload.label).toBe(
-            "Match Func = genic_other in this sample"
+            "Func equals genic_other in current sample"
         );
         expect(options[0].operations[0].payload.partitionBy).toEqual([
             "sample",
@@ -211,6 +211,6 @@ describe("selectionExpansionContext", () => {
         ]);
         expect(
             options[0].operations.map((operation) => operation.label)
-        ).toEqual(["Match in this scope"]);
+        ).toEqual(["In current scope"]);
     });
 });

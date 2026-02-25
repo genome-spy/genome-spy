@@ -14,7 +14,7 @@ import { DIVIDER } from "../utils/ui/contextMenu.js";
  */
 export function createSelectionExpansionMenuItem(context, dispatchAction) {
     return {
-        label: "Expand point selection",
+        label: "Select related items",
         submenu: () => createSelectionExpansionSubmenu(context, dispatchAction),
     };
 }
@@ -34,20 +34,24 @@ export function createSelectionExpansionSubmenu(context, dispatchAction) {
     const submenu = [
         {
             type: "header",
-            label: "Choose a field",
+            label: "Choose matching rule",
         },
         DIVIDER,
     ];
 
     for (const fieldOption of fieldOptions) {
+        const ruleLabel = formatRuleLabel(
+            fieldOption.fieldName,
+            fieldOption.valueLabel
+        );
         submenu.push({
-            label: fieldOption.fieldName,
+            label: ruleLabel,
             submenu: () => {
                 /** @type {MenuItem[]} */
                 const operationSubmenu = [
                     {
                         type: "header",
-                        label: "Value: " + fieldOption.valueLabel,
+                        label: ruleLabel,
                     },
                     DIVIDER,
                 ];
@@ -70,4 +74,12 @@ export function createSelectionExpansionSubmenu(context, dispatchAction) {
     }
 
     return submenu;
+}
+
+/**
+ * @param {string} fieldName
+ * @param {string} valueLabel
+ */
+function formatRuleLabel(fieldName, valueLabel) {
+    return fieldName + " equals " + valueLabel;
 }

@@ -185,17 +185,14 @@ export function createSelectionExpansionFieldOptions(context) {
     for (const fieldName of scalarValueFields) {
         const value = hoveredDatum[fieldName];
         const valueLabel = formatSelectionExpansionValue(value);
+        const currentScopeLabel = formatCurrentScopeLabel(defaultScopeLabel);
+        const acrossAllLabel = formatAcrossAllLabel(defaultScopeLabel);
         const scopedActionLabel =
-            "Match " +
-            fieldName +
-            " = " +
-            valueLabel +
-            " in " +
-            defaultScopeLabel;
+            fieldName + " equals " + valueLabel + " in " + currentScopeLabel;
         /** @type {SelectionExpansionOperationOption[]} */
         const operationOptions = [];
         operationOptions.push({
-            label: "Match in " + defaultScopeLabel,
+            label: "In " + currentScopeLabel,
             payload: {
                 selector,
                 operation: "replace",
@@ -217,9 +214,11 @@ export function createSelectionExpansionFieldOptions(context) {
 
         if (defaultPartitionBy?.length) {
             const globalActionLabel =
-                "Match " + fieldName + " = " + valueLabel + " across all";
+                fieldName + " equals " + valueLabel + " " + acrossAllLabel;
             operationOptions.push({
-                label: "Match across all",
+                label:
+                    acrossAllLabel.charAt(0).toUpperCase() +
+                    acrossAllLabel.slice(1),
                 payload: {
                     selector,
                     operation: "replace",
@@ -413,4 +412,36 @@ function formatSelectionExpansionValue(value) {
     }
 
     return text;
+}
+
+/**
+ * @param {string} defaultScopeLabel
+ * @returns {string}
+ */
+function formatCurrentScopeLabel(defaultScopeLabel) {
+    if (defaultScopeLabel.startsWith("this ")) {
+        return "current " + defaultScopeLabel.slice(5);
+    }
+
+    return defaultScopeLabel;
+}
+
+/**
+ * @param {string} defaultScopeLabel
+ * @returns {string}
+ */
+function formatAcrossAllLabel(defaultScopeLabel) {
+    if (defaultScopeLabel === "this sample") {
+        return "across all samples";
+    }
+
+    if (defaultScopeLabel === "this patient") {
+        return "across all patients";
+    }
+
+    if (defaultScopeLabel === "this scope") {
+        return "across all scopes";
+    }
+
+    return "across all";
 }

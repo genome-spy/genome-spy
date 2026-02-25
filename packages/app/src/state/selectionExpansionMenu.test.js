@@ -63,21 +63,23 @@ describe("selectionExpansionMenu", () => {
 
         const dispatchAction = vi.fn();
         const item = createSelectionExpansionMenuItem(context, dispatchAction);
-        expect(item.label).toBe("Expand point selection");
+        expect(item.label).toBe("Select related items");
         expect(typeof item.submenu).toBe("function");
 
         const submenu = /** @type {() => any[]} */ (item.submenu)();
         expect(submenu[0]).toEqual({
             type: "header",
-            label: "Choose a field",
+            label: "Choose matching rule",
         });
 
-        const fieldItem = submenu.find((entry) => entry.label === "Func");
+        const fieldItem = submenu.find(
+            (entry) => entry.label === "Func equals genic_other"
+        );
         expect(fieldItem).toBeDefined();
 
         const operations = /** @type {() => any[]} */ (fieldItem.submenu)();
         const matchThisSample = operations.find(
-            (entry) => entry.label === "Match in this sample"
+            (entry) => entry.label === "In current sample"
         );
         expect(matchThisSample).toBeDefined();
 
