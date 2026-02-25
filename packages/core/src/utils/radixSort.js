@@ -6,8 +6,25 @@ const MAX_INTEGER_DIGIT = getDigits([MAX_INTEGER]);
 /**
  * @param {number[]} arr An array of unsigned integers
  */
+function checkIfSorted(arr) {
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] < arr[i - 1]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * @param {number[]} arr An array of unsigned integers
+ */
 export default function radixSort(arr) {
     const maxDigits = getDigits(arr);
+
+    // Early exit if already sorted
+    if (checkIfSorted(arr)) {
+        return arr;
+    }
 
     let buffer = new Array(arr.length);
     let bufferPtr = buffer;
@@ -69,7 +86,9 @@ export default function radixSort(arr) {
 function getDigits(arr) {
     let max = 0;
     for (let i = 0, n = arr.length; i < n; i++) {
-        max = Math.max(max, arr[i]);
+        if (arr[i] > max) {
+            max = arr[i];
+        }
     }
     return Math.floor(Math.log2(max) / 4) + 1;
 }
@@ -80,6 +99,12 @@ function getDigits(arr) {
 export function radixSortIntoLookupArray(arr) {
     const maxDigits = getDigits(arr);
     let indexes = Array.from({ length: arr.length }, (_, i) => i);
+
+    // Early exit if already sorted
+    if (checkIfSorted(arr)) {
+        return indexes;
+    }
+
     let buffer = new Array(arr.length);
     const counts = new Array(16);
 
