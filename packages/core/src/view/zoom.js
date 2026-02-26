@@ -12,19 +12,21 @@ import RingBuffer from "../utils/ringBuffer.js";
 import { isTouchGestureEvent } from "../utils/interactionEvent.js";
 import Point from "./layout/point.js";
 
-/** @type {ReturnType<typeof makeLerpSmoother>} */
-let smoother;
+/**
+ * @typedef {object} ZoomInteractionState
+ * @prop {ReturnType<typeof makeLerpSmoother>} smoother
+ * @prop {RingBuffer<{point: Point, timestamp: number}>} touchPanEventBuffer
+ * @prop {Point | undefined} touchPanLastPoint
+ * @prop {0 | 1 | 2} touchPanPointerCount
+ */
 
 let lastTimestamp = 0;
 
-/** @type {RingBuffer<{point: Point, timestamp: number}>} */
-let touchPanEventBuffer = new RingBuffer(30);
+/** @type {WeakMap<import("../utils/animator.js").default, ZoomInteractionState>} */
+const zoomInteractionStates = new WeakMap();
 
-/** @type {Point | undefined} */
-let touchPanLastPoint;
-
-/** @type {0 | 1 | 2} */
-let touchPanPointerCount = 0;
+/** @type {ZoomInteractionState} */
+const fallbackInteractionState = createInteractionState();
 
 export function markZoomActivity() {
     lastTimestamp = performance.now();
@@ -58,6 +60,7 @@ function recordTimeStamp(fn) {
  */
 export function interactionToZoom(event, coords, handleZoom, hover, animator) {
     handleZoom = recordTimeStamp(handleZoom);
+    const interactionState = getInteractionState(animator);
 
     if (event.type == "wheel") {
         // TODO: Wheel-zoom inertia should probably be moved here and the faked wheel
@@ -73,7 +76,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         }
 
         // Stop drag-to-pan inertia
-        smoother?.stop();
+        interactionState.smoother?.stop();
 
         let { x, y } = event.point;
 
@@ -111,8 +114,8 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             });
         }
     } else if (event.type == "mousedown" && event.mouseEvent.button === 0) {
-        if (smoother) {
-            smoother.stop();
+        if (interactionState.smoother) {
+            interactionState.smoother.stop();
         }
 
         /** @type {RingBuffer<{point: Point, timestamp: number}>} */
@@ -145,9 +148,14 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         const onMouseup = () => {
             document.removeEventListener("mousemove", onMousemove);
             document.removeEventListener("mouseup", onMouseup);
-            startPanInertia(eventBuffer, prevPoint, handleZoom, animator, {
-                minSampleCount: 5,
-            });
+            startPanInertia(
+                interactionState,
+                eventBuffer,
+                prevPoint,
+                handleZoom,
+                animator,
+                { minSampleCount: 5 }
+            );
         };
 
         document.addEventListener("mouseup", onMouseup, false);
@@ -163,8 +171,9 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         if (touchGesture.phase === "end") {
             if (touchGesture.pointerCount === 1) {
                 startPanInertia(
-                    touchPanEventBuffer,
-                    touchPanLastPoint,
+                    interactionState,
+                    interactionState.touchPanEventBuffer,
+                    interactionState.touchPanLastPoint,
                     handleZoom,
                     animator,
                     {
@@ -173,23 +182,25 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
                     }
                 );
             }
-            resetTouchPanState();
+            resetTouchPanState(interactionState);
             return;
         }
 
-        if (touchPanPointerCount !== touchGesture.pointerCount) {
-            resetTouchPanState();
-            touchPanPointerCount = touchGesture.pointerCount;
+        if (
+            interactionState.touchPanPointerCount !== touchGesture.pointerCount
+        ) {
+            resetTouchPanState(interactionState);
+            interactionState.touchPanPointerCount = touchGesture.pointerCount;
         }
 
         const currentPoint = new Point(
             event.point.x + xDelta,
             event.point.y + yDelta
         );
-        touchPanLastPoint = currentPoint;
+        interactionState.touchPanLastPoint = currentPoint;
 
         if (touchGesture.pointerCount === 1 && (xDelta !== 0 || yDelta !== 0)) {
-            touchPanEventBuffer.push({
+            interactionState.touchPanEventBuffer.push({
                 point: currentPoint,
                 timestamp: performance.now(),
             });
@@ -200,7 +211,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         }
 
         // Stop drag-to-pan inertia when touch gestures take over.
-        smoother?.stop();
+        interactionState.smoother?.stop();
 
         handleZoom({
             x: event.point.x,
@@ -212,13 +223,46 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
     }
 }
 
-function resetTouchPanState() {
-    touchPanEventBuffer = new RingBuffer(30);
-    touchPanLastPoint = undefined;
-    touchPanPointerCount = 0;
+/**
+ * @returns {ZoomInteractionState}
+ */
+function createInteractionState() {
+    return {
+        smoother: undefined,
+        touchPanEventBuffer: new RingBuffer(30),
+        touchPanLastPoint: undefined,
+        touchPanPointerCount: 0,
+    };
 }
 
 /**
+ * @param {import("../utils/animator.js").default} [animator]
+ */
+function getInteractionState(animator) {
+    if (!animator) {
+        return fallbackInteractionState;
+    }
+
+    let state = zoomInteractionStates.get(animator);
+    if (!state) {
+        state = createInteractionState();
+        zoomInteractionStates.set(animator, state);
+    }
+
+    return state;
+}
+
+/**
+ * @param {ZoomInteractionState} interactionState
+ */
+function resetTouchPanState(interactionState) {
+    interactionState.touchPanEventBuffer = new RingBuffer(30);
+    interactionState.touchPanLastPoint = undefined;
+    interactionState.touchPanPointerCount = 0;
+}
+
+/**
+ * @param {ZoomInteractionState} interactionState
  * @param {RingBuffer<{point: Point, timestamp: number}>} eventBuffer
  * @param {Point | undefined} lastPoint
  * @param {(zoomEvent: ZoomEvent) => void} handleZoom
@@ -226,6 +270,7 @@ function resetTouchPanState() {
  * @param {{minSampleCount?: number, minVelocityPxPerMs?: number}} [options]
  */
 function startPanInertia(
+    interactionState,
     eventBuffer,
     lastPoint,
     handleZoom,
@@ -269,7 +314,7 @@ function startPanInertia(
     let x = lastPoint.x;
     let y = lastPoint.y;
 
-    smoother = makeLerpSmoother(
+    interactionState.smoother = makeLerpSmoother(
         animator,
         (point) => {
             handleZoom({
@@ -287,7 +332,7 @@ function startPanInertia(
         { x, y }
     );
 
-    smoother({
+    interactionState.smoother({
         x: lastPoint.x - v.x * 250,
         y: lastPoint.y - v.y * 250,
     });

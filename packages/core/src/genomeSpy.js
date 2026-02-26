@@ -475,7 +475,7 @@ export default class GenomeSpy {
 
             await this.#prepareViewsAndData();
 
-            this.registerMouseEvents();
+            this.#interactionController.registerInteractionEvents();
 
             this.computeLayout();
             this.animator.requestRender();
@@ -526,10 +526,6 @@ export default class GenomeSpy {
         this.#glHelper.invalidateSize();
         this.computeLayout();
         this.animator.requestRender();
-    }
-
-    registerMouseEvents() {
-        this.#interactionController.registerMouseEvents();
     }
 
     /**
