@@ -6,10 +6,6 @@ import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
-import {
-    getClientDistance,
-    pinchDistanceToZoomDelta,
-} from "../utils/pinchZoom.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -545,4 +541,35 @@ export default class InteractionController {
             );
         }
     }
+}
+
+/**
+ * @typedef {{clientX: number, clientY: number}} ClientPointLike
+ */
+
+/**
+ * Returns euclidean distance between two client-space points.
+ *
+ * @param {ClientPointLike} a
+ * @param {ClientPointLike} b
+ */
+function getClientDistance(a, b) {
+    const dx = b.clientX - a.clientX;
+    const dy = b.clientY - a.clientY;
+    return Math.hypot(dx, dy);
+}
+
+/**
+ * Converts a pinch distance ratio to a zDelta used by interactionToZoom:
+ * scaleFactor = 2 ** zDelta.
+ *
+ * @param {number} previousDistance
+ * @param {number} currentDistance
+ */
+function pinchDistanceToZoomDelta(previousDistance, currentDistance) {
+    if (previousDistance <= 0 || currentDistance <= 0) {
+        return 0;
+    }
+
+    return Math.log2(previousDistance / currentDistance);
 }
