@@ -21,6 +21,7 @@ overflow: hidden;
 
 canvas {
 display: block;
+touch-action: none;
 transform: scale(1, 1);
 opacity: 1;
 transition:

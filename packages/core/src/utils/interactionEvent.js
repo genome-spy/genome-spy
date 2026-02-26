@@ -1,4 +1,43 @@
 /**
+ * @typedef {object} TouchGestureEvent
+ * @prop {"touchgesture"} type
+ * @prop {"move" | "end"} phase
+ * @prop {1 | 2} pointerCount
+ * @prop {number} xDelta
+ * @prop {number} yDelta
+ * @prop {number} zDelta
+ * @prop {() => void} [preventDefault]
+ */
+
+/**
+ * @typedef {UIEvent | TouchGestureEvent} InteractionUiEvent
+ */
+
+/**
+ * @param {unknown} eventLike
+ * @returns {eventLike is TouchGestureEvent}
+ */
+export function isTouchGestureEvent(eventLike) {
+    if (!eventLike || typeof eventLike !== "object") {
+        return false;
+    }
+
+    const candidate =
+        /** @type {{type?: unknown, phase?: unknown, pointerCount?: unknown, xDelta?: unknown, yDelta?: unknown, zDelta?: unknown}} */ (
+            eventLike
+        );
+
+    return (
+        candidate.type === "touchgesture" &&
+        (candidate.phase === "move" || candidate.phase === "end") &&
+        (candidate.pointerCount === 1 || candidate.pointerCount === 2) &&
+        Number.isFinite(candidate.xDelta) &&
+        Number.isFinite(candidate.yDelta) &&
+        Number.isFinite(candidate.zDelta)
+    );
+}
+
+/**
  * This class wraps a MouseEvent (or similar) and allows for
  * its propagation through the view hierarchy in a similar manner
  * as in the DOM.
@@ -10,7 +49,7 @@ export default class InteractionEvent {
     /**
      * @param {import("../view/layout/point.js").default} point Event coordinates
      *      inside the visualization canvas.
-     * @param {UIEvent} uiEvent The event to be wrapped
+     * @param {InteractionUiEvent} uiEvent The event to be wrapped
      */
     constructor(point, uiEvent) {
         this.point = point;

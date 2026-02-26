@@ -82,11 +82,27 @@ export default class InteractionController {
         return this.#currentHover;
     }
 
-    registerMouseEvents() {
+    registerInteractionEvents() {
         const canvas = this.#glHelper.canvas;
 
         let lastWheelEvent = performance.now();
         let longPressTriggered = false;
+        /** @type {{ pointerCount: 1 | 2, centerX: number, centerY: number, distance: number } | undefined} */
+        let previousTouchGesture;
+
+        /**
+         * @param {Point} point
+         * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
+         */
+        const dispatchInteractionEvent = (point, uiEvent) => {
+            this.#viewRoot.propagateInteractionEvent(
+                new InteractionEvent(point, uiEvent)
+            );
+
+            if (!this.#tooltipUpdateRequested) {
+                this.#tooltip.clear();
+            }
+        };
 
         /** @param {Event} event */
         const listener = (event) => {
@@ -117,13 +133,7 @@ export default class InteractionController {
                  * @param {MouseEvent} dispatchedEvent
                  */
                 const dispatchEvent = (dispatchedEvent) => {
-                    this.#viewRoot.propagateInteractionEvent(
-                        new InteractionEvent(point, dispatchedEvent)
-                    );
-
-                    if (!this.#tooltipUpdateRequested) {
-                        this.#tooltip.clear();
-                    }
+                    dispatchInteractionEvent(point, dispatchedEvent);
                 };
 
                 if (event.type != "wheel") {
@@ -223,10 +233,167 @@ export default class InteractionController {
             "wheel",
             "click",
             "mousemove",
-            "gesturechange",
             "contextmenu",
             "dblclick",
         ].forEach((type) => canvas.addEventListener(type, listener));
+
+        /**
+         * @param {number} clientX
+         * @param {number} clientY
+         */
+        const toCanvasPoint = (clientX, clientY) => {
+            const rect = canvas.getBoundingClientRect();
+            return new Point(
+                clientX - rect.left - canvas.clientLeft,
+                clientY - rect.top - canvas.clientTop
+            );
+        };
+
+        /**
+         * @param {TouchList} touches
+         */
+        const readTouchGesture = (touches) => {
+            if (touches.length <= 0) {
+                return;
+            }
+
+            const first = touches[0];
+
+            if (touches.length === 1) {
+                return {
+                    pointerCount: /** @type {1} */ (1),
+                    centerX: first.clientX,
+                    centerY: first.clientY,
+                    distance: 0,
+                };
+            }
+
+            const second = touches[1];
+            return {
+                pointerCount: /** @type {2} */ (2),
+                centerX: (first.clientX + second.clientX) / 2,
+                centerY: (first.clientY + second.clientY) / 2,
+                distance: getClientDistance(first, second),
+            };
+        };
+
+        /**
+         * @param {number} x
+         * @param {number} y
+         * @param {"move" | "end"} phase
+         * @param {1 | 2} pointerCount
+         * @param {number} xDelta
+         * @param {number} yDelta
+         * @param {number} zDelta
+         */
+        const dispatchTouchGestureEvent = (
+            x,
+            y,
+            phase,
+            pointerCount,
+            xDelta,
+            yDelta,
+            zDelta
+        ) => {
+            const point = toCanvasPoint(x, y);
+            dispatchInteractionEvent(point, {
+                type: "touchgesture",
+                phase,
+                pointerCount,
+                xDelta,
+                yDelta,
+                zDelta,
+            });
+        };
+
+        /**
+         * @param {TouchEvent} touchEvent
+         */
+        const handleTouchStartOrMove = (touchEvent) => {
+            touchEvent.preventDefault();
+            this.#wheelInertia.cancel();
+            this.#tooltipUpdateRequested = false;
+
+            const currentGesture = readTouchGesture(touchEvent.touches);
+            if (!currentGesture) {
+                previousTouchGesture = undefined;
+                return;
+            }
+
+            if (
+                !previousTouchGesture ||
+                previousTouchGesture.pointerCount !==
+                    currentGesture.pointerCount
+            ) {
+                previousTouchGesture = currentGesture;
+                return;
+            }
+
+            const xDelta =
+                currentGesture.centerX - previousTouchGesture.centerX;
+            const yDelta =
+                currentGesture.centerY - previousTouchGesture.centerY;
+            const zDelta =
+                currentGesture.pointerCount === 2
+                    ? pinchDistanceToZoomDelta(
+                          previousTouchGesture.distance,
+                          currentGesture.distance
+                      )
+                    : 0;
+
+            if (
+                (xDelta !== 0 || yDelta !== 0 || zDelta !== 0) &&
+                Number.isFinite(xDelta) &&
+                Number.isFinite(yDelta) &&
+                Number.isFinite(zDelta)
+            ) {
+                dispatchTouchGestureEvent(
+                    previousTouchGesture.centerX,
+                    previousTouchGesture.centerY,
+                    "move",
+                    currentGesture.pointerCount,
+                    xDelta,
+                    yDelta,
+                    zDelta
+                );
+            }
+
+            previousTouchGesture = currentGesture;
+        };
+
+        /**
+         * @param {TouchEvent} touchEvent
+         */
+        const handleTouchEndOrCancel = (touchEvent) => {
+            touchEvent.preventDefault();
+            this.#tooltipUpdateRequested = false;
+            if (previousTouchGesture && touchEvent.touches.length === 0) {
+                dispatchTouchGestureEvent(
+                    previousTouchGesture.centerX,
+                    previousTouchGesture.centerY,
+                    "end",
+                    previousTouchGesture.pointerCount,
+                    0,
+                    0,
+                    0
+                );
+            }
+
+            previousTouchGesture = readTouchGesture(touchEvent.touches);
+        };
+
+        canvas.addEventListener("touchstart", handleTouchStartOrMove, {
+            passive: false,
+        });
+        canvas.addEventListener("touchmove", handleTouchStartOrMove, {
+            passive: false,
+        });
+        canvas.addEventListener("touchend", handleTouchEndOrCancel, {
+            passive: false,
+        });
+        canvas.addEventListener("touchcancel", handleTouchEndOrCancel, {
+            passive: false,
+        });
 
         canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
             this.#mouseDownCoords = Point.fromMouseEvent(e);
@@ -374,4 +541,35 @@ export default class InteractionController {
             );
         }
     }
+}
+
+/**
+ * @typedef {{clientX: number, clientY: number}} ClientPointLike
+ */
+
+/**
+ * Returns euclidean distance between two client-space points.
+ *
+ * @param {ClientPointLike} a
+ * @param {ClientPointLike} b
+ */
+function getClientDistance(a, b) {
+    const dx = b.clientX - a.clientX;
+    const dy = b.clientY - a.clientY;
+    return Math.hypot(dx, dy);
+}
+
+/**
+ * Converts a pinch distance ratio to a zDelta used by interactionToZoom:
+ * scaleFactor = 2 ** zDelta.
+ *
+ * @param {number} previousDistance
+ * @param {number} currentDistance
+ */
+function pinchDistanceToZoomDelta(previousDistance, currentDistance) {
+    if (previousDistance <= 0 || currentDistance <= 0) {
+        return 0;
+    }
+
+    return Math.log2(previousDistance / currentDistance);
 }
