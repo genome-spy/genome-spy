@@ -1,6 +1,8 @@
 /**
  * @typedef {object} TouchGestureEvent
  * @prop {"touchgesture"} type
+ * @prop {"move" | "end"} phase
+ * @prop {1 | 2} pointerCount
  * @prop {number} xDelta
  * @prop {number} yDelta
  * @prop {number} zDelta
@@ -21,12 +23,14 @@ export function isTouchGestureEvent(eventLike) {
     }
 
     const candidate =
-        /** @type {{type?: unknown, xDelta?: unknown, yDelta?: unknown, zDelta?: unknown}} */ (
+        /** @type {{type?: unknown, phase?: unknown, pointerCount?: unknown, xDelta?: unknown, yDelta?: unknown, zDelta?: unknown}} */ (
             eventLike
         );
 
     return (
         candidate.type === "touchgesture" &&
+        (candidate.phase === "move" || candidate.phase === "end") &&
+        (candidate.pointerCount === 1 || candidate.pointerCount === 2) &&
         Number.isFinite(candidate.xDelta) &&
         Number.isFinite(candidate.yDelta) &&
         Number.isFinite(candidate.zDelta)

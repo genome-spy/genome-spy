@@ -28,6 +28,8 @@ describe("touch gesture zoom conversion", () => {
         const handleZoom = vi.fn();
         const event = new InteractionEvent(new Point(10, 20), {
             type: "touchgesture",
+            phase: "move",
+            pointerCount: 1,
             xDelta: 3,
             yDelta: -2,
             zDelta: 0.5,
@@ -48,6 +50,8 @@ describe("touch gesture zoom conversion", () => {
         const handleZoom = vi.fn();
         const event = new InteractionEvent(new Point(10, 20), {
             type: "touchgesture",
+            phase: "move",
+            pointerCount: 1,
             xDelta: NaN,
             yDelta: 0,
             zDelta: 0,

@@ -277,15 +277,27 @@ export default class InteractionController {
         /**
          * @param {number} x
          * @param {number} y
+         * @param {"move" | "end"} phase
+         * @param {1 | 2} pointerCount
          * @param {number} xDelta
          * @param {number} yDelta
          * @param {number} zDelta
          */
-        const dispatchTouchGestureEvent = (x, y, xDelta, yDelta, zDelta) => {
+        const dispatchTouchGestureEvent = (
+            x,
+            y,
+            phase,
+            pointerCount,
+            xDelta,
+            yDelta,
+            zDelta
+        ) => {
             const point = toCanvasPoint(x, y);
             this.#viewRoot.propagateInteractionEvent(
                 new InteractionEvent(point, {
                     type: "touchgesture",
+                    phase,
+                    pointerCount,
                     xDelta,
                     yDelta,
                     zDelta,
@@ -333,11 +345,15 @@ export default class InteractionController {
 
             if (
                 (xDelta !== 0 || yDelta !== 0 || zDelta !== 0) &&
+                Number.isFinite(xDelta) &&
+                Number.isFinite(yDelta) &&
                 Number.isFinite(zDelta)
             ) {
                 dispatchTouchGestureEvent(
                     previousTouchGesture.centerX,
                     previousTouchGesture.centerY,
+                    "move",
+                    currentGesture.pointerCount,
                     xDelta,
                     yDelta,
                     zDelta
@@ -352,6 +368,18 @@ export default class InteractionController {
          */
         const handleTouchEndOrCancel = (touchEvent) => {
             touchEvent.preventDefault();
+            if (previousTouchGesture && touchEvent.touches.length === 0) {
+                dispatchTouchGestureEvent(
+                    previousTouchGesture.centerX,
+                    previousTouchGesture.centerY,
+                    "end",
+                    previousTouchGesture.pointerCount,
+                    0,
+                    0,
+                    0
+                );
+            }
+
             previousTouchGesture = readTouchGesture(touchEvent.touches);
         };
 
