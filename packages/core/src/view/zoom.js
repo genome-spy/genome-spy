@@ -9,6 +9,7 @@
 
 import { makeLerpSmoother } from "../utils/animator.js";
 import RingBuffer from "../utils/ringBuffer.js";
+import { isTouchGestureEvent } from "../utils/interactionEvent.js";
 import Point from "./layout/point.js";
 
 /** @type {ReturnType<typeof makeLerpSmoother>} */
@@ -186,6 +187,27 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
 
         document.addEventListener("mouseup", onMouseup, false);
         document.addEventListener("mousemove", onMousemove, false);
+    } else if (event.type == "touchgesture") {
+        if (!isTouchGestureEvent(event.uiEvent)) {
+            return;
+        }
+
+        const { xDelta, yDelta, zDelta } = event.uiEvent;
+
+        if (xDelta === 0 && yDelta === 0 && zDelta === 0) {
+            return;
+        }
+
+        // Stop drag-to-pan inertia when touch gestures take over.
+        smoother?.stop();
+
+        handleZoom({
+            x: event.point.x,
+            y: event.point.y,
+            xDelta,
+            yDelta,
+            zDelta,
+        });
     }
 }
 
