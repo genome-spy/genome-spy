@@ -72,7 +72,7 @@ with GenomeSpy: a grammar-based visualization toolkit, _GigaScience_, Volume 13,
 
 Copyright (c) 2019-2026 Kari Lavikka. See [LICENSE](LICENSE) for details.
 
-GenomeSpy is developed in [The Systems Biology of Drug Resistance in
+GenomeSpy was originally developed in [The Systems Biology of Drug Resistance in
 Cancer](https://www.helsinki.fi/en/researchgroups/systems-biology-of-drug-resistance-in-cancer)
 group at the [University of Helsinki](https://www.helsinki.fi/en).
 
