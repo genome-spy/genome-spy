@@ -198,6 +198,8 @@ export default class GenomeSpy {
     }
 
     #setupDpr() {
+        this.dpr = this.#glHelper.getDevicePixelRatio();
+
         const dprSetter = this.viewRoot.paramRuntime.allocateSetter(
             "devicePixelRatio",
             this.dpr
@@ -205,7 +207,7 @@ export default class GenomeSpy {
 
         const resizeCallback = () => {
             this.#glHelper.invalidateSize();
-            this.dpr = window.devicePixelRatio;
+            this.dpr = this.#glHelper.getDevicePixelRatio();
             dprSetter(this.dpr);
             this.computeLayout();
             // Render immediately, without RAF

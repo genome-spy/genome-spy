@@ -1488,7 +1488,12 @@ export default class Mark {
             }
 
             // Viewport comprises the full canvas
-            gl.viewport(0, 0, canvasSize.width * dpr, canvasSize.height * dpr);
+            gl.viewport(
+                0,
+                0,
+                Math.round(canvasSize.width * dpr),
+                Math.round(canvasSize.height * dpr)
+            );
             gl.disable(gl.SCISSOR_TEST);
 
             // Offset and scale all drawing to the view rectangle

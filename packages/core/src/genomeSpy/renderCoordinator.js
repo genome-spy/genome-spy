@@ -70,7 +70,7 @@ export default class RenderCoordinator {
         const commonOptions = {
             webGLHelper: this.#glHelper,
             canvasSize,
-            devicePixelRatio: window.devicePixelRatio ?? 1,
+            devicePixelRatio: this.#glHelper.getDevicePixelRatio(canvasSize),
         };
 
         this.#renderingContext = new BufferedViewRenderingContext(

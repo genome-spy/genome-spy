@@ -354,7 +354,7 @@ export default class FacetView extends ContainerView {
                 coords[channel == "column" ? "width" : "height"],
                 {
                     spacing,
-                    devicePixelRatio: window.devicePixelRatio,
+                    devicePixelRatio: context.getDevicePixelRatio(),
                 }
             );
         };

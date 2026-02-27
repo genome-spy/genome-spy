@@ -50,6 +50,16 @@ export default class WebGLHelper {
                 height: undefined,
             }));
 
+        /**
+         * @type {{ width: number, height: number } | undefined}
+         */
+        this._devicePixelContentBoxSize = undefined;
+
+        /**
+         * @type {ResizeObserver | undefined}
+         */
+        this._devicePixelContentBoxObserver = undefined;
+
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
 
@@ -124,11 +134,14 @@ export default class WebGLHelper {
         );
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+        this._observeDevicePixelContentBox();
+
         this.adjustGl();
     }
 
     invalidateSize() {
         this._logicalCanvasSize = undefined;
+        this._devicePixelContentBoxSize = undefined;
         this.adjustGl();
     }
 
@@ -182,6 +195,9 @@ export default class WebGLHelper {
     }
 
     finalize() {
+        if (this._devicePixelContentBoxObserver) {
+            this._devicePixelContentBoxObserver.disconnect();
+        }
         this.canvas.remove();
     }
 
@@ -191,12 +207,51 @@ export default class WebGLHelper {
      * @param {{ width: number, height: number }} [logicalSize]
      */
     getPhysicalCanvasSize(logicalSize) {
+        // devicePixelContentBox gives the actual backing-store pixel size.
+        // Prefer it whenever available to avoid fractional DPR drift.
+        // https://web.dev/articles/device-pixel-content-box
+        if (this._devicePixelContentBoxSize) {
+            return this._devicePixelContentBoxSize;
+        }
+
         const dpr = window.devicePixelRatio ?? 1;
         logicalSize = logicalSize || this.getLogicalCanvasSize();
         return {
-            width: logicalSize.width * dpr,
-            height: logicalSize.height * dpr,
+            width: Math.round(logicalSize.width * dpr),
+            height: Math.round(logicalSize.height * dpr),
         };
+    }
+
+    /**
+     * Returns the ratio between true display pixels and logical pixels.
+     *
+     * @param {{ width: number, height: number }} [logicalSize]
+     */
+    getDevicePixelRatio(logicalSize) {
+        logicalSize = logicalSize || this.getLogicalCanvasSize();
+        const physicalSize = this.getPhysicalCanvasSize(logicalSize);
+        const widthRatio =
+            logicalSize.width > 0
+                ? physicalSize.width / logicalSize.width
+                : undefined;
+        const heightRatio =
+            logicalSize.height > 0
+                ? physicalSize.height / logicalSize.height
+                : undefined;
+
+        if (widthRatio !== undefined && heightRatio !== undefined) {
+            // Width and height can differ slightly because backing-store dimensions
+            // are integers. Averaging keeps snapping stable in both directions.
+            return (widthRatio + heightRatio) / 2;
+        } else if (widthRatio !== undefined) {
+            // During transient layout states one logical dimension may be zero.
+            // Use the non-zero dimension instead of falling back to window DPR.
+            return widthRatio;
+        } else if (heightRatio !== undefined) {
+            return heightRatio;
+        } else {
+            return window.devicePixelRatio ?? 1;
+        }
     }
 
     /**
@@ -212,20 +267,95 @@ export default class WebGLHelper {
         const contentSize = this._sizeSource();
 
         const cs = window.getComputedStyle(this._container, null);
+        // clientWidth/clientHeight are integer CSS pixels, which causes subtle
+        // blur at fractional DPR. getBoundingClientRect preserves fractions.
+        const containerRect = this._container.getBoundingClientRect();
+
+        const paddingLeft = parseFloat(cs.paddingLeft);
+        const paddingRight = parseFloat(cs.paddingRight);
+        const paddingTop = parseFloat(cs.paddingTop);
+        const paddingBottom = parseFloat(cs.paddingBottom);
+
+        const borderLeft = parseFloat(cs.borderLeftWidth);
+        const borderRight = parseFloat(cs.borderRightWidth);
+        const borderTop = parseFloat(cs.borderTopWidth);
+        const borderBottom = parseFloat(cs.borderBottomWidth);
+
         const width =
             contentSize.width ??
-            this._container.clientWidth -
-                parseFloat(cs.paddingLeft) -
-                parseFloat(cs.paddingRight);
+            containerRect.width -
+                paddingLeft -
+                paddingRight -
+                borderLeft -
+                borderRight;
 
         const height =
             contentSize.height ??
-            this._container.clientHeight -
-                parseFloat(cs.paddingTop) -
-                parseFloat(cs.paddingBottom);
+            containerRect.height -
+                paddingTop -
+                paddingBottom -
+                borderTop -
+                borderBottom;
 
         this._logicalCanvasSize = { width, height };
         return this._logicalCanvasSize;
+    }
+
+    _observeDevicePixelContentBox() {
+        if (typeof ResizeObserver != "function") {
+            return;
+        }
+
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries.find(
+                (candidate) => candidate.target == this.canvas
+            );
+            if (!entry) {
+                return;
+            }
+
+            const boxSize = entry.devicePixelContentBoxSize;
+            if (!boxSize) {
+                return;
+            }
+
+            const contentBoxSize = Array.isArray(boxSize)
+                ? boxSize[0]
+                : boxSize;
+            if (!contentBoxSize) {
+                return;
+            }
+
+            // ResizeObserver reports device pixels directly, which is exactly what
+            // canvas width/height expect.
+            const nextPhysicalSize = {
+                width: contentBoxSize.inlineSize,
+                height: contentBoxSize.blockSize,
+            };
+
+            if (
+                this._devicePixelContentBoxSize &&
+                this._devicePixelContentBoxSize.width ==
+                    nextPhysicalSize.width &&
+                this._devicePixelContentBoxSize.height ==
+                    nextPhysicalSize.height
+            ) {
+                return;
+            }
+
+            this._devicePixelContentBoxSize = nextPhysicalSize;
+            this.adjustGl();
+        });
+
+        try {
+            // Fails in browsers that do not support device-pixel-content-box.
+            observer.observe(this.canvas, {
+                box: "device-pixel-content-box",
+            });
+            this._devicePixelContentBoxObserver = observer;
+        } catch {
+            observer.disconnect();
+        }
     }
 
     /**
