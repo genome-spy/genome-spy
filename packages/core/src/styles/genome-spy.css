@@ -164,6 +164,13 @@
             box-shadow: 0px 0px 3px 1px white;
         }
 
+        .color-legend-unmapped {
+            background-color: transparent;
+            border: 1px solid black;
+            box-sizing: border-box;
+            box-shadow: none;
+        }
+
         .attributes {
             .hovered {
                 background-color: #e0e0e0;

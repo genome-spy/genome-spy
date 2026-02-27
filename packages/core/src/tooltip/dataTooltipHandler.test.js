@@ -69,3 +69,87 @@ test("Falls back to datum flattening when no context is provided", async () => {
     );
     expect(keys).toEqual(["sample", "nested.value"]);
 });
+
+test("Matches color legend fields that use bracket notation", async () => {
+    const datum = {
+        category: "A",
+    };
+
+    const fillEncoder = /** @type {any} */ (
+        Object.assign(() => "#ff0000", {
+            dataAccessor: {
+                fields: ["['category']"],
+            },
+        })
+    );
+
+    const mark = /** @type {any} */ ({
+        encoders: {
+            fill: fillEncoder,
+        },
+        unitView: {
+            getTitleText: () => "",
+        },
+    });
+
+    const content = await dataTooltipHandler(datum, mark);
+    const container = toContainer(content);
+    const legend = container.querySelector(".color-legend");
+    expect(legend).not.toBeNull();
+});
+
+test("Shows an empty swatch when color scale returns null for a present value", async () => {
+    const datum = {
+        category: "C",
+    };
+
+    const fillEncoder = /** @type {any} */ (
+        Object.assign(() => null, {
+            dataAccessor: {
+                fields: ["category"],
+            },
+        })
+    );
+
+    const mark = /** @type {any} */ ({
+        encoders: {
+            fill: fillEncoder,
+        },
+        unitView: {
+            getTitleText: () => "",
+        },
+    });
+
+    const content = await dataTooltipHandler(datum, mark);
+    const container = toContainer(content);
+    const legend = container.querySelector(".color-legend-unmapped");
+    expect(legend).not.toBeNull();
+});
+
+test("Does not show swatch for null value when color scale returns null", async () => {
+    const datum = {
+        category: null,
+    };
+
+    const fillEncoder = /** @type {any} */ (
+        Object.assign(() => null, {
+            dataAccessor: {
+                fields: ["category"],
+            },
+        })
+    );
+
+    const mark = /** @type {any} */ ({
+        encoders: {
+            fill: fillEncoder,
+        },
+        unitView: {
+            getTitleText: () => "",
+        },
+    });
+
+    const content = await dataTooltipHandler(datum, mark);
+    const container = toContainer(content);
+    const legend = container.querySelector(".color-legend");
+    expect(legend).toBeNull();
+});
