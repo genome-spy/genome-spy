@@ -103,8 +103,12 @@ test("Shows an empty swatch when color scale returns null for a present value", 
         category: "C",
     };
 
+    /**
+     * @returns {null}
+     */
+    const fillEncoderFn = () => null;
     const fillEncoder = /** @type {any} */ (
-        Object.assign(() => null, {
+        Object.assign(fillEncoderFn, {
             dataAccessor: {
                 fields: ["category"],
             },
@@ -127,12 +131,17 @@ test("Shows an empty swatch when color scale returns null for a present value", 
 });
 
 test("Does not show swatch for null value when color scale returns null", async () => {
+    /** @type {{ category: string | null }} */
     const datum = {
         category: null,
     };
 
+    /**
+     * @returns {null}
+     */
+    const fillEncoderFn = () => null;
     const fillEncoder = /** @type {any} */ (
-        Object.assign(() => null, {
+        Object.assign(fillEncoderFn, {
             dataAccessor: {
                 fields: ["category"],
             },
