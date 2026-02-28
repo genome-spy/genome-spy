@@ -25,7 +25,31 @@ Why this is worth doing:
 - cleaner scale default logic (current ad hoc defaults can be replaced with explicit config policy)
 - better authoring ergonomics for reusable, mostly self-contained track specifications
 
-## 2. How It Currently Works In GenomeSpy
+## 1.1 Status Snapshot (Updated 2026-02-28)
+
+Overall status:
+
+- core migration implemented end-to-end
+- docs/examples/test scaffolding added
+- default behavior preserved for existing specs by default config/theme layers
+
+Phase status:
+
+- ✅ Phase 1 complete (`9b3013a7`)
+- ✅ Phase 2 complete (`cdd30bff`)
+- ✅ Phase 3 complete (`ccd0a9e7`)
+- ✅ Phase 4 complete (`54f6a403`)
+- ✅ Phase 5 complete (`f2b07f12`)
+- ✅ Phase 6 complete (`f343066c`)
+- ✅ Phase 7 complete (`21bf5d75`)
+
+Remaining work is now hardening/polish, not foundational migration:
+
+- deterministic shared axis/scale conflict policy (replace order-dependent first-wins behavior)
+- finish config-izing remaining locked/derived rules where still hardcoded by design
+- broader regression coverage (full test suite + docs build + optional visual/snapshot coverage)
+
+## 2. Historical Baseline (Before Migration)
 
 ### 2.1 Top-level spec surface
 
@@ -37,7 +61,7 @@ Current `RootConfig` includes:
 - `background`
 - `datasets`
 
-There is no top-level `config` object yet.
+At baseline, there was no top-level `config` object.
 
 GenomeSpy composition model already supports:
 
@@ -45,7 +69,7 @@ GenomeSpy composition model already supports:
 - importing specs/templates into the hierarchy
 - partially self-contained reusable tracks
 
-However, there is no inherited config scope model across that hierarchy.
+At baseline, there was no inherited config scope model across that hierarchy.
 
 ### 2.2 Runtime defaulting model today
 
@@ -292,7 +316,7 @@ Implication:
 
 ## 6. Step-By-Step Migration Plan
 
-### Phase 0: Baseline + Test Harness
+### Phase 0: Baseline + Test Harness ✅
 
 Scope:
 
@@ -315,7 +339,7 @@ Suggested tests:
 - scale default resolution tests for channel+type matrix
 - precedence conflict tests for shared scale/axis merges
 
-### Phase 1: Schema + Config Resolver (No Behavioral Change)
+### Phase 1: Schema + Config Resolver (No Behavioral Change) ✅
 
 Scope:
 
@@ -335,7 +359,7 @@ Acceptance criteria:
 - hierarchical scope computation is deterministic
 - with hierarchical configs present but consumers not yet migrated, rendering behavior stays unchanged
 
-### Phase 2: Mark Defaults Migration
+### Phase 2: Mark Defaults Migration ✅
 
 Scope:
 
@@ -352,7 +376,7 @@ Acceptance criteria:
 - overriding `config.mark` and `config.<markType>` affects defaults as expected
 - explicit `mark` props still win
 
-### Phase 3: Axis Defaults Migration
+### Phase 3: Axis Defaults Migration ✅
 
 Scope:
 
@@ -370,7 +394,7 @@ Acceptance criteria:
 - explicit axis props override config
 - config buckets apply in documented order
 
-### Phase 4: Scale Defaults Migration
+### Phase 4: Scale Defaults Migration ✅
 
 Scope:
 
@@ -392,7 +416,7 @@ Acceptance criteria:
 - scheme defaults configurable by type bucket (`nominal`, `ordinal`, `quantitative`, ...)
 - no regressions in `scaleRules`, `scaleResolution`, and legacy `scale/scale.test.js` behaviors
 
-### Phase 5: Title + View Defaults Migration
+### Phase 5: Title + View Defaults Migration ✅
 
 Scope:
 
@@ -409,7 +433,7 @@ Acceptance criteria:
 - title placement/style unchanged under default config
 - title styles can be globally themed without changing spec-local title text
 
-### Phase 6: Themes
+### Phase 6: Themes ✅
 
 Scope:
 
@@ -426,7 +450,7 @@ Acceptance criteria:
 - theme switching modifies defaults only, never local explicit values
 - no behavior delta for users not opting into themes
 
-### Phase 7: Documentation + Cleanup
+### Phase 7: Documentation + Cleanup ✅
 
 Scope:
 
@@ -453,19 +477,20 @@ Acceptance criteria:
 
 Minimum automated tests to add during migration:
 
-- `config/resolveConfig.test.js`
-- `marks/markConfigPrecedence.test.js`
-- `view/axisConfigPrecedence.test.js`
-- `scales/scaleConfigDefaults.test.js`
-- `scales/scaleSchemeSelection.test.js`
-- `config/hierarchicalConfigResolution.test.js`
-- `config/importConfigPrecedence.test.js`
+- ✅ `config/resolveConfig.test.js`
+- ✅ `marks/markConfigPrecedence.test.js`
+- ✅ `view/axisConfigPrecedence.test.js`
+- ✅ `scales/scaleConfigDefaults.test.js`
+- ✅ `scales/scaleSchemeSelection.test.js`
+- ✅ `config/hierarchicalConfigResolution.test.js`
+- ✅ `config/importConfigPrecedence.test.js`
 - integration snapshots for representative specs:
   - basic scatter
   - layered track with shared axes
   - locus axis track
   - multiscale view
   - imported track with local config + parent override
+  - status: not yet implemented as dedicated snapshot set
 
 ## 7. After Config Lands: Straightforward Configurability Upgrades
 
@@ -586,21 +611,102 @@ This is the intended compatibility posture for overlapping domains.
 | Hierarchical config scopes | mostly top-level in common usage | Native per-view and import-aware scope inheritance, closest scope wins |
 | Legends/headers/projection | full Vega-Lite domains | Defer unless/until corresponding GenomeSpy feature surfaces exist |
 
-## 10. Immediate Next Action
+## 10. Detailed Next Steps (Post-Migration Hardening)
 
-Recommended first coding slice:
+### 10.1 Deterministic Shared Merge Policy (Highest Priority)
 
-1. add `GenomeSpyConfig` type and `config?: GenomeSpyConfig` to root + view (and import if enabled)
-2. create `INTERNAL_DEFAULT_CONFIG` from the inventory in Section 8
-3. implement hierarchical `resolveConfig(...)` with deterministic scope chain tests
-4. wire per-view resolved config into context
-5. migrate one subsystem first (`mark`) to validate precedence + hierarchy + no-regression workflow
+Problem:
+
+- shared axis/scale conflicts still rely on `mergeObjects(...)` behavior that is effectively registration-order dependent
+
+Why it matters:
+
+- config hierarchy and themes become less predictable if sibling registration order can affect merged shared output
+
+Implementation tasks:
+
+1. define explicit conflict policy for shared axis and scale members
+2. implement that policy in shared resolution merge points (`AxisResolution`, scale prop merge path)
+3. document conflict semantics in docs/grammar/config.md
+4. add focused tests for conflicting sibling overrides in shared resolutions
+
+Acceptance criteria:
+
+- same spec yields same merged axis/scale props independent of member registration order
+- warning/error behavior is deterministic and documented
+
+### 10.2 Remaining Scale Policy Cleanup
+
+Problem:
+
+- some defaults are now config-driven, but a few locked/derived behaviors are still partly hardcoded by rule helpers
+
+Implementation tasks:
+
+1. review `scaleRules` and `scalePropsResolver` for remaining hardcoded policies
+2. decide which should stay hardcoded invariants and which should be configurable
+3. add config keys for accepted candidates (for example clamp policy where appropriate)
+4. ensure no behavior change for existing specs under default config
+
+Acceptance criteria:
+
+- policy split is explicit: invariant vs configurable
+- config docs reflect actual behavior
+
+### 10.3 Style System Follow-up
+
+Problem:
+
+- current migration supports `config.style` for title usage, but mark/axis style parity with Vega-Lite-like style application is not fully implemented
+
+Implementation tasks:
+
+1. decide style precedence for mark/axis explicit style names
+2. implement style lookup and precedence across config scopes
+3. add tests for style overrides and nearest-scope behavior
+4. document style semantics and examples
+
+Acceptance criteria:
+
+- style behavior is coherent across title/mark/axis
+- explicit local properties still override style/config defaults
+
+### 10.4 Broader Regression Coverage
+
+Implementation tasks:
+
+1. add snapshot/integration coverage listed in Section 6.1
+2. run full `npm test` once migration branch is stabilized
+3. run `npm run build:docs` and validate schema macro output
+
+Acceptance criteria:
+
+- full suite green
+- docs build green
+- integration snapshots establish baseline for future refactors
+
+### 10.5 App-Level Theme Integration (Optional but Valuable)
+
+Implementation tasks:
+
+1. review whether App should pass a default theme into core embed
+2. map app visual tokens to core theme config where useful
+3. verify no behavior change unless opt-in
+
+Acceptance criteria:
+
+- app-level theming path is clear and tested
+- no regressions in current app visuals by default
 
 ## 11. Examples And Documentation Workstream
 
 Examples location:
 
 - all new config examples should be added under `packages/core/examples/`
+
+Status:
+
+- ✅ implemented (`packages/core/examples/config/` and docs/grammar/config.md)
 
 Recommended example set:
 
