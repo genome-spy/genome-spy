@@ -15,6 +15,11 @@
       { "x": 4, "y": 1.5, "cat": "A", "score": 0.9 }
     ]
   },
+  "resolve": {
+    "scale": {
+      "color": "independent"
+    }
+  },
   "layer": [
     {
       "mark": { "type": "point", "size": 180, "opacity": 0.45 },
@@ -35,11 +40,6 @@
           "scale": {
             "domain": [0, 1]
           }
-        }
-      },
-      "resolve": {
-        "scale": {
-          "color": "independent"
         }
       }
     }
