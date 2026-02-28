@@ -48,6 +48,12 @@ Remaining work is now hardening/polish, not foundational migration:
 - deterministic shared axis/scale conflict policy (replace order-dependent first-wins behavior)
 - finish config-izing remaining locked/derived rules where still hardcoded by design
 - broader regression coverage (full test suite + docs build + optional visual/snapshot coverage)
+- status update:
+  - ✅ deterministic merge ordering implemented (`59e7031d`)
+  - ✅ style system follow-up for mark/axis + style precedence tests/docs (`4634ea25`, `13a7976f`)
+  - ✅ scale policy split clarified (configurable clamp/reverse/zoom baselines + invariant positional unit ranges) with tests/docs (`74168e9b`, `13a7976f`)
+  - ✅ full `npm test` executed green (170 files, 980 passed) on 2026-02-28
+  - ⚠️ `npm run build:docs` prepare step passes, but final `mkdocs build` is blocked in this environment (`mkdocs: command not found`)
 
 ## 2. Historical Baseline (Before Migration)
 
@@ -635,7 +641,7 @@ Acceptance criteria:
 - same spec yields same merged axis/scale props independent of member registration order
 - warning/error behavior is deterministic and documented
 
-### 10.2 Remaining Scale Policy Cleanup
+### 10.2 Remaining Scale Policy Cleanup ✅
 
 Problem:
 
@@ -653,7 +659,7 @@ Acceptance criteria:
 - policy split is explicit: invariant vs configurable
 - config docs reflect actual behavior
 
-### 10.3 Style System Follow-up
+### 10.3 Style System Follow-up ✅
 
 Problem:
 
@@ -671,7 +677,7 @@ Acceptance criteria:
 - style behavior is coherent across title/mark/axis
 - explicit local properties still override style/config defaults
 
-### 10.4 Broader Regression Coverage
+### 10.4 Broader Regression Coverage 🔄
 
 Implementation tasks:
 
@@ -684,6 +690,12 @@ Acceptance criteria:
 - full suite green
 - docs build green
 - integration snapshots establish baseline for future refactors
+
+Current progress:
+
+- ✅ full suite green (`npm test`)
+- ✅ config-related example/layout snapshots already in `packages/core/examples/layout.test.js`
+- ⏳ docs build pending local `mkdocs` availability
 
 ### 10.5 App-Level Theme Integration (Optional but Valuable)
 
