@@ -55,7 +55,8 @@ export function resolveScalePropsBase({
             dataType,
             isExplicitDomain,
             configScopes,
-            /** @type {import("../spec/mark.js").MarkType[]} */ (markTypes)
+            /** @type {import("../spec/mark.js").MarkType[]} */ (markTypes),
+            mergedProps.domainMid !== undefined
         ),
         ...mergedProps,
     };

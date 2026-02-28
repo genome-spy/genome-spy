@@ -184,8 +184,10 @@ describe("scale config defaults", () => {
                 {
                     scale: {
                         quantitativeColorScheme: "viridis",
-                        quantitativeHeatmapColorScheme: "magma",
-                        quantitativeRampColorScheme: "blues",
+                    },
+                    range: {
+                        heatmap: "magma",
+                        ramp: "blues",
                     },
                 },
             ],
@@ -205,8 +207,10 @@ describe("scale config defaults", () => {
                 {
                     scale: {
                         quantitativeColorScheme: "viridis",
-                        quantitativeHeatmapColorScheme: "magma",
-                        quantitativeRampColorScheme: "blues",
+                    },
+                    range: {
+                        heatmap: "magma",
+                        ramp: "blues",
                     },
                 },
             ],
@@ -215,7 +219,7 @@ describe("scale config defaults", () => {
         expect(props.scheme).toBe("blues");
     });
 
-    test("quantitative color scheme falls back when heatmap/ramp keys are missing", () => {
+    test("quantitative color scheme falls back when range slots are missing", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
@@ -231,5 +235,35 @@ describe("scale config defaults", () => {
         });
 
         expect(props.scheme).toBe("inferno");
+    });
+
+    test("quantitative color with domainMid uses diverging range slot", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            members: new Set([
+                createMember(
+                    "color",
+                    /** @type {import("../spec/scale.js").Scale} */ ({
+                        domainMid: 0,
+                    }),
+                    "rect"
+                ),
+            ]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        quantitativeColorScheme: "inferno",
+                    },
+                    range: {
+                        diverging: "redblue",
+                    },
+                },
+            ],
+        });
+
+        expect(props.scheme).toBe("redblue");
     });
 });

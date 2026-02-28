@@ -17,6 +17,17 @@ const COLOR_SCHEME_KEYS = {
 const HEATMAP_MARK_TYPES = new Set(["rect"]);
 
 /**
+ * @param {unknown} scheme
+ * @returns {scheme is import("../spec/scale.js").SchemeParams | string}
+ */
+function isConfiguredScheme(scheme) {
+    return (
+        typeof scheme == "string" ||
+        (scheme != null && typeof scheme == "object")
+    );
+}
+
+/**
  * @param {import("../spec/channel.js").Type} dataType
  * @returns {keyof import("../spec/config.js").ScaleConfig | undefined}
  */
@@ -50,8 +61,6 @@ function getBaseScaleConfig(scaleConfig) {
         "nominalColorScheme",
         "ordinalColorScheme",
         "quantitativeColorScheme",
-        "quantitativeHeatmapColorScheme",
-        "quantitativeRampColorScheme",
         "indexColorScheme",
         "locusColorScheme",
     ]) {
@@ -113,11 +122,12 @@ export function getConfiguredRangeConfig(scopes) {
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/mark.js").MarkType[]} [options.markTypes]
+ * @param {boolean} [options.hasDomainMid]
  * @returns {import("../spec/scale.js").Scale}
  */
 export function getConfiguredScaleDefaults(
     scopes,
-    { channel, dataType, isExplicitDomain, markTypes }
+    { channel, dataType, isExplicitDomain, markTypes, hasDomainMid }
 ) {
     const scaleConfig = getConfiguredScaleConfig(scopes, dataType);
     const rangeConfig = getConfiguredRangeConfig(scopes);
@@ -141,37 +151,39 @@ export function getConfiguredScaleDefaults(
     }
 
     if (isColorChannel(channel) && props.scheme === undefined) {
-        let schemeKey =
-            COLOR_SCHEME_KEYS[dataType] ?? COLOR_SCHEME_KEYS.quantitative;
+        if (dataType == "quantitative") {
+            const useDiverging =
+                hasDomainMid || scaleConfig.domainMid !== undefined;
 
-        if (
-            dataType == "quantitative" &&
-            markTypes?.length &&
-            markTypes.every((markType) => HEATMAP_MARK_TYPES.has(markType))
-        ) {
-            schemeKey = "quantitativeHeatmapColorScheme";
-        } else if (dataType == "quantitative" && markTypes?.length) {
-            schemeKey = "quantitativeRampColorScheme";
-        }
+            // Mirror Vega-Lite defaults for quantitative color scales:
+            // domainMid -> diverging, rect-like marks -> heatmap, others -> ramp.
+            // TODO: Add support for Vega-Lite-style named string ranges in
+            // scale.range (e.g. "diverging"). For now, config.range.* values
+            // are interpreted directly as scheme values.
+            const rangeScheme = useDiverging
+                ? rangeConfig.diverging
+                : markTypes?.length &&
+                    markTypes.every((markType) =>
+                        HEATMAP_MARK_TYPES.has(markType)
+                    )
+                  ? rangeConfig.heatmap
+                  : rangeConfig.ramp;
 
-        const configuredScheme = scaleConfig[schemeKey];
-        if (
-            configuredScheme === undefined &&
-            (schemeKey == "quantitativeHeatmapColorScheme" ||
-                schemeKey == "quantitativeRampColorScheme")
-        ) {
-            props.scheme =
-                /** @type {import("../spec/scale.js").SchemeParams | string | undefined} */ (
-                    scaleConfig.quantitativeColorScheme
-                );
-        } else if (
-            typeof configuredScheme == "string" ||
-            (configuredScheme && typeof configuredScheme == "object")
-        ) {
-            props.scheme =
-                /** @type {import("../spec/scale.js").SchemeParams | string} */ (
-                    configuredScheme
-                );
+            const configuredScheme = isConfiguredScheme(rangeScheme)
+                ? rangeScheme
+                : scaleConfig.quantitativeColorScheme;
+
+            if (isConfiguredScheme(configuredScheme)) {
+                props.scheme = configuredScheme;
+            }
+        } else {
+            const schemeKey =
+                COLOR_SCHEME_KEYS[dataType] ?? COLOR_SCHEME_KEYS.quantitative;
+            const configuredScheme = scaleConfig[schemeKey];
+
+            if (isConfiguredScheme(configuredScheme)) {
+                props.scheme = configuredScheme;
+            }
         }
     } else if (isDiscreteChannel(channel) && props.range === undefined) {
         props.range = channel == "shape" ? (rangeConfig.shape ?? []) : [];
