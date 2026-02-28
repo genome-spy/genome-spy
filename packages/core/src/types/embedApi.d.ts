@@ -1,6 +1,7 @@
 import { ScaleResolutionApi } from "./scaleResolutionApi.js";
 import { TooltipHandler } from "../tooltip/tooltipHandler.js";
 import { RootSpec } from "../spec/root.js";
+import { GenomeSpyConfig } from "../spec/config.js";
 
 /**
  * Embeds GenomeSpy into the DOM
@@ -40,6 +41,12 @@ export interface EmbedOptions {
      * @genome-spy/app package.
      */
     powerPreference?: "default" | "high-performance" | "low-power";
+
+    /**
+     * Optional theme configuration object that is merged after the internal
+     * defaults and built-in theme, but before `spec.config`.
+     */
+    theme?: GenomeSpyConfig;
 
     /**
      * Optional hook for handling launch errors. Return true to suppress default UI.
