@@ -93,6 +93,12 @@ export type AxisOrient = "top" | "bottom" | "left" | "right";
 
 export interface Axis extends BaseAxis {
     /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     */
+    style?: string | string[];
+
+    /**
      * The orientation of the axis. One of `"top"`, `"bottom"`, `"left"` or `"right"`. The orientation can be used to further specialize the axis type (e.g., a y axis oriented for the right edge of the chart).
      *
      * __Default value:__ `"bottom"` for x-axes and `"left"` for y-axes.

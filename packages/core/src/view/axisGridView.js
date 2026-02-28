@@ -32,6 +32,7 @@ export default class AxisGridView extends LayerView {
                 channel,
                 orient: axisProps.orient,
                 type: /** @type {import("../spec/channel.js").Type} */ (type),
+                style: axisProps.style,
             }
         );
 

@@ -36,7 +36,9 @@ export default function createTitle(title, configScopes = []) {
     }
 
     const titleConfig = getConfiguredTitleConfig(configScopes);
-    const styleConfig = getConfiguredStyleConfig(configScopes, titleSpec.style);
+    const styleConfig = /** @type {import("../spec/config.js").TitleConfig} */ (
+        getConfiguredStyleConfig(configScopes, titleSpec.style)
+    );
 
     // TODO: frame prop
 

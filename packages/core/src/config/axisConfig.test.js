@@ -54,4 +54,30 @@ describe("axisConfig", () => {
         expect(defaults.chromTicks).toBe(true);
         expect(defaults.chromGridDash).toEqual([1, 5]);
     });
+
+    test("style buckets merge after axis buckets", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axis: { tickColor: "blue" },
+                    axisBottom: { labelColor: "orange" },
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                        override: { tickColor: "black", domainColor: "pink" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+                style: ["emphasis", "override"],
+            }
+        );
+
+        expect(defaults.tickColor).toBe("black");
+        expect(defaults.labelColor).toBe("orange");
+        expect(defaults.domainColor).toBe("pink");
+    });
 });

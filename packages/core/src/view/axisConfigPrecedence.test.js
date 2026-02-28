@@ -84,4 +84,81 @@ describe("axis config precedence", () => {
 
         expect(axis.axisProps.tickColor).toBe("red");
     });
+
+    test("axis style applies after axis buckets and before explicit props", async () => {
+        const context = createTestViewContext({ wrapRoot: true });
+
+        const root = await context.createOrImportView(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                config: {
+                    axis: { tickColor: "blue" },
+                    axisX: { tickSize: 11 },
+                    axisBottom: { labelColor: "orange" },
+                    style: {
+                        emphasis: {
+                            tickColor: "seagreen",
+                            labelColor: "purple",
+                        },
+                        override: {
+                            tickColor: "firebrick",
+                            domainColor: "pink",
+                        },
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: {
+                            style: ["emphasis", "override"],
+                        },
+                    },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const axis = findAxisView(root, "bottom");
+
+        expect(axis.axisProps.tickSize).toBe(11);
+        expect(axis.axisProps.tickColor).toBe("firebrick");
+        expect(axis.axisProps.labelColor).toBe("purple");
+        expect(axis.axisProps.domainColor).toBe("pink");
+
+        const explicitRoot = await context.createOrImportView(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                config: {
+                    style: {
+                        emphasis: {
+                            tickColor: "seagreen",
+                        },
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: {
+                            style: "emphasis",
+                            tickColor: "black",
+                        },
+                    },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const explicitAxis = findAxisView(explicitRoot, "bottom");
+        expect(explicitAxis.axisProps.tickColor).toBe("black");
+    });
 });
