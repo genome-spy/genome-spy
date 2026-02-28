@@ -28,9 +28,9 @@ export const BUILT_IN_THEMES = {
         },
         axis: {
             grid: false,
-            domain: false,
-            tickColor: "#ddd",
-            domainColor: "#ddd",
+            domain: true,
+            tickColor: "gray",
+            domainColor: "gray",
             gridColor: "#ddd",
             labelColor: "#333",
             titleColor: "#333",

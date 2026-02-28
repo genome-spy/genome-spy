@@ -153,5 +153,5 @@ test("ImportSpec.theme overrides imported root theme", async () => {
     );
     const imported = [...root][0];
 
-    expect(imported.getConfig().axis.domain).toBe(false);
+    expect(imported.getConfig().axis.domain).toBe(true);
 });
