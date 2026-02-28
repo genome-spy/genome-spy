@@ -97,7 +97,11 @@ export function applyLockedProperties(props, channel) {
         props.range = [0, 1];
     }
 
-    if (channel == "opacity" && isContinuous(props.type)) {
+    if (
+        channel == "opacity" &&
+        isContinuous(props.type) &&
+        props.clamp === undefined
+    ) {
         props.clamp = true;
     }
 }
