@@ -1,7 +1,10 @@
 import { isDiscrete } from "vega-scale";
 
 import mergeObjects from "../utils/mergeObjects.js";
-import { getDefaultScaleProperties } from "../config/scaleDefaults.js";
+import {
+    getDefaultScaleProperties,
+    getScaleConfig,
+} from "../config/scaleDefaults.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 
@@ -17,6 +20,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {Set<ScaleResolutionMember>} options.members
  * @param {boolean} options.isExplicitDomain
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
  */
 export function resolveScalePropsBase({
@@ -24,6 +28,7 @@ export function resolveScalePropsBase({
     dataType,
     members,
     isExplicitDomain,
+    configScopes,
 }) {
     const propArray = Array.from(members)
         .map((member) => member.channelDef.scale)
@@ -36,7 +41,12 @@ export function resolveScalePropsBase({
     }
 
     const props = {
-        ...getDefaultScaleProperties(channel, dataType, isExplicitDomain),
+        ...getDefaultScaleProperties(
+            channel,
+            dataType,
+            isExplicitDomain,
+            configScopes
+        ),
         ...mergedProps,
     };
 
@@ -58,9 +68,15 @@ export function resolveScalePropsBase({
         // TODO: Props should be set more intelligently
     }
 
-    // By default, index and locus scales are zoomable, others are not
-    if (!("zoom" in props) && [INDEX, LOCUS].includes(props.type)) {
-        props.zoom = true;
+    // By default, index and locus scales are zoomable, others are not.
+    // Config can override this baseline via scale.zoom.
+    if (!("zoom" in props)) {
+        const scaleConfig = getScaleConfig(dataType, configScopes);
+        if (scaleConfig.zoom !== undefined) {
+            props.zoom = scaleConfig.zoom;
+        } else if ([INDEX, LOCUS].includes(props.type)) {
+            props.zoom = true;
+        }
     }
 
     applyLockedProperties(props, channel);
