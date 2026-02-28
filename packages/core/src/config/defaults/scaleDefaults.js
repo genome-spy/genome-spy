@@ -3,8 +3,6 @@ export const SCALE_DEFAULTS = {
     nominalColorScheme: "tableau10",
     ordinalColorScheme: "blues",
     quantitativeColorScheme: "viridis",
-    indexColorScheme: "viridis",
-    locusColorScheme: "viridis",
 };
 
 /** @type {import("../../spec/config.js").RangeConfig} */

@@ -82,8 +82,8 @@ By-type color scheme defaults can be configured with:
 - `config.scale.nominalColorScheme`
 - `config.scale.ordinalColorScheme`
 - `config.scale.quantitativeColorScheme`
-- `config.scale.indexColorScheme`
-- `config.scale.locusColorScheme`
+
+`index` and `locus` are positional data types, so they do not have color-scheme keys.
 
 Additional scale policy notes:
 

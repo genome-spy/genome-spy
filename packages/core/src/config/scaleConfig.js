@@ -10,8 +10,6 @@ const COLOR_SCHEME_KEYS = {
     nominal: "nominalColorScheme",
     ordinal: "ordinalColorScheme",
     quantitative: "quantitativeColorScheme",
-    index: "indexColorScheme",
-    locus: "locusColorScheme",
 };
 
 const HEATMAP_MARK_TYPES = new Set(["rect"]);
@@ -91,6 +89,7 @@ function getBaseScaleConfig(scaleConfig) {
         "nominalColorScheme",
         "ordinalColorScheme",
         "quantitativeColorScheme",
+        // Deprecated aliases kept out of the resolved base scale object.
         "indexColorScheme",
         "locusColorScheme",
     ]) {

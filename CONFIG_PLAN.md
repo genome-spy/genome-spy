@@ -66,6 +66,7 @@ Remaining work is now hardening/polish, not foundational migration:
   - ✅ temporary `scale.quantitativeHeatmapColorScheme` / `scale.quantitativeRampColorScheme` removed in favor of range slots (`cd180bb1`)
   - ✅ `vegalite` theme axis domain default aligned with Vega-Lite behavior (`axis.domain: true`) (`792b79b3`)
   - ✅ Vega-Lite-style named scale ranges now resolve through `config.range` (for example `scale.range: "heatmap"`) with clear validation errors for unknown names (current branch)
+  - ✅ removed `scale.indexColorScheme` / `scale.locusColorScheme`; `index` and `locus` remain positional-only data types (current branch)
 
 ## 1.2 Done vs Missing (Current Checklist)
 
@@ -346,7 +347,6 @@ Keep logic similar to Vega-Lite while allowing GenomeSpy-specific default values
   - ordinal
   - quantitative
   - temporal (where relevant)
-  - plus GenomeSpy types (`index`, `locus`) when applicable
 - configurable named ranges (`category`, `ordinal`, `ramp`, `heatmap`, `diverging`, etc. as supported)
 - preserve existing default behavior initially by setting defaults to current values:
   - nominal -> `tableau10`
