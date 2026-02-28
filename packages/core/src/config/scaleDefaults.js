@@ -9,6 +9,7 @@ import {
  * @param {boolean} isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} configScopes
  * @param {import("../spec/mark.js").MarkType[]} [markTypes]
+ * @param {boolean} [hasDomainMid]
  * @returns {import("../spec/scale.js").Scale}
  */
 export function getDefaultScaleProperties(
@@ -16,13 +17,15 @@ export function getDefaultScaleProperties(
     dataType,
     isExplicitDomain,
     configScopes,
-    markTypes
+    markTypes,
+    hasDomainMid
 ) {
     return getConfiguredScaleDefaults(configScopes, {
         channel,
         dataType,
         isExplicitDomain,
         markTypes,
+        hasDomainMid,
     });
 }
 

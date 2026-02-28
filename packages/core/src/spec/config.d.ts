@@ -8,7 +8,7 @@ import {
     ShadowProps,
     TextProps,
 } from "./mark.js";
-import { Scale } from "./scale.js";
+import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 
 export type BuiltInThemeName = "genomespy" | "vegalite";
@@ -35,6 +35,8 @@ export type LinkConfig = Partial<Omit<LinkProps, "type">>;
 
 export type AxisConfig = Partial<Axis & GenomeAxis>;
 
+type ColorSchemeConfig = string | SchemeParams;
+
 export interface ScaleConfig extends Partial<Scale> {
     nominal?: Partial<Scale>;
     ordinal?: Partial<Scale>;
@@ -42,19 +44,20 @@ export interface ScaleConfig extends Partial<Scale> {
     index?: Partial<Scale>;
     locus?: Partial<Scale>;
 
-    nominalColorScheme?: string;
-    ordinalColorScheme?: string;
-    quantitativeColorScheme?: string;
-    quantitativeHeatmapColorScheme?: string;
-    quantitativeRampColorScheme?: string;
-    indexColorScheme?: string;
-    locusColorScheme?: string;
+    nominalColorScheme?: ColorSchemeConfig;
+    ordinalColorScheme?: ColorSchemeConfig;
+    quantitativeColorScheme?: ColorSchemeConfig;
+    indexColorScheme?: ColorSchemeConfig;
+    locusColorScheme?: ColorSchemeConfig;
 }
 
 export interface RangeConfig {
     shape?: string[];
     size?: number[];
     angle?: number[];
+    heatmap?: ColorSchemeConfig;
+    ramp?: ColorSchemeConfig;
+    diverging?: ColorSchemeConfig;
 }
 
 export type TitleConfig = Partial<Omit<Title, "text">>;
