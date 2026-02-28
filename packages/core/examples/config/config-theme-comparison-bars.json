@@ -1,0 +1,95 @@
+{
+  "description": "Side-by-side rect-bar comparison: GenomeSpy default styling vs Vega-Lite-like scoped styling.",
+  "spacing": 24,
+  "resolve": {
+    "axis": {
+      "x": "independent",
+      "y": "independent"
+    },
+    "scale": {
+      "x": "independent",
+      "y": "independent"
+    }
+  },
+  "data": {
+    "values": [
+      { "category": "A", "value": 28 },
+      { "category": "B", "value": 55 },
+      { "category": "C", "value": 43 },
+      { "category": "D", "value": 91 },
+      { "category": "E", "value": 81 },
+      { "category": "F", "value": 53 }
+    ]
+  },
+  "hconcat": [
+    {
+      "name": "genomespy-theme",
+      "title": "GenomeSpy",
+      "width": 260,
+      "height": 200,
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "field": "category",
+          "type": "nominal",
+          "scale": { "padding": 0.2 },
+          "axis": { "labelAngle": 0 }
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "axis": { "title": "Value" }
+        },
+        "y2": { "value": 0 }
+      }
+    },
+    {
+      "name": "vegalite-theme",
+      "title": "Vega-Lite-like",
+      "width": 260,
+      "height": 200,
+      "config": {
+        "view": {
+          "stroke": "#dddddd"
+        },
+        "rect": {
+          "color": "#4c78a8",
+          "strokeWidth": 0
+        },
+        "axis": {
+          "grid": false,
+          "domain": false,
+          "tickColor": "#dddddd",
+          "domainColor": "#dddddd",
+          "gridColor": "#dddddd",
+          "labelColor": "#333333",
+          "titleColor": "#333333",
+          "titleFontWeight": "normal"
+        },
+        "axisQuantitative": {
+          "grid": true
+        },
+        "scale": {
+          "nominalColorScheme": "tableau10",
+          "ordinalColorScheme": "blues",
+          "quantitativeColorScheme": "viridis"
+        }
+      },
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "field": "category",
+          "type": "nominal",
+          "scale": { "padding": 0.2 },
+          "axis": { "labelAngle": 0 }
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "axis": { "title": "Value" }
+        },
+        "y2": { "value": 0 }
+      }
+    }
+  ]
+}

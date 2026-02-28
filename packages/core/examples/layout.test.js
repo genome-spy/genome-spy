@@ -17,6 +17,7 @@ import specConfigScopedView from "./config/config-scoped-view.json";
 import specConfigImportedTrack from "./config/config-imported-track.json";
 import specConfigImportOverride from "./config/config-import-override.json";
 import specConfigScaleSchemesByType from "./config/config-scale-schemes-by-type.json";
+import specConfigThemeComparisonBars from "./config/config-theme-comparison-bars.json";
 import View from "../src/view/view";
 
 /**
@@ -95,6 +96,12 @@ describe("Test layout process", () => {
     test("config/config-scale-schemes-by-type.json", async () => {
         expect(
             await specToLayout(specConfigScaleSchemesByType)
+        ).toMatchSnapshot();
+    });
+
+    test("config/config-theme-comparison-bars.json", async () => {
+        expect(
+            await specToLayout(specConfigThemeComparisonBars)
         ).toMatchSnapshot();
     });
 });

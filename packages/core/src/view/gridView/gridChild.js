@@ -22,6 +22,7 @@ import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
+import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 
 export default class GridChild {
     /**
@@ -702,8 +703,27 @@ export default class GridChild {
          */
         const createAxisGrid = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
+            if (!props) {
+                return;
+            }
 
-            if (props && (props.grid || props.chromGrid)) {
+            const defaults = getConfiguredAxisDefaults(
+                axisParent.getConfigScopes(),
+                {
+                    channel,
+                    orient: props.orient,
+                    type: /** @type {import("../../spec/channel.js").Type} */ (
+                        r.scaleResolution.type
+                    ),
+                    style: props.style,
+                }
+            );
+            const effectiveProps = {
+                ...defaults,
+                ...props,
+            };
+
+            if (effectiveProps.grid || effectiveProps.chromGrid) {
                 const axisGridView = new AxisGridView(
                     props,
                     r.scaleResolution.type,
