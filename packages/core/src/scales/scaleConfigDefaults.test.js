@@ -109,4 +109,23 @@ describe("scale config defaults", () => {
 
         expect(props.zoom).toBe(false);
     });
+
+    test("scale.clamp config can override opacity clamp default", () => {
+        const props = resolveScalePropsBase({
+            channel: "opacity",
+            dataType: "quantitative",
+            members: new Set([createMember()]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        clamp: false,
+                    },
+                },
+            ],
+        });
+
+        expect(props.clamp).toBe(false);
+    });
 });
