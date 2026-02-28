@@ -72,4 +72,54 @@ describe("mark config precedence", () => {
         expect(view.mark.properties.color).toBe("purple");
         expect(/** @type {any} */ (view.mark.properties).size).toBe(7);
     });
+
+    test("mark style applies after mark buckets and before explicit props", async () => {
+        const configured = /** @type {UnitView} */ (
+            await create(
+                {
+                    config: {
+                        mark: { color: "orange" },
+                        point: { size: 10 },
+                        style: {
+                            emphasis: {
+                                color: "teal",
+                                opacity: 0.4,
+                                size: 20,
+                            },
+                            override: { color: "crimson" },
+                        },
+                    },
+                    mark: {
+                        type: "point",
+                        style: ["emphasis", "override"],
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(configured.mark.properties.color).toBe("crimson");
+        expect(configured.mark.properties.opacity).toBe(0.4);
+        expect(/** @type {any} */ (configured.mark.properties).size).toBe(20);
+
+        const explicit = /** @type {UnitView} */ (
+            await create(
+                {
+                    config: {
+                        style: {
+                            emphasis: { color: "teal" },
+                        },
+                    },
+                    mark: {
+                        type: "point",
+                        style: "emphasis",
+                        color: "black",
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(explicit.mark.properties.color).toBe("black");
+    });
 });

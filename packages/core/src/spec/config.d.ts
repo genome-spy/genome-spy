@@ -55,7 +55,24 @@ export interface RangeConfig {
 
 export type TitleConfig = Partial<Omit<Title, "text">>;
 
-export type StyleConfig = Partial<MarkConfig & AxisConfig & TitleConfig>;
+type MergeProps<A, B> = {
+    [K in keyof A | keyof B]:
+        | (K extends keyof A ? A[K] : never)
+        | (K extends keyof B ? B[K] : never);
+};
+
+type CombinedStyleConfig = MergeProps<
+    MergeProps<
+        MergeProps<
+            MergeProps<MergeProps<MarkConfig, PointConfig>, RectConfig>,
+            RuleConfig
+        >,
+        TextConfig
+    >,
+    MergeProps<MergeProps<LinkConfig, AxisConfig>, TitleConfig>
+>;
+
+export type StyleConfig = Partial<CombinedStyleConfig>;
 
 export interface GenomeSpyConfig {
     view?: ViewConfig;

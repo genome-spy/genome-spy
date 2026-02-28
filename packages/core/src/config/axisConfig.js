@@ -24,14 +24,31 @@ const TYPE_BUCKETS = {
 };
 
 /**
+ * @param {string | string[] | undefined} style
+ * @returns {string[]}
+ */
+function normalizeStyle(style) {
+    if (!style) {
+        return [];
+    }
+    return Array.isArray(style) ? style : [style];
+}
+
+/**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
  * @param {object} options
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} options.channel
  * @param {import("../spec/axis.js").AxisOrient} [options.orient]
  * @param {import("../spec/channel.js").Type} [options.type]
+ * @param {string | string[]} [options.style]
  * @returns {import("../spec/config.js").AxisConfig}
  */
-export function getConfiguredAxisDefaults(scopes, { channel, orient, type }) {
+export function getConfiguredAxisDefaults(
+    scopes,
+    { channel, orient, type, style }
+) {
+    const styles = normalizeStyle(style);
+
     return /** @type {import("../spec/config.js").AxisConfig} */ (
         mergeConfigScopes(
             scopes.flatMap((scope) => {
@@ -51,6 +68,12 @@ export function getConfiguredAxisDefaults(scopes, { channel, orient, type }) {
                     ),
                     /** @type {Record<string, any> | undefined} */ (
                         typeBucket ? scope[typeBucket] : undefined
+                    ),
+                    ...styles.map(
+                        (styleName) =>
+                            /** @type {Record<string, any> | undefined} */ (
+                                scope.style?.[styleName]
+                            )
                     ),
                 ];
             })

@@ -173,7 +173,10 @@ export default class Mark {
 
         const configuredDefaults = getConfiguredMarkDefaults(
             this.unitView.getConfigScopes(),
-            this.unitView.getMarkType()
+            this.unitView.getMarkType(),
+            typeof this.unitView.spec.mark == "object"
+                ? this.unitView.spec.mark.style
+                : undefined
         );
 
         this.defaultProperties = /** @type {P} */ ({

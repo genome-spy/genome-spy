@@ -8,6 +8,12 @@ export type MarkType = "rect" | "point" | "rule" | "tick" | "text" | "link";
 export interface MarkPropsBase {
     type: MarkType;
 
+    /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     */
+    style?: string | string[];
+
     // Channels.
 
     /**
