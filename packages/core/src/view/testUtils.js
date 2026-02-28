@@ -87,6 +87,7 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         requestLayoutReflow: () => undefined,
 
         isViewConfiguredVisible: () => true,
+        getBaseConfig: () => baseConfig,
 
         resolveViewConfig: (spec, dataParent) =>
             resolveViewConfig(baseConfig, dataParent?.getConfig(), spec.config),

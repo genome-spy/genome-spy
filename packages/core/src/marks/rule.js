@@ -23,20 +23,6 @@ export default class RuleMark extends Mark {
         super(unitView);
 
         this.dashTextureSize = 0;
-
-        this.augmentDefaultProperties({
-            x2: undefined,
-            y2: undefined,
-            size: 1,
-            color: "black",
-            opacity: 1.0,
-
-            minLength: 0.0,
-            /** @type {number[]} */
-            strokeDash: null,
-            strokeDashOffset: 0,
-            strokeCap: "butt",
-        });
     }
 
     /**

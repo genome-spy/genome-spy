@@ -89,6 +89,11 @@ export default interface ViewContext {
     resolveViewConfig: (spec: ViewSpec, dataParent?: View) => GenomeSpyConfig;
 
     /**
+     * Returns the base config scope used for root-level resolution.
+     */
+    getBaseConfig: () => GenomeSpyConfig;
+
+    /**
      *
      * @param spec
      * @param layoutParent

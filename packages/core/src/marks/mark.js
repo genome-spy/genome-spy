@@ -58,6 +58,7 @@ import {
     isMultiPointSelection,
     isSinglePointSelection,
 } from "../selection/selection.js";
+import { getConfiguredMarkDefaults } from "../config/markConfig.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -170,7 +171,11 @@ export default class Mark {
         /** @type {RangeMap<any>} keep track of facet locations within the vertex array */
         this.rangeMap = new RangeMap();
 
-        // TODO: Implement config: https://vega.github.io/vega-lite/docs/config.html
+        const configuredDefaults = getConfiguredMarkDefaults(
+            this.unitView.getConfigScopes(),
+            this.unitView.getMarkType()
+        );
+
         this.defaultProperties = /** @type {P} */ ({
             get clip() {
                 // TODO: Cache once the scales have been resolved
@@ -192,6 +197,7 @@ export default class Mark {
              * This property is intended for internal usage.
              */
             minBufferSize: 0,
+            ...configuredDefaults,
         });
 
         /**

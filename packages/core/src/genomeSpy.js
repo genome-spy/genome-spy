@@ -348,6 +348,7 @@ export default class GenomeSpy {
                 this.#extraBroadcastListeners.remove(type, listener),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
+            getBaseConfig: () => baseConfig,
             resolveViewConfig: (spec, dataParent) =>
                 resolveConfigForView(
                     baseConfig,

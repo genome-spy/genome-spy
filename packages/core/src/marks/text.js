@@ -49,51 +49,6 @@ export default class TextMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        this.augmentDefaultProperties({
-            x: 0.5,
-            y: 0.5,
-            x2: undefined,
-            y2: undefined,
-            text: "",
-            size: 11.0,
-            color: "black",
-            opacity: 1.0,
-
-            // Use the built-in default
-            font: undefined,
-            fontStyle: undefined,
-            fontWeight: undefined,
-
-            align: "center",
-            baseline: "middle",
-            dx: 0,
-            dy: 0,
-            angle: 0,
-
-            /** When only primary channel is defined with band/locus scale */
-            fitToBand: false,
-
-            squeeze: true,
-            paddingX: 0,
-            paddingY: 0,
-            flushX: true,
-            flushY: true,
-
-            /** Stretch letters so that they can be used with sequence logos etc... */
-            logoLetters: false,
-
-            viewportEdgeFadeWidthTop: 0,
-            viewportEdgeFadeWidthRight: 0,
-            viewportEdgeFadeWidthBottom: 0,
-            viewportEdgeFadeWidthLeft: 0,
-
-            viewportEdgeFadeDistanceTop: -Infinity,
-            viewportEdgeFadeDistanceRight: -Infinity,
-            viewportEdgeFadeDistanceBottom: -Infinity,
-            viewportEdgeFadeDistanceLeft: -Infinity,
-        });
-
         this.font = this.properties.font
             ? unitView.context.fontManager.getFont(
                   this.properties.font,

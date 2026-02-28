@@ -65,6 +65,7 @@ export function createViewContext(options) {
         "isViewConfiguredVisible",
         "isViewSpec",
         "resolveViewConfig",
+        "getBaseConfig",
     ];
 
     /** @type {Partial<ViewContext>} */
