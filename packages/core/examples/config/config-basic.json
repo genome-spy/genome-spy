@@ -1,0 +1,28 @@
+{
+  "description": "Top-level config defaults for marks and axes.",
+  "config": {
+    "mark": {
+      "color": "#1f77b4"
+    },
+    "point": {
+      "size": 90
+    },
+    "axis": {
+      "tickColor": "#666",
+      "labelColor": "#333"
+    }
+  },
+  "data": {
+    "values": [
+      { "x": 1, "y": 1.2 },
+      { "x": 2, "y": 2.4 },
+      { "x": 3, "y": 1.8 },
+      { "x": 4, "y": 3.1 }
+    ]
+  },
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" }
+  }
+}

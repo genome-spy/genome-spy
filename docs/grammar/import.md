@@ -69,6 +69,10 @@ Import specs can also override the imported view's default visibility using
 `visible`. This is useful when importing the same template multiple times with
 different parameters and choosing which instance is shown by default.
 
+Import specs can also provide `config`. Import-site config is merged before the
+imported spec's own root `config`, so imported tracks remain self-contained and
+can still override host-level defaults when needed.
+
 <div><genome-spy-doc-embed height="250">
 
 ```json

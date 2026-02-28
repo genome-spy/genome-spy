@@ -79,6 +79,7 @@ nav:
                 - Layer: "grammar/composition/layer.md"
                 - Multiscale: "grammar/composition/multiscale.md"
           - Scales: "grammar/scale.md"
+          - Config And Themes: "grammar/config.md"
           - Importing Views: "grammar/import.md"
           - Expressions: "grammar/expressions.md"
           - Parameters: "grammar/parameters.md"
