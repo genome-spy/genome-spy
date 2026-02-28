@@ -59,6 +59,7 @@ Axis defaults are resolved from axis buckets:
 - channel buckets (`config.axisX`, `config.axisY`)
 - orient buckets (`config.axisTop`, `config.axisBottom`, `config.axisLeft`, `config.axisRight`)
 - type buckets (`config.axisNominal`, `config.axisOrdinal`, `config.axisQuantitative`, `config.axisIndex`, `config.axisLocus`)
+- styles referenced by axis buckets (for example `config.axisX.style: "foo"`)
 - `config.style[...]` referenced by `encoding.<channel>.axis.style` (later style names win)
 
 Explicit `encoding.<channel>.axis` values override config buckets.

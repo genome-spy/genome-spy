@@ -81,6 +81,73 @@ describe("axisConfig", () => {
         expect(defaults.domainColor).toBe("pink");
     });
 
+    test("axis bucket styles contribute defaults", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axisX: { style: "emphasis" },
+                    style: {
+                        emphasis: { tickColor: "purple", labelColor: "orange" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("purple");
+        expect(defaults.labelColor).toBe("orange");
+    });
+
+    test("axis bucket properties override axis bucket style", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axisX: { style: "emphasis", tickColor: "blue" },
+                    style: {
+                        emphasis: { tickColor: "purple", labelColor: "orange" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("blue");
+        expect(defaults.labelColor).toBe("orange");
+    });
+
+    test("explicit axis style overrides bucket styles", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axisX: { style: "emphasis" },
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                        override: { tickColor: "black" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+                style: "override",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("black");
+    });
+
     test("closest scope wins for the same style bucket", () => {
         const defaults = getConfiguredAxisDefaults(
             [

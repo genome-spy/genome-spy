@@ -86,9 +86,9 @@ Missing / Not Yet Implemented:
 - ⏳ final docs build verification in this environment (`mkdocs` unavailable locally)
 - ⏳ broader visual parity pass for `vegalite` theme (fine-grained defaults where GenomeSpy feature set overlaps, keeping non-overlap domains GenomeSpy-native)
 - ⏳ full Vega-Lite-like style semantics completion while preserving non-style behavior:
-  - implicit mark-type style augmentation (`config.style.<markType>`)
-  - implicit title style fallback (`group-title`) matching documented behavior
-  - axis bucket style augmentation parity (config bucket styles + explicit axis styles)
+  - (done) implicit mark-type style augmentation (`config.style.<markType>`)
+  - (done) implicit title style fallback (`group-title`) matching documented behavior
+  - (done) axis bucket style augmentation parity (config bucket styles + explicit axis styles)
   - view background style parity (`style: "cell"` model)
 
 ## 1.3 Alignment Principle (Vega-Lite + GenomeSpy Hierarchy)
@@ -998,10 +998,10 @@ Purpose:
 Current discoveries:
 
 1. mark style parity gap:
-   - implicit mark-type style augmentation (`config.style.<markType>`) is not yet applied when `mark.style` is absent.
+   - ✅ resolved: implicit mark-type style augmentation (`config.style.<markType>`) now applies when `mark.style` is absent (`c6d5bf4a`).
 2. title style parity gap:
-   - documented default `"group-title"` style fallback is not yet automatically applied when `title.style` is omitted.
+   - ✅ resolved: documented default `"group-title"` style fallback now applies when `title.style` is omitted (`c6d5bf4a`).
 3. axis style parity gap:
-   - style augmentation from axis config buckets is partial; current behavior primarily follows explicit `encoding.<channel>.axis.style`.
+   - ✅ resolved: style augmentation from axis config buckets now contributes defaults alongside explicit `encoding.<channel>.axis.style` (current branch).
 4. view background style parity gap:
    - view background style model (`style: "cell"`-like semantics) is not implemented yet.
