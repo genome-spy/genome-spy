@@ -86,6 +86,14 @@ export type Paddings = Partial<Record<Side, number>>;
 export type PaddingConfig = Paddings | number;
 
 interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
+    /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     *
+     * __Default value:__ `"cell"`
+     */
+    style?: string | string[];
+
     // TODO: Move to FillAndStrokeProps or something
     strokeWidth?: number;
 }

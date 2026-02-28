@@ -106,6 +106,8 @@ Title defaults are read from:
 View background defaults are read from:
 
 - `config.view`
+- implicit `config.style.cell` fallback
+- named styles in `config.style` selected with `view.style`
 
 Explicit `title` and `view` properties override config defaults.
 

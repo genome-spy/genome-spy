@@ -89,7 +89,7 @@ Missing / Not Yet Implemented:
   - (done) implicit mark-type style augmentation (`config.style.<markType>`)
   - (done) implicit title style fallback (`group-title`) matching documented behavior
   - (done) axis bucket style augmentation parity (config bucket styles + explicit axis styles)
-  - view background style parity (`style: "cell"` model)
+  - (done) view background style parity (`style: "cell"` model)
 
 ## 1.3 Alignment Principle (Vega-Lite + GenomeSpy Hierarchy)
 
@@ -1004,4 +1004,4 @@ Current discoveries:
 3. axis style parity gap:
    - ✅ resolved: style augmentation from axis config buckets now contributes defaults alongside explicit `encoding.<channel>.axis.style` (current branch).
 4. view background style parity gap:
-   - view background style model (`style: "cell"`-like semantics) is not implemented yet.
+   - ✅ resolved: view backgrounds now apply implicit `config.style.cell`, augment with explicit `view.style`, and keep explicit `view` properties as highest precedence (current branch).
