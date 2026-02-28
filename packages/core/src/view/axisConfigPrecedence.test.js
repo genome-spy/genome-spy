@@ -161,4 +161,41 @@ describe("axis config precedence", () => {
         const explicitAxis = findAxisView(explicitRoot, "bottom");
         expect(explicitAxis.axisProps.tickColor).toBe("black");
     });
+
+    test("axis config buckets can enable grid lines without explicit axis.grid", async () => {
+        const context = createTestViewContext({ wrapRoot: true });
+
+        const root = await context.createOrImportView(
+            {
+                data: {
+                    values: [
+                        { category: "A", value: 1 },
+                        { category: "B", value: 2 },
+                    ],
+                },
+                config: {
+                    axis: { grid: false },
+                    axisY: { grid: true },
+                },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "category",
+                        type: "nominal",
+                    },
+                    y: {
+                        field: "value",
+                        type: "quantitative",
+                    },
+                    y2: { value: 0 },
+                },
+            },
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const axis = findAxisView(root, "left");
+        expect(axis.axisProps.grid).toBe(true);
+    });
 });

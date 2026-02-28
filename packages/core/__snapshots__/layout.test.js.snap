@@ -539,6 +539,169 @@ ViewCoords {
 }
 `;
 
+exports[`Test layout process > config/config-theme-comparison-bars.json 1`] = `
+ViewCoords {
+  "children": [
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 52, y: 200, width: 260, height: 32",
+      "viewName": "axis_bottom",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+          "viewName": "domain",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 0, y: 0, width: 52, height: 200",
+      "viewName": "axis_left",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 260, height: 200",
+      "viewName": "genomespy-theme",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 52, y: 0, width: 260, height: 200",
+      "viewName": "title0",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 388, y: 0, width: 260, height: 200",
+          "viewName": "grid_lines",
+        },
+      ],
+      "coords": "Rectangle: x: 388, y: 0, width: 260, height: 200",
+      "viewName": "grid_layers",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 388, y: 0, width: 260, height: 200",
+      "viewName": "backgroundStroke1",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 388, y: 200, width: 260, height: 32",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 388, y: 200, width: 260, height: 32",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 388, y: 200, width: 260, height: 32",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 388, y: 200, width: 260, height: 32",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 388, y: 200, width: 260, height: 32",
+      "viewName": "axis_bottom",
+    },
+    ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 336, y: 0, width: 52, height: 200",
+              "viewName": "ticks",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 336, y: 0, width: 52, height: 200",
+              "viewName": "labels",
+            },
+          ],
+          "coords": "Rectangle: x: 336, y: 0, width: 52, height: 200",
+          "viewName": "ticks_and_labels",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 336, y: 0, width: 52, height: 200",
+          "viewName": "title",
+        },
+      ],
+      "coords": "Rectangle: x: 336, y: 0, width: 52, height: 200",
+      "viewName": "axis_left",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 388, y: 0, width: 260, height: 200",
+      "viewName": "vegalite-theme",
+    },
+    ViewCoords {
+      "children": [],
+      "coords": "Rectangle: x: 388, y: 0, width: 260, height: 200",
+      "viewName": "title1",
+    },
+  ],
+  "coords": "Rectangle: x: 0, y: 0, width: 648, height: 232",
+  "viewName": "viewRoot",
+}
+`;
+
 exports[`Test layout process > first.json 1`] = `
 ViewCoords {
   "children": [
