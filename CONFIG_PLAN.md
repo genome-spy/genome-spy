@@ -85,6 +85,24 @@ Missing / Not Yet Implemented:
 - ⏳ spec-defined custom theme registries (`config.themes`) and named profile selection from spec scopes
 - ⏳ final docs build verification in this environment (`mkdocs` unavailable locally)
 - ⏳ broader visual parity pass for `vegalite` theme (fine-grained defaults where GenomeSpy feature set overlaps, keeping non-overlap domains GenomeSpy-native)
+- ⏳ full Vega-Lite-like style semantics completion while preserving non-style behavior:
+  - implicit mark-type style augmentation (`config.style.<markType>`)
+  - implicit title style fallback (`group-title`) matching documented behavior
+  - axis bucket style augmentation parity (config bucket styles + explicit axis styles)
+  - view background style parity (`style: "cell"` model)
+
+## 1.3 Alignment Principle (Vega-Lite + GenomeSpy Hierarchy)
+
+Primary design rule:
+
+- mirror Vega-Lite config/style semantics for overlapping features
+- keep GenomeSpy hierarchical/import-aware resolution semantics (`closest scope wins`)
+- keep GenomeSpy-native domains (`locus`, `index`, genome axis properties, multiscale policies) as first-class config/style keys in the same model
+
+Compatibility and safety rule:
+
+- explicit local spec properties always override style/config/theme defaults
+- specs that do not use style properties should keep current rendering behavior
 
 ## 2. Historical Baseline (Before Migration)
 
@@ -741,6 +759,46 @@ Acceptance criteria:
 - app-level theming path is clear and tested
 - no regressions in current app visuals by default
 
+### 10.6 Vega-Lite-Style Semantics Completion (Styles)
+
+Problem:
+
+- style plumbing exists, but a few Vega-Lite-like semantics are still incomplete.
+- some visual defaults still live as hardcoded runtime behavior rather than style-first config.
+
+Hard requirement:
+
+- migrate remaining hardcoded visual defaults to style/config-based resolution where feasible
+- prefer style-driven defaults over ad hoc per-module hardcoded constants
+- keep non-visual invariants (for example strict scale mechanics) outside style when appropriate
+
+Implementation tasks:
+
+1. mark styles:
+   - add implicit mark-type style augmentation (`config.style.point`, `config.style.rect`, etc.) even when `mark.style` is not explicitly provided
+   - keep explicit `mark.style` precedence above implicit mark-type style
+2. title styles:
+   - implement implicit `"group-title"` fallback when `title.style` is omitted
+   - ensure this does not change rendering for non-style specs under internal defaults
+3. axis styles:
+   - add axis-bucket style augmentation parity (styles referenced through axis config buckets + explicit axis styles)
+4. view background styles:
+   - implement view background style support (`view.style`) and optional implicit `"cell"` style model
+5. regression safety:
+   - add tests proving unchanged behavior for specs without style usage
+   - add targeted precedence tests for each new style layer
+6. hardcoded-to-style migration sweep:
+   - inventory remaining visual hardcoded defaults in mark/axis/title/view rendering paths
+   - replace with style/config lookups (or explicit style-derived aliases) instead of direct constants
+   - keep one documented exception list for defaults that must remain non-style due to runtime invariants
+
+Acceptance criteria:
+
+- style semantics are familiar to Vega-Lite users in overlapping domains
+- explicit local mark/axis/title/view properties still override style/config/theme
+- non-style specs render unchanged from current defaults
+- visual defaults no longer depend on scattered hardcoded constants in runtime rendering codepaths
+
 ## 11. Examples And Documentation Workstream
 
 Examples location:
@@ -784,6 +842,9 @@ When executing this plan:
 - commit after each completed phase (do not batch multiple phases into one commit)
 - after each commit, re-read `CONFIG_PLAN.md` before starting the next phase
 - if `test:tsc` fails, fix issues before committing
+- when discovering remaining hardcoded visual defaults/gaps during implementation:
+  - add an entry to Section 14 ("Discovered Hardcoded/Style Gaps Log")
+  - add targeted TODO comments in touched implementation files only when actively implementing that gap (not preemptively)
 
 ## 13. Deferred: Spec-Defined Theme Profiles (`config.themes`)
 
@@ -927,3 +988,20 @@ Estimated complexity:
 ---
 
 Guiding principle: move hardcoded defaults into config in small slices, and prove unchanged rendering at each slice before moving on.
+
+## 14. Discovered Hardcoded/Style Gaps Log
+
+Purpose:
+
+- keep a running implementation-time inventory of hardcoded visual behavior that should migrate to style/config.
+
+Current discoveries:
+
+1. mark style parity gap:
+   - implicit mark-type style augmentation (`config.style.<markType>`) is not yet applied when `mark.style` is absent.
+2. title style parity gap:
+   - documented default `"group-title"` style fallback is not yet automatically applied when `title.style` is omitted.
+3. axis style parity gap:
+   - style augmentation from axis config buckets is partial; current behavior primarily follows explicit `encoding.<channel>.axis.style`.
+4. view background style parity gap:
+   - view background style model (`style: "cell"`-like semantics) is not implemented yet.
