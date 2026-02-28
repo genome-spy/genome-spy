@@ -11,7 +11,13 @@ import {
 import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 
-export type BuiltInThemeName = "genomespy" | "vegalite";
+export type BuiltInThemeName =
+    | "genomespy"
+    | "vegalite"
+    | "quartz"
+    | "dark"
+    | "fivethirtyeight"
+    | "urbaninstitute";
 
 export interface ViewConfig extends ShadowProps {
     fill?: string;

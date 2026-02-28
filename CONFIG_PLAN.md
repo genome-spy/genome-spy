@@ -67,6 +67,7 @@ Remaining work is now hardening/polish, not foundational migration:
   - ✅ `vegalite` theme axis domain default aligned with Vega-Lite behavior (`axis.domain: true`) (`792b79b3`)
   - ✅ Vega-Lite-style named scale ranges now resolve through `config.range` (for example `scale.range: "heatmap"`) with clear validation errors for unknown names (current branch)
   - ✅ removed `scale.indexColorScheme` / `scale.locusColorScheme`; `index` and `locus` remain positional-only data types (current branch)
+  - ✅ added built-in Vega-theme-inspired options (`quartz`, `dark`, `fivethirtyeight`, `urbaninstitute`) with best-effort mapping to currently supported GenomeSpy config keys (current branch)
 
 ## 1.2 Done vs Missing (Current Checklist)
 
