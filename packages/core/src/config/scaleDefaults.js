@@ -8,18 +8,21 @@ import {
  * @param {import("../spec/channel.js").Type} dataType
  * @param {boolean} isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} configScopes
+ * @param {import("../spec/mark.js").MarkType[]} [markTypes]
  * @returns {import("../spec/scale.js").Scale}
  */
 export function getDefaultScaleProperties(
     channel,
     dataType,
     isExplicitDomain,
-    configScopes
+    configScopes,
+    markTypes
 ) {
     return getConfiguredScaleDefaults(configScopes, {
         channel,
         dataType,
         isExplicitDomain,
+        markTypes,
     });
 }
 

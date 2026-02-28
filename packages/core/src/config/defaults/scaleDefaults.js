@@ -3,6 +3,8 @@ export const SCALE_DEFAULTS = {
     nominalColorScheme: "tableau10",
     ordinalColorScheme: "blues",
     quantitativeColorScheme: "viridis",
+    quantitativeHeatmapColorScheme: "viridis",
+    quantitativeRampColorScheme: "viridis",
     indexColorScheme: "viridis",
     locusColorScheme: "viridis",
 };
