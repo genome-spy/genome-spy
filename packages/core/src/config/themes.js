@@ -44,6 +44,8 @@ export const BUILT_IN_THEMES = {
             nominalColorScheme: "tableau10",
             ordinalColorScheme: "blues",
             quantitativeColorScheme: "viridis",
+            quantitativeHeatmapColorScheme: "viridis",
+            quantitativeRampColorScheme: "blues",
         },
     },
 };

@@ -31,6 +31,14 @@ export function resolveScalePropsBase({
     isExplicitDomain,
     configScopes,
 }) {
+    const markTypes = [...members]
+        .map((member) =>
+            typeof member.view.getMarkType == "function"
+                ? member.view.getMarkType()
+                : undefined
+        )
+        .filter((markType) => !!markType);
+
     const propArray = orderResolutionMembers(members)
         .map((member) => member.channelDef.scale)
         .filter((props) => props !== undefined);
@@ -46,7 +54,8 @@ export function resolveScalePropsBase({
             channel,
             dataType,
             isExplicitDomain,
-            configScopes
+            configScopes,
+            /** @type {import("../spec/mark.js").MarkType[]} */ (markTypes)
         ),
         ...mergedProps,
     };

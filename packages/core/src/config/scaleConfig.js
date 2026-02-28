@@ -14,6 +14,8 @@ const COLOR_SCHEME_KEYS = {
     locus: "locusColorScheme",
 };
 
+const HEATMAP_MARK_TYPES = new Set(["rect"]);
+
 /**
  * @param {import("../spec/channel.js").Type} dataType
  * @returns {keyof import("../spec/config.js").ScaleConfig | undefined}
@@ -48,6 +50,8 @@ function getBaseScaleConfig(scaleConfig) {
         "nominalColorScheme",
         "ordinalColorScheme",
         "quantitativeColorScheme",
+        "quantitativeHeatmapColorScheme",
+        "quantitativeRampColorScheme",
         "indexColorScheme",
         "locusColorScheme",
     ]) {
@@ -108,11 +112,12 @@ export function getConfiguredRangeConfig(scopes) {
  * @param {import("../spec/channel.js").Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {boolean} options.isExplicitDomain
+ * @param {import("../spec/mark.js").MarkType[]} [options.markTypes]
  * @returns {import("../spec/scale.js").Scale}
  */
 export function getConfiguredScaleDefaults(
     scopes,
-    { channel, dataType, isExplicitDomain }
+    { channel, dataType, isExplicitDomain, markTypes }
 ) {
     const scaleConfig = getConfiguredScaleConfig(scopes, dataType);
     const rangeConfig = getConfiguredRangeConfig(scopes);
@@ -136,10 +141,30 @@ export function getConfiguredScaleDefaults(
     }
 
     if (isColorChannel(channel) && props.scheme === undefined) {
-        const schemeKey =
+        let schemeKey =
             COLOR_SCHEME_KEYS[dataType] ?? COLOR_SCHEME_KEYS.quantitative;
+
+        if (
+            dataType == "quantitative" &&
+            markTypes?.length &&
+            markTypes.every((markType) => HEATMAP_MARK_TYPES.has(markType))
+        ) {
+            schemeKey = "quantitativeHeatmapColorScheme";
+        } else if (dataType == "quantitative" && markTypes?.length) {
+            schemeKey = "quantitativeRampColorScheme";
+        }
+
         const configuredScheme = scaleConfig[schemeKey];
         if (
+            configuredScheme === undefined &&
+            (schemeKey == "quantitativeHeatmapColorScheme" ||
+                schemeKey == "quantitativeRampColorScheme")
+        ) {
+            props.scheme =
+                /** @type {import("../spec/scale.js").SchemeParams | string | undefined} */ (
+                    scaleConfig.quantitativeColorScheme
+                );
+        } else if (
             typeof configuredScheme == "string" ||
             (configuredScheme && typeof configuredScheme == "object")
         ) {

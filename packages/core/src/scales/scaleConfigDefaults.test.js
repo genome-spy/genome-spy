@@ -5,12 +5,15 @@ import { resolveScalePropsBase } from "./scalePropsResolver.js";
 /**
  * @param {import("../spec/channel.js").ChannelWithScale} [channel]
  * @param {import("../spec/scale.js").Scale} [scale]
+ * @param {import("../spec/mark.js").MarkType} [markType]
  * @returns {import("./scaleResolution.js").ScaleResolutionMember}
  */
-function createMember(channel = "color", scale) {
+function createMember(channel = "color", scale, markType = "point") {
     return /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
         channel,
-        view: /** @type {any} */ ({}),
+        view: /** @type {any} */ ({
+            getMarkType: () => markType,
+        }),
         channelDef: scale ? { scale } : {},
         contributesToDomain: true,
     });
@@ -168,5 +171,65 @@ describe("scale config defaults", () => {
         });
 
         expect(props.range).toEqual([0, 1]);
+    });
+
+    test("quantitative color on rect uses heatmap scheme default", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            members: new Set([createMember("color", undefined, "rect")]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        quantitativeColorScheme: "viridis",
+                        quantitativeHeatmapColorScheme: "magma",
+                        quantitativeRampColorScheme: "blues",
+                    },
+                },
+            ],
+        });
+
+        expect(props.scheme).toBe("magma");
+    });
+
+    test("quantitative color on non-rect uses ramp scheme default", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            members: new Set([createMember("color", undefined, "point")]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        quantitativeColorScheme: "viridis",
+                        quantitativeHeatmapColorScheme: "magma",
+                        quantitativeRampColorScheme: "blues",
+                    },
+                },
+            ],
+        });
+
+        expect(props.scheme).toBe("blues");
+    });
+
+    test("quantitative color scheme falls back when heatmap/ramp keys are missing", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            members: new Set([createMember("color", undefined, "rect")]),
+            isExplicitDomain: false,
+            configScopes: [
+                {
+                    scale: {
+                        quantitativeColorScheme: "inferno",
+                    },
+                },
+            ],
+        });
+
+        expect(props.scheme).toBe("inferno");
     });
 });

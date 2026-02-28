@@ -45,6 +45,8 @@ export interface ScaleConfig extends Partial<Scale> {
     nominalColorScheme?: string;
     ordinalColorScheme?: string;
     quantitativeColorScheme?: string;
+    quantitativeHeatmapColorScheme?: string;
+    quantitativeRampColorScheme?: string;
     indexColorScheme?: string;
     locusColorScheme?: string;
 }
