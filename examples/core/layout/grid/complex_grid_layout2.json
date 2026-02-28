@@ -2,12 +2,19 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "data": { "url": "data/sincos.csv" },
-
+  "config": {
+    "view": {
+      "stroke": "lightgray"
+    },
+    "axisQuantitative": {
+      "grid": true
+    }
+  },
+>>>>>>> 09e05840 (chore(core): move grid example styling into config):packages/core/examples/layout/grid/complex_grid_layout2.json
   "encoding": {
     "y": {
       "field": "sin",
-      "type": "quantitative",
-      "axis": { "grid": true }
+      "type": "quantitative"
     }
   },
 
@@ -22,11 +29,13 @@
         "axis": { "x": "shared" }
       },
       "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "axis": { "orient": "top", "grid": true }
-        }
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": {
+        "orient": "top"
+      }
+    }
       },
       "concat": [
         {
@@ -37,24 +46,21 @@
           },
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]
@@ -67,11 +73,13 @@
         "axis": { "x": "shared" }
       },
       "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "axis": { "orient": "bottom", "grid": true }
-        }
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": {
+        "orient": "bottom"
+      }
+    }
       },
       "concat": [
         {
@@ -82,24 +90,21 @@
           },
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]
