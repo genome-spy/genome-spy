@@ -32,4 +32,22 @@ describe("titleConfig", () => {
         expect(style.color).toBe("seagreen");
         expect(style.anchor).toBe("start");
     });
+
+    test("merges multiple style names in order", () => {
+        const style = getConfiguredStyleConfig(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    style: {
+                        "group-title": { fontSize: 18, color: "steelblue" },
+                        emphasis: { color: "seagreen" },
+                    },
+                },
+            ],
+            ["group-title", "emphasis"]
+        );
+
+        expect(style.fontSize).toBe(18);
+        expect(style.color).toBe("seagreen");
+    });
 });

@@ -42,8 +42,9 @@ Mark defaults are resolved from:
 
 1. `config.mark`
 2. `config.<markType>` (for example `config.point`)
-3. `config.style[...]` referenced by `mark.style` (later style names win)
-4. explicit mark properties
+3. implicit `config.style.<markType>` (for example `config.style.point`)
+4. `config.style[...]` referenced by `mark.style` (later style names win)
+5. explicit mark properties
 
 See examples:
 
@@ -98,7 +99,8 @@ Example:
 Title defaults are read from:
 
 - `config.title`
-- named styles in `config.style` (for example `track-title` and `overlay`)
+- implicit `config.style.group-title` fallback when `title.style` is omitted
+- named styles in `config.style` (for example `track-title`, `overlay`)
 
 View background defaults are read from:
 

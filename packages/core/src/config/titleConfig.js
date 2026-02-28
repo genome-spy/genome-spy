@@ -17,7 +17,7 @@ export function getConfiguredTitleConfig(scopes) {
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
- * @param {string} [styleName]
+ * @param {string | string[]} [styleName]
  * @returns {import("../spec/config.js").StyleConfig}
  */
 export function getConfiguredStyleConfig(scopes, styleName) {
@@ -25,13 +25,17 @@ export function getConfiguredStyleConfig(scopes, styleName) {
         return {};
     }
 
+    const styles = Array.isArray(styleName) ? styleName : [styleName];
+
     return /** @type {import("../spec/config.js").StyleConfig} */ (
         mergeConfigScopes(
-            scopes.map(
-                (scope) =>
-                    /** @type {Record<string, any> | undefined} */ (
-                        scope.style?.[styleName]
-                    )
+            scopes.flatMap((scope) =>
+                styles.map(
+                    (name) =>
+                        /** @type {Record<string, any> | undefined} */ (
+                            scope.style?.[name]
+                        )
+                )
             )
         )
     );
