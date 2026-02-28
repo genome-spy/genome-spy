@@ -57,8 +57,7 @@ export function getConfiguredAxisDefaults(
                     ? ORIENT_BUCKETS[orient]
                     : undefined;
                 const typeBucket = type ? TYPE_BUCKETS[type] : undefined;
-
-                return [
+                const bucketConfigs = [
                     /** @type {Record<string, any> | undefined} */ (scope.axis),
                     /** @type {Record<string, any> | undefined} */ (
                         channelBucket ? scope[channelBucket] : undefined
@@ -69,6 +68,19 @@ export function getConfiguredAxisDefaults(
                     /** @type {Record<string, any> | undefined} */ (
                         typeBucket ? scope[typeBucket] : undefined
                     ),
+                ];
+                const bucketStyles = bucketConfigs.flatMap((config) =>
+                    normalizeStyle(config?.style)
+                );
+
+                return [
+                    ...bucketStyles.map(
+                        (styleName) =>
+                            /** @type {Record<string, any> | undefined} */ (
+                                scope.style?.[styleName]
+                            )
+                    ),
+                    ...bucketConfigs,
                     ...styles.map(
                         (styleName) =>
                             /** @type {Record<string, any> | undefined} */ (
