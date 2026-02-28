@@ -10,6 +10,10 @@ Supported built-in themes are currently:
 
 - `genomespy` (default behavior)
 - `vegalite` (best-effort Vega-Lite-like defaults for overlapping properties)
+- `quartz` (best-effort port from Vega theme)
+- `dark` (best-effort port from Vega theme)
+- `fivethirtyeight` (best-effort port from Vega theme)
+- `urbaninstitute` (best-effort port from Vega theme)
 
 You can define config in:
 

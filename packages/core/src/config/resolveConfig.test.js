@@ -74,6 +74,24 @@ describe("resolveConfig", () => {
         ).toThrow("Unknown theme");
     });
 
+    test("additional built-in themes resolve", () => {
+        const quartz = resolveLocalConfigScope("quartz");
+        expect(quartz.mark.color).toBe("#ab5787");
+        expect(quartz.axisY.domain).toBe(false);
+
+        const dark = resolveLocalConfigScope("dark");
+        expect(dark.view.fill).toBe("#333");
+        expect(dark.axis.labelColor).toBe("#fff");
+
+        const fiveThirtyEight = resolveLocalConfigScope("fivethirtyeight");
+        expect(fiveThirtyEight.mark.color).toBe("#30a2da");
+        expect(fiveThirtyEight.axis.grid).toBe(true);
+
+        const urbanInstitute = resolveLocalConfigScope("urbaninstitute");
+        expect(urbanInstitute.mark.color).toBe("#1696d2");
+        expect(urbanInstitute.axisY.gridColor).toBe("#DEDDDD");
+    });
+
     test("imported root config overrides import-site config", () => {
         const merged = resolveImportedSpecConfig(
             {

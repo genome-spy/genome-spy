@@ -2,7 +2,11 @@ import { mergeConfigScopes } from "./mergeConfig.js";
 
 /**
  * Built-in themes. These can be selected with the `theme` property
- * in view specs (`"genomespy"` or `"vegalite"`).
+ * in view specs.
+ *
+ * TODO: Vega themes include additional properties (for example legend config,
+ * top-level background, and custom categorical range arrays) that are not yet
+ * configurable through GenomeSpy's theme/config surface.
  *
  * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>}
  */
@@ -49,6 +53,143 @@ export const BUILT_IN_THEMES = {
             heatmap: "viridis",
             ramp: "blues",
             diverging: "blueorange",
+        },
+    },
+    quartz: {
+        view: {
+            fill: "#f9f9f9",
+        },
+        mark: {
+            color: "#ab5787",
+        },
+        point: {
+            size: 30,
+        },
+        axis: {
+            domainColor: "#979797",
+            domainWidth: 0.5,
+            gridWidth: 0.2,
+            labelColor: "#979797",
+            tickColor: "#979797",
+            tickWidth: 0.2,
+            titleColor: "#979797",
+        },
+        axisX: {
+            grid: true,
+            tickSize: 10,
+        },
+        axisY: {
+            domain: false,
+            grid: true,
+            tickSize: 0,
+        },
+    },
+    dark: {
+        view: {
+            fill: "#333",
+            stroke: "#888",
+        },
+        title: {
+            color: "#fff",
+        },
+        axis: {
+            domainColor: "#fff",
+            gridColor: "#888",
+            tickColor: "#fff",
+            labelColor: "#fff",
+            titleColor: "#fff",
+        },
+        text: {
+            color: "#fff",
+        },
+        rule: {
+            color: "#fff",
+        },
+    },
+    fivethirtyeight: {
+        view: {
+            fill: "#f0f0f0",
+        },
+        mark: {
+            color: "#30a2da",
+        },
+        axis: {
+            domainColor: "#cbcbcb",
+            grid: true,
+            gridColor: "#cbcbcb",
+            gridWidth: 1,
+            labelColor: "#999",
+            labelFontSize: 10,
+            titleColor: "#333",
+            tickColor: "#cbcbcb",
+            tickSize: 10,
+            titleFontSize: 14,
+            titlePadding: 10,
+            labelPadding: 4,
+        },
+        axisNominal: {
+            grid: false,
+        },
+        axisOrdinal: {
+            grid: false,
+        },
+        title: {
+            anchor: "start",
+            fontSize: 24,
+            fontWeight: 600,
+            offset: 20,
+        },
+    },
+    urbaninstitute: {
+        view: {
+            fill: "#FFFFFF",
+            stroke: "transparent",
+        },
+        mark: {
+            color: "#1696d2",
+        },
+        point: {
+            filled: true,
+        },
+        text: {
+            font: "Lato",
+            color: "#1696d2",
+            size: 11,
+            align: "center",
+            fontWeight: 400,
+        },
+        title: {
+            anchor: "start",
+            fontSize: 18,
+            font: "Lato",
+        },
+        axisX: {
+            domain: true,
+            domainColor: "#000000",
+            domainWidth: 1,
+            grid: false,
+            labelFontSize: 12,
+            labelFont: "Lato",
+            labelAngle: 0,
+            tickColor: "#000000",
+            tickSize: 5,
+            titleFontSize: 12,
+            titlePadding: 10,
+            titleFont: "Lato",
+        },
+        axisY: {
+            domain: false,
+            domainWidth: 1,
+            grid: true,
+            gridColor: "#DEDDDD",
+            gridWidth: 1,
+            labelFontSize: 12,
+            labelFont: "Lato",
+            labelPadding: 8,
+            ticks: false,
+            titleFontSize: 12,
+            titlePadding: 10,
+            titleFont: "Lato",
         },
     },
 };
