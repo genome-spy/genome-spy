@@ -1,4 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
+import { resolveThemeSelection } from "./themes.js";
 
 /**
  * @param {object} options
@@ -14,20 +15,46 @@ export function resolveBaseConfig({ defaultConfig, builtInTheme, theme }) {
 }
 
 /**
+ * Resolves a local config scope by applying selected built-in theme(s) first
+ * and explicit config properties second.
+ *
+ * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[] | undefined} themeSelection
+ * @param {import("../spec/config.js").GenomeSpyConfig} [localConfig]
+ * @returns {import("../spec/config.js").GenomeSpyConfig | undefined}
+ */
+export function resolveLocalConfigScope(themeSelection, localConfig) {
+    const themed = resolveThemeSelection(themeSelection);
+    if (!themed && !localConfig) {
+        return undefined;
+    }
+    return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
+        mergeConfigScopes([themed, localConfig])
+    );
+}
+
+/**
  * Resolves the effective config for a view scope.
  *
  * @param {import("../spec/config.js").GenomeSpyConfig} baseConfig
  * @param {import("../spec/config.js").GenomeSpyConfig} [parentConfig]
  * @param {import("../spec/config.js").GenomeSpyConfig} [localConfig]
+ * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[]} [themeSelection]
  * @returns {import("../spec/config.js").GenomeSpyConfig}
  */
-export function resolveViewConfig(baseConfig, parentConfig, localConfig) {
-    if (!parentConfig && !localConfig) {
+export function resolveViewConfig(
+    baseConfig,
+    parentConfig,
+    localConfig,
+    themeSelection
+) {
+    const scopedConfig = resolveLocalConfigScope(themeSelection, localConfig);
+
+    if (!parentConfig && !scopedConfig) {
         return baseConfig;
     }
 
     return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-        mergeConfigScopes([baseConfig, parentConfig, localConfig])
+        mergeConfigScopes([baseConfig, parentConfig, scopedConfig])
     );
 }
 

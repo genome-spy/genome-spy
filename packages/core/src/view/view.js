@@ -21,6 +21,7 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
+import { resolveLocalConfigScope } from "../config/resolveConfig.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -144,9 +145,10 @@ export default class View {
         const inheritedScopes = dataParent
             ? dataParent.getConfigScopes()
             : [context.getBaseConfig()];
+        const localScope = resolveLocalConfigScope(spec.theme, spec.config);
         this.#configScopes =
             /** @type {import("../spec/config.js").GenomeSpyConfig[]} */ (
-                [...inheritedScopes, spec.config].filter((scope) => !!scope)
+                [...inheritedScopes, localScope].filter((scope) => !!scope)
             );
         this.#config =
             /** @type {import("../spec/config.js").GenomeSpyConfig} */ (

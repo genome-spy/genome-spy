@@ -114,3 +114,44 @@ test("ImportSpec.config is merged before imported root config", async () => {
     expect(imported.spec.config.point.size).toBe(42);
     expect(imported.getConfig().mark.color).toBe("red");
 });
+
+test("ImportSpec.theme overrides imported root theme", async () => {
+    const context = createTestViewContext({
+        allowImport: true,
+        wrapRoot: false,
+    });
+
+    /** @type {import("../spec/view.js").VConcatSpec} */
+    const spec = {
+        templates: {
+            panel: {
+                mark: "rect",
+                theme: "genomespy",
+                data: {
+                    values: [
+                        { category: "A", value: 1 },
+                        { category: "B", value: 2 },
+                    ],
+                },
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                    y2: { value: 0 },
+                },
+            },
+        },
+        vconcat: [
+            {
+                import: { template: "panel" },
+                theme: "vegalite",
+            },
+        ],
+    };
+
+    const root = /** @type {import("./containerView.js").default} */ (
+        await context.createOrImportView(spec, null, null, "root")
+    );
+    const imported = [...root][0];
+
+    expect(imported.getConfig().axis.domain).toBe(false);
+});

@@ -316,6 +316,10 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
         importedSpec.config
     );
 
+    if (importSpec.theme != null) {
+        importedSpec.theme = importSpec.theme;
+    }
+
     const params = isArray(importSpec.params)
         ? importSpec.params
         : isObject(importSpec.params)

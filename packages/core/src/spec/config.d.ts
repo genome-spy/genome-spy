@@ -11,6 +11,8 @@ import {
 import { Scale } from "./scale.js";
 import { Title } from "./title.js";
 
+export type BuiltInThemeName = "genomespy" | "vegalite";
+
 export interface ViewConfig extends ShadowProps {
     fill?: string;
     fillOpacity?: number;
