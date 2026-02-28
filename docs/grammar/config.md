@@ -53,6 +53,11 @@ Axis defaults are resolved from axis buckets:
 
 Explicit `encoding.<channel>.axis` values override config buckets.
 
+For shared axes/scales with conflicting sibling properties, GenomeSpy now uses
+a deterministic merge order based on stable view path + channel ordering. This
+removes registration-order dependence, but conflicting values still follow
+"first value wins" semantics with a warning.
+
 ## Scale Defaults
 
 Scale defaults use a similar model to Vega-Lite:
