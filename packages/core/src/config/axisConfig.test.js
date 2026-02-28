@@ -80,4 +80,22 @@ describe("axisConfig", () => {
         expect(defaults.labelColor).toBe("orange");
         expect(defaults.domainColor).toBe("pink");
     });
+
+    test("closest scope wins for the same style bucket", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                { style: { emphasis: { tickColor: "blue" } } },
+                { style: { emphasis: { tickColor: "red" } } },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+                style: "emphasis",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("red");
+    });
 });

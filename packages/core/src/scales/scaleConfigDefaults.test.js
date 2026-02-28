@@ -3,14 +3,13 @@ import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 
 /**
+ * @param {import("../spec/channel.js").ChannelWithScale} [channel]
  * @param {import("../spec/scale.js").Scale} [scale]
  * @returns {import("./scaleResolution.js").ScaleResolutionMember}
  */
-function createMember(scale) {
+function createMember(channel = "color", scale) {
     return /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-        channel: /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-            "color"
-        ),
+        channel,
         view: /** @type {any} */ ({}),
         channelDef: scale ? { scale } : {},
         contributesToDomain: true,
@@ -73,7 +72,7 @@ describe("scale config defaults", () => {
             channel: "color",
             dataType: "nominal",
             members: new Set([
-                createMember({
+                createMember("color", {
                     scheme: "viridis",
                 }),
             ]),
@@ -127,5 +126,47 @@ describe("scale config defaults", () => {
         });
 
         expect(props.clamp).toBe(false);
+    });
+
+    test("scale.reverse config can override discrete y default reversal", () => {
+        const props = resolveScalePropsBase({
+            channel: "y",
+            dataType: "nominal",
+            members: new Set([createMember("y")]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        reverse: false,
+                    },
+                },
+            ],
+        });
+
+        expect(props.reverse).toBe(false);
+    });
+
+    test("positional channels always use unit range even with configured range", () => {
+        const props = resolveScalePropsBase({
+            channel: "x",
+            dataType: "quantitative",
+            members: new Set([
+                createMember("x", {
+                    range: [10, 20],
+                }),
+            ]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    scale: {
+                        range: [5, 15],
+                    },
+                },
+            ],
+        });
+
+        expect(props.range).toEqual([0, 1]);
     });
 });

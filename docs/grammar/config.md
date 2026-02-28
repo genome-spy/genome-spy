@@ -35,7 +35,8 @@ Mark defaults are resolved from:
 
 1. `config.mark`
 2. `config.<markType>` (for example `config.point`)
-3. explicit mark properties
+3. `config.style[...]` referenced by `mark.style` (later style names win)
+4. explicit mark properties
 
 See examples:
 
@@ -50,6 +51,7 @@ Axis defaults are resolved from axis buckets:
 - channel buckets (`config.axisX`, `config.axisY`)
 - orient buckets (`config.axisTop`, `config.axisBottom`, `config.axisLeft`, `config.axisRight`)
 - type buckets (`config.axisNominal`, `config.axisOrdinal`, `config.axisQuantitative`, `config.axisIndex`, `config.axisLocus`)
+- `config.style[...]` referenced by `encoding.<channel>.axis.style` (later style names win)
 
 Explicit `encoding.<channel>.axis` values override config buckets.
 
@@ -73,6 +75,12 @@ By-type color scheme defaults can be configured with:
 - `config.scale.quantitativeColorScheme`
 - `config.scale.indexColorScheme`
 - `config.scale.locusColorScheme`
+
+Additional scale policy notes:
+
+- `config.scale.zoom` sets the default zoom behavior baseline.
+- `config.scale.clamp` sets the default clamp baseline (for example for opacity scales).
+- Positional channels (`x`, `y`) always use unit range `[0, 1]` internally. This is an invariant and explicit/configured positional `range` values are ignored.
 
 Example:
 
