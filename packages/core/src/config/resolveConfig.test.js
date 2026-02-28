@@ -3,6 +3,7 @@ import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import {
     resolveBaseConfig,
     resolveImportedSpecConfig,
+    resolveLocalConfigScope,
     resolveViewConfig,
 } from "./resolveConfig.js";
 
@@ -50,6 +51,27 @@ describe("resolveConfig", () => {
         expect(child.mark.color).toBe("orange");
         expect(child.point.size).toBe(123);
         expect(child.scale.nominalColorScheme).toBe("tableau10");
+    });
+
+    test("applies built-in theme before local config in a scope", () => {
+        const scope = resolveLocalConfigScope("vegalite", {
+            axis: {
+                domain: true,
+            },
+        });
+
+        expect(scope.axis.grid).toBe(false);
+        expect(scope.axis.domain).toBe(true);
+        expect(scope.axisQuantitative.grid).toBe(true);
+    });
+
+    test("unknown built-in theme throws", () => {
+        expect(() =>
+            resolveLocalConfigScope(
+                /** @type {any} */ ("no-such-theme"),
+                undefined
+            )
+        ).toThrow("Unknown theme");
     });
 
     test("imported root config overrides import-site config", () => {

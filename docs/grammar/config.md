@@ -5,6 +5,12 @@ GenomeSpy supports a Vega-Lite-like `config` object for setting reusable default
 Unlike Vega-Lite, config is **hierarchical** in GenomeSpy: `config` can appear at
 multiple levels of the view hierarchy.
 
+GenomeSpy also supports a hierarchical built-in `theme` selector at view scopes.
+Supported built-in themes are currently:
+
+- `genomespy` (default behavior)
+- `vegalite` (best-effort Vega-Lite-like defaults for overlapping properties)
+
 You can define config in:
 
 - the root spec (`RootSpec.config`)
@@ -20,11 +26,12 @@ For a view, config scopes are merged from farthest to nearest:
 1. Internal defaults
 2. Built-in theme (current-behavior theme)
 3. User theme (`embed(..., { theme })`)
-4. Root `spec.config`
-5. Ancestor view configs (root to parent)
-6. Import-site config (if any)
-7. Imported root config (if any)
-8. View-local config
+4. Root `spec.theme`
+5. Root `spec.config`
+6. Ancestor view `theme` / `config` (root to parent)
+7. Import-site `theme` / `config` (if any)
+8. Imported root `theme` / `config` (if any)
+9. View-local `theme` / `config`
 
 Then explicit local properties still win, for example `mark.color` or
 `encoding.x.axis.tickColor`.

@@ -24,6 +24,7 @@
   "hconcat": [
     {
       "name": "genomespy-theme",
+      "theme": "genomespy",
       "title": "GenomeSpy",
       "width": 260,
       "height": 200,
@@ -45,36 +46,10 @@
     },
     {
       "name": "vegalite-theme",
+      "theme": "vegalite",
       "title": "Vega-Lite-like",
       "width": 260,
       "height": 200,
-      "config": {
-        "view": {
-          "stroke": "#dddddd"
-        },
-        "rect": {
-          "color": "#4c78a8",
-          "strokeWidth": 0
-        },
-        "axis": {
-          "grid": false,
-          "domain": false,
-          "tickColor": "#dddddd",
-          "domainColor": "#dddddd",
-          "gridColor": "#dddddd",
-          "labelColor": "#333333",
-          "titleColor": "#333333",
-          "titleFontWeight": "normal"
-        },
-        "axisQuantitative": {
-          "grid": true
-        },
-        "scale": {
-          "nominalColorScheme": "tableau10",
-          "ordinalColorScheme": "blues",
-          "quantitativeColorScheme": "viridis"
-        }
-      },
       "mark": "rect",
       "encoding": {
         "x": {

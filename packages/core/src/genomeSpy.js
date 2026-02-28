@@ -49,7 +49,7 @@ import {
     resolveBaseConfig,
     resolveViewConfig as resolveConfigForView,
 } from "./config/resolveConfig.js";
-import { CURRENT_BEHAVIOR_THEME } from "./config/themes.js";
+import { DEFAULT_THEME_NAME, getBuiltInTheme } from "./config/themes.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -337,7 +337,7 @@ export default class GenomeSpy {
         dataFlow.loadingStatusRegistry = this.#loadingStatusRegistry;
         const baseConfig = resolveBaseConfig({
             defaultConfig: INTERNAL_DEFAULT_CONFIG,
-            builtInTheme: CURRENT_BEHAVIOR_THEME,
+            builtInTheme: getBuiltInTheme(DEFAULT_THEME_NAME),
             theme: this.options.theme,
         });
 
@@ -369,7 +369,8 @@ export default class GenomeSpy {
                 resolveConfigForView(
                     baseConfig,
                     dataParent?.getConfig(),
-                    spec.config
+                    spec.config,
+                    spec.theme
                 ),
             createOrImportViewWithContext: (
                 ctx,

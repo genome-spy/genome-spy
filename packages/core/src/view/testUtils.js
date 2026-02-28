@@ -90,7 +90,12 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         getBaseConfig: () => baseConfig,
 
         resolveViewConfig: (spec, dataParent) =>
-            resolveViewConfig(baseConfig, dataParent?.getConfig(), spec.config),
+            resolveViewConfig(
+                baseConfig,
+                dataParent?.getConfig(),
+                spec.config,
+                spec.theme
+            ),
 
         addBroadcastListener: () => undefined,
         removeBroadcastListener: () => undefined,

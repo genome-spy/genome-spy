@@ -198,4 +198,48 @@ describe("axis config precedence", () => {
         const axis = findAxisView(root, "left");
         expect(axis.axisProps.grid).toBe(true);
     });
+
+    test("view theme applies before local config overrides", async () => {
+        const context = createTestViewContext({ wrapRoot: true });
+
+        const root = await context.createOrImportView(
+            {
+                data: {
+                    values: [
+                        { category: "A", value: 1 },
+                        { category: "B", value: 2 },
+                    ],
+                },
+                theme: "vegalite",
+                config: {
+                    axis: {
+                        domain: true,
+                    },
+                },
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "category",
+                        type: "nominal",
+                    },
+                    y: {
+                        field: "value",
+                        type: "quantitative",
+                    },
+                    y2: { value: 0 },
+                },
+            },
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const yAxis = findAxisView(root, "left");
+        const xAxis = findAxisView(root, "bottom");
+
+        expect(yAxis.axisProps.grid).toBe(true);
+        expect(xAxis.axisProps.grid).toBe(false);
+        expect(yAxis.axisProps.domain).toBe(true);
+        expect(yAxis.axisProps.gridColor).toBe("#ddd");
+    });
 });
