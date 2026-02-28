@@ -70,6 +70,9 @@ export default class View {
     /** @type {TSpec} */
     spec;
 
+    /** @type {import("../spec/config.js").GenomeSpyConfig} */
+    #config;
+
     /** @type {string | undefined} */
     #defaultName;
 
@@ -134,6 +137,7 @@ export default class View {
         this.dataParent = dataParent;
         this.#defaultName = name;
         this.spec = spec;
+        this.#config = context.resolveViewConfig(spec, dataParent);
 
         this.resolutions = {
             /**
@@ -214,6 +218,10 @@ export default class View {
      */
     get defaultName() {
         return this.#defaultName;
+    }
+
+    getConfig() {
+        return this.#config;
     }
 
     /**

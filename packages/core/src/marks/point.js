@@ -36,7 +36,6 @@ export default class PointMark extends Mark {
             filled: true,
             opacity: 1.0,
             size: 100.0,
-            // @ts-expect-error - TODO: Should be datum instead of value. But needs fixing.
             semanticScore: 0.0,
             shape: "circle",
             strokeWidth: 2.0,

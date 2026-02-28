@@ -10,6 +10,7 @@ import { Datum } from "../data/flowNode.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
 import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
+import { GenomeSpyConfig } from "../spec/config.js";
 
 export interface Hover {
     mark: Mark;
@@ -81,6 +82,11 @@ export default interface ViewContext {
     isViewConfiguredVisible: (view: View) => boolean;
 
     isViewSpec: (spec: any) => boolean;
+
+    /**
+     * Resolves the effective config for a view based on hierarchy.
+     */
+    resolveViewConfig: (spec: ViewSpec, dataParent?: View) => GenomeSpyConfig;
 
     /**
      *
