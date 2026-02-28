@@ -7,6 +7,9 @@ such as [marks](mark/index.md), [transformations](transform/index.md), and
 [scales](scale.md). As a result, users can author tailored visualizations that
 display the underlying data more effectively.
 
+Global and hierarchical defaulting can be configured with
+[`config`](config.md), including reusable themes.
+
 The concept was first introduced in [The Grammar of
 Graphics](https://www.springer.com/gp/book/9780387245447) and developed further
 in [ggplot2](https://ggplot2.tidyverse.org/) and
