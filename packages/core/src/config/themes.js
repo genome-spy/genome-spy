@@ -9,6 +9,19 @@ import { mergeConfigScopes } from "./mergeConfig.js";
 export const BUILT_IN_THEMES = {
     genomespy: {},
     vegalite: {
+        mark: {
+            color: "#4c78a8",
+        },
+        point: {
+            filled: false,
+            size: 30,
+        },
+        rule: {
+            color: "black",
+        },
+        text: {
+            color: "black",
+        },
         view: {
             stroke: "#ddd",
             strokeWidth: 1,
@@ -21,14 +34,11 @@ export const BUILT_IN_THEMES = {
             gridColor: "#ddd",
             labelColor: "#333",
             titleColor: "#333",
+            titleFontSize: 11,
             titleFontWeight: "normal",
         },
         axisQuantitative: {
             grid: true,
-        },
-        rect: {
-            color: "#4c78a8",
-            strokeWidth: 0,
         },
         scale: {
             nominalColorScheme: "tableau10",
