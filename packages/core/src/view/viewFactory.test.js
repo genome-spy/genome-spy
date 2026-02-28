@@ -72,3 +72,45 @@ test("ImportSpec.visible overrides imported view visibility", async () => {
     expect(hidden.spec.visible).toBe(false);
     expect(visible.spec.visible).toBe(true);
 });
+
+test("ImportSpec.config is merged before imported root config", async () => {
+    const context = createTestViewContext({
+        allowImport: true,
+        wrapRoot: false,
+    });
+
+    /** @type {import("../spec/view.js").VConcatSpec} */
+    const spec = {
+        config: {
+            mark: { color: "green" },
+        },
+        templates: {
+            panel: {
+                mark: "point",
+                config: {
+                    mark: { color: "red" },
+                    point: { size: 42 },
+                },
+            },
+        },
+        vconcat: [
+            {
+                import: { template: "panel" },
+                config: {
+                    mark: { color: "blue" },
+                    point: { opacity: 0.4 },
+                },
+            },
+        ],
+    };
+
+    const root = /** @type {import("./containerView.js").default} */ (
+        await context.createOrImportView(spec, null, null, "root")
+    );
+    const imported = [...root][0];
+
+    expect(imported.spec.config.mark.color).toBe("red");
+    expect(imported.spec.config.point.opacity).toBe(0.4);
+    expect(imported.spec.config.point.size).toBe(42);
+    expect(imported.getConfig().mark.color).toBe("red");
+});

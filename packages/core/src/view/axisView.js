@@ -467,7 +467,7 @@ export function createGenomeAxis(axisProps, type) {
      * @return {import("../spec/view.js").UnitSpec}
      */
     const createChromosomeLabels = () => {
-        /** @type {Partial<import("../spec/mark.js").MarkProps>} */
+        /** @type {Partial<import("../spec/mark.js").TextProps>} */
         let chromLabelMarkProps;
         switch (ap.orient) {
             case "top":

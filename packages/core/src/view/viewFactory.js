@@ -10,6 +10,7 @@ import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
+import { resolveImportedSpecConfig } from "../config/resolveConfig.js";
 import {
     markViewAsNonAddressable,
     registerImportInstance,
@@ -309,6 +310,11 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
     if (importSpec.visible != null) {
         importedSpec.visible = importSpec.visible;
     }
+
+    importedSpec.config = resolveImportedSpecConfig(
+        importSpec.config,
+        importedSpec.config
+    );
 
     const params = isArray(importSpec.params)
         ? importSpec.params

@@ -38,6 +38,11 @@ import {
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
+import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
+import {
+    resolveBaseConfig,
+    resolveViewConfig as resolveConfigForView,
+} from "./config/resolveConfig.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -316,6 +321,9 @@ export default class GenomeSpy {
     #createViewContext() {
         const dataFlow = new DataFlow();
         dataFlow.loadingStatusRegistry = this.#loadingStatusRegistry;
+        const baseConfig = resolveBaseConfig({
+            defaultConfig: INTERNAL_DEFAULT_CONFIG,
+        });
 
         return createViewContext({
             dataFlow,
@@ -340,6 +348,12 @@ export default class GenomeSpy {
                 this.#extraBroadcastListeners.remove(type, listener),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
+            resolveViewConfig: (spec, dataParent) =>
+                resolveConfigForView(
+                    baseConfig,
+                    dataParent?.getConfig(),
+                    spec.config
+                ),
             createOrImportViewWithContext: (
                 ctx,
                 spec,

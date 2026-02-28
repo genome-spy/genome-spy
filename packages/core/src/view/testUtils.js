@@ -17,6 +17,11 @@ import GenomeStore from "../genome/genomeStore.js";
 import BmFontManager from "../fonts/bmFontManager.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
+import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
+import {
+    resolveBaseConfig,
+    resolveViewConfig,
+} from "../config/resolveConfig.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -39,6 +44,9 @@ export function createTestViewContext(viewFactoryOptions = {}) {
     });
 
     const dataFlow = new DataFlow();
+    const baseConfig = resolveBaseConfig({
+        defaultConfig: INTERNAL_DEFAULT_CONFIG,
+    });
 
     // @ts-expect-error
     const c = /** @type {ViewContext} */ ({
@@ -79,6 +87,9 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         requestLayoutReflow: () => undefined,
 
         isViewConfiguredVisible: () => true,
+
+        resolveViewConfig: (spec, dataParent) =>
+            resolveViewConfig(baseConfig, dataParent?.getConfig(), spec.config),
 
         addBroadcastListener: () => undefined,
         removeBroadcastListener: () => undefined,

@@ -17,6 +17,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { Parameter } from "./parameter.js";
+import { GenomeSpyConfig } from "./config.js";
 
 export interface SizeDef {
     /**
@@ -171,6 +172,13 @@ export interface ViewSpecBase extends ResolveSpec {
      * a visualization.
      */
     params?: Parameter[];
+
+    /**
+     * Configures defaults for this view subtree.
+     *
+     * Properties in child views override properties inherited from ancestors.
+     */
+    config?: GenomeSpyConfig;
 
     /**
      * Specifies a [data source](https://genomespy.app/docs/grammar/data/).
@@ -432,6 +440,15 @@ export interface ImportSpec {
      * If not specified, the imported specification's `visible` property is used.
      */
     visible?: boolean;
+
+    /**
+     * Configures defaults for the imported subtree at the import site.
+     *
+     * This config is merged before the imported spec's own root-level `config`,
+     * so imported specs can remain self-contained and override import-site
+     * defaults where needed.
+     */
+    config?: GenomeSpyConfig;
 
     /**
      * The method to import a specification.
