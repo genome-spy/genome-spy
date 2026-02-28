@@ -4,11 +4,18 @@
   "data": {
     "url": "../../data/sincos.csv"
   },
+  "config": {
+    "view": {
+      "stroke": "lightgray"
+    },
+    "axisQuantitative": {
+      "grid": true
+    }
+  },
   "encoding": {
     "y": {
       "field": "sin",
-      "type": "quantitative",
-      "axis": { "grid": true }
+      "type": "quantitative"
     }
   },
 
@@ -29,8 +36,7 @@
           "field": "x",
           "type": "quantitative",
           "axis": {
-            "orient": "top",
-            "grid": true
+            "orient": "top"
           }
         }
       },
@@ -46,25 +52,22 @@
 
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
 
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]
@@ -84,8 +87,7 @@
           "field": "x",
           "type": "quantitative",
           "axis": {
-            "orient": "bottom",
-            "grid": true
+            "orient": "bottom"
           }
         }
       },
@@ -101,25 +103,22 @@
 
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
 
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]
