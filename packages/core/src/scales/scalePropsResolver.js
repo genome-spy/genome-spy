@@ -1,10 +1,15 @@
 import { isDiscrete } from "vega-scale";
+import { isColorChannel } from "../encoder/encoder.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import {
     getDefaultScaleProperties,
     getScaleConfig,
 } from "../config/scaleDefaults.js";
+import {
+    getConfiguredNamedRange,
+    isConfigRangeName,
+} from "../config/scaleConfig.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
@@ -63,6 +68,47 @@ export function resolveScalePropsBase({
 
     if (!props.type) {
         props.type = getDefaultScaleType(channel, dataType);
+    }
+
+    if (typeof props.range == "string") {
+        if (!isConfigRangeName(props.range)) {
+            throw new Error(
+                'Unknown named scale range "' +
+                    props.range +
+                    '". Supported names: shape, size, angle, heatmap, ramp, diverging.'
+            );
+        }
+
+        const resolvedNamedRange = getConfiguredNamedRange(
+            configScopes,
+            props.range
+        );
+        if (resolvedNamedRange === undefined) {
+            throw new Error(
+                'Named scale range "' +
+                    props.range +
+                    '" is not configured in config.range.'
+            );
+        }
+
+        if (
+            isColorChannel(channel) &&
+            (typeof resolvedNamedRange == "string" ||
+                (resolvedNamedRange != null &&
+                    typeof resolvedNamedRange == "object" &&
+                    !Array.isArray(resolvedNamedRange)))
+        ) {
+            props.scheme =
+                /** @type {import("../spec/scale.js").Scale["scheme"]} */ (
+                    resolvedNamedRange
+                );
+            delete props.range;
+        } else {
+            props.range =
+                /** @type {import("../spec/scale.js").Scale["range"]} */ (
+                    resolvedNamedRange
+                );
+        }
     }
 
     // Reverse discrete y axis

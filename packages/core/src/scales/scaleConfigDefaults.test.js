@@ -266,4 +266,68 @@ describe("scale config defaults", () => {
 
         expect(props.scheme).toBe("redblue");
     });
+
+    test("named color range resolves through config.range and overrides scheme", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            members: new Set([
+                createMember("color", {
+                    range: "heatmap",
+                    scheme: "inferno",
+                }),
+            ]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    range: {
+                        heatmap: "magma",
+                    },
+                },
+            ],
+        });
+
+        expect(props.scheme).toBe("magma");
+        expect(props.range).toBeUndefined();
+    });
+
+    test("named shape range resolves through config.range", () => {
+        const props = resolveScalePropsBase({
+            channel: "shape",
+            dataType: "nominal",
+            members: new Set([
+                createMember("shape", {
+                    range: "shape",
+                }),
+            ]),
+            isExplicitDomain: false,
+            configScopes: [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    range: {
+                        shape: ["diamond", "square"],
+                    },
+                },
+            ],
+        });
+
+        expect(props.range).toEqual(["diamond", "square"]);
+    });
+
+    test("unknown named range throws a clear error", () => {
+        expect(() =>
+            resolveScalePropsBase({
+                channel: "color",
+                dataType: "quantitative",
+                members: new Set([
+                    createMember("color", {
+                        range: "no-such-range",
+                    }),
+                ]),
+                isExplicitDomain: false,
+                configScopes: [INTERNAL_DEFAULT_CONFIG],
+            })
+        ).toThrow('Unknown named scale range "no-such-range"');
+    });
 });
