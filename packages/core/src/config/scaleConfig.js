@@ -38,7 +38,7 @@ function getBaseScaleConfig(scaleConfig) {
         return {};
     }
 
-    const base = { ...scaleConfig };
+    const base = /** @type {Record<string, any>} */ ({ ...scaleConfig });
     for (const key of [
         "nominal",
         "ordinal",
