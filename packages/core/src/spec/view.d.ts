@@ -86,15 +86,18 @@ export type Paddings = Partial<Record<Side, number>>;
 export type PaddingConfig = Paddings | number;
 
 interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
-    // TODO: style?: string | string[];
-
     // TODO: Move to FillAndStrokeProps or something
     strokeWidth?: number;
 }
 
 export type ViewBackground = Pick<
     CompleteViewBackground,
-    "fill" | "fillOpacity" | "stroke" | "strokeWidth" | "strokeOpacity"
+    | "style"
+    | "fill"
+    | "fillOpacity"
+    | "stroke"
+    | "strokeWidth"
+    | "strokeOpacity"
 > &
     ShadowProps;
 
