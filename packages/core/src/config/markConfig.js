@@ -18,7 +18,9 @@ function normalizeStyle(style) {
  * @returns {Record<string, any>}
  */
 export function getConfiguredMarkDefaults(scopes, markType, style) {
-    const styles = normalizeStyle(style);
+    // Match Vega-Lite-like behavior: mark-type style (e.g. "point") is always
+    // part of style resolution, and explicit mark.style entries augment it.
+    const styles = [markType, ...normalizeStyle(style)];
 
     return mergeConfigScopes(
         scopes.flatMap((scope) => [

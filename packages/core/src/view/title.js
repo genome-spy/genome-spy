@@ -18,6 +18,8 @@ const ANCHOR_TO_ALIGN = {
     end: "right",
 };
 
+const DEFAULT_TITLE_STYLE = "group-title";
+
 /**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
@@ -37,7 +39,10 @@ export default function createTitle(title, configScopes = []) {
 
     const titleConfig = getConfiguredTitleConfig(configScopes);
     const styleConfig = /** @type {import("../spec/config.js").TitleConfig} */ (
-        getConfiguredStyleConfig(configScopes, titleSpec.style)
+        getConfiguredStyleConfig(
+            configScopes,
+            titleSpec.style ?? DEFAULT_TITLE_STYLE
+        )
     );
 
     // TODO: frame prop

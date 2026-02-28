@@ -123,6 +123,46 @@ describe("mark config precedence", () => {
         expect(explicit.mark.properties.color).toBe("black");
     });
 
+    test("implicit mark-type style applies when mark.style is omitted", async () => {
+        const styled = /** @type {UnitView} */ (
+            await create(
+                {
+                    config: {
+                        point: { size: 10, color: "orange" },
+                        style: {
+                            point: { size: 35, color: "teal" },
+                        },
+                    },
+                    mark: "point",
+                },
+                UnitView
+            )
+        );
+
+        expect(/** @type {any} */ (styled.mark.properties).size).toBe(35);
+        expect(styled.mark.properties.color).toBe("teal");
+
+        const explicit = /** @type {UnitView} */ (
+            await create(
+                {
+                    config: {
+                        style: {
+                            point: { color: "teal" },
+                            emphasis: { color: "firebrick" },
+                        },
+                    },
+                    mark: {
+                        type: "point",
+                        style: "emphasis",
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(explicit.mark.properties.color).toBe("firebrick");
+    });
+
     test("vegalite theme provides point defaults while explicit mark props still win", async () => {
         const themed = /** @type {UnitView} */ (
             await create(
