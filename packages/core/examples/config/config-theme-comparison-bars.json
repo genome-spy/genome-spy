@@ -1,5 +1,5 @@
 {
-  "description": "Side-by-side rect-bar comparison: GenomeSpy default styling vs Vega-Lite-like scoped styling.",
+  "description": "Two-row theme comparison: rect-bar and scatter (point) views, GenomeSpy defaults vs Vega-Lite-like defaults.",
   "spacing": 24,
   "resolve": {
     "axis": {
@@ -7,64 +7,127 @@
       "y": "independent"
     },
     "scale": {
+      "color": "independent",
       "x": "independent",
       "y": "independent"
     }
   },
-  "data": {
-    "values": [
-      { "category": "A", "value": 28 },
-      { "category": "B", "value": 55 },
-      { "category": "C", "value": 43 },
-      { "category": "D", "value": 91 },
-      { "category": "E", "value": 81 },
-      { "category": "F", "value": 53 }
-    ]
-  },
-  "hconcat": [
+  "vconcat": [
     {
-      "name": "genomespy-theme",
-      "theme": "genomespy",
-      "title": "GenomeSpy",
-      "width": 260,
-      "height": 200,
-      "mark": "rect",
-      "encoding": {
-        "x": {
-          "field": "category",
-          "type": "nominal",
-          "scale": { "padding": 0.2 },
-          "axis": { "labelAngle": 0 }
+      "data": {
+        "values": [
+          { "category": "A", "value": 28 },
+          { "category": "B", "value": 55 },
+          { "category": "C", "value": 43 },
+          { "category": "D", "value": 91 },
+          { "category": "E", "value": 81 },
+          { "category": "F", "value": 53 }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "genomespy-theme-bars",
+          "theme": "genomespy",
+          "title": "GenomeSpy (Bars)",
+          "width": 260,
+          "height": 200,
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "category",
+              "type": "nominal",
+              "scale": { "padding": 0.2 },
+              "axis": { "labelAngle": 0 }
+            },
+            "y": {
+              "field": "value",
+              "type": "quantitative",
+              "axis": { "title": "Value" }
+            },
+            "y2": { "value": 0 }
+          }
         },
-        "y": {
-          "field": "value",
-          "type": "quantitative",
-          "axis": { "title": "Value" }
-        },
-        "y2": { "value": 0 }
-      }
+        {
+          "name": "vegalite-theme-bars",
+          "theme": "vegalite",
+          "title": "Vega-Lite-like (Bars)",
+          "width": 260,
+          "height": 200,
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "category",
+              "type": "nominal",
+              "scale": { "padding": 0.2 },
+              "axis": { "labelAngle": 0 }
+            },
+            "y": {
+              "field": "value",
+              "type": "quantitative",
+              "axis": { "title": "Value" }
+            },
+            "y2": { "value": 0 }
+          }
+        }
+      ]
     },
     {
-      "name": "vegalite-theme",
-      "theme": "vegalite",
-      "title": "Vega-Lite-like",
-      "width": 260,
-      "height": 200,
-      "mark": "rect",
-      "encoding": {
-        "x": {
-          "field": "category",
-          "type": "nominal",
-          "scale": { "padding": 0.2 },
-          "axis": { "labelAngle": 0 }
+      "data": {
+        "values": [
+          { "x": 1, "y": 5 },
+          { "x": 2, "y": 8 },
+          { "x": 3, "y": 4 },
+          { "x": 4, "y": 9 },
+          { "x": 5, "y": 7 },
+          { "x": 6, "y": 6 },
+          { "x": 7, "y": 10 },
+          { "x": 8, "y": 12 },
+          { "x": 9, "y": 9 },
+          { "x": 10, "y": 13 }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "genomespy-theme-scatter",
+          "theme": "genomespy",
+          "title": "GenomeSpy (Scatter)",
+          "width": 260,
+          "height": 200,
+          "mark": "point",
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            }
+          }
         },
-        "y": {
-          "field": "value",
-          "type": "quantitative",
-          "axis": { "title": "Value" }
-        },
-        "y2": { "value": 0 }
-      }
+        {
+          "name": "vegalite-theme-scatter",
+          "theme": "vegalite",
+          "title": "Vega-Lite-like (Scatter)",
+          "width": 260,
+          "height": 200,
+          "mark": "point",
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            }
+          }
+        }
+      ]
     }
   ]
 }
