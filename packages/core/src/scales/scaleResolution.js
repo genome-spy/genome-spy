@@ -574,6 +574,7 @@ export default class ScaleResolution {
             dataType: this.type,
             members: this.#members,
             isExplicitDomain: this.#isExplicitDomain(),
+            configScopes: this.#firstMemberView.getConfigScopes(),
         });
     }
 
