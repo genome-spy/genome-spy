@@ -27,20 +27,10 @@ export default class RuleMark extends Mark {
 
         this.dashTextureSize = 0;
 
+        // Tick-only properties are not part of the shared rule config.
         this.augmentDefaultProperties({
-            x2: undefined,
-            y2: undefined,
-            size: 1,
-            color: "#4c78a8",
-            opacity: 1.0,
             orient: undefined,
             thickness: 1,
-
-            minLength: 0.0,
-            /** @type {number[]} */
-            strokeDash: null,
-            strokeDashOffset: 0,
-            strokeCap: "butt",
         });
     }
 

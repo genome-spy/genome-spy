@@ -20,6 +20,7 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
+import { mergeConfigScopes } from "../config/mergeConfig.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -72,6 +73,9 @@ export default class View {
 
     /** @type {import("../spec/config.js").GenomeSpyConfig} */
     #config;
+
+    /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+    #configScopes;
 
     /** @type {string | undefined} */
     #defaultName;
@@ -137,7 +141,17 @@ export default class View {
         this.dataParent = dataParent;
         this.#defaultName = name;
         this.spec = spec;
-        this.#config = context.resolveViewConfig(spec, dataParent);
+        const inheritedScopes = dataParent
+            ? dataParent.getConfigScopes()
+            : [context.getBaseConfig()];
+        this.#configScopes =
+            /** @type {import("../spec/config.js").GenomeSpyConfig[]} */ (
+                [...inheritedScopes, spec.config].filter((scope) => !!scope)
+            );
+        this.#config =
+            /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
+                mergeConfigScopes(this.#configScopes)
+            );
 
         this.resolutions = {
             /**
@@ -222,6 +236,10 @@ export default class View {
 
     getConfig() {
         return this.#config;
+    }
+
+    getConfigScopes() {
+        return this.#configScopes.slice();
     }
 
     /**
