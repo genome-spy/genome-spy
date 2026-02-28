@@ -56,6 +56,35 @@ Remaining work is now hardening/polish, not foundational migration:
   - ✅ side-by-side GenomeSpy vs Vega-Lite-like bar theme example added (`572bddc8`)
   - ✅ full `npm test` executed green (170 files, 980 passed) on 2026-02-28
   - ⚠️ `npm run build:docs` prepare step passes, but final `mkdocs build` is blocked in this environment (`mkdocs: command not found`)
+  - ✅ built-in theme selection works per view/import subtree via `theme` (`75cddcbd`)
+  - ✅ Vega-Lite-like quantitative color default logic implemented:
+    - `domainMid -> range.diverging`
+    - `rect -> range.heatmap`
+    - other marks -> `range.ramp`
+    - fallback -> `scale.quantitativeColorScheme`
+    (`cd180bb1`)
+  - ✅ temporary `scale.quantitativeHeatmapColorScheme` / `scale.quantitativeRampColorScheme` removed in favor of range slots (`cd180bb1`)
+  - ✅ `vegalite` theme axis domain default aligned with Vega-Lite behavior (`axis.domain: true`) (`792b79b3`)
+
+## 1.2 Done vs Missing (Current Checklist)
+
+Done:
+
+- ✅ hierarchical config scopes (`root -> view -> import-site -> imported subtree`) and deterministic scope resolution
+- ✅ config-driven defaults for mark, axis, scale, title, and view domains
+- ✅ built-in themes: `genomespy` and `vegalite`
+- ✅ per-subtree built-in theme selection using `theme` on view specs and import specs
+- ✅ docs and examples for config/theme usage under `packages/core/examples/config/` and `docs/grammar/config.md`
+- ✅ style precedence plumbing for mark/axis/title domains
+- ✅ deterministic shared axis/scale merge ordering
+- ✅ quantitative color defaults now modeled after Vega-Lite logic using `config.range` slots
+
+Missing / Not Yet Implemented:
+
+- ⏳ Vega-Lite-style named string ranges in `scale.range` (for example `"diverging"` as an alias that resolves through config range slots)
+- ⏳ spec-defined custom theme registries (`config.themes`) and named profile selection from spec scopes
+- ⏳ final docs build verification in this environment (`mkdocs` unavailable locally)
+- ⏳ broader visual parity pass for `vegalite` theme (fine-grained defaults where GenomeSpy feature set overlaps, keeping non-overlap domains GenomeSpy-native)
 
 ## 2. Historical Baseline (Before Migration)
 
@@ -756,7 +785,9 @@ When executing this plan:
 - after each commit, re-read `CONFIG_PLAN.md` before starting the next phase
 - if `test:tsc` fails, fix issues before committing
 
-## 13. Theme Profiles And Subtree Theme Selection (Next)
+## 13. Deferred: Spec-Defined Theme Profiles (`config.themes`)
+
+Status: deferred for now. Current implementation intentionally supports built-in theme selection via `theme` only, without user-supplied theme profile registries in spec config scopes.
 
 Goal:
 
@@ -782,6 +813,11 @@ Also keep built-in named themes available globally:
 
 - `genomespy` (current behavior baseline)
 - `vegalite` (best-effort Vega-Lite-like defaults for overlapping domains)
+
+Note:
+
+- built-in subtree theme selection is already implemented using `theme` on view/import specs
+- this deferred section concerns user-defined theme registries and named profile selection in spec config scopes
 
 ### 13.2 Resolution Algorithm (Static, Hierarchical)
 
