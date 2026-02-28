@@ -122,4 +122,37 @@ describe("mark config precedence", () => {
 
         expect(explicit.mark.properties.color).toBe("black");
     });
+
+    test("vegalite theme provides point defaults while explicit mark props still win", async () => {
+        const themed = /** @type {UnitView} */ (
+            await create(
+                {
+                    theme: "vegalite",
+                    mark: "point",
+                },
+                UnitView
+            )
+        );
+
+        expect(themed.mark.properties.color).toBe("#4c78a8");
+        expect(/** @type {any} */ (themed.mark.properties).filled).toBe(false);
+        expect(/** @type {any} */ (themed.mark.properties).size).toBe(30);
+
+        const explicit = /** @type {UnitView} */ (
+            await create(
+                {
+                    theme: "vegalite",
+                    mark: {
+                        type: "point",
+                        filled: true,
+                        size: 50,
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(/** @type {any} */ (explicit.mark.properties).filled).toBe(true);
+        expect(/** @type {any} */ (explicit.mark.properties).size).toBe(50);
+    });
 });
