@@ -89,6 +89,7 @@ Additional scale policy notes:
 
 - `config.scale.zoom` sets the default zoom behavior baseline.
 - `config.scale.clamp` sets the default clamp baseline (for example for opacity scales).
+- Named scale ranges in `encoding.<channel>.scale.range` are resolved through `config.range` (`"shape"`, `"size"`, `"angle"`, `"heatmap"`, `"ramp"`, `"diverging"`).
 - Positional channels (`x`, `y`) always use unit range `[0, 1]` internally. This is an invariant and explicit/configured positional `range` values are ignored.
 
 Example:

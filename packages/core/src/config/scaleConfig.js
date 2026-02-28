@@ -15,6 +15,14 @@ const COLOR_SCHEME_KEYS = {
 };
 
 const HEATMAP_MARK_TYPES = new Set(["rect"]);
+const NAMED_RANGE_KEYS = new Set([
+    "shape",
+    "size",
+    "angle",
+    "heatmap",
+    "ramp",
+    "diverging",
+]);
 
 /**
  * @param {unknown} scheme
@@ -25,6 +33,28 @@ function isConfiguredScheme(scheme) {
         typeof scheme == "string" ||
         (scheme != null && typeof scheme == "object")
     );
+}
+
+/**
+ * @param {string} rangeName
+ * @returns {rangeName is keyof import("../spec/config.js").RangeConfig}
+ */
+export function isConfigRangeName(rangeName) {
+    return NAMED_RANGE_KEYS.has(rangeName);
+}
+
+/**
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
+ * @param {string} rangeName
+ * @returns {import("../spec/config.js").RangeConfig[keyof import("../spec/config.js").RangeConfig] | undefined}
+ */
+export function getConfiguredNamedRange(scopes, rangeName) {
+    if (!isConfigRangeName(rangeName)) {
+        return undefined;
+    }
+
+    const rangeConfig = getConfiguredRangeConfig(scopes);
+    return rangeConfig[rangeName];
 }
 
 /**
@@ -157,9 +187,6 @@ export function getConfiguredScaleDefaults(
 
             // Mirror Vega-Lite defaults for quantitative color scales:
             // domainMid -> diverging, rect-like marks -> heatmap, others -> ramp.
-            // TODO: Add support for Vega-Lite-style named string ranges in
-            // scale.range (e.g. "diverging"). For now, config.range.* values
-            // are interpreted directly as scheme values.
             const rangeScheme = useDiverging
                 ? rangeConfig.diverging
                 : markTypes?.length &&

@@ -65,6 +65,7 @@ Remaining work is now hardening/polish, not foundational migration:
     (`cd180bb1`)
   - ✅ temporary `scale.quantitativeHeatmapColorScheme` / `scale.quantitativeRampColorScheme` removed in favor of range slots (`cd180bb1`)
   - ✅ `vegalite` theme axis domain default aligned with Vega-Lite behavior (`axis.domain: true`) (`792b79b3`)
+  - ✅ Vega-Lite-style named scale ranges now resolve through `config.range` (for example `scale.range: "heatmap"`) with clear validation errors for unknown names (current branch)
 
 ## 1.2 Done vs Missing (Current Checklist)
 
@@ -78,10 +79,10 @@ Done:
 - ✅ style precedence plumbing for mark/axis/title domains
 - ✅ deterministic shared axis/scale merge ordering
 - ✅ quantitative color defaults now modeled after Vega-Lite logic using `config.range` slots
+- ✅ Vega-Lite-style named `scale.range` references resolved through `config.range`
 
 Missing / Not Yet Implemented:
 
-- ⏳ Vega-Lite-style named string ranges in `scale.range` (for example `"diverging"` as an alias that resolves through config range slots)
 - ⏳ spec-defined custom theme registries (`config.themes`) and named profile selection from spec scopes
 - ⏳ final docs build verification in this environment (`mkdocs` unavailable locally)
 - ⏳ broader visual parity pass for `vegalite` theme (fine-grained defaults where GenomeSpy feature set overlaps, keeping non-overlap domains GenomeSpy-native)
