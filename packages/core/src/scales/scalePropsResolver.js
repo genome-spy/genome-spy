@@ -7,6 +7,7 @@ import {
 } from "../config/scaleDefaults.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -30,7 +31,7 @@ export function resolveScalePropsBase({
     isExplicitDomain,
     configScopes,
 }) {
-    const propArray = Array.from(members)
+    const propArray = orderResolutionMembers(members)
         .map((member) => member.channelDef.scale)
         .filter((props) => props !== undefined);
 

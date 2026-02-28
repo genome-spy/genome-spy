@@ -11,6 +11,7 @@ import coalesce from "../utils/coalesce.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 
 /**
  * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
@@ -98,10 +99,13 @@ export default class AxisResolution {
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = Array.from(this.#members).map((member) => {
-                const channelDef = member.view.mark.encoding[member.channel];
-                return "axis" in channelDef && channelDef.axis;
-            });
+            const propArray = orderResolutionMembers(this.#members).map(
+                (member) => {
+                    const channelDef =
+                        member.view.mark.encoding[member.channel];
+                    return "axis" in channelDef && channelDef.axis;
+                }
+            );
 
             if (
                 propArray.length > 0 &&
@@ -152,7 +156,7 @@ export default class AxisResolution {
             };
         };
 
-        const titles = Array.from(this.#members).map(computeTitle);
+        const titles = orderResolutionMembers(this.#members).map(computeTitle);
         const explicitAxisTitle = titles
             .map((title) => title.axisTitle)
             .find((title) => title !== undefined);
