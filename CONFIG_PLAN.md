@@ -52,6 +52,8 @@ Remaining work is now hardening/polish, not foundational migration:
   - ✅ deterministic merge ordering implemented (`59e7031d`)
   - ✅ style system follow-up for mark/axis + style precedence tests/docs (`4634ea25`, `13a7976f`)
   - ✅ scale policy split clarified (configurable clamp/reverse/zoom baselines + invariant positional unit ranges) with tests/docs (`74168e9b`, `13a7976f`)
+  - ✅ config-driven axis grid creation now respects bucket defaults during grid view creation (`572bddc8`)
+  - ✅ side-by-side GenomeSpy vs Vega-Lite-like bar theme example added (`572bddc8`)
   - ✅ full `npm test` executed green (170 files, 980 passed) on 2026-02-28
   - ⚠️ `npm run build:docs` prepare step passes, but final `mkdocs build` is blocked in this environment (`mkdocs: command not found`)
 
@@ -753,6 +755,138 @@ When executing this plan:
 - commit after each completed phase (do not batch multiple phases into one commit)
 - after each commit, re-read `CONFIG_PLAN.md` before starting the next phase
 - if `test:tsc` fails, fix issues before committing
+
+## 13. Theme Profiles And Subtree Theme Selection (Next)
+
+Goal:
+
+- support multiple reusable theme configs in the same spec
+- allow choosing a theme per view subtree (including imported track roots)
+- keep behavior unchanged when no theme is selected
+
+### 13.1 Proposed Spec Model
+
+Add two optional properties to every config scope (`RootSpec.config`, `ViewSpecBase.config`, `ImportSpec.config`):
+
+- `themes?: Record<string, GenomeSpyConfig>`
+- `theme?: string | string[]`
+
+Semantics:
+
+- `themes` defines named theme profiles local to that scope
+- `theme` selects one or more named profiles to apply at that scope
+- later names in `theme: [...]` override earlier names
+- explicit config keys in the same scope override selected theme profile values
+
+Also keep built-in named themes available globally:
+
+- `genomespy` (current behavior baseline)
+- `vegalite` (best-effort Vega-Lite-like defaults for overlapping domains)
+
+### 13.2 Resolution Algorithm (Static, Hierarchical)
+
+For each view scope from root to leaf:
+
+1. inherit parent effective config
+2. extend inherited theme registry with local `themes`
+3. apply selected local `theme` profiles (resolved from current registry + built-ins)
+4. apply local explicit config keys (excluding `themes` and `theme`)
+
+Then normal local explicit mark/axis/scale/title properties still win at usage sites.
+
+Notes:
+
+- this remains static (resolved during initialization / rebuild), not live-reactive
+- no special “extension” namespace for GenomeSpy-specific settings
+
+### 13.3 Why This Fits GenomeSpy
+
+- matches track-composition workflow: each imported or nested track can pick a suitable baseline
+- allows local visual identity without copying large config blocks
+- keeps closest-scope-dominates behavior already used by config hierarchy
+
+### 13.4 Implementation Plan
+
+Phase A: Schema + Types
+
+1. add `theme` and `themes` to `GenomeSpyConfig` typings/schema
+2. document that theme profile values are plain `GenomeSpyConfig` fragments
+3. keep backward compatibility: both fields optional
+
+Phase B: Config Resolver
+
+1. extend config resolution to carry both:
+   - effective config object
+   - effective theme registry map
+2. apply selected profiles before explicit local keys in each scope
+3. throw clear errors for unknown theme names (`theme: "foo"` not found)
+
+Phase C: Import + Hierarchy Semantics
+
+1. ensure `ImportSpec.config.theme` and `ImportSpec.config.themes` participate in existing precedence
+2. verify imported root config can still override import-site choices when intended
+3. add deterministic tests for collision cases (same theme name in ancestor/descendant scopes)
+
+Phase D: Built-ins
+
+1. add a built-in theme catalog module (e.g. `themes/genomespy`, `themes/vegalite`)
+2. keep `genomespy` effectively no-op over internal defaults
+3. implement `vegalite` with overlap-only defaults (axis/grid/view stroke/colors/schemes)
+
+Phase E: Tests + Examples + Docs
+
+1. tests for:
+   - theme profile selection order (`["a", "b"]`)
+   - nearest-scope theme registry shadowing
+   - unknown theme errors
+   - import-site vs imported-root behavior
+2. examples:
+   - one spec defining multiple theme profiles and applying them per subtree
+   - one import-based track composition example using subtree theme selection
+3. docs:
+   - add `themes`/`theme` spec reference
+   - include precedence matrix with profile selection step
+
+### 13.5 Feasibility Assessment
+
+Feasibility: **high**.
+
+Why:
+
+- existing hierarchical config infrastructure already exists and is deterministic
+- theme layering already exists at embed/base level
+- remaining work is mostly schema + resolver extension + tests/docs
+
+Estimated complexity:
+
+- medium (resolver/state plumbing + clear precedence docs/tests)
+- low-to-medium runtime risk when implemented incrementally
+
+### 13.6 Risk Analysis
+
+1. Shared resolution conflicts across differently themed siblings
+- Risk: shared axis/scale may still force a single merged outcome
+- Mitigation: document and test; recommend `resolve: independent` for mixed-theme sibling tracks
+
+2. Theme name collisions across scopes
+- Risk: ambiguous mental model when descendant redefines ancestor theme name
+- Mitigation: explicit nearest-scope shadowing rule + tests + warning docs examples
+
+3. Unknown or mistyped theme names
+- Risk: silent fallback could hide mistakes
+- Mitigation: fail fast with clear error listing available names
+
+4. Recursive / cyclic profile references (if ever allowed)
+- Risk: infinite recursion or hard-to-debug merge chains
+- Mitigation: initially disallow nested `theme` selection inside theme profile objects; keep theme profiles as plain config fragments only
+
+5. Resolver complexity and performance
+- Risk: repeated deep merges with large hierarchies
+- Mitigation: cache resolved scope outputs per view during initialization and reuse existing merged config objects
+
+6. Vega-Lite parity expectations
+- Risk: users expect full parity from `vegalite`
+- Mitigation: document “best effort for overlapping features” and keep GenomeSpy-native defaults for non-overlap domains
 
 ---
 
