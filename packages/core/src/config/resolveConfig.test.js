@@ -21,6 +21,20 @@ describe("resolveConfig", () => {
         expect(base.scale.nominalColorScheme).toBe("tableau10");
     });
 
+    test("built-in theme is merged before user theme", () => {
+        const base = resolveBaseConfig({
+            defaultConfig: INTERNAL_DEFAULT_CONFIG,
+            builtInTheme: {
+                mark: { color: "steelblue" },
+            },
+            theme: {
+                mark: { color: "tomato" },
+            },
+        });
+
+        expect(base.mark.color).toBe("tomato");
+    });
+
     test("resolves hierarchical view config using closest scope", () => {
         const base = resolveBaseConfig({
             defaultConfig: INTERNAL_DEFAULT_CONFIG,
