@@ -45,163 +45,6 @@ const VEGALITE_THEME = {
     },
 };
 
-/** @type {import("../spec/config.js").GenomeSpyConfig} */
-const QUARTZ_THEME = mergeConfigScopes([
-    VEGALITE_THEME,
-    {
-        view: {
-            fill: "#f9f9f9",
-        },
-        mark: {
-            color: "#ab5787",
-        },
-        point: {
-            size: 30,
-        },
-        axis: {
-            domainColor: "#979797",
-            domainWidth: 0.5,
-            gridWidth: 0.2,
-            labelColor: "#979797",
-            tickColor: "#979797",
-            tickWidth: 0.2,
-            titleColor: "#979797",
-        },
-        axisX: {
-            grid: true,
-            tickSize: 10,
-        },
-        axisY: {
-            domain: false,
-            grid: true,
-            tickSize: 0,
-        },
-    },
-]);
-
-/** @type {import("../spec/config.js").GenomeSpyConfig} */
-const DARK_THEME = mergeConfigScopes([
-    VEGALITE_THEME,
-    {
-        view: {
-            fill: "#333",
-            stroke: "#888",
-        },
-        title: {
-            color: "#fff",
-        },
-        axis: {
-            domainColor: "#fff",
-            gridColor: "#888",
-            tickColor: "#fff",
-            labelColor: "#fff",
-            titleColor: "#fff",
-        },
-        text: {
-            color: "#fff",
-        },
-        rule: {
-            color: "#fff",
-        },
-    },
-]);
-
-/** @type {import("../spec/config.js").GenomeSpyConfig} */
-const FIVETHIRTYEIGHT_THEME = mergeConfigScopes([
-    VEGALITE_THEME,
-    {
-        view: {
-            fill: "#f0f0f0",
-        },
-        mark: {
-            color: "#30a2da",
-        },
-        axis: {
-            domainColor: "#cbcbcb",
-            grid: true,
-            gridColor: "#cbcbcb",
-            gridWidth: 1,
-            labelColor: "#999",
-            labelFontSize: 10,
-            titleColor: "#333",
-            tickColor: "#cbcbcb",
-            tickSize: 10,
-            titleFontSize: 14,
-            titlePadding: 10,
-            labelPadding: 4,
-        },
-        axisNominal: {
-            grid: false,
-        },
-        axisOrdinal: {
-            grid: false,
-        },
-        title: {
-            anchor: "start",
-            fontSize: 24,
-            fontWeight: 600,
-            offset: 20,
-        },
-    },
-]);
-
-/** @type {import("../spec/config.js").GenomeSpyConfig} */
-const URBANINSTITUTE_THEME = mergeConfigScopes([
-    VEGALITE_THEME,
-    {
-        view: {
-            fill: "#FFFFFF",
-            stroke: "transparent",
-        },
-        mark: {
-            color: "#1696d2",
-        },
-        point: {
-            filled: true,
-        },
-        text: {
-            font: "Lato",
-            color: "#1696d2",
-            size: 11,
-            align: "center",
-            fontWeight: 400,
-        },
-        title: {
-            anchor: "start",
-            fontSize: 18,
-            font: "Lato",
-        },
-        axisX: {
-            domain: true,
-            domainColor: "#000000",
-            domainWidth: 1,
-            grid: false,
-            labelFontSize: 12,
-            labelFont: "Lato",
-            labelAngle: 0,
-            tickColor: "#000000",
-            tickSize: 5,
-            titleFontSize: 12,
-            titlePadding: 10,
-            titleFont: "Lato",
-        },
-        axisY: {
-            domain: false,
-            domainWidth: 1,
-            grid: true,
-            gridColor: "#DEDDDD",
-            gridWidth: 1,
-            labelFontSize: 12,
-            labelFont: "Lato",
-            labelPadding: 8,
-            ticks: false,
-            titleFontSize: 12,
-            titlePadding: 10,
-            titleFont: "Lato",
-        },
-    },
-]);
-
 /**
  * Built-in themes. These can be selected with the `theme` property
  * in view specs.
@@ -218,22 +61,159 @@ const URBANINSTITUTE_THEME = mergeConfigScopes([
 const BUILT_IN_THEME_DEFINITIONS = {
     genomespy: {},
     vegalite: VEGALITE_THEME,
-    quartz: {
-        background: "#f9f9f9",
-        ...QUARTZ_THEME,
-    },
-    dark: {
-        background: "#333",
-        ...DARK_THEME,
-    },
-    fivethirtyeight: {
-        background: "#f0f0f0",
-        ...FIVETHIRTYEIGHT_THEME,
-    },
-    urbaninstitute: {
-        background: "#FFFFFF",
-        ...URBANINSTITUTE_THEME,
-    },
+    quartz: mergeConfigScopes([
+        VEGALITE_THEME,
+        {
+            background: "#f9f9f9",
+            view: {
+                fill: "#f9f9f9",
+            },
+            mark: {
+                color: "#ab5787",
+            },
+            point: {
+                size: 30,
+            },
+            axis: {
+                domainColor: "#979797",
+                domainWidth: 0.5,
+                gridWidth: 0.2,
+                labelColor: "#979797",
+                tickColor: "#979797",
+                tickWidth: 0.2,
+                titleColor: "#979797",
+            },
+            axisX: {
+                grid: true,
+                tickSize: 10,
+            },
+            axisY: {
+                domain: false,
+                grid: true,
+                tickSize: 0,
+            },
+        },
+    ]),
+    dark: mergeConfigScopes([
+        VEGALITE_THEME,
+        {
+            background: "#333",
+            view: {
+                fill: "#333",
+                stroke: "#888",
+            },
+            title: {
+                color: "#fff",
+            },
+            axis: {
+                domainColor: "#fff",
+                gridColor: "#888",
+                tickColor: "#fff",
+                labelColor: "#fff",
+                titleColor: "#fff",
+            },
+            text: {
+                color: "#fff",
+            },
+            rule: {
+                color: "#fff",
+            },
+        },
+    ]),
+    fivethirtyeight: mergeConfigScopes([
+        VEGALITE_THEME,
+        {
+            background: "#f0f0f0",
+            view: {
+                fill: "#f0f0f0",
+            },
+            mark: {
+                color: "#30a2da",
+            },
+            axis: {
+                domainColor: "#cbcbcb",
+                grid: true,
+                gridColor: "#cbcbcb",
+                gridWidth: 1,
+                labelColor: "#999",
+                labelFontSize: 10,
+                titleColor: "#333",
+                tickColor: "#cbcbcb",
+                tickSize: 10,
+                titleFontSize: 14,
+                titlePadding: 10,
+                labelPadding: 4,
+            },
+            axisNominal: {
+                grid: false,
+            },
+            axisOrdinal: {
+                grid: false,
+            },
+            title: {
+                anchor: "start",
+                fontSize: 24,
+                fontWeight: 600,
+                offset: 20,
+            },
+        },
+    ]),
+    urbaninstitute: mergeConfigScopes([
+        VEGALITE_THEME,
+        {
+            background: "#FFFFFF",
+            view: {
+                fill: "#FFFFFF",
+                stroke: "transparent",
+            },
+            mark: {
+                color: "#1696d2",
+            },
+            point: {
+                filled: true,
+            },
+            text: {
+                font: "Lato",
+                color: "#1696d2",
+                size: 11,
+                align: "center",
+                fontWeight: 400,
+            },
+            title: {
+                anchor: "start",
+                fontSize: 18,
+                font: "Lato",
+            },
+            axisX: {
+                domain: true,
+                domainColor: "#000000",
+                domainWidth: 1,
+                grid: false,
+                labelFontSize: 12,
+                labelFont: "Lato",
+                labelAngle: 0,
+                tickColor: "#000000",
+                tickSize: 5,
+                titleFontSize: 12,
+                titlePadding: 10,
+                titleFont: "Lato",
+            },
+            axisY: {
+                domain: false,
+                domainWidth: 1,
+                grid: true,
+                gridColor: "#DEDDDD",
+                gridWidth: 1,
+                labelFontSize: 12,
+                labelFont: "Lato",
+                labelPadding: 8,
+                ticks: false,
+                titleFontSize: 12,
+                titlePadding: 10,
+                titleFont: "Lato",
+            },
+        },
+    ]),
 };
 
 /**
@@ -241,8 +221,8 @@ const BUILT_IN_THEME_DEFINITIONS = {
  * @returns {import("../spec/config.js").GenomeSpyConfig}
  */
 function toConfig(theme) {
-    const { background, ...config } = theme;
-    void background;
+    const config = { ...theme };
+    delete config.background;
     return config;
 }
 
