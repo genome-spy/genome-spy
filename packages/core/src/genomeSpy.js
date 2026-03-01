@@ -52,7 +52,7 @@ import {
 import {
     DEFAULT_THEME_NAME,
     getBuiltInTheme,
-    resolveThemeBackground,
+    getBuiltInThemeBackground,
 } from "./config/themes.js";
 
 /**
@@ -455,11 +455,29 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this.#glHelper.invalidateSize();
+        const selectedThemes = this.spec.theme
+            ? Array.isArray(this.spec.theme)
+                ? this.spec.theme
+                : [this.spec.theme]
+            : [];
         this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
             glHelper: this.#glHelper,
-            getBackground: () =>
-                this.spec.background ?? resolveThemeBackground(this.spec.theme),
+            getBackground: () => {
+                if (this.spec.background !== undefined) {
+                    return this.spec.background;
+                }
+
+                let background;
+                for (const themeName of selectedThemes) {
+                    const value = getBuiltInThemeBackground(themeName);
+                    if (value !== undefined) {
+                        background = value;
+                    }
+                }
+
+                return background;
+            },
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
                 this.#loadingIndicatorManager.updateLayout(),
