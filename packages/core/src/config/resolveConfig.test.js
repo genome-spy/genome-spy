@@ -6,7 +6,7 @@ import {
     resolveLocalConfigScope,
     resolveViewConfig,
 } from "./resolveConfig.js";
-import { resolveThemeBackground } from "./themes.js";
+import { getBuiltInThemeBackground } from "./themes.js";
 
 describe("resolveConfig", () => {
     test("resolves base config from defaults and theme", () => {
@@ -98,10 +98,9 @@ describe("resolveConfig", () => {
         expect(urbanInstitute.axis.domain).toBe(true);
     });
 
-    test("resolves canvas background from built-in theme selection", () => {
-        expect(resolveThemeBackground(undefined)).toBeUndefined();
-        expect(resolveThemeBackground("dark")).toBe("#333");
-        expect(resolveThemeBackground(["vegalite", "dark"])).toBe("#333");
+    test("exposes built-in theme background for root resolution", () => {
+        expect(getBuiltInThemeBackground("vegalite")).toBeUndefined();
+        expect(getBuiltInThemeBackground("dark")).toBe("#333");
     });
 
     test("imported root config overrides import-site config", () => {

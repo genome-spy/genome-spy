@@ -226,12 +226,18 @@ function toConfig(theme) {
     return config;
 }
 
+/** @type {import("../spec/config.js").BuiltInThemeName[]} */
+const BUILT_IN_THEME_NAMES =
+    /** @type {import("../spec/config.js").BuiltInThemeName[]} */ (
+        Object.keys(BUILT_IN_THEME_DEFINITIONS)
+    );
+
 /**
  * Built-in config fragments keyed by theme name.
  *
  * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>}
  */
-export const BUILT_IN_THEMES =
+const BUILT_IN_THEME_CONFIGS =
     /** @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>} */ (
         Object.fromEntries(
             Object.entries(BUILT_IN_THEME_DEFINITIONS).map(([name, theme]) => [
@@ -259,7 +265,7 @@ function resolveThemeNames(selection) {
             'Unknown theme "' +
                 unknown[0] +
                 '". Available themes: ' +
-                Object.keys(BUILT_IN_THEME_DEFINITIONS).join(", ")
+                BUILT_IN_THEME_NAMES.join(", ")
         );
     }
 
@@ -276,7 +282,15 @@ export const DEFAULT_THEME_NAME = "genomespy";
  * @returns {import("../spec/config.js").GenomeSpyConfig}
  */
 export function getBuiltInTheme(name) {
-    return toConfig(BUILT_IN_THEME_DEFINITIONS[name]);
+    return BUILT_IN_THEME_CONFIGS[name];
+}
+
+/**
+ * @param {import("../spec/config.js").BuiltInThemeName} name
+ * @returns {string | undefined}
+ */
+export function getBuiltInThemeBackground(name) {
+    return BUILT_IN_THEME_DEFINITIONS[name].background;
 }
 
 /**
@@ -290,31 +304,6 @@ export function resolveThemeSelection(selection) {
     }
 
     return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-        mergeConfigScopes(
-            names.map((name) => toConfig(BUILT_IN_THEME_DEFINITIONS[name]))
-        )
+        mergeConfigScopes(names.map((name) => BUILT_IN_THEME_CONFIGS[name]))
     );
-}
-
-/**
- * Resolves canvas background from built-in theme selection.
- *
- * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[] | undefined} selection
- * @returns {string | undefined}
- */
-export function resolveThemeBackground(selection) {
-    const names = resolveThemeNames(selection);
-    if (names.length == 0) {
-        return undefined;
-    }
-
-    let background;
-    for (const name of names) {
-        const value = BUILT_IN_THEME_DEFINITIONS[name].background;
-        if (value !== undefined) {
-            background = value;
-        }
-    }
-
-    return background;
 }
