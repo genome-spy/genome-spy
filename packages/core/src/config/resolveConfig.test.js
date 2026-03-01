@@ -78,18 +78,23 @@ describe("resolveConfig", () => {
         const quartz = resolveLocalConfigScope("quartz");
         expect(quartz.mark.color).toBe("#ab5787");
         expect(quartz.axisY.domain).toBe(false);
+        expect(quartz.axis.domain).toBe(true);
+        expect(quartz.point.filled).toBe(false);
 
         const dark = resolveLocalConfigScope("dark");
         expect(dark.view.fill).toBe("#333");
         expect(dark.axis.labelColor).toBe("#fff");
+        expect(dark.axis.grid).toBe(false);
 
         const fiveThirtyEight = resolveLocalConfigScope("fivethirtyeight");
         expect(fiveThirtyEight.mark.color).toBe("#30a2da");
         expect(fiveThirtyEight.axis.grid).toBe(true);
+        expect(fiveThirtyEight.point.filled).toBe(false);
 
         const urbanInstitute = resolveLocalConfigScope("urbaninstitute");
         expect(urbanInstitute.mark.color).toBe("#1696d2");
         expect(urbanInstitute.axisY.gridColor).toBe("#DEDDDD");
+        expect(urbanInstitute.axis.domain).toBe(true);
     });
 
     test("imported root config overrides import-site config", () => {

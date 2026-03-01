@@ -15,6 +15,8 @@ Supported built-in themes are currently:
 - `fivethirtyeight` (best-effort port from Vega theme)
 - `urbaninstitute` (best-effort port from Vega theme)
 
+The Vega-theme-inspired presets (`quartz`, `dark`, `fivethirtyeight`, `urbaninstitute`) are applied as overrides on top of `vegalite`.
+
 You can define config in:
 
 - the root spec (`RootSpec.config`)
