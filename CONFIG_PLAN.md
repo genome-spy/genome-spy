@@ -68,6 +68,7 @@ Remaining work is now hardening/polish, not foundational migration:
   - ✅ Vega-Lite-style named scale ranges now resolve through `config.range` (for example `scale.range: "heatmap"`) with clear validation errors for unknown names (current branch)
   - ✅ removed `scale.indexColorScheme` / `scale.locusColorScheme`; `index` and `locus` remain positional-only data types (current branch)
   - ✅ added built-in Vega-theme-inspired options (`quartz`, `dark`, `fivethirtyeight`, `urbaninstitute`) with best-effort mapping to currently supported GenomeSpy config keys (current branch)
+  - ✅ root canvas background now follows selected built-in theme defaults (for themes that define one), while explicit root `background` still wins (current branch)
 
 ## 1.2 Done vs Missing (Current Checklist)
 

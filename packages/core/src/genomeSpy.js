@@ -43,7 +43,11 @@ import {
     resolveBaseConfig,
     resolveViewConfig as resolveConfigForView,
 } from "./config/resolveConfig.js";
-import { DEFAULT_THEME_NAME, getBuiltInTheme } from "./config/themes.js";
+import {
+    DEFAULT_THEME_NAME,
+    getBuiltInTheme,
+    resolveThemeBackground,
+} from "./config/themes.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -436,7 +440,8 @@ export default class GenomeSpy {
         this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
             glHelper: this.#glHelper,
-            getBackground: () => this.spec.background,
+            getBackground: () =>
+                this.spec.background ?? resolveThemeBackground(this.spec.theme),
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
                 this.#loadingIndicatorManager.updateLayout(),
