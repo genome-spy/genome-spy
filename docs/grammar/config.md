@@ -16,6 +16,8 @@ Supported built-in themes are currently:
 - `urbaninstitute` (best-effort port from Vega theme)
 
 The Vega-theme-inspired presets (`quartz`, `dark`, `fivethirtyeight`, `urbaninstitute`) are applied as overrides on top of `vegalite`.
+At the root scope, these themes can also provide a default canvas `background` color.
+An explicit root-level `background` property still has higher precedence.
 
 You can define config in:
 
