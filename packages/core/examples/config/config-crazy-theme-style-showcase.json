@@ -1,0 +1,315 @@
+{
+  "description": "Complex showcase of theme scopes, style arrays, axis style buckets, view styles, and layered marks.",
+  "theme": "dark",
+  "spacing": 20,
+  "resolve": {
+    "axis": {
+      "x": "independent",
+      "y": "independent"
+    },
+    "scale": {
+      "x": "independent",
+      "y": "independent",
+      "color": "independent"
+    }
+  },
+  "config": {
+    "view": {
+      "style": "cell"
+    },
+    "style": {
+      "cell": {
+        "fill": "#252525",
+        "fillOpacity": 0.35,
+        "stroke": "#666",
+        "strokeWidth": 1
+      },
+      "panelSoft": {
+        "fill": "#1f1f1f",
+        "fillOpacity": 0.9,
+        "stroke": "#7a7a7a",
+        "strokeWidth": 1
+      },
+      "panelBright": {
+        "fill": "#fbfbfb",
+        "fillOpacity": 0.95,
+        "stroke": "#b8b8b8",
+        "strokeWidth": 1
+      },
+      "axisMuted": {
+        "labelColor": "#f0f0f0",
+        "titleColor": "#ffffff",
+        "tickColor": "#bdbdbd",
+        "domainColor": "#bdbdbd",
+        "gridColor": "#5e5e5e"
+      },
+      "axisPunch": {
+        "gridWidth": 1.5,
+        "titleFontWeight": "bold"
+      },
+      "hotPoint": {
+        "filled": true,
+        "stroke": "#ffffff",
+        "strokeWidth": 2,
+        "size": 90
+      },
+      "labelHalo": {
+        "color": "#f7f7f7",
+        "fontSize": 10,
+        "fontWeight": "bold",
+        "dx": 6,
+        "dy": -8
+      },
+      "titleSpicy": {
+        "color": "#ffe082",
+        "fontSize": 13,
+        "fontWeight": "bold"
+      }
+    },
+    "axis": {
+      "style": "axisMuted",
+      "labelFontSize": 10,
+      "titleFontSize": 11
+    },
+    "axisQuantitative": {
+      "grid": true,
+      "style": "axisPunch"
+    },
+    "point": {
+      "style": "hotPoint"
+    },
+    "title": {
+      "style": ["group-title", "titleSpicy"]
+    }
+  },
+  "vconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 4.0, "cat": "A" },
+          { "x": 2, "y": 6.5, "cat": "B" },
+          { "x": 3, "y": 3.8, "cat": "C" },
+          { "x": 4, "y": 8.2, "cat": "D" },
+          { "x": 5, "y": 5.4, "cat": "E" },
+          { "x": 6, "y": 7.1, "cat": "F" }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "dark-layered-left",
+          "title": "Dark Root + Layer Styles",
+          "width": 260,
+          "height": 180,
+          "view": {
+            "style": ["cell", "panelSoft"]
+          },
+          "layer": [
+            {
+              "mark": {
+                "type": "point",
+                "style": "hotPoint"
+              },
+              "encoding": {
+                "x": {
+                  "field": "x",
+                  "type": "quantitative",
+                  "axis": { "title": "X" }
+                },
+                "y": {
+                  "field": "y",
+                  "type": "quantitative",
+                  "axis": { "title": "Y" }
+                },
+                "color": { "field": "cat", "type": "nominal" }
+              }
+            },
+            {
+              "mark": {
+                "type": "text",
+                "style": "labelHalo"
+              },
+              "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "y", "type": "quantitative" },
+                "text": { "field": "cat", "type": "nominal" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "dark-bars-right",
+          "title": "Axis Style Arrays",
+          "width": 260,
+          "height": 180,
+          "view": {
+            "style": ["cell", "panelSoft"]
+          },
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "cat",
+              "type": "nominal",
+              "scale": { "padding": 0.2 },
+              "axis": { "labelAngle": 0, "style": ["axisMuted"] }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Value", "style": ["axisMuted", "axisPunch"] }
+            },
+            "y2": { "value": 0 },
+            "color": { "field": "x", "type": "quantitative" }
+          }
+        }
+      ]
+    },
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 2.0, "g": "grp1" },
+          { "x": 2, "y": 3.5, "g": "grp1" },
+          { "x": 3, "y": 5.0, "g": "grp1" },
+          { "x": 1, "y": 2.8, "g": "grp2" },
+          { "x": 2, "y": 4.1, "g": "grp2" },
+          { "x": 3, "y": 6.3, "g": "grp2" }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "quartz-subtree",
+          "theme": "quartz",
+          "title": "Quartz Subtree",
+          "width": 260,
+          "height": 180,
+          "config": {
+            "view": {
+              "style": ["cell", "panelBright"]
+            },
+            "style": {
+              "panelBright": {
+                "fill": "#ffffff",
+                "fillOpacity": 0.98,
+                "stroke": "#c0c0c0"
+              }
+            }
+          },
+          "mark": "point",
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            },
+            "color": { "field": "g", "type": "nominal" }
+          }
+        },
+        {
+          "name": "fivethirtyeight-subtree",
+          "theme": "fivethirtyeight",
+          "title": "FiveThirtyEight + Override",
+          "width": 260,
+          "height": 180,
+          "config": {
+            "axis": {
+              "titleFontSize": 12
+            },
+            "point": {
+              "size": 65
+            }
+          },
+          "mark": {
+            "type": "point",
+            "style": "hotPoint"
+          },
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "Stage" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Score" }
+            },
+            "color": { "field": "g", "type": "nominal" }
+          }
+        }
+      ]
+    },
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 9, "label": "alpha" },
+          { "x": 2, "y": 7, "label": "beta" },
+          { "x": 3, "y": 8, "label": "gamma" },
+          { "x": 4, "y": 5, "label": "delta" }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "urban-parent",
+          "theme": "urbaninstitute",
+          "title": "Urban Parent Scope",
+          "width": 260,
+          "height": 180,
+          "mark": {
+            "type": "point",
+            "style": "hotPoint"
+          },
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            },
+            "color": { "field": "label", "type": "nominal" }
+          }
+        },
+        {
+          "name": "nested-theme-stack",
+          "theme": "urbaninstitute",
+          "width": 260,
+          "vconcat": [
+            {
+              "title": "Urban Child",
+              "height": 85,
+              "mark": "point",
+              "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "y", "type": "quantitative" },
+                "color": { "field": "label", "type": "nominal" }
+              }
+            },
+            {
+              "theme": "vegalite",
+              "title": "Nested Vega-Lite Child",
+              "height": 85,
+              "config": {
+                "view": {
+                  "style": ["cell", "panelBright"]
+                }
+              },
+              "mark": "point",
+              "encoding": {
+                "x": { "field": "x", "type": "quantitative" },
+                "y": { "field": "y", "type": "quantitative" },
+                "color": { "field": "label", "type": "nominal" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

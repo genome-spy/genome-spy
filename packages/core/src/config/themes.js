@@ -164,7 +164,10 @@ const BUILT_IN_THEME_DEFINITIONS = {
             background: "#FFFFFF",
             view: {
                 fill: "#FFFFFF",
-                stroke: "transparent",
+                // Vega theme uses "transparent". GenomeSpy color channels are RGB-only,
+                // so represent a transparent stroke via zero opacity.
+                stroke: "#000000",
+                strokeOpacity: 0,
             },
             mark: {
                 color: "#1696d2",
