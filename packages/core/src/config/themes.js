@@ -210,49 +210,56 @@ const URBANINSTITUTE_THEME = mergeConfigScopes([
  * top-level background, and custom categorical range arrays) that are not yet
  * configurable through GenomeSpy's theme/config surface.
  *
- * @type {Record<import("../spec/config.js").BuiltInThemeName, {
- *   config: import("../spec/config.js").GenomeSpyConfig,
- *   background?: string
- * }>}
+ * `background` mirrors Vega(-Lite) theme shape. GenomeSpy uses it only for
+ * root canvas clear color; subtree config resolution ignores it.
+ *
+ * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig & { background?: string}>}
  */
 const BUILT_IN_THEME_DEFINITIONS = {
-    genomespy: {
-        config: {},
-    },
-    vegalite: {
-        config: VEGALITE_THEME,
-    },
+    genomespy: {},
+    vegalite: VEGALITE_THEME,
     quartz: {
-        config: QUARTZ_THEME,
         background: "#f9f9f9",
+        ...QUARTZ_THEME,
     },
     dark: {
-        config: DARK_THEME,
         background: "#333",
+        ...DARK_THEME,
     },
     fivethirtyeight: {
-        config: FIVETHIRTYEIGHT_THEME,
         background: "#f0f0f0",
+        ...FIVETHIRTYEIGHT_THEME,
     },
     urbaninstitute: {
-        config: URBANINSTITUTE_THEME,
         background: "#FFFFFF",
+        ...URBANINSTITUTE_THEME,
     },
 };
+
+/**
+ * @param {import("../spec/config.js").GenomeSpyConfig & { background?: string}} theme
+ * @returns {import("../spec/config.js").GenomeSpyConfig}
+ */
+function toConfig(theme) {
+    const { background, ...config } = theme;
+    void background;
+    return config;
+}
 
 /**
  * Built-in config fragments keyed by theme name.
  *
  * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>}
  */
-export const BUILT_IN_THEMES = {
-    genomespy: BUILT_IN_THEME_DEFINITIONS.genomespy.config,
-    vegalite: BUILT_IN_THEME_DEFINITIONS.vegalite.config,
-    quartz: BUILT_IN_THEME_DEFINITIONS.quartz.config,
-    dark: BUILT_IN_THEME_DEFINITIONS.dark.config,
-    fivethirtyeight: BUILT_IN_THEME_DEFINITIONS.fivethirtyeight.config,
-    urbaninstitute: BUILT_IN_THEME_DEFINITIONS.urbaninstitute.config,
-};
+export const BUILT_IN_THEMES =
+    /** @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>} */ (
+        Object.fromEntries(
+            Object.entries(BUILT_IN_THEME_DEFINITIONS).map(([name, theme]) => [
+                name,
+                toConfig(theme),
+            ])
+        )
+    );
 
 /**
  * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[] | undefined} selection
@@ -289,7 +296,7 @@ export const DEFAULT_THEME_NAME = "genomespy";
  * @returns {import("../spec/config.js").GenomeSpyConfig}
  */
 export function getBuiltInTheme(name) {
-    return BUILT_IN_THEME_DEFINITIONS[name].config;
+    return toConfig(BUILT_IN_THEME_DEFINITIONS[name]);
 }
 
 /**
@@ -304,7 +311,7 @@ export function resolveThemeSelection(selection) {
 
     return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
         mergeConfigScopes(
-            names.map((name) => BUILT_IN_THEME_DEFINITIONS[name].config)
+            names.map((name) => toConfig(BUILT_IN_THEME_DEFINITIONS[name]))
         )
     );
 }
