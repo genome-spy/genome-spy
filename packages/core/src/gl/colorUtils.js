@@ -206,6 +206,9 @@ function colorArrayToTextureData(scheme, count) {
  * @param {string} color
  */
 export function cssColorToArray(color) {
+    // TODO: Support CSS "transparent" like Vega/Vega-Lite do. Currently
+    // d3-color returns NaN RGB with zero opacity, but GenomeSpy color channels
+    // are RGB-only and cannot carry alpha in this conversion path.
     const rgb = d3color(color).rgb();
     return [rgb.r, rgb.g, rgb.b].map((x) => x / 255);
 }

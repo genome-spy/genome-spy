@@ -96,6 +96,8 @@ describe("resolveConfig", () => {
         expect(urbanInstitute.mark.color).toBe("#1696d2");
         expect(urbanInstitute.axisY.gridColor).toBe("#DEDDDD");
         expect(urbanInstitute.axis.domain).toBe(true);
+        expect(urbanInstitute.view.stroke).toBe("#000000");
+        expect(urbanInstitute.view.strokeOpacity).toBe(0);
     });
 
     test("exposes built-in theme background for root resolution", () => {
