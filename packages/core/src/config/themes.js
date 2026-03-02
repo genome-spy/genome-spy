@@ -219,16 +219,6 @@ const BUILT_IN_THEME_DEFINITIONS = {
     ]),
 };
 
-/**
- * @param {import("../spec/config.js").GenomeSpyConfig & { background?: string}} theme
- * @returns {import("../spec/config.js").GenomeSpyConfig}
- */
-function toConfig(theme) {
-    const config = { ...theme };
-    delete config.background;
-    return config;
-}
-
 /** @type {import("../spec/config.js").BuiltInThemeName[]} */
 const BUILT_IN_THEME_NAMES =
     /** @type {import("../spec/config.js").BuiltInThemeName[]} */ (
@@ -236,19 +226,14 @@ const BUILT_IN_THEME_NAMES =
     );
 
 /**
- * Built-in config fragments keyed by theme name.
- *
- * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>}
+ * @param {import("../spec/config.js").BuiltInThemeName} name
+ * @returns {import("../spec/config.js").GenomeSpyConfig}
  */
-const BUILT_IN_THEME_CONFIGS =
-    /** @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig>} */ (
-        Object.fromEntries(
-            Object.entries(BUILT_IN_THEME_DEFINITIONS).map(([name, theme]) => [
-                name,
-                toConfig(theme),
-            ])
-        )
-    );
+function getThemeConfig(name) {
+    const config = { ...BUILT_IN_THEME_DEFINITIONS[name] };
+    delete config.background;
+    return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (config);
+}
 
 /**
  * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[] | undefined} selection
@@ -282,14 +267,6 @@ export const DEFAULT_THEME_NAME = "genomespy";
 
 /**
  * @param {import("../spec/config.js").BuiltInThemeName} name
- * @returns {import("../spec/config.js").GenomeSpyConfig}
- */
-export function getBuiltInTheme(name) {
-    return BUILT_IN_THEME_CONFIGS[name];
-}
-
-/**
- * @param {import("../spec/config.js").BuiltInThemeName} name
  * @returns {string | undefined}
  */
 export function getBuiltInThemeBackground(name) {
@@ -307,6 +284,6 @@ export function resolveThemeSelection(selection) {
     }
 
     return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-        mergeConfigScopes(names.map((name) => BUILT_IN_THEME_CONFIGS[name]))
+        mergeConfigScopes(names.map((name) => getThemeConfig(name)))
     );
 }

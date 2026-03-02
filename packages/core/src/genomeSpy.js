@@ -42,8 +42,8 @@ import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
 import {
     DEFAULT_THEME_NAME,
-    getBuiltInTheme,
     getBuiltInThemeBackground,
+    resolveThemeSelection,
 } from "./config/themes.js";
 
 /**
@@ -325,7 +325,7 @@ export default class GenomeSpy {
         dataFlow.loadingStatusRegistry = this.#loadingStatusRegistry;
         const baseConfig = resolveBaseConfig({
             defaultConfig: INTERNAL_DEFAULT_CONFIG,
-            builtInTheme: getBuiltInTheme(DEFAULT_THEME_NAME),
+            builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
             theme: this.options.theme,
         });
 
