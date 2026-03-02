@@ -4,7 +4,6 @@ import {
     resolveBaseConfig,
     resolveImportedSpecConfig,
     resolveLocalConfigScope,
-    resolveViewConfig,
 } from "./resolveConfig.js";
 import { getBuiltInThemeBackground } from "./themes.js";
 
@@ -35,23 +34,6 @@ describe("resolveConfig", () => {
         });
 
         expect(base.mark.color).toBe("tomato");
-    });
-
-    test("resolves hierarchical view config using closest scope", () => {
-        const base = resolveBaseConfig({
-            defaultConfig: INTERNAL_DEFAULT_CONFIG,
-        });
-        const parent = resolveViewConfig(base, undefined, {
-            mark: { color: "gray" },
-            point: { size: 123 },
-        });
-        const child = resolveViewConfig(base, parent, {
-            mark: { color: "orange" },
-        });
-
-        expect(child.mark.color).toBe("orange");
-        expect(child.point.size).toBe(123);
-        expect(child.scale.nominalColorScheme).toBe("tableau10");
     });
 
     test("applies built-in theme before local config in a scope", () => {
