@@ -1,7 +1,6 @@
 import LayerView from "./layerView.js";
 import { orient2channel } from "./axisView.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
-import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 
 /**
  * @typedef {import("../spec/channel.js").PrimaryPositionalChannel} PositionalChannel
@@ -25,25 +24,8 @@ export default class AxisGridView extends LayerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
-        const channel = orient2channel(axisProps.orient);
-        const configuredDefaults = getConfiguredAxisDefaults(
-            dataParent.getConfigScopes(),
-            {
-                channel,
-                orient: axisProps.orient,
-                type: /** @type {import("../spec/channel.js").Type} */ (type),
-                style: axisProps.style,
-            }
-        );
-
-        /** @type {Axis | GenomeAxis} */
-        const fullAxisProps = {
-            ...configuredDefaults,
-            ...axisProps,
-        };
-
         super(
-            createAxisGrid(fullAxisProps, type),
+            createAxisGrid(axisProps, type),
             context,
             layoutParent,
             dataParent,
@@ -54,7 +36,7 @@ export default class AxisGridView extends LayerView {
             }
         );
 
-        this.axisProps = fullAxisProps;
+        this.axisProps = axisProps;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
     }

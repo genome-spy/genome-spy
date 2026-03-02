@@ -1,4 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
+import { normalizeStyle } from "./styleUtils.js";
 
 /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, keyof import("../spec/config.js").GenomeSpyConfig>} */
 const CHANNEL_BUCKETS = {
@@ -22,17 +23,6 @@ const TYPE_BUCKETS = {
     index: "axisIndex",
     locus: "axisLocus",
 };
-
-/**
- * @param {string | string[] | undefined} style
- * @returns {string[]}
- */
-function normalizeStyle(style) {
-    if (!style) {
-        return [];
-    }
-    return Array.isArray(style) ? style : [style];
-}
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes

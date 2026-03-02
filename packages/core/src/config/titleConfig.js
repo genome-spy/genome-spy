@@ -1,4 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
+import { normalizeStyle } from "./styleUtils.js";
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
@@ -21,11 +22,10 @@ export function getConfiguredTitleConfig(scopes) {
  * @returns {import("../spec/config.js").StyleConfig}
  */
 export function getConfiguredStyleConfig(scopes, styleName) {
-    if (!styleName) {
+    const styles = normalizeStyle(styleName);
+    if (styles.length == 0) {
         return {};
     }
-
-    const styles = Array.isArray(styleName) ? styleName : [styleName];
 
     return /** @type {import("../spec/config.js").StyleConfig} */ (
         mergeConfigScopes(
