@@ -73,6 +73,17 @@ Import specs can also provide `config`. Import-site config is merged before the
 imported spec's own root `config`, so imported tracks remain self-contained and
 can still override host-level defaults when needed.
 
+Import specs can also provide `theme` (built-in theme selection). A useful
+pattern is:
+
+- track authors: choose a sensible default `theme`, and expose customization
+  hooks via `config.style` and `config` buckets
+- host specs: customize imported tracks through import-site `config`/`style`
+  overrides and explicit properties
+
+Treat `theme` as preset selection, not as a class-like style override system.
+In particular, avoid modeling "theme redefinition" as if themes were styles.
+
 <div><genome-spy-doc-embed height="250">
 
 ```json
