@@ -33,32 +33,6 @@ export function resolveLocalConfigScope(themeSelection, localConfig) {
 }
 
 /**
- * Resolves the effective config for a view scope.
- *
- * @param {import("../spec/config.js").GenomeSpyConfig} baseConfig
- * @param {import("../spec/config.js").GenomeSpyConfig} [parentConfig]
- * @param {import("../spec/config.js").GenomeSpyConfig} [localConfig]
- * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[]} [themeSelection]
- * @returns {import("../spec/config.js").GenomeSpyConfig}
- */
-export function resolveViewConfig(
-    baseConfig,
-    parentConfig,
-    localConfig,
-    themeSelection
-) {
-    const scopedConfig = resolveLocalConfigScope(themeSelection, localConfig);
-
-    if (!parentConfig && !scopedConfig) {
-        return baseConfig;
-    }
-
-    return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-        mergeConfigScopes([baseConfig, parentConfig, scopedConfig])
-    );
-}
-
-/**
  * Merges import-site config with imported root config.
  * Imported config has higher precedence.
  *

@@ -109,21 +109,18 @@ export function getConfiguredScaleConfig(scopes, dataType) {
 
     return /** @type {import("../spec/config.js").ScaleConfig} */ (
         mergeConfigScopes(
-            scopes.map((scope) => {
-                const scale = scope.scale;
+            scopes.flatMap((scope) => {
+                const scale = /** @type {Record<string, any> | undefined} */ (
+                    scope.scale
+                );
                 const typedScale =
                     scale && dataTypeBucket
-                        ? /** @type {Record<string, any>} */ (
+                        ? /** @type {Record<string, any> | undefined} */ (
                               scale[dataTypeBucket]
                           )
                         : undefined;
 
-                return /** @type {Record<string, any>} */ (
-                    mergeConfigScopes([
-                        /** @type {Record<string, any> | undefined} */ (scale),
-                        typedScale,
-                    ])
-                );
+                return [scale, typedScale];
             })
         )
     );
