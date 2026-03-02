@@ -725,7 +725,7 @@ export default class GridChild {
 
             if (effectiveProps.grid || effectiveProps.chromGrid) {
                 const axisGridView = new AxisGridView(
-                    props,
+                    effectiveProps,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,

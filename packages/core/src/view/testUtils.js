@@ -18,10 +18,7 @@ import BmFontManager from "../fonts/bmFontManager.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import {
-    resolveBaseConfig,
-    resolveViewConfig,
-} from "../config/resolveConfig.js";
+import { resolveBaseConfig } from "../config/resolveConfig.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
@@ -88,14 +85,6 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 
         isViewConfiguredVisible: () => true,
         getBaseConfig: () => baseConfig,
-
-        resolveViewConfig: (spec, dataParent) =>
-            resolveViewConfig(
-                baseConfig,
-                dataParent?.getConfig(),
-                spec.config,
-                spec.theme
-            ),
 
         addBroadcastListener: () => undefined,
         removeBroadcastListener: () => undefined,

@@ -3,10 +3,8 @@ import { isColorChannel } from "../encoder/encoder.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import {
-    getDefaultScaleProperties,
-    getScaleConfig,
-} from "../config/scaleDefaults.js";
-import {
+    getConfiguredScaleConfig,
+    getConfiguredScaleDefaults,
     getConfiguredNamedRange,
     isConfigRangeName,
 } from "../config/scaleConfig.js";
@@ -55,14 +53,15 @@ export function resolveScalePropsBase({
     }
 
     const props = {
-        ...getDefaultScaleProperties(
+        ...getConfiguredScaleDefaults(configScopes, {
             channel,
             dataType,
             isExplicitDomain,
-            configScopes,
-            /** @type {import("../spec/mark.js").MarkType[]} */ (markTypes),
-            mergedProps.domainMid !== undefined
-        ),
+            markTypes: /** @type {import("../spec/mark.js").MarkType[]} */ (
+                markTypes
+            ),
+            hasDomainMid: mergedProps.domainMid !== undefined,
+        }),
         ...mergedProps,
     };
 
@@ -128,7 +127,7 @@ export function resolveScalePropsBase({
     // By default, index and locus scales are zoomable, others are not.
     // Config can override this baseline via scale.zoom.
     if (!("zoom" in props)) {
-        const scaleConfig = getScaleConfig(dataType, configScopes);
+        const scaleConfig = getConfiguredScaleConfig(configScopes, dataType);
         if (scaleConfig.zoom !== undefined) {
             props.zoom = scaleConfig.zoom;
         } else if ([INDEX, LOCUS].includes(props.type)) {

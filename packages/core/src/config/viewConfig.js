@@ -1,15 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
-
-/**
- * @param {string | string[] | undefined} style
- * @returns {string[]}
- */
-function normalizeStyle(style) {
-    if (!style) {
-        return [];
-    }
-    return Array.isArray(style) ? style : [style];
-}
+import { normalizeStyle } from "./styleUtils.js";
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes

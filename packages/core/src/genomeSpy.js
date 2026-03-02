@@ -39,10 +39,7 @@ import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
-import {
-    resolveBaseConfig,
-    resolveViewConfig as resolveConfigForView,
-} from "./config/resolveConfig.js";
+import { resolveBaseConfig } from "./config/resolveConfig.js";
 import {
     DEFAULT_THEME_NAME,
     getBuiltInTheme,
@@ -356,13 +353,6 @@ export default class GenomeSpy {
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
             getBaseConfig: () => baseConfig,
-            resolveViewConfig: (spec, dataParent) =>
-                resolveConfigForView(
-                    baseConfig,
-                    dataParent?.getConfig(),
-                    spec.config,
-                    spec.theme
-                ),
             createOrImportViewWithContext: (
                 ctx,
                 spec,
