@@ -72,9 +72,6 @@ export default class View {
     /** @type {TSpec} */
     spec;
 
-    /** @type {import("../spec/config.js").GenomeSpyConfig} */
-    #config;
-
     /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
     #configScopes;
 
@@ -149,10 +146,6 @@ export default class View {
         this.#configScopes =
             /** @type {import("../spec/config.js").GenomeSpyConfig[]} */ (
                 [...inheritedScopes, localScope].filter((scope) => !!scope)
-            );
-        this.#config =
-            /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-                mergeConfigScopes(this.#configScopes)
             );
 
         this.resolutions = {
@@ -237,7 +230,9 @@ export default class View {
     }
 
     getConfig() {
-        return this.#config;
+        return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
+            mergeConfigScopes(this.#configScopes)
+        );
     }
 
     getConfigScopes() {
