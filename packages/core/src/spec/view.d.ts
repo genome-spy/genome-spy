@@ -17,7 +17,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { Parameter } from "./parameter.js";
-import { BuiltInThemeName, GenomeSpyConfig } from "./config.js";
+import { GenomeSpyConfig } from "./config.js";
 
 export interface SizeDef {
     /**
@@ -190,13 +190,6 @@ export interface ViewSpecBase extends ResolveSpec {
      * Properties in child views override properties inherited from ancestors.
      */
     config?: GenomeSpyConfig;
-
-    /**
-     * Selects a built-in theme for this view subtree.
-     *
-     * Theme defaults are applied before this view's `config`.
-     */
-    theme?: BuiltInThemeName | BuiltInThemeName[];
 
     /**
      * Specifies a [data source](https://genomespy.app/docs/grammar/data/).
@@ -467,11 +460,6 @@ export interface ImportSpec {
      * defaults where needed.
      */
     config?: GenomeSpyConfig;
-
-    /**
-     * Selects a built-in theme for the imported subtree at the import site.
-     */
-    theme?: BuiltInThemeName | BuiltInThemeName[];
 
     /**
      * The method to import a specification.

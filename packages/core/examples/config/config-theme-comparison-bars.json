@@ -1,5 +1,6 @@
 {
-  "description": "Two-row theme comparison: rect-bar and scatter (point) views, GenomeSpy defaults vs Vega-Lite-like defaults.",
+  "description": "Two-row comparison: root GenomeSpy defaults vs scoped Vega-Lite-like config overrides.",
+  "theme": "genomespy",
   "spacing": 24,
   "resolve": {
     "axis": {
@@ -26,8 +27,7 @@
       },
       "hconcat": [
         {
-          "name": "genomespy-theme-bars",
-          "theme": "genomespy",
+          "name": "genomespy-bars",
           "title": "GenomeSpy (Bars)",
           "width": 260,
           "height": 200,
@@ -48,11 +48,47 @@
           }
         },
         {
-          "name": "vegalite-theme-bars",
-          "theme": "vegalite",
-          "title": "Vega-Lite-like (Bars)",
+          "name": "vegalite-like-bars",
+          "title": "Vega-Lite-like (Scoped Config)",
           "width": 260,
           "height": 200,
+          "config": {
+            "mark": {
+              "color": "#4c78a8"
+            },
+            "point": {
+              "filled": false,
+              "size": 30
+            },
+            "view": {
+              "stroke": "#ddd",
+              "strokeWidth": 1
+            },
+            "axis": {
+              "grid": false,
+              "domain": true,
+              "tickColor": "gray",
+              "domainColor": "gray",
+              "gridColor": "#ddd",
+              "labelColor": "#333",
+              "titleColor": "#333",
+              "titleFontSize": 11,
+              "titleFontWeight": "normal"
+            },
+            "axisQuantitative": {
+              "grid": true
+            },
+            "scale": {
+              "nominalColorScheme": "tableau10",
+              "ordinalColorScheme": "blues",
+              "quantitativeColorScheme": "blues"
+            },
+            "range": {
+              "heatmap": "viridis",
+              "ramp": "blues",
+              "diverging": "blueorange"
+            }
+          },
           "mark": "rect",
           "encoding": {
             "x": {
@@ -88,8 +124,7 @@
       },
       "hconcat": [
         {
-          "name": "genomespy-theme-scatter",
-          "theme": "genomespy",
+          "name": "genomespy-scatter",
           "title": "GenomeSpy (Scatter)",
           "width": 260,
           "height": 200,
@@ -108,11 +143,47 @@
           }
         },
         {
-          "name": "vegalite-theme-scatter",
-          "theme": "vegalite",
-          "title": "Vega-Lite-like (Scatter)",
+          "name": "vegalite-like-scatter",
+          "title": "Vega-Lite-like (Scoped Config)",
           "width": 260,
           "height": 200,
+          "config": {
+            "mark": {
+              "color": "#4c78a8"
+            },
+            "point": {
+              "filled": false,
+              "size": 30
+            },
+            "view": {
+              "stroke": "#ddd",
+              "strokeWidth": 1
+            },
+            "axis": {
+              "grid": false,
+              "domain": true,
+              "tickColor": "gray",
+              "domainColor": "gray",
+              "gridColor": "#ddd",
+              "labelColor": "#333",
+              "titleColor": "#333",
+              "titleFontSize": 11,
+              "titleFontWeight": "normal"
+            },
+            "axisQuantitative": {
+              "grid": true
+            },
+            "scale": {
+              "nominalColorScheme": "tableau10",
+              "ordinalColorScheme": "blues",
+              "quantitativeColorScheme": "blues"
+            },
+            "range": {
+              "heatmap": "viridis",
+              "ramp": "blues",
+              "diverging": "blueorange"
+            }
+          },
           "mark": "point",
           "encoding": {
             "x": {

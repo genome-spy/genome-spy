@@ -115,43 +115,26 @@ test("ImportSpec.config is merged before imported root config", async () => {
     expect(imported.getConfig().mark.color).toBe("red");
 });
 
-test("ImportSpec.theme overrides imported root theme", async () => {
+test("throws if theme is used in a non-root subtree", async () => {
     const context = createTestViewContext({
         allowImport: true,
         wrapRoot: false,
     });
 
-    /** @type {import("../spec/view.js").VConcatSpec} */
-    const spec = {
-        templates: {
-            panel: {
-                mark: "rect",
-                theme: "genomespy",
-                data: {
-                    values: [
-                        { category: "A", value: 1 },
-                        { category: "B", value: 2 },
-                    ],
-                },
-                encoding: {
-                    x: { field: "category", type: "nominal" },
-                    y: { field: "value", type: "quantitative" },
-                    y2: { value: 0 },
-                },
-            },
-        },
-        vconcat: [
+    await expect(() =>
+        context.createOrImportView(
             {
-                import: { template: "panel" },
-                theme: "vegalite",
+                vconcat: [
+                    {
+                        mark: "rect",
+                        // @ts-expect-error Theme is root-only.
+                        theme: "vegalite",
+                    },
+                ],
             },
-        ],
-    };
-
-    const root = /** @type {import("./containerView.js").default} */ (
-        await context.createOrImportView(spec, null, null, "root")
-    );
-    const imported = [...root][0];
-
-    expect(imported.getConfig().axis.domain).toBe(true);
+            null,
+            null,
+            "root"
+        )
+    ).rejects.toThrow('"theme" is only supported at the root specification');
 });

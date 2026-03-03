@@ -3,9 +3,8 @@ import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import {
     resolveBaseConfig,
     resolveImportedSpecConfig,
-    resolveLocalConfigScope,
 } from "./resolveConfig.js";
-import { getBuiltInThemeBackground } from "./themes.js";
+import { getBuiltInThemeBackground, resolveThemeSelection } from "./themes.js";
 
 describe("resolveConfig", () => {
     test("resolves base config from defaults and theme", () => {
@@ -36,45 +35,30 @@ describe("resolveConfig", () => {
         expect(base.mark.color).toBe("tomato");
     });
 
-    test("applies built-in theme before local config in a scope", () => {
-        const scope = resolveLocalConfigScope("vegalite", {
-            axis: {
-                domain: true,
-            },
-        });
-
-        expect(scope.axis.grid).toBe(false);
-        expect(scope.axis.domain).toBe(true);
-        expect(scope.axisQuantitative.grid).toBe(true);
-    });
-
     test("unknown built-in theme throws", () => {
         expect(() =>
-            resolveLocalConfigScope(
-                /** @type {any} */ ("no-such-theme"),
-                undefined
-            )
+            resolveThemeSelection(/** @type {any} */ ("no-such-theme"))
         ).toThrow("Unknown theme");
     });
 
     test("additional built-in themes resolve", () => {
-        const quartz = resolveLocalConfigScope("quartz");
+        const quartz = resolveThemeSelection("quartz");
         expect(quartz.mark.color).toBe("#ab5787");
         expect(quartz.axisY.domain).toBe(false);
         expect(quartz.axis.domain).toBe(true);
         expect(quartz.point.filled).toBe(false);
 
-        const dark = resolveLocalConfigScope("dark");
+        const dark = resolveThemeSelection("dark");
         expect(dark.view.fill).toBe("#333");
         expect(dark.axis.labelColor).toBe("#fff");
         expect(dark.axis.grid).toBe(false);
 
-        const fiveThirtyEight = resolveLocalConfigScope("fivethirtyeight");
+        const fiveThirtyEight = resolveThemeSelection("fivethirtyeight");
         expect(fiveThirtyEight.mark.color).toBe("#30a2da");
         expect(fiveThirtyEight.axis.grid).toBe(true);
         expect(fiveThirtyEight.point.filled).toBe(false);
 
-        const urbanInstitute = resolveLocalConfigScope("urbaninstitute");
+        const urbanInstitute = resolveThemeSelection("urbaninstitute");
         expect(urbanInstitute.mark.color).toBe("#1696d2");
         expect(urbanInstitute.axisY.gridColor).toBe("#DEDDDD");
         expect(urbanInstitute.axis.domain).toBe(true);

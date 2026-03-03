@@ -1,5 +1,4 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
-import { resolveThemeSelection } from "./themes.js";
 
 /**
  * @param {object} options
@@ -11,24 +10,6 @@ import { resolveThemeSelection } from "./themes.js";
 export function resolveBaseConfig({ defaultConfig, builtInTheme, theme }) {
     return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
         mergeConfigScopes([defaultConfig, builtInTheme, theme])
-    );
-}
-
-/**
- * Resolves a local config scope by applying selected built-in theme(s) first
- * and explicit config properties second.
- *
- * @param {import("../spec/config.js").BuiltInThemeName | import("../spec/config.js").BuiltInThemeName[] | undefined} themeSelection
- * @param {import("../spec/config.js").GenomeSpyConfig} [localConfig]
- * @returns {import("../spec/config.js").GenomeSpyConfig | undefined}
- */
-export function resolveLocalConfigScope(themeSelection, localConfig) {
-    const themed = resolveThemeSelection(themeSelection);
-    if (!themed && !localConfig) {
-        return undefined;
-    }
-    return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
-        mergeConfigScopes([themed, localConfig])
     );
 }
 

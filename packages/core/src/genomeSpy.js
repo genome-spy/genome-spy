@@ -45,6 +45,7 @@ import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
+import { mergeConfigScopes } from "./config/mergeConfig.js";
 import { resolveBaseConfig } from "./config/resolveConfig.js";
 import {
     DEFAULT_THEME_NAME,
@@ -339,7 +340,10 @@ export default class GenomeSpy {
         const baseConfig = resolveBaseConfig({
             defaultConfig: INTERNAL_DEFAULT_CONFIG,
             builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
-            theme: this.options.theme,
+            theme: mergeConfigScopes([
+                this.options.theme,
+                resolveThemeSelection(this.spec.theme),
+            ]),
         });
 
         return createViewContext({

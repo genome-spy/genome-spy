@@ -2,7 +2,7 @@
  * Utils for Jest tests
  * TODO: Find a better place and convention
  *
- * @typedef {import("../spec/view.js").ViewSpec} ViewSpec
+ * @typedef {import("../spec/root.js").RootSpec} RootSpec
  * @typedef {import("../types/viewContext.js").default} ViewContext
  */
 
@@ -96,11 +96,16 @@ export function createTestViewContext(viewFactoryOptions = {}) {
 }
 
 /**
- * @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, ViewFactoryOptions?: import("./viewFactory.js").ViewFactoryOptions) => Promise<V>}
+ * @type {<V extends import("./view.js").default>(spec: RootSpec, viewClass: { new(...args: any[]): V }, ViewFactoryOptions?: import("./viewFactory.js").ViewFactoryOptions) => Promise<V>}
  */
 export async function create(spec, viewClass, viewFactoryOptions = {}) {
     const c = createTestViewContext(viewFactoryOptions);
-    const view = await c.createOrImportView(spec, null, null, VIEW_ROOT_NAME);
+    const view = await c.createOrImportView(
+        /** @type {import("../spec/view.js").ViewSpec} */ (spec),
+        null,
+        null,
+        VIEW_ROOT_NAME
+    );
 
     if (!(view instanceof viewClass)) {
         throw new Error("ViewClass and the spec do not match!");
@@ -112,7 +117,7 @@ export async function create(spec, viewClass, viewFactoryOptions = {}) {
 /**
  * Creates a view and initializes its data. Does not wrap it in an implicit root view.
  *
- * @type {<V extends import("./view.js").default>(spec: ViewSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
+ * @type {<V extends import("./view.js").default>(spec: RootSpec, viewClass: { new(...args: any[]): V }, context?: ViewContext, options?: {noData: boolean, implicitRoot: boolean}) => Promise<V>}
  */
 export async function createAndInitialize(spec, viewClass) {
     const view = await create(spec, viewClass);

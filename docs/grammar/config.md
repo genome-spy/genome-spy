@@ -3,14 +3,14 @@
 GenomeSpy supports Vega-Lite-like defaulting with `config`, plus built-in `theme`
 selection and reusable `style` buckets.
 
-Unlike Vega-Lite, configuration is **hierarchical** in GenomeSpy: `config` and
-`theme` can appear at multiple levels of the view hierarchy.
+Unlike Vega-Lite, configuration is **hierarchical** in GenomeSpy: `config` can
+appear at multiple levels of the view hierarchy.
 
 ## Mental Model
 
 Use this model when deciding which mechanism to use:
 
-- `theme`: select a broad visual preset for a subtree
+- `theme`: select a broad visual preset for the whole visualization
 - `config`: set subtree defaults for marks, axes, scales, titles, view background, etc.
 - `style`: define reusable named property buckets, then opt into them from marks/axes/title/view
 
@@ -32,7 +32,7 @@ Important differences from CSS:
 
 ## Built-In Theme Selection
 
-GenomeSpy supports a hierarchical built-in `theme` selector at view scopes.
+GenomeSpy supports built-in `theme` selection at the root specification.
 Supported built-in themes are currently:
 
 - `genomespy` (default behavior)
@@ -47,8 +47,8 @@ At the root scope, these themes can also provide a default canvas `background` c
 An explicit root-level `background` property still has higher precedence.
 
 !!! note
-    Selecting a theme in the spec is supported, but **defining custom named
-    themes inside the spec is not yet supported**.
+    Selecting a built-in theme in the root spec is supported, but **defining
+    custom named themes inside the spec is not yet supported**.
     For now, use built-in `theme` names and/or regular `config` + `style` objects.
 
 You can define config in:
@@ -61,13 +61,13 @@ The closest scope wins.
 
 ## Which One Should I Use?
 
-- Use `theme` when you want a broad, recognizable look for a whole subtree.
+- Use `theme` when you want a broad, recognizable look for the whole visualization.
 - Use `config` when you want to tune defaults for a specific subtree.
 - Use `style` when you want reusable visual tokens (for example `axisMuted`, `trackTitle`, `cell`).
 
 Typical pattern:
 
-1. Choose a subtree `theme`.
+1. Choose root `theme`.
 2. Add subtree `config` for local policy decisions.
 3. Define/apply `style` buckets for repeated visual details.
 4. Use explicit mark/axis/title/view properties only for final local overrides.
@@ -81,10 +81,10 @@ For a view, config scopes are merged from farthest to nearest:
 3. User theme (`embed(..., { theme })`)
 4. Root `spec.theme`
 5. Root `spec.config`
-6. Ancestor view `theme` / `config` (root to parent)
-7. Import-site `theme` / `config` (if any)
-8. Imported root `theme` / `config` (if any)
-9. View-local `theme` / `config`
+6. Ancestor view `config` (root to parent)
+7. Import-site `config` (if any)
+8. Imported root `config` (if any)
+9. View-local `config`
 
 Then explicit local properties still win, for example `mark.color` or
 `encoding.x.axis.tickColor`.
@@ -169,7 +169,7 @@ Explicit `title` and `view` properties override config defaults.
 
 `theme` and `style` are intentionally different:
 
-- `theme` selects a full preset configuration for a subtree.
+- `theme` selects a full preset configuration for the root visualization.
 - `style` contains fine-grained named buckets inside `config.style`.
 
 A theme may define style buckets as part of its config. However, style buckets
