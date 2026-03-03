@@ -1,5 +1,5 @@
 import { GenomeConfig } from "./genome.js";
-import { GenomeSpyConfig } from "./config.js";
+import { BuiltInThemeName, GenomeSpyConfig } from "./config.js";
 import { ViewSpec } from "./view.js";
 
 export interface RootConfig {
@@ -26,6 +26,11 @@ export interface RootConfig {
      * by view-local `config` objects.
      */
     config?: GenomeSpyConfig;
+
+    /**
+     * Selects built-in theme preset(s) for the whole visualization.
+     */
+    theme?: BuiltInThemeName | BuiltInThemeName[];
 }
 
 export type RootSpec = ViewSpec & RootConfig;

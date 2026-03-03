@@ -611,7 +611,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 52, y: 0, width: 260, height: 200",
-          "viewName": "genomespy-theme-bars",
+          "viewName": "genomespy-bars",
         },
         ViewCoords {
           "children": [],
@@ -701,7 +701,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 375, y: 0, width: 260, height: 200",
-          "viewName": "vegalite-theme-bars",
+          "viewName": "vegalite-like-bars",
         },
         ViewCoords {
           "children": [],
@@ -781,7 +781,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 52, y: 290, width: 260, height: 200",
-          "viewName": "genomespy-theme-scatter",
+          "viewName": "genomespy-scatter",
         },
         ViewCoords {
           "children": [],
@@ -871,7 +871,7 @@ ViewCoords {
         ViewCoords {
           "children": [],
           "coords": "Rectangle: x: 375, y: 290, width: 260, height: 200",
-          "viewName": "vegalite-theme-scatter",
+          "viewName": "vegalite-like-scatter",
         },
         ViewCoords {
           "children": [],

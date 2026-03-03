@@ -245,9 +245,11 @@ export class ViewFactory {
                 hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {
+            const wrappedChild = { ...viewSpec };
+            delete (/** @type {any} */ (wrappedChild).theme);
             viewSpec = {
                 name: "implicitRoot",
-                vconcat: [viewSpec],
+                vconcat: [wrappedChild],
             };
             isImplicitRoot = true;
         }
@@ -315,10 +317,6 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
         importSpec.config,
         importedSpec.config
     );
-
-    if (importSpec.theme != null) {
-        importedSpec.theme = importSpec.theme;
-    }
 
     const params = isArray(importSpec.params)
         ? importSpec.params

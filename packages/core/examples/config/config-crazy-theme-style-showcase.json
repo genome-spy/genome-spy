@@ -1,5 +1,5 @@
 {
-  "description": "Complex showcase of theme scopes, style arrays, axis style buckets, view styles, and layered marks.",
+  "description": "Complex showcase of root theme + scoped config/style overrides (no subtree themes).",
   "theme": "dark",
   "spacing": 20,
   "resolve": {
@@ -47,11 +47,24 @@
         "gridWidth": 1.5,
         "titleFontWeight": "bold"
       },
+      "axisLight": {
+        "labelColor": "#444",
+        "titleColor": "#222",
+        "tickColor": "#666",
+        "domainColor": "#666",
+        "gridColor": "#ddd"
+      },
       "hotPoint": {
         "filled": true,
         "stroke": "#ffffff",
         "strokeWidth": 2,
         "size": 90
+      },
+      "hotPointLight": {
+        "filled": true,
+        "stroke": "#222",
+        "strokeWidth": 1,
+        "size": 75
       },
       "labelHalo": {
         "color": "#f7f7f7",
@@ -97,7 +110,7 @@
       "hconcat": [
         {
           "name": "dark-layered-left",
-          "title": "Dark Root + Layer Styles",
+          "title": "Root Theme + Layer Styles",
           "width": 260,
           "height": 180,
           "view": {
@@ -176,21 +189,19 @@
       },
       "hconcat": [
         {
-          "name": "quartz-subtree",
-          "theme": "quartz",
-          "title": "Quartz Subtree",
+          "name": "scoped-bright-panel",
+          "title": "Scoped Light Config",
           "width": 260,
           "height": 180,
           "config": {
             "view": {
               "style": ["cell", "panelBright"]
             },
-            "style": {
-              "panelBright": {
-                "fill": "#ffffff",
-                "fillOpacity": 0.98,
-                "stroke": "#c0c0c0"
-              }
+            "axis": {
+              "style": "axisLight"
+            },
+            "point": {
+              "style": "hotPointLight"
             }
           },
           "mark": "point",
@@ -209,102 +220,49 @@
           }
         },
         {
-          "name": "fivethirtyeight-subtree",
-          "theme": "fivethirtyeight",
-          "title": "FiveThirtyEight + Override",
+          "name": "nested-config-stack",
           "width": 260,
-          "height": 180,
           "config": {
+            "view": {
+              "style": ["cell", "panelBright"]
+            },
             "axis": {
-              "titleFontSize": 12
+              "style": "axisLight"
             },
             "point": {
-              "size": 65
+              "style": "hotPointLight"
             }
           },
-          "mark": {
-            "type": "point",
-            "style": "hotPoint"
-          },
-          "encoding": {
-            "x": {
-              "field": "x",
-              "type": "quantitative",
-              "axis": { "title": "Stage" }
-            },
-            "y": {
-              "field": "y",
-              "type": "quantitative",
-              "axis": { "title": "Score" }
-            },
-            "color": { "field": "g", "type": "nominal" }
-          }
-        }
-      ]
-    },
-    {
-      "data": {
-        "values": [
-          { "x": 1, "y": 9, "label": "alpha" },
-          { "x": 2, "y": 7, "label": "beta" },
-          { "x": 3, "y": 8, "label": "gamma" },
-          { "x": 4, "y": 5, "label": "delta" }
-        ]
-      },
-      "hconcat": [
-        {
-          "name": "urban-parent",
-          "theme": "urbaninstitute",
-          "title": "Urban Parent Scope",
-          "width": 260,
-          "height": 180,
-          "mark": {
-            "type": "point",
-            "style": "hotPoint"
-          },
-          "encoding": {
-            "x": {
-              "field": "x",
-              "type": "quantitative",
-              "axis": { "title": "X" }
-            },
-            "y": {
-              "field": "y",
-              "type": "quantitative",
-              "axis": { "title": "Y" }
-            },
-            "color": { "field": "label", "type": "nominal" }
-          }
-        },
-        {
-          "name": "nested-theme-stack",
-          "theme": "urbaninstitute",
-          "width": 260,
           "vconcat": [
             {
-              "title": "Urban Child",
+              "title": "Parent Scoped Config",
               "height": 85,
               "mark": "point",
               "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
                 "y": { "field": "y", "type": "quantitative" },
-                "color": { "field": "label", "type": "nominal" }
+                "color": { "field": "g", "type": "nominal" }
               }
             },
             {
-              "theme": "vegalite",
-              "title": "Nested Vega-Lite Child",
+              "title": "Child Config Override",
               "height": 85,
               "config": {
                 "view": {
-                  "style": ["cell", "panelBright"]
+                  "style": ["cell", "panelSoft"]
+                },
+                "axis": {
+                  "style": "axisMuted"
+                },
+                "point": {
+                  "style": "hotPoint"
                 }
               },
               "mark": "point",
               "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
                 "y": { "field": "y", "type": "quantitative" },
-                "color": { "field": "label", "type": "nominal" }
+                "color": { "field": "g", "type": "nominal" }
               }
             }
           ]
