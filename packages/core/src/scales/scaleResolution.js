@@ -13,7 +13,7 @@ import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import DomainPlanner from "./domainPlanner.js";
+import DomainPlanner, { isSelectionDomainRef } from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import {
     INDEX,
@@ -110,6 +110,9 @@ export default class ScaleResolution {
     #categoricalIndexer;
 
     #categoricalIndexerExplicit = false;
+
+    /** @type {(() => void)[]} */
+    #selectionDomainParamUnsubscribers = [];
 
     /**
      * @param {Channel} channel
@@ -311,6 +314,7 @@ export default class ScaleResolution {
             this.#dataDomainMembers.add(newMember);
         }
         this.#domainAggregator.invalidateConfiguredDomain();
+        this.#refreshSelectionDomainParamSubscriptions();
     }
 
     /**
@@ -324,15 +328,65 @@ export default class ScaleResolution {
             if (removed) {
                 this.#dataDomainMembers.delete(member);
                 this.#domainAggregator.invalidateConfiguredDomain();
+                this.#refreshSelectionDomainParamSubscriptions();
             }
             return removed && this.#members.size === 0;
         };
     }
 
     dispose() {
+        this.#clearSelectionDomainParamSubscriptions();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
         this.#scaleManager.dispose();
+    }
+
+    #clearSelectionDomainParamSubscriptions() {
+        for (const unsubscribe of this.#selectionDomainParamUnsubscribers) {
+            unsubscribe();
+        }
+        this.#selectionDomainParamUnsubscribers = [];
+    }
+
+    #refreshSelectionDomainParamSubscriptions() {
+        this.#clearSelectionDomainParamSubscriptions();
+
+        /** @type {Map<any, Set<string>>} */
+        const paramsByRuntime = new Map();
+
+        for (const member of this.#members) {
+            const domainDef = member.channelDef.scale?.domain;
+            if (!isSelectionDomainRef(domainDef)) {
+                continue;
+            }
+
+            const runtime = member.view.paramRuntime.findRuntimeForParam(
+                domainDef.param
+            );
+            if (!runtime) {
+                throw new Error(
+                    `Selection domain parameter "${domainDef.param}" was not found.`
+                );
+            }
+
+            let params = paramsByRuntime.get(runtime);
+            if (!params) {
+                params = new Set();
+                paramsByRuntime.set(runtime, params);
+            }
+            params.add(domainDef.param);
+        }
+
+        for (const [runtime, params] of paramsByRuntime) {
+            for (const paramName of params) {
+                this.#selectionDomainParamUnsubscribers.push(
+                    runtime.subscribe(paramName, () => {
+                        this.#domainAggregator.invalidateConfiguredDomain();
+                        this.reconfigureDomain();
+                    })
+                );
+            }
+        }
     }
 
     #hasRenderedMember() {
@@ -562,6 +616,7 @@ export default class ScaleResolution {
      *     props: import("../spec/scale.js").Scale,
      *     previousDomain: any[],
      *     domainWasInitialized: boolean,
+     *     hasSelectionConfiguredDomain: boolean,
      *     domainConfig?: ReturnType<typeof configureDomain>,
      *     targetDomain?: any[] | null,
      * } | undefined}
@@ -578,6 +633,8 @@ export default class ScaleResolution {
             props: this.#getScaleProps(extractDataDomain),
             previousDomain: scale.domain(),
             domainWasInitialized: this.#isDomainInitialized(),
+            hasSelectionConfiguredDomain:
+                this.#domainAggregator.hasSelectionConfiguredDomain(),
         };
 
         if (includeDomainConfig) {
@@ -610,10 +667,16 @@ export default class ScaleResolution {
      *     scale: ScaleWithProps,
      *     previousDomain: any[],
      *     domainWasInitialized: boolean,
+     *     hasSelectionConfiguredDomain: boolean,
      * }} inputs
      */
     #finalizeReconfigure(inputs) {
-        const { scale, previousDomain, domainWasInitialized } = inputs;
+        const {
+            scale,
+            previousDomain,
+            domainWasInitialized,
+            hasSelectionConfiguredDomain,
+        } = inputs;
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -633,10 +696,16 @@ export default class ScaleResolution {
         );
 
         if (action === "restore") {
-            // Don't mess with zoomed views, restore the previous domain
-            this.#scaleManager.withDomainNotificationsSuppressed(() => {
-                scale.domain(previousDomain);
-            });
+            if (hasSelectionConfiguredDomain) {
+                // Selection-linked domains are the source of truth and must not
+                // be overridden by previously zoomed domains.
+                this.#notifyListeners("domain");
+            } else {
+                // Don't mess with zoomed views, restore the previous domain
+                this.#scaleManager.withDomainNotificationsSuppressed(() => {
+                    scale.domain(previousDomain);
+                });
+            }
         } else if (action === "animate") {
             if (this.#hasRenderedMember()) {
                 // It can be zoomed, so lets make a smooth transition.

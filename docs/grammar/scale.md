@@ -295,6 +295,69 @@ Somewhere inside the chromosome 1:
 
 </genome-spy-doc-embed></div>
 
+## Domain from Selection Parameters
+
+Scale domains can be linked to interval selection parameters. This enables
+brushing and linking patterns where one view controls the visible range of
+another view.
+
+Use an object-valued `domain`:
+
+```json
+{
+  "scale": {
+    "domain": {
+      "param": "brush",
+      "encoding": "x",
+      "empty": "all"
+    }
+  }
+}
+```
+
+Properties:
+
+- `param`: name of an interval selection parameter
+- `encoding`: which interval channel to use (`"x"` or `"y"`)
+- `empty`:
+  - `"all"` (default): fall back to default/data domain when selection is empty
+  - `"none"`: use an empty domain
+
+### Cross-view Linking with Hierarchical Params
+
+For linking across sibling views, define an empty parameter in a common
+ancestor and push selection updates there from the brushing view using
+`push: "outer"`.
+
+```json
+{
+  "params": [{ "name": "brush" }],
+  "vconcat": [
+    {
+      "params": [
+        {
+          "name": "brush",
+          "select": { "type": "interval", "encodings": ["x"] },
+          "push": "outer"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": { "param": "brush", "encoding": "x" } }
+        }
+      }
+    }
+  ]
+}
+```
+
+See also:
+`packages/core/examples/selection/interval_linked_domain.json`
+
 ## Zooming and panning
 
 To enable zooming and panning of continuous scales on positional channels, set

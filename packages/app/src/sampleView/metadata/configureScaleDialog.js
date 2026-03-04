@@ -143,7 +143,9 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
     }
 
     if (isDiscrete) {
-        const domainValues = scale.domain?.map((value) => String(value)) ?? [];
+        const domainValues = Array.isArray(scale.domain)
+            ? scale.domain.map((value) => String(value))
+            : [];
         if (state.colorMode === "manual") {
             // TODO: Handle pre-defined range values. Now this will fail for that case.
             const rangeValues = /** @type {string[]} */ (scale.range ?? []);
@@ -166,7 +168,7 @@ export function parseScaleSpec(scale, dataType, observedDomain, defaults) {
         return state;
     }
 
-    if (scale.domain) {
+    if (Array.isArray(scale.domain)) {
         state.quantDomain = /** @type {number[]} */ (scale.domain);
     } else if (observedDomain.length === 2) {
         state.quantDomain = /** @type {number[]} */ (observedDomain);

@@ -50,6 +50,34 @@ function createPlanner(members, type) {
     });
 }
 
+/**
+ * @param {object} params
+ * @param {any} params.selectionValue
+ * @param {import("../spec/channel.js").ChannelWithScale} [params.channel]
+ * @param {import("../spec/channel.js").Type} [params.type]
+ * @param {any} params.domain
+ */
+function createSelectionDomainMember({
+    selectionValue,
+    channel = "x",
+    type = "quantitative",
+    domain,
+}) {
+    return {
+        channel,
+        channelDef: {
+            type,
+            scale: { domain },
+        },
+        contributesToDomain: true,
+        view: {
+            paramRuntime: {
+                findValue: () => selectionValue,
+            },
+        },
+    };
+}
+
 describe("DomainPlanner", () => {
     test("configured domains are unioned", () => {
         const members = [
@@ -213,6 +241,116 @@ describe("DomainPlanner", () => {
 
         expect(toRegularArray(planner.getConfiguredDomain())).toEqual([0, 7]);
         expect(fromComplexInterval).toHaveBeenCalledTimes(3);
+    });
+
+    test("configured domain can be linked to interval selection params", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
+        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+    });
+
+    test("selection-linked configured domain falls back when empty and empty=all", () => {
+        /** @type {any} */
+        const selection = {
+            type: "interval",
+            intervals: { x: null },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(planner.getConfiguredDomain()).toBeUndefined();
+        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
+        expect(planner.hasSelectionConfiguredDomain()).toBe(false);
+    });
+
+    test("selection-linked configured domain can be empty when empty=none", () => {
+        /** @type {any} */
+        const selection = {
+            type: "interval",
+            intervals: { x: null },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", empty: "none" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([]);
+        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+    });
+
+    test("throws on conflicting selection domain refs", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brushA" },
+                }),
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brushB" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(() => planner.getConfiguredDomain()).toThrow(
+            "Conflicting selection domain references"
+        );
+    });
+
+    test("throws when encoding cannot be inferred on non-positional channels", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    channel: "color",
+                    domain: { param: "brush" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(() => planner.getConfiguredDomain()).toThrow(
+            'requires an explicit "encoding"'
+        );
     });
 
     test("default domain is empty when no data is requested", () => {

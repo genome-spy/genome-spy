@@ -81,6 +81,42 @@ them to control the size, angle, and text of a text mark.
 
 </genome-spy-doc-embed></div>
 
+#### Linking across views with `push: "outer"`
+
+When a brush selection in one view should control another view (for example via
+`scale.domain`), parameters must follow scope hierarchy:
+
+1. Define an empty parameter in a common ancestor.
+2. Define the brushing selection in a child view with the same `name`.
+3. Add `"push": "outer"` so selection updates are written to the ancestor
+   parameter.
+
+```json
+{
+  "params": [{ "name": "brush" }],
+  "vconcat": [
+    {
+      "params": [
+        {
+          "name": "brush",
+          "select": { "type": "interval", "encodings": ["x"] },
+          "push": "outer"
+        }
+      ]
+    },
+    {
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": { "param": "brush", "encoding": "x" } }
+        }
+      }
+    }
+  ]
+}
+```
+
 ### Expressions
 
 Parameters can be based on [expressions](./expressions.md), which can depend on

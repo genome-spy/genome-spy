@@ -770,6 +770,126 @@ describe("Domain handling", () => {
         expect(resolution.scale.domain()).toEqual([2, 3]);
     });
 
+    test("selection-linked domains react to pushed outer interval params", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "brush", value: null }],
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                            },
+                        ],
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                    zoom: true,
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const linked = view.children[1];
+        const resolution = linked.getScaleResolution("x");
+
+        // Empty brush should fall back to data domain.
+        expect(resolution.scale.domain()).toEqual([0, 10]);
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [2, 4] },
+        });
+
+        expect(resolution.scale.domain()).toEqual([2, 4]);
+    });
+
+    test("selection-linked domains are not restored to previous zoom domains", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "brush", value: null }],
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                            },
+                        ],
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                    zoom: true,
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const linked = view.children[1];
+        const resolution = linked.getScaleResolution("x");
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [2, 4] },
+        });
+        expect(resolution.scale.domain()).toEqual([2, 4]);
+
+        // Simulate a previously zoomed domain.
+        resolution.getScale().domain([2.5, 3.5]);
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [6, 8] },
+        });
+
+        expect(resolution.scale.domain()).toEqual([6, 8]);
+    });
+
     test("reconfigureDomain skips zoom animation before first render", async () => {
         const view = await createAndInitialize(
             {

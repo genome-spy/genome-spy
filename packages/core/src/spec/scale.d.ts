@@ -62,7 +62,7 @@ export interface Scale {
      *
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
      */
-    domain?: ScalarDomain | ComplexDomain;
+    domain?: ScalarDomain | ComplexDomain | SelectionDomainRef;
 
     /**
      * Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.
@@ -228,6 +228,41 @@ export interface Scale {
      * If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively.
      */
     zoom?: boolean | ZoomParams;
+}
+
+export interface SelectionDomainRef {
+    /**
+     * Name of an interval selection parameter that provides the domain.
+     */
+    param: string;
+
+    /**
+     * Selection interval channel to use.
+     *
+     * If omitted, GenomeSpy infers the channel from the scale channel when
+     * possible (e.g., `x` -> `x`, `x2` -> `x`, `y` -> `y`, `y2` -> `y`).
+     */
+    encoding?: "x" | "y";
+
+    /**
+     * Behavior when the selection interval is empty.
+     *
+     * - `"all"`: ignore the reference and fall back to default/data domain.
+     * - `"none"`: use an empty domain.
+     *
+     * __Default value:__ `"all"`.
+     */
+    empty?: "all" | "none";
+
+    /**
+     * Domain synchronization mode.
+     *
+     * - `"oneWay"`: selection drives the domain.
+     * - `"twoWay"`: selection drives the domain and zoom/pan updates selection.
+     *
+     * __Default value:__ `"oneWay"`.
+     */
+    sync?: "oneWay" | "twoWay";
 }
 
 export interface SchemeParams {
