@@ -898,6 +898,71 @@ describe("Domain handling", () => {
         expect(resolution.scale.domain()).toEqual([6, 8]);
     });
 
+    test("selection-linked domains skip zoomTo animation during continuous updates", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "brush", value: null }],
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                            },
+                        ],
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const linked = view.children[1];
+        const resolution = linked.getScaleResolution("x");
+        const spy = vi.spyOn(resolution, "zoomTo");
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [2, 4] },
+        });
+
+        // Non-obvious: emulate that the linked view has rendered so animate-path
+        // transitions would normally be allowed for continuous scales.
+        linked.onBeforeRender();
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [6, 8] },
+        });
+
+        expect(spy).not.toHaveBeenCalled();
+        expect(resolution.scale.domain()).toEqual([6, 8]);
+        spy.mockRestore();
+    });
+
     test("reconfigureDomain skips zoom animation before first render", async () => {
         const view = await createAndInitialize(
             {

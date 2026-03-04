@@ -707,7 +707,11 @@ export default class ScaleResolution {
                 });
             }
         } else if (action === "animate") {
-            if (this.#hasRenderedMember()) {
+            if (hasSelectionConfiguredDomain) {
+                // Linked domains can update continuously (e.g., brushing), so
+                // skip zoomTo transitions and apply domain updates directly.
+                this.#notifyListeners("domain");
+            } else if (this.#hasRenderedMember()) {
                 // It can be zoomed, so lets make a smooth transition.
                 // Restore the previous domain and zoom smoothly to the new domain.
                 this.#scaleManager.withDomainNotificationsSuppressed(() => {
