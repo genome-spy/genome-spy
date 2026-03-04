@@ -25,6 +25,7 @@ import {
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isSecondaryChannel } from "../encoder/encoder.js";
+import { isIntervalSelection } from "../selection/selection.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
@@ -36,6 +37,23 @@ vegaScale("locus", scaleLocus, ["continuous"]);
 vegaScale("null", scaleNull, []);
 
 export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
+
+/**
+ * @param {number[] | null} a
+ * @param {number[] | null} b
+ * @returns {boolean}
+ */
+function intervalsEqual(a, b) {
+    if (a === b) {
+        return true;
+    }
+
+    if (!a || !b) {
+        return false;
+    }
+
+    return a.length === b.length && shallowArrayEquals(a, b);
+}
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
@@ -113,6 +131,8 @@ export default class ScaleResolution {
 
     /** @type {(() => void)[]} */
     #selectionDomainParamUnsubscribers = [];
+
+    #selectionReverseSyncSuppressionDepth = 0;
 
     /**
      * @param {Channel} channel
@@ -245,12 +265,124 @@ export default class ScaleResolution {
      * @param {ScaleResolutionEventType} type
      */
     #notifyListeners(type) {
+        if (
+            type === "domain" &&
+            this.#selectionReverseSyncSuppressionDepth === 0
+        ) {
+            this.#syncLinkedSelectionFromDomain();
+        }
+
         for (const listener of this.#listeners[type].values()) {
             listener({
                 type,
                 scaleResolution: this,
             });
         }
+    }
+
+    /**
+     * @param {() => void} callback
+     */
+    #withSelectionReverseSyncSuppressed(callback) {
+        this.#selectionReverseSyncSuppressionDepth += 1;
+        try {
+            callback();
+        } finally {
+            this.#selectionReverseSyncSuppressionDepth -= 1;
+        }
+    }
+
+    #syncLinkedSelectionFromDomain() {
+        const linkInfo =
+            this.#domainAggregator.getSelectionConfiguredDomainInfo();
+        if (!linkInfo || linkInfo.sync !== "twoWay") {
+            return;
+        }
+
+        const runtime = this.#firstMemberView.paramRuntime.findRuntimeForParam(
+            linkInfo.param
+        );
+        if (!runtime) {
+            throw new Error(
+                `Selection domain parameter "${linkInfo.param}" was not found.`
+            );
+        }
+
+        const selection = runtime.getValue(linkInfo.param);
+        if (!selection) {
+            throw new Error(
+                `Selection domain parameter "${linkInfo.param}" was not found.`
+            );
+        }
+
+        if (!isIntervalSelection(selection)) {
+            throw new Error(
+                `Selection domain parameter "${linkInfo.param}" must be an interval selection.`
+            );
+        }
+
+        const interval = this.#normalizeDomainIntervalForLinkedSelection(
+            this.getScale().domain()
+        );
+        if (!interval) {
+            return;
+        }
+
+        const fallbackInterval =
+            this.#normalizeDomainIntervalForLinkedSelection(
+                this.#domainAggregator.getDefaultDomain(true)
+            );
+
+        const syncedInterval =
+            fallbackInterval && shallowArrayEquals(interval, fallbackInterval)
+                ? null
+                : interval;
+
+        const previousInterval = selection.intervals[linkInfo.encoding] ?? null;
+        if (intervalsEqual(previousInterval, syncedInterval)) {
+            return;
+        }
+
+        runtime.setValue(linkInfo.param, {
+            ...selection,
+            type: "interval",
+            intervals: {
+                ...selection.intervals,
+                [linkInfo.encoding]: syncedInterval,
+            },
+        });
+    }
+
+    /**
+     * @param {any[]} domain
+     * @returns {[number, number] | undefined}
+     */
+    #normalizeDomainIntervalForLinkedSelection(domain) {
+        if (!domain || domain.length !== 2) {
+            return;
+        }
+
+        const a = Number(domain[0]);
+        const b = Number(domain[1]);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+            return;
+        }
+
+        const interval = [Math.min(a, b), Math.max(a, b)];
+        const extent = this.zoomExtent;
+        interval[0] = Math.max(extent[0], interval[0]);
+        interval[1] = Math.min(extent[1], interval[1]);
+
+        if (interval[0] > interval[1]) {
+            return;
+        }
+
+        if (this.type === INDEX || this.type === LOCUS) {
+            interval[0] = Math.ceil(interval[0]);
+            interval[1] = Math.ceil(interval[1]);
+        }
+
+        return /** @type {[number, number]} */ (interval);
     }
 
     /**
@@ -566,15 +698,17 @@ export default class ScaleResolution {
      * or when scale properties are otherwise re-resolved from the view hierarchy.
      */
     reconfigure() {
-        this.#domainAggregator.invalidateConfiguredDomain();
-        const state = this.#computeScaleState(true);
-        if (!state) {
-            return;
-        }
-        this.#applyReconfigure(state, (scale, props) =>
-            this.#scaleManager.reconfigureScale(props)
-        );
-        this.#finalizeReconfigure(state);
+        this.#withSelectionReverseSyncSuppressed(() => {
+            this.#domainAggregator.invalidateConfiguredDomain();
+            const state = this.#computeScaleState(true);
+            if (!state) {
+                return;
+            }
+            this.#applyReconfigure(state, (scale, props) =>
+                this.#scaleManager.reconfigureScale(props)
+            );
+            this.#finalizeReconfigure(state);
+        });
     }
 
     /**
@@ -584,28 +718,30 @@ export default class ScaleResolution {
      *
      */
     reconfigureDomain() {
-        const state = this.#computeScaleState(true, true);
-        if (!state) {
-            return;
-        }
-        const { domainConfig, targetDomain } = state;
-        const domainMatches =
-            targetDomain != null &&
-            shallowArrayEquals(targetDomain, state.scale.domain());
+        this.#withSelectionReverseSyncSuppressed(() => {
+            const state = this.#computeScaleState(true, true);
+            if (!state) {
+                return;
+            }
+            const { domainConfig, targetDomain } = state;
+            const domainMatches =
+                targetDomain != null &&
+                shallowArrayEquals(targetDomain, state.scale.domain());
 
-        if (targetDomain != null && !domainMatches) {
-            this.#applyReconfigure(state, (scale) => {
-                scale.domain(targetDomain);
-                if (domainConfig.applyOrdinalUnknown) {
-                    // Keep ordinal unknown handling close to the domain write so
-                    // domainImplicit semantics stay aligned with the applied domain.
-                    /** @type {any} */ (scale).unknown(
-                        domainConfig.ordinalUnknown
-                    );
-                }
-            });
-        }
-        this.#finalizeReconfigure(state);
+            if (targetDomain != null && !domainMatches) {
+                this.#applyReconfigure(state, (scale) => {
+                    scale.domain(targetDomain);
+                    if (domainConfig.applyOrdinalUnknown) {
+                        // Keep ordinal unknown handling close to the domain write so
+                        // domainImplicit semantics stay aligned with the applied domain.
+                        /** @type {any} */ (scale).unknown(
+                            domainConfig.ordinalUnknown
+                        );
+                    }
+                });
+            }
+            this.#finalizeReconfigure(state);
+        });
     }
 
     /**

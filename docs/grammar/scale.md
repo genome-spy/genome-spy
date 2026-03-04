@@ -318,6 +318,9 @@ Properties:
 
 - `param`: name of an interval selection parameter
 - `encoding`: which interval channel to use (`"x"` or `"y"`)
+- `sync`:
+  - `"oneWay"` (default): selection drives the linked domain
+  - `"twoWay"`: selection drives the domain and linked domain zoom/pan updates the selection
 
 ### Cross-view Linking with Hierarchical Params
 
@@ -353,6 +356,33 @@ ancestor and push selection updates there from the brushing view using
 
 See also:
 `packages/core/examples/selection/interval_linked_domain.json`
+
+### Two-Way Linking
+
+To make linking bi-directional, set `sync: "twoWay"` in the linked scale
+domain. The linked view should be zoomable.
+
+```json
+{
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": {
+        "zoom": true,
+        "domain": {
+          "param": "brush",
+          "encoding": "x",
+          "sync": "twoWay"
+        }
+      }
+    }
+  }
+}
+```
+
+See also:
+`packages/core/examples/selection/interval_linked_domain_two_way.json`
 
 ## Zooming and panning
 

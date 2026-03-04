@@ -13,6 +13,11 @@ import { isIntervalSelection } from "../selection/selection.js";
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
+ * @typedef {{
+ *   param: string,
+ *   encoding: "x" | "y",
+ *   sync: "oneWay" | "twoWay",
+ * }} SelectionDomainLinkInfo
  */
 
 export default class DomainPlanner {
@@ -39,6 +44,9 @@ export default class DomainPlanner {
 
     /** @type {"none" | "literal" | "selection"} */
     #configuredDomainSource = "none";
+
+    /** @type {SelectionDomainLinkInfo | undefined} */
+    #selectionDomainLinkInfo = undefined;
 
     #configuredDomainDirty = true;
 
@@ -83,8 +91,30 @@ export default class DomainPlanner {
         return this.#configuredDomainSource === "selection";
     }
 
+    /**
+     * @returns {SelectionDomainLinkInfo | undefined}
+     */
+    getSelectionConfiguredDomainInfo() {
+        this.getConfiguredDomain();
+        return this.#selectionDomainLinkInfo;
+    }
+
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
+    }
+
+    /**
+     * Returns the default domain without considering configured domains.
+     *
+     * @param {boolean} [extractDataDomain]
+     * @returns {any[]}
+     */
+    getDefaultDomain(extractDataDomain = false) {
+        return resolveDefaultDomain(
+            this.#getType(),
+            this.#getLocusExtent,
+            extractDataDomain ? this.getDataDomain() : undefined
+        );
     }
 
     /**
@@ -97,11 +127,7 @@ export default class DomainPlanner {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
             this.getConfiguredDomain() ??
-            resolveDefaultDomain(
-                this.#getType(),
-                this.#getLocusExtent,
-                extractDataDomain ? this.getDataDomain() : undefined
-            )
+            this.getDefaultDomain(extractDataDomain)
         );
     }
 
@@ -121,6 +147,7 @@ export default class DomainPlanner {
         );
         this.#configuredDomain = configuredDomain.domain;
         this.#configuredDomainSource = configuredDomain.source;
+        this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
         this.#configuredDomainDirty = false;
         return configuredDomain.domain;
     }
@@ -196,7 +223,11 @@ export default class DomainPlanner {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
- * @returns {{ domain: DomainArray | undefined, source: "none" | "literal" | "selection" }}
+ * @returns {{
+ *   domain: DomainArray | undefined,
+ *   source: "none" | "literal" | "selection",
+ *   selectionRef: SelectionDomainLinkInfo | undefined,
+ * }}
  */
 function resolveConfiguredDomain(members, fromComplexInterval) {
     const domainMembers = Array.from(members)
@@ -210,6 +241,8 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     let selectionRefKey = undefined;
     /** @type {string | undefined} */
     let selectionRefDescription = undefined;
+    /** @type {SelectionDomainLinkInfo | undefined} */
+    let selectionRef = undefined;
     let hasLiteralDomain = false;
 
     for (const member of domainMembers) {
@@ -239,6 +272,11 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
 
             selectionRefKey = resolved.key;
             selectionRefDescription = resolved.description;
+            selectionRef = {
+                param: resolved.param,
+                encoding: resolved.encoding,
+                sync: resolved.sync,
+            };
 
             if (resolved.domain) {
                 domains.push(resolved.domain);
@@ -262,26 +300,41 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
         return {
             domain: domains.reduce((acc, curr) => acc.extendAll(curr)),
             source: selectionRefKey ? "selection" : "literal",
+            selectionRef,
         };
     }
 
     if (selectionRefKey) {
         // Selection refs are still the source of truth even when the
         // selection interval currently resolves to no domain.
-        return { domain: undefined, source: "selection" };
+        return { domain: undefined, source: "selection", selectionRef };
     }
 
-    return { domain: undefined, source: "none" };
+    return { domain: undefined, source: "none", selectionRef: undefined };
 }
 
 /**
  * @param {ScaleResolutionMember} member
  * @param {SelectionDomainRef} domainRef
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
- * @returns {{ domain: DomainArray | undefined, key: string, description: string }}
+ * @returns {{
+ *   domain: DomainArray | undefined,
+ *   key: string,
+ *   description: string,
+ *   param: string,
+ *   encoding: "x" | "y",
+ *   sync: "oneWay" | "twoWay",
+ * }}
  */
 function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     const paramName = domainRef.param;
+    const syncMode = domainRef.sync ?? "oneWay";
+
+    if (syncMode !== "oneWay" && syncMode !== "twoWay") {
+        throw new Error(
+            `Invalid selection domain sync mode "${syncMode}" for parameter "${paramName}".`
+        );
+    }
 
     const resolvedChannel = resolveSelectionDomainChannel(
         member.channel,
@@ -304,11 +357,19 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     }
 
     const interval = selection.intervals[resolvedChannel];
-    const key = [paramName, resolvedChannel].join("|");
-    const description = paramName + "." + resolvedChannel;
+    const key = [paramName, resolvedChannel, syncMode].join("|");
+    const description =
+        paramName + "." + resolvedChannel + " (sync=" + syncMode + ")";
 
     if (!interval || interval.length !== 2) {
-        return { domain: undefined, key, description };
+        return {
+            domain: undefined,
+            key,
+            description,
+            param: paramName,
+            encoding: resolvedChannel,
+            sync: syncMode,
+        };
     }
 
     return {
@@ -318,6 +379,9 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
         ),
         key,
         description,
+        param: paramName,
+        encoding: resolvedChannel,
+        sync: syncMode,
     };
 }
 

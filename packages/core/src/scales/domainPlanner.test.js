@@ -261,6 +261,35 @@ describe("DomainPlanner", () => {
 
         expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
+            param: "brush",
+            encoding: "x",
+            sync: "oneWay",
+        });
+    });
+
+    test("selection-linked domain can expose two-way sync metadata", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", sync: "twoWay" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        planner.getConfiguredDomain();
+        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
+            param: "brush",
+            encoding: "x",
+            sync: "twoWay",
+        });
     });
 
     test("selection-linked configured domain falls back when selection is empty", () => {
@@ -300,6 +329,31 @@ describe("DomainPlanner", () => {
                 createSelectionDomainMember({
                     selectionValue: selection,
                     domain: { param: "brushB" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(() => planner.getConfiguredDomain()).toThrow(
+            "Conflicting selection domain references"
+        );
+    });
+
+    test("throws on conflicting selection sync modes on shared scales", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", sync: "oneWay" },
+                }),
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", sync: "twoWay" },
                 }),
             ],
             "quantitative"
