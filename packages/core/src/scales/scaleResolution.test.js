@@ -913,11 +913,47 @@ describe("Domain handling", () => {
         expect(view.paramRuntime.getValue("brush").intervals.x).toEqual([2, 4]);
     });
 
+    test("auto sync writes domain updates back when linked scale is zoomable", async () => {
+        const view = await createAndInitialize(
+            createLinkedDomainSpec({
+                param: "brush",
+                encoding: "x",
+            }),
+            ConcatView
+        );
+
+        const linked = view.children[1];
+        const resolution = linked.getScaleResolution("x");
+        resolution.getScale().domain([2, 4]);
+
+        expect(view.paramRuntime.getValue("brush").intervals.x).toEqual([2, 4]);
+    });
+
+    test("auto sync does not write domain updates back when linked scale is not zoomable", async () => {
+        const view = await createAndInitialize(
+            createLinkedDomainSpec(
+                {
+                    param: "brush",
+                    encoding: "x",
+                },
+                false
+            ),
+            ConcatView
+        );
+
+        const linked = view.children[1];
+        const resolution = linked.getScaleResolution("x");
+        resolution.getScale().domain([2, 4]);
+
+        expect(view.paramRuntime.getValue("brush").intervals.x).toBeNull();
+    });
+
     test("one-way linked domains do not write domain updates back to params", async () => {
         const view = await createAndInitialize(
             createLinkedDomainSpec({
                 param: "brush",
                 encoding: "x",
+                sync: "oneWay",
             }),
             ConcatView
         );

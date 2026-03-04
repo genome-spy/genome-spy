@@ -264,7 +264,7 @@ describe("DomainPlanner", () => {
         expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
             param: "brush",
             encoding: "x",
-            sync: "oneWay",
+            sync: "auto",
         });
     });
 
@@ -360,8 +360,36 @@ describe("DomainPlanner", () => {
         );
 
         expect(() => planner.getConfiguredDomain()).toThrow(
-            "Conflicting selection domain references"
+            "Conflicting selection domain sync modes"
         );
+    });
+
+    test("selection-linked domain allows mixing implicit and explicit sync", () => {
+        const selection = {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush" },
+                }),
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", sync: "twoWay" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
+        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
+            param: "brush",
+            encoding: "x",
+            sync: "twoWay",
+        });
     });
 
     test("throws when encoding cannot be inferred on non-positional channels", () => {

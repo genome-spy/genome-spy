@@ -299,7 +299,14 @@ export default class ScaleResolution {
     #syncLinkedSelectionFromDomain() {
         const linkInfo =
             this.#domainAggregator.getSelectionConfiguredDomainInfo();
-        if (!linkInfo || linkInfo.sync !== "twoWay") {
+        if (!linkInfo) {
+            return;
+        }
+
+        const shouldReverseSync =
+            linkInfo.sync === "twoWay" ||
+            (linkInfo.sync === "auto" && this.isZoomable());
+        if (!shouldReverseSync) {
             return;
         }
 

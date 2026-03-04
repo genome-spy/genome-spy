@@ -250,7 +250,10 @@ export interface SelectionDomainRef {
      * - `"oneWay"`: selection drives the domain.
      * - `"twoWay"`: selection drives the domain and zoom/pan updates selection.
      *
-     * __Default value:__ `"oneWay"`.
+     * __Default value:__ implicit auto mode:
+     *
+     * - `"twoWay"` when the linked scale is zoomable
+     * - `"oneWay"` otherwise
      */
     sync?: "oneWay" | "twoWay";
 }

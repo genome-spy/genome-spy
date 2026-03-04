@@ -16,7 +16,7 @@ import { getPrimaryChannel } from "../encoder/encoder.js";
  * @typedef {{
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "oneWay" | "twoWay",
+ *   sync: "auto" | "oneWay" | "twoWay",
  * }} SelectionDomainLinkInfo
  */
 
@@ -236,6 +236,8 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     let selectionRefKey = undefined;
     /** @type {string | undefined} */
     let selectionRefDescription = undefined;
+    /** @type {"auto" | "oneWay" | "twoWay" | undefined} */
+    let selectionRefSync = undefined;
     /** @type {SelectionDomainLinkInfo | undefined} */
     let selectionRef = undefined;
     let hasLiteralDomain = false;
@@ -265,12 +267,28 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
                 );
             }
 
+            if (!selectionRefSync) {
+                selectionRefSync = resolved.sync;
+            } else if (selectionRefSync === "auto") {
+                selectionRefSync = resolved.sync;
+            } else if (resolved.sync !== "auto") {
+                if (selectionRefSync !== resolved.sync) {
+                    throw new Error(
+                        "Conflicting selection domain sync modes on a shared scale: " +
+                            selectionRefSync +
+                            " vs " +
+                            resolved.sync +
+                            "."
+                    );
+                }
+            }
+
             selectionRefKey = resolved.key;
             selectionRefDescription = resolved.description;
             selectionRef = {
                 param: resolved.param,
                 encoding: resolved.encoding,
-                sync: resolved.sync,
+                sync: selectionRefSync,
             };
 
             if (resolved.domain) {
@@ -317,14 +335,14 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
  *   description: string,
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "oneWay" | "twoWay",
+ *   sync: "auto" | "oneWay" | "twoWay",
  * }}
  */
 function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     const paramName = domainRef.param;
-    const syncMode = domainRef.sync ?? "oneWay";
+    const syncMode = domainRef.sync ?? "auto";
 
-    if (syncMode !== "oneWay" && syncMode !== "twoWay") {
+    if (syncMode !== "auto" && syncMode !== "oneWay" && syncMode !== "twoWay") {
         throw new Error(
             `Invalid selection domain sync mode "${syncMode}" for parameter "${paramName}".`
         );
@@ -343,9 +361,8 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     );
 
     const interval = selection.intervals[resolvedChannel];
-    const key = [paramName, resolvedChannel, syncMode].join("|");
-    const description =
-        paramName + "." + resolvedChannel + " (sync=" + syncMode + ")";
+    const key = [paramName, resolvedChannel].join("|");
+    const description = paramName + "." + resolvedChannel;
 
     if (!interval || interval.length !== 2) {
         return {

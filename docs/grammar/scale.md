@@ -319,7 +319,8 @@ Properties:
 - `param`: name of an interval selection parameter
 - `encoding`: which interval channel to use (`"x"` or `"y"`)
 - `sync`:
-  - `"oneWay"` (default): selection drives the linked domain
+  - omitted (default): behaves as `"twoWay"` when the linked scale is zoomable, otherwise `"oneWay"`
+  - `"oneWay"`: selection drives the linked domain
   - `"twoWay"`: selection drives the domain and linked domain zoom/pan updates the selection
 
 ### Cross-view Linking with Hierarchical Params
