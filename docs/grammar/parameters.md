@@ -229,8 +229,14 @@ bars by holding down the `Shift` key.
 #### Interval selection
 
 Interval selections allow for selecting a range of data points along one or two axes.
-By default, the selection is done by holding down the `Shift` key and dragging
-the mouse cursor over the data points. The selection can be cleared by clicking
+By default, the start gesture depends on whether the brushed channels are
+zoomable:
+
+- if any brushed channel is zoomable, start brushing with `Shift` + drag
+- otherwise, start brushing with plain drag
+
+You can override this behavior with `select.on`, for example `"on": "mousedown"`
+to always start brushing on plain drag. The selection can be cleared by clicking
 outside the selected area.
 
 <div><genome-spy-doc-embed height="250">

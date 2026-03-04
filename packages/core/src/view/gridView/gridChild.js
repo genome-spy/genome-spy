@@ -165,12 +165,21 @@ export default class GridChild {
                 })
             );
 
+            const requiresShiftToBrush = channels.some((channel) =>
+                scaleResolutions[channel].isZoomable()
+            );
+
             const eventConfig =
                 /** @type {import("../../spec/parameter.js").EventConfig} */ (
-                    select.on ?? {
-                        type: "mousedown",
-                        filter: "event.shiftKey",
-                    }
+                    select.on ??
+                        (requiresShiftToBrush
+                            ? {
+                                  type: "mousedown",
+                                  filter: "event.shiftKey",
+                              }
+                            : {
+                                  type: "mousedown",
+                              })
                 );
 
             if (eventConfig.type !== "mousedown") {

@@ -217,6 +217,13 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      * A string or object that defines the events to which the selection should listen.
+     *
+     * __Default value:__
+     *
+     * - point selections: `"click"`
+     * - interval selections:
+     *   - `"mousedown[event.shiftKey]"` when any brushed channel is zoomable
+     *   - `"mousedown"` otherwise
      */
     on?: DomEventType | EventConfig | string;
 
