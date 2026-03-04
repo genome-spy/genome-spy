@@ -12,19 +12,21 @@
     "scale": { "x": "independent" }
   },
 
+  "data": {
+    "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
+  },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "sin(datum.x / 7)",
+      "as": "y"
+    }
+  ],
+
   "vconcat": [
     {
       "height": 100,
-      "data": {
-        "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
-      },
-      "transform": [
-        {
-          "type": "formula",
-          "expr": "sin(datum.x / 7)",
-          "as": "y"
-        }
-      ],
+
       "params": [
         {
           "name": "brush",
@@ -40,16 +42,6 @@
     },
     {
       "height": 120,
-      "data": {
-        "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
-      },
-      "transform": [
-        {
-          "type": "formula",
-          "expr": "sin(datum.x / 7)",
-          "as": "y"
-        }
-      ],
       "mark": { "type": "point", "size": 55, "opacity": 0.75 },
       "encoding": {
         "x": {
