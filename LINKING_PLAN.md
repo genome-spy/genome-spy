@@ -112,20 +112,111 @@ Changes:
 
 ## Remaining Work (Phase 2: Two-Way Linking)
 
-### Step 6: Implement two-way sync path with loop guards
+Feasibility: **High**. Existing architecture already has the essential hooks:
+
+1. Scale domain changes are observable (`ScaleInstanceManager` -> `domain` events).
+2. Linked-domain refs already resolve param + encoding in `DomainPlanner`.
+3. Param writes are synchronous and scoped (`ViewParamRuntime.setValue`).
+4. App provenance already throttles selection changes (`ParamProvenanceBridge`).
+
+Main implementation gaps are engineering-level (not architectural):
+
+1. No runtime metadata API for active linked domain ref (`param`, `encoding`, `sync`).
+2. No loop/source guards for domain->param->domain cycles.
+3. No canonical domain-to-interval normalization utility for reverse sync.
+4. No two-way docs/examples/tests yet.
+
+### Step 6.1: Expose Linked-Domain Sync Metadata and Validation
 
 Status: Pending
 
-Planned changes:
+Goal:
 
-1. Enable reverse sync only when `scale.domain.sync === "twoWay"`.
-2. On scale `domain` events, write interval updates back to linked param.
-3. Preserve non-target channels in the selection object.
-4. Add source guards and equality checks to avoid oscillation loops.
-5. Normalize reverse-updated intervals:
-   - canonical ordering `[min, max]`,
-   - index/locus-compatible rounding,
-   - clamp to zoom extent.
+1. Make two-way configuration queryable from `ScaleResolution` without re-parsing ad hoc.
+
+Changes:
+
+1. Extend `DomainPlanner` to expose resolved selection-domain link metadata:
+   - `param`
+   - resolved `encoding` (`x`/`y`)
+   - `sync` (`"oneWay"` default)
+2. Validate shared-scale compatibility for `sync` mode:
+   - same `param` and `encoding` can share scale
+   - conflicting `sync` values on same shared scale fail fast
+3. Keep Vega-Lite-aligned domain-ref shape (`empty` not used here).
+
+Likely files:
+
+1. `packages/core/src/scales/domainPlanner.js`
+2. `packages/core/src/scales/domainPlanner.test.js`
+
+Pre-commit checks:
+
+1. `npx vitest run packages/core/src/scales/domainPlanner.test.js`
+2. `npx vitest run packages/core/src/scales/scaleResolution.test.js`
+3. `npm -ws run test:tsc --if-present`
+
+Preliminary commit message:
+
+1. `feat(core): expose linked domain metadata for two-way sync`
+
+### Step 6.2: Add Domain->Selection Reverse Sync in ScaleResolution
+
+Status: Pending
+
+Goal:
+
+1. When `sync: "twoWay"` is set, scale domain interactions update the linked interval param.
+
+Changes:
+
+1. Add internal reverse-sync path in `ScaleResolution` triggered on domain change.
+2. Resolve writable runtime for linked param and update only the referenced encoding interval.
+3. Preserve non-target interval channels in the selection object.
+4. Add loop guards:
+   - guard writes originating from param-driven reconfigure
+   - equality check before writing param
+   - skip redundant writes when interval unchanged
+5. Keep one-way behavior unchanged when `sync` is omitted or `"oneWay"`.
+
+Likely files:
+
+1. `packages/core/src/scales/scaleResolution.js`
+2. `packages/core/src/scales/scaleResolution.test.js`
+
+Pre-commit checks:
+
+1. `npx vitest run packages/core/src/scales/scaleResolution.test.js`
+2. `npm -ws run test:tsc --if-present`
+
+Preliminary commit message:
+
+1. `feat(core): sync linked interval params from scale domain changes`
+
+### Step 6.3: Normalize Reverse-Synced Intervals and Clear Semantics
+
+Status: Pending
+
+Goal:
+
+1. Make reverse-updated intervals stable and consistent with existing brush semantics.
+
+Changes:
+
+1. Normalize outgoing interval to canonical `[min, max]`.
+2. Clamp to `zoomExtent`.
+3. Apply type-specific normalization:
+   - `index` / `locus`: integer-compatible rounding (match brush path semantics)
+4. Clear semantics:
+   - if domain matches the fallback/default extent for that linked scale, write `null`
+     for that encoding interval to keep brush-cleared behavior consistent.
+5. Add tiny helper(s) for interval equality and normalization to keep logic testable.
+
+Likely files:
+
+1. `packages/core/src/scales/scaleResolution.js`
+2. `packages/core/src/scales/domainPlanner.js` (if default-domain helper exposure is needed)
+3. `packages/core/src/scales/scaleResolution.test.js`
 
 Pre-commit checks:
 
@@ -135,38 +226,73 @@ Pre-commit checks:
 
 Preliminary commit message:
 
-1. `feat(core): add two-way sync between zoomable domains and interval selections`
+1. `fix(core): normalize and clear reverse-synced linked intervals`
 
-### Step 7: Add two-way tests and app provenance coverage
+### Step 7: Expand Test Coverage (Core + App Provenance)
 
 Status: Pending
 
-Planned changes:
+Goal:
 
-1. Core tests for zoom/pan -> selection sync behavior.
-2. Loop-prevention tests (no feedback oscillation).
-3. App provenance tests to verify throttled action behavior under continuous zoom.
+1. Prove behavior is stable under interaction-heavy scenarios.
+
+Changes:
+
+1. Core tests (`scaleResolution.test.js`) for:
+   - zoom/pan updates linked param with `sync: "twoWay"`
+   - one-way mode remains unchanged
+   - shared-scale sync conflict detection
+   - no feedback oscillation on repeated domain updates
+   - clear/reset mapping when domain returns to fallback extent
+2. Add/extend interaction-controller-focused tests where needed for normalization edges.
+3. App provenance tests (`paramProvenanceBridge.test.js`) for:
+   - throttled provenance entries during continuous two-way zooming
+   - no pathological action storms
+
+Likely files:
+
+1. `packages/core/src/scales/scaleResolution.test.js`
+2. `packages/core/src/scales/scaleInteractionController.test.js` (if needed)
+3. `packages/app/src/state/paramProvenanceBridge.test.js`
 
 Pre-commit checks:
 
-1. Relevant core Vitest files for two-way linking
-2. `npx vitest run packages/app/src/state/paramProvenanceBridge.test.js`
-3. `npm -ws run test:tsc --if-present`
+1. `npx vitest run packages/core/src/scales/scaleResolution.test.js`
+2. `npx vitest run packages/core/src/scales/scaleInteractionController.test.js`
+3. `npx vitest run packages/app/src/state/paramProvenanceBridge.test.js`
+4. `npm -ws run test:tsc --if-present`
 
 Preliminary commit message:
 
 1. `test(app): cover two-way linked brushing provenance and throttled history`
 
-### Step 8: Final docs/examples pass for two-way mode
+### Step 8: Docs and Two-Way Example Finalization
 
 Status: Pending
 
-Planned changes:
+Goal:
 
-1. Add two-way examples and caveats to scale docs.
-2. Keep terminology consistent across scale/parameter docs.
-3. Add or extend example under `packages/core/examples/` using
-   `sync: "twoWay"` and hierarchical params.
+1. Make two-way behavior discoverable and unambiguous to users.
+
+Changes:
+
+1. Update `docs/grammar/scale.md`:
+   - document `sync: "twoWay"`
+   - clarify one-way vs two-way behavior
+   - document hierarchical param + `push: "outer"` requirement for sibling linking
+2. Update `docs/grammar/parameters.md` where needed for interaction expectations.
+3. Add a runnable two-way example under `packages/core/examples/selection/`
+   showing:
+   - ancestor param declaration
+   - child brush `push: "outer"`
+   - linked view with `scale.domain.sync: "twoWay"`
+   - zoom/pan in linked view updates brush.
+
+Likely files:
+
+1. `docs/grammar/scale.md`
+2. `docs/grammar/parameters.md`
+3. `packages/core/examples/selection/` (new two-way example file)
 
 Pre-commit checks:
 
@@ -176,7 +302,7 @@ Pre-commit checks:
 
 Preliminary commit message:
 
-1. `docs(core): finalize brushing-and-linking examples for one-way and two-way`
+1. `docs(core): finalize two-way brushing and linking docs and example`
 
 ## Phase 2 Acceptance Criteria
 
