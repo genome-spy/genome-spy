@@ -265,6 +265,12 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
         };
     }
 
+    if (selectionRefKey) {
+        // Selection refs are still the source of truth even when empty:"all"
+        // yields no concrete configured domain.
+        return { domain: undefined, source: "selection" };
+    }
+
     return { domain: undefined, source: "none" };
 }
 

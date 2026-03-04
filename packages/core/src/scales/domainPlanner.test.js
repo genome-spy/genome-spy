@@ -282,7 +282,7 @@ describe("DomainPlanner", () => {
 
         expect(planner.getConfiguredDomain()).toBeUndefined();
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
-        expect(planner.hasSelectionConfiguredDomain()).toBe(false);
+        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
     });
 
     test("selection-linked configured domain can be empty when empty=none", () => {

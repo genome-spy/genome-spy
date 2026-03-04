@@ -825,6 +825,14 @@ describe("Domain handling", () => {
         });
 
         expect(resolution.scale.domain()).toEqual([2, 4]);
+
+        // Clearing the linked selection should restore the data-derived domain.
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+
+        expect(resolution.scale.domain()).toEqual([0, 10]);
     });
 
     test("selection-linked domains are not restored to previous zoom domains", async () => {
