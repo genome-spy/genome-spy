@@ -40,7 +40,7 @@
       ],
       "mark": { "type": "point", "size": 20, "opacity": 0.35 },
       "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
+        "x": { "field": "x", "type": "index" },
         "y": { "field": "y", "type": "quantitative" }
       }
     },
@@ -50,7 +50,7 @@
       "encoding": {
         "x": {
           "field": "x",
-          "type": "quantitative",
+          "type": "index",
           "scale": {
             "zoom": true,
             "domain": {

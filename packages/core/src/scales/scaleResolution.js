@@ -377,11 +377,6 @@ export default class ScaleResolution {
             return;
         }
 
-        if (this.type === INDEX || this.type === LOCUS) {
-            interval[0] = Math.ceil(interval[0]);
-            interval[1] = Math.ceil(interval[1]);
-        }
-
         return /** @type {[number, number]} */ (interval);
     }
 
