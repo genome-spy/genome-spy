@@ -17,6 +17,7 @@ import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
+import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 
 export default class GridChild {
@@ -406,12 +407,6 @@ export default class GridChild {
                         const { zoomExtent, scale } = scaleResolution;
                         const interval = intervals[channel];
 
-                        if (["index", "locus"].includes(scale.type)) {
-                            // These scales use integer values. Need to round them.
-                            interval[0] = Math.ceil(interval[0]);
-                            interval[1] = Math.ceil(interval[1]);
-                        }
-
                         if (translatedRectangle) {
                             // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
                             const size = interval[1] - interval[0];
@@ -428,11 +423,25 @@ export default class GridChild {
                                 interval[1] = max;
                                 interval[0] = max - size;
                             }
-                        } else {
-                            interval[0] = Math.max(zoomExtent[0], interval[0]);
-                            interval[1] = Math.min(zoomExtent[1], interval[1]);
                         }
-                        interval[1] = Math.min(zoomExtent[1], interval[1]);
+
+                        const normalized = normalizeIntervalForSelection(
+                            interval,
+                            zoomExtent,
+                            {
+                                roundToIntegers:
+                                    scale.type === "index" ||
+                                    scale.type === "locus",
+                            }
+                        );
+
+                        if (!normalized) {
+                            interval[0] = zoomExtent[0];
+                            interval[1] = zoomExtent[0];
+                        } else {
+                            interval[0] = normalized[0];
+                            interval[1] = normalized[1];
+                        }
                     }
 
                     setter({ type: "interval", intervals });

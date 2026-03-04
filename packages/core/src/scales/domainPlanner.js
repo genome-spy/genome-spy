@@ -2,10 +2,10 @@ import { span } from "vega-util";
 import { isContinuous } from "vega-scale";
 
 import { LOCUS } from "./scaleResolutionConstants.js";
+import { requireIntervalSelection } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getPrimaryChannel } from "../encoder/encoder.js";
-import { isIntervalSelection } from "../selection/selection.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -41,9 +41,6 @@ export default class DomainPlanner {
 
     /** @type {DomainArray | undefined} */
     #configuredDomain;
-
-    /** @type {"none" | "literal" | "selection"} */
-    #configuredDomainSource = "none";
 
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
@@ -88,7 +85,7 @@ export default class DomainPlanner {
 
     hasSelectionConfiguredDomain() {
         this.getConfiguredDomain();
-        return this.#configuredDomainSource === "selection";
+        return !!this.#selectionDomainLinkInfo;
     }
 
     /**
@@ -146,7 +143,6 @@ export default class DomainPlanner {
             this.#fromComplexInterval
         );
         this.#configuredDomain = configuredDomain.domain;
-        this.#configuredDomainSource = configuredDomain.source;
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
         this.#configuredDomainDirty = false;
         return configuredDomain.domain;
@@ -225,7 +221,6 @@ export default class DomainPlanner {
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @returns {{
  *   domain: DomainArray | undefined,
- *   source: "none" | "literal" | "selection",
  *   selectionRef: SelectionDomainLinkInfo | undefined,
  * }}
  */
@@ -299,7 +294,6 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     if (domains.length > 0) {
         return {
             domain: domains.reduce((acc, curr) => acc.extendAll(curr)),
-            source: selectionRefKey ? "selection" : "literal",
             selectionRef,
         };
     }
@@ -307,10 +301,10 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     if (selectionRefKey) {
         // Selection refs are still the source of truth even when the
         // selection interval currently resolves to no domain.
-        return { domain: undefined, source: "selection", selectionRef };
+        return { domain: undefined, selectionRef };
     }
 
-    return { domain: undefined, source: "none", selectionRef: undefined };
+    return { domain: undefined, selectionRef: undefined };
 }
 
 /**
@@ -343,18 +337,10 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     );
 
     const paramRuntime = member.view.paramRuntime;
-    const selection = paramRuntime?.findValue(paramName);
-    if (!selection) {
-        throw new Error(
-            `Selection domain parameter "${paramName}" was not found.`
-        );
-    }
-
-    if (!isIntervalSelection(selection)) {
-        throw new Error(
-            `Selection domain parameter "${paramName}" must be an interval selection.`
-        );
-    }
+    const selection = requireIntervalSelection(
+        paramRuntime?.findValue(paramName),
+        paramName
+    );
 
     const interval = selection.intervals[resolvedChannel];
     const key = [paramName, resolvedChannel, syncMode].join("|");

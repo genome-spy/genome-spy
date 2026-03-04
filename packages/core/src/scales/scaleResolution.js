@@ -13,7 +13,7 @@ import { configureDomain } from "../scale/scale.js";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
-import DomainPlanner, { isSelectionDomainRef } from "./domainPlanner.js";
+import DomainPlanner from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
 import {
     INDEX,
@@ -25,10 +25,14 @@ import {
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
 import { isSecondaryChannel } from "../encoder/encoder.js";
-import { isIntervalSelection } from "../selection/selection.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
+import {
+    normalizeIntervalForSelection,
+    requireIntervalSelection,
+    requireParamRuntime,
+} from "./selectionDomainUtils.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -299,27 +303,15 @@ export default class ScaleResolution {
             return;
         }
 
-        const runtime = this.#firstMemberView.paramRuntime.findRuntimeForParam(
+        const runtime = requireParamRuntime(
+            this.#firstMemberView.paramRuntime,
             linkInfo.param
         );
-        if (!runtime) {
-            throw new Error(
-                `Selection domain parameter "${linkInfo.param}" was not found.`
-            );
-        }
 
-        const selection = runtime.getValue(linkInfo.param);
-        if (!selection) {
-            throw new Error(
-                `Selection domain parameter "${linkInfo.param}" was not found.`
-            );
-        }
-
-        if (!isIntervalSelection(selection)) {
-            throw new Error(
-                `Selection domain parameter "${linkInfo.param}" must be an interval selection.`
-            );
-        }
+        const selection = requireIntervalSelection(
+            runtime.getValue(linkInfo.param),
+            linkInfo.param
+        );
 
         const interval = this.#normalizeDomainIntervalForLinkedSelection(
             this.getScale().domain()
@@ -358,26 +350,7 @@ export default class ScaleResolution {
      * @returns {[number, number] | undefined}
      */
     #normalizeDomainIntervalForLinkedSelection(domain) {
-        if (!domain || domain.length !== 2) {
-            return;
-        }
-
-        const a = Number(domain[0]);
-        const b = Number(domain[1]);
-        if (!Number.isFinite(a) || !Number.isFinite(b)) {
-            return;
-        }
-
-        const interval = [Math.min(a, b), Math.max(a, b)];
-        const extent = this.zoomExtent;
-        interval[0] = Math.max(extent[0], interval[0]);
-        interval[1] = Math.min(extent[1], interval[1]);
-
-        if (interval[0] > interval[1]) {
-            return;
-        }
-
-        return /** @type {[number, number]} */ (interval);
+        return normalizeIntervalForSelection(domain, this.zoomExtent);
     }
 
     /**
@@ -478,42 +451,27 @@ export default class ScaleResolution {
     #refreshSelectionDomainParamSubscriptions() {
         this.#clearSelectionDomainParamSubscriptions();
 
-        /** @type {Map<any, Set<string>>} */
-        const paramsByRuntime = new Map();
-
-        for (const member of this.#members) {
-            const domainDef = member.channelDef.scale?.domain;
-            if (!isSelectionDomainRef(domainDef)) {
-                continue;
-            }
-
-            const runtime = member.view.paramRuntime.findRuntimeForParam(
-                domainDef.param
-            );
-            if (!runtime) {
-                throw new Error(
-                    `Selection domain parameter "${domainDef.param}" was not found.`
-                );
-            }
-
-            let params = paramsByRuntime.get(runtime);
-            if (!params) {
-                params = new Set();
-                paramsByRuntime.set(runtime, params);
-            }
-            params.add(domainDef.param);
+        if (this.#members.size === 0) {
+            return;
         }
 
-        for (const [runtime, params] of paramsByRuntime) {
-            for (const paramName of params) {
-                this.#selectionDomainParamUnsubscribers.push(
-                    runtime.subscribe(paramName, () => {
-                        this.#domainAggregator.invalidateConfiguredDomain();
-                        this.reconfigureDomain();
-                    })
-                );
-            }
+        const linkInfo =
+            this.#domainAggregator.getSelectionConfiguredDomainInfo();
+        if (!linkInfo) {
+            return;
         }
+
+        const runtime = requireParamRuntime(
+            this.#firstMemberView.paramRuntime,
+            linkInfo.param
+        );
+
+        this.#selectionDomainParamUnsubscribers.push(
+            runtime.subscribe(linkInfo.param, () => {
+                this.#domainAggregator.invalidateConfiguredDomain();
+                this.reconfigureDomain();
+            })
+        );
     }
 
     #hasRenderedMember() {
