@@ -3,7 +3,8 @@
   "description": [
     "One-way brushing and linking with hierarchical params.",
     "The top view pushes interval selection to an outer param.",
-    "The bottom view uses that param as the x scale domain."
+    "The bottom view uses that param as the x scale domain.",
+    "Brushing starts on plain drag via \"select.on\": \"mousedown\"."
   ],
 
   "params": [{ "name": "brush" }],
@@ -30,7 +31,11 @@
       "params": [
         {
           "name": "brush",
-          "select": { "type": "interval", "encodings": ["x"] },
+          "select": {
+            "type": "interval",
+            "encodings": ["x"],
+            "on": "mousedown"
+          },
           "push": "outer"
         }
       ],

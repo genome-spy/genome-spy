@@ -17,6 +17,7 @@ import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
+import { createEventFilterFunction } from "../../utils/expression.js";
 
 export default class GridChild {
     /**
@@ -164,6 +165,24 @@ export default class GridChild {
                 })
             );
 
+            const eventConfig =
+                /** @type {import("../../spec/parameter.js").EventConfig} */ (
+                    select.on ?? {
+                        type: "mousedown",
+                        filter: "event.shiftKey",
+                    }
+                );
+
+            if (eventConfig.type !== "mousedown") {
+                throw new Error(
+                    `Interval selection param "${name}" currently supports only "mousedown" in "on".`
+                );
+            }
+
+            const eventPredicate = eventConfig.filter
+                ? createEventFilterFunction(eventConfig.filter)
+                : () => true;
+
             if (this.selectionRect) {
                 throw new Error(
                     "Only one interval selection per container is currently allowed!"
@@ -304,7 +323,9 @@ export default class GridChild {
                         preventNextClickPropagation = true;
                     }
 
-                    const startSelection = event.mouseEvent.shiftKey;
+                    const startSelection = eventPredicate(
+                        event.proxiedMouseEvent
+                    );
 
                     if (startSelection) {
                         clearSelection();

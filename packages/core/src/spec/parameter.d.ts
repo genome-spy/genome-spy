@@ -177,10 +177,19 @@ export type SelectionInitInterval =
     | Vector2<number>
     | Vector2<string>;
 
-export type InteractionEventType = "click" | "dblclick" | "mouseover";
+export type InteractionEventType =
+    | "click"
+    | "dblclick"
+    | "mouseover"
+    | "mousedown";
 
 // TODO: merge with InteractionEventType
-export type DomEventType = "click" | "dblclick" | "mouseover" | "pointerover";
+export type DomEventType =
+    | "click"
+    | "dblclick"
+    | "mouseover"
+    | "pointerover"
+    | "mousedown";
 
 export interface EventConfig {
     /**
