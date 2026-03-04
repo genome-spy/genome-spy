@@ -266,8 +266,8 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     }
 
     if (selectionRefKey) {
-        // Selection refs are still the source of truth even when empty:"all"
-        // yields no concrete configured domain.
+        // Selection refs are still the source of truth even when the
+        // selection interval currently resolves to no domain.
         return { domain: undefined, source: "selection" };
     }
 
@@ -282,13 +282,6 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
  */
 function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     const paramName = domainRef.param;
-    const emptyMode = domainRef.empty ?? "all";
-
-    if (emptyMode !== "all" && emptyMode !== "none") {
-        throw new Error(
-            `Invalid selection domain empty mode "${emptyMode}" for parameter "${paramName}".`
-        );
-    }
 
     const resolvedChannel = resolveSelectionDomainChannel(
         member.channel,
@@ -311,20 +304,11 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     }
 
     const interval = selection.intervals[resolvedChannel];
-    const key = [paramName, resolvedChannel, emptyMode].join("|");
-    const description =
-        paramName + "." + resolvedChannel + " (empty=" + emptyMode + ")";
+    const key = [paramName, resolvedChannel].join("|");
+    const description = paramName + "." + resolvedChannel;
 
     if (!interval || interval.length !== 2) {
-        if (emptyMode === "all") {
-            return { domain: undefined, key, description };
-        } else {
-            return {
-                domain: createDomain(member.channelDef.type),
-                key,
-                description,
-            };
-        }
+        return { domain: undefined, key, description };
     }
 
     return {

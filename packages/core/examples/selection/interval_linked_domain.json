@@ -48,8 +48,7 @@
           "field": "x",
           "type": "quantitative",
           "scale": {
-            "zoom": true,
-            "domain": { "param": "brush", "encoding": "x", "empty": "all" }
+            "domain": { "param": "brush", "encoding": "x" }
           }
         },
         "y": { "field": "y", "type": "quantitative" }

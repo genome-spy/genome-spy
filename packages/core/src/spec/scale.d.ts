@@ -245,16 +245,6 @@ export interface SelectionDomainRef {
     encoding?: "x" | "y";
 
     /**
-     * Behavior when the selection interval is empty.
-     *
-     * - `"all"`: ignore the reference and fall back to default/data domain.
-     * - `"none"`: use an empty domain.
-     *
-     * __Default value:__ `"all"`.
-     */
-    empty?: "all" | "none";
-
-    /**
      * Domain synchronization mode.
      *
      * - `"oneWay"`: selection drives the domain.

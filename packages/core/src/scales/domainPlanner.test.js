@@ -263,7 +263,7 @@ describe("DomainPlanner", () => {
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
     });
 
-    test("selection-linked configured domain falls back when empty and empty=all", () => {
+    test("selection-linked configured domain falls back when selection is empty", () => {
         /** @type {any} */
         const selection = {
             type: "interval",
@@ -282,27 +282,6 @@ describe("DomainPlanner", () => {
 
         expect(planner.getConfiguredDomain()).toBeUndefined();
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
-        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
-    });
-
-    test("selection-linked configured domain can be empty when empty=none", () => {
-        /** @type {any} */
-        const selection = {
-            type: "interval",
-            intervals: { x: null },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", empty: "none" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([]);
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
     });
 

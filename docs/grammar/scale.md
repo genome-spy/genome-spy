@@ -308,8 +308,7 @@ Use an object-valued `domain`:
   "scale": {
     "domain": {
       "param": "brush",
-      "encoding": "x",
-      "empty": "all"
+      "encoding": "x"
     }
   }
 }
@@ -319,9 +318,6 @@ Properties:
 
 - `param`: name of an interval selection parameter
 - `encoding`: which interval channel to use (`"x"` or `"y"`)
-- `empty`:
-  - `"all"` (default): fall back to default/data domain when selection is empty
-  - `"none"`: use an empty domain
 
 ### Cross-view Linking with Hierarchical Params
 
