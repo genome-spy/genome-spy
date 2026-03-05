@@ -81,42 +81,6 @@ them to control the size, angle, and text of a text mark.
 
 </genome-spy-doc-embed></div>
 
-#### Linking across views with `push: "outer"`
-
-When a brush selection in one view should control another view (for example via
-`scale.domain`), parameters must follow scope hierarchy:
-
-1. Define an empty parameter in a common ancestor.
-2. Define the brushing selection in a child view with the same `name`.
-3. Add `"push": "outer"` so selection updates are written to the ancestor
-   parameter.
-
-```json
-{
-  "params": [{ "name": "brush" }],
-  "vconcat": [
-    {
-      "params": [
-        {
-          "name": "brush",
-          "select": { "type": "interval", "encodings": ["x"] },
-          "push": "outer"
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "scale": { "domain": { "param": "brush", "encoding": "x" } }
-        }
-      }
-    }
-  ]
-}
-```
-
 ### Expressions
 
 Parameters can be based on [expressions](./expressions.md), which can depend on
@@ -269,6 +233,87 @@ outside the selected area.
       "value": "#ddd"
     }
   }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+##### Linking Scale Domains Across Views
+
+An interval selection can drive scale domains in sibling views. To make this
+work with GenomeSpy's hierarchical parameter scopes:
+
+1. Define an empty parameter in a common ancestor.
+2. Define the brushing selection in a child view with the same `name`.
+3. Add `"push": "outer"` so selection updates are written to the ancestor
+   parameter.
+4. Reference the parameter in a linked view via `scale.domain`, for example:
+   `{ "param": "brush" }`.
+
+Two-way behavior is automatic when the linked scale is zoomable. You can still
+override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
+reference.
+
+##### Two-Way Linking (Interactive)
+
+<div><genome-spy-doc-embed height="320">
+
+```json
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Two-way brushing and linking with hierarchical params.",
+    "The top view pushes interval selection to an outer param.",
+    "The bottom view links x domain to the same param.",
+    "Brushing changes the linked domain, and zoom/pan in the linked view updates the brush."
+  ],
+
+  "params": [{ "name": "brush" }],
+
+  "resolve": {
+    "scale": { "x": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
+  },
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
+
+  "vconcat": [
+    {
+      "height": 100,
+      "params": [
+        {
+          "name": "brush",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"]
+          },
+          "push": "outer"
+        }
+      ],
+      "mark": { "type": "point", "size": 20, "opacity": 0.35 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+    {
+      "height": 120,
+      "mark": { "type": "point", "size": 55, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": {
+            "zoom": true,
+            "domain": { "param": "brush" }
+          }
+        },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
 }
 ```
 

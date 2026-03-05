@@ -297,9 +297,7 @@ Somewhere inside the chromosome 1:
 
 ## Domain from Selection Parameters
 
-Scale domains can be linked to interval selection parameters. This enables
-brushing and linking patterns where one view controls the visible range of
-another view.
+Scale domains can be linked to interval selection parameters:
 
 Use an object-valued `domain`:
 
@@ -307,83 +305,20 @@ Use an object-valued `domain`:
 {
   "scale": {
     "domain": {
-      "param": "brush",
-      "encoding": "x"
+      "param": "brush"
     }
   }
 }
 ```
 
-Properties:
+Essential properties:
 
 - `param`: name of an interval selection parameter
-- `encoding`: which interval channel to use (`"x"` or `"y"`)
-- `sync`:
-  - omitted (default): behaves as `"twoWay"` when the linked scale is zoomable, otherwise `"oneWay"`
-  - `"oneWay"`: selection drives the linked domain
-  - `"twoWay"`: selection drives the domain and linked domain zoom/pan updates the selection
+- `encoding` (optional): selection interval channel to use (`"x"` or `"y"`)
+- `sync` (optional): `"oneWay"` or `"twoWay"`; if omitted, behavior is inferred from zoomability
 
-### Cross-view Linking with Hierarchical Params
-
-For linking across sibling views, define an empty parameter in a common
-ancestor and push selection updates there from the brushing view using
-`push: "outer"`.
-
-```json
-{
-  "params": [{ "name": "brush" }],
-  "vconcat": [
-    {
-      "params": [
-        {
-          "name": "brush",
-          "select": { "type": "interval", "encodings": ["x"] },
-          "push": "outer"
-        }
-      ]
-    },
-    {
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "scale": { "domain": { "param": "brush", "encoding": "x" } }
-        }
-      }
-    }
-  ]
-}
-```
-
-See also:
-`packages/core/examples/selection/interval_linked_domain.json`
-
-### Two-Way Linking
-
-To make linking bi-directional, set `sync: "twoWay"` in the linked scale
-domain. The linked view should be zoomable.
-
-```json
-{
-  "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "scale": {
-        "zoom": true,
-        "domain": {
-          "param": "brush",
-          "encoding": "x",
-          "sync": "twoWay"
-        }
-      }
-    }
-  }
-}
-```
-
-See also:
-`packages/core/examples/selection/interval_linked_domain_two_way.json`
+For detailed brushing-and-linking guidance and interactive examples, see
+[Parameters: Interval selection](./parameters.md#interval-selection).
 
 ## Zooming and panning
 
