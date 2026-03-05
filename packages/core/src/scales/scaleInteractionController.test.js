@@ -107,4 +107,22 @@ describe("ScaleInteractionController", () => {
 
         expect(controller.getZoomExtent()).toEqual([0, 12]);
     });
+
+    test("isZoomed is true only when current domain differs from reset domain", () => {
+        const scale = createLinearScale([0, 10]);
+        const controller = new ScaleInteractionController({
+            getScale: () => scale,
+            getAnimator: () => createAnimator(),
+            getInitialDomainSnapshot: () => [0, 10],
+            getResetDomain: () => [0, 10],
+            fromComplexInterval: /** @returns {number[]} */ (
+                /** @type {any} */ interval
+            ) => interval,
+            getGenomeExtent: () => [0, 10],
+        });
+
+        expect(controller.isZoomed()).toBe(false);
+        scale.domain([2, 8]);
+        expect(controller.isZoomed()).toBe(true);
+    });
 });

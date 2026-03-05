@@ -7,9 +7,6 @@ import {
     panLog,
     panPow,
     span,
-    zoomLinear,
-    zoomLog,
-    zoomPow,
 } from "vega-util";
 import { isContinuous, isDiscrete } from "vega-scale";
 import { easeCubicInOut } from "d3-ease";
@@ -17,6 +14,7 @@ import { easeCubicInOut } from "d3-ease";
 import eerp from "../utils/eerp.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { createCancelToken } from "../utils/transition.js";
+import { zoomDomainByScaleType } from "./zoomDomainUtils.js";
 
 /**
  * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
@@ -121,7 +119,7 @@ export default class ScaleInteractionController {
     isZoomed() {
         return (
             this.isZoomingSupported() &&
-            shallowArrayEquals(
+            !shallowArrayEquals(
                 this.#getResetDomain(),
                 this.#getScale().domain()
             )
@@ -326,17 +324,14 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
         anchor += scale.align();
     }
 
-    // TODO: symlog
     switch (scale.type) {
         case "linear":
         case "index":
         case "locus":
             newDomain = panLinear(newDomain, pan || 0);
-            newDomain = zoomLinear(newDomain, anchor, scaleFactor);
             break;
         case "log":
             newDomain = panLog(newDomain, pan || 0);
-            newDomain = zoomLog(newDomain, anchor, scaleFactor);
             break;
         case "pow":
         case "sqrt": {
@@ -345,19 +340,26 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
                     scale
                 );
             newDomain = panPow(newDomain, pan || 0, powScale.exponent());
-            newDomain = zoomPow(
-                newDomain,
-                anchor,
-                scaleFactor,
-                powScale.exponent()
-            );
+            break;
+        }
+        case "symlog": {
+            if (pan !== 0) {
+                throw new Error(
+                    "Panning is not implemented for: " + scale.type
+                );
+            }
             break;
         }
         default:
             throw new Error("Zooming is not implemented for: " + scale.type);
     }
 
-    return newDomain;
+    return zoomDomainByScaleType(
+        scale,
+        /** @type {[number, number]} */ (newDomain),
+        anchor,
+        scaleFactor
+    );
 }
 
 /**

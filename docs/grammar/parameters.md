@@ -203,6 +203,16 @@ You can override this behavior with `select.on`, for example `"on": "mousedown"`
 to always start brushing on plain drag. The selection can be cleared by clicking
 outside the selected area.
 
+Active interval selections can also be resized with the mouse wheel when the
+pointer is over the selection rectangle. This is controlled by `select.zoom`.
+By default, `select.zoom` is:
+
+- `false` when any brushed channel uses a zoomable scale (to avoid wheel-gesture conflicts)
+- `true` otherwise
+
+You can override the behavior with `select.zoom: true/false` or an explicit
+wheel event definition such as `"zoom": "wheel[event.altKey]"`.
+
 <div><genome-spy-doc-embed height="250">
 
 ```json
