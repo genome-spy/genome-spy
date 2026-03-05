@@ -4,7 +4,7 @@
     "One-way brushing and linking with hierarchical params.",
     "The top view pushes interval selection to an outer param.",
     "The bottom view uses that param as the x scale domain.",
-    "Brushing starts on plain drag via \"select.on\": \"mousedown\"."
+    "Brushing starts on plain drag by default because the brushed channel is not zoomable."
   ],
 
   "params": [{ "name": "brush" }],
@@ -16,25 +16,17 @@
   "data": {
     "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
   },
-  "transform": [
-    {
-      "type": "formula",
-      "expr": "sin(datum.x / 7)",
-      "as": "y"
-    }
-  ],
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
 
   "vconcat": [
     {
       "height": 100,
-
       "params": [
         {
           "name": "brush",
           "select": {
             "type": "interval",
-            "encodings": ["x"],
-            "on": "mousedown"
+            "encodings": ["x"]
           },
           "push": "outer"
         }
@@ -53,7 +45,7 @@
           "field": "x",
           "type": "quantitative",
           "scale": {
-            "domain": { "param": "brush", "encoding": "x" }
+            "domain": { "param": "brush" }
           }
         },
         "y": { "field": "y", "type": "quantitative" }

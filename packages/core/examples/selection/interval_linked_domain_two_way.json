@@ -16,13 +16,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
   },
-  "transform": [
-    {
-      "type": "formula",
-      "expr": "sin(datum.x / 7)",
-      "as": "y"
-    }
-  ],
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
 
   "vconcat": [
     {
@@ -32,15 +26,14 @@
           "name": "brush",
           "select": {
             "type": "interval",
-            "encodings": ["x"],
-            "on": "mousedown"
+            "encodings": ["x"]
           },
           "push": "outer"
         }
       ],
       "mark": { "type": "point", "size": 20, "opacity": 0.35 },
       "encoding": {
-        "x": { "field": "x", "type": "index" },
+        "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
       }
     },
@@ -50,14 +43,10 @@
       "encoding": {
         "x": {
           "field": "x",
-          "type": "index",
+          "type": "quantitative",
           "scale": {
             "zoom": true,
-            "domain": {
-              "param": "brush",
-              "encoding": "x",
-              "sync": "twoWay"
-            }
+            "domain": { "param": "brush" }
           }
         },
         "y": { "field": "y", "type": "quantitative" }
