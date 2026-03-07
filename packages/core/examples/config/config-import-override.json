@@ -1,0 +1,47 @@
+{
+  "description": "Import-site config overrides parent scopes but not imported root config.",
+  "config": {
+    "mark": {
+      "color": "#7f7f7f"
+    }
+  },
+  "templates": {
+    "track": {
+      "config": {
+        "mark": {
+          "color": "#17becf"
+        },
+        "point": {
+          "size": 90
+        }
+      },
+      "data": {
+        "values": [
+          { "x": 1, "y": 1.4 },
+          { "x": 2, "y": 2.9 },
+          { "x": 3, "y": 2.1 },
+          { "x": 4, "y": 3.3 }
+        ]
+      },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  },
+  "vconcat": [
+    {
+      "name": "import-site-config",
+      "config": {
+        "mark": {
+          "color": "#d62728"
+        },
+        "point": {
+          "opacity": 0.35
+        }
+      },
+      "import": { "template": "track" }
+    }
+  ]
+}

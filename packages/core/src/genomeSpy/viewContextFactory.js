@@ -64,6 +64,7 @@ export function createViewContext(options) {
         "highlightView",
         "isViewConfiguredVisible",
         "isViewSpec",
+        "getBaseConfig",
     ];
 
     /** @type {Partial<ViewContext>} */

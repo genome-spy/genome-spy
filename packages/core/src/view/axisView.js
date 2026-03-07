@@ -1,6 +1,7 @@
 import LayerView from "./layerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 
@@ -70,19 +71,34 @@ export default class AxisView extends LayerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
+        const channel = orient2channel(axisProps.orient);
+        const configuredDefaults = getConfiguredAxisDefaults(
+            dataParent.getConfigScopes(),
+            {
+                channel,
+                orient: axisProps.orient,
+                type: /** @type {import("../spec/channel.js").Type} */ (type),
+                style: axisProps.style,
+            }
+        );
+
+        /** @type {Axis} */
+        const preliminaryAxisProps = {
+            ...configuredDefaults,
+            ...axisProps,
+        };
+
+        /** @type {Axis | GenomeAxis} */
+        const fullAxisProps = {
+            ...configuredDefaults,
+            ...getDefaultAngleAndAlign(type, preliminaryAxisProps),
+            ...axisProps,
+        };
+
         // Now the presence of genomeAxis is based on field type, not scale type.
         // TODO: Use scale instead. However, it would make the initialization much more
         // complex because scales are not available before scale resolution.
         const genomeAxis = type == "locus";
-
-        // TODO: Compute extent
-
-        /** @type {Axis | GenomeAxis} */
-        const fullAxisProps = {
-            ...(genomeAxis ? defaultGenomeAxisProps : defaultAxisProps),
-            ...getDefaultAngleAndAlign(type, axisProps),
-            ...axisProps,
-        };
 
         super(
             genomeAxis
@@ -156,53 +172,6 @@ function getExtent(axisProps) {
 
     return extent;
 }
-
-// Based on: https://vega.github.io/vega-lite/docs/axis.html
-// TODO: The defaults should be taken from config (theme)
-/** @type {Axis} */
-const defaultAxisProps = {
-    values: null,
-
-    minExtent: 20,
-    maxExtent: Infinity,
-    offset: 0, // TODO: Implement
-
-    domain: true,
-    domainWidth: 1,
-    domainColor: "gray",
-    domainDash: null,
-    domainDashOffset: 0,
-    domainCap: "square", // Make 1px caps crisp
-
-    ticks: true,
-    tickSize: 5,
-    tickWidth: 1,
-    tickColor: "gray",
-    tickDash: null,
-    tickDashOffset: 0,
-    tickCap: "square", // Make 1px caps crisp
-
-    // TODO: tickBand
-
-    tickCount: null,
-    tickMinStep: null,
-
-    labels: true,
-    labelAlign: "center",
-    labelBaseline: "middle",
-    labelPadding: 4,
-    labelFontSize: 10,
-    labelLimit: 180, // TODO
-    labelColor: "black",
-    format: null,
-
-    titleColor: "black",
-    titleFont: "sans-serif",
-    titleFontSize: 10,
-    titlePadding: 3,
-
-    // TODO: titleX, titleY, titleAngle, titleAlign, etc
-};
 
 /**
  * @param {string} type
@@ -412,27 +381,6 @@ function createAxis(axisProps, type) {
     return axisSpec;
 }
 
-/** @type {import("../spec/axis.js").GenomeAxis} */
-const defaultGenomeAxisProps = {
-    ...defaultAxisProps,
-
-    chromTicks: true,
-    chromTickSize: 18,
-    chromTickWidth: 1,
-    chromTickColor: "#989898",
-    chromTickDash: [4, 2],
-    chromTickDashOffset: 1,
-
-    chromLabels: true,
-    chromLabelFontSize: 13,
-    chromLabelFontWeight: "normal",
-    chromLabelFontStyle: "normal",
-    chromLabelColor: "black",
-    chromLabelAlign: "left",
-    chromLabelPadding: 7,
-    // TODO: chromLabelAngle
-};
-
 /**
  * @param {GenomeAxis} axisProps
  * @param {string} type
@@ -467,7 +415,7 @@ export function createGenomeAxis(axisProps, type) {
      * @return {import("../spec/view.js").UnitSpec}
      */
     const createChromosomeLabels = () => {
-        /** @type {Partial<import("../spec/mark.js").MarkProps>} */
+        /** @type {Partial<import("../spec/mark.js").TextProps>} */
         let chromLabelMarkProps;
         switch (ap.orient) {
             case "top":

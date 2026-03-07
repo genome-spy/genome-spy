@@ -28,6 +28,11 @@ describe("scaleRules", () => {
         expect(opacityProps.clamp).toBe(true);
 
         /** @type {import("../spec/scale.js").Scale} */
+        const explicitOpacityProps = { type: "linear", clamp: false };
+        applyLockedProperties(explicitOpacityProps, "opacity");
+        expect(explicitOpacityProps.clamp).toBe(false);
+
+        /** @type {import("../spec/scale.js").Scale} */
         const ordinalProps = { type: "ordinal" };
         applyLockedProperties(ordinalProps, "x");
         expect(ordinalProps.range).toBeUndefined();

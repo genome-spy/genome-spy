@@ -12,6 +12,12 @@ import specComplexGridLayout2 from "./layout/grid/complex_grid_layout2.json";
 import specConcatPointsText from "./layout/grid/concat_points_text.json";
 import specSharedAxisAtRoot from "./layout/grid/shared_axis_at_root.json";
 import specCondensedConcat from "./layout/grid/condensed_concat.json";
+import specConfigBasic from "./config/config-basic.json";
+import specConfigScopedView from "./config/config-scoped-view.json";
+import specConfigImportedTrack from "./config/config-imported-track.json";
+import specConfigImportOverride from "./config/config-import-override.json";
+import specConfigScaleSchemesByType from "./config/config-scale-schemes-by-type.json";
+import specConfigThemeComparisonBars from "./config/config-theme-comparison-bars.json";
 import View from "../src/view/view";
 
 /**
@@ -69,5 +75,33 @@ describe("Test layout process", () => {
 
     test("layout/grid/condensed_concat.json", async () => {
         expect(await specToLayout(specCondensedConcat)).toMatchSnapshot();
+    });
+
+    test("config/config-basic.json", async () => {
+        expect(await specToLayout(specConfigBasic)).toMatchSnapshot();
+    });
+
+    test("config/config-scoped-view.json", async () => {
+        expect(await specToLayout(specConfigScopedView)).toMatchSnapshot();
+    });
+
+    test("config/config-imported-track.json", async () => {
+        expect(await specToLayout(specConfigImportedTrack)).toMatchSnapshot();
+    });
+
+    test("config/config-import-override.json", async () => {
+        expect(await specToLayout(specConfigImportOverride)).toMatchSnapshot();
+    });
+
+    test("config/config-scale-schemes-by-type.json", async () => {
+        expect(
+            await specToLayout(specConfigScaleSchemesByType)
+        ).toMatchSnapshot();
+    });
+
+    test("config/config-theme-comparison-bars.json", async () => {
+        expect(
+            await specToLayout(specConfigThemeComparisonBars)
+        ).toMatchSnapshot();
     });
 });

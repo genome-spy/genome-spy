@@ -1,43 +1,8 @@
 import { isString } from "vega-util";
-
-/** @type {Omit<Required<import("../spec/title.js").Title>, "text" | "style">} */
-const BASE_TITLE_STYLE = {
-    anchor: "middle",
-    frame: "group",
-    offset: 10,
-    orient: "top",
-    align: undefined,
-    angle: 0,
-    baseline: "alphabetic",
-    dx: 0,
-    dy: 0,
-    color: undefined,
-    font: undefined,
-    fontSize: 12,
-    fontStyle: "normal",
-    fontWeight: "normal",
-};
-
-/** @type {Partial<import("../spec/title.js").Title>} */
-const TRACK_TITLE_STYLE = {
-    orient: "left",
-    anchor: "middle",
-    align: "right",
-    baseline: "middle",
-    angle: 0,
-    fontSize: 12,
-};
-
-/** @type {Partial<import("../spec/title.js").Title>} */
-const OVERLAY_TITLE_STYLE = {
-    orient: "top",
-    anchor: "start",
-    align: "left",
-    baseline: "top",
-    offset: -10,
-    dx: 10,
-    fontSize: 12,
-};
+import {
+    getConfiguredStyleConfig,
+    getConfiguredTitleConfig,
+} from "../config/titleConfig.js";
 
 /** @type {Record<import("../spec/title.js").TitleAnchor, number>} */
 const ANCHORS = {
@@ -53,11 +18,14 @@ const ANCHOR_TO_ALIGN = {
     end: "right",
 };
 
+const DEFAULT_TITLE_STYLE = "group-title";
+
 /**
  * @param {string | import("../spec/title.js").Title} title
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
  * @returns {import("../spec/view.js").UnitSpec}
  */
-export default function createTitle(title) {
+export default function createTitle(title, configScopes = []) {
     if (!title) {
         return;
     }
@@ -69,20 +37,20 @@ export default function createTitle(title) {
         return;
     }
 
-    // TODO: Make these configurable
-    /** @type {Partial<import("../spec/title.js").Title>} */
-    const config =
-        {
-            "track-title": TRACK_TITLE_STYLE,
-            overlay: OVERLAY_TITLE_STYLE,
-        }[titleSpec.style] ?? {};
+    const titleConfig = getConfiguredTitleConfig(configScopes);
+    const styleConfig = /** @type {import("../spec/config.js").TitleConfig} */ (
+        getConfiguredStyleConfig(
+            configScopes,
+            titleSpec.style ?? DEFAULT_TITLE_STYLE
+        )
+    );
 
     // TODO: frame prop
 
     /** @type {import("../spec/title.js").Title} */
     const preliminarySpec = {
-        ...BASE_TITLE_STYLE,
-        ...config,
+        ...titleConfig,
+        ...styleConfig,
         ...titleSpec,
     };
 
@@ -114,9 +82,9 @@ export default function createTitle(title) {
 
     /** @type {import("../spec/title.js").Title} */
     const spec = {
-        ...BASE_TITLE_STYLE,
+        ...titleConfig,
         ...orientConfig,
-        ...config,
+        ...styleConfig,
         ...titleSpec,
     };
 

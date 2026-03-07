@@ -24,19 +24,8 @@ export default class AxisGridView extends LayerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
-        // Now the presence of genomeAxis is based on field type, not scale type.
-        // TODO: Use scale instead. However, it would make the initialization much more
-        // complex because scales are not available before scale resolution.
-        const genomeAxis = type == "locus";
-
-        /** @type {Axis | GenomeAxis} */
-        const fullAxisProps = {
-            ...(genomeAxis ? defaultGenomeAxisProps : defaultAxisProps),
-            ...axisProps,
-        };
-
         super(
-            createAxisGrid(fullAxisProps, type),
+            createAxisGrid(axisProps, type),
             context,
             layoutParent,
             dataParent,
@@ -47,7 +36,7 @@ export default class AxisGridView extends LayerView {
             }
         );
 
-        this.axisProps = fullAxisProps;
+        this.axisProps = axisProps;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
     }
@@ -60,40 +49,6 @@ export default class AxisGridView extends LayerView {
         return false;
     }
 }
-
-/**
- * Based on: https://vega.github.io/vega-lite/docs/axis.html
- * TODO: The defaults should be taken from config (theme)
- *
- * @type {Axis}
- */
-const defaultAxisProps = {
-    values: null,
-
-    grid: false,
-    gridCap: "butt",
-    gridColor: "lightgray",
-    gridDash: null,
-    gridOpacity: 1,
-    gridWidth: 1,
-
-    tickCount: null,
-    tickMinStep: null,
-};
-
-/**
- * @type {import("../spec/axis.js").GenomeAxis}
- */
-const defaultGenomeAxisProps = {
-    ...defaultAxisProps,
-
-    chromGrid: false,
-    chromGridCap: "butt",
-    chromGridColor: "gray",
-    chromGridDash: [1, 5],
-    chromGridOpacity: 1,
-    chromGridWidth: 1,
-};
 
 /**
  * @param {Axis} axisProps

@@ -34,20 +34,6 @@ export default class RectMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-
-        this.augmentDefaultProperties({
-            x2: undefined,
-            y2: undefined,
-            filled: true,
-            color: "#4c78a8",
-            opacity: 1.0,
-            strokeWidth: 3,
-            cornerRadius: 0.0,
-
-            minWidth: 0.5, // Minimum width/height prevents annoying flickering when zooming
-            minHeight: 0.5,
-            minOpacity: 1.0,
-        });
     }
 
     /**

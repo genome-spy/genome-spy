@@ -93,11 +93,16 @@ export function getDefaultScaleType(channel, dataType) {
  */
 export function applyLockedProperties(props, channel) {
     if (isPositionalChannel(channel) && props.type !== "ordinal") {
-        // Unit ranges are a temporary default until pixel ranges are adopted.
+        // Positional scales currently operate in unit coordinates.
+        // Keep this invariant until pixel ranges are adopted.
         props.range = [0, 1];
     }
 
-    if (channel == "opacity" && isContinuous(props.type)) {
+    if (
+        channel == "opacity" &&
+        isContinuous(props.type) &&
+        props.clamp === undefined
+    ) {
         props.clamp = true;
     }
 }

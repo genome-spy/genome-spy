@@ -38,6 +38,14 @@ import {
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
+import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
+import { mergeConfigScopes } from "./config/mergeConfig.js";
+import { resolveBaseConfig } from "./config/resolveConfig.js";
+import {
+    DEFAULT_THEME_NAME,
+    getBuiltInThemeBackground,
+    resolveThemeSelection,
+} from "./config/themes.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -316,6 +324,14 @@ export default class GenomeSpy {
     #createViewContext() {
         const dataFlow = new DataFlow();
         dataFlow.loadingStatusRegistry = this.#loadingStatusRegistry;
+        const baseConfig = resolveBaseConfig({
+            defaultConfig: INTERNAL_DEFAULT_CONFIG,
+            builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
+            theme: mergeConfigScopes([
+                this.options.theme,
+                resolveThemeSelection(this.spec.theme),
+            ]),
+        });
 
         return createViewContext({
             dataFlow,
@@ -340,6 +356,7 @@ export default class GenomeSpy {
                 this.#extraBroadcastListeners.remove(type, listener),
             isViewConfiguredVisible: this.viewVisibilityPredicate,
             isViewSpec: (spec) => this.viewFactory.isViewSpec(spec),
+            getBaseConfig: () => baseConfig,
             createOrImportViewWithContext: (
                 ctx,
                 spec,
@@ -414,10 +431,29 @@ export default class GenomeSpy {
         // We should now have a complete view hierarchy. Let's update the canvas size
         // and ensure that the loading message is visible.
         this.#glHelper.invalidateSize();
+        const selectedThemes = this.spec.theme
+            ? Array.isArray(this.spec.theme)
+                ? this.spec.theme
+                : [this.spec.theme]
+            : [];
         this.#renderCoordinator = new RenderCoordinator({
             viewRoot: this.viewRoot,
             glHelper: this.#glHelper,
-            getBackground: () => this.spec.background,
+            getBackground: () => {
+                if (this.spec.background !== undefined) {
+                    return this.spec.background;
+                }
+
+                let background;
+                for (const themeName of selectedThemes) {
+                    const value = getBuiltInThemeBackground(themeName);
+                    if (value !== undefined) {
+                        background = value;
+                    }
+                }
+
+                return background;
+            },
             broadcast: this.broadcast.bind(this),
             onLayoutComputed: () =>
                 this.#loadingIndicatorManager.updateLayout(),

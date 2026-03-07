@@ -1,0 +1,204 @@
+{
+  "description": "Two-row comparison: root GenomeSpy defaults vs scoped Vega-Lite-like config overrides.",
+  "theme": "genomespy",
+  "spacing": 24,
+  "resolve": {
+    "axis": {
+      "x": "independent",
+      "y": "independent"
+    },
+    "scale": {
+      "color": "independent",
+      "x": "independent",
+      "y": "independent"
+    }
+  },
+  "vconcat": [
+    {
+      "data": {
+        "values": [
+          { "category": "A", "value": 28 },
+          { "category": "B", "value": 55 },
+          { "category": "C", "value": 43 },
+          { "category": "D", "value": 91 },
+          { "category": "E", "value": 81 },
+          { "category": "F", "value": 53 }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "genomespy-bars",
+          "title": "GenomeSpy (Bars)",
+          "width": 260,
+          "height": 200,
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "category",
+              "type": "nominal",
+              "scale": { "padding": 0.2 },
+              "axis": { "labelAngle": 0 }
+            },
+            "y": {
+              "field": "value",
+              "type": "quantitative",
+              "axis": { "title": "Value" }
+            },
+            "y2": { "value": 0 }
+          }
+        },
+        {
+          "name": "vegalite-like-bars",
+          "title": "Vega-Lite-like (Scoped Config)",
+          "width": 260,
+          "height": 200,
+          "config": {
+            "mark": {
+              "color": "#4c78a8"
+            },
+            "point": {
+              "filled": false,
+              "size": 30
+            },
+            "view": {
+              "stroke": "#ddd",
+              "strokeWidth": 1
+            },
+            "axis": {
+              "grid": false,
+              "domain": true,
+              "tickColor": "gray",
+              "domainColor": "gray",
+              "gridColor": "#ddd",
+              "labelColor": "#333",
+              "titleColor": "#333",
+              "titleFontSize": 11,
+              "titleFontWeight": "normal"
+            },
+            "axisQuantitative": {
+              "grid": true
+            },
+            "scale": {
+              "nominalColorScheme": "tableau10",
+              "ordinalColorScheme": "blues",
+              "quantitativeColorScheme": "blues"
+            },
+            "range": {
+              "heatmap": "viridis",
+              "ramp": "blues",
+              "diverging": "blueorange"
+            }
+          },
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "field": "category",
+              "type": "nominal",
+              "scale": { "padding": 0.2 },
+              "axis": { "labelAngle": 0 }
+            },
+            "y": {
+              "field": "value",
+              "type": "quantitative",
+              "axis": { "title": "Value" }
+            },
+            "y2": { "value": 0 }
+          }
+        }
+      ]
+    },
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 5 },
+          { "x": 2, "y": 8 },
+          { "x": 3, "y": 4 },
+          { "x": 4, "y": 9 },
+          { "x": 5, "y": 7 },
+          { "x": 6, "y": 6 },
+          { "x": 7, "y": 10 },
+          { "x": 8, "y": 12 },
+          { "x": 9, "y": 9 },
+          { "x": 10, "y": 13 }
+        ]
+      },
+      "hconcat": [
+        {
+          "name": "genomespy-scatter",
+          "title": "GenomeSpy (Scatter)",
+          "width": 260,
+          "height": 200,
+          "mark": "point",
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            }
+          }
+        },
+        {
+          "name": "vegalite-like-scatter",
+          "title": "Vega-Lite-like (Scoped Config)",
+          "width": 260,
+          "height": 200,
+          "config": {
+            "mark": {
+              "color": "#4c78a8"
+            },
+            "point": {
+              "filled": false,
+              "size": 30
+            },
+            "view": {
+              "stroke": "#ddd",
+              "strokeWidth": 1
+            },
+            "axis": {
+              "grid": false,
+              "domain": true,
+              "tickColor": "gray",
+              "domainColor": "gray",
+              "gridColor": "#ddd",
+              "labelColor": "#333",
+              "titleColor": "#333",
+              "titleFontSize": 11,
+              "titleFontWeight": "normal"
+            },
+            "axisQuantitative": {
+              "grid": true
+            },
+            "scale": {
+              "nominalColorScheme": "tableau10",
+              "ordinalColorScheme": "blues",
+              "quantitativeColorScheme": "blues"
+            },
+            "range": {
+              "heatmap": "viridis",
+              "ramp": "blues",
+              "diverging": "blueorange"
+            }
+          },
+          "mark": "point",
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "quantitative",
+              "axis": { "title": "X" }
+            },
+            "y": {
+              "field": "y",
+              "type": "quantitative",
+              "axis": { "title": "Y" }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

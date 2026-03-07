@@ -21,6 +21,8 @@ import SelectionRect from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
+import { getConfiguredViewBackground } from "../../config/viewConfig.js";
+import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 
 export default class GridChild {
     /**
@@ -67,7 +69,10 @@ export default class GridChild {
 
         if (view.needsAxes.x || view.needsAxes.y) {
             const spec = view.spec;
-            const viewBackground = "view" in spec ? spec?.view : undefined;
+            const viewBackground = getConfiguredViewBackground(
+                view.getConfigScopes(),
+                "view" in spec ? spec.view : undefined
+            );
 
             const backgroundSpec = createBackground(viewBackground);
             if (backgroundSpec) {
@@ -103,7 +108,7 @@ export default class GridChild {
                 });
             }
 
-            const title = createTitle(view.spec.title);
+            const title = createTitle(view.spec.title, view.getConfigScopes());
             if (title) {
                 const unitView = new UnitView(
                     title,
@@ -698,10 +703,29 @@ export default class GridChild {
          */
         const createAxisGrid = async (r, channel, axisParent) => {
             const props = getAxisPropsWithDefaults(r, channel);
+            if (!props) {
+                return;
+            }
 
-            if (props && (props.grid || props.chromGrid)) {
+            const defaults = getConfiguredAxisDefaults(
+                axisParent.getConfigScopes(),
+                {
+                    channel,
+                    orient: props.orient,
+                    type: /** @type {import("../../spec/channel.js").Type} */ (
+                        r.scaleResolution.type
+                    ),
+                    style: props.style,
+                }
+            );
+            const effectiveProps = {
+                ...defaults,
+                ...props,
+            };
+
+            if (effectiveProps.grid || effectiveProps.chromGrid) {
                 const axisGridView = new AxisGridView(
-                    props,
+                    effectiveProps,
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,

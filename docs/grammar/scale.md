@@ -9,6 +9,10 @@ By default, GenomeSpy configures scales automatically based on the data type
 (e.g., `"ordinal"`), the visual channel, and the data domain. As the defaults
 may not always be optimal, the scales can be configured explicitly.
 
+Scale defaults can also be configured globally using `config.scale` and
+`config.range`. For example, color defaults by data type can be set with
+`nominalColorScheme`, `ordinalColorScheme`, and `quantitativeColorScheme`.
+
 ```json title="Specifying a scale for a channel"
 {
   "encoding": {
