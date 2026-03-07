@@ -12,9 +12,7 @@ templates. Parameters in GenomeSpy are heavily inspired by the
 [parameters](https://vega.github.io/vega-lite/docs/parameter.html) concept of
 Vega-Lite.
 
-## Examples
-
-### Using Input Bindings
+## Using Input Bindings
 
 Parameters can be bound to input elements, such as sliders, dropdowns, and
 checkboxes. The GenomeSpy Core library shows the input elements below the
@@ -81,7 +79,7 @@ them to control the size, angle, and text of a text mark.
 
 </genome-spy-doc-embed></div>
 
-### Expressions
+## Expressions
 
 Parameters can be based on [expressions](./expressions.md), which can depend on
 other parameters. They are automatically re-evaluated when the dependent
@@ -121,13 +119,13 @@ parameters change.
 
 </genome-spy-doc-embed></div>
 
-### Selection parameters
+## Selection Parameters
 
 Parameters allow for defining interactive selections, which can be used in
 conditional encodings. GenomeSpy compiles the conditional encoding rules into
 efficient GPU shader code, enabling fast interactions in very large data sets.
 
-#### Point selection
+### Point Selection
 
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
@@ -190,7 +188,7 @@ bars by holding down the `Shift` key.
 
 </genome-spy-doc-embed></div>
 
-#### Interval selection
+### Interval Selection
 
 Interval selections allow for selecting a range of data points along one or two axes.
 By default, the start gesture depends on whether the brushed channels are
@@ -248,7 +246,7 @@ wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
 </genome-spy-doc-embed></div>
 
-##### Linking Scale Domains Across Views
+#### Linking Scale Domains Across Views
 
 An interval selection can drive scale domains in sibling views. To make this
 work with GenomeSpy's hierarchical parameter scopes:
@@ -264,7 +262,7 @@ Two-way behavior is automatic when the linked scale is zoomable. You can still
 override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
 reference.
 
-##### Two-Way Linking (Interactive)
+#### Two-Way Linking (Interactive)
 
 <div><genome-spy-doc-embed height="250">
 
