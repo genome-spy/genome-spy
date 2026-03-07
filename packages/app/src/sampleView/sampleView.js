@@ -1326,6 +1326,16 @@ export default class SampleView extends ContainerView {
             return;
         }
 
+        if (event.type === "wheelclaimprobe") {
+            if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
+                const resolution = this.#gridChild.view.getScaleResolution("x");
+                if (resolution?.isZoomable()) {
+                    event.claimWheel();
+                }
+            }
+            return;
+        }
+
         for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
             if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
                 scrollbar.propagateInteractionEvent(event);
@@ -1373,11 +1383,12 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords Coordinates
      * @param {View} view
      * @param {import("@genome-spy/core/view/zoom.js").ZoomEvent} zoomEvent
+     * @returns {boolean} `true` when the pane supports zooming
      */
     #handleZoom(coords, view, zoomEvent) {
         const resolution = this.#gridChild.view.getScaleResolution("x");
         if (!resolution || !resolution.isZoomable()) {
-            return;
+            return false;
         }
 
         const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
@@ -1386,9 +1397,13 @@ export default class SampleView extends ContainerView {
             zoomEvent.y + zoomEvent.yDelta
         );
 
-        resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
+        const changed = resolution.zoom(2 ** zoomEvent.zDelta, p.x, tp.x - p.x);
 
-        this.context.animator.requestRender();
+        if (changed) {
+            this.context.animator.requestRender();
+        }
+
+        return true;
     }
 
     async #createSummaryViews() {

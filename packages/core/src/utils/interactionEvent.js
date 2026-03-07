@@ -10,7 +10,16 @@
  */
 
 /**
- * @typedef {UIEvent | TouchGestureEvent} InteractionUiEvent
+ * Side-effect-free query event for wheel ownership. Handlers should only
+ * claim wheel if they would consume native wheel at the current pointer
+ * location.
+ *
+ * @typedef {object} WheelClaimProbeEvent
+ * @prop {"wheelclaimprobe"} type
+ */
+
+/**
+ * @typedef {UIEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
  */
 
 /**
@@ -55,6 +64,7 @@ export default class InteractionEvent {
         this.point = point;
         this.uiEvent = uiEvent;
         this.stopped = false;
+        this.wheelClaimed = false;
 
         /**
          * The target is known only in the bubbling phase
@@ -66,6 +76,18 @@ export default class InteractionEvent {
 
     stopPropagation() {
         this.stopped = true;
+    }
+
+    /**
+     * Marks the event as wheel-owned by the current interaction path.
+     * This is used by native wheel probes to decide preventDefault timing.
+     */
+    claimWheel() {
+        if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
+            throw new Error("Can claim wheel only for wheel events!");
+        }
+
+        this.wheelClaimed = true;
     }
 
     /**

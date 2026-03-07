@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { createPrimitiveEventProxy } from "./interactionEvent.js";
+import InteractionEvent, {
+    createPrimitiveEventProxy,
+} from "./interactionEvent.js";
+import Point from "../view/layout/point.js";
 
 describe("createPrimitiveEventProxy", () => {
     it("exposes primitive properties and hides non-primitives", () => {
@@ -31,5 +34,28 @@ describe("createPrimitiveEventProxy", () => {
 
         // prototype is hidden
         expect(Object.getPrototypeOf(proxy)).toBeNull();
+    });
+});
+
+describe("InteractionEvent wheel claiming", () => {
+    it("allows claiming wheel for wheel probe events", () => {
+        const event = new InteractionEvent(new Point(0, 0), {
+            type: "wheelclaimprobe",
+        });
+
+        event.claimWheel();
+
+        expect(event.wheelClaimed).toBe(true);
+    });
+
+    it("rejects claiming wheel for non-wheel events", () => {
+        const event = new InteractionEvent(
+            new Point(0, 0),
+            /** @type {any} */ ({ type: "click" })
+        );
+
+        expect(() => event.claimWheel()).toThrow(
+            "Can claim wheel only for wheel events!"
+        );
     });
 });

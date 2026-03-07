@@ -871,6 +871,26 @@ export default class GridView extends ContainerView {
         const pointedChild = this.#visibleChildren.find((gridChild) =>
             gridChild.coords.containsPoint(event.point.x, event.point.y)
         );
+        const pointedView = pointedChild?.view;
+
+        if (event.type === "wheelclaimprobe") {
+            // Probe path: claim wheel ownership without executing regular wheel
+            // behavior. InteractionController uses this to decide whether native
+            // wheel should be preventDefault()'ed before inertia kicks in.
+            if (!pointedView) {
+                return;
+            }
+
+            if (isZoomInteractionView(pointedView)) {
+                if (hasZoomableResolutions(pointedView)) {
+                    event.claimWheel();
+                }
+            } else {
+                pointedView.propagateInteractionEvent(event);
+            }
+            return;
+        }
+
         this.#keyboardZoomController?.handlePointerEvent(pointedChild, event);
 
         for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
@@ -882,7 +902,6 @@ export default class GridView extends ContainerView {
             }
         }
 
-        const pointedView = pointedChild?.view;
         if (pointedView) {
             pointedView.propagateInteractionEvent(event);
 
@@ -892,10 +911,7 @@ export default class GridView extends ContainerView {
 
             // Hmm, maybe this should be registered when needed and not include
             // as a hardcoded interaction?
-            if (
-                pointedView instanceof UnitView ||
-                pointedView instanceof LayerView
-            ) {
+            if (isZoomInteractionView(pointedView)) {
                 interactionToZoom(
                     event,
                     pointedChild.coords,
@@ -923,8 +939,22 @@ export default class GridView extends ContainerView {
      * @param {import("../layout/rectangle.js").default} coords Coordinates
      * @param {View} view
      * @param {import("../zoom.js").ZoomEvent} zoomEvent
+     * @returns {boolean} `true` when there was at least one zoomable resolution
      */
     #handleZoom(coords, view, zoomEvent) {
+        let zoomable = false;
+        let changed = false;
+
+        const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
+        const tp = coords.normalizePoint(
+            zoomEvent.x + zoomEvent.xDelta,
+            zoomEvent.y + zoomEvent.yDelta
+        );
+        const delta = {
+            x: tp.x - p.x,
+            y: tp.y - p.y,
+        };
+
         for (const [channel, resolutionSet] of Object.entries(
             getZoomableResolutions(view)
         )) {
@@ -932,27 +962,23 @@ export default class GridView extends ContainerView {
                 continue;
             }
 
-            const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
-            const tp = coords.normalizePoint(
-                zoomEvent.x + zoomEvent.xDelta,
-                zoomEvent.y + zoomEvent.yDelta
-            );
-
-            const delta = {
-                x: tp.x - p.x,
-                y: tp.y - p.y,
-            };
+            zoomable = true;
 
             for (const resolution of resolutionSet) {
-                resolution.zoom(
+                const resolutionChanged = resolution.zoom(
                     2 ** zoomEvent.zDelta,
                     channel == "y" ? 1 - p[channel] : p[channel],
                     channel == "x" ? delta.x : -delta.y
                 );
+                changed = resolutionChanged || changed;
             }
         }
 
-        this.context.animator.requestRender();
+        if (changed) {
+            this.context.animator.requestRender();
+        }
+
+        return zoomable;
     }
 
     /**
@@ -978,6 +1004,23 @@ export function isClippedChildren(view) {
     });
 
     return clipped;
+}
+
+/**
+ * @param {View} view
+ * @returns {boolean}
+ */
+function hasZoomableResolutions(view) {
+    const zoomableResolutions = getZoomableResolutions(view);
+    return zoomableResolutions.x.size > 0 || zoomableResolutions.y.size > 0;
+}
+
+/**
+ * @param {View} view
+ * @returns {view is UnitView | LayerView}
+ */
+function isZoomInteractionView(view) {
+    return view instanceof UnitView || view instanceof LayerView;
 }
 
 /**

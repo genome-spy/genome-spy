@@ -296,4 +296,34 @@ describe("wheel zoom snapping", () => {
             zDelta: 0.4,
         });
     });
+
+    test("prevents default when wheel zoom is handled", () => {
+        const preventDefault = vi.fn();
+        const wheelEvent = createWheelEvent(120);
+        wheelEvent.preventDefault = preventDefault;
+        const event = new InteractionEvent(new Point(20, 30), wheelEvent);
+
+        interactionToZoom(
+            event,
+            /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
+            () => true
+        );
+
+        expect(preventDefault).toHaveBeenCalledTimes(1);
+    });
+
+    test("does not prevent default when wheel zoom is not handled", () => {
+        const preventDefault = vi.fn();
+        const wheelEvent = createWheelEvent(120);
+        wheelEvent.preventDefault = preventDefault;
+        const event = new InteractionEvent(new Point(20, 30), wheelEvent);
+
+        interactionToZoom(
+            event,
+            /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
+            () => false
+        );
+
+        expect(preventDefault).not.toHaveBeenCalled();
+    });
 });

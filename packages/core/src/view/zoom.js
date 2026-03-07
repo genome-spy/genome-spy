@@ -49,14 +49,14 @@ function recordTimeStamp(fn) {
     // @ts-ignore
     return function (...args) {
         markZoomActivity();
-        fn(...args);
+        return fn(...args);
     };
 }
 
 /**
  * @param {import("../utils/interactionEvent.js").default} event
  * @param {import("./layout/rectangle.js").default} coords
- * @param {(zoomEvent: ZoomEvent) => void} handleZoom
+ * @param {(zoomEvent: ZoomEvent) => boolean | void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]
  * @param {import("../utils/animator.js").default} [animator]
  */
@@ -67,8 +67,6 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
     if (event.type == "wheel") {
         // TODO: Wheel-zoom inertia should probably be moved here and the faked wheel
         // events in genomeSpy.js and inertia.js should be retired.
-
-        event.uiEvent.preventDefault(); // TODO: Only if there was something zoomable
 
         const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
         const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
@@ -118,22 +116,29 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             }
         }
 
+        let handled = false;
         if (Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)) {
-            handleZoom({
-                x,
-                y,
-                xDelta: 0,
-                yDelta: 0,
-                zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300,
-            });
+            handled =
+                handleZoom({
+                    x,
+                    y,
+                    xDelta: 0,
+                    yDelta: 0,
+                    zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300,
+                }) === true;
         } else {
-            handleZoom({
-                x,
-                y,
-                xDelta: -wheelEvent.deltaX * wheelMultiplier,
-                yDelta: 0,
-                zDelta: 0,
-            });
+            handled =
+                handleZoom({
+                    x,
+                    y,
+                    xDelta: -wheelEvent.deltaX * wheelMultiplier,
+                    yDelta: 0,
+                    zDelta: 0,
+                }) === true;
+        }
+
+        if (handled) {
+            wheelEvent.preventDefault();
         }
     } else if (event.type == "mousedown" && event.mouseEvent.button === 0) {
         if (interactionState.smoother) {

@@ -93,15 +93,17 @@ export default class InteractionController {
         /**
          * @param {Point} point
          * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
+         * @returns {InteractionEvent}
          */
         const dispatchInteractionEvent = (point, uiEvent) => {
-            this.#viewRoot.propagateInteractionEvent(
-                new InteractionEvent(point, uiEvent)
-            );
+            const interactionEvent = new InteractionEvent(point, uiEvent);
+            this.#viewRoot.propagateInteractionEvent(interactionEvent);
 
             if (!this.#tooltipUpdateRequested) {
                 this.#tooltip.clear();
             }
+
+            return interactionEvent;
         };
 
         /** @param {Event} event */
@@ -166,26 +168,41 @@ export default class InteractionController {
 
                         this.#wheelInertia.cancel();
                     } else {
-                        // Vertical wheeling zooms.
-                        // We use inertia to generate fake wheel events for smoother zooming
+                        // We must decide on the native wheel event whether to
+                        // call preventDefault() (to block page scrolling).
+                        // This probe asks the pointed view hierarchy to claim
+                        // wheel ownership without running real wheel side
+                        // effects first. Inertia is layered on top of that
+                        // decision and is not the reason for the probe.
+                        const probeEvent = dispatchInteractionEvent(point, {
+                            type: "wheelclaimprobe",
+                        });
 
-                        const template = makeEventTemplate(wheelEvent);
+                        if (probeEvent.wheelClaimed) {
+                            // Vertical wheeling zooms.
+                            // We use inertia to generate fake wheel events for smoother zooming
 
-                        this.#wheelInertia.setMomentum(
-                            wheelEvent.deltaY * (wheelEvent.deltaMode ? 80 : 1),
-                            (delta) => {
-                                const e = new WheelEvent("wheel", {
-                                    ...template,
-                                    deltaMode: 0,
-                                    deltaX: 0,
-                                    deltaY: delta,
-                                });
-                                dispatchEvent(e);
-                            }
-                        );
+                            const template = makeEventTemplate(wheelEvent);
 
-                        wheelEvent.preventDefault();
-                        return;
+                            this.#wheelInertia.setMomentum(
+                                wheelEvent.deltaY *
+                                    (wheelEvent.deltaMode ? 80 : 1),
+                                (delta) => {
+                                    const e = new WheelEvent("wheel", {
+                                        ...template,
+                                        deltaMode: 0,
+                                        deltaX: 0,
+                                        deltaY: delta,
+                                    });
+                                    dispatchEvent(e);
+                                }
+                            );
+
+                            wheelEvent.preventDefault();
+                            return;
+                        } else {
+                            this.#wheelInertia.cancel();
+                        }
                     }
                 }
 

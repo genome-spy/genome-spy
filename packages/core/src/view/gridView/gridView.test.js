@@ -1,7 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
+import InteractionEvent from "../../utils/interactionEvent.js";
 import Rectangle from "../layout/rectangle.js";
+import Point from "../layout/point.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import UnitView from "../unitView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
@@ -245,5 +247,81 @@ describe("GridView separators", () => {
 
         expect(horizontalCount).toBe(1);
         expect(verticalCount).toBe(0);
+    });
+});
+
+describe("GridView wheel zoom", () => {
+    test("applies zoom to both x and y resolutions", async () => {
+        const zoomableUnitSpec =
+            /** @type {import("../../spec/view.js").UnitSpec} */ ({
+                ...makeUnitSpec(),
+                data: {
+                    values: [
+                        { x: 1, y: 2 },
+                        { x: 3, y: 5 },
+                    ],
+                },
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            });
+
+        const view = await createAndInitialize(
+            {
+                vconcat: [zoomableUnitSpec],
+            },
+            ConcatView
+        );
+
+        const concatView = /** @type {ConcatView} */ (view);
+        view.context.getCurrentHover = () => undefined;
+
+        // Non-obvious: run one layout/render pass so child coords exist for hit testing.
+        const context = new NoOpRenderingContext({ picking: false });
+        concatView.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        const child = /** @type {UnitView} */ (concatView.children[0]);
+        const childCoords = child.coords;
+        const point = new Point(
+            childCoords.x + childCoords.width / 2,
+            childCoords.y + childCoords.height / 2
+        );
+
+        const xResolution = child.getScaleResolution("x");
+        const yResolution = child.getScaleResolution("y");
+        if (!xResolution || !yResolution) {
+            throw new Error("Expected zoomable x and y resolutions!");
+        }
+
+        const xZoomSpy = vi.spyOn(xResolution, "zoom");
+        const yZoomSpy = vi.spyOn(yResolution, "zoom");
+        const preventDefault = /** @type {() => void} */ (() => undefined);
+
+        concatView.propagateInteractionEvent(
+            new InteractionEvent(
+                point,
+                /** @type {any} */ ({
+                    type: "wheel",
+                    deltaX: 0,
+                    deltaY: -120,
+                    deltaMode: 0,
+                    preventDefault,
+                })
+            )
+        );
+
+        expect(xZoomSpy).toHaveBeenCalled();
+        expect(yZoomSpy).toHaveBeenCalled();
     });
 });
