@@ -266,27 +266,15 @@ reference.
 
 ##### Two-Way Linking (Interactive)
 
-<div><genome-spy-doc-embed height="320">
+<div><genome-spy-doc-embed height="250">
 
 ```json
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
-  "description": [
-    "Two-way brushing and linking with hierarchical params.",
-    "The top view pushes interval selection to an outer param.",
-    "The bottom view links x domain to the same param.",
-    "Brushing changes the linked domain, and zoom/pan in the linked view updates the brush."
-  ],
-
   "params": [{ "name": "brush" }],
 
-  "resolve": {
-    "scale": { "x": "independent" }
-  },
+  "resolve": { "scale": { "x": "independent" } },
 
-  "data": {
-    "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
-  },
+  "data": { "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" } },
   "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
 
   "vconcat": [
