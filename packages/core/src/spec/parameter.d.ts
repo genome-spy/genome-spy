@@ -177,10 +177,21 @@ export type SelectionInitInterval =
     | Vector2<number>
     | Vector2<string>;
 
-export type InteractionEventType = "click" | "dblclick" | "mouseover";
+export type InteractionEventType =
+    | "click"
+    | "dblclick"
+    | "mouseover"
+    | "mousedown"
+    | "wheel";
 
 // TODO: merge with InteractionEventType
-export type DomEventType = "click" | "dblclick" | "mouseover" | "pointerover";
+export type DomEventType =
+    | "click"
+    | "dblclick"
+    | "mouseover"
+    | "pointerover"
+    | "mousedown"
+    | "wheel";
 
 export interface EventConfig {
     /**
@@ -208,6 +219,13 @@ export interface BaseSelectionConfig<T extends SelectionType = SelectionType> {
 
     /**
      * A string or object that defines the events to which the selection should listen.
+     *
+     * __Default value:__
+     *
+     * - point selections: `"click"`
+     * - interval selections:
+     *   - `"mousedown[event.shiftKey]"` when any brushed channel is zoomable
+     *   - `"mousedown"` otherwise
      */
     on?: DomEventType | EventConfig | string;
 
@@ -247,6 +265,25 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
      * Use the `mark` property to adjust the appearance of this rectangle.
      */
     mark?: BrushConfig;
+
+    /**
+     * Controls whether an active interval selection can be resized by mouse wheel.
+     * The wheel interaction only applies when the cursor is over the interval.
+     *
+     * Can be:
+     *
+     * - `true` / `false`
+     * - event type string such as `"wheel"` or `"wheel[event.altKey]"`
+     * - an `EventConfig` object
+     *
+     * Currently, only `"wheel"` events are supported.
+     *
+     * __Default value:__
+     *
+     * - `false` when any brushed channel uses a zoomable scale
+     * - `true` otherwise
+     */
+    zoom?: DomEventType | EventConfig | string | boolean;
 }
 
 export interface BrushConfig extends ShadowProps {

@@ -521,7 +521,7 @@ export default class App {
         for (const [name, scaleResolution] of this.genomeSpy
             .getNamedScaleResolutions()
             .entries()) {
-            if (!scaleResolution.isZoomed()) {
+            if (scaleResolution.isZoomed()) {
                 hashData.scaleDomains[name] =
                     scaleResolution.getComplexDomain();
             }

@@ -1,5 +1,6 @@
 import { isContinuous } from "vega-scale";
 import {
+    asEventConfig,
     asSelectionConfig,
     createIntervalSelection,
     isActiveIntervalSelection,
@@ -17,6 +18,9 @@ import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect from "./selectionRect.js";
+import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
+import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
+import { createEventFilterFunction } from "../../utils/expression.js";
 
 export default class GridChild {
     /**
@@ -164,6 +168,42 @@ export default class GridChild {
                 })
             );
 
+            const requiresShiftToBrush = channels.some((channel) =>
+                scaleResolutions[channel].isZoomable()
+            );
+
+            const eventConfig =
+                /** @type {import("../../spec/parameter.js").EventConfig} */ (
+                    select.on ??
+                        (requiresShiftToBrush
+                            ? {
+                                  type: "mousedown",
+                                  filter: "event.shiftKey",
+                              }
+                            : {
+                                  type: "mousedown",
+                              })
+                );
+
+            if (eventConfig.type !== "mousedown") {
+                throw new Error(
+                    `Interval selection param "${name}" currently supports only "mousedown" in "on".`
+                );
+            }
+
+            const eventPredicate = eventConfig.filter
+                ? createEventFilterFunction(eventConfig.filter)
+                : () => true;
+
+            const zoomEventConfig = resolveIntervalZoomEventConfig(
+                select.zoom,
+                requiresShiftToBrush,
+                name
+            );
+            const zoomEventPredicate = zoomEventConfig?.filter
+                ? createEventFilterFunction(zoomEventConfig.filter)
+                : () => true;
+
             if (this.selectionRect) {
                 throw new Error(
                     "Only one interval selection per container is currently allowed!"
@@ -304,7 +344,9 @@ export default class GridChild {
                         preventNextClickPropagation = true;
                     }
 
-                    const startSelection = event.mouseEvent.shiftKey;
+                    const startSelection = eventPredicate(
+                        event.proxiedMouseEvent
+                    );
 
                     if (startSelection) {
                         clearSelection();
@@ -373,14 +415,8 @@ export default class GridChild {
 
                     for (const channel of channels) {
                         const scaleResolution = scaleResolutions[channel];
-                        const { zoomExtent, scale } = scaleResolution;
+                        const { zoomExtent } = scaleResolution;
                         const interval = intervals[channel];
-
-                        if (["index", "locus"].includes(scale.type)) {
-                            // These scales use integer values. Need to round them.
-                            interval[0] = Math.ceil(interval[0]);
-                            interval[1] = Math.ceil(interval[1]);
-                        }
 
                         if (translatedRectangle) {
                             // When dragging, clamp the interval so that the size stays the same and the interval doesn't exceed zoomExtent
@@ -398,11 +434,20 @@ export default class GridChild {
                                 interval[1] = max;
                                 interval[0] = max - size;
                             }
-                        } else {
-                            interval[0] = Math.max(zoomExtent[0], interval[0]);
-                            interval[1] = Math.min(zoomExtent[1], interval[1]);
                         }
-                        interval[1] = Math.min(zoomExtent[1], interval[1]);
+
+                        const normalized = normalizeIntervalForChannel(
+                            scaleResolution,
+                            interval
+                        );
+
+                        if (!normalized) {
+                            interval[0] = zoomExtent[0];
+                            interval[1] = zoomExtent[0];
+                        } else {
+                            interval[0] = normalized[0];
+                            interval[1] = normalized[1];
+                        }
                     }
 
                     setter({ type: "interval", intervals });
@@ -453,6 +498,82 @@ export default class GridChild {
                 },
                 true
             );
+
+            view.addInteractionEventListener("wheel", (coords, event) => {
+                if (
+                    !zoomEventConfig ||
+                    !zoomEventPredicate(event.proxiedMouseEvent)
+                ) {
+                    return;
+                }
+
+                const wheelEvent = /** @type {WheelEvent} */ (event.mouseEvent);
+                if (
+                    Math.abs(wheelEvent.deltaX) >= Math.abs(wheelEvent.deltaY)
+                ) {
+                    return;
+                }
+                if (!isPointInsideSelection(event.point)) {
+                    return;
+                }
+
+                const selection = selectionExpr();
+                if (!isActiveIntervalSelection(selection)) {
+                    return;
+                }
+
+                const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
+                const scaleFactor =
+                    2 ** ((wheelEvent.deltaY * wheelMultiplier) / 300);
+
+                const anchor = invertPoint(event.point);
+                /** @type {typeof selection.intervals} */
+                const intervals = { ...selection.intervals };
+                let changed = false;
+
+                for (const channel of channels) {
+                    const currentInterval = intervals[channel];
+                    if (!currentInterval || currentInterval.length !== 2) {
+                        continue;
+                    }
+
+                    const scaleResolution = scaleResolutions[channel];
+                    const scale = scaleResolution.getScale();
+                    const zoomed = zoomDomainByScaleType(
+                        scale,
+                        /** @type {[number, number]} */ ([...currentInterval]),
+                        anchor[channel],
+                        scaleFactor,
+                        { onUnsupported: "identity" }
+                    );
+
+                    const normalized = normalizeIntervalForChannel(
+                        scaleResolution,
+                        zoomed
+                    );
+                    if (!normalized) {
+                        continue;
+                    }
+
+                    if (
+                        normalized[0] !== currentInterval[0] ||
+                        normalized[1] !== currentInterval[1]
+                    ) {
+                        intervals[channel] = normalized;
+                        changed = true;
+                    }
+                }
+
+                if (changed) {
+                    setter({
+                        ...selection,
+                        type: "interval",
+                        intervals,
+                    });
+                    wheelEvent.preventDefault();
+                    event.stopPropagation();
+                }
+            });
 
             // Handle mouse cursor changes
             view.addInteractionEventListener("mousemove", (coords, event) => {
@@ -709,6 +830,49 @@ export default class GridChild {
     getOverhangAndPadding() {
         return this.getOverhang().add(this.view.getPadding());
     }
+}
+
+/**
+ * @param {import("../../spec/parameter.js").IntervalSelectionConfig["zoom"]} zoom
+ * @param {boolean} hasZoomableChannel
+ * @param {string} paramName
+ * @returns {import("../../spec/parameter.js").EventConfig | undefined}
+ */
+export function resolveIntervalZoomEventConfig(
+    zoom,
+    hasZoomableChannel,
+    paramName
+) {
+    const defaultEnabled = !hasZoomableChannel;
+    const resolved = zoom === undefined ? defaultEnabled : zoom;
+    if (resolved === false) {
+        return;
+    }
+
+    if (resolved === true) {
+        return { type: "wheel" };
+    }
+
+    const eventConfig = asEventConfig(resolved);
+    if (eventConfig.type !== "wheel") {
+        throw new Error(
+            `Interval selection param "${paramName}" currently supports only "wheel" in "zoom".`
+        );
+    }
+
+    return eventConfig;
+}
+
+/**
+ * @param {import("../../scales/scaleResolution.js").default} scaleResolution
+ * @param {[number, number]} interval
+ * @returns {[number, number] | undefined}
+ */
+function normalizeIntervalForChannel(scaleResolution, interval) {
+    const scale = scaleResolution.getScale();
+    return normalizeIntervalForSelection(interval, scaleResolution.zoomExtent, {
+        roundToIntegers: scale.type === "index" || scale.type === "locus",
+    });
 }
 
 /**

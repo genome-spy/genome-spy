@@ -295,6 +295,31 @@ Somewhere inside the chromosome 1:
 
 </genome-spy-doc-embed></div>
 
+## Domain from Selection Parameters
+
+Scale domains can be linked to interval selection parameters:
+
+Use an object-valued `domain`:
+
+```json
+{
+  "scale": {
+    "domain": {
+      "param": "brush"
+    }
+  }
+}
+```
+
+Essential properties:
+
+- `param`: name of an interval selection parameter
+- `encoding` (optional): selection interval channel to use (`"x"` or `"y"`)
+- `sync` (optional): `"oneWay"` or `"twoWay"`; if omitted, behavior is inferred from zoomability
+
+For detailed brushing-and-linking guidance and interactive examples, see
+[Parameters: Interval selection](./parameters.md#interval-selection).
+
 ## Zooming and panning
 
 To enable zooming and panning of continuous scales on positional channels, set

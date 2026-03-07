@@ -12,9 +12,7 @@ templates. Parameters in GenomeSpy are heavily inspired by the
 [parameters](https://vega.github.io/vega-lite/docs/parameter.html) concept of
 Vega-Lite.
 
-## Examples
-
-### Using Input Bindings
+## Using Input Bindings
 
 Parameters can be bound to input elements, such as sliders, dropdowns, and
 checkboxes. The GenomeSpy Core library shows the input elements below the
@@ -81,7 +79,7 @@ them to control the size, angle, and text of a text mark.
 
 </genome-spy-doc-embed></div>
 
-### Expressions
+## Expressions
 
 Parameters can be based on [expressions](./expressions.md), which can depend on
 other parameters. They are automatically re-evaluated when the dependent
@@ -121,13 +119,13 @@ parameters change.
 
 </genome-spy-doc-embed></div>
 
-### Selection parameters
+## Selection Parameters
 
 Parameters allow for defining interactive selections, which can be used in
 conditional encodings. GenomeSpy compiles the conditional encoding rules into
 efficient GPU shader code, enabling fast interactions in very large data sets.
 
-#### Point selection
+### Point Selection
 
 The following example has been adapted from Vega-Lite's [example
 gallery](https://vega.github.io/vega-lite/examples/interactive_bar_select_highlight.html)
@@ -190,12 +188,28 @@ bars by holding down the `Shift` key.
 
 </genome-spy-doc-embed></div>
 
-#### Interval selection
+### Interval Selection
 
 Interval selections allow for selecting a range of data points along one or two axes.
-By default, the selection is done by holding down the `Shift` key and dragging
-the mouse cursor over the data points. The selection can be cleared by clicking
+By default, the start gesture depends on whether the brushed channels are
+zoomable:
+
+- if any brushed channel is zoomable, start brushing with `Shift` + drag
+- otherwise, start brushing with plain drag
+
+You can override this behavior with `select.on`, for example `"on": "mousedown"`
+to always start brushing on plain drag. The selection can be cleared by clicking
 outside the selected area.
+
+Active interval selections can also be resized with the mouse wheel when the
+pointer is over the selection rectangle. This is controlled by `select.zoom`.
+By default, `select.zoom` is:
+
+- `false` when any brushed channel uses a zoomable scale (to avoid wheel-gesture conflicts)
+- `true` otherwise
+
+You can override the behavior with `select.zoom: true/false` or an explicit
+wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
 <div><genome-spy-doc-embed height="250">
 
@@ -227,6 +241,75 @@ outside the selected area.
       "value": "#ddd"
     }
   }
+}
+```
+
+</genome-spy-doc-embed></div>
+
+#### Linking Scale Domains Across Views
+
+An interval selection can drive scale domains in sibling views. To make this
+work with GenomeSpy's hierarchical parameter scopes:
+
+1. Define an empty parameter in a common ancestor.
+2. Define the brushing selection in a child view with the same `name`.
+3. Add `"push": "outer"` so selection updates are written to the ancestor
+   parameter.
+4. Reference the parameter in a linked view via `scale.domain`, for example:
+   `{ "param": "brush" }`.
+
+Two-way behavior is automatic when the linked scale is zoomable. You can still
+override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
+reference.
+
+#### Two-Way Linking (Interactive)
+
+<div><genome-spy-doc-embed height="250">
+
+```json
+{
+  "params": [{ "name": "brush" }],
+
+  "resolve": { "scale": { "x": "independent" } },
+
+  "data": { "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" } },
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
+
+  "vconcat": [
+    {
+      "height": 100,
+      "params": [
+        {
+          "name": "brush",
+          "select": {
+            "type": "interval",
+            "encodings": ["x"]
+          },
+          "push": "outer"
+        }
+      ],
+      "mark": { "type": "point", "size": 20, "opacity": 0.35 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+    {
+      "height": 120,
+      "mark": { "type": "point", "size": 55, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": {
+            "zoom": true,
+            "domain": { "param": "brush" }
+          }
+        },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
 }
 ```
 
