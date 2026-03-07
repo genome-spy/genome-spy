@@ -7,6 +7,7 @@ import {
     isIntervalSelectionConfig,
     selectionContainsPoint,
 } from "../../selection/selection.js";
+import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
 import LayerView from "../layerView.js";
@@ -500,14 +501,18 @@ export default class GridChild {
             );
 
             view.addInteractionEventListener("wheel", (coords, event) => {
+                const wheelEvent = event.uiEvent;
+                if (!(wheelEvent instanceof WheelEvent)) {
+                    return;
+                }
+
                 if (
                     !zoomEventConfig ||
-                    !zoomEventPredicate(event.proxiedMouseEvent)
+                    !zoomEventPredicate(createPrimitiveEventProxy(wheelEvent))
                 ) {
                     return;
                 }
 
-                const wheelEvent = /** @type {WheelEvent} */ (event.mouseEvent);
                 if (
                     Math.abs(wheelEvent.deltaX) >= Math.abs(wheelEvent.deltaY)
                 ) {
