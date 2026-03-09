@@ -42,6 +42,7 @@ import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
 import seg from "./data/formats/seg.js";
 import maf from "./data/formats/maf.js";
+import cn from "./data/formats/cn.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -54,6 +55,7 @@ vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
 vegaFormats("seg", seg);
 vegaFormats("maf", maf);
+vegaFormats("cn", cn);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */

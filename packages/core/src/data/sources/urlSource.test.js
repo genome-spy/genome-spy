@@ -6,12 +6,14 @@ import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
 import seg from "../formats/seg.js";
 import maf from "../formats/maf.js";
+import cn from "../formats/cn.js";
 import UrlSource from "./urlSource.js";
 
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
 vegaFormats("seg", seg);
 vegaFormats("maf", maf);
+vegaFormats("cn", cn);
 
 /** @type {typeof global.fetch | undefined} */
 let originalFetch = global.fetch;
@@ -211,6 +213,47 @@ test("UrlSource reads MAF using format.type maf", async () => {
             start: 7579471,
             end: 7579472,
             sample: "SAMPLE-1",
+        },
+    ]);
+});
+
+test("UrlSource reads CN using format.type cn", async () => {
+    const text = "sample\tchrom\tstart\tend\tvalue\nS1\tchr1\t1\t10\t0.5";
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(async () => new Response(text, { status: 200 }))
+    );
+
+    /** @type {import("../../view/view.js").default} */
+    const viewStub = /** @type {any} */ (
+        Object.assign(makeParamRuntimeProvider(), {
+            getBaseUrl: () => "",
+            context: {
+                dataFlow: {
+                    loadingStatusRegistry: {
+                        /** @returns {void} */
+                        set: () => {},
+                    },
+                },
+            },
+        })
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.cn",
+            format: { type: "cn" },
+        },
+        viewStub
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            sample: "S1",
+            chrom: "chr1",
+            start: 0,
+            end: 10,
+            value: 0.5,
         },
     ]);
 });
