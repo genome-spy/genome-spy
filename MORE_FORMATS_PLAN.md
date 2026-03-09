@@ -20,8 +20,10 @@ with explicit handling for headerless inputs where column names must be provided
 - BEDPE parsing via a dedicated parser path (not `@gmod/bed`).
 - Delimited text parsing based on `d3-dsv` whenever possible (no ad-hoc line split parsers by default).
 - Minimal user-facing schema support for headerless parsing (`columns`).
+- Fixed `format.parse` handling for custom genomic formats (no forced `"auto"` coercion).
 - Parser-level validation that fails fast when required columns are missing.
 - Pre-filtering for BED control lines (`track`, `browser`, `#`) before parsing.
+- Pre-filtering for MAF comment/meta lines (`#`) before parsing rows.
 - End-to-end example specs and docs for each format.
 - Unit tests for parsing, normalization, and failure cases.
 
@@ -52,6 +54,7 @@ Implications for this plan:
 - Parser backend policy:
   - `bed`: `@gmod/bed`
   - `bedpe`, `seg`, `maf`, `cn`: `d3-dsv` (tab-delimited by default)
+- Foundation change required in `getFormat(...)`: do not default `parse: "auto"` for these custom types.
 
 Schema implications:
 
@@ -79,6 +82,7 @@ Schema implications:
 - Do not introduce ad-hoc text parsers (`split("\\n")`, `split("\\t")`, custom tokenizers) for normal paths.
 - Keep `@gmod/bed` as the BED parser due to BED/autoSql semantics and alignment with existing BigBed code.
 - Any performance-motivated custom parser must be benchmarked and justified against `d3-dsv` before adoption.
+- Add `d3-dsv` as a direct runtime dependency in `@genome-spy/core` if the implementation imports it directly.
 
 ## Verified `@gmod/bed` capabilities and constraints (v2.1.7)
 
@@ -170,7 +174,8 @@ Extend `data.format` schema with:
 
 Validation rules:
 
-- If there is no usable header row, `columns` is required.
+- If a format has fixed positional semantics (BED/BEDPE), `columns` is optional.
+- If a format does not have fixed positional semantics and no usable header row exists, `columns` is required.
 - Required logical fields per format must resolve unambiguously.
 - Unresolved required fields fail with clear errors.
 - `bedpe` requires both interval triplets to resolve (`chrom1/start1/end1` and `chrom2/start2/end2`).
@@ -197,7 +202,8 @@ Validation rules:
  
 - SEG/MAF/CN-specific behavior:
   1. parse tabular rows with `d3-dsv`
-  2. apply format-specific required-field mapping and validation
+  2. drop format-specific meta/comment lines before row parsing (for example `#` in MAF)
+  3. apply format-specific required-field mapping and validation
 
 ## Config/spec examples
 
@@ -338,6 +344,9 @@ Add unit tests next to parser/format modules:
   - `parse` omitted -> parser-native types preserved
   - explicit `parse` mapping -> selected fields are coerced
 - BEDPE unknown-value normalization tests (`.` and `-1` -> `null`).
+- `getFormat(...)` tests for parse-default behavior:
+  - built-in formats keep existing behavior
+  - custom genomic formats do not receive forced `parse: "auto"`
 
 Add fixture files for minimal and representative examples per format.
 
@@ -354,7 +363,8 @@ BED fixtures should be minimal and targeted to GenomeSpy wrapper behavior, not f
 - Add a short `parse` subsection that explains explicit opt-in mappings and why `parse: "auto"` is not the default for these formats.
 - Link to official format specs from the docs page, not only from this plan.
 - Ensure schema-derived docs include the new format interfaces and properties.
-- Regenerate artifacts after schema/type changes (`npm run build && npm run build:docs`) if docs macros/types are missing.
+- Regenerate artifacts after schema/type changes.
+- While MkDocs is broken, validate docs using `npm run build:docs:prepare` and manual review of modified markdown/schema artifacts.
 - Add at least one docs embed example (`genome-spy-doc-embed`) for BED and one for MAF.
 
 ## Documentation acceptance criteria
@@ -372,32 +382,108 @@ BED fixtures should be minimal and targeted to GenomeSpy wrapper behavior, not f
 - BED (UCSC): <https://genome.ucsc.edu/FAQ/FAQformat#format1>
 - BEDPE (bedtools): <https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format>
 
-## Delivery phases
+## Step-by-step implementation and commit plan
 
-1. Foundation:
-   - shared tabular ingest helpers
-   - schema additions
-   - validation framework
-2. BED + BEDPE:
-   - BED source path using `@gmod/bed` wrapper logic
-   - BEDPE parser adapter on shared tabular parser
-   - tests
-   - docs snippets
-3. SEG:
-   - parser adapter
-   - tests
-   - docs snippet
-4. MAF:
-   - parser adapter
-   - required subset validation
-   - tests and docs
-5. CN:
-   - layout handling and transformations
-   - tests and docs
-6. Integration polish:
-   - end-to-end examples
-   - error-message cleanup
-   - final docs pass
+Each phase ends with tests and one commit. Do not proceed to the next phase until the current phase tests pass.
+
+### Phase 1: Foundation and parser registration
+
+- Implement:
+  - add `d3-dsv` runtime dependency (if needed by imports)
+  - add format loader registration points for `bed`, `bedpe`, `seg`, `maf`, `cn`
+  - update `getFormat(...)` so genomic custom formats are not forced to `parse: "auto"`
+  - add/extend typed `DataFormat` interfaces for new format options
+- Tests:
+  - focused Vitest for data format utilities and source initialization
+  - `npm -ws run test:tsc --if-present`
+- Commit:
+  - `feat(core): add custom genomic format scaffolding`
+
+### Phase 2: BED wrapper path
+
+- Implement:
+  - `bed` eager format loader using `@gmod/bed`
+  - control-line filtering and canonical optional-field mapping
+  - malformed `chrom` decode error handling with line context
+- Tests:
+  - BED integration tests only (wrapper behavior, not `@gmod/bed` internals)
+  - targeted `UrlSource` smoke test for `format.type: "bed"`
+- Commit:
+  - `feat(core): add eager bed format loader`
+
+### Phase 3: BEDPE loader
+
+- Implement:
+  - BEDPE parser based on `d3-dsv`
+  - fixed positional mapping for required and common optional fields
+  - unknown sentinel normalization (`.` and `-1` -> `null`)
+- Tests:
+  - BEDPE positional mapping tests
+  - BEDPE sentinel normalization tests
+  - failure tests for missing required positional columns
+- Commit:
+  - `feat(core): add eager bedpe format loader`
+
+### Phase 4: SEG loader
+
+- Implement:
+  - SEG parser based on `d3-dsv`
+  - headered + headerless (`columns`) support
+  - required field validation and coordinate normalization
+- Tests:
+  - SEG happy path and headerless tests
+  - SEG missing-required-field tests
+- Commit:
+  - `feat(core): add eager seg format loader`
+
+### Phase 5: MAF loader
+
+- Implement:
+  - MAF parser based on `d3-dsv`
+  - comment/meta line handling
+  - required subset validation and coordinate normalization
+- Tests:
+  - MAF happy path tests
+  - required field and malformed row failure tests
+  - parse-policy tests with explicit `format.parse` overrides
+- Commit:
+  - `feat(core): add eager maf format loader`
+
+### Phase 6: CN loader
+
+- Implement:
+  - CN parser based on `d3-dsv`
+  - supported layout handling (segment-like and matrix-like)
+  - matrix-to-long normalization where applicable
+- Tests:
+  - CN layout tests
+  - transformation and validation failure tests
+- Commit:
+  - `feat(core): add eager cn format loader`
+
+### Phase 7: Documentation and schema artifacts
+
+- Implement:
+  - update `docs/grammar/data/eager.md` and add examples for all new formats
+  - add headerless and parse-policy docs
+  - add format-spec reference links
+  - regenerate schema/docs artifacts
+- Tests/checks:
+  - `npm run build:docs:prepare`
+  - manual review of generated schema/docs changes (MkDocs build intentionally skipped while broken)
+- Commit:
+  - `docs(core): document eager genomic text formats`
+
+### Phase 8: Final integration verification
+
+- Implement:
+  - final cleanup for errors/messages and fixture consistency
+- Tests/checks:
+  - `npm test`
+  - `npm -ws run test:tsc --if-present`
+  - `npm run lint`
+- Commit:
+  - `chore(core): finalize more formats integration`
 
 ## Risks and mitigations
 
