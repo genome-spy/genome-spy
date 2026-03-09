@@ -41,6 +41,7 @@ import parquet from "./data/formats/parquet.js";
 import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
 import seg from "./data/formats/seg.js";
+import maf from "./data/formats/maf.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -52,6 +53,7 @@ vegaFormats("parquet", parquet);
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
 vegaFormats("seg", seg);
+vegaFormats("maf", maf);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */

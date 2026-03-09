@@ -5,11 +5,13 @@ import { makeParamRuntimeProvider } from "../flowTestUtils.js";
 import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
 import seg from "../formats/seg.js";
+import maf from "../formats/maf.js";
 import UrlSource from "./urlSource.js";
 
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
 vegaFormats("seg", seg);
+vegaFormats("maf", maf);
 
 /** @type {typeof global.fetch | undefined} */
 let originalFetch = global.fetch;
@@ -160,6 +162,55 @@ S1\tchr1\t1\t10\t3\t0.5`;
             end: 10,
             numMarkers: 3,
             segmentMean: 0.5,
+        },
+    ]);
+});
+
+test("UrlSource reads MAF using format.type maf", async () => {
+    const text =
+        "Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tTumor_Sample_Barcode\n" +
+        "TP53\tchr17\t7579472\t7579472\tC\tT\tSAMPLE-1";
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(async () => new Response(text, { status: 200 }))
+    );
+
+    /** @type {import("../../view/view.js").default} */
+    const viewStub = /** @type {any} */ (
+        Object.assign(makeParamRuntimeProvider(), {
+            getBaseUrl: () => "",
+            context: {
+                dataFlow: {
+                    loadingStatusRegistry: {
+                        /** @returns {void} */
+                        set: () => {},
+                    },
+                },
+            },
+        })
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.maf",
+            format: { type: "maf" },
+        },
+        viewStub
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            Hugo_Symbol: "TP53",
+            Chromosome: "chr17",
+            Start_Position: 7579472,
+            End_Position: 7579472,
+            Reference_Allele: "C",
+            Tumor_Seq_Allele2: "T",
+            Tumor_Sample_Barcode: "SAMPLE-1",
+            chrom: "chr17",
+            start: 7579471,
+            end: 7579472,
+            sample: "SAMPLE-1",
         },
     ]);
 });
