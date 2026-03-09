@@ -4,12 +4,12 @@ import {
 } from "./tabularUtils.js";
 
 const requiredFieldAliases = {
-    sample: ["sample", "id"],
+    sample: ["id", "sample"],
     chrom: ["chrom", "chromosome", "chr"],
-    start: ["start", "locstart", "chromstart"],
-    end: ["end", "locend", "chromend"],
-    numMarkers: ["nummarkers", "nummark", "nummarks", "nummarkers"],
-    segmentMean: ["segmentmean", "segmean", "log2"],
+    start: ["locstart", "start"],
+    end: ["locend", "end"],
+    numMarkers: ["nummark", "nummarkers"],
+    segmentMean: ["segmean", "segmentmean"],
 };
 
 const commentPrefixes = ["#", "track", "browser"];

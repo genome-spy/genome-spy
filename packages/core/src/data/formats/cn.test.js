@@ -63,6 +63,15 @@ chr1\t1\t10`;
     expect(() => cn(data)).toThrow("does not match supported layouts");
 });
 
+test("fails when CN segment layout uses id instead of sample", () => {
+    const data = `id\tchrom\tstart\tend\tvalue
+S1\tchr1\t1\t10\t0.5`;
+
+    expect(() => cn(data)).toThrow(
+        "has a recognized value column but no sample column"
+    );
+});
+
 test("fails on invalid coordinates", () => {
     const data = `sample\tchrom\tstart\tend\tvalue
 S1\tchr1\t0\t10\t0.5`;

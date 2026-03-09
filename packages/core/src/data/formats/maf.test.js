@@ -71,6 +71,15 @@ TP53\tchr17\t7579472\t7579472\tC\tT`;
     );
 });
 
+test("fails when shorthand aliases are used instead of required MAF headers", () => {
+    const data = `Hugo_Symbol\tchrom\tstart\tend\tref\talt\tsample
+TP53\tchr17\t7579472\t7579472\tC\tT\tSAMPLE-1`;
+
+    expect(() => maf(data)).toThrow(
+        'MAF input is missing a required column for "Chromosome".'
+    );
+});
+
 test("fails on invalid coordinates", () => {
     const data = `Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tTumor_Sample_Barcode
 TP53\tchr17\t0\t1\tC\tT\tSAMPLE-1`;

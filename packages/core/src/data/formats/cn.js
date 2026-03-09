@@ -6,19 +6,11 @@ import {
 const commentPrefixes = ["#"];
 
 const fieldAliases = {
-    sample: ["sample", "id"],
+    sample: ["sample", "sampleid"],
     chrom: ["chrom", "chromosome", "chr"],
     start: ["start", "locstart", "chromstart"],
     end: ["end", "locend", "chromend"],
-    value: [
-        "value",
-        "cn",
-        "copynumber",
-        "copynumber",
-        "segmentmean",
-        "segmean",
-        "log2",
-    ],
+    value: ["value", "cn", "copynumber", "segmentmean", "segmean", "log2"],
 };
 
 const matrixMetadataColumns = new Set([
@@ -131,11 +123,28 @@ function detectLayout(columns) {
         };
     }
 
+    if (sampleIndex !== undefined && valueIndex === undefined) {
+        throw new Error(
+            "CN input has a sample column but no recognized value column for segment layout."
+        );
+    }
+
+    if (sampleIndex === undefined && valueIndex !== undefined) {
+        throw new Error(
+            'CN input has a recognized value column but no sample column. Use "sample" or "sample_id" for segment layout.'
+        );
+    }
+
+    const valueAliases = new Set(fieldAliases.value);
+
     /** @type {number[]} */
     const sampleColumns = [];
     for (let i = 0; i < columns.length; i++) {
         const normalized = normalizeColumnName(columns[i]);
-        if (!matrixMetadataColumns.has(normalized)) {
+        if (
+            !matrixMetadataColumns.has(normalized) &&
+            !valueAliases.has(normalized)
+        ) {
             sampleColumns.push(i);
         }
     }

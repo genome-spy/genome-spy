@@ -65,3 +65,12 @@ S1\tchr1\t0\t100\t10\t0.5`;
         "SEG line 2 has an invalid start coordinate: 0"
     );
 });
+
+test("fails when using unsupported alias for segment mean", () => {
+    const data = `ID\tchrom\tloc.start\tloc.end\tnum.mark\tlog2
+S1\tchr1\t1\t100\t10\t0.5`;
+
+    expect(() => seg(data)).toThrow(
+        'SEG input is missing a required column for "segmentMean".'
+    );
+});

@@ -5,12 +5,12 @@ import {
 
 const requiredFieldAliases = {
     Hugo_Symbol: ["hugosymbol"],
-    Chromosome: ["chromosome", "chrom"],
-    Start_Position: ["startposition", "start"],
-    End_Position: ["endposition", "end"],
-    Reference_Allele: ["referenceallele", "ref"],
-    Tumor_Seq_Allele2: ["tumorseqallele2", "alt", "altallele"],
-    Tumor_Sample_Barcode: ["tumorsamplebarcode", "sample", "sampleid"],
+    Chromosome: ["chromosome"],
+    Start_Position: ["startposition"],
+    End_Position: ["endposition"],
+    Reference_Allele: ["referenceallele"],
+    Tumor_Seq_Allele2: ["tumorseqallele2"],
+    Tumor_Sample_Barcode: ["tumorsamplebarcode"],
 };
 
 const commentPrefixes = ["#"];
