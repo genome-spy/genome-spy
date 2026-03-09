@@ -1,7 +1,4 @@
-import {
-    normalizeColumnName,
-    parseTsvRowsWithLineNumbers,
-} from "./tabularUtils.js";
+import { normalizeColumnName, parseTsvRows } from "./tabularUtils.js";
 
 const defaultColumns = [
     "chrom1",
@@ -50,9 +47,8 @@ function looksLikeHeaderRow(row) {
 /**
  * @param {string} columnName
  * @param {string} value
- * @param {number} sourceLine
  */
-function normalizeValue(columnName, value, sourceLine) {
+function normalizeValue(columnName, value) {
     if (stringFieldsWithSentinels.has(columnName) && value == ".") {
         return null;
     }
@@ -63,12 +59,7 @@ function normalizeValue(columnName, value, sourceLine) {
         }
 
         const parsed = Number(value);
-        if (!Number.isInteger(parsed)) {
-            throw new Error(
-                `BEDPE line ${sourceLine} has a non-integer coordinate in "${columnName}": "${value}"`
-            );
-        }
-        return parsed;
+        return Number.isInteger(parsed) ? parsed : null;
     }
 
     if (columnName == "score") {
@@ -88,26 +79,26 @@ function normalizeValue(columnName, value, sourceLine) {
  * @param {{ columns?: string[] }} [format]
  */
 export default function bedpe(data, format = {}) {
-    const parsed = parseTsvRowsWithLineNumbers(data, {
+    const parsedRows = parseTsvRows(data, {
         ignorePrefixes: commentPrefixes,
     });
 
-    if (parsed.rows.length == 0) {
+    if (parsedRows.length == 0) {
         return [];
     }
 
-    const maxRowLength = parsed.rows.reduce(
+    const maxRowLength = parsedRows.reduce(
         (max, row) => Math.max(max, row.length),
         0
     );
 
     const explicitColumns = format.columns;
-    const headerRow = !explicitColumns && looksLikeHeaderRow(parsed.rows[0]);
+    const headerRow = !explicitColumns && looksLikeHeaderRow(parsedRows[0]);
 
     const baseColumns = explicitColumns
         ? explicitColumns
         : headerRow
-          ? parsed.rows[0]
+          ? parsedRows[0]
           : defaultColumns;
 
     /** @type {string[]} */
@@ -122,14 +113,11 @@ export default function bedpe(data, format = {}) {
     /** @type {Record<string, any>[]} */
     const rows = [];
 
-    for (let i = startIndex; i < parsed.rows.length; i++) {
-        const sourceLine = parsed.lineNumbers[i];
-        const row = parsed.rows[i];
+    for (let i = startIndex; i < parsedRows.length; i++) {
+        const row = parsedRows[i];
 
         if (row.length < requiredColumns.length) {
-            throw new Error(
-                `BEDPE line ${sourceLine} has ${row.length} fields. At least 6 fields are required.`
-            );
+            continue;
         }
 
         /** @type {Record<string, any>} */
@@ -137,7 +125,7 @@ export default function bedpe(data, format = {}) {
 
         for (let j = 0; j < row.length; j++) {
             const columnName = columns[j];
-            datum[columnName] = normalizeValue(columnName, row[j], sourceLine);
+            datum[columnName] = normalizeValue(columnName, row[j]);
         }
 
         rows.push(datum);

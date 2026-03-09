@@ -1,7 +1,4 @@
-import {
-    normalizeColumnName,
-    parseTsvRowsWithLineNumbers,
-} from "./tabularUtils.js";
+import { normalizeColumnName, parseTsvRows } from "./tabularUtils.js";
 
 const commentPrefixes = ["#"];
 
@@ -49,32 +46,18 @@ function findColumnIndex(normalizedIndex, aliases) {
 
 /**
  * @param {string} value
- * @param {string} fieldName
- * @param {number} lineNumber
  */
-function parseInteger(value, fieldName, lineNumber) {
+function parseIntegerOrNull(value) {
     const parsed = Number(value);
-    if (!Number.isInteger(parsed)) {
-        throw new Error(
-            `CN line ${lineNumber} has a non-integer value in "${fieldName}": "${value}"`
-        );
-    }
-    return parsed;
+    return Number.isInteger(parsed) ? parsed : null;
 }
 
 /**
  * @param {string} value
- * @param {string} fieldName
- * @param {number} lineNumber
  */
-function parseNumber(value, fieldName, lineNumber) {
+function parseNumberOrNull(value) {
     const parsed = Number(value);
-    if (Number.isNaN(parsed)) {
-        throw new Error(
-            `CN line ${lineNumber} has a non-numeric value in "${fieldName}": "${value}"`
-        );
-    }
-    return parsed;
+    return Number.isNaN(parsed) ? null : parsed;
 }
 
 /**
@@ -155,23 +138,10 @@ function detectLayout(columns) {
 /**
  * @param {number} rawStart
  * @param {number} rawEnd
- * @param {number} lineNumber
  */
-function normalizeCoordinates(rawStart, rawEnd, lineNumber) {
-    if (rawStart < 1) {
-        throw new Error(
-            `CN line ${lineNumber} has an invalid start coordinate: ${rawStart}. CN is expected to use one-based coordinates.`
-        );
-    }
-
-    if (rawEnd < rawStart) {
-        throw new Error(
-            `CN line ${lineNumber} has end < start (${rawEnd} < ${rawStart}).`
-        );
-    }
-
+function normalizeCoordinates(rawStart, rawEnd) {
     return {
-        start: rawStart - 1,
+        start: rawStart === null || rawStart < 1 ? null : rawStart - 1,
         end: rawEnd,
     };
 }
@@ -193,50 +163,35 @@ function parseValueOrNull(value) {
  * @param {{ columns?: string[] }} [format]
  */
 export default function cn(data, format = {}) {
-    const parsed = parseTsvRowsWithLineNumbers(data, {
+    const parsedRows = parseTsvRows(data, {
         ignorePrefixes: commentPrefixes,
     });
 
-    if (parsed.rows.length == 0) {
+    if (parsedRows.length == 0) {
         return [];
     }
 
     const explicitColumns = format.columns;
-    if (!explicitColumns && parsed.rows.length < 2) {
+    if (!explicitColumns && parsedRows.length < 2) {
         throw new Error(
             "CN input must contain a header row and at least one data row when format.columns is not provided."
         );
     }
 
-    const columns = explicitColumns ? explicitColumns : parsed.rows[0];
+    const columns = explicitColumns ? explicitColumns : parsedRows[0];
     const layout = detectLayout(columns);
     const dataStart = explicitColumns ? 0 : 1;
 
     /** @type {Record<string, any>[]} */
     const rows = [];
 
-    for (let i = dataStart; i < parsed.rows.length; i++) {
-        const row = parsed.rows[i];
-        const lineNumber = parsed.lineNumbers[i];
-
-        if (row.length < columns.length) {
-            throw new Error(
-                `CN line ${lineNumber} has fewer columns than expected (${row.length} < ${columns.length}).`
-            );
-        }
+    for (let i = dataStart; i < parsedRows.length; i++) {
+        const row = parsedRows[i];
 
         const chrom = row[layout.chromIndex];
-        const rawStart = parseInteger(
-            row[layout.startIndex],
-            "start",
-            lineNumber
-        );
-        const rawEnd = parseInteger(row[layout.endIndex], "end", lineNumber);
-        const normalizedCoordinates = normalizeCoordinates(
-            rawStart,
-            rawEnd,
-            lineNumber
-        );
+        const rawStart = parseIntegerOrNull(row[layout.startIndex]);
+        const rawEnd = parseIntegerOrNull(row[layout.endIndex]);
+        const normalizedCoordinates = normalizeCoordinates(rawStart, rawEnd);
 
         if (layout.layout == "segment") {
             /** @type {Record<string, any>} */
@@ -250,11 +205,7 @@ export default function cn(data, format = {}) {
             datum.chrom = chrom;
             datum.start = normalizedCoordinates.start;
             datum.end = normalizedCoordinates.end;
-            datum.value = parseNumber(
-                row[layout.valueIndex],
-                columns[layout.valueIndex],
-                lineNumber
-            );
+            datum.value = parseNumberOrNull(row[layout.valueIndex]);
 
             rows.push(datum);
         } else {

@@ -1,50 +1,37 @@
 import { tsvParseRows } from "d3-dsv";
 
 /**
- * @typedef {object} ParsedTsvRows
- * @prop {string[][]} rows
- * @prop {number[]} lineNumbers
- */
-
-/**
- * Parses tab-delimited rows while preserving source line numbers for
- * diagnostics.
+ * Parses tab-delimited rows and filters comment/control lines.
  *
  * @param {string} data
  * @param {{ ignorePrefixes?: string[] }} [options]
- * @returns {ParsedTsvRows}
+ * @returns {string[][]}
  */
-export function parseTsvRowsWithLineNumbers(data, options = {}) {
+export function parseTsvRows(data, options = {}) {
     const ignorePrefixes = options.ignorePrefixes ?? [];
+    const rows = tsvParseRows(data);
 
-    /** @type {string[]} */
-    const lines = [];
-
-    /** @type {number[]} */
-    const lineNumbers = [];
-
-    for (const [i, line] of data.split(/\r?\n/).entries()) {
-        const trimmed = line.trim();
-
-        if (
-            trimmed.length == 0 ||
-            ignorePrefixes.some((prefix) => trimmed.startsWith(prefix))
-        ) {
-            continue;
+    return rows.filter((row) => {
+        if (row.length == 0) {
+            return false;
         }
 
-        lines.push(line);
-        lineNumbers.push(i + 1);
-    }
+        const firstCell = row[0].trim();
+        if (firstCell.length == 0 && row.length == 1) {
+            return false;
+        }
 
-    if (lines.length == 0) {
-        return { rows: [], lineNumbers: [] };
-    }
+        return !ignorePrefixes.some((prefix) => firstCell.startsWith(prefix));
+    });
+}
 
-    return {
-        rows: tsvParseRows(lines.join("\n")),
-        lineNumbers,
-    };
+/**
+ * @param {string} data
+ * @param {{ ignorePrefixes?: string[] }} [options]
+ */
+export function parseTsvRowsWithLineNumbers(data, options = {}) {
+    const rows = parseTsvRows(data, options);
+    return { rows, lineNumbers: rows.map((_, i) => i + 1) };
 }
 
 /**

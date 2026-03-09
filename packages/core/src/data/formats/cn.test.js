@@ -72,11 +72,17 @@ S1\tchr1\t1\t10\t0.5`;
     );
 });
 
-test("fails on invalid coordinates", () => {
+test("coerces invalid start coordinates to null", () => {
     const data = `sample\tchrom\tstart\tend\tvalue
 S1\tchr1\t0\t10\t0.5`;
 
-    expect(() => cn(data)).toThrow(
-        "CN line 2 has an invalid start coordinate: 0"
-    );
+    expect(cn(data)).toEqual([
+        {
+            sample: "S1",
+            chrom: "chr1",
+            start: null,
+            end: 10,
+            value: 0.5,
+        },
+    ]);
 });

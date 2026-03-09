@@ -86,8 +86,6 @@ test("supports explicit columns for headerless files", () => {
     ]);
 });
 
-test("fails on rows with fewer than six columns", () => {
-    expect(() => bedpe("chr1\t10\t20\tchr2\t30")).toThrow(
-        "At least 6 fields are required."
-    );
+test("skips rows with fewer than six columns", () => {
+    expect(bedpe("chr1\t10\t20\tchr2\t30")).toEqual([]);
 });

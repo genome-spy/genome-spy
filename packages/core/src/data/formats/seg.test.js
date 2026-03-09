@@ -57,13 +57,20 @@ S1\tchr1\t1\t100\t0.5`;
     );
 });
 
-test("fails on invalid coordinates", () => {
+test("coerces invalid start coordinates to null", () => {
     const data = `sample\tchrom\tstart\tend\tnumMarkers\tsegmentMean
 S1\tchr1\t0\t100\t10\t0.5`;
 
-    expect(() => seg(data)).toThrow(
-        "SEG line 2 has an invalid start coordinate: 0"
-    );
+    expect(seg(data)).toEqual([
+        {
+            sample: "S1",
+            chrom: "chr1",
+            start: null,
+            end: 100,
+            numMarkers: 10,
+            segmentMean: 0.5,
+        },
+    ]);
 });
 
 test("fails when using unsupported alias for segment mean", () => {

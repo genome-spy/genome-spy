@@ -80,13 +80,25 @@ TP53\tchr17\t7579472\t7579472\tC\tT\tSAMPLE-1`;
     );
 });
 
-test("fails on invalid coordinates", () => {
+test("coerces invalid start coordinates to null", () => {
     const data = `Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\tReference_Allele\tTumor_Seq_Allele2\tTumor_Sample_Barcode
 TP53\tchr17\t0\t1\tC\tT\tSAMPLE-1`;
 
-    expect(() => maf(data)).toThrow(
-        "MAF line 2 has an invalid start coordinate: 0"
-    );
+    expect(maf(data)).toEqual([
+        {
+            Hugo_Symbol: "TP53",
+            Chromosome: "chr17",
+            Start_Position: 0,
+            End_Position: 1,
+            Reference_Allele: "C",
+            Tumor_Seq_Allele2: "T",
+            Tumor_Sample_Barcode: "SAMPLE-1",
+            chrom: "chr17",
+            start: null,
+            end: 1,
+            sample: "SAMPLE-1",
+        },
+    ]);
 });
 
 test("supports explicit parse mapping through vega-loader", () => {
