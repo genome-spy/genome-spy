@@ -32,7 +32,7 @@ function resolveFieldIndexes(columns) {
 
         if (!foundAlias) {
             throw new Error(
-                'SEG input is missing a required column for "' + field + '".'
+                `SEG input is missing a required column for "${field}".`
             );
         }
 
@@ -53,13 +53,7 @@ function parseInteger(value, fieldName, lineNumber) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed)) {
         throw new Error(
-            "SEG line " +
-                lineNumber +
-                ' has a non-integer value in "' +
-                fieldName +
-                '": "' +
-                value +
-                '"'
+            `SEG line ${lineNumber} has a non-integer value in "${fieldName}": "${value}"`
         );
     }
     return parsed;
@@ -74,13 +68,7 @@ function parseNumber(value, fieldName, lineNumber) {
     const parsed = Number(value);
     if (Number.isNaN(parsed)) {
         throw new Error(
-            "SEG line " +
-                lineNumber +
-                ' has a non-numeric value in "' +
-                fieldName +
-                '": "' +
-                value +
-                '"'
+            `SEG line ${lineNumber} has a non-numeric value in "${fieldName}": "${value}"`
         );
     }
     return parsed;
@@ -119,13 +107,7 @@ export default function seg(data, format = {}) {
 
         if (row.length < columns.length) {
             throw new Error(
-                "SEG line " +
-                    lineNumber +
-                    " has fewer columns than expected (" +
-                    row.length +
-                    " < " +
-                    columns.length +
-                    ")."
+                `SEG line ${lineNumber} has fewer columns than expected (${row.length} < ${columns.length}).`
             );
         }
 
@@ -145,23 +127,13 @@ export default function seg(data, format = {}) {
 
         if (rawStart < 1) {
             throw new Error(
-                "SEG line " +
-                    lineNumber +
-                    " has an invalid start coordinate: " +
-                    rawStart +
-                    ". SEG is expected to use one-based coordinates."
+                `SEG line ${lineNumber} has an invalid start coordinate: ${rawStart}. SEG is expected to use one-based coordinates.`
             );
         }
 
         if (rawEnd < rawStart) {
             throw new Error(
-                "SEG line " +
-                    lineNumber +
-                    " has end < start (" +
-                    rawEnd +
-                    " < " +
-                    rawStart +
-                    ")."
+                `SEG line ${lineNumber} has end < start (${rawEnd} < ${rawStart}).`
             );
         }
 

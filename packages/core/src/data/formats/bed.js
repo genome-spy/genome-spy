@@ -105,10 +105,9 @@ export default function bed(data) {
             rows.push(normalizeFeature(parser.parseLine(line)));
         } catch (error) {
             throw new Error(
-                "Cannot parse BED line " +
-                    (i + 1) +
-                    ": " +
+                `Cannot parse BED line ${i + 1}: ${
                     /** @type {Error} */ (error).message
+                }`
             );
         }
     }

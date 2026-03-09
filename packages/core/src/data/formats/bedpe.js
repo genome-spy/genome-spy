@@ -65,13 +65,7 @@ function normalizeValue(columnName, value, sourceLine) {
         const parsed = Number(value);
         if (!Number.isInteger(parsed)) {
             throw new Error(
-                "BEDPE line " +
-                    sourceLine +
-                    ' has a non-integer coordinate in "' +
-                    columnName +
-                    '": "' +
-                    value +
-                    '"'
+                `BEDPE line ${sourceLine} has a non-integer coordinate in "${columnName}": "${value}"`
             );
         }
         return parsed;
@@ -134,11 +128,7 @@ export default function bedpe(data, format = {}) {
 
         if (row.length < requiredColumns.length) {
             throw new Error(
-                "BEDPE line " +
-                    sourceLine +
-                    " has " +
-                    row.length +
-                    " fields. At least 6 fields are required."
+                `BEDPE line ${sourceLine} has ${row.length} fields. At least 6 fields are required.`
             );
         }
 

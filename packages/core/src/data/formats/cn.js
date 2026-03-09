@@ -56,13 +56,7 @@ function parseInteger(value, fieldName, lineNumber) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed)) {
         throw new Error(
-            "CN line " +
-                lineNumber +
-                ' has a non-integer value in "' +
-                fieldName +
-                '": "' +
-                value +
-                '"'
+            `CN line ${lineNumber} has a non-integer value in "${fieldName}": "${value}"`
         );
     }
     return parsed;
@@ -77,13 +71,7 @@ function parseNumber(value, fieldName, lineNumber) {
     const parsed = Number(value);
     if (Number.isNaN(parsed)) {
         throw new Error(
-            "CN line " +
-                lineNumber +
-                ' has a non-numeric value in "' +
-                fieldName +
-                '": "' +
-                value +
-                '"'
+            `CN line ${lineNumber} has a non-numeric value in "${fieldName}": "${value}"`
         );
     }
     return parsed;
@@ -172,23 +160,13 @@ function detectLayout(columns) {
 function normalizeCoordinates(rawStart, rawEnd, lineNumber) {
     if (rawStart < 1) {
         throw new Error(
-            "CN line " +
-                lineNumber +
-                " has an invalid start coordinate: " +
-                rawStart +
-                ". CN is expected to use one-based coordinates."
+            `CN line ${lineNumber} has an invalid start coordinate: ${rawStart}. CN is expected to use one-based coordinates.`
         );
     }
 
     if (rawEnd < rawStart) {
         throw new Error(
-            "CN line " +
-                lineNumber +
-                " has end < start (" +
-                rawEnd +
-                " < " +
-                rawStart +
-                ")."
+            `CN line ${lineNumber} has end < start (${rawEnd} < ${rawStart}).`
         );
     }
 
@@ -243,13 +221,7 @@ export default function cn(data, format = {}) {
 
         if (row.length < columns.length) {
             throw new Error(
-                "CN line " +
-                    lineNumber +
-                    " has fewer columns than expected (" +
-                    row.length +
-                    " < " +
-                    columns.length +
-                    ")."
+                `CN line ${lineNumber} has fewer columns than expected (${row.length} < ${columns.length}).`
             );
         }
 

@@ -33,7 +33,7 @@ function resolveFieldIndexes(columns) {
 
         if (!foundAlias) {
             throw new Error(
-                'MAF input is missing a required column for "' + field + '".'
+                `MAF input is missing a required column for "${field}".`
             );
         }
 
@@ -54,13 +54,7 @@ function parseInteger(value, fieldName, lineNumber) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed)) {
         throw new Error(
-            "MAF line " +
-                lineNumber +
-                ' has a non-integer value in "' +
-                fieldName +
-                '": "' +
-                value +
-                '"'
+            `MAF line ${lineNumber} has a non-integer value in "${fieldName}": "${value}"`
         );
     }
     return parsed;
@@ -99,13 +93,7 @@ export default function maf(data, format = {}) {
 
         if (row.length < columns.length) {
             throw new Error(
-                "MAF line " +
-                    lineNumber +
-                    " has fewer columns than expected (" +
-                    row.length +
-                    " < " +
-                    columns.length +
-                    ")."
+                `MAF line ${lineNumber} has fewer columns than expected (${row.length} < ${columns.length}).`
             );
         }
 
@@ -129,23 +117,13 @@ export default function maf(data, format = {}) {
 
         if (rawStart < 1) {
             throw new Error(
-                "MAF line " +
-                    lineNumber +
-                    " has an invalid start coordinate: " +
-                    rawStart +
-                    ". MAF is expected to use one-based coordinates."
+                `MAF line ${lineNumber} has an invalid start coordinate: ${rawStart}. MAF is expected to use one-based coordinates.`
             );
         }
 
         if (rawEnd < rawStart) {
             throw new Error(
-                "MAF line " +
-                    lineNumber +
-                    " has End_Position < Start_Position (" +
-                    rawEnd +
-                    " < " +
-                    rawStart +
-                    ")."
+                `MAF line ${lineNumber} has End_Position < Start_Position (${rawEnd} < ${rawStart}).`
             );
         }
 
