@@ -121,6 +121,180 @@ package.
 Most bioinformatic data formats are supported through [lazy](lazy.md) data. The
 following additional formats are supported as eager data with the `url` source.
 
+### Genomic Text Formats
+
+GenomeSpy supports the following eager genomic text formats:
+
+- `"bed"`
+- `"bedpe"`
+- `"seg"`
+- `"maf"`
+- `"cn"`
+
+Use them with the standard `data.url` + `data.format.type` configuration:
+
+```json
+{
+  "data": {
+    "url": "regions.bed",
+    "format": {
+      "type": "bed"
+    }
+  }
+}
+```
+
+#### BED
+
+BED parsing is based on [@gmod/bed](https://github.com/GMOD/bed-js) and
+supports BED3-BED12 fields.
+
+```json
+{
+  "data": {
+    "url": "regions.bed",
+    "format": {
+      "type": "bed"
+    }
+  }
+}
+```
+
+#### BEDPE
+
+BEDPE is parsed as tab-delimited text with positional columns. The first six
+fields are required:
+
+`chrom1, start1, end1, chrom2, start2, end2`
+
+Common optional fields are:
+
+`name, score, strand1, strand2`
+
+Unknown sentinels are normalized to null values:
+
+- `.` becomes `null` for string-like fields (chromosomes, name, strands)
+- `-1` becomes `null` for coordinate fields
+
+```json
+{
+  "data": {
+    "url": "events.bedpe",
+    "format": {
+      "type": "bedpe"
+    }
+  }
+}
+```
+
+#### SEG
+
+SEG files are parsed from tab-delimited rows and normalized to canonical
+genomic fields (`chrom`, `start`, `end`, `sample`, `segmentMean`).
+
+```json
+{
+  "data": {
+    "url": "segments.seg",
+    "format": {
+      "type": "seg"
+    }
+  }
+}
+```
+
+#### MAF
+
+MAF files are parsed from tab-delimited rows. Required fields include
+`Hugo_Symbol`, `Chromosome`, `Start_Position`, `End_Position`,
+`Reference_Allele`, `Tumor_Seq_Allele2`, and `Tumor_Sample_Barcode`.
+
+```json
+{
+  "data": {
+    "url": "mutations.maf",
+    "format": {
+      "type": "maf"
+    }
+  }
+}
+```
+
+#### CN
+
+CN supports two layouts:
+
+- segment-like rows (`sample`, genomic interval, and value)
+- matrix-like rows (genomic interval columns + one column per sample)
+
+```json
+{
+  "data": {
+    "url": "copy_number.cn",
+    "format": {
+      "type": "cn"
+    }
+  }
+}
+```
+
+#### Headerless Input (`format.columns`)
+
+For headerless files that do not have fixed positional semantics, provide the
+field names explicitly:
+
+```json
+{
+  "data": {
+    "url": "segments_headerless.seg",
+    "format": {
+      "type": "seg",
+      "columns": [
+        "sample",
+        "chrom",
+        "start",
+        "end",
+        "numMarkers",
+        "segmentMean"
+      ]
+    }
+  }
+}
+```
+
+#### Optional Explicit Parse Mapping
+
+For these genomic formats, automatic `parse: "auto"` coercion is not enabled by
+default. If you want additional field coercion, provide explicit mappings:
+
+```json
+{
+  "data": {
+    "url": "mutations.maf",
+    "format": {
+      "type": "maf",
+      "parse": {
+        "t_alt_count": "number",
+        "t_ref_count": "number"
+      }
+    }
+  }
+}
+```
+
+#### Format Specifications
+
+- BED:
+  [UCSC BED format](https://genome.ucsc.edu/FAQ/FAQformat#format1)
+- BEDPE:
+  [bedtools BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
+- SEG:
+  [IGV SEG format](https://igv.org/doc/desktop/#FileFormats/DataTracks/#seg)
+- MAF:
+  [GDC MAF format](https://docs.gdc.cancer.gov/Data/File_Formats/MAF_Format/)
+- CN:
+  [GenePattern CN format](https://www.genepattern.org/file-formats-guide/#CN)
+
 ### Parquet
 
 [_Apache Parquet_](https://en.wikipedia.org/wiki/Apache_Parquet) is a
