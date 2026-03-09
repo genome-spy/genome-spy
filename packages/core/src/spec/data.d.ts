@@ -75,10 +75,39 @@ export interface JsonDataFormat extends DataFormatBase {
     property?: string;
 }
 
+export interface GenomicTextDataFormat extends DataFormatBase {
+    /**
+     * Optional ordered list of field names for headerless input files.
+     * If omitted, field names are resolved from the format's defaults or
+     * from the header row when available.
+     */
+    columns?: string[];
+}
+
+export interface BedDataFormat extends GenomicTextDataFormat {
+    type: "bed";
+}
+
+export interface BedpeDataFormat extends GenomicTextDataFormat {
+    type: "bedpe";
+}
+
+export interface SegDataFormat extends GenomicTextDataFormat {
+    type: "seg";
+}
+
+export interface MafDataFormat extends GenomicTextDataFormat {
+    type: "maf";
+}
+
+export interface CnDataFormat extends GenomicTextDataFormat {
+    type: "cn";
+}
+
 /**
  * Other data format, such as `"fasta"`
  */
-export interface OtherDataFormat {
+export interface OtherDataFormat extends DataFormatBase {
     type: string;
 }
 
@@ -86,6 +115,11 @@ export type DataFormat =
     | CsvDataFormat
     | DsvDataFormat
     | JsonDataFormat
+    | BedDataFormat
+    | BedpeDataFormat
+    | SegDataFormat
+    | MafDataFormat
+    | CnDataFormat
     | OtherDataFormat;
 
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
