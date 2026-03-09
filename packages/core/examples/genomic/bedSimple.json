@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "Basic BED example with browser/track header lines.",
+  "genome": { "name": "hg38" },
+  "width": 900,
+  "height": 120,
+  "data": {
+    "url": "bedRegions.bed",
+    "format": { "type": "bed" }
+  },
+  "mark": {
+    "type": "rect",
+    "minWidth": 2
+  },
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "end" },
+    "y": { "field": "name", "type": "nominal" },
+    "color": { "field": "strand", "type": "nominal" }
+  }
+}
