@@ -4,10 +4,12 @@ import Collector from "../collector.js";
 import { makeParamRuntimeProvider } from "../flowTestUtils.js";
 import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
+import seg from "../formats/seg.js";
 import UrlSource from "./urlSource.js";
 
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
+vegaFormats("seg", seg);
 
 /** @type {typeof global.fetch | undefined} */
 let originalFetch = global.fetch;
@@ -115,6 +117,49 @@ test("UrlSource reads BEDPE using format.type bedpe", async () => {
             score: 5,
             strand1: "+",
             strand2: "-",
+        },
+    ]);
+});
+
+test("UrlSource reads SEG using format.type seg", async () => {
+    const text = `sample\tchrom\tstart\tend\tnumMarkers\tsegmentMean
+S1\tchr1\t1\t10\t3\t0.5`;
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(async () => new Response(text, { status: 200 }))
+    );
+
+    /** @type {import("../../view/view.js").default} */
+    const viewStub = /** @type {any} */ (
+        Object.assign(makeParamRuntimeProvider(), {
+            getBaseUrl: () => "",
+            context: {
+                dataFlow: {
+                    loadingStatusRegistry: {
+                        /** @returns {void} */
+                        set: () => {},
+                    },
+                },
+            },
+        })
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.seg",
+            format: { type: "seg" },
+        },
+        viewStub
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            sample: "S1",
+            chrom: "chr1",
+            start: 0,
+            end: 10,
+            numMarkers: 3,
+            segmentMean: 0.5,
         },
     ]);
 });
