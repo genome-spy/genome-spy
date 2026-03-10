@@ -63,7 +63,8 @@ Relevant files:
 2. Root-level genome config is optional when a locus scale defines one built-in
    assembly directly.
 3. `scale.assembly` can define inline contigs.
-4. Define a cleaner path for multiple assemblies at `RootSpec` level.
+4. Define a cleaner path for multiple assemblies at `RootSpec` level using
+   `genomes` + `assembly`.
 5. Support async loading safely, including dynamically added views.
 
 ## Non-goals (for initial phase)
@@ -102,32 +103,44 @@ Why this split:
 
 Behavior:
 
-1. If locus scale has explicit `assembly`, root `genome` is optional.
-2. If locus scale omits `assembly`, use default root genome if exactly one exists.
-3. If neither explicit assembly nor unique default exists, throw a clear error.
+1. If locus scale has explicit `assembly`, root-level default assembly is optional.
+2. If locus scale omits `assembly`, use root `assembly` (default assembly key).
+3. If root `assembly` is omitted and `genomes` contains exactly one entry, use it.
+4. If neither explicit assembly nor unique default exists, throw a clear error.
 
 ### C. Root-level multiple assemblies plan
 
-Transitional model:
+Canonical model:
 
-- Keep `genome` for compatibility.
-- Add `genomes` as first-class multi-entry config.
+- `genomes`: object/map of named assembly configs.
+- `assembly`: default assembly key at root.
 
 Candidate shape:
 
 ```json
 {
-  "genomes": [
-    { "name": "hg19" },
-    { "name": "hg38" }
-  ]
+  "genomes": {
+    "hg19": { "url": "..." },
+    "hg38": { "url": "..." }
+  },
+  "assembly": "hg38"
 }
 ```
 
-Longer-term cleanup:
+Legacy compatibility:
 
-- Deprecate `genome` in favor of `genomes` (single-entry arrays allowed).
-- Improve naming/documentation since singular `genome` has become awkward.
+- Keep `genome` temporarily for backward compatibility.
+- Mark `genome` deprecated.
+- When `genome` is used, log a single actionable warning to console with a
+  migration example to `genomes` + `assembly`.
+- If legacy `genome` is used together with new `genomes` or root `assembly`,
+  fail fast with a clear configuration error.
+
+Example warning intent:
+
+- what is deprecated (`root.genome`)
+- what to use (`root.genomes` and `root.assembly`)
+- before/after snippet
 
 Terminology:
 
@@ -179,9 +192,10 @@ Collect required assemblies from subtree channel defs:
 
 1. Fix pre-scale assembly-aware locus domain resolution.
 2. Allow `assembly: "<built-in>"` without root `genome`.
-3. Add `genomes` in root spec (optional, additive).
-4. Update `synteny.json` to demonstrate the supported pattern.
-5. Update docs to describe initial multi-assembly support.
+3. Add `genomes` (object/map) and root `assembly` in root spec.
+4. Keep `genome` working but deprecated with actionable warning.
+5. Update `synteny.json` to demonstrate the supported pattern.
+6. Update docs to describe initial multi-assembly support.
 
 ### Phase 2: Inline `scale.assembly` objects
 
@@ -192,8 +206,8 @@ Collect required assemblies from subtree channel defs:
 
 ### Phase 3: Root API cleanup
 
-1. Document migration path from `genome` to `genomes`.
-2. Introduce deprecation warnings and eventually simplify root schema.
+1. Keep migration notes for `genome` in changelog/migration docs.
+2. Remove deprecated `genome` after deprecation window.
 
 ## File-level Work Items
 
@@ -240,6 +254,9 @@ Unit tests:
    - repeated URL loads do not duplicate chromosome structures
 5. Validation:
    - inline object-valued `scale.assembly` rejects `name`
+6. Root config validation:
+   - `genome` + (`genomes` or root `assembly`) is rejected
+   - root `assembly` must exist as a key in `genomes`
 
 Integration-style tests:
 
@@ -247,25 +264,29 @@ Integration-style tests:
 2. Visibility-based lazy initialization introduces a new assembly and succeeds.
 3. Mixed-assembly shared-scale conflict fails with a clear error.
 4. Named-reference vs inline-anonymous mode rules behave as documented.
+5. Deprecated `genome` emits one actionable warning per launch.
 
 Regression tests:
 
 1. Existing single-root-genome specs continue to work unchanged.
 2. Existing locus scales without explicit assembly still work when one default
    genome is configured.
+3. Legacy `genome`-only specs still work unchanged (with warning).
 
 ## Documentation Plan
 
-1. Replace "single genome only" warning with staged support notes.
+1. Replace "single genome only" warning with the new root API (`genomes` + `assembly`).
 2. Document precedence rules:
    - explicit scale assembly
-   - default root genome fallback
+   - root default `assembly`
+   - single-entry `genomes` fallback
 3. Add examples:
    - synteny with two built-ins
    - inline anonymous `scale.assembly` with `contigs`
 4. Document that inline `scale.assembly` objects are anonymous (no `name`), and
    named reuse belongs to root `genomes`.
 5. Regenerate schema/docs artifacts after type updates.
+6. Mention legacy `genome` only in migration/changelog notes, not in primary docs.
 
 ## Commit Plan
 
@@ -275,16 +296,17 @@ Commit in small checkpoints to keep review focused:
 2. `feat(core): add genome store ensure APIs and load dedupe`
 3. `fix(core): reset genome chromosome structures before reloading chrom sizes`
 4. `feat(core): support optional root genome when scale assembly is explicit`
-5. `feat(core): add root genomes config and update synteny example`
-6. `docs(core): document multi-assembly behavior and migration guidance`
-7. `test(core): add multi-assembly and dynamic-view coverage`
-8. `fix(core): enforce anonymous inline scale assembly objects`
+5. `feat(core): add root genomes map and root assembly default`
+6. `feat(core): deprecate root genome with actionable migration warning`
+7. `docs(core): document multi-assembly behavior and migration guidance`
+8. `test(core): add multi-assembly and dynamic-view coverage`
+9. `fix(core): enforce anonymous inline scale assembly objects`
 
 If split across PRs:
 
 - PR 1: correctness bug + tests (minimal behavior change)
 - PR 2: async ensure + dynamic insertion plumbing
-- PR 3: schema/docs/API cleanup (`genomes` and inline assembly objects)
+- PR 3: schema/docs/API cleanup (`genomes` map, root `assembly`, and inline assembly objects)
 
 ## Risks and Mitigations
 
@@ -296,12 +318,16 @@ If split across PRs:
    - make callers assembly-aware or choose active axis genome explicitly.
 4. Schema churn:
    - add support additively first, deprecate later.
+5. Migration confusion:
+   - warning message must include explicit before/after config snippets.
 
 ## Acceptance Criteria
 
 1. `synteny.json` works with mixed assemblies.
-2. A locus scale with `assembly: "hg38"` works without root `genome`.
-3. Inline anonymous `scale.assembly` contigs work (Phase 2).
-4. Dynamically added views that introduce new assemblies initialize reliably.
-5. No chromosome duplication on repeated genome loading.
-6. Existing single-genome specs remain backward compatible.
+2. A locus scale with `assembly: "hg38"` works without legacy root `genome`.
+3. Root `genomes` map + root `assembly` default works as documented.
+4. Legacy root `genome` works with a deprecation warning.
+5. Inline anonymous `scale.assembly` contigs work (Phase 2).
+6. Dynamically added views that introduce new assemblies initialize reliably.
+7. No chromosome duplication on repeated genome loading.
+8. Existing single-genome specs remain backward compatible during deprecation window.
