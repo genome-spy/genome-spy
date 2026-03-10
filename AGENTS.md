@@ -81,8 +81,10 @@ aware interactions.
 - Prefer explicit `else` blocks over early-return branches when both paths are
   similarly likely.
 - Prefer explicit contracts over implicit behavior (e.g., require domains for ordinal/band)
-- Prefer explicit, readable string concatenation over template literals for
-  trivial concatenation.
+- Prefer explicit, readable string concatenation for trivial two-part
+  concatenation.
+- Use string interpolation (template literals) when more than two elements are
+  concatenated.
 - Avoid optional or nullable state unless it has a clear semantic meaning
 - Use JSDoc blocks to capture intent when logic is non-obvious
 - Prefer single-source-of-truth data structures; derive secondary views via helpers

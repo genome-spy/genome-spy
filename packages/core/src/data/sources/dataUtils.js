@@ -1,6 +1,8 @@
 import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
+const genomicTextFormats = new Set(["bed", "bedpe"]);
+
 /**
  * Validates data source params, infers format if not specified explicitly,
  * returns a complete DataSource params object.
@@ -16,8 +18,10 @@ export function getFormat(params, urls = []) {
     const format = { ...params.format };
 
     format.type ??= isUrlData(params) && extractTypeFromUrl(urls);
-    // @ts-ignore TODO: Fix typing
-    format.parse ??= "auto";
+    if (format.parse === undefined && !isGenomicTextFormat(format.type)) {
+        // @ts-ignore TODO: Fix typing
+        format.parse = "auto";
+    }
 
     if (!format.type) {
         throw new Error(
@@ -90,4 +94,11 @@ export function isJsonDataFormat(dataFormat) {
  */
 export function isUrlData(dataSource) {
     return "url" in dataSource;
+}
+
+/**
+ * @param {string | undefined} type
+ */
+export function isGenomicTextFormat(type) {
+    return genomicTextFormats.has(type);
 }

@@ -38,6 +38,8 @@ import {
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
+import bed from "./data/formats/bed.js";
+import bedpe from "./data/formats/bedpe.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -46,6 +48,8 @@ import parquet from "./data/formats/parquet.js";
 
 vegaFormats("fasta", fasta);
 vegaFormats("parquet", parquet);
+vegaFormats("bed", bed);
+vegaFormats("bedpe", bedpe);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */

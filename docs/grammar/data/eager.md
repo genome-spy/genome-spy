@@ -118,8 +118,97 @@ package.
 
 ## Additional Formats
 
-Most bioinformatic data formats are supported through [lazy](lazy.md) data. The
-following additional formats are supported as eager data with the `url` source.
+The following additional formats are supported as eager data with the `url` source.
+Most bioinformatic data formats are supported through [lazy](lazy.md) data.
+
+### BED
+
+[BED](https://genome.ucsc.edu/FAQ/FAQformat#format1) parsing is based on
+[@gmod/bed](https://github.com/GMOD/bed-js) and supports BED3-BED12 fields.
+Output uses standard BED field names such as `chrom`, `chromStart`, `chromEnd`,
+and optional BED/BED12 fields.
+
+Behavior details:
+
+- Leading `browser`, `track`, and `#` lines are skipped before the first data
+  row.
+- BED12 rows use BED12 field names (for example `thickStart`, `thickEnd`,
+  `itemRgb`, `blockCount`, `blockSizes`, `blockStarts`).
+- `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
+  any other value -> `0`.
+- `blockSizes` and `blockStarts` are parsed from comma-separated text into
+  numeric arrays.
+- Non-BED12 extra columns are preserved as positional fallback fields (`fieldN`).
+
+```json
+{
+  "data": {
+    "url": "regions.bed",
+    "format": {
+      "type": "bed"
+    }
+  }
+}
+```
+
+For larger BED files, consider using the lazy [BigBed data
+source](lazy.md#bigbed) instead of the eager `url` source.
+
+### BEDPE
+
+[BEDPE](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
+is parsed as tab-delimited text with positional columns. It is commonly used
+for paired loci, such as structural variant breakpoints and link/arc
+annotations between two regions. The required leading fields are
+`chrom1, start1, end1, chrom2, start2, end2`; common optional fields are
+`name, score, strand1, strand2`. BEDPE files are typically headerless.
+
+Behavior details:
+
+- Leading `browser`, `track`, and `#` lines are skipped before the first data
+  row.
+- If a header row is present, it is detected when the first six columns match
+  the required BEDPE prefix; headerless files use the default BEDPE column
+  order or explicit names from `format.columns`.
+- Sentinel normalization: `.` -> `null` for string fields (`chrom*`, `name`);
+  `-1` and `""` -> `null` for coordinates; `""` -> `null` for `score`.
+- `strand1` and `strand2` are normalized to numeric codes: `"+"` -> `1`,
+  `"-"` -> `-1`, and any other value -> `0`.
+- Extra trailing columns are preserved as positional fallback fields (`fieldN`,
+  with 1-based indexing).
+- Rows with fewer than six columns are rejected with a parse error.
+
+```json
+{
+  "data": {
+    "url": "events.bedpe",
+    "format": {
+      "type": "bedpe"
+    }
+  }
+}
+```
+
+### FASTA
+
+The type of _FASTA_ format is `"fasta"` as shown in the example below:
+
+```json
+{
+  "data": {
+    "url": "16SRNA_Deino_87seq_copy.aln",
+    "format": {
+      "type": "fasta"
+    }
+  },
+  ...
+}
+```
+
+The FASTA loader produces data objects with two fields: `identifier` and
+`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
+transform you can split the sequences into individual bases (one object per
+base) for easier visualization.
 
 ### Parquet
 
@@ -169,24 +258,3 @@ Current constraints:
 
 The implementation is based on
 [hyparquet](https://github.com/hyparam/hyparquet).
-
-### FASTA
-
-The type of _FASTA_ format is `"fasta"` as shown in the example below:
-
-```json
-{
-  "data": {
-    "url": "16SRNA_Deino_87seq_copy.aln",
-    "format": {
-      "type": "fasta"
-    }
-  },
-  ...
-}
-```
-
-The FASTA loader produces data objects with two fields: `identifier` and
-`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
-transform you can split the sequences into individual bases (one object per
-base) for easier visualization.

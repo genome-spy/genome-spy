@@ -75,10 +75,25 @@ export interface JsonDataFormat extends DataFormatBase {
     property?: string;
 }
 
+export interface BedDataFormat extends DataFormatBase {
+    type: "bed";
+}
+
+export interface BedpeDataFormat extends DataFormatBase {
+    type: "bedpe";
+
+    /**
+     * Optional ordered list of field names for headerless BEDPE input.
+     * If omitted, BEDPE fields are resolved from the default BEDPE column
+     * order or from a matching header row when present.
+     */
+    columns?: string[];
+}
+
 /**
  * Other data format, such as `"fasta"`
  */
-export interface OtherDataFormat {
+export interface OtherDataFormat extends DataFormatBase {
     type: string;
 }
 
@@ -86,6 +101,8 @@ export type DataFormat =
     | CsvDataFormat
     | DsvDataFormat
     | JsonDataFormat
+    | BedDataFormat
+    | BedpeDataFormat
     | OtherDataFormat;
 
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;
