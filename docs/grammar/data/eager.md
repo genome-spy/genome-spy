@@ -118,47 +118,30 @@ package.
 
 ## Additional Formats
 
-Most bioinformatic data formats are supported through [lazy](lazy.md) data. The
-following additional formats are supported as eager data with the `url` source.
+The following additional formats are supported as eager data with the `url` source.
+Most bioinformatic data formats are supported through [lazy](lazy.md) data.
 
-### Genomic Text Formats
+### BED
 
-GenomeSpy supports the following eager genomic text formats:
+[BED](https://genome.ucsc.edu/FAQ/FAQformat#format1) parsing is based on
+[@gmod/bed](https://github.com/GMOD/bed-js) and supports BED3-BED12 fields.
+Output fields use standard BED names such as `chrom`, `chromStart`,
+`chromEnd`, and optional BED/BED12 fields.
 
-- `"bed"`
-- `"bedpe"`
-
-Use them with the standard `data.url` + `data.format.type` configuration:
-
-```json
-{
-  "data": {
-    "url": "regions.bed",
-    "format": {
-      "type": "bed"
-    }
-  }
-}
-```
-
-Column names are matched exactly. These parsers do not normalize field names by
-changing case or removing punctuation.
-
-#### BED
-
-BED parsing is based on [@gmod/bed](https://github.com/GMOD/bed-js) and
-supports BED3-BED12 fields. Output fields are parser-native (`chrom`,
-`chromStart`, `chromEnd`, and optional BED fields as provided by `@gmod/bed`).
-
-Interpretation details from `@gmod/bed` default mode:
+Basic behavior:
 
 - Leading `browser`, `track`, and `#` lines are skipped before the first data
   row.
 - BED12-like rows use BED12 field names (for example `thickStart`, `blockSizes`,
   `blockStarts`).
-- Non-BED12 extended rows keep extra columns as fallback names (`field4`,
-  `field5`, `field6`, ...), with score/strand inferred when possible.
-- GenomeSpy does not rename BED fields in the source loader.
+- `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
+  any other value -> `0`.
+- In BED12 rows, list fields such as `blockSizes` and `blockStarts` are parsed
+  from comma-separated text into numeric arrays.
+- Non-BED12 extended rows keep unrecognized columns as positional fallback names
+  (`fieldN`). The `N` value follows the original BED column index, so when
+  score and strand are recognized as `score` and `strand`, remaining extras can
+  start at `field6`.
 
 ```json
 {
@@ -171,27 +154,31 @@ Interpretation details from `@gmod/bed` default mode:
 }
 ```
 
-#### BEDPE
+For larger BED files, consider using the lazy [BigBed data
+source](lazy.md#bigbed) instead of the eager `url` source.
 
-BEDPE is parsed as tab-delimited text with positional columns. The first six
-fields are required:
+### BEDPE
 
-`chrom1, start1, end1, chrom2, start2, end2`
+[BEDPE](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
+is parsed as tab-delimited text with positional columns. It is typically used
+for paired genomic loci such as structural variant breakpoints and link/arc
+annotations between two regions.
 
-Common optional fields are:
+Basic behavior:
 
-`name, score, strand1, strand2`
-
-Unknown sentinels are normalized to null values:
-
-- `.` becomes `null` for string-like fields (`chrom*`, `name`)
-- `-1` becomes `null` for coordinate fields
-
-Strands are normalized similarly to `@gmod/bed`:
-
-- `"+"` -> `1`
-- `"-"` -> `-1`
-- any other value (including `"."`) -> `0`
+- Required columns: `chrom1, start1, end1, chrom2, start2, end2`
+- Common optional columns: `name, score, strand1, strand2`
+- Extra trailing columns are preserved with fallback names (`fieldN`), where `N`
+  is the 1-based BEDPE column index.
+- Leading `browser`, `track`, and `#` lines are skipped before the first data
+  row.
+- A header row is detected when the required six-column prefix matches exactly.
+  For headerless files, provide explicit names with `format.columns`.
+- Sentinel normalization: `.` -> `null` for string fields (`chrom*`, `name`);
+  `-1` and `""` -> `null` for coordinates; `""` -> `null` for `score`.
+- Strand normalization (`strand1`, `strand2`): `"+"` -> `1`, `"-"` -> `-1`,
+  any other value (including `"."` and `""`) -> `0`.
+- Rows with fewer than six columns are rejected with a parse error.
 
 ```json
 {
@@ -204,59 +191,26 @@ Strands are normalized similarly to `@gmod/bed`:
 }
 ```
 
-#### Headerless Input (`format.columns`)
+### FASTA
 
-For headerless files, or when you want explicit field names, provide
-`format.columns` with exact spelling:
-
-```json
-{
-  "data": {
-    "url": "events_headerless.bedpe",
-    "format": {
-      "type": "bedpe",
-      "columns": [
-        "chrom1",
-        "start1",
-        "end1",
-        "chrom2",
-        "start2",
-        "end2",
-        "name",
-        "score",
-        "strand1",
-        "strand2"
-      ]
-    }
-  }
-}
-```
-
-#### Optional Explicit Parse Mapping
-
-For these genomic formats, automatic `parse: "auto"` coercion is not enabled by
-default. If you want additional field coercion, provide explicit mappings.
+The type of _FASTA_ format is `"fasta"` as shown in the example below:
 
 ```json
 {
   "data": {
-    "url": "events.bedpe",
+    "url": "16SRNA_Deino_87seq_copy.aln",
     "format": {
-      "type": "bedpe",
-      "parse": {
-        "score": "number"
-      }
+      "type": "fasta"
     }
-  }
+  },
+  ...
 }
 ```
 
-#### Format Specifications
-
-- BED:
-  [UCSC BED format](https://genome.ucsc.edu/FAQ/FAQformat#format1)
-- BEDPE:
-  [bedtools BEDPE format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
+The FASTA loader produces data objects with two fields: `identifier` and
+`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
+transform you can split the sequences into individual bases (one object per
+base) for easier visualization.
 
 ### Parquet
 
@@ -306,24 +260,3 @@ Current constraints:
 
 The implementation is based on
 [hyparquet](https://github.com/hyparam/hyparquet).
-
-### FASTA
-
-The type of _FASTA_ format is `"fasta"` as shown in the example below:
-
-```json
-{
-  "data": {
-    "url": "16SRNA_Deino_87seq_copy.aln",
-    "format": {
-      "type": "fasta"
-    }
-  },
-  ...
-}
-```
-
-The FASTA loader produces data objects with two fields: `identifier` and
-`sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
-transform you can split the sequences into individual bases (one object per
-base) for easier visualization.
