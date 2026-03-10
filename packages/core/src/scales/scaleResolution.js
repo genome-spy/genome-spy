@@ -47,23 +47,6 @@ vegaScale("null", scaleNull, []);
 export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
 
 /**
- * @param {number[] | null} a
- * @param {number[] | null} b
- * @returns {boolean}
- */
-function intervalsEqual(a, b) {
-    if (a === b) {
-        return true;
-    }
-
-    if (!a || !b) {
-        return false;
-    }
-
-    return a.length === b.length && shallowArrayEquals(a, b);
-}
-
-/**
  * @template {ChannelWithScale}[T=ChannelWithScale]
  *
  * @typedef {object} ScaleResolutionMember
@@ -375,7 +358,7 @@ export default class ScaleResolution {
      * @returns {ScaleResolutionMember}
      */
     #addMember(newMember) {
-        const member = this.#normalizeMember(newMember);
+        const member = normalizeMember(newMember);
         const { channel, channelDef } = member;
 
         // A convenience hack for cases where the new member should adapt
@@ -402,6 +385,20 @@ export default class ScaleResolution {
         // @ts-expect-error "sample" is not really a channel with scale
         const type = channel == "sample" ? "nominal" : channelDef.type;
         const name = channelDef?.scale?.name;
+        const explicitScaleType = channelDef.scale?.type;
+        const effectiveScaleType =
+            explicitScaleType ??
+            (type === INDEX || type === LOCUS ? type : undefined);
+
+        if (
+            effectiveScaleType &&
+            [INDEX, LOCUS].includes(effectiveScaleType) &&
+            !isPrimaryPositionalChannel(this.channel)
+        ) {
+            throw new Error(
+                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${effectiveScaleType}".`
+            );
+        }
 
         if (name) {
             if (this.name !== undefined && name != this.name) {
@@ -448,45 +445,6 @@ export default class ScaleResolution {
                 this.#refreshSelectionDomainParamSubscriptions();
             }
             return removed && this.#members.size === 0;
-        };
-    }
-
-    /**
-     * Normalizes member-specific scale URLs so that inline `scale.assembly.url`
-     * values resolve against the member view's base URL before scale props are
-     * merged.
-     *
-     * @param {ScaleResolutionMember} member
-     * @returns {ScaleResolutionMember}
-     */
-    #normalizeMember(member) {
-        const scale = member.channelDef.scale;
-        const assembly = scale?.assembly;
-        if (!scale || !assembly || typeof assembly !== "object") {
-            return member;
-        }
-
-        if (!("url" in assembly)) {
-            return member;
-        }
-
-        const resolvedUrl = resolveUrl(member.view.getBaseUrl(), assembly.url);
-        if (resolvedUrl === assembly.url) {
-            return member;
-        }
-
-        return {
-            ...member,
-            channelDef: {
-                ...member.channelDef,
-                scale: {
-                    ...scale,
-                    assembly: {
-                        ...assembly,
-                        url: resolvedUrl,
-                    },
-                },
-            },
         };
     }
 
@@ -611,24 +569,12 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        const props = resolveScalePropsBase({
+        return resolveScalePropsBase({
             channel: this.channel,
             dataType: this.type,
             members: this.#members,
             isExplicitDomain: this.#isExplicitDomain(),
         });
-
-        if (
-            props !== null &&
-            [INDEX, LOCUS].includes(props.type) &&
-            !isPrimaryPositionalChannel(this.channel)
-        ) {
-            throw new Error(
-                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${props.type}".`
-            );
-        }
-
-        return props;
     }
 
     /**
@@ -1103,4 +1049,61 @@ export default class ScaleResolution {
         }
         return /** @type {number[]} */ (interval);
     }
+}
+
+/**
+ * @param {number[] | null} a
+ * @param {number[] | null} b
+ * @returns {boolean}
+ */
+function intervalsEqual(a, b) {
+    if (a === b) {
+        return true;
+    }
+
+    if (!a || !b) {
+        return false;
+    }
+
+    return a.length === b.length && shallowArrayEquals(a, b);
+}
+
+/**
+ * Normalizes member-specific scale URLs so that inline `scale.assembly.url`
+ * values resolve against the member view's base URL before scale props are
+ * merged.
+ *
+ * @template {ChannelWithScale}[T=ChannelWithScale]
+ * @param {ScaleResolutionMember<T>} member
+ * @returns {ScaleResolutionMember<T>}
+ */
+function normalizeMember(member) {
+    const scale = member.channelDef.scale;
+    const assembly = scale?.assembly;
+    if (!scale || !assembly || typeof assembly !== "object") {
+        return member;
+    }
+
+    if (!("url" in assembly)) {
+        return member;
+    }
+
+    const resolvedUrl = resolveUrl(member.view.getBaseUrl(), assembly.url);
+    if (resolvedUrl === assembly.url) {
+        return member;
+    }
+
+    return {
+        ...member,
+        channelDef: {
+            ...member.channelDef,
+            scale: {
+                ...scale,
+                assembly: {
+                    ...assembly,
+                    url: resolvedUrl,
+                },
+            },
+        },
+    };
 }
