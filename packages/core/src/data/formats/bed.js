@@ -2,15 +2,6 @@ import BED from "@gmod/bed";
 
 const controlLinePrefixes = ["browser", "track", "#"];
 
-const fallbackFieldSpecs = [
-    ["field6", "thickStart", "number"],
-    ["field7", "thickEnd", "number"],
-    ["field8", "itemRgb", "string"],
-    ["field9", "blockCount", "number"],
-    ["field10", "blockSizes", "numberArray"],
-    ["field11", "blockStarts", "numberArray"],
-];
-
 /**
  * @param {string} line
  */
@@ -20,64 +11,6 @@ function isSkippableBedLine(line) {
         trimmed.length == 0 ||
         controlLinePrefixes.some((prefix) => trimmed.startsWith(prefix))
     );
-}
-
-/**
- * @param {string} value
- */
-function parseNumber(value) {
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? value : parsed;
-}
-
-/**
- * @param {string} value
- */
-function parseNumberArray(value) {
-    const values = value.split(",").filter((v) => v.length > 0);
-    const parsed = values.map(Number);
-
-    return parsed.some((v) => Number.isNaN(v)) ? values : parsed;
-}
-
-/**
- * @param {Record<string, any>} feature
- */
-function canonicalizeFallbackFields(feature) {
-    for (const [sourceField, targetField, targetType] of fallbackFieldSpecs) {
-        if (sourceField in feature && !(targetField in feature)) {
-            const rawValue = feature[sourceField];
-            delete feature[sourceField];
-
-            if (targetType == "number") {
-                feature[targetField] = parseNumber(rawValue);
-            } else if (targetType == "numberArray") {
-                feature[targetField] = parseNumberArray(rawValue);
-            } else {
-                feature[targetField] = rawValue;
-            }
-        }
-    }
-}
-
-/**
- * @param {Record<string, any>} feature
- * @returns {Record<string, any>}
- */
-function normalizeFeature(feature) {
-    canonicalizeFallbackFields(feature);
-
-    if (
-        typeof feature.chromStart != "number" ||
-        typeof feature.chromEnd != "number"
-    ) {
-        throw new Error("BED row is missing chromStart/chromEnd coordinates.");
-    }
-
-    feature.start = feature.chromStart;
-    feature.end = feature.chromEnd;
-
-    return feature;
 }
 
 /**
@@ -102,7 +35,7 @@ export default function bed(data) {
         }
 
         try {
-            rows.push(normalizeFeature(parser.parseLine(line)));
+            rows.push(parser.parseLine(line));
         } catch (error) {
             throw new Error(
                 `Cannot parse BED line ${i + 1}: ${

@@ -1,14 +1,12 @@
 import { expect, test } from "vitest";
 import bed from "./bed.js";
 
-test("parses BED rows and adds canonical start/end fields", () => {
+test("parses BED rows without canonical interval fields", () => {
     expect(bed("chr1\t0\t10\tfeatureA\t5\t+")).toEqual([
         {
             chrom: "chr1",
             chromStart: 0,
             chromEnd: 10,
-            start: 0,
-            end: 10,
             name: "featureA",
             score: 5,
             strand: 1,
@@ -27,14 +25,12 @@ chr19\t49302000\t49302300`;
             chrom: "chr19",
             chromStart: 49302000,
             chromEnd: 49302300,
-            start: 49302000,
-            end: 49302300,
             strand: 0,
         },
     ]);
 });
 
-test("maps fallback fieldN names to canonical BED optional fields", () => {
+test("keeps fallback fieldN names from parser output", () => {
     const data = "chr1\t0\t10\titem\t7\t+\t1\t9\t255,0,0\t2\t4,6,";
 
     expect(bed(data)).toEqual([
@@ -42,16 +38,14 @@ test("maps fallback fieldN names to canonical BED optional fields", () => {
             chrom: "chr1",
             chromStart: 0,
             chromEnd: 10,
-            start: 0,
-            end: 10,
             name: "item",
             score: 7,
             strand: 1,
-            thickStart: 1,
-            thickEnd: 9,
-            itemRgb: "255,0,0",
-            blockCount: 2,
-            blockSizes: [4, 6],
+            field6: "1",
+            field7: "9",
+            field8: "255,0,0",
+            field9: "2",
+            field10: "4,6,",
         },
     ]);
 });

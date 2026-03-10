@@ -11,8 +11,8 @@
     "minWidth": 2
   },
   "encoding": {
-    "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
-    "x2": { "chrom": "chrom", "pos": "end" },
+    "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "chromEnd" },
     "y": { "field": "name", "type": "nominal" },
     "color": { "field": "name", "type": "nominal" }
   }

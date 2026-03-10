@@ -147,7 +147,8 @@ changing case or removing punctuation.
 #### BED
 
 BED parsing is based on [@gmod/bed](https://github.com/GMOD/bed-js) and
-supports BED3-BED12 fields.
+supports BED3-BED12 fields. Output fields are parser-native (`chrom`,
+`chromStart`, `chromEnd`, and optional BED fields as provided by `@gmod/bed`).
 
 ```json
 {
