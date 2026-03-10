@@ -35,18 +35,18 @@ describe("getFormat", () => {
     test("preserves explicit parse mappings for genomic text formats", () => {
         expect(
             getFormat({
-                url: "data.maf",
+                url: "data.bed",
                 format: {
-                    type: "maf",
+                    type: "bed",
                     parse: {
-                        t_alt_count: "number",
+                        score: "number",
                     },
                 },
             })
         ).toEqual({
-            type: "maf",
+            type: "bed",
             parse: {
-                t_alt_count: "number",
+                score: "number",
             },
         });
     });

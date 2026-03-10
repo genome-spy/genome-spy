@@ -1,4 +1,4 @@
-import { normalizeColumnName, parseTsvRows } from "./tabularUtils.js";
+import { parseTsvRows } from "./tabularUtils.js";
 
 const defaultColumns = [
     "chrom1",
@@ -36,7 +36,7 @@ function looksLikeHeaderRow(row) {
     }
 
     for (let i = 0; i < requiredColumns.length; i++) {
-        if (normalizeColumnName(row[i]) != requiredColumns[i]) {
+        if (row[i] != requiredColumns[i]) {
             return false;
         }
     }

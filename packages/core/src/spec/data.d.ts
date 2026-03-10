@@ -92,18 +92,6 @@ export interface BedpeDataFormat extends GenomicTextDataFormat {
     type: "bedpe";
 }
 
-export interface SegDataFormat extends GenomicTextDataFormat {
-    type: "seg";
-}
-
-export interface MafDataFormat extends GenomicTextDataFormat {
-    type: "maf";
-}
-
-export interface CnDataFormat extends GenomicTextDataFormat {
-    type: "cn";
-}
-
 /**
  * Other data format, such as `"fasta"`
  */
@@ -117,9 +105,6 @@ export type DataFormat =
     | JsonDataFormat
     | BedDataFormat
     | BedpeDataFormat
-    | SegDataFormat
-    | MafDataFormat
-    | CnDataFormat
     | OtherDataFormat;
 
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;

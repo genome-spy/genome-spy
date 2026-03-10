@@ -1,7 +1,7 @@
 import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
-const genomicTextFormats = new Set(["bed", "bedpe", "seg", "maf", "cn"]);
+const genomicTextFormats = new Set(["bed", "bedpe"]);
 
 /**
  * Validates data source params, infers format if not specified explicitly,

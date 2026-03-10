@@ -24,19 +24,3 @@ export function parseTsvRows(data, options = {}) {
         return !ignorePrefixes.some((prefix) => firstCell.startsWith(prefix));
     });
 }
-
-/**
- * @param {string} data
- * @param {{ ignorePrefixes?: string[] }} [options]
- */
-export function parseTsvRowsWithLineNumbers(data, options = {}) {
-    const rows = parseTsvRows(data, options);
-    return { rows, lineNumbers: rows.map((_, i) => i + 1) };
-}
-
-/**
- * @param {string} name
- */
-export function normalizeColumnName(name) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
