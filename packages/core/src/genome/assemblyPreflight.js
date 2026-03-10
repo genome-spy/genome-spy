@@ -1,3 +1,9 @@
+import {
+    isChannelDefWithScale,
+    isValueDefWithCondition,
+} from "../encoder/encoder.js";
+import { visitAddressableViews } from "../view/viewSelectors.js";
+
 /**
  * @typedef {import("../spec/scale.js").Scale["assembly"]} AssemblyReference
  */
@@ -9,82 +15,57 @@
  */
 
 /**
- * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+ * @param {import("../view/view.js").default} viewRoot
  * @returns {AssemblyPreflightResult}
  */
-export function collectAssembliesFromSpec(spec) {
+export function collectAssembliesFromViewHierarchy(viewRoot) {
     /** @type {AssemblyReference[]} */
     const assemblies = [];
     let needsDefaultAssembly = false;
 
-    /**
-     * @param {unknown} node
-     */
-    const visit = (node) => {
-        if (!node || typeof node !== "object") {
-            return;
-        }
-
-        if (Array.isArray(node)) {
-            for (const item of node) {
-                visit(item);
+    // Only inspect user-addressable views. Internal helper views (axes, grid
+    // decorations, scrollbars, etc.) may carry inherited locus encodings that
+    // do not represent user-authored assembly requirements.
+    visitAddressableViews(viewRoot, (view) => {
+        const encoding = view.getEncoding();
+        for (const channelDef of Object.values(encoding)) {
+            if (!channelDef || Array.isArray(channelDef)) {
+                continue;
             }
-            return;
-        }
 
-        const value = /** @type {Record<string, unknown>} */ (node);
-
-        const encoding = value.encoding;
-        if (isObject(encoding)) {
-            for (const channelDef of Object.values(encoding)) {
-                if (!isObject(channelDef) || Array.isArray(channelDef)) {
-                    continue;
-                }
-
-                const scale = isObject(channelDef.scale)
-                    ? channelDef.scale
-                    : undefined;
-                const isLocus =
-                    channelDef.type === "locus" || scale?.type === "locus";
-
-                if (!isLocus) {
-                    continue;
-                }
-
-                if (scale && "assembly" in scale && scale.assembly) {
-                    assemblies.push(
-                        /** @type {AssemblyReference} */ (scale.assembly)
-                    );
-                } else {
-                    needsDefaultAssembly = true;
+            /** @type {import("../spec/channel.js").ChannelDefWithScale | undefined} */
+            let channelDefWithScale;
+            if (isChannelDefWithScale(channelDef)) {
+                channelDefWithScale = channelDef;
+            } else if (isValueDefWithCondition(channelDef)) {
+                const condition = channelDef.condition;
+                if (
+                    !Array.isArray(condition) &&
+                    isChannelDefWithScale(condition)
+                ) {
+                    channelDefWithScale = condition;
                 }
             }
-        }
 
-        const templates = value.templates;
-        if (isObject(templates)) {
-            for (const template of Object.values(templates)) {
-                visit(template);
+            if (!channelDefWithScale) {
+                continue;
+            }
+
+            const scale = channelDefWithScale.scale;
+            const isLocus =
+                channelDefWithScale.type === "locus" || scale?.type === "locus";
+
+            if (!isLocus) {
+                continue;
+            }
+
+            if (scale?.assembly) {
+                assemblies.push(scale.assembly);
+            } else {
+                needsDefaultAssembly = true;
             }
         }
-
-        for (const key of [
-            "layer",
-            "hconcat",
-            "vconcat",
-            "concat",
-            "multiscale",
-        ]) {
-            const children = value[key];
-            if (Array.isArray(children)) {
-                for (const child of children) {
-                    visit(child);
-                }
-            }
-        }
-    };
-
-    visit(spec);
+    });
 
     return {
         assemblies,
@@ -93,15 +74,19 @@ export function collectAssembliesFromSpec(spec) {
 }
 
 /**
- * Ensures that all assemblies required by the spec are loaded before the view
- * hierarchy is created.
+ * Ensures that all assemblies required by the given view hierarchy are loaded
+ * before any scale initialization path can run.
  *
- * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+ * Reminder: call this immediately after view hierarchy creation and before
+ * operations that can implicitly initialize scales (for example, step-based
+ * size resolution, dynamic opacity setup, or encoder initialization).
+ *
+ * @param {import("../view/view.js").default} viewRoot
  * @param {import("./genomeStore.js").default} genomeStore
  */
-export async function ensureAssembliesForSpec(spec, genomeStore) {
+export async function ensureAssembliesForView(viewRoot, genomeStore) {
     const { assemblies, needsDefaultAssembly } =
-        collectAssembliesFromSpec(spec);
+        collectAssembliesFromViewHierarchy(viewRoot);
     if (needsDefaultAssembly) {
         const defaultAssembly = genomeStore.getDefaultAssemblyName();
         if (!defaultAssembly) {
@@ -113,12 +98,4 @@ export async function ensureAssembliesForSpec(spec, genomeStore) {
     }
 
     await genomeStore.ensureAssemblies(assemblies);
-}
-
-/**
- * @param {unknown} value
- * @returns {value is Record<string, any>}
- */
-function isObject(value) {
-    return !!value && typeof value === "object";
 }
