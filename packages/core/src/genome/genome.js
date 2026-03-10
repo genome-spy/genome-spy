@@ -111,6 +111,10 @@ export default class Genome {
      * @param {Chromosome[]} chromSizes
      */
     setChromSizes(chromSizes) {
+        this.chromosomes = [];
+        this.cumulativeChromPositions = new Map();
+        this.chromosomesByName = new Map();
+
         let pos = 0;
         this.startByIndex = [0];
 

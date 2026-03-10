@@ -55,7 +55,7 @@ fetched only when the user zooms into a region smaller than the window size
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
 
   "data": {
     "lazy": {
@@ -156,7 +156,7 @@ When you zoom in, the resolution of the data automatically increases.
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "view": { "stroke": "lightgray" },
 
   "data": {
@@ -203,7 +203,7 @@ The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) com
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "view": { "stroke": "lightgray" },
 
   "data": {
@@ -293,7 +293,7 @@ vertical scrolling is currently not supported properly.
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
 
   "height": { "step": 28 },
   "viewportHeight": "container",
@@ -596,7 +596,7 @@ SCHEMA BamData
 
 ```json
 {
-  "genome": { "name": "hg18" },
+  "assembly": "hg18",
 
   "data": {
     "lazy": {
@@ -769,7 +769,7 @@ SCHEMA AxisGenomeData
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
 
   "data": {
     "lazy": {

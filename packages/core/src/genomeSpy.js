@@ -40,6 +40,8 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
 import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
+import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
+import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -311,9 +313,15 @@ export default class GenomeSpy {
     }
 
     async #initializeGenomeStore() {
-        if (this.spec.genome) {
-            this.genomeStore = new GenomeStore(this.spec.baseUrl);
-            await this.genomeStore.initialize(this.spec.genome);
+        this.genomeStore = new GenomeStore(this.spec.baseUrl);
+
+        const { genomesByName, defaultAssembly, deprecationWarning } =
+            resolveRootGenomeConfig(this.spec);
+        this.genomeStore.configureGenomes(genomesByName, defaultAssembly);
+
+        if (deprecationWarning) {
+            // eslint-disable-next-line no-console
+            console.warn(deprecationWarning);
         }
     }
 
@@ -403,6 +411,11 @@ export default class GenomeSpy {
             null,
             VIEW_ROOT_NAME
         );
+
+        // Reminder: assemblies must be ensured after view creation (imports and
+        // inheritance resolved), but before any code path that may touch scales
+        // (e.g. step-based sizes, dynamic opacity, encoder initialization).
+        await ensureAssembliesForView(this.viewRoot, this.genomeStore);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
 

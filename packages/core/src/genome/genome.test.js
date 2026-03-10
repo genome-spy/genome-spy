@@ -238,6 +238,16 @@ describe("Load chrom.sizes file from a URL", () => {
 
         expect(g.parseInterval("chr2")).toEqual([1000, 3000]);
     });
+
+    test("Reloading replaces chromosome structures instead of appending", async () => {
+        const g = new Genome({ name: "random", url: "chrom.sizes" });
+        await g.load("http://example.com");
+        await g.load("http://example.com");
+
+        expect(g.chromosomes).toHaveLength(4);
+        expect(g.startByIndex).toHaveLength(5);
+        expect(g.toChromosome(1500)?.name).toBe("chr2");
+    });
 });
 
 describe("Parse interval strings", () => {

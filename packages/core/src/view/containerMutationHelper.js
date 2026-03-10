@@ -3,6 +3,7 @@ import {
     loadViewSubtreeData,
 } from "../data/flowInit.js";
 import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
+import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
@@ -62,6 +63,13 @@ export default class ContainerMutationHelper {
             this.container,
             this.container,
             name
+        );
+
+        // Reminder: ensure assemblies from the real child hierarchy before any
+        // downstream work that may initialize scales (axis prep / encoders).
+        await ensureAssembliesForView(
+            childView,
+            this.container.context.genomeStore
         );
 
         insertAt(insertIndex, childSpec);

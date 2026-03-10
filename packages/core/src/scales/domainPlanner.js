@@ -30,7 +30,7 @@ export default class DomainPlanner {
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
-    /** @type {() => number[]} */
+    /** @type {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} */
     #getLocusExtent;
 
     /** @type {(interval: ScalarDomain | ComplexDomain) => number[]} */
@@ -55,7 +55,7 @@ export default class DomainPlanner {
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
      * @param {() => Set<ScaleResolutionMember>} [options.getDataMembers]
      * @param {() => import("../spec/channel.js").Type} options.getType
-     * @param {() => number[]} options.getLocusExtent
+     * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} options.getLocusExtent
      * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      */
     constructor({
@@ -104,13 +104,15 @@ export default class DomainPlanner {
      * Returns the default domain without considering configured domains.
      *
      * @param {boolean} [extractDataDomain]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
      * @returns {any[]}
      */
-    getDefaultDomain(extractDataDomain = false) {
+    getDefaultDomain(extractDataDomain = false, locusAssembly) {
         return resolveDefaultDomain(
             this.#getType(),
             this.#getLocusExtent,
-            extractDataDomain ? this.getDataDomain() : undefined
+            extractDataDomain ? this.getDataDomain() : undefined,
+            locusAssembly
         );
     }
 
@@ -118,13 +120,14 @@ export default class DomainPlanner {
      * Returns the configured domain or a data-derived/default domain.
      *
      * @param {boolean} [extractDataDomain]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
      * @returns {any[]}
      */
-    getConfiguredOrDefaultDomain(extractDataDomain = false) {
+    getConfiguredOrDefaultDomain(extractDataDomain = false, locusAssembly) {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
             this.getConfiguredDomain() ??
-            this.getDefaultDomain(extractDataDomain)
+            this.getDefaultDomain(extractDataDomain, locusAssembly)
         );
     }
 
@@ -490,13 +493,14 @@ function resolveDataDomain(members, getType, getAccessorsForMember) {
 
 /**
  * @param {import("../spec/channel.js").Type} type
- * @param {() => number[]} getLocusExtent
+ * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} getLocusExtent
  * @param {DomainArray | undefined} dataDomain
+ * @param {import("../spec/scale.js").Scale["assembly"] | undefined} locusAssembly
  * @returns {any[]}
  */
-function resolveDefaultDomain(type, getLocusExtent, dataDomain) {
+function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {
     if (type == LOCUS) {
-        return getLocusExtent();
+        return getLocusExtent(locusAssembly);
     }
     return dataDomain ?? [];
 }

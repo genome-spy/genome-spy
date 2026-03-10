@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import ScaleInstanceManager from "./scaleInstanceManager.js";
 import Genome from "../genome/genome.js";
@@ -6,6 +6,10 @@ import GenomeStore from "../genome/genomeStore.js";
 import "./scaleResolution.js";
 
 describe("ScaleInstanceManager", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     test("creates scale and notifies on range changes", () => {
         const onRangeChange = vi.fn();
         const exprFn = /** @type {any} */ (() => 0);
@@ -174,6 +178,114 @@ describe("ScaleInstanceManager", () => {
                 assembly: "missing",
             })
         ).toThrow("No genome with the name missing has been configured!");
+    });
+
+    test("loads built-in assembly lazily when requested by locus scale", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+            assembly: "hg19",
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome().name).toBe("hg19");
+        expect(genomeStore.genomes.has("hg19")).toBe(true);
+    });
+
+    test("supports inline contigs in scale assembly", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+            assembly: {
+                contigs: [{ name: "chrA", size: 10 }],
+            },
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome().getExtent()).toEqual([0, 10]);
+    });
+
+    test("supports inline url in scale assembly after ensure", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            /** @type {any} */ ({
+                ok: true,
+                text: async () => "chr1\t10\n",
+            })
+        );
+
+        const genomeStore = new GenomeStore("https://example.org/base/");
+        const inlineAssembly = /** @type {const} */ ({
+            url: "inline.chrom.sizes",
+        });
+        await genomeStore.ensureAssembly(inlineAssembly);
+
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+            assembly: inlineAssembly,
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome().getExtent()).toEqual([0, 10]);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("throws when inline url assembly has not been ensured", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        expect(() =>
+            manager.createScale({
+                type: "locus",
+                domain: [0, 1],
+                range: [0, 1],
+                assembly: {
+                    url: "inline.chrom.sizes",
+                },
+            })
+        ).toThrow("Inline URL assemblies must be loaded first.");
     });
 
     test("dispose invalidates active range expressions", () => {

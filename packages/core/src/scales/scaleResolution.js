@@ -24,10 +24,14 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
-import { isSecondaryChannel } from "../encoder/encoder.js";
+import {
+    isPrimaryPositionalChannel,
+    isSecondaryChannel,
+} from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
+import { resolveUrl } from "../utils/url.js";
 import {
     normalizeIntervalForSelection,
     requireIntervalSelection,
@@ -41,23 +45,6 @@ vegaScale("locus", scaleLocus, ["continuous"]);
 vegaScale("null", scaleNull, []);
 
 export { INDEX, LOCUS, NOMINAL, ORDINAL, QUANTITATIVE };
-
-/**
- * @param {number[] | null} a
- * @param {number[] | null} b
- * @returns {boolean}
- */
-function intervalsEqual(a, b) {
-    if (a === b) {
-        return true;
-    }
-
-    if (!a || !b) {
-        return false;
-    }
-
-    return a.length === b.length && shallowArrayEquals(a, b);
-}
 
 /**
  * @template {ChannelWithScale}[T=ChannelWithScale]
@@ -154,7 +141,7 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getType: () => this.type,
-            getLocusExtent: () => this.#getLocusExtent(),
+            getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
         });
 
@@ -227,21 +214,24 @@ export default class ScaleResolution {
     }
 
     /**
+     * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {number[]}
      */
-    #getLocusExtent() {
-        return getGenomeExtent(this.#getGenomeSource());
+    #getLocusExtent(assembly) {
+        return getGenomeExtent(this.#getGenomeSource(assembly));
     }
 
     /**
+     * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {import("../genome/scaleLocus.js").GenomeSource}
      */
-    #getGenomeSource() {
+    #getGenomeSource(assembly) {
         if (this.type !== LOCUS) {
             return undefined;
         }
         return /** @type {import("../genome/scaleLocus.js").GenomeSource} */ (
-            this.#scaleManager.scale ?? this.#scaleManager.getLocusGenome()
+            this.#scaleManager.scale ??
+                this.#scaleManager.getLocusGenome(assembly)
         );
     }
 
@@ -365,9 +355,11 @@ export default class ScaleResolution {
      * N.B. This is expected to be called in depth-first order
      *
      * @param {ScaleResolutionMember} newMember
+     * @returns {ScaleResolutionMember}
      */
     #addMember(newMember) {
-        const { channel, channelDef } = newMember;
+        const member = normalizeMember(newMember);
+        const { channel, channelDef } = member;
 
         // A convenience hack for cases where the new member should adapt
         // the scale type to the existing one. For example: SelectionRect
@@ -393,6 +385,20 @@ export default class ScaleResolution {
         // @ts-expect-error "sample" is not really a channel with scale
         const type = channel == "sample" ? "nominal" : channelDef.type;
         const name = channelDef?.scale?.name;
+        const explicitScaleType = channelDef.scale?.type;
+        const effectiveScaleType =
+            explicitScaleType ??
+            (type === INDEX || type === LOCUS ? type : undefined);
+
+        if (
+            effectiveScaleType &&
+            [INDEX, LOCUS].includes(effectiveScaleType) &&
+            !isPrimaryPositionalChannel(this.channel)
+        ) {
+            throw new Error(
+                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${effectiveScaleType}".`
+            );
+        }
 
         if (name) {
             if (this.name !== undefined && name != this.name) {
@@ -416,12 +422,13 @@ export default class ScaleResolution {
             }
         }
 
-        this.#members.add(newMember);
-        if (newMember.contributesToDomain) {
-            this.#dataDomainMembers.add(newMember);
+        this.#members.add(member);
+        if (member.contributesToDomain) {
+            this.#dataDomainMembers.add(member);
         }
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
+        return member;
     }
 
     /**
@@ -429,11 +436,11 @@ export default class ScaleResolution {
      * @returns {() => boolean}
      */
     registerMember(member) {
-        this.#addMember(member);
+        const registeredMember = this.#addMember(member);
         return () => {
-            const removed = this.#members.delete(member);
+            const removed = this.#members.delete(registeredMember);
             if (removed) {
-                this.#dataDomainMembers.delete(member);
+                this.#dataDomainMembers.delete(registeredMember);
                 this.#domainAggregator.invalidateConfiguredDomain();
                 this.#refreshSelectionDomainParamSubscriptions();
             }
@@ -571,6 +578,33 @@ export default class ScaleResolution {
     }
 
     /**
+     * Returns locus assembly requirements without initializing the scale.
+     *
+     * This is intentionally side-effect free: it only inspects merged scale
+     * properties from registered members and does not touch default domains or
+     * instantiate scale instances.
+     *
+     * @returns {{
+     *   assembly: import("../spec/scale.js").Scale["assembly"] | undefined,
+     *   needsDefaultAssembly: boolean
+     * }}
+     */
+    getAssemblyRequirement() {
+        const props = this.#getMergedScaleProps();
+        if (props === null || props.type === "null" || props.type !== LOCUS) {
+            return {
+                assembly: undefined,
+                needsDefaultAssembly: false,
+            };
+        }
+
+        return {
+            assembly: props.assembly,
+            needsDefaultAssembly: props.assembly === undefined,
+        };
+    }
+
+    /**
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
      *
@@ -585,10 +619,10 @@ export default class ScaleResolution {
             return { type: "null" };
         }
 
-        const domain =
-            this.#domainAggregator.getConfiguredOrDefaultDomain(
-                extractDataDomain
-            );
+        const domain = this.#domainAggregator.getConfiguredOrDefaultDomain(
+            extractDataDomain,
+            props.type === LOCUS ? props.assembly : undefined
+        );
 
         if (isDiscrete(props.type)) {
             const isExplicit = this.#isExplicitDomain();
@@ -1015,4 +1049,61 @@ export default class ScaleResolution {
         }
         return /** @type {number[]} */ (interval);
     }
+}
+
+/**
+ * @param {number[] | null} a
+ * @param {number[] | null} b
+ * @returns {boolean}
+ */
+function intervalsEqual(a, b) {
+    if (a === b) {
+        return true;
+    }
+
+    if (!a || !b) {
+        return false;
+    }
+
+    return a.length === b.length && shallowArrayEquals(a, b);
+}
+
+/**
+ * Normalizes member-specific scale URLs so that inline `scale.assembly.url`
+ * values resolve against the member view's base URL before scale props are
+ * merged.
+ *
+ * @template {ChannelWithScale}[T=ChannelWithScale]
+ * @param {ScaleResolutionMember<T>} member
+ * @returns {ScaleResolutionMember<T>}
+ */
+function normalizeMember(member) {
+    const scale = member.channelDef.scale;
+    const assembly = scale?.assembly;
+    if (!scale || !assembly || typeof assembly !== "object") {
+        return member;
+    }
+
+    if (!("url" in assembly)) {
+        return member;
+    }
+
+    const resolvedUrl = resolveUrl(member.view.getBaseUrl(), assembly.url);
+    if (resolvedUrl === assembly.url) {
+        return member;
+    }
+
+    return {
+        ...member,
+        channelDef: {
+            ...member.channelDef,
+            scale: {
+                ...scale,
+                assembly: {
+                    ...assembly,
+                    url: resolvedUrl,
+                },
+            },
+        },
+    };
 }
