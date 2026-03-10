@@ -1,16 +1,23 @@
-import BED from "@gmod/bed";
-
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
+
+/** @type {Promise<any> | undefined} */
+let bedParserPromise;
+
+async function loadBedParser() {
+    bedParserPromise ??= import("@gmod/bed").then((mod) => mod.default);
+    return bedParserPromise;
+}
 
 /**
  * Parse BED text data.
  *
  * @param {string} data
- * @returns {Record<string, any>[]}
+ * @returns {Promise<Record<string, any>[]>}
  */
-export default function bed(data) {
-    const parser = new /** @type {any} */ (BED)();
+export default async function bed(data) {
+    const BED = await loadBedParser();
+    const parser = new BED();
     let dataStarted = false;
 
     /** @type {Record<string, any>[]} */
