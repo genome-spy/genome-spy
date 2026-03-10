@@ -22,7 +22,8 @@ export default class GenomeStore {
 
         this.#configuredGenomesByName = new Map();
         this.#loadingPromisesByName = new Map();
-        this.#inlineAssemblyKeysByName = new Map();
+        this.#inlineAssemblyNamesByKey = new Map();
+        this.#nextInlineAssemblyIndex = 0;
         this.#defaultAssemblyName = undefined;
 
         this.baseUrl = baseUrl;
@@ -35,7 +36,10 @@ export default class GenomeStore {
     #loadingPromisesByName;
 
     /** @type {Map<string, string>} */
-    #inlineAssemblyKeysByName;
+    #inlineAssemblyNamesByKey;
+
+    /** @type {number} */
+    #nextInlineAssemblyIndex;
 
     /** @type {string | undefined} */
     #defaultAssemblyName;
@@ -56,7 +60,8 @@ export default class GenomeStore {
     configureGenomes(genomesByName, defaultAssembly) {
         this.genomes.clear();
         this.#loadingPromisesByName.clear();
-        this.#inlineAssemblyKeysByName.clear();
+        this.#inlineAssemblyNamesByKey.clear();
+        this.#nextInlineAssemblyIndex = 0;
         this.#configuredGenomesByName = new Map(genomesByName);
         this.#defaultAssemblyName = defaultAssembly;
     }
@@ -168,6 +173,12 @@ export default class GenomeStore {
         const defaultAssemblyName = this.getDefaultAssemblyName();
         if (defaultAssemblyName) {
             return this.getGenome(defaultAssemblyName);
+        }
+
+        if (this.#configuredGenomesByName.size > 1) {
+            throw new Error(
+                "Cannot pick a default genome! More than one have been configured!"
+            );
         }
 
         if (this.genomes.size === 0 && this.#configuredGenomesByName.size) {
@@ -399,46 +410,26 @@ export default class GenomeStore {
      * @returns {string}
      */
     #resolveInlineAssemblyName(assembly) {
-        return this.#getInlineAssemblyName(JSON.stringify(assembly));
-    }
-
-    /**
-     * @param {string} key
-     * @returns {string}
-     */
-    #getInlineAssemblyName(key) {
-        const hash = hashString(key);
-        for (let suffix = 0; suffix <= Number.MAX_SAFE_INTEGER; suffix++) {
-            const candidate =
-                suffix === 0
-                    ? `inline_assembly_${hash}`
-                    : `inline_assembly_${hash}_${suffix}`;
-            const existingKey = this.#inlineAssemblyKeysByName.get(candidate);
-            if (existingKey === key) {
-                return candidate;
-            }
-            if (!existingKey) {
-                this.#inlineAssemblyKeysByName.set(candidate, key);
-                return candidate;
-            }
+        const key = JSON.stringify(assembly);
+        const existingName = this.#inlineAssemblyNamesByKey.get(key);
+        if (existingName) {
+            return existingName;
         }
 
-        throw new Error();
-    }
-}
+        let candidate = `inline_assembly_${this.#nextInlineAssemblyIndex}`;
+        this.#nextInlineAssemblyIndex += 1;
+        while (
+            this.genomes.has(candidate) ||
+            this.#configuredGenomesByName.has(candidate) ||
+            this.#loadingPromisesByName.has(candidate)
+        ) {
+            candidate = `inline_assembly_${this.#nextInlineAssemblyIndex}`;
+            this.#nextInlineAssemblyIndex += 1;
+        }
 
-/**
- * @param {string} value
- * @returns {string}
- */
-function hashString(value) {
-    let hash = 5381;
-    for (let i = 0; i < value.length; i++) {
-        // eslint-disable-next-line no-bitwise
-        hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
+        this.#inlineAssemblyNamesByKey.set(key, candidate);
+        return candidate;
     }
-    // eslint-disable-next-line no-bitwise
-    return (hash >>> 0).toString(36);
 }
 
 /**

@@ -72,17 +72,4 @@ describe("resolveRootGenomeConfig", () => {
             })
         ).toThrow("neither defined in `genomes` nor a built-in assembly");
     });
-
-    test("rejects name inside root genomes entry", () => {
-        expect(() =>
-            resolveRootGenomeConfig({
-                genomes: {
-                    hg19: /** @type {any} */ ({
-                        name: "hg19",
-                        contigs: [{ name: "chr1", size: 10 }],
-                    }),
-                },
-            })
-        ).toThrow('must not include "name"');
-    });
 });

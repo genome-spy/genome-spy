@@ -74,26 +74,26 @@ export async function ensureAssembliesForView(viewRoot, genomeStore) {
  * @returns {Set<import("../scales/scaleResolution.js").default>}
  */
 function collectRelevantScaleResolutions(viewRoot) {
-    /** @type {Set<import("../view/view.js").default>} */
-    const relevantViews = new Set([viewRoot]);
-    visitAddressableViews(viewRoot, (view) => {
-        relevantViews.add(view);
-    });
-
     /** @type {Set<import("../scales/scaleResolution.js").default>} */
     const resolutions = new Set();
 
     /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */
     const locusChannels = ["x", "y"];
 
-    for (const view of relevantViews) {
+    /**
+     * @param {import("../view/view.js").default} view
+     */
+    const collectFromView = (view) => {
         for (const channel of locusChannels) {
             const resolution = view.getScaleResolution(channel);
             if (resolution) {
                 resolutions.add(resolution);
             }
         }
-    }
+    };
+
+    collectFromView(viewRoot);
+    visitAddressableViews(viewRoot, collectFromView);
 
     return resolutions;
 }

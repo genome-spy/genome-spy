@@ -44,12 +44,6 @@ export function resolveRootGenomeConfig(rootConfig) {
     /** @type {Map<string, NamedGenomeDefinition>} */
     const genomesByName = new Map();
     for (const [name, config] of Object.entries(rootConfig.genomes ?? {})) {
-        if (isObject(config) && "name" in config) {
-            throw new Error(
-                `root.genomes.${name} must not include "name". The key already defines the assembly name.`
-            );
-        }
-
         genomesByName.set(name, config ?? {});
     }
 
@@ -84,14 +78,6 @@ function getLegacyGenomeWarning() {
         "Use root `genomes` and `assembly` instead. Built-in migration example: " +
         '{"genome":{"name":"hg38"}} -> {"assembly":"hg38"}.'
     );
-}
-
-/**
- * @param {unknown} value
- * @returns {value is Record<string, unknown>}
- */
-function isObject(value) {
-    return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
 /**

@@ -103,13 +103,7 @@ export default class ScaleInstanceManager {
             return;
         }
 
-        const genomeStore = this.#getGenomeStore?.();
-        const genome = genomeStore?.getGenome(props.assembly);
-        if (!genome) {
-            throw new Error("No genome has been defined!");
-        }
-
-        scale.genome(genome);
+        scale.genome(this.getLocusGenome(props.assembly));
     }
 
     /**

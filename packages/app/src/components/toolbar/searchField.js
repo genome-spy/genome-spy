@@ -55,10 +55,6 @@ export default class SearchField extends LitElement {
         );
     }
 
-    disconnectedCallback() {
-        super.disconnectedCallback();
-    }
-
     createRenderRoot() {
         return this;
     }

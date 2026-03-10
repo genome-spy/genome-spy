@@ -31,6 +31,32 @@ describe("GenomeStore", () => {
         expect(store.getGenome().name).toBe("b");
     });
 
+    test("throws when multiple configured genomes exist without default assembly", async () => {
+        const store = new GenomeStore(".");
+        store.configureGenomes(
+            new Map([
+                [
+                    "a",
+                    {
+                        contigs: [{ name: "chr1", size: 10 }],
+                    },
+                ],
+                [
+                    "b",
+                    {
+                        contigs: [{ name: "chr1", size: 20 }],
+                    },
+                ],
+            ])
+        );
+
+        await store.ensureAssembly("a");
+
+        expect(() => store.getGenome()).toThrow(
+            "Cannot pick a default genome! More than one have been configured!"
+        );
+    });
+
     test("allows built-in default assembly even when genomes map is empty", () => {
         const store = new GenomeStore(".");
         store.configureGenomes(new Map(), "hg19");
