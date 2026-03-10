@@ -58,6 +58,9 @@ const columnNormalizers = {
 };
 
 /**
+ * BEDPE has fixed required leading columns; optional tail columns vary by producer.
+ * Detect a header row by matching only the required prefix.
+ *
  * @param {string[]} row
  */
 function looksLikeHeaderRow(row) {
@@ -80,12 +83,21 @@ function looksLikeHeaderRow(row) {
  */
 export default function bedpe(data, format = {}) {
     const lines = data.split(/\r?\n/);
+    const explicitColumns = format.columns;
     let dataStarted = false;
-    /** @type {string[][]} */
-    const parsedRows = [];
-    let maxRowLength = 0;
+    let columnsInitialized = false;
+    let lineNumber = 0;
+
+    /** @type {string[]} */
+    const columns = [];
+    /** @type {((value: string) => any)[]} */
+    const normalizers = [];
+    /** @type {Record<string, any>[]} */
+    const rows = [];
 
     for (const line of lines) {
+        lineNumber++;
+
         if (!dataStarted) {
             if (blankLinePattern.test(line) || controlLinePattern.test(line)) {
                 continue;
@@ -98,55 +110,43 @@ export default function bedpe(data, format = {}) {
         }
 
         const row = line.split("\t");
-        parsedRows.push(row);
-        if (row.length > maxRowLength) {
-            maxRowLength = row.length;
+
+        if (!columnsInitialized) {
+            const baseColumns = explicitColumns
+                ? explicitColumns
+                : looksLikeHeaderRow(row)
+                  ? row
+                  : defaultColumns;
+
+            for (const column of baseColumns) {
+                columns.push(column);
+                normalizers.push(columnNormalizers[column] ?? normalizeNone);
+            }
+
+            columnsInitialized = true;
+
+            if (!explicitColumns && baseColumns == row) {
+                continue;
+            }
         }
-    }
 
-    if (parsedRows.length == 0) {
-        return [];
-    }
-
-    const explicitColumns = format.columns;
-    const headerRow = !explicitColumns && looksLikeHeaderRow(parsedRows[0]);
-
-    const baseColumns = explicitColumns
-        ? explicitColumns
-        : headerRow
-          ? parsedRows[0]
-          : defaultColumns;
-
-    /** @type {string[]} */
-    const columns = Array.from(baseColumns);
-    /** @type {((value: string) => any)[]} */
-    const normalizers = columns.map(
-        (column) => columnNormalizers[column] ?? normalizeNone
-    );
-
-    while (columns.length < maxRowLength) {
-        columns.push("field" + (columns.length + 1));
-        normalizers.push(normalizeNone);
-    }
-
-    const startIndex = headerRow ? 1 : 0;
-
-    /** @type {Record<string, any>[]} */
-    const rows = [];
-
-    for (let i = startIndex; i < parsedRows.length; i++) {
-        const row = parsedRows[i];
+        while (columns.length < row.length) {
+            columns.push("field" + (columns.length + 1));
+            normalizers.push(normalizeNone);
+        }
 
         if (row.length < requiredColumns.length) {
-            continue;
+            throw new Error(
+                `BEDPE line ${lineNumber} has ${row.length} columns, expected at least ${requiredColumns.length}.`
+            );
         }
 
         /** @type {Record<string, any>} */
         const datum = {};
 
-        for (let j = 0; j < row.length; j++) {
-            const columnName = columns[j];
-            datum[columnName] = normalizers[j](row[j]);
+        for (let i = 0; i < row.length; i++) {
+            const columnName = columns[i];
+            datum[columnName] = normalizers[i](row[i]);
         }
 
         rows.push(datum);

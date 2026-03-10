@@ -127,6 +127,8 @@ test("supports explicit columns for headerless files", () => {
     ]);
 });
 
-test("skips rows with fewer than six columns", () => {
-    expect(bedpe("chr1\t10\t20\tchr2\t30")).toEqual([]);
+test("throws on rows with fewer than six columns", () => {
+    expect(() => bedpe("chr1\t10\t20\tchr2\t30")).toThrow(
+        "BEDPE line 1 has 5 columns, expected at least 6."
+    );
 });
