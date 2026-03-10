@@ -31,6 +31,7 @@ import {
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
+import { resolveUrl } from "../utils/url.js";
 import {
     normalizeIntervalForSelection,
     requireIntervalSelection,
@@ -371,9 +372,11 @@ export default class ScaleResolution {
      * N.B. This is expected to be called in depth-first order
      *
      * @param {ScaleResolutionMember} newMember
+     * @returns {ScaleResolutionMember}
      */
     #addMember(newMember) {
-        const { channel, channelDef } = newMember;
+        const member = this.#normalizeMember(newMember);
+        const { channel, channelDef } = member;
 
         // A convenience hack for cases where the new member should adapt
         // the scale type to the existing one. For example: SelectionRect
@@ -422,12 +425,13 @@ export default class ScaleResolution {
             }
         }
 
-        this.#members.add(newMember);
-        if (newMember.contributesToDomain) {
-            this.#dataDomainMembers.add(newMember);
+        this.#members.add(member);
+        if (member.contributesToDomain) {
+            this.#dataDomainMembers.add(member);
         }
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
+        return member;
     }
 
     /**
@@ -435,15 +439,54 @@ export default class ScaleResolution {
      * @returns {() => boolean}
      */
     registerMember(member) {
-        this.#addMember(member);
+        const registeredMember = this.#addMember(member);
         return () => {
-            const removed = this.#members.delete(member);
+            const removed = this.#members.delete(registeredMember);
             if (removed) {
-                this.#dataDomainMembers.delete(member);
+                this.#dataDomainMembers.delete(registeredMember);
                 this.#domainAggregator.invalidateConfiguredDomain();
                 this.#refreshSelectionDomainParamSubscriptions();
             }
             return removed && this.#members.size === 0;
+        };
+    }
+
+    /**
+     * Normalizes member-specific scale URLs so that inline `scale.assembly.url`
+     * values resolve against the member view's base URL before scale props are
+     * merged.
+     *
+     * @param {ScaleResolutionMember} member
+     * @returns {ScaleResolutionMember}
+     */
+    #normalizeMember(member) {
+        const scale = member.channelDef.scale;
+        const assembly = scale?.assembly;
+        if (!scale || !assembly || typeof assembly !== "object") {
+            return member;
+        }
+
+        if (!("url" in assembly)) {
+            return member;
+        }
+
+        const resolvedUrl = resolveUrl(member.view.getBaseUrl(), assembly.url);
+        if (resolvedUrl === assembly.url) {
+            return member;
+        }
+
+        return {
+            ...member,
+            channelDef: {
+                ...member.channelDef,
+                scale: {
+                    ...scale,
+                    assembly: {
+                        ...assembly,
+                        url: resolvedUrl,
+                    },
+                },
+            },
         };
     }
 

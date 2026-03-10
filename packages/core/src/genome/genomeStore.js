@@ -1,5 +1,17 @@
 import Genome from "./genome.js";
 
+/**
+ * Resolves genome assemblies for locus scales.
+ *
+ * Keeps configured genome definitions and loaded `Genome` instances, supports
+ * named and inline assemblies, and deduplicates concurrent URL loads.
+ *
+ * `ensureAssembly(...)` is the async loading boundary. `getGenome(...)` is
+ * synchronous and expects required URL-backed assemblies to be ensured first.
+ *
+ * The default assembly comes from root `assembly`, a single configured genome,
+ * or a single already-loaded built-in genome.
+ */
 export default class GenomeStore {
     /**
      * @param {string} baseUrl
@@ -8,22 +20,15 @@ export default class GenomeStore {
         /** @type {Map<string, Genome>} */
         this.genomes = new Map();
 
-        /** @type {Map<string, Omit<import("../spec/genome.js").GenomeConfig, "name">>} */
         this.#configuredGenomesByName = new Map();
-
-        /** @type {Map<string, Promise<void>>} */
         this.#loadingPromisesByName = new Map();
-
-        /** @type {Map<string, string>} */
         this.#inlineAssemblyKeysByName = new Map();
-
-        /** @type {string | undefined} */
         this.#defaultAssemblyName = undefined;
 
         this.baseUrl = baseUrl;
     }
 
-    /** @type {Map<string, Omit<import("../spec/genome.js").GenomeConfig, "name">>} */
+    /** @type {Map<string, import("../spec/root.js").NamedGenomeConfig>} */
     #configuredGenomesByName;
 
     /** @type {Map<string, Promise<void>>} */
@@ -45,7 +50,7 @@ export default class GenomeStore {
     }
 
     /**
-     * @param {Map<string, Omit<import("../spec/genome.js").GenomeConfig, "name">>} genomesByName
+     * @param {Map<string, import("../spec/root.js").NamedGenomeConfig>} genomesByName
      * @param {string} [defaultAssembly]
      */
     configureGenomes(genomesByName, defaultAssembly) {
@@ -85,29 +90,19 @@ export default class GenomeStore {
         /** @type {Promise<Genome>[]} */
         const pending = [];
         /** @type {Set<string>} */
-        const seenStringAssemblies = new Set();
-        /** @type {Set<string>} */
-        const seenInlineAssemblies = new Set();
+        const seenAssemblies = new Set();
 
         for (const assembly of assemblies) {
             if (!assembly) {
                 continue;
             }
 
-            if (typeof assembly === "object") {
-                const key = JSON.stringify(assembly);
-                if (seenInlineAssemblies.has(key)) {
-                    continue;
-                }
-                seenInlineAssemblies.add(key);
-                pending.push(this.ensureAssembly(assembly));
+            const dedupKey = getAssemblyDedupKey(assembly);
+            if (seenAssemblies.has(dedupKey)) {
                 continue;
             }
 
-            if (seenStringAssemblies.has(assembly)) {
-                continue;
-            }
-            seenStringAssemblies.add(assembly);
+            seenAssemblies.add(dedupKey);
             pending.push(this.ensureAssembly(assembly));
         }
 
@@ -120,7 +115,7 @@ export default class GenomeStore {
      */
     async ensureAssembly(assembly) {
         if (typeof assembly === "object") {
-            return this.#getInlineAssemblyGenome(assembly);
+            return this.#ensureInlineAssemblyGenome(assembly);
         }
 
         const existing = this.genomes.get(assembly);
@@ -133,15 +128,12 @@ export default class GenomeStore {
             return this.#ensureConfiguredGenome(assembly, configured);
         }
 
-        const builtIn = this.#tryCreateBuiltInGenome(assembly);
+        const builtIn = this.#getOrCreateBuiltInGenome(assembly);
         if (builtIn) {
-            this.genomes.set(assembly, builtIn);
             return builtIn;
         }
 
-        throw new Error(
-            `No genome with the name ${assembly} has been configured!`
-        );
+        throw this.#createUnknownGenomeError(assembly);
     }
 
     /**
@@ -165,15 +157,12 @@ export default class GenomeStore {
                 );
             }
 
-            const builtIn = this.#tryCreateBuiltInGenome(name);
+            const builtIn = this.#getOrCreateBuiltInGenome(name);
             if (builtIn) {
-                this.genomes.set(name, builtIn);
                 return builtIn;
             }
 
-            throw new Error(
-                `No genome with the name ${name} has been configured!`
-            );
+            throw this.#createUnknownGenomeError(name);
         }
 
         const defaultAssemblyName = this.getDefaultAssemblyName();
@@ -183,7 +172,7 @@ export default class GenomeStore {
 
         if (this.genomes.size === 0 && this.#configuredGenomesByName.size) {
             throw new Error(
-                "Cannot pick a default genome because configured genomes have not been loaded. Define `assembly` in the root spec or call ensureAssembly() before requesting the default genome."
+                "Default genome is not loaded. Define root `assembly` or call ensureAssembly() first."
             );
         }
 
@@ -214,33 +203,54 @@ export default class GenomeStore {
 
     /**
      * @param {string} name
-     * @param {Omit<import("../spec/genome.js").GenomeConfig, "name">} config
+     * @returns {Error}
+     */
+    #createUnknownGenomeError(name) {
+        return new Error(
+            `No genome with the name ${name} has been configured!`
+        );
+    }
+
+    /**
+     * @param {string} name
+     * @returns {Genome | undefined}
+     */
+    #getOrCreateBuiltInGenome(name) {
+        const builtIn = this.#tryCreateBuiltInGenome(name);
+        if (builtIn) {
+            this.genomes.set(name, builtIn);
+            return builtIn;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * @param {string} name
+     * @param {string} missingGenomeError
      * @returns {Promise<Genome>}
      */
-    async #ensureConfiguredGenome(name, config) {
-        const existing = this.genomes.get(name);
-        if (existing) {
-            return existing;
-        }
-
+    async #awaitLoadedGenomeFromPending(name, missingGenomeError) {
         const pending = this.#loadingPromisesByName.get(name);
-        if (pending) {
-            await pending;
-            const loaded = this.genomes.get(name);
-            if (!loaded) {
-                throw new Error(
-                    `Loading genome ${name} failed before it became available.`
-                );
-            }
-            return loaded;
+        if (!pending) {
+            throw new Error(`No pending genome load for ${name}.`);
         }
 
-        const genome = new Genome({
-            name,
-            ...config,
-        });
-        this.genomes.set(name, genome);
+        await pending;
+        const loaded = this.genomes.get(name);
+        if (!loaded) {
+            throw new Error(missingGenomeError);
+        }
 
+        return loaded;
+    }
+
+    /**
+     * @param {string} name
+     * @param {Genome} genome
+     * @returns {Promise<Genome>}
+     */
+    async #loadGenome(name, genome) {
         const loadPromise = genome.load(this.baseUrl);
         this.#loadingPromisesByName.set(name, loadPromise);
 
@@ -257,27 +267,109 @@ export default class GenomeStore {
     }
 
     /**
+     * @param {string} name
+     * @param {import("../spec/root.js").NamedGenomeConfig} config
+     * @returns {Promise<Genome>}
+     */
+    async #ensureConfiguredGenome(name, config) {
+        const existing = this.genomes.get(name);
+        if (existing) {
+            if (this.#loadingPromisesByName.has(name)) {
+                return this.#awaitLoadedGenomeFromPending(
+                    name,
+                    `Loading genome ${name} failed before it became available.`
+                );
+            }
+            return existing;
+        }
+
+        if (this.#loadingPromisesByName.has(name)) {
+            return this.#awaitLoadedGenomeFromPending(
+                name,
+                `Loading genome ${name} failed before it became available.`
+            );
+        }
+
+        const genome = new Genome({
+            name,
+            ...config,
+        });
+        this.genomes.set(name, genome);
+
+        if ("url" in config) {
+            return this.#loadGenome(name, genome);
+        }
+
+        return genome;
+    }
+
+    /**
+     * @param {import("../spec/scale.js").InlineLocusAssembly} assembly
+     * @returns {Promise<Genome>}
+     */
+    async #ensureInlineAssemblyGenome(assembly) {
+        this.#validateInlineAssembly(assembly);
+
+        const inlineName = this.#resolveInlineAssemblyName(assembly);
+
+        const existing = this.genomes.get(inlineName);
+        if (existing) {
+            if (this.#loadingPromisesByName.has(inlineName)) {
+                return this.#awaitLoadedGenomeFromPending(
+                    inlineName,
+                    `Loading inline assembly ${inlineName} failed before it became available.`
+                );
+            }
+            return existing;
+        }
+
+        if (this.#loadingPromisesByName.has(inlineName)) {
+            return this.#awaitLoadedGenomeFromPending(
+                inlineName,
+                `Loading inline assembly ${inlineName} failed before it became available.`
+            );
+        }
+
+        if ("contigs" in assembly) {
+            const genome = new Genome({
+                name: inlineName,
+                contigs: assembly.contigs,
+            });
+            this.genomes.set(inlineName, genome);
+            return genome;
+        }
+
+        const genome = new Genome({
+            name: inlineName,
+            url: assembly.url,
+        });
+        this.genomes.set(inlineName, genome);
+
+        return this.#loadGenome(inlineName, genome);
+    }
+
+    /**
      * @param {import("../spec/scale.js").InlineLocusAssembly} assembly
      * @returns {Genome}
      */
     #getInlineAssemblyGenome(assembly) {
-        if ("name" in assembly) {
-            throw new Error(
-                "Inline `scale.assembly` objects must be anonymous. Use a string reference for named assemblies."
-            );
-        }
+        this.#validateInlineAssembly(assembly);
 
-        if (!("contigs" in assembly)) {
-            throw new Error(
-                "Inline `scale.assembly` objects must define `contigs`."
-            );
-        }
-
-        const key = JSON.stringify(assembly);
-        const inlineName = this.#getInlineAssemblyName(key);
+        const inlineName = this.#resolveInlineAssemblyName(assembly);
         const existing = this.genomes.get(inlineName);
         if (existing) {
+            if (this.#loadingPromisesByName.has(inlineName)) {
+                throw new Error(
+                    `Inline URL assembly ${inlineName} has not been loaded yet. Call ensureAssembly() before accessing it.`
+                );
+            }
             return existing;
+        }
+
+        if ("url" in assembly) {
+            throw new Error(
+                "Inline URL assemblies must be loaded first. Call ensureAssembly() before accessing it."
+            );
         }
 
         const genome = new Genome({
@@ -287,6 +379,27 @@ export default class GenomeStore {
         this.genomes.set(inlineName, genome);
 
         return genome;
+    }
+
+    /**
+     * @param {import("../spec/scale.js").InlineLocusAssembly} assembly
+     */
+    #validateInlineAssembly(assembly) {
+        const hasContigs = "contigs" in assembly;
+        const hasUrl = "url" in assembly;
+        if (hasContigs === hasUrl) {
+            throw new Error(
+                "Inline `scale.assembly` objects must define exactly one of `contigs` or `url`."
+            );
+        }
+    }
+
+    /**
+     * @param {import("../spec/scale.js").InlineLocusAssembly} assembly
+     * @returns {string}
+     */
+    #resolveInlineAssemblyName(assembly) {
+        return this.#getInlineAssemblyName(JSON.stringify(assembly));
     }
 
     /**
@@ -310,7 +423,7 @@ export default class GenomeStore {
             }
         }
 
-        throw new Error("Could not generate a unique inline assembly name!");
+        throw new Error();
     }
 }
 
@@ -326,4 +439,16 @@ function hashString(value) {
     }
     // eslint-disable-next-line no-bitwise
     return (hash >>> 0).toString(36);
+}
+
+/**
+ * @param {string | import("../spec/scale.js").InlineLocusAssembly} assembly
+ * @returns {string}
+ */
+function getAssemblyDedupKey(assembly) {
+    if (typeof assembly === "string") {
+        return `name:${assembly}`;
+    }
+
+    return `inline:${JSON.stringify(assembly)}`;
 }

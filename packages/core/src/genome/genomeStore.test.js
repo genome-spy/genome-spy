@@ -83,4 +83,49 @@ describe("GenomeStore", () => {
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
+
+    test("deduplicates concurrent inline URL assembly loads", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            /** @type {any} */ ({
+                ok: true,
+                text: async () => "chr1\t10\n",
+            })
+        );
+
+        const store = new GenomeStore("https://example.org/base/");
+        const inlineAssembly = /** @type {const} */ ({
+            url: "inline.chrom.sizes",
+        });
+
+        await Promise.all([
+            store.ensureAssembly(inlineAssembly),
+            store.ensureAssembly(inlineAssembly),
+        ]);
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(store.getGenome(inlineAssembly).getExtent()).toEqual([0, 10]);
+    });
+
+    test("throws when inline URL assembly is accessed before loading", () => {
+        const store = new GenomeStore(".");
+        expect(() =>
+            store.getGenome(
+                /** @type {import("../spec/scale.js").InlineLocusAssembly} */ ({
+                    url: "inline.chrom.sizes",
+                })
+            )
+        ).toThrow("Inline URL assemblies must be loaded first.");
+    });
+
+    test("rejects inline assemblies that define both contigs and url", async () => {
+        const store = new GenomeStore(".");
+        await expect(() =>
+            store.ensureAssembly(
+                /** @type {any} */ ({
+                    contigs: [{ name: "chr1", size: 10 }],
+                    url: "inline.chrom.sizes",
+                })
+            )
+        ).rejects.toThrow("must define exactly one of `contigs` or `url`");
+    });
 });

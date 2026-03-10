@@ -8,7 +8,7 @@
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-import { ChromosomalLocus, Contig } from "./genome.js";
+import { ChromosomalLocus, GenomeDefinition } from "./genome.js";
 import { ExprRef } from "./parameter.js";
 
 export type ScaleType =
@@ -53,7 +53,7 @@ export interface Scale {
      * This can be:
      *
      * - A string reference to a named assembly (built-in or root-configured).
-     * - An inline anonymous assembly that defines `contigs`.
+     * - An inline anonymous assembly that defines either `contigs` or `url`.
      *
      * If undefined, the default genome from the genome store is used.
      */
@@ -236,12 +236,7 @@ export interface Scale {
     zoom?: boolean | ZoomParams;
 }
 
-export interface InlineLocusAssembly {
-    /**
-     * An array of contigs/sequences in the inline assembly.
-     */
-    contigs: Contig[];
-}
+export type InlineLocusAssembly = GenomeDefinition;
 
 export interface SelectionDomainRef {
     /**

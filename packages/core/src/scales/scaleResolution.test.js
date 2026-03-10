@@ -116,6 +116,47 @@ describe("Scale resolution", () => {
         expect(xResolution.getDomain()).toEqual([0, 12]);
     });
 
+    test("inline assembly urls resolve against member view baseUrl", async () => {
+        const context = createTestViewContext();
+        const view = await context.createOrImportView(
+            /** @type {any} */ ({
+                baseUrl: "https://example.org/specs/",
+                data: {
+                    values: [{ chrom: "chr1", pos: 1 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                url: "relative.chrom.sizes",
+                            },
+                        },
+                    },
+                },
+            }),
+            null,
+            null,
+            "root"
+        );
+
+        const xResolution = view.getScaleResolution("x");
+        if (!xResolution) {
+            throw new Error("Expected x scale resolution!");
+        }
+
+        expect(xResolution.getAssemblyRequirement()).toEqual({
+            assembly: {
+                url: "https://example.org/specs/relative.chrom.sizes",
+            },
+            needsDefaultAssembly: false,
+        });
+    });
+
     test("locus scale type is rejected on non-positional channels", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {

@@ -1,7 +1,7 @@
-import { GenomeConfig } from "./genome.js";
+import { GenomeConfig, GenomeDefinition } from "./genome.js";
 import { ViewSpec } from "./view.js";
 
-export type NamedGenomeConfig = Omit<GenomeConfig, "name">;
+export type NamedGenomeConfig = GenomeDefinition | Record<string, never>;
 
 export interface RootConfig {
     $schema?: string;
@@ -21,7 +21,7 @@ export interface RootConfig {
     assembly?: string;
 
     /**
-     * @deprecated Use `genomes` and `assembly` instead.
+     * @deprecated Legacy root-level genome config. Use `genomes` and `assembly` instead.
      */
     genome?: GenomeConfig;
 

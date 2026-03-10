@@ -2,7 +2,7 @@ import { getContigs } from "./genomes.js";
 
 /**
  * @typedef {import("../spec/root.js").RootConfig} RootConfig
- * @typedef {Omit<import("../spec/genome.js").GenomeConfig, "name">} NamedGenomeDefinition
+ * @typedef {import("../spec/root.js").NamedGenomeConfig} NamedGenomeDefinition
  */
 
 /**

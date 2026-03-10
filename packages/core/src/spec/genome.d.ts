@@ -10,7 +10,7 @@ export interface GenomeConfigBase {
     name: string;
 }
 
-export interface UrlGenomeConfig extends GenomeConfigBase {
+export interface UrlGenomeDefinition {
     /**
      * A URL to a `chrom.sizes` file, which is a tab-separated file with two
      * columns: the sequence name and its size.
@@ -23,13 +23,33 @@ export interface UrlGenomeConfig extends GenomeConfigBase {
     url: string;
 }
 
-export interface InlineGenomeConfig extends GenomeConfigBase {
+export interface InlineGenomeDefinition {
     /**
      * An array of contigs/sequences in the genome assembly.
      */
     contigs: Contig[];
 }
 
+/**
+ * Genome definition for contexts where the name is provided externally
+ * (for example, as a key in root `genomes`) or not needed
+ * (for example, inline `scale.assembly`).
+ */
+export type GenomeDefinition = UrlGenomeDefinition | InlineGenomeDefinition;
+
+/**
+ * @deprecated Use `GenomeDefinition` in root `genomes` entries and `scale.assembly`.
+ */
+export type UrlGenomeConfig = GenomeConfigBase & UrlGenomeDefinition;
+
+/**
+ * @deprecated Use `GenomeDefinition` in root `genomes` entries and `scale.assembly`.
+ */
+export type InlineGenomeConfig = GenomeConfigBase & InlineGenomeDefinition;
+
+/**
+ * @deprecated Use root `genomes` and `assembly` instead of root `genome`.
+ */
 export type GenomeConfig =
     | UrlGenomeConfig
     | InlineGenomeConfig

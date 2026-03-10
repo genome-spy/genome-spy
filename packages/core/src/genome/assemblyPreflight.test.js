@@ -261,4 +261,60 @@ describe("assembly preflight", () => {
             0, 10,
         ]);
     });
+
+    test("loads inline URL assembly once across repeated preflight calls", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            /** @type {any} */ ({
+                ok: true,
+                text: async () => "chr1\t10\n",
+            })
+        );
+
+        const context = createTestViewContext();
+        context.genomeStore.baseUrl = "https://example.org/root/";
+
+        const view = await context.createOrImportView(
+            /** @type {any} */ ({
+                baseUrl: "https://example.org/specs/",
+                data: {
+                    values: [{ chrom: "chr1", pos: 1 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                url: "inline.chrom.sizes",
+                            },
+                        },
+                    },
+                },
+            }),
+            null,
+            null,
+            "root"
+        );
+
+        await ensureAssembliesForView(view, context.genomeStore);
+        await ensureAssembliesForView(view, context.genomeStore);
+
+        const { assemblies } = collectAssembliesFromViewHierarchy(view);
+        const inlineAssembly = assemblies.find((assembly) => {
+            return (
+                typeof assembly === "object" && "url" in assembly && assembly
+            );
+        });
+        if (!inlineAssembly || typeof inlineAssembly === "string") {
+            throw new Error("Expected inline URL assembly requirement.");
+        }
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(
+            context.genomeStore.getGenome(inlineAssembly).getExtent()
+        ).toEqual([0, 10]);
+    });
 });
