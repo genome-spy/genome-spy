@@ -3,6 +3,7 @@ import {
     loadViewSubtreeData,
 } from "../data/flowInit.js";
 import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
+import { ensureAssembliesForSpec } from "../genome/assemblyPreflight.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
@@ -56,6 +57,11 @@ export default class ContainerMutationHelper {
         const name =
             this.options.defaultName?.(insertIndex, childSpec) ??
             this.container.getNextAutoName("child");
+
+        await ensureAssembliesForSpec(
+            childSpec,
+            this.container.context.genomeStore
+        );
 
         const childView = await this.container.context.createOrImportView(
             childSpec,

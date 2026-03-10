@@ -40,6 +40,8 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
 import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
+import { ensureAssembliesForSpec } from "./genome/assemblyPreflight.js";
+import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -50,6 +52,8 @@ vegaFormats("fasta", fasta);
 vegaFormats("parquet", parquet);
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
+
+let legacyRootGenomeWarningShown = false;
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
@@ -312,9 +316,18 @@ export default class GenomeSpy {
 
     async #initializeGenomeStore() {
         this.genomeStore = new GenomeStore(this.spec.baseUrl);
-        if (this.spec.genome) {
-            await this.genomeStore.initialize(this.spec.genome);
+
+        const { genomesByName, defaultAssembly, deprecationWarning } =
+            resolveRootGenomeConfig(this.spec);
+        this.genomeStore.configureGenomes(genomesByName, defaultAssembly);
+
+        if (deprecationWarning && !legacyRootGenomeWarningShown) {
+            // eslint-disable-next-line no-console
+            console.warn(deprecationWarning);
+            legacyRootGenomeWarningShown = true;
         }
+
+        await ensureAssembliesForSpec(this.spec, this.genomeStore);
     }
 
     #createViewContext() {

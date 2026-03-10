@@ -7,23 +7,33 @@ concatenate the discrete chromosomes onto a single continuous linear axis.
 Concatenation needs the sizes and preferred order for the contigs or
 chromosomes. These are usually provided with a genome assembly.
 
-To activate support for genomic coordinates, add the `genome` property with the
-name of the assembly to the top level view specification:
+To activate support for genomic coordinates, define the default assembly at the
+top level with the `assembly` property:
 
 ```json
 {
-  "genome": {
-    "name": "hg38"
-  },
+  "assembly": "hg38",
   ...
 }
 ```
 
-!!! warning "Only a single genome assembly"
+If different axes use different coordinate systems (for example, synteny or
+cross-species dot plots), set the assembly in each locus scale:
 
-    Currently, a visualization may have only a single globally configured genome
-    assembly. Different assemblies for different scales (for `x` and `y` axes,
-    for example) will be supported in the future.
+```json
+{
+  "encoding": {
+    "x": {
+      "type": "locus",
+      "scale": { "type": "locus", "assembly": "hg19" }
+    },
+    "y": {
+      "type": "locus",
+      "scale": { "type": "locus", "assembly": "hg38" }
+    }
+  }
+}
+```
 
 ## Supported genomes
 
@@ -32,8 +42,8 @@ GenomeSpy bundles a few common built-in genome assemblies: `"hg38"`, `"hg19"`,
 
 ## Custom genomes
 
-Custom genome assemblies can be provided in two ways: as a `chrom.sizes` file or within the
-the specification.
+Custom assemblies are defined under root `genomes`, which maps assembly names to
+their configurations.
 
 ### As a `chrom.sizes` file
 
@@ -48,10 +58,12 @@ Example:
 
 ```json
 {
-  "genome": {
-    "name": "hg19",
-    "url": "https://genomespy.app/data/genomes/hg19/chrom.sizes"
+  "genomes": {
+    "myAssembly": {
+      "url": "https://genomespy.app/data/genomes/hg19/chrom.sizes"
+    }
   },
+  "assembly": "myAssembly",
   ...
 }
 ```
@@ -66,27 +78,34 @@ Example:
 
 ```json
 {
-  "genome": {
-    "name": "dm6",
-    "contigs": [
-      {"name": "chr3R", "size": 32079331 },
-      {"name": "chr3L", "size": 28110227 },
-      {"name": "chr2R", "size": 25286936 },
-      {"name": "chrX",  "size": 23542271 },
-      {"name": "chr2L", "size": 23513712 },
-      {"name": "chrY",  "size": 3667352 },
-      {"name": "chr4",  "size": 1348131 },
-    ]
+  "genomes": {
+    "dm6custom": {
+      "contigs": [
+        {"name": "chr3R", "size": 32079331 },
+        {"name": "chr3L", "size": 28110227 },
+        {"name": "chr2R", "size": 25286936 },
+        {"name": "chrX",  "size": 23542271 },
+        {"name": "chr2L", "size": 23513712 },
+        {"name": "chrY",  "size": 3667352 },
+        {"name": "chr4",  "size": 1348131 }
+      ]
+    }
   },
+  "assembly": "dm6custom",
   ...
 }
 ```
 
+!!! note "Legacy root `genome`"
+
+    Root `genome` is still supported for backward compatibility, but it is
+    deprecated. Use `genomes` and `assembly` in new specifications.
+
 ## Encoding genomic coordinates
 
-When a genome assembly has been specified, you can encode the genomic
-coordinates conveniently by specifying the chromosome (`chrom`) and position
-(`pos`) fields as follows:
+When an assembly can be resolved (from `scale.assembly` or root `assembly`), you
+can encode genomic coordinates by specifying the chromosome (`chrom`) and
+position (`pos`) fields as follows:
 
 ```json
 {
@@ -146,7 +165,7 @@ replaced by another.
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "data": {
     "values": [
       { "chrom": "chr3", "pos": 134567890 },
@@ -177,7 +196,7 @@ variant (CNV), where a region of the genome has been duplicated or deleted.
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "data": {
     "values": [
       { "chrom": "chr3", "startpos": 100000000, "endpos": 140000000 },

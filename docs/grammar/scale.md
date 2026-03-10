@@ -215,9 +215,11 @@ the label indices.
 
 ### Locus scale
 
-The `"locus"` scale is similar to the `"index"` scale, but provides a genome-aware
-axis with concatenated chromosomes. To use the locus scale, a
-[genome](../genomic-data/genomic-coordinates.md) must be specified.
+The `"locus"` scale is similar to the `"index"` scale, but provides a
+genome-aware axis with concatenated chromosomes. See
+[genomic coordinates](../genomic-data/genomic-coordinates.md) for assembly and
+coordinate-system details. Locus scales resolve their assembly from
+`scale.assembly` or, if omitted, from the root `assembly`.
 
 The locus scale is used by default when the field type is `"locus"`.
 
@@ -270,7 +272,7 @@ Somewhere inside the chromosome 1:
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "data": {
     "values": [
       { "chrom": "chr3", "pos": 134567890 },
@@ -412,7 +414,7 @@ of the chromosome axis and grid using various parameters.
 
 ```json
 {
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
   "data": { "values": [] },
   "mark": "point",
 

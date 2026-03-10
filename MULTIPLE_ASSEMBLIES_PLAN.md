@@ -256,7 +256,7 @@ Unit tests:
    - inline object-valued `scale.assembly` rejects `name`
 6. Root config validation:
    - `genome` + (`genomes` or root `assembly`) is rejected
-   - root `assembly` must exist as a key in `genomes`
+   - root `assembly` must be either a key in `genomes` or a built-in assembly
 
 Integration-style tests:
 

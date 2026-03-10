@@ -1,0 +1,88 @@
+import { describe, expect, test } from "vitest";
+import { resolveRootGenomeConfig } from "./rootGenomeConfig.js";
+
+describe("resolveRootGenomeConfig", () => {
+    test("resolves legacy root genome and emits deprecation warning", () => {
+        const resolved = resolveRootGenomeConfig({
+            genome: {
+                name: "hg38",
+            },
+        });
+
+        expect(resolved.defaultAssembly).toBe("hg38");
+        expect(resolved.genomesByName.get("hg38")).toEqual({});
+        expect(resolved.deprecationWarning).toContain("deprecated");
+        expect(resolved.deprecationWarning).toContain("genomes");
+        expect(resolved.deprecationWarning).toContain("assembly");
+        expect(resolved.deprecationWarning).toContain(
+            '{"genome":{"name":"hg38"}} -> {"assembly":"hg38"}'
+        );
+    });
+
+    test("rejects mixed legacy and new root genome properties", () => {
+        expect(() =>
+            resolveRootGenomeConfig({
+                genome: { name: "hg38" },
+                genomes: { hg19: {} },
+            })
+        ).toThrow("Do not mix deprecated `genome` with `genomes`.");
+    });
+
+    test("rejects legacy genome mixed with root assembly", () => {
+        expect(() =>
+            resolveRootGenomeConfig({
+                genome: { name: "hg38" },
+                assembly: "hg38",
+            })
+        ).toThrow("Do not mix deprecated `genome` with root `assembly`.");
+    });
+
+    test("defaults assembly to the only configured genome", () => {
+        const resolved = resolveRootGenomeConfig({
+            genomes: {
+                custom: {
+                    contigs: [{ name: "chr1", size: 10 }],
+                },
+            },
+        });
+
+        expect(resolved.defaultAssembly).toBe("custom");
+        expect(resolved.genomesByName.get("custom")).toEqual({
+            contigs: [{ name: "chr1", size: 10 }],
+        });
+    });
+
+    test("accepts built-in root assembly even when not in genomes map", () => {
+        const resolved = resolveRootGenomeConfig({
+            genomes: {
+                custom: {
+                    contigs: [{ name: "chr1", size: 10 }],
+                },
+            },
+            assembly: "hg19",
+        });
+
+        expect(resolved.defaultAssembly).toBe("hg19");
+    });
+
+    test("rejects unknown root assembly", () => {
+        expect(() =>
+            resolveRootGenomeConfig({
+                assembly: "unknown_assembly",
+            })
+        ).toThrow("neither defined in `genomes` nor a built-in assembly");
+    });
+
+    test("rejects name inside root genomes entry", () => {
+        expect(() =>
+            resolveRootGenomeConfig({
+                genomes: {
+                    hg19: /** @type {any} */ ({
+                        name: "hg19",
+                        contigs: [{ name: "chr1", size: 10 }],
+                    }),
+                },
+            })
+        ).toThrow('must not include "name"');
+    });
+});

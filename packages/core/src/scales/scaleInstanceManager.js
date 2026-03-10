@@ -67,11 +67,7 @@ export default class ScaleInstanceManager {
             return genomeStore.getGenome(assembly);
         }
 
-        try {
-            return genomeStore.getGenome();
-        } catch (_error) {
-            throw new Error("No genome has been defined!");
-        }
+        return genomeStore.getGenome();
     }
 
     /**
