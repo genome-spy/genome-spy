@@ -20,6 +20,27 @@ test("parses headerless BEDPE with default positional columns", () => {
     ]);
 });
 
+test("keeps optional extra columns as fieldN fallback names", () => {
+    const data = "chr1\t10\t20\tchr2\t30\t40\teventA\t5\t+\t-\textra1\textra2";
+
+    expect(bedpe(data)).toEqual([
+        {
+            chrom1: "chr1",
+            start1: 10,
+            end1: 20,
+            chrom2: "chr2",
+            start2: 30,
+            end2: 40,
+            name: "eventA",
+            score: 5,
+            strand1: 1,
+            strand2: -1,
+            field11: "extra1",
+            field12: "extra2",
+        },
+    ]);
+});
+
 test("parses BEDPE header row when present", () => {
     const data = `chrom1\tstart1\tend1\tchrom2\tstart2\tend2\tname
 chr1\t10\t20\tchr2\t30\t40\teventA`;
