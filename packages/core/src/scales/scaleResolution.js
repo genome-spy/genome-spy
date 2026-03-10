@@ -154,7 +154,7 @@ export default class ScaleResolution {
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
             getType: () => this.type,
-            getLocusExtent: () => this.#getLocusExtent(),
+            getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
         });
 
@@ -227,21 +227,24 @@ export default class ScaleResolution {
     }
 
     /**
+     * @param {string} [assembly]
      * @returns {number[]}
      */
-    #getLocusExtent() {
-        return getGenomeExtent(this.#getGenomeSource());
+    #getLocusExtent(assembly) {
+        return getGenomeExtent(this.#getGenomeSource(assembly));
     }
 
     /**
+     * @param {string} [assembly]
      * @returns {import("../genome/scaleLocus.js").GenomeSource}
      */
-    #getGenomeSource() {
+    #getGenomeSource(assembly) {
         if (this.type !== LOCUS) {
             return undefined;
         }
         return /** @type {import("../genome/scaleLocus.js").GenomeSource} */ (
-            this.#scaleManager.scale ?? this.#scaleManager.getLocusGenome()
+            this.#scaleManager.scale ??
+                this.#scaleManager.getLocusGenome(assembly)
         );
     }
 
@@ -585,10 +588,10 @@ export default class ScaleResolution {
             return { type: "null" };
         }
 
-        const domain =
-            this.#domainAggregator.getConfiguredOrDefaultDomain(
-                extractDataDomain
-            );
+        const domain = this.#domainAggregator.getConfiguredOrDefaultDomain(
+            extractDataDomain,
+            props.type === LOCUS ? props.assembly : undefined
+        );
 
         if (isDiscrete(props.type)) {
             const isExplicit = this.#isExplicitDomain();

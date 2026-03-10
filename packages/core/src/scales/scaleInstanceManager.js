@@ -54,15 +54,24 @@ export default class ScaleInstanceManager {
     }
 
     /**
+     * @param {string} [assembly]
      * @returns {import("../genome/genome.js").default}
      */
-    getLocusGenome() {
+    getLocusGenome(assembly) {
         const genomeStore = this.#getGenomeStore?.();
-        const genome = genomeStore?.getGenome();
-        if (!genome) {
+        if (!genomeStore) {
             throw new Error("No genome has been defined!");
         }
-        return genome;
+
+        if (assembly) {
+            return genomeStore.getGenome(assembly);
+        }
+
+        try {
+            return genomeStore.getGenome();
+        } catch (_error) {
+            throw new Error("No genome has been defined!");
+        }
     }
 
     /**

@@ -311,8 +311,8 @@ export default class GenomeSpy {
     }
 
     async #initializeGenomeStore() {
+        this.genomeStore = new GenomeStore(this.spec.baseUrl);
         if (this.spec.genome) {
-            this.genomeStore = new GenomeStore(this.spec.baseUrl);
             await this.genomeStore.initialize(this.spec.genome);
         }
     }

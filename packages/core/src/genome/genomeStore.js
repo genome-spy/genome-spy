@@ -31,17 +31,36 @@ export default class GenomeStore {
      */
     getGenome(name) {
         if (!this.genomes.size) {
-            throw new Error("No genomes have been configured!");
+            if (!name) {
+                throw new Error("No genomes have been configured!");
+            }
+
+            const builtIn = this.#tryCreateBuiltInGenome(name);
+            if (builtIn) {
+                this.genomes.set(name, builtIn);
+                return builtIn;
+            }
+
+            throw new Error(
+                `No genome with the name ${name} has been configured!`
+            );
         }
 
         if (name) {
             const genome = this.genomes.get(name);
-            if (!genome) {
-                throw new Error(
-                    `No genome with the name ${name} has been configured!`
-                );
+            if (genome) {
+                return genome;
             }
-            return genome;
+
+            const builtIn = this.#tryCreateBuiltInGenome(name);
+            if (builtIn) {
+                this.genomes.set(name, builtIn);
+                return builtIn;
+            }
+
+            throw new Error(
+                `No genome with the name ${name} has been configured!`
+            );
         } else {
             if (this.genomes.size > 1) {
                 throw new Error(
@@ -49,6 +68,18 @@ export default class GenomeStore {
                 );
             }
             return this.genomes.values().next().value;
+        }
+    }
+
+    /**
+     * @param {string} name
+     * @returns {Genome | undefined}
+     */
+    #tryCreateBuiltInGenome(name) {
+        try {
+            return new Genome({ name });
+        } catch (_error) {
+            return undefined;
         }
     }
 }

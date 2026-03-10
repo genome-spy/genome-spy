@@ -176,6 +176,30 @@ describe("ScaleInstanceManager", () => {
         ).toThrow("No genome with the name missing has been configured!");
     });
 
+    test("loads built-in assembly lazily when requested by locus scale", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+            assembly: "hg19",
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome().name).toBe("hg19");
+        expect(genomeStore.genomes.has("hg19")).toBe(true);
+    });
+
     test("dispose invalidates active range expressions", () => {
         const invalidate = vi.fn();
         const expr = /** @type {any} */ (() => 1);

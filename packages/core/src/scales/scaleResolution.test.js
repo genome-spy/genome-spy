@@ -1,7 +1,10 @@
 // @ts-nocheck
 
 import { describe, expect, test, vi } from "vitest";
-import { createAndInitialize } from "../view/testUtils.js";
+import {
+    createAndInitialize,
+    createTestViewContext,
+} from "../view/testUtils.js";
 import createDomain, { toRegularArray as r } from "../utils/domainArray.js";
 import LayerView from "../view/layerView.js";
 import ConcatView from "../view/concatView.js";
@@ -15,6 +18,58 @@ import { primaryPositionalChannels } from "../encoder/encoder.js";
 // NOTE: The most of these tests don't actually test scaleResolution but the resolution algorithm.
 
 describe("Scale resolution", () => {
+    test("locus scales can use explicit built-in assemblies without root genome config", async () => {
+        const context = createTestViewContext();
+        context.genomeStore.genomes.clear();
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [
+                    {
+                        hg19_chrom: "chr1",
+                        hg19_start: 1,
+                        hg38_chrom: "chr1",
+                        hg38_start: 1,
+                    },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "hg19_chrom",
+                    pos: "hg19_start",
+                    type: "locus",
+                    scale: { type: "locus", assembly: "hg19" },
+                },
+                y: {
+                    chrom: "hg38_chrom",
+                    pos: "hg38_start",
+                    type: "locus",
+                    scale: { type: "locus", assembly: "hg38" },
+                },
+            },
+        };
+
+        const view = await context.createOrImportView(spec, null, null, "root");
+        if (!(view instanceof UnitView)) {
+            throw new Error("Expected a unit view!");
+        }
+
+        const xResolution = view.getScaleResolution("x");
+        const yResolution = view.getScaleResolution("y");
+        if (!xResolution || !yResolution) {
+            throw new Error("Expected x and y scale resolutions!");
+        }
+
+        expect(xResolution.getDomain()).toEqual(
+            context.genomeStore.getGenome("hg19").getExtent()
+        );
+        expect(yResolution.getDomain()).toEqual(
+            context.genomeStore.getGenome("hg38").getExtent()
+        );
+    });
+
     test("Channels with just values (no fields or scales) do not resolve", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
