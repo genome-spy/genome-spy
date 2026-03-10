@@ -73,7 +73,13 @@ export default class SearchField extends LitElement {
         );
         if (genomeResolution) {
             this._genomeResolution = genomeResolution;
-            this._genome = this.genomeSpy.genomeStore.getGenome();
+            const genomeScale = genomeResolution.getScale();
+            if (!("genome" in genomeScale)) {
+                throw new Error(
+                    "Expected a zoomable locus scale to provide genome()"
+                );
+            }
+            this._genome = genomeScale.genome();
 
             this.getDefaultValue = () =>
                 this._genome.formatInterval(genomeResolution.getDomain());
