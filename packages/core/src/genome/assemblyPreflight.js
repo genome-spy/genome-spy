@@ -1,7 +1,3 @@
-import {
-    isChannelDefWithScale,
-    isValueDefWithCondition,
-} from "../encoder/encoder.js";
 import { visitAddressableViews } from "../view/viewSelectors.js";
 
 /**
@@ -23,49 +19,16 @@ export function collectAssembliesFromViewHierarchy(viewRoot) {
     const assemblies = [];
     let needsDefaultAssembly = false;
 
-    // Only inspect user-addressable views. Internal helper views (axes, grid
-    // decorations, scrollbars, etc.) may carry inherited locus encodings that
-    // do not represent user-authored assembly requirements.
-    visitAddressableViews(viewRoot, (view) => {
-        const encoding = view.getEncoding();
-        for (const channelDef of Object.values(encoding)) {
-            if (!channelDef || Array.isArray(channelDef)) {
-                continue;
-            }
-
-            /** @type {import("../spec/channel.js").ChannelDefWithScale | undefined} */
-            let channelDefWithScale;
-            if (isChannelDefWithScale(channelDef)) {
-                channelDefWithScale = channelDef;
-            } else if (isValueDefWithCondition(channelDef)) {
-                const condition = channelDef.condition;
-                if (
-                    !Array.isArray(condition) &&
-                    isChannelDefWithScale(condition)
-                ) {
-                    channelDefWithScale = condition;
-                }
-            }
-
-            if (!channelDefWithScale) {
-                continue;
-            }
-
-            const scale = channelDefWithScale.scale;
-            const isLocus =
-                channelDefWithScale.type === "locus" || scale?.type === "locus";
-
-            if (!isLocus) {
-                continue;
-            }
-
-            if (scale?.assembly) {
-                assemblies.push(scale.assembly);
-            } else {
-                needsDefaultAssembly = true;
-            }
+    const resolutions = collectRelevantScaleResolutions(viewRoot);
+    for (const resolution of resolutions) {
+        const requirement = resolution.getAssemblyRequirement();
+        if (requirement.assembly) {
+            assemblies.push(requirement.assembly);
         }
-    });
+        if (requirement.needsDefaultAssembly) {
+            needsDefaultAssembly = true;
+        }
+    }
 
     return {
         assemblies,
@@ -98,4 +61,39 @@ export async function ensureAssembliesForView(viewRoot, genomeStore) {
     }
 
     await genomeStore.ensureAssemblies(assemblies);
+}
+
+/**
+ * Collects scale resolutions that can influence user-authored views while
+ * excluding internal helper subtrees (axis/grid/etc.).
+ *
+ * Reminder: implicit root wrappers are marked non-addressable, so include the
+ * root ancestry explicitly before traversing addressable views.
+ *
+ * @param {import("../view/view.js").default} viewRoot
+ * @returns {Set<import("../scales/scaleResolution.js").default>}
+ */
+function collectRelevantScaleResolutions(viewRoot) {
+    /** @type {Set<import("../view/view.js").default>} */
+    const relevantViews = new Set([viewRoot]);
+    visitAddressableViews(viewRoot, (view) => {
+        relevantViews.add(view);
+    });
+
+    /** @type {Set<import("../scales/scaleResolution.js").default>} */
+    const resolutions = new Set();
+
+    /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */
+    const locusChannels = ["x", "y"];
+
+    for (const view of relevantViews) {
+        for (const channel of locusChannels) {
+            const resolution = view.getScaleResolution(channel);
+            if (resolution) {
+                resolutions.add(resolution);
+            }
+        }
+    }
+
+    return resolutions;
 }

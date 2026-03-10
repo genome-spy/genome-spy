@@ -116,6 +116,62 @@ describe("Scale resolution", () => {
         expect(xResolution.getDomain()).toEqual([0, 12]);
     });
 
+    test("locus scale type is rejected on non-positional channels", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ value: "a" }] },
+            mark: "point",
+            encoding: {
+                x: { datum: 1, type: "quantitative" },
+                y: { datum: 1, type: "quantitative" },
+                color: {
+                    field: "value",
+                    type: "nominal",
+                    scale: { type: "locus" },
+                },
+            },
+        };
+
+        await expect(async () => {
+            const view = await createAndInitialize(spec, UnitView);
+            const resolution = view.getScaleResolution("color");
+            if (!resolution) {
+                throw new Error("Expected color scale resolution!");
+            }
+            resolution.getAssemblyRequirement();
+        }).rejects.toThrow(
+            'Index and locus scales are only supported on positional channels (x/y). Channel "color" resolves to scale type "locus".'
+        );
+    });
+
+    test("index scale type is rejected on non-positional channels", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ value: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { datum: 1, type: "quantitative" },
+                y: { datum: 1, type: "quantitative" },
+                color: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { type: "index" },
+                },
+            },
+        };
+
+        await expect(async () => {
+            const view = await createAndInitialize(spec, UnitView);
+            const resolution = view.getScaleResolution("color");
+            if (!resolution) {
+                throw new Error("Expected color scale resolution!");
+            }
+            resolution.getScale();
+        }).rejects.toThrow(
+            'Index and locus scales are only supported on positional channels (x/y). Channel "color" resolves to scale type "index".'
+        );
+    });
+
     test("Channels with just values (no fields or scales) do not resolve", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {

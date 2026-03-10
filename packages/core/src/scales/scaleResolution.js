@@ -24,7 +24,10 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
-import { isSecondaryChannel } from "../encoder/encoder.js";
+import {
+    isPrimaryPositionalChannel,
+    isSecondaryChannel,
+} from "../encoder/encoder.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
@@ -565,12 +568,51 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        return resolveScalePropsBase({
+        const props = resolveScalePropsBase({
             channel: this.channel,
             dataType: this.type,
             members: this.#members,
             isExplicitDomain: this.#isExplicitDomain(),
         });
+
+        if (
+            props !== null &&
+            [INDEX, LOCUS].includes(props.type) &&
+            !isPrimaryPositionalChannel(this.channel)
+        ) {
+            throw new Error(
+                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${props.type}".`
+            );
+        }
+
+        return props;
+    }
+
+    /**
+     * Returns locus assembly requirements without initializing the scale.
+     *
+     * This is intentionally side-effect free: it only inspects merged scale
+     * properties from registered members and does not touch default domains or
+     * instantiate scale instances.
+     *
+     * @returns {{
+     *   assembly: import("../spec/scale.js").Scale["assembly"] | undefined,
+     *   needsDefaultAssembly: boolean
+     * }}
+     */
+    getAssemblyRequirement() {
+        const props = this.#getMergedScaleProps();
+        if (props === null || props.type === "null" || props.type !== LOCUS) {
+            return {
+                assembly: undefined,
+                needsDefaultAssembly: false,
+            };
+        }
+
+        return {
+            assembly: props.assembly,
+            needsDefaultAssembly: props.assembly === undefined,
+        };
     }
 
     /**

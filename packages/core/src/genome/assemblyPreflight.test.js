@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createTestViewContext } from "../view/testUtils.js";
+import { VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { markViewAsNonAddressable } from "../view/viewSelectors.js";
 import {
     collectAssembliesFromViewHierarchy,
@@ -62,12 +63,49 @@ describe("assembly preflight", () => {
         });
     });
 
+    test("collects assemblies from implicit non-addressable root resolutions", async () => {
+        const context = createTestViewContext({ wrapRoot: true });
+        const view = await context.createOrImportView(
+            /** @type {any} */ ({
+                data: {
+                    values: [{ chrom: "chr1", pos: 1 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: { type: "locus", assembly: "hg19" },
+                    },
+                },
+            }),
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        const { assemblies, needsDefaultAssembly } =
+            collectAssembliesFromViewHierarchy(view);
+
+        expect(needsDefaultAssembly).toBe(false);
+        expect(assemblies).toContain("hg19");
+    });
+
     test("ignores internal non-addressable locus views when checking defaults", async () => {
         const context = createTestViewContext();
         const view = await context.createOrImportView(
             /** @type {any} */ ({
                 data: {
                     values: [{ chrom: "chr1", pos: 1 }],
+                },
+                resolve: {
+                    axis: {
+                        x: "independent",
+                    },
+                    scale: {
+                        x: "independent",
+                    },
                 },
                 layer: [
                     {
@@ -84,7 +122,7 @@ describe("assembly preflight", () => {
                     {
                         mark: "point",
                         encoding: {
-                            y: {
+                            x: {
                                 chrom: "chrom",
                                 pos: "pos",
                                 type: "locus",
@@ -101,8 +139,9 @@ describe("assembly preflight", () => {
 
         // Non-obvious: this simulates a generated helper view (e.g. axis/grid)
         // that should not influence assembly requirements.
-        const descendants = view.getDescendants();
-        const internalLocusView = descendants[1];
+        const internalLocusView = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "layer0");
         if (!internalLocusView) {
             throw new Error("Expected child view was not created.");
         }
