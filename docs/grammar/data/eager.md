@@ -150,6 +150,16 @@ BED parsing is based on [@gmod/bed](https://github.com/GMOD/bed-js) and
 supports BED3-BED12 fields. Output fields are parser-native (`chrom`,
 `chromStart`, `chromEnd`, and optional BED fields as provided by `@gmod/bed`).
 
+Interpretation details from `@gmod/bed` default mode:
+
+- Leading `browser`, `track`, and `#` lines are skipped before the first data
+  row.
+- BED12-like rows use BED12 field names (for example `thickStart`, `blockSizes`,
+  `blockStarts`).
+- Non-BED12 extended rows keep extra columns as fallback names (`field4`,
+  `field5`, `field6`, ...), with score/strand inferred when possible.
+- GenomeSpy does not rename BED fields in the source loader.
+
 ```json
 {
   "data": {
