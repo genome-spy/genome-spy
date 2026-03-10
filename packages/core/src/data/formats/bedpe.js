@@ -1,5 +1,8 @@
 import { parseTsvRows } from "./tabularUtils.js";
 
+const blankLinePattern = /^\s*$/;
+const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
+
 const defaultColumns = [
     "chrom1",
     "start1",
@@ -15,17 +18,60 @@ const defaultColumns = [
 
 const requiredColumns = defaultColumns.slice(0, 6);
 
-const commentPrefixes = ["#", "track", "browser"];
+const normalizeNone = (/** @type {string} */ value) => value;
+const normalizeStringSentinel = (/** @type {string} */ value) =>
+    value == "." ? null : value;
+const normalizeStrand = (/** @type {string} */ value) => {
+    if (value == "+") {
+        return 1;
+    }
+    if (value == "-") {
+        return -1;
+    }
+    return 0;
+};
+const normalizeCoordinate = (/** @type {string} */ value) => {
+    if (value == "." || value == "-1" || value == "") {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isInteger(parsed) ? parsed : null;
+};
+const normalizeScore = (/** @type {string} */ value) => {
+    if (value == "." || value == "") {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? value : parsed;
+};
 
-const stringFieldsWithSentinels = new Set([
-    "chrom1",
-    "chrom2",
-    "name",
-    "strand1",
-    "strand2",
-]);
+/**
+ * @param {string} columnName
+ */
+function getColumnNormalizer(columnName) {
+    if (
+        columnName == "chrom1" ||
+        columnName == "chrom2" ||
+        columnName == "name"
+    ) {
+        return normalizeStringSentinel;
+    }
 
-const coordinateFields = new Set(["start1", "end1", "start2", "end2"]);
+    if (columnName == "strand1" || columnName == "strand2") {
+        return normalizeStrand;
+    }
+
+    if (
+        columnName == "start1" ||
+        columnName == "end1" ||
+        columnName == "start2" ||
+        columnName == "end2"
+    ) {
+        return normalizeCoordinate;
+    }
+
+    return columnName == "score" ? normalizeScore : normalizeNone;
+}
 
 /**
  * @param {string[]} row
@@ -45,52 +91,37 @@ function looksLikeHeaderRow(row) {
 }
 
 /**
- * @param {string} columnName
- * @param {string} value
- */
-function normalizeValue(columnName, value) {
-    if (stringFieldsWithSentinels.has(columnName) && value == ".") {
-        return null;
-    }
-
-    if (coordinateFields.has(columnName)) {
-        if (value == "." || value == "-1" || value == "") {
-            return null;
-        }
-
-        const parsed = Number(value);
-        return Number.isInteger(parsed) ? parsed : null;
-    }
-
-    if (columnName == "score") {
-        if (value == "." || value == "") {
-            return null;
-        }
-
-        const parsed = Number(value);
-        return Number.isNaN(parsed) ? value : parsed;
-    }
-
-    return value;
-}
-
-/**
  * @param {string} data
  * @param {{ columns?: string[] }} [format]
  */
 export default function bedpe(data, format = {}) {
-    const parsedRows = parseTsvRows(data, {
-        ignorePrefixes: commentPrefixes,
-    });
+    const lines = data.split(/\r?\n/);
+    let dataStarted = false;
+    /** @type {string[]} */
+    const dataLines = [];
+
+    for (const line of lines) {
+        if (!dataStarted) {
+            if (blankLinePattern.test(line) || controlLinePattern.test(line)) {
+                continue;
+            }
+            dataStarted = true;
+        }
+        dataLines.push(line);
+    }
+
+    const parsedRows = parseTsvRows(dataLines.join("\n"));
 
     if (parsedRows.length == 0) {
         return [];
     }
 
-    const maxRowLength = parsedRows.reduce(
-        (max, row) => Math.max(max, row.length),
-        0
-    );
+    let maxRowLength = 0;
+    for (const row of parsedRows) {
+        if (row.length > maxRowLength) {
+            maxRowLength = row.length;
+        }
+    }
 
     const explicitColumns = format.columns;
     const headerRow = !explicitColumns && looksLikeHeaderRow(parsedRows[0]);
@@ -103,9 +134,12 @@ export default function bedpe(data, format = {}) {
 
     /** @type {string[]} */
     const columns = Array.from(baseColumns);
+    /** @type {((value: string) => any)[]} */
+    const columnNormalizers = columns.map(getColumnNormalizer);
 
     while (columns.length < maxRowLength) {
         columns.push("field" + (columns.length + 1));
+        columnNormalizers.push(normalizeNone);
     }
 
     const startIndex = headerRow ? 1 : 0;
@@ -125,7 +159,7 @@ export default function bedpe(data, format = {}) {
 
         for (let j = 0; j < row.length; j++) {
             const columnName = columns[j];
-            datum[columnName] = normalizeValue(columnName, row[j]);
+            datum[columnName] = columnNormalizers[j](row[j]);
         }
 
         rows.push(datum);

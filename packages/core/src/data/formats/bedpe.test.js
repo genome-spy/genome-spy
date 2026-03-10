@@ -14,14 +14,34 @@ test("parses headerless BEDPE with default positional columns", () => {
             end2: 40,
             name: "eventA",
             score: 5,
-            strand1: "+",
-            strand2: "-",
+            strand1: 1,
+            strand2: -1,
         },
     ]);
 });
 
 test("parses BEDPE header row when present", () => {
     const data = `chrom1\tstart1\tend1\tchrom2\tstart2\tend2\tname
+chr1\t10\t20\tchr2\t30\t40\teventA`;
+
+    expect(bedpe(data)).toEqual([
+        {
+            chrom1: "chr1",
+            start1: 10,
+            end1: 20,
+            chrom2: "chr2",
+            start2: 30,
+            end2: 40,
+            name: "eventA",
+        },
+    ]);
+});
+
+test("skips leading browser/track/comment lines", () => {
+    const data = ` browser position chr1:1-1000
+track name="bedpe"
+# comment
+chrom1\tstart1\tend1\tchrom2\tstart2\tend2\tname
 chr1\t10\t20\tchr2\t30\t40\teventA`;
 
     expect(bedpe(data)).toEqual([
@@ -50,8 +70,8 @@ test("normalizes unknown sentinels to null", () => {
             end2: 40,
             name: null,
             score: null,
-            strand1: null,
-            strand2: null,
+            strand1: 0,
+            strand2: 0,
         },
     ]);
 });

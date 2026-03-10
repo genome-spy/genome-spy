@@ -111,8 +111,8 @@ test("UrlSource reads BEDPE using format.type bedpe", async () => {
             end2: 40,
             name: "eventA",
             score: 5,
-            strand1: "+",
-            strand2: "-",
+            strand1: 1,
+            strand2: -1,
         },
     ]);
 });

@@ -184,8 +184,14 @@ Common optional fields are:
 
 Unknown sentinels are normalized to null values:
 
-- `.` becomes `null` for string-like fields (chromosomes, name, strands)
+- `.` becomes `null` for string-like fields (`chrom*`, `name`)
 - `-1` becomes `null` for coordinate fields
+
+Strands are normalized similarly to `@gmod/bed`:
+
+- `"+"` -> `1`
+- `"-"` -> `-1`
+- any other value (including `"."`) -> `0`
 
 ```json
 {
