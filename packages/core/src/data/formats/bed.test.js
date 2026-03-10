@@ -18,6 +18,7 @@ test("skips browser, track, and comment lines", () => {
     const data = `browser position chr19:49302001-49304701
 track type=bedGraph name="BedGraph Format"
 # comment
+   browser hide all
 chr19\t49302000\t49302300`;
 
     expect(bed(data)).toEqual([
@@ -46,6 +47,27 @@ test("keeps fallback fieldN names from parser output", () => {
             field8: "255,0,0",
             field9: "2",
             field10: "4,6,",
+        },
+    ]);
+});
+
+test("parses BED12 rows with BED12 field names", () => {
+    const data = "chr1\t0\t10\titem\t7\t+\t1\t9\t255,0,0\t2\t4,6,\t0,4,";
+
+    expect(bed(data)).toEqual([
+        {
+            chrom: "chr1",
+            chromStart: 0,
+            chromEnd: 10,
+            name: "item",
+            score: 7,
+            strand: 1,
+            thickStart: 1,
+            thickEnd: 9,
+            itemRgb: "255,0,0",
+            blockCount: 2,
+            blockSizes: [4, 6],
+            blockStarts: [0, 4],
         },
     ]);
 });

@@ -1,17 +1,7 @@
 import BED from "@gmod/bed";
 
-const controlLinePrefixes = ["browser", "track", "#"];
-
-/**
- * @param {string} line
- */
-function isSkippableBedLine(line) {
-    const trimmed = line.trim();
-    return (
-        trimmed.length == 0 ||
-        controlLinePrefixes.some((prefix) => trimmed.startsWith(prefix))
-    );
-}
+const blankLinePattern = /^\s*$/;
+const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
 
 /**
  * Parse BED text data.
@@ -21,6 +11,7 @@ function isSkippableBedLine(line) {
  */
 export default function bed(data) {
     const parser = new /** @type {any} */ (BED)();
+    let dataStarted = false;
 
     /** @type {Record<string, any>[]} */
     const rows = [];
@@ -30,8 +21,11 @@ export default function bed(data) {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
-        if (isSkippableBedLine(line)) {
-            continue;
+        if (!dataStarted) {
+            if (blankLinePattern.test(line) || controlLinePattern.test(line)) {
+                continue;
+            }
+            dataStarted = true;
         }
 
         try {
