@@ -219,7 +219,9 @@ The `"locus"` scale is similar to the `"index"` scale, but provides a
 genome-aware axis with concatenated chromosomes. See
 [genomic coordinates](../genomic-data/genomic-coordinates.md) for assembly and
 coordinate-system details. Locus scales resolve their assembly from
-`scale.assembly` or, if omitted, from the root `assembly`.
+`scale.assembly` or, if omitted, from the root `assembly`. If root `assembly`
+is omitted and root `genomes` has exactly one entry, that entry is used as the
+default assembly.
 
 The locus scale is used by default when the field type is `"locus"`.
 

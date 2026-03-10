@@ -2,13 +2,12 @@
 
 ![Placeholder](../img/coordinate-linearization.svg){ align=right }
 
-To allow easy visualization of coordinate-based genomic data, GenomeSpy can
-concatenate the discrete chromosomes onto a single continuous linear axis.
-Concatenation needs the sizes and preferred order for the contigs or
-chromosomes. These are usually provided with a genome assembly.
+GenomeSpy can visualize genomic coordinates by concatenating chromosomes (or
+other contigs) into one continuous axis. To do that, it needs contig sizes and
+their preferred order. This information usually comes from a genome assembly.
 
-To activate support for genomic coordinates, define the default assembly at the
-top level with the `assembly` property:
+A common setup is to define a default assembly at the top level with the
+`assembly` property:
 
 ```json
 {
@@ -18,7 +17,7 @@ top level with the `assembly` property:
 ```
 
 If different axes use different coordinate systems (for example, synteny or
-cross-species dot plots), set the assembly in each locus scale:
+cross-species dot plots), set `assembly` separately in each locus scale:
 
 ```json
 {
@@ -35,6 +34,10 @@ cross-species dot plots), set the assembly in each locus scale:
 }
 ```
 
+When every locus scale sets `scale.assembly`, root `assembly` is optional.
+Also, if root `assembly` is omitted and `genomes` has exactly one entry, that
+single entry is used as the default assembly.
+
 ## Supported genomes
 
 GenomeSpy bundles a few common built-in genome assemblies: `"hg38"`, `"hg19"`,
@@ -42,8 +45,8 @@ GenomeSpy bundles a few common built-in genome assemblies: `"hg38"`, `"hg19"`,
 
 ## Custom genomes
 
-Custom assemblies are defined under root `genomes`, which maps assembly names to
-their configurations.
+Reusable custom assemblies are defined under root `genomes`, which maps assembly
+names to their configurations.
 
 ### As a `chrom.sizes` file
 
@@ -70,7 +73,7 @@ Example:
 
 ### Within the specification
 
-You can provide the genome assembly directly in the specification using the
+You can provide a named genome definition directly in root `genomes` using the
 `contigs` property. The contigs are an array of objects with the `name` and
 `size` properties.
 
@@ -95,6 +98,64 @@ Example:
   ...
 }
 ```
+
+### Inline in `scale.assembly`
+
+For one-off assemblies, you can define the assembly object directly in a locus
+scale.
+
+Inline objects are anonymous and must define exactly one of:
+
+- `contigs`
+- `url`
+
+Example (`contigs` inline):
+
+```json
+{
+  "mark": "point",
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus",
+      "scale": {
+        "type": "locus",
+        "assembly": {
+          "contigs": [
+            { "name": "chr1", "size": 248956422 },
+            { "name": "chr2", "size": 242193529 }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+Example (`url` inline):
+
+```json
+{
+  "mark": "point",
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus",
+      "scale": {
+        "type": "locus",
+        "assembly": {
+          "url": "https://genomespy.app/data/genomes/hg19/chrom.sizes"
+        }
+      }
+    }
+  }
+}
+```
+
+If the same assembly is reused across multiple scales, define it once in root
+`genomes` and reference it by name.
 
 !!! note "Legacy root `genome`"
 
