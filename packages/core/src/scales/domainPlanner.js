@@ -30,7 +30,7 @@ export default class DomainPlanner {
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
-    /** @type {(assembly: string | undefined) => number[]} */
+    /** @type {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} */
     #getLocusExtent;
 
     /** @type {(interval: ScalarDomain | ComplexDomain) => number[]} */
@@ -55,7 +55,7 @@ export default class DomainPlanner {
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
      * @param {() => Set<ScaleResolutionMember>} [options.getDataMembers]
      * @param {() => import("../spec/channel.js").Type} options.getType
-     * @param {(assembly: string | undefined) => number[]} options.getLocusExtent
+     * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} options.getLocusExtent
      * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      */
     constructor({
@@ -104,7 +104,7 @@ export default class DomainPlanner {
      * Returns the default domain without considering configured domains.
      *
      * @param {boolean} [extractDataDomain]
-     * @param {string} [locusAssembly]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
      * @returns {any[]}
      */
     getDefaultDomain(extractDataDomain = false, locusAssembly) {
@@ -120,7 +120,7 @@ export default class DomainPlanner {
      * Returns the configured domain or a data-derived/default domain.
      *
      * @param {boolean} [extractDataDomain]
-     * @param {string} [locusAssembly]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
      * @returns {any[]}
      */
     getConfiguredOrDefaultDomain(extractDataDomain = false, locusAssembly) {
@@ -493,9 +493,9 @@ function resolveDataDomain(members, getType, getAccessorsForMember) {
 
 /**
  * @param {import("../spec/channel.js").Type} type
- * @param {(assembly: string | undefined) => number[]} getLocusExtent
+ * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} getLocusExtent
  * @param {DomainArray | undefined} dataDomain
- * @param {string | undefined} locusAssembly
+ * @param {import("../spec/scale.js").Scale["assembly"] | undefined} locusAssembly
  * @returns {any[]}
  */
 function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {

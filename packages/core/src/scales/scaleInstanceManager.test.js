@@ -200,6 +200,55 @@ describe("ScaleInstanceManager", () => {
         expect(genomeStore.genomes.has("hg19")).toBe(true);
     });
 
+    test("supports inline contigs in scale assembly", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        const scale = manager.createScale({
+            type: "locus",
+            domain: [0, 1],
+            range: [0, 1],
+            assembly: {
+                contigs: [{ name: "chrA", size: 10 }],
+            },
+        });
+
+        const locusScale =
+            /** @type {import("../genome/scaleLocus.js").ScaleLocus} */ (scale);
+        expect(locusScale.genome().getExtent()).toEqual([0, 10]);
+    });
+
+    test("rejects named inline assembly definitions", () => {
+        const genomeStore = new GenomeStore(".");
+        const manager = new ScaleInstanceManager({
+            getParamRuntime: () =>
+                /** @type {any} */ ({
+                    createExpression: () => /** @type {any} */ (() => 0),
+                }),
+            onRangeChange: /** @returns {void} */ () => undefined,
+            getGenomeStore: () => genomeStore,
+        });
+
+        expect(() =>
+            manager.createScale({
+                type: "locus",
+                domain: [0, 1],
+                range: [0, 1],
+                assembly: /** @type {any} */ ({
+                    name: "bad",
+                    contigs: [{ name: "chr1", size: 10 }],
+                }),
+            })
+        ).toThrow("Inline `scale.assembly` objects must be anonymous.");
+    });
+
     test("dispose invalidates active range expressions", () => {
         const invalidate = vi.fn();
         const expr = /** @type {any} */ (() => 1);

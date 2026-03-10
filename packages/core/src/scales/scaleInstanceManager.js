@@ -54,7 +54,7 @@ export default class ScaleInstanceManager {
     }
 
     /**
-     * @param {string} [assembly]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {import("../genome/genome.js").default}
      */
     getLocusGenome(assembly) {

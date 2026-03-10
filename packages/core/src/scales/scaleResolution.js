@@ -227,7 +227,7 @@ export default class ScaleResolution {
     }
 
     /**
-     * @param {string} [assembly]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {number[]}
      */
     #getLocusExtent(assembly) {
@@ -235,7 +235,7 @@ export default class ScaleResolution {
     }
 
     /**
-     * @param {string} [assembly]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {import("../genome/scaleLocus.js").GenomeSource}
      */
     #getGenomeSource(assembly) {

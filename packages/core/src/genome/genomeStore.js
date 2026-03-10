@@ -7,8 +7,14 @@ export default class GenomeStore {
     constructor(baseUrl) {
         /** @type {Map<string, Genome>} */
         this.genomes = new Map();
+
+        /** @type {Map<string, string>} */
+        this.#inlineAssemblyKeysByName = new Map();
         this.baseUrl = baseUrl;
     }
+
+    /** @type {Map<string, string>} */
+    #inlineAssemblyKeysByName;
 
     /**
      * @param {import("../spec/genome.js").GenomeConfig} genomeConfig
@@ -26,10 +32,14 @@ export default class GenomeStore {
     }
 
     /**
-     * @param {string} [name] If not given, a default genome is returned.
+     * @param {string | import("../spec/scale.js").InlineLocusAssembly} [name] If not given, a default genome is returned.
      * @returns {Genome}
      */
     getGenome(name) {
+        if (name && typeof name == "object") {
+            return this.#getInlineAssemblyGenome(name);
+        }
+
         if (!this.genomes.size) {
             if (!name) {
                 throw new Error("No genomes have been configured!");
@@ -82,4 +92,75 @@ export default class GenomeStore {
             return undefined;
         }
     }
+
+    /**
+     * @param {import("../spec/scale.js").InlineLocusAssembly} assembly
+     * @returns {Genome}
+     */
+    #getInlineAssemblyGenome(assembly) {
+        if ("name" in assembly) {
+            throw new Error(
+                "Inline `scale.assembly` objects must be anonymous. Use a string reference for named assemblies."
+            );
+        }
+
+        if (!("contigs" in assembly)) {
+            throw new Error(
+                "Inline `scale.assembly` objects must define `contigs`."
+            );
+        }
+
+        const key = JSON.stringify(assembly);
+        const inlineName = this.#getInlineAssemblyName(key);
+        const existing = this.genomes.get(inlineName);
+        if (existing) {
+            return existing;
+        }
+
+        const genome = new Genome({
+            name: inlineName,
+            contigs: assembly.contigs,
+        });
+        this.genomes.set(inlineName, genome);
+
+        return genome;
+    }
+
+    /**
+     * @param {string} key
+     * @returns {string}
+     */
+    #getInlineAssemblyName(key) {
+        const hash = hashString(key);
+        for (let suffix = 0; suffix <= Number.MAX_SAFE_INTEGER; suffix++) {
+            const candidate =
+                suffix === 0
+                    ? `inline_assembly_${hash}`
+                    : `inline_assembly_${hash}_${suffix}`;
+            const existingKey = this.#inlineAssemblyKeysByName.get(candidate);
+            if (existingKey === key) {
+                return candidate;
+            }
+            if (!existingKey) {
+                this.#inlineAssemblyKeysByName.set(candidate, key);
+                return candidate;
+            }
+        }
+
+        throw new Error("Could not generate a unique inline assembly name!");
+    }
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function hashString(value) {
+    let hash = 5381;
+    for (let i = 0; i < value.length; i++) {
+        // eslint-disable-next-line no-bitwise
+        hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
+    }
+    // eslint-disable-next-line no-bitwise
+    return (hash >>> 0).toString(36);
 }

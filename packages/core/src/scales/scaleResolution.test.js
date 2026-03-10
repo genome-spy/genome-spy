@@ -70,6 +70,52 @@ describe("Scale resolution", () => {
         );
     });
 
+    test("locus scales can use inline contigs in assembly definitions", async () => {
+        const context = createTestViewContext();
+        context.genomeStore.genomes.clear();
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [
+                    {
+                        chrom: "chrA",
+                        pos: 1,
+                    },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                    scale: {
+                        type: "locus",
+                        assembly: {
+                            contigs: [
+                                { name: "chrA", size: 5 },
+                                { name: "chrB", size: 7 },
+                            ],
+                        },
+                    },
+                },
+            },
+        };
+
+        const view = await context.createOrImportView(spec, null, null, "root");
+        if (!(view instanceof UnitView)) {
+            throw new Error("Expected a unit view!");
+        }
+
+        const xResolution = view.getScaleResolution("x");
+        if (!xResolution) {
+            throw new Error("Expected x scale resolution!");
+        }
+
+        expect(xResolution.getDomain()).toEqual([0, 12]);
+    });
+
     test("Channels with just values (no fields or scales) do not resolve", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
