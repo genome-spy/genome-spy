@@ -53,8 +53,6 @@ vegaFormats("parquet", parquet);
 vegaFormats("bed", bed);
 vegaFormats("bedpe", bedpe);
 
-let legacyRootGenomeWarningShown = false;
-
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
     #destructionCallbacks = [];
@@ -321,10 +319,9 @@ export default class GenomeSpy {
             resolveRootGenomeConfig(this.spec);
         this.genomeStore.configureGenomes(genomesByName, defaultAssembly);
 
-        if (deprecationWarning && !legacyRootGenomeWarningShown) {
+        if (deprecationWarning) {
             // eslint-disable-next-line no-console
             console.warn(deprecationWarning);
-            legacyRootGenomeWarningShown = true;
         }
 
         await ensureAssembliesForSpec(this.spec, this.genomeStore);
