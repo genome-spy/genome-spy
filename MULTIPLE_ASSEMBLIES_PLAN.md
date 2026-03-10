@@ -62,7 +62,7 @@ Relevant files:
 1. Assemblies can be defined at scale level.
 2. Root-level genome config is optional when a locus scale defines one built-in
    assembly directly.
-3. `scale.assembly` can define inline contigs/chromosomes.
+3. `scale.assembly` can define inline contigs.
 4. Define a cleaner path for multiple assemblies at `RootSpec` level.
 5. Support async loading safely, including dynamically added views.
 
@@ -78,14 +78,25 @@ Relevant files:
 
 For `scale.type: "locus"`, support:
 
-1. `assembly: "hg38"` (string name, built-in or root-registered)
-2. `assembly: { ...GenomeConfig... }` (inline config, including `contigs` or `url`)
+1. `assembly: "hg38"` (named assembly reference, built-in or root-registered)
+2. `assembly: { ... }` (inline anonymous config, including `contigs` or `url`)
 
 Notes:
 
 - This keeps the current property name while enabling inline configs.
-- For inline objects without an explicit `name`, generate a stable internal id
-  (for example from a content hash) to avoid ambiguity.
+- Inline `assembly` objects must be anonymous (`name` is not allowed).
+- If reuse is needed across scales, define the assembly under root-level
+  `genomes` and reference it by string name.
+- Internally, inline anonymous assemblies should get a deterministic id (for
+  example from a content hash) to support deduplication/caching.
+
+Why this split:
+
+- It removes ambiguous semantics where users define both `name` and `contigs`
+  inline and accidentally collide with another assembly name.
+- It keeps meaning explicit:
+  - string = identifier/reference
+  - object = literal assembly definition
 
 ### B. Root-level config optionality
 
@@ -117,6 +128,11 @@ Longer-term cleanup:
 
 - Deprecate `genome` in favor of `genomes` (single-entry arrays allowed).
 - Improve naming/documentation since singular `genome` has become awkward.
+
+Terminology:
+
+- Use `contigs` as the schema/property term.
+- In prose/docs, "chromosomes/contigs" is fine for readability.
 
 ## Async and Dynamic Views: Implementation Plan
 
@@ -170,8 +186,9 @@ Collect required assemblies from subtree channel defs:
 ### Phase 2: Inline `scale.assembly` objects
 
 1. Extend type/schema to allow object-valued `assembly`.
-2. Ensure inline configs are registered/loaded via `GenomeStore.ensure...`.
-3. Add tests for inline contigs and URL configs.
+2. Enforce anonymous inline objects (`name` disallowed in inline mode).
+3. Ensure inline configs are registered/loaded via `GenomeStore.ensure...`.
+4. Add tests for inline contigs and URL configs.
 
 ### Phase 3: Root API cleanup
 
@@ -221,12 +238,15 @@ Unit tests:
    - already loaded assemblies are not reloaded
 4. `Genome`:
    - repeated URL loads do not duplicate chromosome structures
+5. Validation:
+   - inline object-valued `scale.assembly` rejects `name`
 
 Integration-style tests:
 
 1. Dynamic child insertion introduces a new assembly and succeeds.
 2. Visibility-based lazy initialization introduces a new assembly and succeeds.
 3. Mixed-assembly shared-scale conflict fails with a clear error.
+4. Named-reference vs inline-anonymous mode rules behave as documented.
 
 Regression tests:
 
@@ -242,8 +262,10 @@ Regression tests:
    - default root genome fallback
 3. Add examples:
    - synteny with two built-ins
-   - inline contigs in `scale.assembly`
-4. Regenerate schema/docs artifacts after type updates.
+   - inline anonymous `scale.assembly` with `contigs`
+4. Document that inline `scale.assembly` objects are anonymous (no `name`), and
+   named reuse belongs to root `genomes`.
+5. Regenerate schema/docs artifacts after type updates.
 
 ## Commit Plan
 
@@ -256,6 +278,7 @@ Commit in small checkpoints to keep review focused:
 5. `feat(core): add root genomes config and update synteny example`
 6. `docs(core): document multi-assembly behavior and migration guidance`
 7. `test(core): add multi-assembly and dynamic-view coverage`
+8. `fix(core): enforce anonymous inline scale assembly objects`
 
 If split across PRs:
 
@@ -278,7 +301,7 @@ If split across PRs:
 
 1. `synteny.json` works with mixed assemblies.
 2. A locus scale with `assembly: "hg38"` works without root `genome`.
-3. Inline `scale.assembly` contigs work (Phase 2).
+3. Inline anonymous `scale.assembly` contigs work (Phase 2).
 4. Dynamically added views that introduce new assemblies initialize reliably.
 5. No chromosome duplication on repeated genome loading.
 6. Existing single-genome specs remain backward compatible.
