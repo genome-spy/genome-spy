@@ -125,23 +125,20 @@ Most bioinformatic data formats are supported through [lazy](lazy.md) data.
 
 [BED](https://genome.ucsc.edu/FAQ/FAQformat#format1) parsing is based on
 [@gmod/bed](https://github.com/GMOD/bed-js) and supports BED3-BED12 fields.
-Output fields use standard BED names such as `chrom`, `chromStart`,
-`chromEnd`, and optional BED/BED12 fields.
+Output uses standard BED field names such as `chrom`, `chromStart`, `chromEnd`,
+and optional BED/BED12 fields.
 
-Basic behavior:
+Behavior details:
 
 - Leading `browser`, `track`, and `#` lines are skipped before the first data
   row.
-- BED12-like rows use BED12 field names (for example `thickStart`, `blockSizes`,
-  `blockStarts`).
+- BED12 rows use BED12 field names (for example `thickStart`, `thickEnd`,
+  `itemRgb`, `blockCount`, `blockSizes`, `blockStarts`).
 - `strand` is normalized to numeric codes: `"+"` -> `1`, `"-"` -> `-1`, and
   any other value -> `0`.
-- In BED12 rows, list fields such as `blockSizes` and `blockStarts` are parsed
-  from comma-separated text into numeric arrays.
-- Non-BED12 extended rows keep unrecognized columns as positional fallback names
-  (`fieldN`). The `N` value follows the original BED column index, so when
-  score and strand are recognized as `score` and `strand`, remaining extras can
-  start at `field6`.
+- `blockSizes` and `blockStarts` are parsed from comma-separated text into
+  numeric arrays.
+- Non-BED12 extra columns are preserved as positional fallback fields (`fieldN`).
 
 ```json
 {
@@ -160,24 +157,25 @@ source](lazy.md#bigbed) instead of the eager `url` source.
 ### BEDPE
 
 [BEDPE](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format)
-is parsed as tab-delimited text with positional columns. It is typically used
-for paired genomic loci such as structural variant breakpoints and link/arc
-annotations between two regions.
+is parsed as tab-delimited text with positional columns. It is commonly used
+for paired loci, such as structural variant breakpoints and link/arc
+annotations between two regions. The required leading fields are
+`chrom1, start1, end1, chrom2, start2, end2`; common optional fields are
+`name, score, strand1, strand2`. BEDPE files are typically headerless.
 
-Basic behavior:
+Behavior details:
 
-- Required columns: `chrom1, start1, end1, chrom2, start2, end2`
-- Common optional columns: `name, score, strand1, strand2`
-- Extra trailing columns are preserved with fallback names (`fieldN`), where `N`
-  is the 1-based BEDPE column index.
 - Leading `browser`, `track`, and `#` lines are skipped before the first data
   row.
-- A header row is detected when the required six-column prefix matches exactly.
-  For headerless files, provide explicit names with `format.columns`.
+- If a header row is present, it is detected when the first six columns match
+  the required BEDPE prefix; headerless files use the default BEDPE column
+  order or explicit names from `format.columns`.
 - Sentinel normalization: `.` -> `null` for string fields (`chrom*`, `name`);
   `-1` and `""` -> `null` for coordinates; `""` -> `null` for `score`.
-- Strand normalization (`strand1`, `strand2`): `"+"` -> `1`, `"-"` -> `-1`,
-  any other value (including `"."` and `""`) -> `0`.
+- `strand1` and `strand2` are normalized to numeric codes: `"+"` -> `1`,
+  `"-"` -> `-1`, and any other value -> `0`.
+- Extra trailing columns are preserved as positional fallback fields (`fieldN`,
+  with 1-based indexing).
 - Rows with fewer than six columns are rejected with a parse error.
 
 ```json
