@@ -45,33 +45,19 @@ const normalizeScore = (/** @type {string} */ value) => {
     return Number.isNaN(parsed) ? value : parsed;
 };
 
-/**
- * @param {string} columnName
- */
-function getColumnNormalizer(columnName) {
-    if (
-        columnName == "chrom1" ||
-        columnName == "chrom2" ||
-        columnName == "name"
-    ) {
-        return normalizeStringSentinel;
-    }
-
-    if (columnName == "strand1" || columnName == "strand2") {
-        return normalizeStrand;
-    }
-
-    if (
-        columnName == "start1" ||
-        columnName == "end1" ||
-        columnName == "start2" ||
-        columnName == "end2"
-    ) {
-        return normalizeCoordinate;
-    }
-
-    return columnName == "score" ? normalizeScore : normalizeNone;
-}
+/** @type {Record<string, (value: string) => any>} */
+const columnNormalizers = {
+    chrom1: normalizeStringSentinel,
+    chrom2: normalizeStringSentinel,
+    name: normalizeStringSentinel,
+    strand1: normalizeStrand,
+    strand2: normalizeStrand,
+    start1: normalizeCoordinate,
+    end1: normalizeCoordinate,
+    start2: normalizeCoordinate,
+    end2: normalizeCoordinate,
+    score: normalizeScore,
+};
 
 /**
  * @param {string[]} row
@@ -135,11 +121,13 @@ export default function bedpe(data, format = {}) {
     /** @type {string[]} */
     const columns = Array.from(baseColumns);
     /** @type {((value: string) => any)[]} */
-    const columnNormalizers = columns.map(getColumnNormalizer);
+    const normalizers = columns.map(
+        (column) => columnNormalizers[column] ?? normalizeNone
+    );
 
     while (columns.length < maxRowLength) {
         columns.push("field" + (columns.length + 1));
-        columnNormalizers.push(normalizeNone);
+        normalizers.push(normalizeNone);
     }
 
     const startIndex = headerRow ? 1 : 0;
@@ -159,7 +147,7 @@ export default function bedpe(data, format = {}) {
 
         for (let j = 0; j < row.length; j++) {
             const columnName = columns[j];
-            datum[columnName] = columnNormalizers[j](row[j]);
+            datum[columnName] = normalizers[j](row[j]);
         }
 
         rows.push(datum);
