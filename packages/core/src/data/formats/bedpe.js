@@ -1,5 +1,3 @@
-import { parseTsvRows } from "./tabularUtils.js";
-
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
 
@@ -83,8 +81,9 @@ function looksLikeHeaderRow(row) {
 export default function bedpe(data, format = {}) {
     const lines = data.split(/\r?\n/);
     let dataStarted = false;
-    /** @type {string[]} */
-    const dataLines = [];
+    /** @type {string[][]} */
+    const parsedRows = [];
+    let maxRowLength = 0;
 
     for (const line of lines) {
         if (!dataStarted) {
@@ -93,20 +92,20 @@ export default function bedpe(data, format = {}) {
             }
             dataStarted = true;
         }
-        dataLines.push(line);
-    }
 
-    const parsedRows = parseTsvRows(dataLines.join("\n"));
+        if (blankLinePattern.test(line)) {
+            continue;
+        }
 
-    if (parsedRows.length == 0) {
-        return [];
-    }
-
-    let maxRowLength = 0;
-    for (const row of parsedRows) {
+        const row = line.split("\t");
+        parsedRows.push(row);
         if (row.length > maxRowLength) {
             maxRowLength = row.length;
         }
+    }
+
+    if (parsedRows.length == 0) {
+        return [];
     }
 
     const explicitColumns = format.columns;
