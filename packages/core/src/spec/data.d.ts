@@ -75,21 +75,19 @@ export interface JsonDataFormat extends DataFormatBase {
     property?: string;
 }
 
-export interface GenomicTextDataFormat extends DataFormatBase {
-    /**
-     * Optional ordered list of field names for headerless input files.
-     * If omitted, field names are resolved from the format's defaults or
-     * from the header row when available.
-     */
-    columns?: string[];
-}
-
-export interface BedDataFormat extends GenomicTextDataFormat {
+export interface BedDataFormat extends DataFormatBase {
     type: "bed";
 }
 
-export interface BedpeDataFormat extends GenomicTextDataFormat {
+export interface BedpeDataFormat extends DataFormatBase {
     type: "bedpe";
+
+    /**
+     * Optional ordered list of field names for headerless BEDPE input.
+     * If omitted, BEDPE fields are resolved from the default BEDPE column
+     * order or from a matching header row when present.
+     */
+    columns?: string[];
 }
 
 /**
