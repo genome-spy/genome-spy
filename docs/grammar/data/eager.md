@@ -14,8 +14,10 @@ generate data on the fly and further modify them using
 
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, GenomeSpy infers the
-format from the file extension. However, in bioinformatics, CSV files are often
-actually tab-delimited, and you must specify the `"tsv"` explicitly:
+format from the file extension, ignoring a trailing compression suffix such as
+`.gz`. Gzip-compressed URL resources are decompressed automatically. However,
+in bioinformatics, CSV files are often actually tab-delimited, and you must
+specify the `"tsv"` explicitly:
 
 ```json title="Example: Eagerly loading data from a URL"
 {
@@ -50,6 +52,10 @@ data property of GenomeSpy is identical to Vega-Lite's
 
 Data can be loaded from a URL using the `url` property. The URL can be absolute
 or relative to the page where GenomeSpy is embedded.
+
+Files stored as gzip-compressed resources on the server can be referenced
+directly with their `.gz` URLs. GenomeSpy infers the underlying format from the
+uncompressed extension, so `variants.tsv.gz` is treated as `"tsv"`.
 
 In addition to loading data from a single URL, you can also load data from
 multiple URLs by providing an array of URLs. This is useful when files have

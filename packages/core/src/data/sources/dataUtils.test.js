@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { getFormat } from "./dataUtils.js";
+import {
+    extractTypeFromUrl,
+    getFormat,
+    hasGzipExtension,
+} from "./dataUtils.js";
 
 describe("getFormat", () => {
     test("defaults parse to auto for csv-like formats", () => {
@@ -64,5 +68,34 @@ describe("getFormat", () => {
             type: "tsv",
             parse: null,
         });
+    });
+
+    test("infers the format type from a gzip-compressed file name", () => {
+        expect(
+            getFormat(
+                {
+                    url: "data.tsv.gz",
+                },
+                "data.tsv.gz"
+            )
+        ).toEqual({
+            type: "tsv",
+            parse: "auto",
+        });
+    });
+});
+
+describe("extractTypeFromUrl", () => {
+    test("strips a gzip suffix before inferring the file type", () => {
+        expect(extractTypeFromUrl("https://example.com/data.bed.gz?dl=1")).toBe(
+            "bed"
+        );
+    });
+});
+
+describe("hasGzipExtension", () => {
+    test("detects gzip-compressed file names", () => {
+        expect(hasGzipExtension("data.tsv.gz")).toBe(true);
+        expect(hasGzipExtension("data.tsv")).toBe(false);
     });
 });

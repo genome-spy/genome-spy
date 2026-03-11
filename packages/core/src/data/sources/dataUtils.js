@@ -2,6 +2,16 @@ import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
 const genomicTextFormats = new Set(["bed", "bedpe"]);
+const compressionExtensions = new Set(["gz"]);
+const inferableUrlTypes = [
+    "bedpe",
+    "parquet",
+    "fasta",
+    "json",
+    "csv",
+    "tsv",
+    "bed",
+];
 
 /**
  * Validates data source params, infers format if not specified explicitly,
@@ -50,8 +60,41 @@ export function extractTypeFromUrl(url) {
     }
 
     if (url) {
-        return url.match(/\.(csv|tsv|json)/)?.[1];
+        const path = stripUrlQueryAndHash(url).split("/").pop()?.toLowerCase();
+
+        if (!path) {
+            return;
+        }
+
+        const extensions = path.split(".");
+        while (
+            extensions.length > 1 &&
+            compressionExtensions.has(extensions.at(-1))
+        ) {
+            extensions.pop();
+        }
+
+        const extension = extensions.at(-1);
+        if (extension && inferableUrlTypes.includes(extension)) {
+            return extension;
+        }
     }
+}
+
+/**
+ * @param {string} url
+ */
+export function hasGzipExtension(url) {
+    const path = stripUrlQueryAndHash(url).split("/").pop()?.toLowerCase();
+
+    return !!path && path.endsWith(".gz");
+}
+
+/**
+ * @param {string} url
+ */
+function stripUrlQueryAndHash(url) {
+    return url.replace(/[?#].*$/, "");
 }
 
 export const makeWrapper = (/** @type {any} */ d) =>
