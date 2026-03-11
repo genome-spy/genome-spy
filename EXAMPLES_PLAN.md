@@ -424,6 +424,13 @@ The key requirement is behavioral parity, not identical strings in the address b
 
 If the playground gains a dropdown or gallery for curated examples, it should be driven by one generated catalog.
 
+Catalog update mechanism:
+
+- local development should generate the catalog at runtime from the filesystem
+- docs/playground builds should generate the same catalog shape at build time
+- the catalog should not be checked in as a hand-maintained source file
+- adding, renaming, or removing an example file should automatically affect the next local run or build without manual catalog edits
+
 Suggested fields:
 
 - `id`
@@ -679,6 +686,12 @@ Prefer:
 - layout snapshots
 - structural metadata
 
+Future note:
+
+- later, add browser-driven screenshot generation for curated examples, likely with Playwright or a similar tool
+- treat that as a separate follow-up after the catalog and structural validation work is in place
+- details of screenshot orchestration, goldens, and CI cost should be decided later
+
 ## Migration Plan
 
 ## Phase 1: Prepare new roots
@@ -825,6 +838,7 @@ Implementation notes:
 - The toolbar now shows the effective base URL and provides a clear button.
 - The playground Vite dev server now serves repo-root `examples/` at both `/examples` and `/docs/examples` for local parity with deployed curated-example URLs.
 - A curated example catalog/dropdown is still pending.
+- The planned catalog should be generated from the filesystem at runtime in local dev and emitted with the same shape at build time for docs/playground deployment.
 
 ### Draft commit messages
 
