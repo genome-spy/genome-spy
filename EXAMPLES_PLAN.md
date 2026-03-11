@@ -737,7 +737,8 @@ Implementation notes:
 - The previous `packages/core/examples/` tree has been moved to `examples/core/`.
 - Package-local references have been updated in the dev servers, README text, and single-page app sample links.
 - The existing layout snapshot test stays under `packages/core/layout.test.js` because the current Vitest workspace does not discover tests from repo-root `examples/`.
-- `examples/data/` and `examples/shared/` have not been introduced yet.
+- `examples/data/` now exists and currently stages the shared data files used by extracted docs examples.
+- `examples/shared/` has not been introduced yet.
 - Shared example asset path normalization is still pending.
 
 ### Draft commit messages
@@ -771,7 +772,7 @@ Implementation notes:
 
 ## Phase 5: Migrate docs pages
 
-Status: partially completed on branch `examples-reorg`
+Status: completed on branch `examples-reorg`
 
 1. Replace inline interactive example blocks with `EXAMPLE ...` macros.
 2. Keep non-interactive explanatory JSON snippets inline where reuse is unnecessary.
@@ -784,6 +785,8 @@ Implementation notes:
 - `docs/index.md` now uses `EXAMPLE examples/docs/index/interactive-overview.json`.
 - `docs/grammar/composition/layer.md` now uses `EXAMPLE examples/docs/grammar/composition/layer/bar-and-label-layer.json`.
 - The extracted example files include `$schema` and a succinct `description`.
+- The remaining interactive docs examples have been extracted into `examples/docs/...` and their source pages now use `EXAMPLE ...` macros.
+- Local docs-only data references were rewritten to use `examples/data/` so the same specs work in docs, the app dev-server, and the playground.
 - A full `npm run build:docs` succeeds with the new macro and staged example assets.
 
 ### Draft commit messages

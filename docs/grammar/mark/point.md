@@ -4,21 +4,7 @@ Point mark displays each data item as a symbol. Points are often used to create
 a scatter plot. In the genomic context, they could represent, for example,
 point mutations at genomic loci.
 
-<div><genome-spy-doc-embed height="200">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-  "mark": "point",
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "sin", "type": "quantitative" },
-    "size": { "field": "x", "type": "quantitative" }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/mark/point/point-mark.json height=200
 
 ## Channels
 
@@ -37,49 +23,7 @@ SCHEMA PointProps
 The example below demonstrates how points can be varied by using
 `shape`, `fill`, `size`, `strokeWidth`, and `angle` channels.
 
-<div><genome-spy-doc-embed>
-
-```json
-{
-  "data": {
-    "sequence": { "start": 0, "stop": 160, "as": "z" }
-  },
-
-  "transform": [
-    { "type": "formula", "expr": "datum.z % 20", "as": "x" },
-    { "type": "formula", "expr": "floor(datum.z / 20)", "as": "y" }
-  ],
-
-  "mark": {
-    "type": "point",
-    "stroke": "black"
-  },
-
-  "encoding": {
-    "x": { "field": "x", "type": "ordinal", "axis": null },
-    "y": { "field": "y", "type": "ordinal", "axis": null },
-    "shape": { "field": "x", "type": "nominal" },
-    "fill": { "field": "x", "type": "nominal" },
-    "size": {
-      "field": "x",
-      "type": "quantitative",
-      "scale": { "type": "pow", "exponent": 2, "range": [0, 900] }
-    },
-    "strokeWidth": {
-      "field": "y",
-      "type": "quantitative",
-      "scale": { "range": [0, 4] }
-    },
-    "angle": {
-      "field": "y",
-      "type": "quantitative",
-      "scale": { "range": [0, 45] }
-    }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/mark/point/plenty-of-points.json
 
 ## Zoom behavior
 
@@ -103,34 +47,7 @@ at higher zoom levels, while preventing them from becoming too large. You can
 adjust the expression to fine-tune how point size responds to zooming for your
 specific visualization.
 
-<div><genome-spy-doc-embed>
-
-```json
-{
-  "data": {
-    "sequence": { "start": 0, "stop": 200000, "as": "x" }
-  },
-  "transform": [
-    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
-    {
-      "type": "formula",
-      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
-      "as": "y"
-    }
-  ],
-  "mark": {
-    "type": "point",
-    "size": { "expr": "min(0.5 * pow(zoomLevel, 1.5), 200)" }
-  },
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "y": { "field": "y", "type": "quantitative" },
-    "opacity": { "value": 0.6 }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/mark/point/geometric-zoom.json
 
 !!! tip
 
@@ -154,45 +71,7 @@ exponentially distributed score. As the view is zoomed in, new points appear.
 Their number in the viewport stays approximately constant until the lowest
 possible score has been reached.
 
-<div><genome-spy-doc-embed>
-
-```json
-{
-  "data": {
-    "sequence": { "start": 0, "stop": 200000, "as": "x" }
-  },
-  "transform": [
-    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
-    {
-      "type": "formula",
-      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618",
-      "as": "y"
-    },
-    {
-      "type": "formula",
-      "expr": "-log(random())",
-      "as": "score"
-    }
-  ],
-  "mark": {
-    "type": "point",
-    "semanticZoomFraction": 0.002
-  },
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "y": { "field": "y", "type": "quantitative" },
-    "opacity": {
-      "field": "score",
-      "type": "quantitative",
-      "scale": { "range": [0.1, 1] }
-    },
-    "semanticScore": { "field": "score", "type": "quantitative" },
-    "size": { "value": 100 }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/mark/point/semantic-zoom.json
 
 !!! tip
 

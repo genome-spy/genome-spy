@@ -1,0 +1,35 @@
+{
+  "data": {
+    "url": "../../../../data/sincos.csv"
+  },
+  "hconcat": [
+    {
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "sin",
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "cos",
+          "type": "quantitative"
+        }
+      }
+    }
+  ],
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Horizontal concatenation example."
+}
