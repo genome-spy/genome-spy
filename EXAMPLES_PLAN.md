@@ -98,9 +98,9 @@ The playground should stop relying on fragile hidden base URL state. It must dis
 
 ### Developer-only private projects
 
-- Local-only work currently lives under `packages/core/private/`.
+- Local-only work now lives under repo-root `private/`.
 - These projects often live in subdirectories containing both spec files and colocated data.
-- The app dev server already serves `/private`.
+- The app dev server serves repo-root `private/` at `/private` and still supports legacy `packages/core/private/` as a compatibility fallback.
 - This workflow is important and must remain easy to use.
 
 ## Key Decisions
@@ -124,7 +124,7 @@ Subdirectories should initially include:
 - `examples/docs/` for examples extracted from embedded Markdown blocks
 - `examples/app/` for examples that require app-only functionality
 
-## 2. Developer-only work eventually moves to repo-root `private/`
+## 2. Developer-only work lives under repo-root `private/`
 
 Rationale:
 
@@ -135,8 +135,8 @@ Rationale:
 Consequences:
 
 - dev-server route stays `/private`
-- repo-root `private/` is the preferred destination once the manual move happens
-- legacy `packages/core/private/` remains supported until that manual move is done
+- repo-root `private/` is the primary home for local developer-only projects
+- legacy `packages/core/private/` remains supported as a compatibility fallback
 - neither location is part of docs/public examples/test manifests
 
 ## 3. `website-examples` stays external
@@ -263,7 +263,7 @@ Notes:
 - `examples/core/` and `examples/app/` are illustrative categories, not a strict requirement.
 - Categories can be refined during migration.
 - `examples/data/` and `examples/shared/` should be stable cross-example roots.
-- repo-root `private/` remains the eventual target even though legacy `packages/core/private/` is still supported during migration.
+- repo-root `private/` is now the primary location even though legacy `packages/core/private/` is still supported during migration.
 
 ## Naming and Placement of Docs-Derived Examples
 
@@ -683,7 +683,7 @@ Prefer:
 
 ## Phase 1: Prepare new roots
 
-Status: partially completed on branch `examples-reorg`
+Status: completed on branch `examples-reorg`
 
 1. Create repo-root `examples/`.
 2. Create repo-root `private/`.
@@ -693,9 +693,9 @@ Status: partially completed on branch `examples-reorg`
 Implementation notes:
 
 - Repo-root `examples/` now exists and the migrated shared examples live under `examples/core/`.
-- Repo-root `private/` was intentionally not created yet. The manual move from `packages/core/private/` is deferred.
+- Repo-root `private/` now exists and is the primary location for local developer-only projects.
 - `.gitignore` already covered both `**/private/` and the legacy path, so no ignore rule change was required.
-- README text and example entry links now point at `examples/core/...` and document the temporary legacy `/private` fallback.
+- README text and example entry links now point at `examples/core/...` and document the legacy `/private` fallback.
 
 ### Draft commit messages
 
