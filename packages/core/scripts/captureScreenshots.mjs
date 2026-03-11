@@ -75,6 +75,13 @@ async function main() {
                     console.error(`[browser:${type}] ${message.text()}`);
                 }
             });
+            page.on("response", (response) => {
+                if (response.status() >= 400) {
+                    console.error(
+                        `[browser:http ${response.status()}] ${response.url()}`
+                    );
+                }
+            });
             page.on("pageerror", (error) => {
                 console.error(`[browser:pageerror] ${error.message}`);
             });

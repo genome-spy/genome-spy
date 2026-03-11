@@ -37,8 +37,18 @@ async function createServer() {
         res.type("text/plain");
         res.send("ok");
     });
-    app.get("/screenshot.html", (_req, res) => {
-        res.sendFile(screenshotPagePath);
+    app.get("/screenshot.html", async (req, res, next) => {
+        try {
+            const html = fs.readFileSync(screenshotPagePath, "utf8");
+            const transformed = await vite.transformIndexHtml(
+                req.originalUrl,
+                html
+            );
+            res.type("text/html");
+            res.send(transformed);
+        } catch (error) {
+            next(error);
+        }
     });
 
     app.use(vite.middlewares);
