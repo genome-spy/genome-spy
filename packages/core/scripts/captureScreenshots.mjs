@@ -66,7 +66,15 @@ async function main() {
     try {
         await waitForServer(serverOrigin, server);
 
-        const browser = await playwright.chromium.launch();
+        const browser = await playwright.chromium.launch({
+            args: [
+                "--use-angle=swiftshader",
+                "--use-gl=angle",
+                "--enable-webgl",
+                "--enable-unsafe-swiftshader",
+                "--ignore-gpu-blocklist",
+            ],
+        });
         try {
             const page = await browser.newPage();
             page.on("console", (message) => {

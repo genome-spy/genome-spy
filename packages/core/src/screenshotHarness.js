@@ -38,7 +38,17 @@ async function initializeHarness(url) {
         const spec = await loadSpec(url);
 
         setState("embedding", "Embedding visualization…");
-        const api = await embed(frameElement, spec);
+        const api = await embed(frameElement, spec, {
+            onError(error) {
+                throw error;
+            },
+        });
+
+        if (typeof api.getLogicalCanvasSize !== "function") {
+            throw new Error(
+                "Embed did not return a usable GenomeSpy instance."
+            );
+        }
 
         setState("rendering", "Waiting for initial render…");
         await waitForSettledRender();

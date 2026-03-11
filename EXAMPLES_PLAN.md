@@ -866,6 +866,8 @@ Implementation notes:
   That package is not yet declared or installed in this branch, so the script
   currently fails fast with an explicit instruction instead of attempting a
   partial capture.
+- Headless browser capture currently relies on Chromium's SwiftShader software
+  WebGL path rather than a hardware GPU.
 - The curated example catalog generator now looks for sibling `.png` files and
   exposes screenshot URLs when they exist.
 
