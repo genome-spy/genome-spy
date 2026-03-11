@@ -85,7 +85,7 @@ The playground should stop relying on fragile hidden base URL state. It must dis
 ### Playground
 
 - The playground can load `?spec=...` and derives a `baseUrl` from the URL string.
-- The current implementation clears the query string after loading.
+- The current implementation used to keep or clear the query string in ad hoc ways, which made source tracking inconsistent.
 - The current implementation stores only spec text in localStorage.
 - This becomes unreliable when a previously URL-backed spec is later restored from localStorage without its source context.
 
@@ -819,7 +819,7 @@ Implementation notes:
 Status: partially completed on branch `examples-reorg`
 
 1. Replace the current regex-based URL/base handling with URL objects.
-2. Stop clearing `?spec=...` after load.
+2. Preserve `?spec=...` while the loaded source remains untouched, but clear it on the first user edit.
 3. Persist structured source metadata in localStorage.
 4. Ensure curated shared examples use the same source-mode logic and catalog structure locally and when deployed.
 5. Implement source modes:
@@ -832,7 +832,7 @@ Status: partially completed on branch `examples-reorg`
 Implementation notes:
 
 - The playground now resolves `?spec=` with `URL` objects instead of regex string slicing.
-- It no longer clears `?spec=...` after load.
+- It preserves `?spec=...` while a spec is still source-backed and clears it on the first user edit.
 - Local storage now persists both the editor text and any inherited source base URL.
 - Website examples loaded from `/examples/...` outside the curated `core/docs/app` prefixes get `baseUrl` injected into the editor text immediately.
 - Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited examples-root base URL instead of modifying the editor text.

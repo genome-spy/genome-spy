@@ -47,6 +47,7 @@ let missingFiles = new Set();
 let embedResult;
 
 let previousStringifiedSpec = "";
+let suppressNextEditorChange = false;
 
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
@@ -160,8 +161,19 @@ function closeExamplePicker() {
  * @param {string} specText
  */
 function setEditorSpec(specText) {
+    suppressNextEditorChange = true;
     editorRef.value.value = specText;
     void update(true);
+}
+
+function clearSpecQueryParam() {
+    const nextUrl = new URL(window.location.href);
+    if (!nextUrl.searchParams.has("spec")) {
+        return;
+    }
+
+    nextUrl.searchParams.delete("spec");
+    window.history.replaceState({}, "", nextUrl);
 }
 
 /**
@@ -562,6 +574,16 @@ const toolbarTemplate = () => html`
 
 const debouncedUpdate = debounce(() => update(), 500, false);
 
+function handleEditorChange() {
+    if (suppressNextEditorChange) {
+        suppressNextEditorChange = false;
+        return;
+    }
+
+    clearSpecQueryParam();
+    debouncedUpdate();
+}
+
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
         ${toolbarTemplate()}
@@ -583,7 +605,7 @@ const layoutTemplate = () => html`
                 <code-editor
                     style="position: absolute; inset: 0"
                     ${ref(editorRef)}
-                    @change=${debouncedUpdate}
+                    @change=${handleEditorChange}
                     slot="1"
                 ></code-editor>
                 <section id="file-pane" slot="2">
