@@ -442,6 +442,7 @@ Suggested fields:
 
 For curated shared examples:
 
+- `title` should come from the example `description`, with a filename-based fallback only when `description` is missing
 - `specUrl` should resolve to the correct shared-example URL for the current environment
 - `sourceMode` should be `shared-example`
 
@@ -738,7 +739,7 @@ Implementation notes:
 
 ## Phase 3: Migrate shared examples
 
-Status: partially completed on branch `examples-reorg`
+Status: completed on branch `examples-reorg`
 
 1. Move canonical shared examples out of `packages/core/examples/` into `examples/`.
 2. Create `examples/data/` and `examples/shared/`.
@@ -837,8 +838,9 @@ Implementation notes:
 - Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited examples-root base URL instead of modifying the editor text.
 - The toolbar now shows the effective base URL and provides a clear button.
 - The playground Vite dev server now serves repo-root `examples/` at both `/examples` and `/docs/examples` for local parity with deployed curated-example URLs.
-- A curated example catalog/dropdown is still pending.
 - The planned catalog should be generated from the filesystem at runtime in local dev and emitted with the same shape at build time for docs/playground deployment.
+- The playground now exposes an `Examples` picker backed by that generated catalog.
+- Picker entries use the example `description` as the primary title and group curated specs from `examples/core/` and `examples/docs/`.
 
 ### Draft commit messages
 
@@ -846,6 +848,7 @@ Implementation notes:
 - `feat(playground): use shared curated example urls consistently across environments`
 - `feat(playground): show effective base url and source mode`
 - `fix(playground): inject base url for website examples`
+- `feat(playground): add curated example picker`
 
 ## Phase 7: Update website repo links
 
