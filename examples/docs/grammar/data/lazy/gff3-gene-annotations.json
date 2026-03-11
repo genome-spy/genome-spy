@@ -1,5 +1,6 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "GFF3 gene annotation example.",
   "assembly": "hg38",
   "height": {
     "step": 28
@@ -300,6 +301,5 @@
         }
       }
     }
-  ],
-  "description": "GFF3 gene annotation example."
+  ]
 }

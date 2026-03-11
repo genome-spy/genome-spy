@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rule mark example with diagonal rules.",
   "width": 300,
   "height": 300,
   "data": {
@@ -71,7 +73,5 @@
         "scheme": "category20"
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rule mark example with diagonal rules."
+  }
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Point mark example with score-based semantic zoom.",
   "data": {
     "sequence": {
       "start": 0,
@@ -56,7 +58,5 @@
     "size": {
       "value": 100
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Point mark example with score-based semantic zoom."
+  }
 }

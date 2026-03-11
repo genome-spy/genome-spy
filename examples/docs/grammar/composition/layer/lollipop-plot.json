@@ -1,6 +1,7 @@
 {
-  "name": "The Root",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Lollipop plot example",
+  "name": "The Root",
   "layer": [
     {
       "name": "Baseline",
@@ -91,6 +92,5 @@
         }
       ]
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json"
+  ]
 }

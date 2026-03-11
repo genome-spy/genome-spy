@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Scrollable viewport example.",
   "height": {
     "step": 20
   },
@@ -25,7 +27,5 @@
   },
   "mark": {
     "type": "point"
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Scrollable viewport example."
+  }
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rect mark hatch pattern example.",
   "params": [
     {
       "name": "hatch",
@@ -43,7 +45,5 @@
     "hatch": {
       "expr": "hatch"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rect mark hatch pattern example."
+  }
 }

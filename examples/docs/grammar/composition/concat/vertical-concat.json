@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Vertical concatenation example.",
   "data": {
     "url": "../../../../data/sincos.csv"
   },
@@ -30,7 +32,5 @@
         }
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Vertical concatenation example."
+  ]
 }

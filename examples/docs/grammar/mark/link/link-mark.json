@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Link mark example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -27,7 +29,5 @@
     "x2": {
       "field": "x2"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Link mark example."
+  }
 }

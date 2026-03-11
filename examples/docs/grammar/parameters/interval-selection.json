@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Interval selection example.",
   "params": [
     {
       "name": "brush",
@@ -42,7 +44,5 @@
       },
       "value": "#ddd"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Interval selection example."
+  }
 }

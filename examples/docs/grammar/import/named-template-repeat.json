@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Template import example with repeated named tracks.",
   "vconcat": [
     {
       "import": {
@@ -69,7 +71,5 @@
         }
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Template import example with repeated named tracks."
+  }
 }

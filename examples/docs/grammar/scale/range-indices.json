@@ -1,22 +1,12 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Index scale example with half-open ranges.",
   "data": {
     "values": [
-      {
-        "from": 0,
-        "to": 2
-      },
-      {
-        "from": 2,
-        "to": 5
-      },
-      {
-        "from": 8,
-        "to": 9
-      },
-      {
-        "from": 10,
-        "to": 13
-      }
+      { "from": 0, "to": 2 },
+      { "from": 2, "to": 5 },
+      { "from": 8, "to": 9 },
+      { "from": 10, "to": 13 }
     ]
   },
   "encoding": {
@@ -46,7 +36,5 @@
         }
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Index scale example with half-open ranges."
+  ]
 }

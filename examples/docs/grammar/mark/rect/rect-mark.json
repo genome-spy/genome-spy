@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rect mark example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -53,7 +55,5 @@
       "field": "z",
       "type": "quantitative"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rect mark example."
+  }
 }

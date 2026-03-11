@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Grid concatenation example.",
   "data": {
     "url": "../../../../data/sincos.csv"
   },
@@ -41,7 +43,5 @@
     {
       "mark": "point"
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Grid concatenation example."
+  ]
 }

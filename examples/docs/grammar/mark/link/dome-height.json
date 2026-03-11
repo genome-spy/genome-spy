@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Link mark example with variable dome heights.",
   "data": {
     "sequence": {
       "start": 0,
@@ -45,7 +47,5 @@
         "grid": true
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Link mark example with variable dome heights."
+  }
 }

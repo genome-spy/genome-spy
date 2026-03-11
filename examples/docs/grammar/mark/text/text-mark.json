@@ -1,14 +1,10 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Text mark example.",
   "data": {
     "values": [
-      {
-        "x": 1,
-        "text": "Hello"
-      },
-      {
-        "x": 2,
-        "text": "world!"
-      }
+      { "x": 1, "text": "Hello" },
+      { "x": 2, "text": "world!" }
     ]
   },
   "mark": "text",
@@ -27,7 +23,5 @@
     "size": {
       "value": 100
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Text mark example."
+  }
 }

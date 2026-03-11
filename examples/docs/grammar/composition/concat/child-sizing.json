@@ -1,7 +1,9 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Concatenation child sizing example.",
   "data": {
     "values": [
-      {}
+      {  }
     ]
   },
   "spacing": 10,
@@ -24,7 +26,5 @@
       },
       "mark": "rect"
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Concatenation child sizing example."
+  ]
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Independent scale resolution example.",
   "resolve": {
     "scale": {
       "y": "independent"
@@ -59,7 +61,5 @@
         }
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Independent scale resolution example."
+  ]
 }

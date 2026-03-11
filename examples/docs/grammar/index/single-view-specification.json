@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Single view specification example.",
   "data": {
     "url": "../../../data/sincos.csv"
   },
@@ -23,7 +25,5 @@
       "field": "x",
       "type": "quantitative"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Single view specification example."
+  }
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "BigBed cCRE track example.",
   "assembly": "hg38",
   "view": {
     "stroke": "lightgray"
@@ -52,7 +54,5 @@
       }
     }
   },
-  "mark": "rect",
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "BigBed cCRE track example."
+  "mark": "rect"
 }

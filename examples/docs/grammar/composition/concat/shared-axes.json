@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Concatenation example with shared axes.",
   "data": {
     "url": "../../../../data/sincos.csv"
   },
@@ -55,7 +57,5 @@
         "stroke": "lightgray"
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Concatenation example with shared axes."
+  ]
 }

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "A three-stage semantic zoom using the multiscale composition operator.",
   "view": {
     "stroke": "lightgray"
@@ -29,7 +30,7 @@
     {
       "data": {
         "values": [
-          {}
+          {  }
         ]
       },
       "mark": {
@@ -100,6 +101,5 @@
         }
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json"
+  ]
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rect mark bar chart example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -43,7 +45,5 @@
         ]
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rect mark bar chart example."
+  }
 }

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Index scale example with centered point marks.",
   "data": {
     "values": [
       0,
@@ -23,7 +25,5 @@
     "size": {
       "value": 300
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Index scale example with centered point marks."
+  }
 }

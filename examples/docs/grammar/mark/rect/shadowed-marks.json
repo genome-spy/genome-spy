@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rect mark example with drop shadows.",
   "padding": 20,
   "data": {
     "values": [
@@ -31,7 +33,5 @@
         "padding": 0.1
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rect mark example with drop shadows."
+  }
 }

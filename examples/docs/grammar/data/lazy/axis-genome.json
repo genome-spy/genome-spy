@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Axis genome data source example.",
   "assembly": "hg38",
   "data": {
     "lazy": {
@@ -43,7 +45,5 @@
         "y": 1
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Axis genome data source example."
+  ]
 }

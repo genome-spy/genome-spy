@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Heatmap example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -40,7 +42,5 @@
         "scheme": "magma"
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Heatmap example."
+  }
 }

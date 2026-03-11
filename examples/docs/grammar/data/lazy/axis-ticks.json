@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Axis ticks data source example.",
   "data": {
     "lazy": {
       "type": "axisTicks",
@@ -28,7 +30,5 @@
     "text": {
       "field": "label"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Axis ticks data source example."
+  }
 }

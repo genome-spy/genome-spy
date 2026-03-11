@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Filter scored labels example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -55,7 +57,5 @@
     "text": {
       "field": "label"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Filter scored labels example."
+  }
 }

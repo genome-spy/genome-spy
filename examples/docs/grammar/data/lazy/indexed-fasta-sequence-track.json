@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Indexed FASTA sequence track example.",
   "assembly": "hg38",
   "data": {
     "lazy": {
@@ -92,7 +94,5 @@
         }
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Indexed FASTA sequence track example."
+  ]
 }

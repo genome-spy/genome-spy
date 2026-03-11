@@ -786,6 +786,7 @@ Implementation notes:
 - `docs/grammar/composition/layer.md` now uses `EXAMPLE examples/docs/grammar/composition/layer/bar-and-label-layer.json`.
 - The extracted example files include `$schema` and a succinct `description`.
 - The remaining interactive docs examples have been extracted into `examples/docs/...` and their source pages now use `EXAMPLE ...` macros.
+- Extracted docs examples were reformatted so `$schema` and `description` appear first, and inline `values` rows stay compact with one object per line.
 - Local docs-only data references were rewritten to use `examples/data/` so the same specs work in docs, the app dev-server, and the playground.
 - A full `npm run build:docs` succeeds with the new macro and staged example assets.
 

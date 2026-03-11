@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Genome axis styling example for locus scales.",
   "assembly": "hg38",
   "data": {
     "values": []
@@ -30,7 +32,5 @@
         "chromGridFillOdd": "#FDFCE8"
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Genome axis styling example for locus scales."
+  }
 }

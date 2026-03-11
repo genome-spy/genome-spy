@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Point mark example with varied shapes, fills, sizes, and angles.",
   "data": {
     "sequence": {
       "start": 0,
@@ -73,7 +75,5 @@
         ]
       }
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Point mark example with varied shapes, fills, sizes, and angles."
+  }
 }

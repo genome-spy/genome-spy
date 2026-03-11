@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Rule mark example.",
   "data": {
     "sequence": {
       "start": 0,
@@ -22,7 +24,5 @@
       "field": "y",
       "type": "nominal"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Rule mark example."
+  }
 }

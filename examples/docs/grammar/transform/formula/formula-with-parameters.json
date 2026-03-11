@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Formula transform example with parameters.",
   "params": [
     {
       "name": "a",
@@ -48,7 +50,5 @@
       "field": "y",
       "type": "quantitative"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Formula transform example with parameters."
+  }
 }

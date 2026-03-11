@@ -1,10 +1,9 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Link mark example showing shapes and orientations.",
   "data": {
     "values": [
-      {
-        "x": 2,
-        "x2": 8
-      }
+      { "x": 2, "x2": 8 }
     ]
   },
   "resolve": {
@@ -113,7 +112,5 @@
         "orient": "horizontal"
       }
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Link mark example showing shapes and orientations."
+  ]
 }

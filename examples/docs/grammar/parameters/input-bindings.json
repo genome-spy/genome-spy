@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Parameter bindings example.",
   "padding": 0,
   "view": {
     "fill": "#cbeef3"
@@ -38,7 +40,7 @@
   ],
   "data": {
     "values": [
-      {}
+      {  }
     ]
   },
   "mark": {
@@ -53,7 +55,5 @@
     "angle": {
       "expr": "angle"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Parameter bindings example."
+  }
 }

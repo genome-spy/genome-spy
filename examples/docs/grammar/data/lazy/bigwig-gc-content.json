@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "BigWig GC content example.",
   "assembly": "hg38",
   "view": {
     "stroke": "lightgray"
@@ -38,7 +40,5 @@
       "pos": "end"
     }
   },
-  "mark": "rect",
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "BigWig GC content example."
+  "mark": "rect"
 }

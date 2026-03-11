@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "BAM read alignment example.",
   "assembly": "hg18",
   "data": {
     "lazy": {
@@ -111,7 +113,5 @@
       },
       "mark": "rect"
     }
-  ],
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "BAM read alignment example."
+  ]
 }

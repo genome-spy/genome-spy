@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Point mark example with zoom-dependent size.",
   "data": {
     "sequence": {
       "start": 0,
@@ -39,7 +41,5 @@
     "opacity": {
       "value": 0.6
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Point mark example with zoom-dependent size."
+  }
 }

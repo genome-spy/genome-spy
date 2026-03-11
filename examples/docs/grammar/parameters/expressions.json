@@ -1,4 +1,6 @@
 {
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Expression parameter example.",
   "view": {
     "stroke": "lightgray"
   },
@@ -30,7 +32,7 @@
   ],
   "data": {
     "values": [
-      {}
+      {  }
     ]
   },
   "mark": {
@@ -39,7 +41,5 @@
     "text": {
       "expr": "'' + A + ' * ' + B + ' = ' + C"
     }
-  },
-  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
-  "description": "Expression parameter example."
+  }
 }
