@@ -695,6 +695,8 @@ Future note:
 
 ## Screenshot Capture Follow-up
 
+Status: partially completed on branch `examples-reorg`
+
 This should be implemented as a browser-driven export workflow, not as a pure
 Node-side renderer.
 
@@ -841,6 +843,25 @@ Recommended order:
 - `feat(core): add example screenshot harness`
 - `feat(core): add curated example screenshot generator`
 - `feat(playground): surface example screenshots in catalog`
+
+Implementation notes:
+
+- A local screenshot harness now exists at `packages/core/screenshot.html`.
+- The harness is driven by `packages/core/src/screenshotHarness.js` and uses
+  `embed(...).exportCanvas(...)` for PNG export.
+- The core embed API now exposes `getLogicalCanvasSize()` so the harness can use
+  the resolved canvas dimensions when exporting.
+- `packages/core/scripts/captureScreenshots.mjs` can capture a specific curated
+  example or batch all curated `examples/core/**` and `examples/docs/**`
+  examples, writing sibling `.png` files next to the source specs.
+- The batch script currently excludes the same app-only and remote lazy-data
+  examples that are unsuitable for the current offline structural test harness.
+- The script expects the `playwright` package to be installed in the workspace.
+  That package is not yet declared or installed in this branch, so the script
+  currently fails fast with an explicit instruction instead of attempting a
+  partial capture.
+- The curated example catalog generator now looks for sibling `.png` files and
+  exposes screenshot URLs when they exist.
 
 ## Migration Plan
 

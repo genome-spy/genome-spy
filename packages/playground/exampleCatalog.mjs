@@ -23,7 +23,9 @@ export function generateExampleCatalog(examplesDir, specUrlRoot) {
                 .split(path.sep)
                 .join("/");
             const spec = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
-            entries.push(createCatalogEntry(relativePath, specUrlRoot, spec));
+            entries.push(
+                createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec)
+            );
         });
     }
 
@@ -46,16 +48,19 @@ function visit(dir, visitor) {
 }
 
 /**
+ * @param {string} absolutePath
  * @param {string} relativePath
  * @param {string} specUrlRoot
  * @param {{ description?: string | string[] }} spec
  */
-function createCatalogEntry(relativePath, specUrlRoot, spec) {
+function createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec) {
     const specPath = `examples/${relativePath}`;
     const pathSegments = relativePath.split("/");
     const sourceGroup = pathSegments[0];
     const categorySegments = pathSegments.slice(1, -1);
     const title = getCatalogTitle(spec.description, pathSegments.at(-1));
+    const screenshotPath = specPath.replace(/\.json$/, ".png");
+    const hasScreenshot = fs.existsSync(absolutePath.replace(/\.json$/, ".png"));
 
     return {
         id: relativePath.replace(/\.json$/, ""),
@@ -68,6 +73,10 @@ function createCatalogEntry(relativePath, specUrlRoot, spec) {
             : "General",
         specPath,
         specUrl: `${specUrlRoot}/${relativePath}`,
+        screenshotPath: hasScreenshot ? screenshotPath : null,
+        screenshotUrl: hasScreenshot
+            ? `${specUrlRoot}/${relativePath.replace(/\.json$/, ".png")}`
+            : null,
         sourceMode: "shared-example",
     };
 }

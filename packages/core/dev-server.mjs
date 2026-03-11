@@ -14,6 +14,7 @@ const legacyPrivateDir = path.join(repoRoot, "packages", "core", "private");
 
 async function createServer() {
     const app = express();
+    const port = Number(process.env.PORT || 8080);
 
     const vite = await createViteServer({
         server: { middlewareMode: true },
@@ -34,7 +35,7 @@ async function createServer() {
 
     app.use(vite.middlewares);
 
-    app.listen(8080);
+    app.listen(port);
 }
 
 createServer();

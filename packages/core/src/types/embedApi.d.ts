@@ -84,6 +84,11 @@ export interface EmbedResult {
     updateNamedData: (name: string, data?: any[]) => void;
 
     /**
+     * Returns the current logical canvas size in CSS pixels.
+     */
+    getLogicalCanvasSize: () => { width: number; height: number };
+
+    /**
      * Returns a PNG data URL of the current canvas.
      *
      * @param {number} [logicalWidth] Custom width, defaults to canvas width
