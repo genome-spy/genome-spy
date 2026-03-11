@@ -48,9 +48,7 @@ export default class LinkMark extends Mark {
          *
          * @private
          */
-        this._baseInstanceExt = this.gl.getExtension(
-            "WEBGL_draw_instanced_base_vertex_base_instance"
-        );
+        this._baseInstanceExt = undefined;
     }
 
     /**
@@ -109,6 +107,10 @@ export default class LinkMark extends Mark {
 
     async initializeGraphics() {
         await super.initializeGraphics();
+
+        this._baseInstanceExt = this.gl.getExtension(
+            "WEBGL_draw_instanced_base_vertex_base_instance"
+        );
 
         this.createAndLinkShaders(VERTEX_SHADER, FRAGMENT_SHADER, [
             COMMON_SHADER,

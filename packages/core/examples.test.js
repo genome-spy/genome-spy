@@ -18,20 +18,14 @@ const curatedBaseUrl = "examples/";
 // should move under examples/app once that tree is introduced.
 const excludedExamples = new Set([
     "examples/core/app/samples.json",
-    "examples/core/genomic/bedpeColumns.json",
-    "examples/core/genomic/bedpeEndpoints.json",
     "examples/core/lazy-data/bigbed.json",
     "examples/core/lazy-data/bigwig.json",
     "examples/core/lazy-data/indexed_fasta.json",
-    "examples/core/marks/link/link.json",
     "examples/docs/grammar/data/lazy/bam-read-alignments.json",
     "examples/docs/grammar/data/lazy/bigbed-ccre-track.json",
     "examples/docs/grammar/data/lazy/bigwig-gc-content.json",
     "examples/docs/grammar/data/lazy/gff3-gene-annotations.json",
     "examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json",
-    "examples/docs/grammar/mark/link/dome-height.json",
-    "examples/docs/grammar/mark/link/link-mark.json",
-    "examples/docs/grammar/mark/link/link-shapes-and-orientations.json",
 ]);
 
 const examplePaths = collectExamplePaths();

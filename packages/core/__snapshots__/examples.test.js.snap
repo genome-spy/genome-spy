@@ -151,6 +151,108 @@ exports[`shared examples > initializes examples/core/genomic/bedSimple.json 1`] 
 }
 `;
 
+exports[`shared examples > initializes examples/core/genomic/bedpeColumns.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/eventsCustomColumns.tsv","format":{"type":"bedpe","columns":["chrom1","start1","end1","chrom2","start2","end2","name","strand1","strand2","score"]}},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/core/genomic/bedpeEndpoints.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/events.bedpe","format":{"type":"bedpe"}},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/core/layout/grid/complex_grid_layout.json 1`] = `
 {
   "assemblies": [],
@@ -1755,6 +1857,59 @@ exports[`shared examples > initializes examples/core/layout/size_expr.json 1`] =
       },
     ],
     "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/core/marks/link/link.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
     "type": "ConcatView",
   },
 }
@@ -5750,6 +5905,251 @@ exports[`shared examples > initializes examples/docs/grammar/index/single-view-s
       },
     ],
     "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/link/dome-height.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/link/link-mark.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/link/link-shapes-and-orientations.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid2",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid3",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid4",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid5",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid6",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid7",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }

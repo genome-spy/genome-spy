@@ -875,7 +875,7 @@ Implementation notes:
 - `packages/core/examples.test.js` now enumerates curated shared examples from `examples/core/` and `examples/docs/`.
 - The suite parses each spec, applies the curated examples root base URL, resolves required assemblies, builds the view hierarchy, wires dataflow initialization, and snapshots a stable summary of the initialized hierarchy.
 - The existing `packages/core/layout.test.js` remains the layout snapshot suite for the current stable render-safe subset.
-- App-only examples, WebGL-dependent link-mark examples, and remote lazy-data examples are currently excluded from the enumerated suite until they have a dedicated harness.
+- App-only examples and remote lazy-data examples are currently excluded from the enumerated suite until they have a dedicated harness.
 
 ### Draft commit messages
 
