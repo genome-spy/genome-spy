@@ -52,9 +52,6 @@ Use repo-root `private/` for local experiments that should not go into version
 control. The dev server serves it at
 `http://localhost:8080/?spec=private/foo.json`.
 
-Legacy `packages/core/private/` is still served at `/private` for now and kept
-in `.gitignore` until it is moved manually.
-
 If you want to use or develop the core library, launch a single-page app using:
 `npm -w @genome-spy/core run dev`
 
