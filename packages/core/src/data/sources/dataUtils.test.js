@@ -103,6 +103,20 @@ describe("getFormat", () => {
             parse: "auto",
         });
     });
+
+    test("infers the format type from a bgzip-compressed file name", () => {
+        expect(
+            getFormat(
+                {
+                    url: "data.tsv.bgzf",
+                },
+                "data.tsv.bgzf"
+            )
+        ).toEqual({
+            type: "tsv",
+            parse: "auto",
+        });
+    });
 });
 
 describe("extractTypeFromUrl", () => {
@@ -116,6 +130,8 @@ describe("extractTypeFromUrl", () => {
 describe("hasGzipExtension", () => {
     test("detects gzip-compressed file names", () => {
         expect(hasGzipExtension("data.tsv.gz")).toBe(true);
+        expect(hasGzipExtension("data.tsv.bgz")).toBe(true);
+        expect(hasGzipExtension("data.tsv.bgzf")).toBe(true);
         expect(hasGzipExtension("data.tsv")).toBe(false);
     });
 });

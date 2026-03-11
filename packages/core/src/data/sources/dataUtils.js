@@ -2,7 +2,7 @@ import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
 const autoParseFormats = new Set(["csv", "tsv", "dsv"]);
-const compressionExtensions = new Set(["gz"]);
+const compressionExtensions = new Set(["gz", "bgz", "bgzf"]);
 
 /**
  * Validates data source params, infers format if not specified explicitly,
@@ -78,7 +78,12 @@ export function extractTypeFromUrl(url) {
 export function hasGzipExtension(url) {
     const path = stripUrlQueryAndHash(url).split("/").pop()?.toLowerCase();
 
-    return !!path && path.endsWith(".gz");
+    if (!path) {
+        return false;
+    }
+
+    const extension = path.split(".").at(-1);
+    return !!extension && compressionExtensions.has(extension);
 }
 
 /**

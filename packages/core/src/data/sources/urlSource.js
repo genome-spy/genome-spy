@@ -10,6 +10,10 @@ import { concatUrl } from "../../utils/url.js";
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
 const textDecoder = new TextDecoder();
 
+/**
+ * Loads eager data from URLs and transparently decompresses gzip-compatible
+ * payloads before handing them to the registered format reader.
+ */
 export default class UrlSource extends DataSource {
     /**
      * @param {import("../../spec/data.js").UrlData} params
@@ -149,7 +153,13 @@ export function isUrlData(data) {
  * @param {Uint8Array} bytes
  */
 function hasGzipMagic(bytes) {
-    return bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
+    return (
+        bytes.length >= 10 &&
+        bytes[0] == 0x1f &&
+        bytes[1] == 0x8b &&
+        bytes[2] == 0x08 &&
+        (bytes[3] & 0xe0) == 0
+    );
 }
 
 /**
@@ -212,24 +222,40 @@ async function decompressGzip(bytes) {
  * @param {string} type
  */
 async function readResponseBody(response, url, type) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
     const gzipHint =
         hasGzipExtension(url) ||
-        isGzipMimeType(response.headers.get("content-type"));
-    const contentEncoding = response.headers.get("content-encoding");
+        isGzipMimeType(response.headers.get("content-type")) ||
+        hasGzipContentEncoding(response.headers.get("content-encoding"));
 
-    let bodyBytes = bytes;
-    if (hasGzipMagic(bytes)) {
-        bodyBytes = await decompressGzip(bytes);
-    } else if (gzipHint && !hasGzipContentEncoding(contentEncoding)) {
-        throw new Error(
-            `Expected gzip-compressed data in "${url}", but the payload is not gzipped.`
-        );
+    if (!gzipHint) {
+        return readResponseUsingType(response, type);
     }
 
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const bodyBytes = hasGzipMagic(bytes) ? await decompressGzip(bytes) : bytes;
+    return deserializeBytes(bodyBytes, type);
+}
+
+/**
+ * @param {Response} response
+ * @param {string} type
+ */
+function readResponseUsingType(response, type) {
+    // @ts-ignore
+    return typeof response[type] == "function"
+        ? // @ts-ignore
+          response[type]()
+        : response.text();
+}
+
+/**
+ * @param {Uint8Array} bytes
+ * @param {string} type
+ */
+function deserializeBytes(bytes, type) {
     if (type == "arrayBuffer") {
-        return toArrayBuffer(bodyBytes);
+        return toArrayBuffer(bytes);
     } else {
-        return textDecoder.decode(bodyBytes);
+        return textDecoder.decode(bytes);
     }
 }

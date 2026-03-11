@@ -148,6 +148,58 @@ test("UrlSource reads gzip-compressed TSV content transparently", async () => {
     ]);
 });
 
+test("UrlSource accepts already-decoded content behind a .gz URL", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () =>
+                new Response("chrom\tstart\nchr1\t10\n", {
+                    status: 200,
+                })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.tsv.gz",
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            chrom: "chr1",
+            start: 10,
+        },
+    ]);
+});
+
+test("UrlSource reads bgzip-compressed TSV content transparently", async () => {
+    const compressed = await gzipText("chrom\tstart\nchr2\t20\n");
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () =>
+                new Response(compressed, {
+                    status: 200,
+                })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.tsv.bgz",
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            chrom: "chr2",
+            start: 20,
+        },
+    ]);
+});
+
 test("UrlSource reads gzip-compressed URL lists transparently", async () => {
     const list = await gzipText("url\npart-1.tsv\npart-2.tsv\n");
     const part1 = await gzipText("sample\tvalue\nA\t1\n");
