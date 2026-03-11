@@ -29,8 +29,9 @@ export default defineConfig({
                     express.static(examplesDir)
                 );
                 server.middlewares.use("/example-catalog.json", (_req, res) => {
-                    res.type("application/json");
-                    res.send(
+                    res.statusCode = 200;
+                    res.setHeader("Content-Type", "application/json");
+                    res.end(
                         JSON.stringify(
                             generateExampleCatalog(examplesDir, "/examples"),
                             null,
