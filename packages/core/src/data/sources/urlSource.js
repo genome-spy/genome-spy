@@ -10,103 +10,6 @@ import { concatUrl } from "../../utils/url.js";
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
 const textDecoder = new TextDecoder();
 
-/**
- * @param {Partial<import("../../spec/data.js").Data>} data
- * @returns {data is import("../../spec/data.js").UrlData}
- */
-export function isUrlData(data) {
-    return "url" in data;
-}
-
-/**
- * @param {Uint8Array} bytes
- */
-function hasGzipMagic(bytes) {
-    return bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
-}
-
-/**
- * @param {string | null} contentType
- */
-function isGzipMimeType(contentType) {
-    if (!contentType) {
-        return false;
-    }
-
-    return gzipMimeTypes.has(contentType.split(";")[0].trim().toLowerCase());
-}
-
-/**
- * @param {string | null} contentEncoding
- */
-function hasGzipContentEncoding(contentEncoding) {
-    if (!contentEncoding) {
-        return false;
-    }
-
-    return contentEncoding
-        .toLowerCase()
-        .split(",")
-        .some((encoding) => encoding.trim() == "gzip");
-}
-
-/**
- * @param {Uint8Array} bytes
- * @returns {ArrayBuffer}
- */
-function toArrayBuffer(bytes) {
-    return new Uint8Array(bytes).buffer;
-}
-
-/**
- * @param {Uint8Array} bytes
- */
-async function decompressGzip(bytes) {
-    if (typeof DecompressionStream != "function") {
-        throw new Error(
-            "Gzip-compressed URL data requires DecompressionStream support."
-        );
-    }
-
-    const body = new Response(toArrayBuffer(bytes)).body;
-    if (!body) {
-        throw new Error(
-            "Cannot create a readable stream for gzip decompression."
-        );
-    }
-
-    const stream = body.pipeThrough(new DecompressionStream("gzip"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
-/**
- * @param {Response} response
- * @param {string} url
- * @param {string} type
- */
-async function readResponseBody(response, url, type) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const gzipHint =
-        hasGzipExtension(url) ||
-        isGzipMimeType(response.headers.get("content-type"));
-    const contentEncoding = response.headers.get("content-encoding");
-
-    let bodyBytes = bytes;
-    if (hasGzipMagic(bytes)) {
-        bodyBytes = await decompressGzip(bytes);
-    } else if (gzipHint && !hasGzipContentEncoding(contentEncoding)) {
-        throw new Error(
-            `Expected gzip-compressed data in "${url}", but the payload is not gzipped.`
-        );
-    }
-
-    if (type == "arrayBuffer") {
-        return toArrayBuffer(bodyBytes);
-    } else {
-        return textDecoder.decode(bodyBytes);
-    }
-}
-
 export default class UrlSource extends DataSource {
     /**
      * @param {import("../../spec/data.js").UrlData} params
@@ -231,5 +134,102 @@ export default class UrlSource extends DataSource {
             this.setLoadingStatus("error", e.message);
         }
         this.complete();
+    }
+}
+
+/**
+ * @param {Partial<import("../../spec/data.js").Data>} data
+ * @returns {data is import("../../spec/data.js").UrlData}
+ */
+export function isUrlData(data) {
+    return "url" in data;
+}
+
+/**
+ * @param {Uint8Array} bytes
+ */
+function hasGzipMagic(bytes) {
+    return bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b;
+}
+
+/**
+ * @param {string | null} contentType
+ */
+function isGzipMimeType(contentType) {
+    if (!contentType) {
+        return false;
+    }
+
+    return gzipMimeTypes.has(contentType.split(";")[0].trim().toLowerCase());
+}
+
+/**
+ * @param {string | null} contentEncoding
+ */
+function hasGzipContentEncoding(contentEncoding) {
+    if (!contentEncoding) {
+        return false;
+    }
+
+    return contentEncoding
+        .toLowerCase()
+        .split(",")
+        .some((encoding) => encoding.trim() == "gzip");
+}
+
+/**
+ * @param {Uint8Array} bytes
+ * @returns {ArrayBuffer}
+ */
+function toArrayBuffer(bytes) {
+    return new Uint8Array(bytes).buffer;
+}
+
+/**
+ * @param {Uint8Array} bytes
+ */
+async function decompressGzip(bytes) {
+    if (typeof DecompressionStream != "function") {
+        throw new Error(
+            "Gzip-compressed URL data requires DecompressionStream support."
+        );
+    }
+
+    const body = new Response(toArrayBuffer(bytes)).body;
+    if (!body) {
+        throw new Error(
+            "Cannot create a readable stream for gzip decompression."
+        );
+    }
+
+    const stream = body.pipeThrough(new DecompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+/**
+ * @param {Response} response
+ * @param {string} url
+ * @param {string} type
+ */
+async function readResponseBody(response, url, type) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const gzipHint =
+        hasGzipExtension(url) ||
+        isGzipMimeType(response.headers.get("content-type"));
+    const contentEncoding = response.headers.get("content-encoding");
+
+    let bodyBytes = bytes;
+    if (hasGzipMagic(bytes)) {
+        bodyBytes = await decompressGzip(bytes);
+    } else if (gzipHint && !hasGzipContentEncoding(contentEncoding)) {
+        throw new Error(
+            `Expected gzip-compressed data in "${url}", but the payload is not gzipped.`
+        );
+    }
+
+    if (type == "arrayBuffer") {
+        return toArrayBuffer(bodyBytes);
+    } else {
+        return textDecoder.decode(bodyBytes);
     }
 }
