@@ -147,7 +147,7 @@ export interface UrlList {
     /**
      * The format of the data in the list.
      * If the type is `"json"`, the list is expected to be an array of strings.
-     * If the type is `"csv"` or `"tsv"`, the list is expected to be a table with a single column named `file`.
+     * If the type is `"csv"` or `"tsv"`, the list is expected to be a table with a single column named `url`.
      *
      * __Default value:__ `"txt"`
      */

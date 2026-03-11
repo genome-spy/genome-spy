@@ -15,9 +15,9 @@ generate data on the fly and further modify them using
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, GenomeSpy infers the
 format from the file extension, ignoring a trailing compression suffix such as
-`.gz`. Gzip-compressed URL resources are decompressed automatically. However,
-in bioinformatics, CSV files are often actually tab-delimited, and you must
-specify the `"tsv"` explicitly:
+`.gz`, `.bgz`, or `.bgzf`. Gzip-compressed URL resources are decompressed
+automatically. However, in bioinformatics, CSV files are often actually
+tab-delimited, and you must specify the `"tsv"` explicitly:
 
 ```json title="Example: Eagerly loading data from a URL"
 {
@@ -54,8 +54,9 @@ Data can be loaded from a URL using the `url` property. The URL can be absolute
 or relative to the page where GenomeSpy is embedded.
 
 Files stored as gzip-compressed resources on the server can be referenced
-directly with their `.gz` URLs. GenomeSpy infers the underlying format from the
-uncompressed extension, so `variants.tsv.gz` is treated as `"tsv"`.
+directly with their `.gz`, `.bgz`, or `.bgzf` URLs. GenomeSpy infers the
+underlying format from the uncompressed extension, so `variants.tsv.gz` is
+treated as `"tsv"`.
 
 In addition to loading data from a single URL, you can also load data from
 multiple URLs by providing an array of URLs. This is useful when files have
@@ -95,32 +96,20 @@ array or a tabular file with a single column named `url`.
 
 ## Named Data
 
-When embedding GenomeSpy in a web application or page, data can be added or
-updated at runtime using the [API](../../api.md). Data sources are referenced by a
-name, which is passed to the `updateNamedData` method:
+A named data source declares that the data will be provided at runtime instead
+of loaded eagerly from a URL or embedded inline.
 
 ```json
 {
-    "data": {
-        "name": "myResults"
-    }
-    ...
+  "data": {
+    "name": "myResults"
+  },
+  ...
 }
 ```
 
-```js
-const api = await embed("#container", spec);
-api.updateNamedData("myResults", [
-  { x: 1, y: 2 },
-  { x: 2, y: 3 },
-]);
-```
-
-Although named data can be updated dynamically, it does not automatically
-respond to user interactions. For practical examples of dynamically updated
-named data, check the
-[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+The actual data is supplied through the [JavaScript API](../../api.md#named-data),
+for example with `updateNamedData()` or a `namedDataProvider`.
 
 ## Additional Formats
 
