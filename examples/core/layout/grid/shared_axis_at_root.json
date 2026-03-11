@@ -4,7 +4,7 @@
   "description": "Shared x-axis and scale, fixed view heights.",
 
   "data": {
-    "url": "../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
 
   "encoding": {

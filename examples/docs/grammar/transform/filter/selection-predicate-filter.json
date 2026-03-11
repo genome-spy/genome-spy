@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Filter transform example using a selection predicate.",
   "data": {
-    "url": "../../../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
   "params": [
     {

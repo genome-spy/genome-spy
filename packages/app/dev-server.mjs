@@ -121,6 +121,19 @@ function specList(req, res, next) {
 
     <p>These examples are in the repo-root <code>examples/</code> directory.</p>
 
+    <p>
+        Curated examples under <code>examples/core/</code>, <code>examples/docs/</code>,
+        and <code>examples/app/</code> resolve relative asset paths against
+        <code>/examples/</code>. Use tidy paths such as <code>data/sincos.csv</code>
+        instead of climbing up with <code>../</code>.
+    </p>
+
+    <p>
+        In the deployed docs, the same curated examples resolve against
+        <code>/docs/examples/</code>, which keeps the source specs identical across
+        local dev, docs, and playground.
+    </p>
+
     ${getFileList(examplesDir, "", "examples")}
 
     <h2>Private specs</h2>
@@ -129,6 +142,11 @@ function specList(req, res, next) {
         Use repo-root <code>private/</code> for files that should not be added to Git.
         The dev server currently lists specs from
         <code>${privateListingSource.label}</code> and serves them at <code>/private</code>.
+    </p>
+
+    <p>
+        Private specs are treated like standalone project folders: their default base
+        URL is the spec file directory, so sibling-relative paths keep working.
     </p>
 
     ${legacyPrivateWarning}

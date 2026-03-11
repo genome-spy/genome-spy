@@ -19,7 +19,7 @@
     }
   ],
   "data": {
-    "url": "../../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
   "mark": {
     "type": "point",

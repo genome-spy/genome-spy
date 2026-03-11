@@ -12,7 +12,7 @@
   "layer": [
     {
       "data": {
-        "url": "../../../../data/cnv_chr19_raw.tsv"
+        "url": "data/cnv_chr19_raw.tsv"
       },
       "title": "Single probe",
       "mark": {
@@ -38,7 +38,7 @@
     },
     {
       "data": {
-        "url": "../../../../data/cnv_chr19_segs.tsv"
+        "url": "data/cnv_chr19_segs.tsv"
       },
       "title": "Segment mean",
       "mark": {

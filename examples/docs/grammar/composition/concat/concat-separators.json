@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Concatenation example with separators.",
   "data": {
-    "url": "../../../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
   "encoding": {
     "x": {

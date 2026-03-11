@@ -9,6 +9,9 @@ import {
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
+import inferSpecBaseUrl, {
+    getCuratedExampleBaseUrl,
+} from "@genome-spy/core/utils/inferSpecBaseUrl.js";
 import defaultSpec from "./defaultspec.json?raw";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
@@ -26,13 +29,6 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 registerJsonSchema();
 
 const STORAGE_KEY = "playgroundSpec";
-const SHARED_EXAMPLE_PREFIXES = [
-    "/docs/examples/",
-    "/examples/core/",
-    "/examples/docs/",
-    "/examples/app/",
-];
-
 const genomeSpyContainerRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
@@ -144,7 +140,7 @@ async function loadSpecFromUrl(specParam) {
     const specUrl = new URL(specParam, window.location.href);
     const response = await fetch(specUrl);
     const specText = await response.text();
-    const sourceBaseUrl = new URL("./", specUrl).href;
+    const sourceBaseUrl = inferSpecBaseUrl(specUrl.href);
 
     if (shouldInjectBaseUrl(specUrl)) {
         inheritedBaseUrl = undefined;
@@ -163,9 +159,7 @@ function shouldInjectBaseUrl(specUrl) {
         return false;
     }
 
-    return !SHARED_EXAMPLE_PREFIXES.some((prefix) =>
-        specUrl.pathname.startsWith(prefix)
-    );
+    return !getCuratedExampleBaseUrl(specUrl.href);
 }
 
 /**

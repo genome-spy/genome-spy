@@ -5,6 +5,7 @@ import GenomeSpy from "./genomeSpy.js";
 import icon from "./img/bowtie.svg";
 import favIcon from "./img/genomespy-favicon.svg";
 import { fetchJson } from "./utils/fetchUtils.js";
+import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
 
 export { GenomeSpy, html, icon, favIcon };
 
@@ -112,8 +113,7 @@ export async function loadSpec(url) {
     }
 
     if (!spec.baseUrl) {
-        const m = url.match(/^[^?#]*\//);
-        spec.baseUrl = (m && m[0]) || "./";
+        spec.baseUrl = inferSpecBaseUrl(url);
     }
 
     return spec;

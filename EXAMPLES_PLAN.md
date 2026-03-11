@@ -183,7 +183,7 @@ Consequences:
 - shared examples should not rely on spec-directory-relative paths
 - shared examples should generally avoid relative imports like `../shared/foo.json`
 
-This convention applies primarily to reusable shared examples under `examples/core/`. Docs-derived examples follow a stricter self-contained rule described below.
+This convention applies to curated shared examples under `examples/core/`, `examples/docs/`, and `examples/app/`. Docs-derived examples follow an additional “no imported views” rule described below.
 
 ## 6. Private projects should keep spec-directory-relative behavior
 
@@ -284,7 +284,7 @@ Rationale:
 4. Avoid generic names such as `interactive-example.json`.
 5. Avoid repeating path context in the filename when the directory already provides it.
 6. Include a succinct `description` and a `$schema` entry in each extracted docs example file.
-7. Keep docs-derived examples simple and self-contained.
+7. Keep docs-derived examples simple and avoid imported views.
 
 ### Examples from the current docs
 
@@ -339,20 +339,22 @@ That folder should be used sparingly. Most docs-derived examples should still li
 
 ### Self-contained rule for docs examples
 
-Docs-derived examples should be simple and self-contained.
+Docs-derived examples should stay simple and focused.
 
 That means:
 
 - prefer inline `values`, `sequence`, or similarly compact local spec data
+- shared files under `examples/data/` are allowed when that keeps the spec readable
+- when using shared data, use tidy examples-root-relative paths such as `data/sincos.csv`
 - avoid dependencies on `examples/shared/`
 - avoid imports from `examples/core/`
-- avoid relying on shared local data files where practical
+- avoid importing other specs or view fragments
 
 Rationale:
 
 - extracted docs examples should remain easy to understand in isolation
 - docs examples should minimize coupling to the broader shared example corpus
-- keeping them self-contained makes later reuse and maintenance simpler
+- forbidding imported views keeps later reuse and maintenance simpler
 
 ### Required file metadata for extracted docs examples
 
@@ -737,9 +739,10 @@ Implementation notes:
 - The previous `packages/core/examples/` tree has been moved to `examples/core/`.
 - Package-local references have been updated in the dev servers, README text, and single-page app sample links.
 - The existing layout snapshot test stays under `packages/core/layout.test.js` because the current Vitest workspace does not discover tests from repo-root `examples/`.
-- `examples/data/` now exists and currently stages the shared data files used by extracted docs examples.
+- `examples/data/` now contains the curated shared example data files used by both core and docs examples.
 - `examples/shared/` has not been introduced yet.
-- Shared example asset path normalization is still pending.
+- Curated shared examples now use examples-root-relative asset paths such as `data/sincos.csv`.
+- The app dev-server landing page now explains that curated examples resolve against `/examples/`, while `private/` keeps spec-directory-relative behavior.
 
 ### Draft commit messages
 
@@ -762,7 +765,7 @@ Implementation notes:
 - The macro omits `$schema` from the rendered inline JSON so docs pages do not repeat editor-only metadata.
 - Docs asset preparation now stages repo-root `examples/` into `docs/examples/`.
 - Staging filters out `README.md` files so MkDocs does not treat generated example assets as standalone documentation pages.
-- `genome-spy-doc-embed` now accepts an explicit `base-url` attribute while preserving the old docs-data fallback.
+- `genome-spy-doc-embed` now accepts an explicit `base-url` attribute while defaulting curated docs examples to the staged examples root.
 
 ### Draft commit messages
 
@@ -787,7 +790,7 @@ Implementation notes:
 - The extracted example files include `$schema` and a succinct `description`.
 - The remaining interactive docs examples have been extracted into `examples/docs/...` and their source pages now use `EXAMPLE ...` macros.
 - Extracted docs examples were reformatted so `$schema` and `description` appear first, and inline `values` rows stay compact with one object per line.
-- Local docs-only data references were rewritten to use `examples/data/` so the same specs work in docs, the app dev-server, and the playground.
+- Docs examples that use shared local data now refer to it with tidy `data/...` paths so the same specs work in docs, the app dev-server, and the playground.
 - A full `npm run build:docs` succeeds with the new macro and staged example assets.
 
 ### Draft commit messages
@@ -817,7 +820,7 @@ Implementation notes:
 - It no longer clears `?spec=...` after load.
 - Local storage now persists both the editor text and any inherited source base URL.
 - Website examples loaded from `/examples/...` outside the curated `core/docs/app` prefixes get `baseUrl` injected into the editor text immediately.
-- Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited source base URL instead of modifying the editor text.
+- Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited examples-root base URL instead of modifying the editor text.
 - The toolbar now shows the effective base URL and provides a clear button.
 - The playground Vite dev server now serves repo-root `examples/` at both `/examples` and `/docs/examples` for local parity with deployed curated-example URLs.
 - A curated example catalog/dropdown is still pending.
@@ -868,7 +871,7 @@ This change belongs in the website repo, not this repo, but should be coordinate
 
 ### Risk: mixed path semantics
 
-Shared examples use examples-root-relative paths, while private projects and website examples use spec-directory-relative paths.
+Curated shared examples use examples-root-relative paths, while private projects and website examples use spec-directory-relative paths.
 
 Mitigation:
 

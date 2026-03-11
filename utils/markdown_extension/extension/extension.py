@@ -104,8 +104,7 @@ class MyPreprocessor(Preprocessor):
         spec.pop('$schema', None)
         spec_text = json.dumps(spec, indent=2)
 
-        published_dir = os.path.dirname(example_path)
-        base_url = published_dir + '/'
+        base_url = 'examples/'
         playground_spec_path = '/docs/' + example_path
 
         attributes = ['base-url="{}"'.format(base_url)]

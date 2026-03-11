@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Horizontal concatenation example.",
   "data": {
-    "url": "../../../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
   "hconcat": [
     {

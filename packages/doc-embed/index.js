@@ -55,11 +55,12 @@ function resolveSitePath(sitePath) {
  * @param {string | undefined} baseUrl
  */
 async function embedToDoc(container, conf, baseUrl) {
-    const dataBaseUrl = resolveSitePath("data/");
+    const examplesBaseUrl = resolveSitePath("examples/");
 
     try {
         conf.baseUrl =
-            conf.baseUrl || (baseUrl ? resolveSitePath(baseUrl) : dataBaseUrl);
+            conf.baseUrl ||
+            (baseUrl ? resolveSitePath(baseUrl) : examplesBaseUrl);
         await embed(container, conf, { bare: true });
     } catch (e) {
         const pre = document.createElement("pre");

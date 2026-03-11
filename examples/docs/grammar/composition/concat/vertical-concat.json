@@ -2,7 +2,7 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Vertical concatenation example.",
   "data": {
-    "url": "../../../../data/sincos.csv"
+    "url": "data/sincos.csv"
   },
   "spacing": 20,
   "vconcat": [
