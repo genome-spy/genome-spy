@@ -41,7 +41,7 @@ how to embed GenomeSpy in web applications and use the
 
 1. `git clone git@github.com:genome-spy/genome-spy.git`
 2. `cd genome-spy`
-3. `npm install` (use npm7!)
+3. `npm ci`
 4. `npm start` (starts a development server with the app package)
 
 The `packages/core/examples` directory contains some random view specification
@@ -54,6 +54,24 @@ experiments that should not go into version control.
 
 If you want to use or develop the core library, launch a single-page app using:
 `npm -w @genome-spy/core run dev`
+
+### Building Docs
+
+The docs toolchain uses a repo-local Python virtual environment managed by
+[`uv`](https://docs.astral.sh/uv/). Install `uv` once on your machine, then
+sync the docs dependencies into `.venv` from the repo root:
+
+1. `brew install uv` on macOS, or install `uv` on Linux using the method from
+   the upstream docs
+2. `npm ci`
+3. `npm run docs:install`
+4. `npm run docs:serve` for local preview, or `npm run build:docs` for a full build
+
+MkDocs Material's social-card generation depends on native Cairo libraries. On
+macOS, install Cairo with Homebrew if it is missing:
+`brew install cairo`.
+On Ubuntu/Debian, install:
+`libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
 
 ### Contributing guidelines
 

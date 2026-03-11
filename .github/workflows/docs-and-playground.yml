@@ -18,24 +18,18 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - name: Set up Python 3.x
+            - name: Set up Python 3.12
               uses: actions/setup-python@v5
               with:
-                  python-version: "3.x"
+                  python-version: "3.12"
+
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v5
 
             - name: Install system dependencies
               run: |
                   sudo apt-get update
                   sudo apt-get install -y libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev
-
-            - name: Install Python dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install markdown mkdocs-material cairosvg pillow setuptools mkdocs-git-revision-date-localized-plugin mdx_truly_sane_lists
-                  pushd utils/markdown_extension/
-                  python setup.py build
-                  python setup.py install
-                  popd
 
             - uses: actions/setup-node@v4
               with:
@@ -44,6 +38,9 @@ jobs:
 
             - name: Install npm dependencies
               run: npm ci
+
+            - name: Sync docs environment
+              run: uv sync --group docs --locked
 
             - name: Build docs
               run: npm run build:docs

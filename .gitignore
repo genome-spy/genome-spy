@@ -11,6 +11,7 @@ tmp/
 .cache/
 .vscode/
 node_modules/
+.venv/
 
 **/static/private/
 **/private/

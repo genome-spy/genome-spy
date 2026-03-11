@@ -1,0 +1,22 @@
+[project]
+name = "genome-spy-docs"
+version = "0.0.0"
+description = "Documentation tooling for the GenomeSpy monorepo"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+docs = [
+    "cairosvg",
+    "markdown",
+    "mdx-truly-sane-lists",
+    "mkdocs",
+    "mkdocs-git-revision-date-localized-plugin",
+    "mkdocs-material",
+    "pillow",
+    "pymdown-extensions",
+    "genomespy-extension",
+]
+
+[tool.uv.sources]
+genomespy-extension = { path = "utils/markdown_extension", editable = true }

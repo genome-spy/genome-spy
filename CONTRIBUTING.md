@@ -131,6 +131,20 @@ visualization grammar, the typings and their documentation in the
 [`packages/core/src/spec/`](packages/core/src/spec/) directory should also be
 updated.
 
+The docs build uses a repo-local Python virtual environment managed by `uv`.
+From the repo root, run:
+
+```sh
+npm run docs:install
+npm run docs:serve
+```
+
+Use `npm run build:docs` when you want the same one-shot docs build that CI runs.
+If CairoSVG cannot find `cairo`, install the native libraries first:
+`brew install cairo` on macOS, or
+`apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
+on Ubuntu/Debian.
+
 ## Community and Communication
 
 We encourage open and respectful communication within our community. If you have

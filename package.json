@@ -41,8 +41,10 @@
   "scripts": {
     "build": "lerna run build",
     "build:docs:prepare": "npm -w @genome-spy/doc-embed run build && npm -w @genome-spy/core run build:schema && npm -w @genome-spy/app run build:schema && node scripts/prepare-docs-assets.mjs",
-    "build:docs": "npm run build:docs:prepare && mkdocs build",
+    "build:docs": "npm run build:docs:prepare && uv run --group docs mkdocs build",
     "build:dependency-graph": "depcruise packages/core/src/index.js --include-only '^packages/core/src' --output-type dot | dot -T svg | depcruise-wrap-stream-in-html > core-dependency-graph.html",
+    "docs:install": "uv sync --group docs --locked",
+    "docs:serve": "npm run build:docs:prepare && uv run --group docs mkdocs serve",
     "lint": "eslint packages/*/src/",
     "test": "vitest run",
     "start": "npm -w @genome-spy/app run dev",

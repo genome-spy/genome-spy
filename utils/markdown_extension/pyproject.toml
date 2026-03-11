@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genomespy-extension"
+version = "0.1.0"
+description = "GenomeSpy Markdown extension for schema-driven MkDocs content"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["markdown>=3.6"]
+
+[project.entry-points."markdown.extensions"]
+genomespy_extension = "extension.extension:GenomeSpyExtension"
+
+[tool.setuptools]
+packages = ["extension"]
