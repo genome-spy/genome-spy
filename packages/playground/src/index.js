@@ -1,4 +1,4 @@
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -26,6 +26,12 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 registerJsonSchema();
 
 const STORAGE_KEY = "playgroundSpec";
+const SHARED_EXAMPLE_PREFIXES = [
+    "/docs/examples/",
+    "/examples/core/",
+    "/examples/docs/",
+    "/examples/app/",
+];
 
 const genomeSpyContainerRef = createRef();
 
@@ -46,24 +52,25 @@ let previousStringifiedSpec = "";
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
 
-/** @type {string} */
-let baseUrl;
+/** @type {string | undefined} */
+let inheritedBaseUrl;
 
 let visTitle = "";
+let effectiveBaseUrlLabel = "";
 
 async function loadSpec() {
     const urlParams = new URLSearchParams(window.location.search);
-    const specUrl = urlParams.get("spec");
-    if (specUrl) {
-        // TODO: Error handling
-        const response = await fetch(specUrl);
-        baseUrl = specUrl.match(/.*\//)[0];
-
-        return response.text();
+    const specParam = urlParams.get("spec");
+    if (specParam) {
+        return loadSpecFromUrl(specParam);
     }
-    const storedSpec = window.localStorage.getItem(STORAGE_KEY);
-    const spec = storedSpec?.length > 0 ? storedSpec : defaultSpec;
-    return spec;
+
+    const storedState = loadStoredState();
+    inheritedBaseUrl = storedState?.inheritedBaseUrl;
+
+    return storedState?.specText?.length > 0
+        ? storedState.specText
+        : defaultSpec;
 }
 
 function toggleLayout() {
@@ -84,6 +91,106 @@ function registerJsonSchema() {
             },
         ],
     });
+}
+
+/**
+ * @typedef {{ specText: string, inheritedBaseUrl?: string }} StoredState
+ */
+
+/**
+ * @returns {StoredState | undefined}
+ */
+function loadStoredState() {
+    const storedValue = window.localStorage.getItem(STORAGE_KEY);
+    if (!storedValue) {
+        return undefined;
+    }
+
+    try {
+        const parsed = JSON.parse(storedValue);
+        if (typeof parsed === "string") {
+            return {
+                specText: parsed,
+            };
+        }
+
+        if (typeof parsed?.specText === "string") {
+            return parsed;
+        }
+    } catch {
+        return {
+            specText: storedValue,
+        };
+    }
+}
+
+/**
+ * @param {string} specText
+ */
+function storeState(specText) {
+    window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+            specText,
+            inheritedBaseUrl,
+        })
+    );
+}
+
+/**
+ * @param {string} specParam
+ */
+async function loadSpecFromUrl(specParam) {
+    const specUrl = new URL(specParam, window.location.href);
+    const response = await fetch(specUrl);
+    const specText = await response.text();
+    const sourceBaseUrl = new URL("./", specUrl).href;
+
+    if (shouldInjectBaseUrl(specUrl)) {
+        inheritedBaseUrl = undefined;
+        return injectBaseUrl(specText, sourceBaseUrl);
+    }
+
+    inheritedBaseUrl = sourceBaseUrl;
+    return specText;
+}
+
+/**
+ * @param {URL} specUrl
+ */
+function shouldInjectBaseUrl(specUrl) {
+    if (!specUrl.pathname.startsWith("/examples/")) {
+        return false;
+    }
+
+    return !SHARED_EXAMPLE_PREFIXES.some((prefix) =>
+        specUrl.pathname.startsWith(prefix)
+    );
+}
+
+/**
+ * @param {string} specText
+ * @param {string} baseUrl
+ */
+function injectBaseUrl(specText, baseUrl) {
+    const parsedSpec = JSON.parse(specText);
+    parsedSpec.baseUrl ??= baseUrl;
+
+    return JSON.stringify(parsedSpec, null, 2) + "\n";
+}
+
+/**
+ * @param {string} url
+ */
+function formatUrlForDisplay(url) {
+    if (/^(?:[a-z]+:)?\/\//i.test(url)) {
+        const sameOriginPrefix = window.location.origin;
+        if (url.startsWith(sameOriginPrefix)) {
+            return url.slice(sameOriginPrefix.length);
+        }
+    }
+
+    return url;
 }
 
 /**
@@ -114,22 +221,41 @@ async function formatWithPrettier() {
     editorRef.value.value = formatted;
 }
 
+function clearBaseUrl() {
+    const value = editorRef.value?.value;
+    if (!value) {
+        return;
+    }
+
+    const parsedSpec = JSON.parse(value);
+    if (parsedSpec.baseUrl) {
+        delete parsedSpec.baseUrl;
+        editorRef.value.value = JSON.stringify(parsedSpec, null, 2) + "\n";
+    } else {
+        inheritedBaseUrl = undefined;
+    }
+
+    update(true);
+}
+
 async function update(force = false) {
     missingFiles = new Set();
 
-    if (baseUrl && window.location.search) {
-        window.history.replaceState(null, "", window.location.pathname);
-    }
-
     const value = editorRef.value?.value;
     if (value) {
-        window.localStorage.setItem(STORAGE_KEY, value);
+        storeState(value);
     }
 
     try {
         const parsedSpec = JSON.parse(value);
+        const explicitBaseUrl = parsedSpec.baseUrl;
+        const effectiveBaseUrl = explicitBaseUrl || inheritedBaseUrl;
 
         // Don't update if the the new spec is equivalent
+        if (effectiveBaseUrl && !explicitBaseUrl) {
+            parsedSpec.baseUrl = effectiveBaseUrl;
+        }
+
         const stringifiedSpec = JSON.stringify(parsedSpec);
         if (stringifiedSpec === previousStringifiedSpec && !force) {
             return;
@@ -141,11 +267,13 @@ async function update(force = false) {
             embedResult.finalize();
         }
 
-        if (baseUrl && !parsedSpec.baseUrl) {
-            parsedSpec.baseUrl = baseUrl;
-        }
-
         visTitle = asArray(parsedSpec.description)?.[0];
+        effectiveBaseUrlLabel = parsedSpec.baseUrl
+            ? "Spec base: " + formatUrlForDisplay(parsedSpec.baseUrl)
+            : inheritedBaseUrl
+              ? "Source base: " + formatUrlForDisplay(inheritedBaseUrl)
+              : "";
+        renderLayout();
 
         // TODO: Fix possible race condition
         // eslint-disable-next-line require-atomic-updates
@@ -188,6 +316,16 @@ const toolbarTemplate = () => html`
             ${icon(faIndent).node[0]}
             <span>Format code</span>
         </button>
+        ${effectiveBaseUrlLabel
+            ? html`
+                  <span class="base-url-indicator hide-mobile">
+                      <span>${effectiveBaseUrlLabel}</span>
+                      <button @click=${clearBaseUrl} class="tool-button">
+                          <span>Clear base</span>
+                      </button>
+                  </span>
+              `
+            : nothing}
         <span class="vis-title">
             <span class="hide-mobile">${visTitle}</span>
         </span>

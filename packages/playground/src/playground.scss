@@ -86,6 +86,27 @@ file-pane {
         font-size: 85%;
     }
 
+    > .base-url-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 80%;
+        white-space: nowrap;
+
+        > :first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: min(26rem, 35vw);
+        }
+
+        .tool-button {
+            height: auto;
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+    }
+
     .tool-button {
         display: flex;
         align-items: center;

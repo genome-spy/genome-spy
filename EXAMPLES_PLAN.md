@@ -793,6 +793,8 @@ Implementation notes:
 
 ## Phase 6: Fix playground source and base handling
 
+Status: partially completed on branch `examples-reorg`
+
 1. Replace the current regex-based URL/base handling with URL objects.
 2. Stop clearing `?spec=...` after load.
 3. Persist structured source metadata in localStorage.
@@ -803,6 +805,17 @@ Implementation notes:
    - website example
 6. Inject `baseUrl` into website examples when loaded if missing.
 7. Add visible current base URL UI.
+
+Implementation notes:
+
+- The playground now resolves `?spec=` with `URL` objects instead of regex string slicing.
+- It no longer clears `?spec=...` after load.
+- Local storage now persists both the editor text and any inherited source base URL.
+- Website examples loaded from `/examples/...` outside the curated `core/docs/app` prefixes get `baseUrl` injected into the editor text immediately.
+- Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited source base URL instead of modifying the editor text.
+- The toolbar now shows the effective base URL and provides a clear button.
+- The playground Vite dev server now serves repo-root `examples/` at both `/examples` and `/docs/examples` for local parity with deployed curated-example URLs.
+- A curated example catalog/dropdown is still pending.
 
 ### Draft commit messages
 
