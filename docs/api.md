@@ -20,9 +20,66 @@ package.
 
 The `embed` function accepts an optional options object.
 
+## Named data
+
+Named data sources allow data to be provided at runtime instead of loading it
+from a URL or embedding it directly in the specification. In the view
+specification, declare a named data source with the `data.name` property:
+
+```json
+{
+  "data": {
+    "name": "myResults"
+  },
+  ...
+}
+```
+
+There are two ways to provide the data:
+
+### `updateNamedData()`
+
+Use `updateNamedData(name, data)` when your application pushes updated data
+explicitly.
+
+```js
+const api = await embed("#container", spec);
+
+api.updateNamedData("myResults", [
+  { x: 1, y: 2 },
+  { x: 2, y: 3 },
+]);
+```
+
+### `namedDataProvider`
+
+Use the `namedDataProvider` embed option when GenomeSpy should pull named data
+on demand.
+
+```js
+const api = await embed("#container", spec, {
+  namedDataProvider(name) {
+    if (name == "myResults") {
+      return [
+        { x: 1, y: 2 },
+        { x: 2, y: 3 },
+      ];
+    }
+  },
+});
+```
+
+If `updateNamedData(name)` is called without the second argument, GenomeSpy
+retrieves the data from the provider instead.
+
+Named data can be updated dynamically, but it does not automatically react to
+user interactions. For practical examples, check the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
+
 ### Named data provider
 
-See the API definition.
+See [Named data](#named-data).
 
 ### Custom tooltip handlers
 

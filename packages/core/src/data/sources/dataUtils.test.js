@@ -1,8 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { getFormat } from "./dataUtils.js";
+import { formats as vegaFormats } from "vega-loader";
+import bed from "../formats/bed.js";
+import {
+    extractTypeFromUrl,
+    getFormat,
+    hasGzipExtension,
+} from "./dataUtils.js";
+
+vegaFormats("bed", bed);
 
 describe("getFormat", () => {
-    test("defaults parse to auto for csv-like formats", () => {
+    test("defaults parse to auto for delimited formats", () => {
         expect(
             getFormat(
                 {
@@ -19,7 +27,23 @@ describe("getFormat", () => {
         });
     });
 
-    test("does not force parse auto for genomic text formats", () => {
+    test("defaults parse to auto for dsv", () => {
+        expect(
+            getFormat({
+                url: "data.txt",
+                format: {
+                    type: "dsv",
+                    delimiter: "|",
+                },
+            })
+        ).toEqual({
+            type: "dsv",
+            delimiter: "|",
+            parse: "auto",
+        });
+    });
+
+    test("does not force parse auto for non-delimited formats", () => {
         expect(
             getFormat({
                 url: "data.bed",
@@ -32,7 +56,7 @@ describe("getFormat", () => {
         });
     });
 
-    test("preserves explicit parse mappings for genomic text formats", () => {
+    test("preserves explicit parse mappings for non-delimited formats", () => {
         expect(
             getFormat({
                 url: "data.bed",
@@ -64,5 +88,50 @@ describe("getFormat", () => {
             type: "tsv",
             parse: null,
         });
+    });
+
+    test("infers the format type from a gzip-compressed file name", () => {
+        expect(
+            getFormat(
+                {
+                    url: "data.tsv.gz",
+                },
+                "data.tsv.gz"
+            )
+        ).toEqual({
+            type: "tsv",
+            parse: "auto",
+        });
+    });
+
+    test("infers the format type from a bgzip-compressed file name", () => {
+        expect(
+            getFormat(
+                {
+                    url: "data.tsv.bgzf",
+                },
+                "data.tsv.bgzf"
+            )
+        ).toEqual({
+            type: "tsv",
+            parse: "auto",
+        });
+    });
+});
+
+describe("extractTypeFromUrl", () => {
+    test("strips a gzip suffix before inferring the file type", () => {
+        expect(extractTypeFromUrl("https://example.com/data.bed.gz?dl=1")).toBe(
+            "bed"
+        );
+    });
+});
+
+describe("hasGzipExtension", () => {
+    test("detects gzip-compressed file names", () => {
+        expect(hasGzipExtension("data.tsv.gz")).toBe(true);
+        expect(hasGzipExtension("data.tsv.bgz")).toBe(true);
+        expect(hasGzipExtension("data.tsv.bgzf")).toBe(true);
+        expect(hasGzipExtension("data.tsv")).toBe(false);
     });
 });

@@ -42,6 +42,7 @@ export interface DataFormatBase {
      * Type of input data: `"json"`, `"csv"`, `"tsv"`, `"dsv"`.
      *
      * __Default value:__  The default format type is determined by the extension of the file URL.
+     * Compression suffixes such as `.gz` are ignored during inference.
      * If no extension is detected, `"json"` will be used by default.
      */
     type?: DataFormatType;
@@ -146,7 +147,7 @@ export interface UrlList {
     /**
      * The format of the data in the list.
      * If the type is `"json"`, the list is expected to be an array of strings.
-     * If the type is `"csv"` or `"tsv"`, the list is expected to be a table with a single column named `file`.
+     * If the type is `"csv"` or `"tsv"`, the list is expected to be a table with a single column named `url`.
      *
      * __Default value:__ `"txt"`
      */
@@ -156,7 +157,9 @@ export interface UrlList {
 export interface UrlData extends DataBase {
     /**
      * An URL or an array of URLs from which to load the data set.
-     * Use the `format.type` property to ensure the loaded data is correctly parsed.
+     * Gzip-compressed resources are decompressed transparently when the URL,
+     * MIME type, or payload indicates gzip content. Use the `format.type`
+     * property to ensure the loaded data is correctly parsed.
      */
     url: string | string[] | ExprRef | UrlList;
 }

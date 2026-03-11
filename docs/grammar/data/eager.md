@@ -14,8 +14,10 @@ generate data on the fly and further modify them using
 
 The `data` property of the view specification describes a data source. The
 following example loads a tab-delimited file. By default, GenomeSpy infers the
-format from the file extension. However, in bioinformatics, CSV files are often
-actually tab-delimited, and you must specify the `"tsv"` explicitly:
+format from the file extension, ignoring a trailing compression suffix such as
+`.gz`, `.bgz`, or `.bgzf`. Gzip-compressed files are decompressed
+automatically. In bioinformatics, however, CSV files are often actually
+tab-delimited, so you must specify `"tsv"` explicitly:
 
 ```json title="Example: Eagerly loading data from a URL"
 {
@@ -36,7 +38,7 @@ data property of GenomeSpy is identical to Vega-Lite's
     GenomeSpy uses
     [vega-loader](https://github.com/vega/vega/tree/master/packages/vega-loader)
     to parse tabular data and infer its data types. Vega-loader is sometimes
-    overly eager to interpret strings as a dates. In such cases, the field types
+    overly eager to interpret strings as dates. In such cases, the field types
     need to be specified explicitly. On the other hand, explicit type
     specification also gives a significant performance boost to parsing
     performance.
@@ -50,6 +52,11 @@ data property of GenomeSpy is identical to Vega-Lite's
 
 Data can be loaded from a URL using the `url` property. The URL can be absolute
 or relative to the page where GenomeSpy is embedded.
+
+Files stored as gzip-compressed resources on the server can be referenced
+directly with their `.gz`, `.bgz`, or `.bgzf` URLs. GenomeSpy infers the
+underlying format from the uncompressed extension, so `variants.tsv.gz` is
+treated as `"tsv"`.
 
 In addition to loading data from a single URL, you can also load data from
 multiple URLs by providing an array of URLs. This is useful when files have
@@ -71,8 +78,8 @@ URLs.
 }
 ```
 
-When the number of URLs is large, it is more convenient to place the list of
-files in a separate file instead of the view specification.
+If you have many URLs, it is often more convenient to place the list of files
+in a separate file instead of the view specification.
 
 ```json title="Example: Loading data from multiple URLs listed in a file"
 {
@@ -89,36 +96,25 @@ array or a tabular file with a single column named `url`.
 
 ## Named Data
 
-When embedding GenomeSpy in a web application or page, data can be added or
-updated at runtime using the [API](../../api.md). Data sources are referenced by a
-name, which is passed to the `updateNamedData` method:
+A named data source indicates that the data is provided at runtime instead of
+being loaded eagerly from a URL or embedded inline.
 
 ```json
 {
-    "data": {
-        "name": "myResults"
-    }
-    ...
+  "data": {
+    "name": "myResults"
+  },
+  ...
 }
 ```
 
-```js
-const api = await embed("#container", spec);
-api.updateNamedData("myResults", [
-  { x: 1, y: 2 },
-  { x: 2, y: 3 },
-]);
-```
-
-Although named data can be updated dynamically, it does not automatically
-respond to user interactions. For practical examples of dynamically updated
-named data, check the
-[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+The actual data is supplied through the
+[JavaScript API](../../api.md#named-data), for example with
+`updateNamedData()` or a `namedDataProvider`.
 
 ## Additional Formats
 
-The following additional formats are supported as eager data with the `url` source.
+The following additional formats are supported by the eager `url` data source.
 Most bioinformatic data formats are supported through [lazy](lazy.md) data.
 
 ### BED

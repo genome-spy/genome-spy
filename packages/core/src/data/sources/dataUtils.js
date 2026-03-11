@@ -1,7 +1,8 @@
 import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
-const genomicTextFormats = new Set(["bed", "bedpe"]);
+const autoParseFormats = new Set(["csv", "tsv", "dsv"]);
+const compressionExtensions = new Set(["gz", "bgz", "bgzf"]);
 
 /**
  * Validates data source params, infers format if not specified explicitly,
@@ -18,7 +19,7 @@ export function getFormat(params, urls = []) {
     const format = { ...params.format };
 
     format.type ??= isUrlData(params) && extractTypeFromUrl(urls);
-    if (format.parse === undefined && !isGenomicTextFormat(format.type)) {
+    if (format.parse === undefined && isAutoParseFormat(format.type)) {
         // @ts-ignore TODO: Fix typing
         format.parse = "auto";
     }
@@ -50,8 +51,46 @@ export function extractTypeFromUrl(url) {
     }
 
     if (url) {
-        return url.match(/\.(csv|tsv|json)/)?.[1];
+        const path = stripUrlQueryAndHash(url).split("/").pop()?.toLowerCase();
+
+        if (!path) {
+            return;
+        }
+
+        const extensions = path.split(".");
+        while (
+            extensions.length > 1 &&
+            compressionExtensions.has(extensions.at(-1))
+        ) {
+            extensions.pop();
+        }
+
+        const extension = extensions.at(-1);
+        if (extension && formats(extension)) {
+            return extension;
+        }
     }
+}
+
+/**
+ * @param {string} url
+ */
+export function hasGzipExtension(url) {
+    const path = stripUrlQueryAndHash(url).split("/").pop()?.toLowerCase();
+
+    if (!path) {
+        return false;
+    }
+
+    const extension = path.split(".").at(-1);
+    return !!extension && compressionExtensions.has(extension);
+}
+
+/**
+ * @param {string} url
+ */
+function stripUrlQueryAndHash(url) {
+    return url.replace(/[?#].*$/, "");
 }
 
 export const makeWrapper = (/** @type {any} */ d) =>
@@ -99,6 +138,6 @@ export function isUrlData(dataSource) {
 /**
  * @param {string | undefined} type
  */
-export function isGenomicTextFormat(type) {
-    return genomicTextFormats.has(type);
+export function isAutoParseFormat(type) {
+    return autoParseFormats.has(type);
 }
