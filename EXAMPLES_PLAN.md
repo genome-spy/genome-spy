@@ -693,6 +693,155 @@ Future note:
 - treat that as a separate follow-up after the catalog and structural validation work is in place
 - details of screenshot orchestration, goldens, and CI cost should be decided later
 
+## Screenshot Capture Follow-up
+
+This should be implemented as a browser-driven export workflow, not as a pure
+Node-side renderer.
+
+Rationale:
+
+- GenomeSpy rendering is WebGL-backed, so screenshots should be captured from a
+  real browser context
+- the existing `exportCanvas()` API in core already provides a stable PNG export
+  hook once a spec has been embedded and rendered
+- a browser harness keeps screenshot generation close to real playground/docs
+  behavior
+
+### Output placement
+
+Place each screenshot next to its spec in the curated examples tree.
+
+Examples:
+
+- `examples/core/layout/grid/complex_grid_layout.json`
+- `examples/core/layout/grid/complex_grid_layout.png`
+- `examples/docs/grammar/mark/rule/ranged-rules.json`
+- `examples/docs/grammar/mark/rule/ranged-rules.png`
+
+Rationale:
+
+- screenshots remain discoverable next to the source spec
+- renames and moves stay localized
+- the future playground/docs catalog can resolve screenshot paths by convention
+  instead of extra metadata
+
+### Initial image format
+
+Start with PNG.
+
+Rationale:
+
+- core already exports PNG via `exportCanvas()`
+- no extra image conversion step is needed initially
+- deterministic lossless output is preferable while the workflow is still
+  settling
+
+If storage size later becomes an issue, consider adding an optional post-process
+step to derive WebP thumbnails for docs/playground use. Keep the authoritative
+golden capture format lossless at first.
+
+### Capture mechanism
+
+Use Playwright to drive a dedicated screenshot harness page served from the
+repository.
+
+Proposed flow:
+
+1. Start a local server that can serve curated examples at `/examples/...`.
+2. Open a dedicated screenshot harness page in a real browser.
+3. Pass the target spec URL to the harness via query string.
+4. Wait until the embedded visualization reports that initial rendering is
+   complete.
+5. Export the visualization with `exportCanvas(...)`.
+6. Decode the returned data URL and write the PNG next to the source spec.
+
+The harness page should use the same spec-loading behavior as other curated
+example entry points:
+
+- curated examples resolve relative paths against `/examples/`
+- no special-case `baseUrl` rewriting inside the screenshot script
+
+### Harness location
+
+Prefer a small harness page under `packages/core/` or another lightweight local
+dev-server entry point rather than routing this through the full playground UI.
+
+Rationale:
+
+- fewer moving parts than the playground
+- easier to control container size and export timing
+- closer to the low-level rendering API that actually produces the PNG
+
+The current `packages/core/dev-server.mjs` is a good starting point because it
+already serves curated examples and can host an additional screenshot-only page.
+
+### Sizing rules
+
+Screenshots should reflect the visualization's intended canvas size where that
+size is explicit, while still producing deterministic output for container-sized
+specs.
+
+Proposed rules:
+
+1. If the spec resolves to an explicit finite width and height, export at that
+   size.
+2. If either dimension remains container-driven or otherwise unresolved, render
+   the screenshot harness container at `600x400` logical pixels.
+3. If one dimension is explicit and the other is container-driven, keep the
+   explicit dimension and use the fallback size for the unresolved axis.
+
+Examples:
+
+- explicit `width: 800`, `height: 120` -> export `800x120`
+- `width: "container"`, `height: 130` -> export `600x130`
+- no explicit dimensions -> export `600x400`
+
+This rule should be implemented in terms of the actual resolved canvas size
+after embedding, not by guessing directly from raw JSON fields. The screenshot
+harness should inspect the embedded view's logical canvas size and only fall
+back for unresolved dimensions.
+
+### Device pixel ratio
+
+Start with a fixed device pixel ratio of `1` for deterministic output.
+
+Rationale:
+
+- avoids machine-dependent Retina/non-Retina differences
+- keeps file sizes moderate
+- enough for catalog thumbnails and regression review
+
+If higher-resolution exports are later needed for marketing/docs assets, that
+should be a separate explicit mode.
+
+### Catalog integration
+
+The curated example catalog should not store screenshot metadata manually.
+
+Instead:
+
+- the catalog generator can look for a sibling `.png` next to each `.json`
+- when present, expose it as the example's screenshot URL
+- when absent, the example still remains valid and listed
+
+This keeps screenshots optional during rollout.
+
+### Rollout strategy
+
+Recommended order:
+
+1. Add the screenshot harness page and local generation script.
+2. Support single-example capture by explicit spec path.
+3. Support batch generation for `examples/core/**` and `examples/docs/**`.
+4. Teach the example catalog to surface sibling screenshots when available.
+5. Later, discuss screenshot approval/update workflow and any CI integration.
+
+### Draft commit messages
+
+- `feat(core): add example screenshot harness`
+- `feat(core): add curated example screenshot generator`
+- `feat(playground): surface example screenshots in catalog`
+
 ## Migration Plan
 
 ## Phase 1: Prepare new roots
