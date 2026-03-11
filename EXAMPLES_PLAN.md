@@ -758,6 +758,7 @@ Implementation notes:
 
 - The Markdown extension now supports `EXAMPLE examples/docs/...` with `height=...` and `spechidden`.
 - The macro inlines JSON from the source file, emits a `genome-spy-doc-embed` with an explicit `base-url`, and adds an `Open in Playground` link.
+- The macro omits `$schema` from the rendered inline JSON so docs pages do not repeat editor-only metadata.
 - Docs asset preparation now stages repo-root `examples/` into `docs/examples/`.
 - Staging filters out `README.md` files so MkDocs does not treat generated example assets as standalone documentation pages.
 - `genome-spy-doc-embed` now accepts an explicit `base-url` attribute while preserving the old docs-data fallback.

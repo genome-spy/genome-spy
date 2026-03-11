@@ -95,9 +95,14 @@ class MyPreprocessor(Preprocessor):
 
         try:
             with open(source_path, 'r') as f:
-                spec_text = f.read().rstrip()
+                spec = json.load(f)
         except IOError:
             return ['Cannot open example file: {}'.format(example_path)]
+        except ValueError as exc:
+            return ['Cannot parse example file {}: {}'.format(example_path, exc)]
+
+        spec.pop('$schema', None)
+        spec_text = json.dumps(spec, indent=2)
 
         published_dir = os.path.dirname(example_path)
         base_url = published_dir + '/'
