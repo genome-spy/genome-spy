@@ -12,6 +12,8 @@ concurrency:
 jobs:
     build:
         runs-on: ubuntu-latest
+        env:
+            DEPLOY_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
         steps:
             - uses: actions/checkout@v4
@@ -48,29 +50,27 @@ jobs:
             - name: Build Playground
               run: npm -w @genome-spy/playground run build
 
-            - name: Deploy docs
-              uses: peaceiris/actions-gh-pages@v3
+            - name: Check out site repository
+              uses: actions/checkout@v4
               with:
-                  external_repository: genome-spy/genome-spy.github.io
-                  publish_branch: master
-                  deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-                  publish_dir: ./site
-                  destination_dir: docs
-                  user_name: "github-actions[bot]"
-                  user_email: "github-actions[bot]@users.noreply.github.com"
-                  commit_message: Deploy docs (${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }})
+                  repository: genome-spy/genome-spy.github.io
+                  ref: master
+                  path: deploy-site
+                  ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+                  persist-credentials: false
 
-            - name: Kill ssh-agent (otherwise the following deploy fails)
-              run: pkill ssh-agent || true
+            - name: Update site contents
+              run: |
+                  rm -rf deploy-site/docs deploy-site/playground
+                  mkdir -p deploy-site/docs deploy-site/playground
+                  cp -R site/. deploy-site/docs/
+                  cp -R packages/playground/dist/. deploy-site/playground/
 
-            - name: Deploy Playground
-              uses: peaceiris/actions-gh-pages@v3
-              with:
-                  external_repository: genome-spy/genome-spy.github.io
-                  publish_branch: master
-                  deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-                  publish_dir: ./packages/playground/dist
-                  destination_dir: playground
-                  user_name: "github-actions[bot]"
-                  user_email: "github-actions[bot]@users.noreply.github.com"
-                  commit_message: Deploy playground (${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }})
+            - name: Commit and push site update
+              run: |
+                  git -C deploy-site config user.name "github-actions[bot]"
+                  git -C deploy-site config user.email "github-actions[bot]@users.noreply.github.com"
+                  git -C deploy-site add docs playground
+                  git -C deploy-site diff --cached --quiet && exit 0
+                  git -C deploy-site commit -m "Deploy docs and playground (${DEPLOY_REF})"
+                  git -C deploy-site push origin master
