@@ -10,6 +10,7 @@ const examplesDir = path.join(repoRoot, "examples");
 const defaultServerOrigin = "http://127.0.0.1:4173";
 const screenshotHarnessPath = "/screenshot.html";
 const healthCheckPath = "/__health";
+const screenshotReadyTimeoutMs = 120_000;
 
 const excludedExamples = new Set([
     "examples/core/app/samples.json",
@@ -68,6 +69,15 @@ async function main() {
         const browser = await playwright.chromium.launch();
         try {
             const page = await browser.newPage();
+            page.on("console", (message) => {
+                const type = message.type();
+                if (type === "error" || type === "warning") {
+                    console.error(`[browser:${type}] ${message.text()}`);
+                }
+            });
+            page.on("pageerror", (error) => {
+                console.error(`[browser:pageerror] ${error.message}`);
+            });
             for (const examplePath of examplePaths) {
                 await captureExample(page, serverOrigin, examplePath);
             }
@@ -153,23 +163,43 @@ async function captureExample(page, serverOrigin, examplePath) {
 
     console.log(`Capturing ${examplePath}`);
     await page.goto(harnessUrl.toString(), { waitUntil: "load" });
-    await page.waitForFunction(() => {
-        return (
-            window.__genomeSpyScreenshot?.status === "ready" ||
-            window.__genomeSpyScreenshot?.status === "error"
+    try {
+        await page.waitForFunction(
+            () => {
+                return (
+                    window.__genomeSpyScreenshot?.status === "ready" ||
+                    window.__genomeSpyScreenshot?.status === "error"
+                );
+            },
+            { timeout: screenshotReadyTimeoutMs }
         );
-    });
+    } catch (error) {
+        const debugState = await page.evaluate(() => {
+            return {
+                harnessState: window.__genomeSpyScreenshot ?? null,
+                statusText:
+                    document.querySelector("#status")?.textContent ?? null,
+            };
+        });
+        throw new Error(
+            `Screenshot harness timed out for ${examplePath}. ` +
+                `State: ${JSON.stringify(debugState)}`
+        );
+    }
 
     const state = await page.evaluate(() => {
         return {
             status: window.__genomeSpyScreenshot.status,
+            detail: window.__genomeSpyScreenshot.detail,
             error: window.__genomeSpyScreenshot.error,
         };
     });
 
     if (state.status !== "ready") {
         throw new Error(
-            `Screenshot harness failed for ${examplePath}: ${state.error}`
+            `Screenshot harness failed for ${examplePath}: ${
+                state.error || state.detail
+            }`
         );
     }
 

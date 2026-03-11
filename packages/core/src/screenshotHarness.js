@@ -13,6 +13,7 @@ const specUrl = query.get("spec");
 
 window.__genomeSpyScreenshot = {
     status: "booting",
+    detail: "Booting screenshot harness",
     error: "",
     async capture() {
         throw new Error("Screenshot harness is not ready yet.");
@@ -33,18 +34,20 @@ if (!specUrl) {
  */
 async function initializeHarness(url) {
     try {
-        setStatus("Loading spec…");
+        setState("loading", "Loading spec…");
         const spec = await loadSpec(url);
 
-        setStatus("Embedding visualization…");
+        setState("embedding", "Embedding visualization…");
         const api = await embed(frameElement, spec);
 
+        setState("rendering", "Waiting for initial render…");
         await waitForSettledRender();
 
         const logicalSize = sanitizeSize(api.getLogicalCanvasSize());
 
         window.__genomeSpyScreenshot = {
             status: "ready",
+            detail: `Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`,
             error: "",
             async capture() {
                 const currentSize = sanitizeSize(api.getLogicalCanvasSize());
@@ -109,11 +112,25 @@ function setStatus(message) {
 }
 
 /**
+ * @param {string} status
+ * @param {string} detail
+ */
+function setState(status, detail) {
+    window.__genomeSpyScreenshot = {
+        ...window.__genomeSpyScreenshot,
+        status,
+        detail,
+    };
+    setStatus(detail);
+}
+
+/**
  * @param {string} message
  */
 function setFailure(message) {
     window.__genomeSpyScreenshot = {
         status: "error",
+        detail: message,
         error: message,
         async capture() {
             throw new Error(message);

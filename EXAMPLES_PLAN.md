@@ -857,6 +857,9 @@ Implementation notes:
 - `packages/core/scripts/captureScreenshots.mjs` can capture a specific curated
   example or batch all curated `examples/core/**` and `examples/docs/**`
   examples, writing sibling `.png` files next to the source specs.
+- The harness now exposes intermediate states (`loading`, `embedding`,
+  `rendering`, `ready`, `error`) so screenshot failures report where the
+  capture stalled instead of timing out blindly.
 - The batch script currently excludes the same app-only and remote lazy-data
   examples that are unsuitable for the current offline structural test harness.
 - The script expects the `playwright` package to be installed in the workspace.
