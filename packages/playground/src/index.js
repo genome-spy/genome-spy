@@ -207,6 +207,11 @@ function registerJsonSchema() {
                 fileMatch: ["*"], // associate with our model
                 schema,
             },
+            {
+                uri: "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json", // id of the first schema
+                fileMatch: ["*"], // associate with our model
+                schema,
+            },
         ],
     });
 }
