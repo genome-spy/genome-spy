@@ -10,7 +10,7 @@ import {
 vegaFormats("bed", bed);
 
 describe("getFormat", () => {
-    test("defaults parse to auto for csv-like formats", () => {
+    test("defaults parse to auto for delimited formats", () => {
         expect(
             getFormat(
                 {
@@ -27,7 +27,23 @@ describe("getFormat", () => {
         });
     });
 
-    test("does not force parse auto for genomic text formats", () => {
+    test("defaults parse to auto for dsv", () => {
+        expect(
+            getFormat({
+                url: "data.txt",
+                format: {
+                    type: "dsv",
+                    delimiter: "|",
+                },
+            })
+        ).toEqual({
+            type: "dsv",
+            delimiter: "|",
+            parse: "auto",
+        });
+    });
+
+    test("does not force parse auto for non-delimited formats", () => {
         expect(
             getFormat({
                 url: "data.bed",
@@ -40,7 +56,7 @@ describe("getFormat", () => {
         });
     });
 
-    test("preserves explicit parse mappings for genomic text formats", () => {
+    test("preserves explicit parse mappings for non-delimited formats", () => {
         expect(
             getFormat({
                 url: "data.bed",

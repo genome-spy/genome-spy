@@ -1,7 +1,7 @@
 import { formats } from "vega-loader";
 import { isInlineData } from "./inlineSource.js";
 
-const genomicTextFormats = new Set(["bed", "bedpe"]);
+const autoParseFormats = new Set(["csv", "tsv", "dsv"]);
 const compressionExtensions = new Set(["gz"]);
 
 /**
@@ -19,7 +19,7 @@ export function getFormat(params, urls = []) {
     const format = { ...params.format };
 
     format.type ??= isUrlData(params) && extractTypeFromUrl(urls);
-    if (format.parse === undefined && !isGenomicTextFormat(format.type)) {
+    if (format.parse === undefined && isAutoParseFormat(format.type)) {
         // @ts-ignore TODO: Fix typing
         format.parse = "auto";
     }
@@ -133,6 +133,6 @@ export function isUrlData(dataSource) {
 /**
  * @param {string | undefined} type
  */
-export function isGenomicTextFormat(type) {
-    return genomicTextFormats.has(type);
+export function isAutoParseFormat(type) {
+    return autoParseFormats.has(type);
 }
