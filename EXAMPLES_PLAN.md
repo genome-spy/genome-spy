@@ -863,10 +863,19 @@ This change belongs in the website repo, not this repo, but should be coordinate
 
 ## Phase 8: Add shared example validation tests
 
+Status: partially completed on branch `examples-reorg`
+
 1. Add test enumeration over `examples/core/**/*.json` and `examples/docs/**/*.json`.
 2. Parse specs into view hierarchies and run non-rendering initialization.
 3. Add layout snapshots for examples that are stable in test mode.
 4. Exclude `private/`, `examples/app/`, and external website examples.
+
+Implementation notes:
+
+- `packages/core/examples.test.js` now enumerates curated shared examples from `examples/core/` and `examples/docs/`.
+- The suite parses each spec, applies the curated examples root base URL, resolves required assemblies, builds the view hierarchy, wires dataflow initialization, and snapshots a stable summary of the initialized hierarchy.
+- The existing `packages/core/layout.test.js` remains the layout snapshot suite for the current stable render-safe subset.
+- App-only examples, WebGL-dependent link-mark examples, and remote lazy-data examples are currently excluded from the enumerated suite until they have a dedicated harness.
 
 ### Draft commit messages
 
