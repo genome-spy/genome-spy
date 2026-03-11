@@ -46,3 +46,10 @@
 .screenshot {
     border-radius: 0.2rem;
 }
+
+.md-typeset .example-playground-link {
+    margin-top: -1rem;
+    margin-bottom: 1.5rem;
+    text-align: right;
+    font-size: 0.85rem;
+}

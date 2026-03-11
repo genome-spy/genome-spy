@@ -28,8 +28,10 @@ const appSchemaSource = path.join(
 // Files that MkDocs and the custom markdown extension consume.
 const docsDir = path.join(repoRoot, "docs");
 const docsAppDir = path.join(docsDir, "app");
+const docsExamplesDir = path.join(docsDir, "examples");
 const coreSchemaTarget = path.join(docsDir, "schema.json");
 const appSchemaTarget = path.join(docsDir, "app-schema.json");
+const examplesSourceDir = path.join(repoRoot, "examples");
 
 /**
  * @param {string} sourcePath
@@ -46,15 +48,28 @@ async function ensureReadable(sourcePath) {
     }
 }
 
+/**
+ * @param {string} sourcePath
+ */
+function includeDocsAsset(sourcePath) {
+    return path.basename(sourcePath) !== "README.md";
+}
+
 // Fail fast with a clear message if prerequisites are missing.
 await ensureReadable(docEmbedDistDir);
 await ensureReadable(coreSchemaSource);
 await ensureReadable(appSchemaSource);
+await ensureReadable(examplesSourceDir);
 
 // Replace staged docs assets atomically to avoid stale files from older builds.
 await mkdir(docsDir, { recursive: true });
 await rm(docsAppDir, { recursive: true, force: true });
+await rm(docsExamplesDir, { recursive: true, force: true });
 await cp(docEmbedDistDir, docsAppDir, { recursive: true });
+await cp(examplesSourceDir, docsExamplesDir, {
+    recursive: true,
+    filter: includeDocsAsset,
+});
 await cp(coreSchemaSource, coreSchemaTarget);
 await cp(appSchemaSource, appSchemaTarget);
 

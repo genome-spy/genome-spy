@@ -747,10 +747,20 @@ Implementation notes:
 
 ## Phase 4: Add docs macro and staged examples
 
+Status: completed on branch `examples-reorg`
+
 1. Extend the custom Markdown extension with an `EXAMPLE` macro.
 2. Update docs asset preparation to stage `examples/` into `docs/examples/`.
 3. Extend `genome-spy-doc-embed` with an explicit base URL attribute.
 4. Add the `Open in Playground` link output.
+
+Implementation notes:
+
+- The Markdown extension now supports `EXAMPLE examples/docs/...` with `height=...` and `spechidden`.
+- The macro inlines JSON from the source file, emits a `genome-spy-doc-embed` with an explicit `base-url`, and adds an `Open in Playground` link.
+- Docs asset preparation now stages repo-root `examples/` into `docs/examples/`.
+- Staging filters out `README.md` files so MkDocs does not treat generated example assets as standalone documentation pages.
+- `genome-spy-doc-embed` now accepts an explicit `base-url` attribute while preserving the old docs-data fallback.
 
 ### Draft commit messages
 
@@ -760,11 +770,20 @@ Implementation notes:
 
 ## Phase 5: Migrate docs pages
 
+Status: partially completed on branch `examples-reorg`
+
 1. Replace inline interactive example blocks with `EXAMPLE ...` macros.
 2. Keep non-interactive explanatory JSON snippets inline where reuse is unnecessary.
 3. Verify that docs pages still render without layout shifts.
 
 This should likely be split into several commits by docs area to keep review manageable.
+
+Implementation notes:
+
+- `docs/index.md` now uses `EXAMPLE examples/docs/index/interactive-overview.json`.
+- `docs/grammar/composition/layer.md` now uses `EXAMPLE examples/docs/grammar/composition/layer/bar-and-label-layer.json`.
+- The extracted example files include `$schema` and a succinct `description`.
+- A full `npm run build:docs` succeeds with the new macro and staged example assets.
 
 ### Draft commit messages
 

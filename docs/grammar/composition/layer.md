@@ -7,49 +7,7 @@ view.
 
 ## Example
 
-<div><genome-spy-doc-embed height="250">
-
-```json
-{
-  "data": {
-    "values": [
-      { "a": "A", "b": 28 },
-      { "a": "B", "b": 55 },
-      { "a": "C", "b": 43 },
-      { "a": "D", "b": 91 },
-      { "a": "E", "b": 81 },
-      { "a": "F", "b": 53 },
-      { "a": "G", "b": 19 },
-      { "a": "H", "b": 87 },
-      { "a": "I", "b": 52 }
-    ]
-  },
-  "encoding": {
-    "x": {
-      "field": "a",
-      "type": "nominal",
-      "scale": { "padding": 0.1 },
-      "axis": { "labelAngle": 0 }
-    },
-    "y": { "field": "b", "type": "quantitative" }
-  },
-  "layer": [
-    {
-      "name": "Bar",
-      "mark": "rect"
-    },
-    {
-      "name": "Label",
-      "mark": { "type": "text", "dy": -9 },
-      "encoding": {
-        "text": { "field": "b" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/layer/bar-and-label-layer.json height=250
 
 To specify multiple layers, use the `layer` property:
 

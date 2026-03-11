@@ -39,15 +39,27 @@ function getBaseUrl() {
 }
 
 /**
+ * @param {string} sitePath
+ */
+function resolveSitePath(sitePath) {
+    if (/^(?:[a-z]+:|\/)/i.test(sitePath)) {
+        return sitePath;
+    }
+
+    return getBaseUrl() + "/" + sitePath;
+}
+
+/**
  * @param {HTMLElement} container
  * @param {object | string} conf configuration object or url to json configuration
+ * @param {string | undefined} baseUrl
  */
-async function embedToDoc(container, conf) {
-    const baseUrl = getBaseUrl();
-    const dataBaseUrl = `${baseUrl}/data/`;
+async function embedToDoc(container, conf, baseUrl) {
+    const dataBaseUrl = resolveSitePath("data/");
 
     try {
-        conf.baseUrl = conf.baseUrl || dataBaseUrl;
+        conf.baseUrl =
+            conf.baseUrl || (baseUrl ? resolveSitePath(baseUrl) : dataBaseUrl);
         await embed(container, conf, { bare: true });
     } catch (e) {
         const pre = document.createElement("pre");
@@ -75,6 +87,7 @@ export class GenomeSpyDocEmbed extends LitElement {
         return {
             height: { type: String },
             specHidden: { type: Boolean },
+            baseUrl: { type: String, attribute: "base-url" },
         };
     }
 
@@ -82,6 +95,7 @@ export class GenomeSpyDocEmbed extends LitElement {
         super();
         this.height = 300;
         this.specHidden = false;
+        this.baseUrl = undefined;
         this.embedRef = createRef();
     }
 
@@ -133,7 +147,7 @@ export class GenomeSpyDocEmbed extends LitElement {
                     if (entry.isIntersecting) {
                         const container = entry.target;
 
-                        embedToDoc(container, JSON.parse(spec));
+                        embedToDoc(container, JSON.parse(spec), this.baseUrl);
 
                         observer.unobserve(container);
                     }

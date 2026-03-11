@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import re
+import shlex
 
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
@@ -36,25 +37,95 @@ types_with_descriptions = {
 
 refPattern = re.compile('^#/definitions/(\\w+)$')
 class MyPreprocessor(Preprocessor):
-    def __init__(self, schema, app_schema):
+    def __init__(self, md, schema, app_schema, repo_root):
+        super().__init__(md)
         self.schema = schema
         self.app_schema = app_schema
-        self.pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
+        self.repo_root = repo_root
+        self.schema_pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
+        self.example_pattern = re.compile(r'^EXAMPLE\s+(.+)$')
 
     def run(self, lines):
         new_lines = []
         for line in lines:
-            m = self.pattern.match(line)
+            m = self.schema_pattern.match(line)
+            example_match = self.example_pattern.match(line)
             if m:
                 prop_list = []
                 if m.group(3):
                     prop_list = m.group(3).split()
                 schema = self.schema if m.group(1) == 'SCHEMA' else self.app_schema
                 new_lines.extend(self.getType(m.group(2), prop_list, schema))
+            elif example_match:
+                new_lines.extend(self.getExample(example_match.group(1)))
             else:
                 new_lines.append(line)
 
         return new_lines
+
+    def getExample(self, argument_string):
+        try:
+            tokens = shlex.split(argument_string)
+        except ValueError as exc:
+            return ['Invalid EXAMPLE arguments: {}'.format(exc)]
+
+        if not tokens:
+            return ['Invalid EXAMPLE usage: missing example path']
+
+        example_path = tokens[0]
+        if not example_path.startswith('examples/docs/'):
+            return [
+                'Only `examples/docs/...` paths are supported in EXAMPLE macros. Got `{}`.'.format(
+                    example_path
+                )
+            ]
+
+        height = None
+        spec_hidden = False
+
+        for token in tokens[1:]:
+            if token == 'spechidden':
+                spec_hidden = True
+            elif token.startswith('height='):
+                height = token.split('=', 1)[1]
+            else:
+                return ['Unknown EXAMPLE option: `{}`'.format(token)]
+
+        source_path = os.path.join(self.repo_root, *example_path.split('/'))
+
+        try:
+            with open(source_path, 'r') as f:
+                spec_text = f.read().rstrip()
+        except IOError:
+            return ['Cannot open example file: {}'.format(example_path)]
+
+        published_dir = os.path.dirname(example_path)
+        base_url = published_dir + '/'
+        playground_spec_path = '/docs/' + example_path
+
+        attributes = ['base-url="{}"'.format(base_url)]
+        if height:
+            attributes.append('height="{}"'.format(height))
+        if spec_hidden:
+            attributes.append('spechidden="true"')
+
+        lines = ['<div><genome-spy-doc-embed {}>'.format(' '.join(attributes)), '']
+        lines.append('```json')
+        lines.extend(spec_text.splitlines())
+        lines.extend(
+            [
+                '```',
+                '',
+                '</genome-spy-doc-embed></div>',
+                '',
+                '<p class="example-playground-link"><a href="/playground/?spec={}">Open in Playground</a></p>'.format(
+                    playground_spec_path
+                ),
+                '',
+            ]
+        )
+
+        return lines
 
 
     def refToString(self, ref, schema):
@@ -198,6 +269,7 @@ class GenomeSpyExtension(Extension):
         self.config = {
             'schemaPath' : [ 'docs/schema.json', 'Path to core schema'],
             'appSchemaPath' : [ 'docs/app-schema.json', 'Path to app schema'],
+            'repoRootPath' : [ '.', 'Path to repository root'],
         }
         super(GenomeSpyExtension, self).__init__(**kwargs)
 
@@ -219,4 +291,10 @@ class GenomeSpyExtension(Extension):
             )
             app_schema = schema
 
-        md.preprocessors.register(MyPreprocessor(schema, app_schema), 'GenomeSpy', 175)
+        repo_root = os.path.abspath(self.getConfig('repoRootPath'))
+
+        md.preprocessors.register(
+            MyPreprocessor(md, schema, app_schema, repo_root),
+            'GenomeSpy',
+            175,
+        )
