@@ -20,7 +20,7 @@ The repository should have three distinct example sources:
 1. `examples/`
    Shared, curated, committed examples in the `genome-spy` repo.
 2. `private/`
-   Local developer-only projects in the `genome-spy` repo, not committed.
+   Eventual repo-root home for local developer-only projects in the `genome-spy` repo, not committed.
 3. `website-examples`
    Large public showcase examples kept outside `genome-spy`, currently mounted into `genome-spy.github.io/examples/` as a submodule.
 
@@ -124,7 +124,7 @@ Subdirectories should initially include:
 - `examples/docs/` for examples extracted from embedded Markdown blocks
 - `examples/app/` for examples that require app-only functionality
 
-## 2. Developer-only work moves to repo-root `private/`
+## 2. Developer-only work eventually moves to repo-root `private/`
 
 Rationale:
 
@@ -135,8 +135,9 @@ Rationale:
 Consequences:
 
 - dev-server route stays `/private`
-- `private/` remains gitignored
-- `private/` is not part of docs/public examples/test manifests
+- repo-root `private/` is the preferred destination once the manual move happens
+- legacy `packages/core/private/` remains supported until that manual move is done
+- neither location is part of docs/public examples/test manifests
 
 ## 3. `website-examples` stays external
 
@@ -262,6 +263,7 @@ Notes:
 - `examples/core/` and `examples/app/` are illustrative categories, not a strict requirement.
 - Categories can be refined during migration.
 - `examples/data/` and `examples/shared/` should be stable cross-example roots.
+- repo-root `private/` remains the eventual target even though legacy `packages/core/private/` is still supported during migration.
 
 ## Naming and Placement of Docs-Derived Examples
 
@@ -679,10 +681,19 @@ Prefer:
 
 ## Phase 1: Prepare new roots
 
+Status: partially completed on branch `examples-reorg`
+
 1. Create repo-root `examples/`.
 2. Create repo-root `private/`.
 3. Update `.gitignore` to ignore root `private/`.
 4. Update references and README text that still mention `packages/core/examples` and `packages/core/private`.
+
+Implementation notes:
+
+- Repo-root `examples/` now exists and the migrated shared examples live under `examples/core/`.
+- Repo-root `private/` was intentionally not created yet. The manual move from `packages/core/private/` is deferred.
+- `.gitignore` already covered both `**/private/` and the legacy path, so no ignore rule change was required.
+- README text and example entry links now point at `examples/core/...` and document the temporary legacy `/private` fallback.
 
 ### Draft commit messages
 
@@ -691,10 +702,19 @@ Prefer:
 
 ## Phase 2: Repoint dev-server
 
+Status: completed on branch `examples-reorg`
+
 1. Update app dev-server to serve repo-root `examples/` and `private/`.
 2. Warn in the dev-server console if legacy `packages/core/private/` still exists.
 3. Update index text and sample links.
 4. Preserve the current local browsing workflow.
+
+Implementation notes:
+
+- The app dev-server now serves repo-root `examples/` at `/examples`.
+- `/private` now prefers repo-root `private/` when present and falls back to `packages/core/private/`.
+- The app dev-server logs a console warning and shows an index-page warning when the legacy private directory exists.
+- The core package dev-server mirrors the same `/examples` and `/private` routing behavior.
 
 ### Draft commit messages
 
@@ -703,12 +723,22 @@ Prefer:
 
 ## Phase 3: Migrate shared examples
 
+Status: partially completed on branch `examples-reorg`
+
 1. Move canonical shared examples out of `packages/core/examples/` into `examples/`.
 2. Create `examples/data/` and `examples/shared/`.
 3. Normalize shared examples to use examples-root-relative asset references.
 4. Remove or replace package-local references.
 
 This phase may need multiple commits because the path rewrites will be mechanical but broad.
+
+Implementation notes:
+
+- The previous `packages/core/examples/` tree has been moved to `examples/core/`.
+- Package-local references have been updated in the dev servers, README text, and single-page app sample links.
+- The existing layout snapshot test stays under `packages/core/layout.test.js` because the current Vitest workspace does not discover tests from repo-root `examples/`.
+- `examples/data/` and `examples/shared/` have not been introduced yet.
+- Shared example asset path normalization is still pending.
 
 ### Draft commit messages
 

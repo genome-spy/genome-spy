@@ -9,4 +9,4 @@ When a file uses headers, field names are matched exactly.
 
 Open examples with URLs like:
 
-`http://localhost:8080/?spec=examples/genomic/bedSimple.json`
+`http://localhost:8080/?spec=examples/core/genomic/bedSimple.json`

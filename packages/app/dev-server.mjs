@@ -6,6 +6,14 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { URL } from "url";
 
+const __dirname = new URL(".", import.meta.url).pathname;
+const repoRoot = path.resolve(__dirname, "..", "..");
+const examplesDir = path.join(repoRoot, "examples");
+const privateDir = path.join(repoRoot, "private");
+const legacyPrivateDir = path.join(repoRoot, "packages", "core", "private");
+const legacyPrivateExists = fs.existsSync(legacyPrivateDir);
+const hiddenSharedDirs = new Set(["data", "shared"]);
+
 async function createServer() {
     const app = express();
 
@@ -14,21 +22,19 @@ async function createServer() {
         appType: "mpa",
     });
 
-    const __dirname = new URL(".", import.meta.url).pathname;
+    if (legacyPrivateExists) {
+        console.warn(
+            "Legacy private specs detected at packages/core/private/. " +
+                "The dev server still serves them at /private, but repo-root private/ is the preferred location."
+        );
+    }
 
     app.use("/", specList);
 
-    // Random examples
-    app.use(
-        "/examples",
-        express.static(path.join(__dirname, "../core/examples"))
-    );
+    app.use("/examples", express.static(examplesDir));
 
-    // Files that must not go into git
-    app.use(
-        "/private",
-        express.static(path.join(__dirname, "../core/private"))
-    );
+    app.use("/private", express.static(privateDir));
+    app.use("/private", express.static(legacyPrivateDir));
 
     app.use(vite.middlewares);
 
@@ -37,12 +43,14 @@ async function createServer() {
 
 createServer();
 
-function getFileList(specRoot, dir) {
+function getFileList(specRoot, dir, urlRoot) {
     const joinedPath = path.join(specRoot, dir);
 
     if (!fs.existsSync(joinedPath)) {
         return `<p style="color: firebrick">Directory not found.</p>`;
     }
+
+    const relativeDir = dir.split(path.sep).join("/");
 
     return (
         "<ul>" +
@@ -50,21 +58,40 @@ function getFileList(specRoot, dir) {
             .readdirSync(joinedPath, { withFileTypes: true })
             .filter(
                 (f) =>
-                    !(dir == "examples" && f.name == "data") &&
                     !/^[_.]/.test(f.name) &&
+                    !(dir === "" && hiddenSharedDirs.has(f.name)) &&
                     (path.extname(f.name) == ".json" || f.isDirectory())
             )
             .map((f) =>
                 f.isDirectory()
                     ? `<li><span>${f.name}/</span>${getFileList(
                           specRoot,
-                          path.join(dir, f.name)
+                          path.join(dir, f.name),
+                          urlRoot
                       )}</li>`
-                    : `<li><a href="/?spec=${dir}/${f.name}">${f.name}</a></li>`
+                    : `<li><a href="/?spec=${path.posix.join(
+                          urlRoot,
+                          relativeDir,
+                          f.name
+                      )}">${f.name}</a></li>`
             )
             .join("\n") +
         "</ul>"
     );
+}
+
+function getPrivateListingSource() {
+    if (fs.existsSync(privateDir)) {
+        return {
+            directory: privateDir,
+            label: "private/",
+        };
+    } else {
+        return {
+            directory: legacyPrivateDir,
+            label: "packages/core/private/",
+        };
+    }
 }
 
 function specList(req, res, next) {
@@ -72,8 +99,16 @@ function specList(req, res, next) {
         return next();
     }
 
-    const __dirname = new URL(".", import.meta.url).pathname;
-    const specDir = path.join(__dirname, "..", "core");
+    const privateListingSource = getPrivateListingSource();
+    const legacyPrivateWarning = legacyPrivateExists
+        ? `
+    <p style="color: firebrick">
+        Legacy <code>packages/core/private/</code> is still present and served at
+        <code>/private</code>. Move it manually to repo-root <code>private/</code>
+        when you are ready.
+    </p>
+    `
+        : "";
 
     res.send(`
 <html>
@@ -84,18 +119,21 @@ function specList(req, res, next) {
 
     <h2>Example specs</h2>
 
-    <p>These examples are in the <code>packages/core/examples/</code> directory.</p>
+    <p>These examples are in the repo-root <code>examples/</code> directory.</p>
 
-    ${getFileList(specDir, "examples")}
+    ${getFileList(examplesDir, "", "examples")}
 
     <h2>Private specs</h2>
 
     <p>
-        These specs are in the <code>packages/core/private/</code> directory, if it exists.
-        Use the <code>private</code> directory for files that should not be added to Git.
+        Use repo-root <code>private/</code> for files that should not be added to Git.
+        The dev server currently lists specs from
+        <code>${privateListingSource.label}</code> and serves them at <code>/private</code>.
     </p>
 
-    ${getFileList(specDir, "private")}
+    ${legacyPrivateWarning}
+
+    ${getFileList(privateListingSource.directory, "", "private")}
 
     </body>
 </html>

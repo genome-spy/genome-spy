@@ -1,21 +1,21 @@
-import { create } from "../src/view/testUtils";
+import { create } from "./src/view/testUtils";
 import { describe, expect, test } from "vitest";
 
-import DebugginViewRenderingContext from "../src/view/renderingContext/debuggingViewRenderingContext";
-import Rectangle from "../src/view/layout/rectangle";
-import { calculateCanvasSize } from "../src/view/viewUtils";
+import DebugginViewRenderingContext from "./src/view/renderingContext/debuggingViewRenderingContext";
+import Rectangle from "./src/view/layout/rectangle";
+import { calculateCanvasSize } from "./src/view/viewUtils";
 
-import specFirst from "./first.json";
-import specPoint2D from "./marks/point/point2d.json";
-import specComplexGridLayout from "./layout/grid/complex_grid_layout.json";
-import specComplexGridLayout2 from "./layout/grid/complex_grid_layout2.json";
-import specConcatPointsText from "./layout/grid/concat_points_text.json";
-import specSharedAxisAtRoot from "./layout/grid/shared_axis_at_root.json";
-import specCondensedConcat from "./layout/grid/condensed_concat.json";
-import View from "../src/view/view";
+import specFirst from "../../examples/core/first.json";
+import specPoint2D from "../../examples/core/marks/point/point2d.json";
+import specComplexGridLayout from "../../examples/core/layout/grid/complex_grid_layout.json";
+import specComplexGridLayout2 from "../../examples/core/layout/grid/complex_grid_layout2.json";
+import specConcatPointsText from "../../examples/core/layout/grid/concat_points_text.json";
+import specSharedAxisAtRoot from "../../examples/core/layout/grid/shared_axis_at_root.json";
+import specCondensedConcat from "../../examples/core/layout/grid/condensed_concat.json";
+import View from "./src/view/view";
 
 /**
- * @typedef {import("../src/spec/root").RootSpec} RootSpec
+ * @typedef {import("./src/spec/root").RootSpec} RootSpec
  */
 
 /**

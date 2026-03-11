@@ -44,13 +44,16 @@ how to embed GenomeSpy in web applications and use the
 3. `npm ci`
 4. `npm start` (starts a development server with the app package)
 
-The `packages/core/examples` directory contains some random view specification
-that can be accessed through urls like
-`http://localhost:8080/?spec=examples/first.json`.
+The repo-root `examples/` directory contains curated shared example
+specifications that can be accessed through URLs like
+`http://localhost:8080/?spec=examples/core/first.json`.
 
-The `packages/core/private/` directory is in `.gitignore` and served by the
-development server: `http://localhost:8080/?spec=private/foo.json`. Use it for
-experiments that should not go into version control.
+Use repo-root `private/` for local experiments that should not go into version
+control. The dev server serves it at
+`http://localhost:8080/?spec=private/foo.json`.
+
+Legacy `packages/core/private/` is still served at `/private` for now and kept
+in `.gitignore` until it is moved manually.
 
 If you want to use or develop the core library, launch a single-page app using:
 `npm -w @genome-spy/core run dev`
