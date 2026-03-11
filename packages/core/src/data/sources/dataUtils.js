@@ -3,15 +3,6 @@ import { isInlineData } from "./inlineSource.js";
 
 const genomicTextFormats = new Set(["bed", "bedpe"]);
 const compressionExtensions = new Set(["gz"]);
-const inferableUrlTypes = [
-    "bedpe",
-    "parquet",
-    "fasta",
-    "json",
-    "csv",
-    "tsv",
-    "bed",
-];
 
 /**
  * Validates data source params, infers format if not specified explicitly,
@@ -75,7 +66,7 @@ export function extractTypeFromUrl(url) {
         }
 
         const extension = extensions.at(-1);
-        if (extension && inferableUrlTypes.includes(extension)) {
+        if (extension && formats(extension)) {
             return extension;
         }
     }

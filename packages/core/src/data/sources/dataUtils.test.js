@@ -1,9 +1,13 @@
 import { describe, expect, test } from "vitest";
+import { formats as vegaFormats } from "vega-loader";
+import bed from "../formats/bed.js";
 import {
     extractTypeFromUrl,
     getFormat,
     hasGzipExtension,
 } from "./dataUtils.js";
+
+vegaFormats("bed", bed);
 
 describe("getFormat", () => {
     test("defaults parse to auto for csv-like formats", () => {
