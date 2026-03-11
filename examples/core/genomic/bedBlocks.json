@@ -3,7 +3,7 @@
   "description": "BED12 example with optional block-related fields.",
   "genome": { "name": "hg38" },
   "data": {
-    "url": "bedBlocks.bed",
+    "url": "data/bedBlocks.bed",
     "format": { "type": "bed" }
   },
   "mark": {

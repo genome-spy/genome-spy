@@ -742,6 +742,7 @@ Implementation notes:
 - `examples/data/` now contains the curated shared example data files used by both core and docs examples.
 - `examples/shared/` has not been introduced yet.
 - Curated shared examples now use examples-root-relative asset paths such as `data/sincos.csv`.
+- Core example-local data files such as `penguins_size.csv` and the BED/BEDPE fixtures have been moved under `examples/data/` as well.
 - The app dev-server landing page now explains that curated examples resolve against `/examples/`, while `private/` keeps spec-directory-relative behavior.
 
 ### Draft commit messages

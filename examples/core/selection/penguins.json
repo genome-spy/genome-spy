@@ -9,7 +9,7 @@
   "height": 350,
   "padding": 30,
 
-  "data": { "url": "penguins_size.csv" },
+  "data": { "url": "data/penguins_size.csv" },
   "transform": [{ "type": "collect" }],
 
   "params": [{ "name": "brush" }],

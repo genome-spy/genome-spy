@@ -3,7 +3,7 @@
   "description": "BEDPE example with explicit format.columns for a headerless file.",
   "genome": { "name": "hg38" },
   "data": {
-    "url": "eventsCustomColumns.tsv",
+    "url": "data/eventsCustomColumns.tsv",
     "format": {
       "type": "bedpe",
       "columns": [

@@ -3,7 +3,7 @@
   "description": "BEDPE example using link marks between paired breakpoints.",
   "genome": { "name": "hg38" },
   "data": {
-    "url": "events.bedpe",
+    "url": "data/events.bedpe",
     "format": { "type": "bedpe" }
   },
   "mark": {

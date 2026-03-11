@@ -5,7 +5,7 @@
   "width": 900,
   "height": 120,
   "data": {
-    "url": "bedRegions.bed",
+    "url": "data/bedRegions.bed",
     "format": { "type": "bed" }
   },
   "mark": {
