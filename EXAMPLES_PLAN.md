@@ -849,6 +849,9 @@ Implementation notes:
 - A local screenshot harness now exists at `packages/core/screenshot.html`.
 - The harness is driven by `packages/core/src/screenshotHarness.js` and uses
   `embed(...).exportCanvas(...)` for PNG export.
+- `packages/core/dev-server.mjs` now exposes `/__health` for script readiness
+  checks and serves `/screenshot.html` directly instead of relying on Vite's
+  HTML middleware path for liveness detection.
 - The core embed API now exposes `getLogicalCanvasSize()` so the harness can use
   the resolved canvas dimensions when exporting.
 - `packages/core/scripts/captureScreenshots.mjs` can capture a specific curated

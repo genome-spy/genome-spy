@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
 const privateDir = path.join(repoRoot, "private");
 const legacyPrivateDir = path.join(repoRoot, "packages", "core", "private");
+const screenshotPagePath = path.join(__dirname, "screenshot.html");
 
 async function createServer() {
     const app = express();
@@ -32,6 +33,13 @@ async function createServer() {
 
     app.use("/private", express.static(privateDir));
     app.use("/private", express.static(legacyPrivateDir));
+    app.get("/__health", (_req, res) => {
+        res.type("text/plain");
+        res.send("ok");
+    });
+    app.get("/screenshot.html", (_req, res) => {
+        res.sendFile(screenshotPagePath);
+    });
 
     app.use(vite.middlewares);
 

@@ -9,6 +9,7 @@ const repoRoot = path.resolve(packageDir, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
 const defaultServerOrigin = "http://127.0.0.1:4173";
 const screenshotHarnessPath = "/screenshot.html";
+const healthCheckPath = "/__health";
 
 const excludedExamples = new Set([
     "examples/core/app/samples.json",
@@ -62,7 +63,7 @@ async function main() {
     const serverOrigin = options.serverUrl ?? defaultServerOrigin;
 
     try {
-        await waitForServer(serverOrigin);
+        await waitForServer(serverOrigin, server);
 
         const browser = await playwright.chromium.launch();
         try {
@@ -233,12 +234,19 @@ async function stopServer(child) {
 
 /**
  * @param {string} serverOrigin
+ * @param {ReturnType<typeof startDevServer> extends Promise<infer T> ? T : undefined} child
  */
-async function waitForServer(serverOrigin) {
-    const url = new URL(screenshotHarnessPath, serverOrigin);
+async function waitForServer(serverOrigin, child) {
+    const url = new URL(healthCheckPath, serverOrigin);
     const deadline = Date.now() + 15_000;
 
     while (Date.now() < deadline) {
+        if (child && child.exitCode !== null) {
+            throw new Error(
+                `Core dev server exited before becoming ready (exit code ${child.exitCode}).`
+            );
+        }
+
         try {
             const response = await fetch(url);
             if (response.ok) {
