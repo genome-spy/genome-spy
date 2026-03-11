@@ -6,32 +6,88 @@ support partial loading or loading in response to user interactions. However,
 eager data sources are often more flexible and straightforward than
 [lazy](lazy.md) ones.
 
-GenomeSpy inputs eager data as tabular `"csv"`, `"tsv"`, `"json"`, and
-[`"parquet"`](#parquet) files or as non-indexed [`"fasta"`](#fasta) files. Data
-can be loaded from URLs or provided inline. You can also use generators to
-generate data on the fly and further modify them using
-[transforms](../transform/index.md).
+The `data` property of the view specification describes an eager data source.
+GenomeSpy supports four eager source forms directly in a view specification:
+loading data from `url`, embedding it inline with `values`, binding it by
+`name`, and generating numeric rows with `sequence`. This model is based on
+Vega-Lite and is mostly compatible, but the sections below describe GenomeSpy's
+behavior directly.
 
-The `data` property of the view specification describes a data source. The
-following example loads a tab-delimited file. By default, GenomeSpy infers the
-format from the file extension, ignoring a trailing compression suffix such as
-`.gz`, `.bgz`, or `.bgzf`. Gzip-compressed files are decompressed
-automatically. In bioinformatics, however, CSV files are often actually
-tab-delimited, so you must specify `"tsv"` explicitly:
+GenomeSpy can read eager data as `"csv"`, `"tsv"`, `"dsv"`, and `"json"`, as
+well as additional URL-based formats such as [`"bed"`](#bed),
+[`"bedpe"`](#bedpe), [`"fasta"`](#fasta), and [`"parquet"`](#parquet). Whatever
+the source, the data is treated as a table of records that can be further
+processed with [transforms](../transform/index.md).
 
-```json title="Example: Eagerly loading data from a URL"
+## Overview
+
+The following eager source forms are available:
+
+| Form | Purpose | Typical use |
+| --- | --- | --- |
+| `values` | Embed data directly in the specification | Small examples, constants, test data |
+| `url` | Load data from one or more files | CSV/TSV/JSON and other eager file formats |
+| `name` | Bind a dataset by name | Root-level `datasets` or runtime-provided data |
+| `sequence` | Generate a numeric sequence | Derived coordinates, bins, synthetic data |
+
+## Inline Data
+
+Use `values` when the data is already available in the specification. The most
+common form is an array of objects, where each object becomes one data record.
+
+```json title="Example: Inline object array"
 {
   "data": {
-    "url": "fileWithTabs.csv",
-    "format": { "type": "tsv" }
-  },
-  ...
+    "values": [
+      { "category": "A", "value": 5 },
+      { "category": "B", "value": 8 }
+    ]
+  }
 }
 ```
 
-With the exception of url arrays and the unsupported geographical formats, the
-data property of GenomeSpy is identical to Vega-Lite's
-[data](https://vega.github.io/vega-lite/docs/data.html) property.
+A single object is treated as a one-row dataset:
+
+```json title="Example: Inline single object"
+{
+  "data": {
+    "values": { "x": 1, "y": 2 }
+  }
+}
+```
+
+Arrays of primitive values are also allowed. In that case, GenomeSpy wraps each
+value into an object with a `data` field.
+
+```json title="Example: Inline scalar array"
+{
+  "data": {
+    "values": [1, 2, 3]
+  }
+}
+```
+
+This produces rows equivalent to:
+
+```json
+[
+  { "data": 1 },
+  { "data": 2 },
+  { "data": 3 }
+]
+```
+
+Finally, `values` may also be a string. String values are parsed according to
+`data.format`, so the format type must be specified explicitly.
+
+```json title="Example: Parsing inline CSV text"
+{
+  "data": {
+    "values": "x,y\n1,2\n3,4",
+    "format": { "type": "csv" }
+  }
+}
+```
 
 !!! warning "Type inference"
 
@@ -50,67 +106,212 @@ data property of GenomeSpy is identical to Vega-Lite's
 
 ## URL Data
 
-Data can be loaded from a URL using the `url` property. The URL can be absolute
-or relative to the page where GenomeSpy is embedded.
+Use `url` to load eager data from files. The URL may be absolute or relative to
+the page where GenomeSpy is embedded.
 
-Files stored as gzip-compressed resources on the server can be referenced
-directly with their `.gz`, `.bgz`, or `.bgzf` URLs. GenomeSpy infers the
-underlying format from the uncompressed extension, so `variants.tsv.gz` is
-treated as `"tsv"`.
+Relative URLs are resolved against the current view's effective `baseUrl`.
+Base URLs are inherited through the view hierarchy and can be overridden in
+nested views. If a nested view defines a relative `baseUrl`, it is resolved
+against the parent view's `baseUrl`.
 
-In addition to loading data from a single URL, you can also load data from
-multiple URLs by providing an array of URLs. This is useful when files have
-different columns that are [folded](../transform/regex-fold.md) (pivoted) into a
-long (tidy) format. The transformation pipeline is automatically initialized
-for each URL, and the final data is a concatenation of the results from all
-URLs.
-
-```json title="Example: Loading data from multiple URLs"
+```json title="Example: Loading a single file"
 {
   "data": {
-    "url": [
-      "fileWithTabs1.tsv",
-      "fileWithTabs2.tsv"
-    ],
+    "url": "data.tsv",
     "format": { "type": "tsv" }
-  },
-  ...
+  }
 }
 ```
 
-If you have many URLs, it is often more convenient to place the list of files
-in a separate file instead of the view specification.
+GenomeSpy can also load multiple files and concatenate their rows. This is
+useful when later transforms reshape each file into a common form before the
+results are concatenated. Each input file is processed as its own batch, so
+batch-sensitive transforms can reset their internal state between files. For
+example, this works well when each patient has a separate mutation file with
+different sample-specific VAF columns that are folded into a compatible long
+format with [`"regexFold"`](../transform/regex-fold.md).
 
-```json title="Example: Loading data from multiple URLs listed in a file"
+```json title="Example: Loading multiple files"
+{
+  "data": {
+    "url": ["part1.tsv", "part2.tsv"],
+    "format": { "type": "tsv" }
+  }
+}
+```
+
+If you have many files, you can place the file list in a separate file with
+`urlsFromFile`.
+
+```json title="Example: Loading file URLs from a manifest"
 {
   "data": {
     "url": { "urlsFromFile": "variant-file-list.tsv", "type": "tsv" },
     "format": { "type": "tsv" }
-  },
-  ...
+  }
 }
 ```
 
-The file containing the list of URLs must be a JSON file with a single string
-array or a tabular file with a single column named `url`.
+The manifest file must be either a JSON array of strings or a CSV/TSV file
+with a single column named `url`.
+
+Relative URLs inside a `urlsFromFile` manifest are resolved relative to the
+manifest file itself, not the surrounding view specification.
+
+GenomeSpy also supports gzip-compressed eager files transparently. URLs ending
+in `.gz`, `.bgz`, or `.bgzf` are decompressed automatically, and format
+inference uses the uncompressed extension. For example, `variants.tsv.gz` is
+treated as a TSV file.
+
+## Tabular Formats
+
+GenomeSpy supports the following general-purpose eager formats:
+
+- `"csv"` for comma-separated text
+- `"tsv"` for tab-separated text
+- `"dsv"` for delimited text with a custom single-character delimiter
+- `"json"` for JSON arrays and nested JSON documents
+
+In many cases, the format can be inferred from the file extension. For example,
+`data.csv`, `data.tsv`, and `data.json` are recognized automatically. If the
+extension is ambiguous or does not reflect the real contents, specify
+`data.format.type` explicitly.
+
+In bioinformatics, files with a `.csv` extension are often actually
+tab-delimited. In such cases, use `"tsv"` explicitly instead of relying on the
+filename.
+
+For `"dsv"`, you must also specify the delimiter:
+
+```json title="Example: Custom-delimited text"
+{
+  "data": {
+    "url": "data.txt",
+    "format": {
+      "type": "dsv",
+      "delimiter": "|"
+    }
+  }
+}
+```
+
+For `"json"`, you can optionally use `format.property` to read a nested array
+from the loaded JSON document:
+
+```json title="Example: Reading nested JSON data"
+{
+  "data": {
+    "url": "data.json",
+    "format": {
+      "type": "json",
+      "property": "values.items"
+    }
+  }
+}
+```
+
+## Parsing Field Types
+
+The `format.parse` property controls how field values are converted from text to
+typed values.
+
+For `"csv"`, `"tsv"`, and `"dsv"`, GenomeSpy enables automatic type inference by
+default. Numeric fields are converted to numbers, booleans to booleans, and so
+on. If you want full control over parsing, provide an explicit parse mapping.
+This is also faster, because GenomeSpy does not need to scan the data to infer
+field types. For large delimited files, explicit `format.parse` mappings are
+strongly recommended.
+
+```json title="Example: Explicit parse mapping"
+{
+  "data": {
+    "url": "samples.tsv",
+    "format": {
+      "type": "tsv",
+      "parse": {
+        "sample_id": "string",
+        "value": "number"
+      }
+    }
+  }
+}
+```
+
+When `parse` is an object, only the listed fields are converted. Other fields
+remain strings.
+
+If `parse` is omitted for `"csv"`, `"tsv"`, and `"dsv"`, GenomeSpy uses
+automatic type inference. If `parse` is set to `null`, type inference is
+disabled and delimited fields remain strings.
 
 ## Named Data
 
-A named data source indicates that the data is provided at runtime instead of
-being loaded eagerly from a URL or embedded inline.
+Use `data.name` when the data should be supplied separately from the view
+specification.
 
-```json
+```json title="Example: Named data source"
 {
   "data": {
     "name": "myResults"
-  },
-  ...
+  }
 }
 ```
 
-The actual data is supplied through the
-[JavaScript API](../../api.md#named-data), for example with
-`updateNamedData()` or a `namedDataProvider`.
+One way to provide named data is the root-level `datasets` property, which
+embeds reusable datasets in the root specification and exposes them by name.
+
+```json title="Example: Root-level datasets"
+{
+  "datasets": {
+    "myResults": [
+      { "x": 1, "y": 2 },
+      { "x": 2, "y": 3 }
+    ]
+  },
+  "data": {
+    "name": "myResults"
+  }
+}
+```
+
+Another way is the [JavaScript API](../../api.md#named-data), which can provide
+or update named data at runtime. Named datasets must be arrays. If a named
+dataset is not found, GenomeSpy treats it as empty data.
+
+## Sequence Generator
+
+Use `sequence` to generate a numeric sequence instead of loading rows from an
+external source. This is useful for synthetic coordinates, repeated structures,
+and examples.
+
+```json title="Example: Sequence generator"
+{
+  "data": {
+    "sequence": {
+      "start": 0,
+      "stop": 5,
+      "step": 1,
+      "as": "x"
+    }
+  }
+}
+```
+
+This generates the rows:
+
+```json
+[
+  { "x": 0 },
+  { "x": 1 },
+  { "x": 2 },
+  { "x": 3 },
+  { "x": 4 }
+]
+```
+
+`start` and `stop` are required. The `stop` value is exclusive, `step` defaults
+to `1`, and the output field name defaults to `"data"`. Sequence parameters may
+also use expression references.
 
 ## Additional Formats
 
@@ -211,7 +412,9 @@ base) for easier visualization.
 [_Apache Parquet_](https://en.wikipedia.org/wiki/Apache_Parquet) is a
 column-oriented binary storage format designed for efficient analytics on large
 tables. Compared to row-oriented text formats, it usually provides better
-compression and faster column scans.
+compression and faster column scans. For larger datasets, Parquet is strongly
+recommended over delimited text formats because it can be processed much more
+quickly.
 In GenomeSpy, Parquet is decoded into row objects similarly to `"csv"` and
 `"tsv"` formats supported by the `url` data source.
 
