@@ -17,3 +17,8 @@ declare module "*?raw" {
     const content: string;
     export default content;
 }
+
+declare module "@genome-spy/core/schema.json" {
+    const schema: Record<string, any>;
+    export default schema;
+}
