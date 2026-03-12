@@ -45,7 +45,32 @@ export default class MergeSampleFacets extends FlowNode {
             throw new Error("No SampleView was found!");
         }
 
-        const unsubscribe = subscribeTo(
+        const scheduleUpdate = () => {
+            if (!this.#shouldUpdate) {
+                return;
+            }
+
+            // Ensure that propagation is complete (albeit without actual data)
+            // before the first update. This is necessary to prevent errors in
+            // rendering before the initial data is available. The requestTransition
+            // hack below postpones the update until the next animation frame.
+            if (this.#initialUpdate) {
+                this.#initialUpdate = false;
+                this.reset();
+                this.complete();
+            }
+
+            // Using requestTransition to prevent unnecessary updates
+            // when multiple actions are dispatched as a batch.
+            // TODO: Figure out a cleaner way to do this.
+            animator.requestTransition(() => {
+                this.reset();
+                // complete calls mergeAndPropagate
+                this.complete();
+            });
+        };
+
+        const unsubscribeHierarchy = subscribeTo(
             this.provenance.store,
             (state) => state.provenance.present[SAMPLE_SLICE_NAME],
             () => {
@@ -55,32 +80,26 @@ export default class MergeSampleFacets extends FlowNode {
                 // TODO: Also check child visibilities. No need to propagate if
                 // the directly attached view is visible but all its children are
                 // invisible.
-                if (!this.#shouldUpdate) {
-                    return;
-                }
-
-                // Ensure that propagation is complete (albeit without actual data)
-                // before the first update. This is necessary to prevent errors in
-                // rendering before the initial data is available. The requestTransition
-                // hack below postpones the update until the next animation frame.
-                if (this.#initialUpdate) {
-                    this.#initialUpdate = false;
-                    this.reset();
-                    this.complete();
-                }
-
-                // Using requestTransition to prevent unnecessary updates
-                // when multiple actions are dispatched as a batch.
-                // TODO: Figure out a cleaner way to do this.
-                animator.requestTransition(() => {
-                    this.reset();
-                    // complete calls mergeAndPropagate
-                    this.complete();
-                });
+                scheduleUpdate();
             }
         );
+        this.view.registerDisposer(unsubscribeHierarchy);
 
-        this.view.registerDisposer(unsubscribe);
+        // A summary that was initialized earlier may stay hidden while the
+        // sample hierarchy changes. Re-showing it must recompute aggregates
+        // even though no new sample-slice action is dispatched at that moment.
+        let previousVisible = this.#shouldUpdate;
+        const unsubscribeVisibility = this.provenance.store.subscribe(() => {
+            const visible = this.#shouldUpdate;
+            if (visible === previousVisible) {
+                return;
+            }
+            previousVisible = visible;
+            if (visible) {
+                scheduleUpdate();
+            }
+        });
+        this.view.registerDisposer(unsubscribeVisibility);
     }
 
     get label() {
