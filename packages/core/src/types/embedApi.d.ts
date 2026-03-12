@@ -76,6 +76,12 @@ export interface EmbedResult {
     getScaleResolutionByName: (name: string) => ScaleResolutionApi;
 
     /**
+     * Waits until lazy data sources have loaded data for the current visible
+     * positional domain.
+     */
+    awaitVisibleLazyData: (signal?: AbortSignal) => Promise<void>;
+
+    /**
      * Updates a named dataset
      *
      * @param name data source to update

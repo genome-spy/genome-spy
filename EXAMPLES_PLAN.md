@@ -851,25 +851,25 @@ Implementation notes:
 - The harness is driven by `packages/core/src/screenshotHarness.js` and uses
   `embed(...).exportCanvas(...)` for PNG export.
 - `packages/core/dev-server.mjs` now exposes `/__health` for script readiness
-  checks and serves `/screenshot.html` through `vite.transformIndexHtml(...)`
-  instead of bypassing Vite's HTML transform step.
-- The core embed API now exposes `getLogicalCanvasSize()` so the harness can use
-  the resolved canvas dimensions when exporting.
+  checks and serves `/screenshot.html` directly.
+- The core embed API now exposes `getLogicalCanvasSize()` and
+  `awaitVisibleLazyData()` so the harness can size exports correctly and wait
+  until visible lazy sources have loaded their current domain.
 - `packages/core/scripts/captureScreenshots.mjs` can capture a specific curated
   example or batch all curated `examples/core/**` and `examples/docs/**`
   examples, writing sibling `.png` files next to the source specs.
 - The harness now exposes intermediate states (`loading`, `embedding`,
-  `rendering`, `ready`, `error`) so screenshot failures report where the
+  `waitingForData`, `rendering`, `ready`, `error`) so screenshot failures report where the
   capture stalled instead of timing out blindly.
+- The screenshot harness applies a configurable lazy-data timeout and aborts the
+  readiness wait cleanly instead of hanging forever on stalled remote sources.
 - Screenshot export sizing now prefers actual rendered layout bounds from the
   first render pass, falling back to minimum/intrinsic/spec-derived sizes only
   when the rendered bounds are unavailable.
-- The batch script currently excludes the same app-only and remote lazy-data
-  examples that are unsuitable for the current offline structural test harness.
+- The batch script excludes only app-only examples. Remote lazy-data examples
+  can be captured as long as the capture environment has network access.
 - The script expects the `playwright` package to be installed in the workspace.
-  That package is not yet declared or installed in this branch, so the script
-  currently fails fast with an explicit instruction instead of attempting a
-  partial capture.
+  It is now declared at the repo root.
 - Headless browser capture currently relies on Chromium's SwiftShader software
   WebGL path rather than a hardware GPU.
 - The curated example catalog generator now looks for sibling `.png` files and

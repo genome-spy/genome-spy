@@ -156,7 +156,7 @@ export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
  *
  * @param {import("../types/viewContext.js").default} context
  * @param {View} subtreeRoot
- * @param {DataReadinessRequest} readinessRequest
+ * @param {DataReadinessRequest | undefined} readinessRequest
  * @param {AbortSignal} [signal]
  * @param {(view: View) => boolean} [viewFilter]
  * @returns {Promise<void>}

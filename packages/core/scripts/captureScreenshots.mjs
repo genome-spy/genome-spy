@@ -10,18 +10,11 @@ const examplesDir = path.join(repoRoot, "examples");
 const defaultServerOrigin = "http://127.0.0.1:4173";
 const screenshotHarnessPath = "/screenshot.html";
 const healthCheckPath = "/__health";
-const screenshotReadyTimeoutMs = 120_000;
+const defaultLazyDataTimeoutMs = 30_000;
+const screenshotHarnessTimeoutPaddingMs = 60_000;
 
 const excludedExamples = new Set([
     "examples/core/app/samples.json",
-    "examples/core/lazy-data/bigbed.json",
-    "examples/core/lazy-data/bigwig.json",
-    "examples/core/lazy-data/indexed_fasta.json",
-    "examples/docs/grammar/data/lazy/bam-read-alignments.json",
-    "examples/docs/grammar/data/lazy/bigbed-ccre-track.json",
-    "examples/docs/grammar/data/lazy/bigwig-gc-content.json",
-    "examples/docs/grammar/data/lazy/gff3-gene-annotations.json",
-    "examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json",
 ]);
 
 const helpText = `Usage:
@@ -31,12 +24,14 @@ const helpText = `Usage:
 Options:
   --all                 Capture all curated examples under examples/core and examples/docs.
   --server-url URL      Use an already running server instead of launching packages/core/dev-server.mjs.
+  --timeout-ms NUMBER   Max time to wait for visible lazy data before failing the example.
   --overwrite           Overwrite existing sibling .png files. This is the default.
   --help                Show this help text.
 
 Notes:
   - Screenshots are written next to their source specs as sibling .png files.
-  - The script excludes app-only and remote lazy-data examples for now.
+  - The script excludes app-only examples for now.
+  - Remote lazy-data examples require network access during capture.
 `;
 
 async function main() {
@@ -104,7 +99,12 @@ async function main() {
             for (const examplePath of examplePaths) {
                 currentExamplePath = examplePath;
                 try {
-                    await captureExample(page, serverOrigin, examplePath);
+                    await captureExample(
+                        page,
+                        serverOrigin,
+                        examplePath,
+                        options.timeoutMs
+                    );
                 } catch (error) {
                     const message =
                         error instanceof Error ? error.message : String(error);
@@ -197,11 +197,13 @@ function visit(dir, visitor) {
  * @param {import("playwright").Page} page
  * @param {string} serverOrigin
  * @param {string} examplePath
+ * @param {number} timeoutMs
  */
-async function captureExample(page, serverOrigin, examplePath) {
+async function captureExample(page, serverOrigin, examplePath, timeoutMs) {
     const specUrl = `/${examplePath}`;
     const harnessUrl = new URL(screenshotHarnessPath, serverOrigin);
     harnessUrl.searchParams.set("spec", specUrl);
+    harnessUrl.searchParams.set("lazy-timeout-ms", String(timeoutMs));
 
     console.log(`Capturing ${examplePath}`);
     await page.goto(harnessUrl.toString(), { waitUntil: "load" });
@@ -213,7 +215,9 @@ async function captureExample(page, serverOrigin, examplePath) {
                     window.__genomeSpyScreenshot?.status === "error"
                 );
             },
-            { timeout: screenshotReadyTimeoutMs }
+            {
+                timeout: timeoutMs + screenshotHarnessTimeoutPaddingMs,
+            }
         );
     } catch (error) {
         const debugState = await page.evaluate(() => {
@@ -360,6 +364,7 @@ function parseArgs(args) {
         help: false,
         examplePaths: [],
         serverUrl: undefined,
+        timeoutMs: defaultLazyDataTimeoutMs,
     };
 
     for (let index = 0; index < args.length; index += 1) {
@@ -377,6 +382,16 @@ function parseArgs(args) {
             }
 
             options.serverUrl = serverUrl;
+            index += 1;
+        } else if (arg === "--timeout-ms") {
+            const timeoutMs = Number(args[index + 1]);
+            if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+                throw new Error(
+                    "Expected a positive numeric value for --timeout-ms"
+                );
+            }
+
+            options.timeoutMs = timeoutMs;
             index += 1;
         } else if (arg.startsWith("--")) {
             throw new Error(`Unknown option: ${arg}`);

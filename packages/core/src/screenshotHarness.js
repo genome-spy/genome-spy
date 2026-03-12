@@ -2,6 +2,7 @@ import { embed, loadSpec } from "./index.js";
 
 const DEFAULT_CONTAINER_WIDTH = 600;
 const DEFAULT_CONTAINER_HEIGHT = 320;
+const DEFAULT_LAZY_READY_TIMEOUT_MS = 30_000;
 const READY_DELAY_MS = 100;
 
 /**
@@ -30,6 +31,10 @@ const screenshotWindow = /** @type {ScreenshotWindow} */ (window);
 
 const query = new URLSearchParams(window.location.search);
 const specUrl = query.get("spec");
+const lazyReadyTimeoutMs = parseTimeoutMs(
+    query.get("lazy-timeout-ms"),
+    DEFAULT_LAZY_READY_TIMEOUT_MS
+);
 
 screenshotWindow.__genomeSpyScreenshot = {
     status: "booting",
@@ -66,12 +71,16 @@ async function initializeHarness(url) {
 
         if (
             typeof api.getLogicalCanvasSize !== "function" ||
-            typeof api.getRenderedBounds !== "function"
+            typeof api.getRenderedBounds !== "function" ||
+            typeof api.awaitVisibleLazyData !== "function"
         ) {
             throw new Error(
                 "Embed did not return a usable GenomeSpy instance."
             );
         }
+
+        setState("waitingForData", "Waiting for visible lazy data…");
+        await waitForVisibleLazyData(api, lazyReadyTimeoutMs);
 
         setState("rendering", "Waiting for initial render…");
         await waitForSettledRender();
@@ -116,6 +125,35 @@ async function waitForSettledRender() {
     await wait(READY_DELAY_MS);
 }
 
+/**
+ * @param {{
+ *   awaitVisibleLazyData: (signal?: AbortSignal) => Promise<void>
+ * }} api
+ * @param {number} timeoutMs
+ */
+async function waitForVisibleLazyData(api, timeoutMs) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs);
+
+    try {
+        await api.awaitVisibleLazyData(controller.signal);
+    } catch (error) {
+        if (timedOut) {
+            throw new Error(
+                `Timed out after ${timeoutMs} ms while waiting for visible lazy data.`
+            );
+        }
+
+        throw error;
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
+}
+
 function waitForAnimationFrame() {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
@@ -125,6 +163,25 @@ function waitForAnimationFrame() {
  */
 function wait(milliseconds) {
     return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+/**
+ * @param {string | null} value
+ * @param {number} fallback
+ */
+function parseTimeoutMs(value, fallback) {
+    if (value == null) {
+        return fallback;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error(
+            `Invalid lazy-data timeout value: ${value}. Expected a positive number.`
+        );
+    }
+
+    return parsed;
 }
 
 /**

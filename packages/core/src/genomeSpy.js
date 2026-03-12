@@ -42,6 +42,8 @@ import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
+import { primaryPositionalChannels } from "./encoder/encoder.js";
+import { awaitSubtreeLazyReady, buildReadinessRequest } from "./view/dataReadiness.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -545,6 +547,30 @@ export default class GenomeSpy {
         this.#glHelper.invalidateSize();
         this.computeLayout();
         this.animator.requestRender();
+    }
+
+    /**
+     * Waits until lazy sources under the root view have loaded data for the
+     * current visible positional domain.
+     *
+     * @param {AbortSignal} [signal]
+     */
+    async awaitVisibleLazyData(signal) {
+        if (!this.viewRoot) {
+            return;
+        }
+
+        const readinessRequest = buildReadinessRequest(
+            this.viewRoot,
+            primaryPositionalChannels
+        );
+
+        await awaitSubtreeLazyReady(
+            this.viewRoot.context,
+            this.viewRoot,
+            readinessRequest,
+            signal
+        );
     }
 
     /**
