@@ -459,10 +459,12 @@ const toolbarTemplate = () => html`
             ${icon(faIndent).node[0]}
             <span>Format code</span>
         </button>
-        <button @click=${openExamplePicker} class="tool-button">
-            ${icon(faFolderOpen).node[0]}
-            <span>Examples</span>
-        </button>
+        <a
+            href="https://genomespy.app/docs/"
+            target="_blank"
+            class="tool-button hide-mobile"
+            >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
+        >
         <span class="vis-title">
             <span class="hide-mobile">${visTitle}</span>
         </span>
@@ -471,12 +473,10 @@ const toolbarTemplate = () => html`
             href="https://github.com/genome-spy/genome-spy/releases/tag/v${packageJson.version}"
             >v${packageJson.version}</a
         >
-        <a
-            href="https://genomespy.app/docs/"
-            target="_blank"
-            class="tool-button hide-mobile"
-            >${icon(faQuestionCircle).node[0]} <span>Docs</span></a
-        >
+        <button @click=${openExamplePicker} class="tool-button">
+            ${icon(faFolderOpen).node[0]}
+            <span>Examples</span>
+        </button>
     </div>
 `;
 

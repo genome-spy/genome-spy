@@ -12,6 +12,38 @@ body {
     padding: 0;
 
     font-family: sans-serif;
+
+    // Warm neutral surfaces used by the example picker and baseUrl notice.
+    --playground-panel-bg: #f7f5ef;
+    --playground-panel-overlay: rgba(247, 245, 239, 0.95);
+    --playground-surface-soft: rgba(255, 255, 255, 0.82);
+    --playground-surface-card: rgba(255, 255, 255, 0.88);
+    --playground-surface-raised: rgba(255, 255, 255, 0.98);
+    --playground-surface-hover: #f4f7fb;
+
+    // Text colors for primary content, muted metadata, and warnings.
+    --playground-panel-text: #172033;
+    --playground-text-secondary: #364154;
+    --playground-muted-text: #566074;
+    --playground-muted-strong: #6c7688;
+    --playground-danger-text: #9c2f2f;
+
+    // Neutral border ramps for panels, cards, and lightweight controls.
+    --playground-border: rgba(23, 32, 51, 0.1);
+    --playground-border-soft: rgba(23, 32, 51, 0.15);
+    --playground-border-strong: rgba(23, 32, 51, 0.14);
+    --playground-border-faint: rgba(23, 32, 51, 0.08);
+
+    // Shared blue accent used for tags, help links, and hover emphasis.
+    --playground-accent-soft: rgba(84, 143, 204, 0.12);
+    --playground-accent-border: rgba(84, 143, 204, 0.65);
+    --playground-accent-text: #335679;
+
+    // Preview and placeholder gradients for example thumbnails.
+    --playground-preview-bg-start: #e8efe8;
+    --playground-preview-bg-end: #f8f9fb;
+    --playground-placeholder-bg-start: #f3efe4;
+    --playground-placeholder-bg-end: #fbfaf6;
 }
 
 button,
