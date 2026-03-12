@@ -34,6 +34,9 @@ cross-species dot plots), set `assembly` separately in each locus scale:
 }
 ```
 
+See [Synteny between assemblies](#synteny-between-assemblies) for a complete
+example.
+
 When every locus scale sets `scale.assembly`, root `assembly` is optional.
 Also, if root `assembly` is omitted and `genomes` has exactly one entry, that
 single entry is used as the default assembly.
@@ -231,3 +234,10 @@ their two end positions. An example of a segment feature is a copy number
 variant (CNV), where a region of the genome has been duplicated or deleted.
 
 EXAMPLE examples/docs/genomic-data/genomic-coordinates/segment-features.json height=80
+
+### Synteny between assemblies
+
+When each locus scale specifies its own assembly, rules can connect homologous
+or syntenic segments across species.
+
+EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=450

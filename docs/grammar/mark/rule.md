@@ -20,6 +20,6 @@ SCHEMA RuleProps
 
 EXAMPLE examples/docs/grammar/mark/rule/ranged-rules.json height=150
 
-### Plenty of diagonal rules
+### Human-mouse synteny
 
-EXAMPLE examples/docs/grammar/mark/rule/diagonal-rules.json height=350
+EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=440
