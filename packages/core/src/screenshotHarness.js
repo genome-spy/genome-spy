@@ -1,7 +1,7 @@
 import { embed, loadSpec } from "./index.js";
 
 const DEFAULT_CONTAINER_WIDTH = 600;
-const DEFAULT_CONTAINER_HEIGHT = 400;
+const DEFAULT_CONTAINER_HEIGHT = 320;
 const READY_DELAY_MS = 100;
 
 /**

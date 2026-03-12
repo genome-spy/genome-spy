@@ -788,7 +788,7 @@ Proposed rules:
 1. If the spec resolves to an explicit finite width and height, export at that
    size.
 2. If either dimension remains container-driven or otherwise unresolved, render
-   the screenshot harness container at `600x400` logical pixels.
+   the screenshot harness container at `600x320` logical pixels.
 3. If one dimension is explicit and the other is container-driven, keep the
    explicit dimension and use the fallback size for the unresolved axis.
 
@@ -796,7 +796,7 @@ Examples:
 
 - explicit `width: 800`, `height: 120` -> export `800x120`
 - `width: "container"`, `height: 130` -> export `600x130`
-- no explicit dimensions -> export `600x400`
+- no explicit dimensions -> export `600x320`
 
 This rule should be implemented in terms of the actual resolved canvas size
 after embedding, not by guessing directly from raw JSON fields. The screenshot
