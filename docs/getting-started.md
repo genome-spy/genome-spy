@@ -73,7 +73,32 @@ current public API. For deails, see the [API Documentation](./api.md).
 
 #### Load the spec from a file
 
-This template loads the spec from a separate `spec.json` file.
+This template loads the spec from a separate `spec.json` file placed in the same directory.
+
+##### Recommended: Module Script
+
+This is the modern browser approach. It avoids global variables and is the
+recommended option for new pages.
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GenomeSpy</title>
+  </head>
+  <body>
+    <script type="module">
+      import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x/dist/bundle/index.es.js";
+
+      await embed(document.body, "spec.json", {});
+    </script>
+  </body>
+</html>
+```
+
+##### Alternative: Plain Script Tag
+
+This version keeps the older global-style API for compatibility.
 
 ```html
 <!DOCTYPE html>
@@ -84,7 +109,7 @@ This template loads the spec from a separate `spec.json` file.
   <body>
     <script
       type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.37.x"
+      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x"
     ></script>
 
     <script>
@@ -105,12 +130,9 @@ You can alternatively provide the specification as a JavaScript object.
     <title>GenomeSpy</title>
   </head>
   <body>
-    <script
-      type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.37.x"
-    ></script>
+    <script type="module">
+      import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x/dist/bundle/index.es.js";
 
-    <script>
       const spec = {
         data: {
           sequence: { start: 0, stop: 6.284, step: 0.39269908169, as: "x" },
@@ -123,7 +145,7 @@ You can alternatively provide the specification as a JavaScript object.
         },
       };
 
-      genomeSpyEmbed.embed(document.body, spec, {});
+      await embed(document.body, spec, {});
     </script>
   </body>
 </html>

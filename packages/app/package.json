@@ -17,6 +17,10 @@
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
+    "./browser": {
+      "import": "./dist/index.es.js",
+      "default": "./dist/index.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./style.css": "./dist/style.css"
   },
