@@ -27,6 +27,9 @@ export default async function bed(data) {
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        if (line.length == 0) {
+            continue;
+        }
 
         if (!dataStarted) {
             if (blankLinePattern.test(line) || controlLinePattern.test(line)) {

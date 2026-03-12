@@ -77,3 +77,18 @@ test("reports malformed chromosome decoding with line context", async () => {
         "Cannot parse BED line 1"
     );
 });
+
+test("skips trailing empty lines at end of input", async () => {
+    const data = "chr1\t0\t10\tfeatureA\t5\t+\n\n";
+
+    expect(await bed(data)).toEqual([
+        {
+            chrom: "chr1",
+            chromStart: 0,
+            chromEnd: 10,
+            name: "featureA",
+            score: 5,
+            strand: 1,
+        },
+    ]);
+});

@@ -98,6 +98,10 @@ export default function bedpe(data, format = {}) {
     for (const line of lines) {
         lineNumber++;
 
+        if (line.length == 0) {
+            continue;
+        }
+
         if (!dataStarted) {
             if (blankLinePattern.test(line) || controlLinePattern.test(line)) {
                 continue;

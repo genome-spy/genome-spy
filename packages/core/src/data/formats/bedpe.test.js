@@ -132,3 +132,20 @@ test("throws on rows with fewer than six columns", () => {
         "BEDPE line 1 has 5 columns, expected at least 6."
     );
 });
+
+test("skips trailing empty lines at end of input", () => {
+    const data = "chr1\t10\t20\tchr2\t30\t40\teventA\t5\n\n";
+
+    expect(bedpe(data)).toEqual([
+        {
+            chrom1: "chr1",
+            start1: 10,
+            end1: 20,
+            chrom2: "chr2",
+            start2: 30,
+            end2: 40,
+            name: "eventA",
+            score: 5,
+        },
+    ]);
+});
