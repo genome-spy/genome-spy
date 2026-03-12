@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const CURATED_GROUPS = ["core", "docs", "app"];
+const CURATED_GROUPS = ["docs", "core", "app"];
 
 /**
  * @param {string} examplesDir
@@ -87,10 +87,18 @@ function createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec) {
  */
 function compareEntries(a, b) {
     return (
-        compareStrings(a.sourceGroup, b.sourceGroup) ||
+        compareGroupOrder(a.sourceGroup, b.sourceGroup) ||
         compareStrings(a.category, b.category) ||
         compareStrings(a.title, b.title)
     );
+}
+
+/**
+ * @param {string} a
+ * @param {string} b
+ */
+function compareGroupOrder(a, b) {
+    return CURATED_GROUPS.indexOf(a) - CURATED_GROUPS.indexOf(b);
 }
 
 /**
