@@ -164,6 +164,35 @@ function setEditorSpec(specText) {
     void update(true);
 }
 
+/**
+ * @param {string} value
+ */
+function encodeSpecQueryValue(value) {
+    return encodeURIComponent(value)
+        .replace(/%2F/giu, "/")
+        .replace(/%3A/giu, ":");
+}
+
+/**
+ * @param {URL} url
+ */
+function formatPlaygroundUrl(url) {
+    /** @type {string[]} */
+    const queryParts = [];
+
+    for (const [key, value] of url.searchParams.entries()) {
+        const encodedKey = encodeURIComponent(key);
+        const encodedValue =
+            key === "spec"
+                ? encodeSpecQueryValue(value)
+                : encodeURIComponent(value);
+        queryParts.push(`${encodedKey}=${encodedValue}`);
+    }
+
+    const query = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+    return `${url.pathname}${query}${url.hash}`;
+}
+
 function clearSpecQueryParam() {
     const nextUrl = new URL(window.location.href);
     if (!nextUrl.searchParams.has("spec")) {
@@ -171,7 +200,7 @@ function clearSpecQueryParam() {
     }
 
     nextUrl.searchParams.delete("spec");
-    window.history.replaceState({}, "", nextUrl);
+    window.history.replaceState({}, "", formatPlaygroundUrl(nextUrl));
 }
 
 /**
@@ -182,7 +211,7 @@ async function openSpec(specUrl) {
     const nextUrl = new URL(window.location.href);
 
     nextUrl.searchParams.set("spec", specUrl);
-    window.history.pushState({}, "", nextUrl);
+    window.history.pushState({}, "", formatPlaygroundUrl(nextUrl));
 
     setEditorSpec(specText);
 }
