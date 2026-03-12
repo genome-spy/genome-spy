@@ -860,6 +860,9 @@ Implementation notes:
 - The harness now exposes intermediate states (`loading`, `embedding`,
   `rendering`, `ready`, `error`) so screenshot failures report where the
   capture stalled instead of timing out blindly.
+- Screenshot export sizing now prefers actual rendered layout bounds from the
+  first render pass, falling back to minimum/intrinsic/spec-derived sizes only
+  when the rendered bounds are unavailable.
 - The batch script currently excludes the same app-only and remote lazy-data
   examples that are unsuitable for the current offline structural test harness.
 - The script expects the `playwright` package to be installed in the workspace.

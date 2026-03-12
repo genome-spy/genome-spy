@@ -4,14 +4,34 @@ const DEFAULT_CONTAINER_WIDTH = 600;
 const DEFAULT_CONTAINER_HEIGHT = 400;
 const READY_DELAY_MS = 100;
 
-const frameElement = document.querySelector("#frame");
-const specPathElement = document.querySelector("#spec-path");
-const statusElement = document.querySelector("#status");
+/**
+ * @typedef {{
+ *   status: string,
+ *   detail: string,
+ *   error: string,
+ *   capture: () => Promise<{ logicalSize: { width: number, height: number }, dataUrl: string }>
+ * }} ScreenshotState
+ */
+
+/**
+ * @typedef {Window & typeof globalThis & { __genomeSpyScreenshot: ScreenshotState }} ScreenshotWindow
+ */
+
+const frameElement = /** @type {HTMLElement} */ (
+    document.querySelector("#frame")
+);
+const specPathElement = /** @type {HTMLElement} */ (
+    document.querySelector("#spec-path")
+);
+const statusElement = /** @type {HTMLElement} */ (
+    document.querySelector("#status")
+);
+const screenshotWindow = /** @type {ScreenshotWindow} */ (window);
 
 const query = new URLSearchParams(window.location.search);
 const specUrl = query.get("spec");
 
-window.__genomeSpyScreenshot = {
+screenshotWindow.__genomeSpyScreenshot = {
     status: "booting",
     detail: "Booting screenshot harness",
     error: "",
@@ -35,16 +55,19 @@ if (!specUrl) {
 async function initializeHarness(url) {
     try {
         setState("loading", "Loading spec…");
-        const spec = await loadSpec(url);
+        await loadSpec(url);
 
         setState("embedding", "Embedding visualization…");
-        const api = await embed(frameElement, spec, {
+        const api = await embed(frameElement, url, {
             onError(error) {
                 throw error;
             },
         });
 
-        if (typeof api.getLogicalCanvasSize !== "function") {
+        if (
+            typeof api.getLogicalCanvasSize !== "function" ||
+            typeof api.getRenderedBounds !== "function"
+        ) {
             throw new Error(
                 "Embed did not return a usable GenomeSpy instance."
             );
@@ -53,14 +76,20 @@ async function initializeHarness(url) {
         setState("rendering", "Waiting for initial render…");
         await waitForSettledRender();
 
-        const logicalSize = sanitizeSize(api.getLogicalCanvasSize());
+        const logicalSize = resolveExportSize(
+            api.getRenderedBounds(),
+            api.getLogicalCanvasSize()
+        );
 
-        window.__genomeSpyScreenshot = {
+        screenshotWindow.__genomeSpyScreenshot = {
             status: "ready",
             detail: `Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`,
             error: "",
             async capture() {
-                const currentSize = sanitizeSize(api.getLogicalCanvasSize());
+                const currentSize = resolveExportSize(
+                    api.getRenderedBounds(),
+                    api.getLogicalCanvasSize()
+                );
                 return {
                     logicalSize: currentSize,
                     dataUrl: api.exportCanvas(
@@ -99,18 +128,23 @@ function wait(milliseconds) {
 }
 
 /**
- * @param {{ width: number, height: number }} size
+ * @param {{ width: number | undefined, height: number | undefined }} renderedBounds
+ * @param {{ width: number, height: number }} logicalSize
  */
-function sanitizeSize(size) {
+function resolveExportSize(renderedBounds, logicalSize) {
     return {
         width:
-            Number.isFinite(size.width) && size.width > 0
-                ? size.width
-                : DEFAULT_CONTAINER_WIDTH,
+            Number.isFinite(renderedBounds.width) && renderedBounds.width > 0
+                ? Math.ceil(renderedBounds.width)
+                : Number.isFinite(logicalSize.width) && logicalSize.width > 0
+                  ? logicalSize.width
+                  : DEFAULT_CONTAINER_WIDTH,
         height:
-            Number.isFinite(size.height) && size.height > 0
-                ? size.height
-                : DEFAULT_CONTAINER_HEIGHT,
+            Number.isFinite(renderedBounds.height) && renderedBounds.height > 0
+                ? Math.ceil(renderedBounds.height)
+                : Number.isFinite(logicalSize.height) && logicalSize.height > 0
+                  ? logicalSize.height
+                  : DEFAULT_CONTAINER_HEIGHT,
     };
 }
 
@@ -126,8 +160,8 @@ function setStatus(message) {
  * @param {string} detail
  */
 function setState(status, detail) {
-    window.__genomeSpyScreenshot = {
-        ...window.__genomeSpyScreenshot,
+    screenshotWindow.__genomeSpyScreenshot = {
+        ...screenshotWindow.__genomeSpyScreenshot,
         status,
         detail,
     };
@@ -138,7 +172,7 @@ function setState(status, detail) {
  * @param {string} message
  */
 function setFailure(message) {
-    window.__genomeSpyScreenshot = {
+    screenshotWindow.__genomeSpyScreenshot = {
         status: "error",
         detail: message,
         error: message,

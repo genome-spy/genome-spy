@@ -77,24 +77,51 @@ async function main() {
         });
         try {
             const page = await browser.newPage();
+            let currentExamplePath = "";
             page.on("console", (message) => {
                 const type = message.type();
                 if (type === "error" || type === "warning") {
-                    console.error(`[browser:${type}] ${message.text()}`);
+                    console.error(
+                        `[${currentExamplePath}] [browser:${type}] ${message.text()}`
+                    );
                 }
             });
             page.on("response", (response) => {
                 if (response.status() >= 400) {
                     console.error(
-                        `[browser:http ${response.status()}] ${response.url()}`
+                        `[${currentExamplePath}] [browser:http ${response.status()}] ${response.url()}`
                     );
                 }
             });
             page.on("pageerror", (error) => {
-                console.error(`[browser:pageerror] ${error.message}`);
+                console.error(
+                    `[${currentExamplePath}] [browser:pageerror] ${error.message}`
+                );
             });
+
+            /** @type {{ examplePath: string, message: string }[]} */
+            const failures = [];
             for (const examplePath of examplePaths) {
-                await captureExample(page, serverOrigin, examplePath);
+                currentExamplePath = examplePath;
+                try {
+                    await captureExample(page, serverOrigin, examplePath);
+                } catch (error) {
+                    const message =
+                        error instanceof Error ? error.message : String(error);
+                    failures.push({ examplePath, message });
+                    console.error(`[${examplePath}] ${message}`);
+                }
+            }
+
+            if (failures.length) {
+                console.error("\nScreenshot capture failures:");
+                for (const failure of failures) {
+                    console.error(
+                        `- ${failure.examplePath}: ${failure.message}`
+                    );
+                }
+
+                process.exitCode = 1;
             }
         } finally {
             await browser.close();

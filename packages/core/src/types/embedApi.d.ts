@@ -84,6 +84,14 @@ export interface EmbedResult {
     updateNamedData: (name: string, data?: any[]) => void;
 
     /**
+     * Returns the bounds reached by the last rendered layout in CSS pixels.
+     */
+    getRenderedBounds: () => {
+        width: number | undefined;
+        height: number | undefined;
+    };
+
+    /**
      * Returns the current logical canvas size in CSS pixels.
      */
     getLogicalCanvasSize: () => { width: number; height: number };

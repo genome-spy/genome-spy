@@ -594,6 +594,23 @@ export default class GenomeSpy {
         return this.#glHelper.getLogicalCanvasSize();
     }
 
+    getRenderedBounds() {
+        /** @type {{ width: number | undefined, height: number | undefined }} */
+        const bounds = {
+            width: undefined,
+            height: undefined,
+        };
+
+        this.viewRoot.visit((view) => {
+            for (const coords of view.facetCoords.values()) {
+                bounds.width = Math.max(bounds.width ?? 0, coords.x2);
+                bounds.height = Math.max(bounds.height ?? 0, coords.y2);
+            }
+        });
+
+        return bounds;
+    }
+
     computeLayout() {
         this.#renderCoordinator.computeLayout();
     }
