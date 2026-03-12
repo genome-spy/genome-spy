@@ -36,6 +36,8 @@ types_with_descriptions = {
 }
 
 refPattern = re.compile('^#/definitions/(\\w+)$')
+schemaLinePattern = re.compile(r'^\s*"\$schema"\s*:\s*".*",?\s*$')
+
 class MyPreprocessor(Preprocessor):
     def __init__(self, md, schema, app_schema, repo_root):
         super().__init__(md)
@@ -95,14 +97,19 @@ class MyPreprocessor(Preprocessor):
 
         try:
             with open(source_path, 'r') as f:
-                spec = json.load(f)
+                spec_text = f.read()
         except IOError:
             return ['Cannot open example file: {}'.format(example_path)]
+
+        try:
+            json.loads(spec_text)
         except ValueError as exc:
             return ['Cannot parse example file {}: {}'.format(example_path, exc)]
 
-        spec.pop('$schema', None)
-        spec_text = json.dumps(spec, indent=2)
+        try:
+            spec_text = self.stripSchemaLine(spec_text)
+        except ValueError as exc:
+            return ['Cannot preprocess example file {}: {}'.format(example_path, exc)]
 
         base_url = 'examples/'
         playground_spec_path = '/docs/' + example_path
@@ -130,6 +137,32 @@ class MyPreprocessor(Preprocessor):
         )
 
         return lines
+
+    def stripSchemaLine(self, spec_text):
+        lines = spec_text.splitlines()
+        stripped_lines = []
+        removed_schema = False
+        skip_blank_after_schema = False
+
+        for line in lines:
+            if not removed_schema and schemaLinePattern.match(line):
+                removed_schema = True
+                skip_blank_after_schema = True
+                continue
+
+            if skip_blank_after_schema and line.strip() == '':
+                skip_blank_after_schema = False
+                continue
+
+            skip_blank_after_schema = False
+            stripped_lines.append(line)
+
+        stripped_text = '\n'.join(stripped_lines)
+        if spec_text.endswith('\n'):
+            stripped_text += '\n'
+
+        json.loads(stripped_text)
+        return stripped_text
 
 
     def refToString(self, ref, schema):
