@@ -1024,6 +1024,7 @@ Implementation notes:
 - The playground now exposes an `Examples` picker backed by that generated catalog.
 - Picker entries use the example `description` as the primary title and group curated specs from `examples/core/` and `examples/docs/`.
 - When a sibling screenshot exists, the picker renders it as a thumbnail card image.
+- The picker is now implemented as a standalone LitElement web component instead of inline page-template markup.
 
 ### Draft commit messages
 

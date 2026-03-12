@@ -1,4 +1,4 @@
-import { html, nothing, render } from "lit";
+import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -22,6 +22,7 @@ import schema from "@genome-spy/core/schema.json";
 import packageJson from "../package.json";
 import "./splitPanel.js";
 import "./codeEditor.js";
+import "./examplePicker.js";
 import "./filePane.js";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
@@ -32,7 +33,6 @@ registerJsonSchema();
 const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
-const exampleSearchRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
 const editorRef = createRef();
@@ -58,7 +58,6 @@ let inheritedBaseUrl;
 let visTitle = "";
 let effectiveBaseUrlLabel = "";
 let isExamplePickerOpen = false;
-let exampleSearch = "";
 let isExampleCatalogLoading = false;
 let exampleCatalogError = "";
 
@@ -145,13 +144,8 @@ function toggleLayout() {
 
 function openExamplePicker() {
     isExamplePickerOpen = true;
-    exampleSearch = "";
     renderLayout();
-    void ensureExampleCatalogLoaded().then(() => {
-        requestAnimationFrame(() => {
-            exampleSearchRef.value?.focus();
-        });
-    });
+    void ensureExampleCatalogLoaded();
 }
 
 function closeExamplePicker() {
@@ -316,33 +310,6 @@ function formatUrlForDisplay(url) {
     return url;
 }
 
-function getFilteredCatalogEntries() {
-    const query = exampleSearch.trim().toLowerCase();
-    if (!query) {
-        return exampleCatalog;
-    }
-
-    return exampleCatalog.filter(
-        (entry) =>
-            entry.title.toLowerCase().includes(query) ||
-            entry.category.toLowerCase().includes(query) ||
-            entry.specPath.toLowerCase().includes(query)
-    );
-}
-
-function getCatalogGroups() {
-    /** @type {Map<string, ExampleCatalogEntry[]>} */
-    const groups = new Map();
-
-    for (const entry of getFilteredCatalogEntries()) {
-        const bucket = groups.get(entry.sourceLabel) || [];
-        bucket.push(entry);
-        groups.set(entry.sourceLabel, bucket);
-    }
-
-    return Array.from(groups.entries());
-}
-
 /**
  * @param {string} name
  */
@@ -443,105 +410,6 @@ async function update(force = false) {
     }
 }
 
-/**
- * @param {string} groupLabel
- * @param {ExampleCatalogEntry[]} entries
- */
-const exampleGroupTemplate = (groupLabel, entries) => html`
-    <section class="example-picker__group">
-        <h3>${groupLabel}</h3>
-        <div class="example-picker__entries">
-            ${entries.map(
-                (entry) => html`
-                    <button
-                        class="example-picker__entry"
-                        @click=${() => openCatalogEntry(entry)}
-                    >
-                        ${entry.screenshotUrl
-                            ? html`
-                                  <img
-                                      class="example-picker__entry-image"
-                                      src=${entry.screenshotUrl}
-                                      alt=""
-                                      loading="lazy"
-                                  />
-                              `
-                            : html`
-                                  <div
-                                      class="example-picker__entry-image example-picker__entry-image--placeholder"
-                                      aria-hidden="true"
-                                  >
-                                      <span>${entry.sourceLabel}</span>
-                                  </div>
-                              `}
-                        <span class="example-picker__entry-title"
-                            >${entry.title}</span
-                        >
-                        <span class="example-picker__entry-meta"
-                            >${entry.category}</span
-                        >
-                    </button>
-                `
-            )}
-        </div>
-    </section>
-`;
-
-const examplePickerTemplate = () => {
-    if (!isExamplePickerOpen) {
-        return nothing;
-    }
-
-    const groups = getCatalogGroups();
-
-    return html`
-        <div class="example-picker-backdrop" @click=${closeExamplePicker}>
-            <aside
-                class="example-picker"
-                @click=${(event) => event.stopPropagation()}
-            >
-                <div class="example-picker__header">
-                    <div>
-                        <h2>Examples</h2>
-                        <p>Curated shared examples from the monorepo.</p>
-                    </div>
-                    <button class="tool-button" @click=${closeExamplePicker}>
-                        <span>Close</span>
-                    </button>
-                </div>
-                <input
-                    ${ref(exampleSearchRef)}
-                    class="example-picker__search"
-                    type="search"
-                    placeholder="Search examples"
-                    .value=${exampleSearch}
-                    @input=${(event) => {
-                        exampleSearch = event.target.value;
-                        renderLayout();
-                    }}
-                />
-                <div class="example-picker__content">
-                    ${isExampleCatalogLoading
-                        ? html`<p class="example-picker__status">
-                              Loading example catalog...
-                          </p>`
-                        : exampleCatalogError
-                          ? html`<p class="example-picker__status error">
-                                ${exampleCatalogError}
-                            </p>`
-                          : groups.length === 0
-                            ? html`<p class="example-picker__status">
-                                  No examples matched the current search.
-                              </p>`
-                            : groups.map(([label, entries]) =>
-                                  exampleGroupTemplate(label, entries)
-                              )}
-                </div>
-            </aside>
-        </div>
-    `;
-};
-
 const toolbarTemplate = () => html`
     <div class="toolbar">
         <a
@@ -578,7 +446,7 @@ const toolbarTemplate = () => html`
                       </button>
                   </span>
               `
-            : nothing}
+            : null}
         <span class="vis-title">
             <span class="hide-mobile">${visTitle}</span>
         </span>
@@ -610,6 +478,14 @@ function handleEditorChange() {
 
 const layoutTemplate = () => html`
     <section id="playground-layout" class="${layout}">
+        <gs-example-picker
+            ?open=${isExamplePickerOpen}
+            .loading=${isExampleCatalogLoading}
+            .error=${exampleCatalogError}
+            .entries=${exampleCatalog}
+            @close=${closeExamplePicker}
+            @open-example=${(event) => openCatalogEntry(event.detail.entry)}
+        ></gs-example-picker>
         ${toolbarTemplate()}
         <split-panel
             .orientation=${layout}
@@ -642,7 +518,6 @@ const layoutTemplate = () => html`
             </split-panel>
         </split-panel>
     </section>
-    ${examplePickerTemplate()}
 `;
 
 function renderLayout() {
