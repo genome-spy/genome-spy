@@ -4,6 +4,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 10000, "as": "z" }
   },
+
   "transform": [
     { "type": "formula", "as": "x", "expr": "datum.z % 100" },
     { "type": "formula", "as": "y", "expr": "floor(datum.z / 100)" },
@@ -13,16 +14,16 @@
       "expr": "sin(datum.x / 9) + cos(datum.y / 9 + 3.25 + sin(datum.x / 20) * 2)"
     }
   ],
+
   "mark": "rect",
+
   "encoding": {
     "x": { "field": "x", "type": "index" },
     "y": { "field": "y", "type": "index" },
     "color": {
       "field": "measurement",
       "type": "quantitative",
-      "scale": {
-        "scheme": "magma"
-      }
+      "scale": { "scheme": "magma" }
     }
   }
 }

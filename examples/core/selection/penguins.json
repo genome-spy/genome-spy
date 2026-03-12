@@ -7,18 +7,17 @@
   ],
 
   "height": 350,
+
   "padding": 30,
 
   "data": { "url": "data/penguins_size.csv" },
+
   "transform": [{ "type": "collect" }],
 
   "params": [{ "name": "brush" }],
 
   "resolve": {
-    "scale": {
-      "color": "shared",
-      "y": "independent"
-    }
+    "scale": { "color": "shared", "y": "independent" }
   },
 
   "spacing": 30,
@@ -26,9 +25,7 @@
   "hconcat": [
     {
       "title": { "text": "Palmer Penguins", "style": "overlay" },
-
       "name": "scatterPlot",
-
       "params": [
         {
           "name": "brush",
@@ -36,16 +33,8 @@
           "push": "outer"
         }
       ],
-
       "width": 350,
-
-      "mark": {
-        "type": "point",
-        "filled": false,
-        "size": 40,
-        "opacity": 0.7
-      },
-
+      "mark": { "type": "point", "filled": false, "size": 40, "opacity": 0.7 },
       "encoding": {
         "x": {
           "field": "culmen_length_mm",
@@ -71,39 +60,27 @@
         }
       }
     },
-
     {
       "name": "barCharts",
-
       "width": 200,
-
       "transform": [
         {
           "type": "filter",
           "param": "brush",
-          "fields": {
-            "x": "culmen_length_mm",
-            "y": "culmen_depth_mm"
-          }
+          "fields": { "x": "culmen_length_mm", "y": "culmen_depth_mm" }
         }
       ],
-
       "resolve": {
         "scale": { "x": "independent", "color": "shared" }
       },
-
       "encoding": {
         "y": { "field": "count", "type": "quantitative" }
       },
-
       "vconcat": [
         {
           "name": "speciesChart",
-
           "transform": [{ "type": "aggregate", "groupby": ["species"] }],
-
           "mark": "rect",
-
           "encoding": {
             "x": {
               "field": "species",
@@ -111,18 +88,12 @@
               "scale": { "padding": 0.3 },
               "axis": { "labelAngle": 0 }
             },
-            "color": {
-              "field": "species",
-              "type": "nominal"
-            }
+            "color": { "field": "species", "type": "nominal" }
           }
         },
-
         {
           "name": "sexChart",
-
           "width": 200,
-
           "transform": [
             {
               "type": "filter",
@@ -130,9 +101,7 @@
             },
             { "type": "aggregate", "groupby": ["sex"] }
           ],
-
           "mark": "rect",
-
           "encoding": {
             "x": {
               "field": "sex",

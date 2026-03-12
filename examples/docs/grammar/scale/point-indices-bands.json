@@ -1,39 +1,25 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Index scale example with band-filling marks.",
-  "data": {
-    "values": [
-      0,
-      2,
-      4,
-      7,
-      8,
-      10,
-      12
-    ]
-  },
+
+  "data": { "values": [0, 2, 4, 7, 8, 10, 12] },
+
   "encoding": {
-    "x": {
-      "field": "data",
-      "type": "index"
-    }
+    "x": { "field": "data", "type": "index" }
   },
+
   "layer": [
     {
       "mark": "rect",
       "encoding": {
-        "color": {
-          "field": "data",
-          "type": "nominal"
-        }
+        "color": { "field": "data", "type": "nominal" }
       }
     },
     {
       "mark": "text",
       "encoding": {
-        "text": {
-          "field": "data"
-        }
+        "text": { "field": "data" }
       }
     }
   ]

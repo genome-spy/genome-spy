@@ -1,29 +1,25 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Concatenation child sizing example.",
+
   "data": {
-    "values": [
-      {  }
-    ]
+    "values": [{}]
   },
+
   "spacing": 10,
+
   "hconcat": [
     {
-      "width": {
-        "px": 20
-      },
+      "width": { "px": 20 },
       "mark": "rect"
     },
     {
-      "width": {
-        "grow": 1
-      },
+      "width": { "grow": 1 },
       "mark": "rect"
     },
     {
-      "width": {
-        "grow": 2
-      },
+      "width": { "grow": 2 },
       "mark": "rect"
     }
   ]

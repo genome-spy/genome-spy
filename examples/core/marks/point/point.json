@@ -10,10 +10,7 @@
     { "type": "formula", "expr": "floor(datum.z / 20)", "as": "y" }
   ],
 
-  "mark": {
-    "type": "point",
-    "stroke": "black"
-  },
+  "mark": { "type": "point", "stroke": "black" },
 
   "encoding": {
     "x": { "field": "x", "type": "ordinal", "axis": null },

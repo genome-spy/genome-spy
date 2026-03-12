@@ -38,12 +38,8 @@
         "size": { "value": 5 }
       }
     },
-
     {
-      "mark": {
-        "type": "rule",
-        "strokeDash": [30, 10, 10, 10]
-      },
+      "mark": { "type": "rule", "strokeDash": [30, 10, 10, 10] },
       "encoding": {
         "color": { "value": "black" },
         "size": { "value": 10 }

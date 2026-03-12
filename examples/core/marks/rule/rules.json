@@ -6,21 +6,13 @@
   },
 
   "transform": [
-    {
-      "type": "formula",
-      "expr": "random()",
-      "as": "x"
-    },
+    { "type": "formula", "expr": "random()", "as": "x" },
     {
       "type": "formula",
       "expr": "datum.x + random() * 0.3 - 0.15",
       "as": "x2"
     },
-    {
-      "type": "formula",
-      "expr": "random()",
-      "as": "y"
-    },
+    { "type": "formula", "expr": "random()", "as": "y" },
     {
       "type": "formula",
       "expr": "datum.y + random() * 0.3 - 0.15",
@@ -54,8 +46,5 @@
     }
   },
 
-  "mark": {
-    "type": "rule",
-    "strokeCap": "round"
-  }
+  "mark": { "type": "rule", "strokeCap": "round" }
 }

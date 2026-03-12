@@ -1,11 +1,14 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Genome axis styling example for locus scales.",
+
   "assembly": "hg38",
-  "data": {
-    "values": []
-  },
+
+  "data": { "values": [] },
+
   "mark": "point",
+
   "encoding": {
     "x": {
       "chrom": "a",
@@ -17,15 +20,9 @@
         "grid": true,
         "gridColor": "gray",
         "gridOpacity": 0.5,
-        "gridDash": [
-          1,
-          11
-        ],
+        "gridDash": [1, 11],
         "chromGrid": true,
-        "chromGridDash": [
-          3,
-          3
-        ],
+        "chromGridDash": [3, 3],
         "chromGridColor": "#5F87F5",
         "chromGridOpacity": 0.7,
         "chromGridFillEven": "#BEFACC",

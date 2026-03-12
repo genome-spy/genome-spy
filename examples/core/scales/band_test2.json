@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "description": "Using rect marks to create a bar chart",
+
   "data": {
     "values": [
       { "a": "A", "b": 28 },
@@ -15,6 +16,7 @@
       { "a": "I", "b": 52 }
     ]
   },
+
   "encoding": {
     "x": {
       "field": "a",
@@ -24,10 +26,9 @@
     },
     "y": { "field": "b", "type": "quantitative" }
   },
+
   "layer": [
-    {
-      "mark": "rect"
-    },
+    { "mark": "rect" },
     {
       "mark": {
         "type": "point",
@@ -36,7 +37,9 @@
         "size": 800,
         "filled": false
       },
-      "data": { "values": [{}] },
+      "data": {
+        "values": [{}]
+      },
       "encoding": {
         "text": { "value": "Hello" },
         "x": { "datum": "G", "type": "nominal" },

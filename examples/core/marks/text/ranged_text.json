@@ -1,24 +1,27 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "data": {
-    "values": ["A", "B", "C", "D", "E", "F", "G"]
-  },
+  "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },
+
   "transform": [
     { "type": "formula", "expr": "random() * 100", "as": "a" },
     { "type": "formula", "expr": "datum.a + random() * 100", "as": "b" }
   ],
+
   "encoding": {
-    "x": { "field": "a", "type": "quantitative", "scale": { "zoom": true } },
+    "x": {
+      "field": "a",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
     "x2": { "field": "b" },
     "y": {
       "field": "data",
       "type": "nominal",
-      "scale": {
-        "padding": 0.3
-      }
+      "scale": { "padding": 0.3 }
     }
   },
+
   "layer": [
     {
       "mark": "rect",
@@ -34,9 +37,7 @@
         "paddingX": 5
       },
       "encoding": {
-        "text": {
-          "expr": "'Hello ' + floor(datum.a)"
-        },
+        "text": { "expr": "'Hello ' + floor(datum.a)" },
         "size": { "value": 12 }
       }
     }

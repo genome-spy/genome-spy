@@ -13,25 +13,16 @@
       "transform": [
         { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
       ],
-
       "layer": [
         {
-          "mark": {
-            "type": "rule",
-            "strokeDash": [3, 3]
-          },
-
+          "mark": { "type": "rule", "strokeDash": [3, 3] },
           "encoding": {
             "x": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
           }
         },
         {
-          "mark": {
-            "type": "rule",
-            "strokeDash": [1, 5, 3, 5]
-          },
-
+          "mark": { "type": "rule", "strokeDash": [1, 5, 3, 5] },
           "encoding": {
             "y": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
@@ -46,7 +37,6 @@
         "cornerRadius": 20,
         "stroke": "black"
       },
-
       "encoding": {
         "x": {
           "field": "x",

@@ -4,11 +4,7 @@
   "description": "Test quality of text mark rendering with different sizes.",
 
   "data": {
-    "sequence": {
-      "start": 1,
-      "stop": 20,
-      "step": 1
-    }
+    "sequence": { "start": 1, "stop": 20, "step": 1 }
   },
 
   "mark": {
@@ -17,15 +13,7 @@
   },
 
   "encoding": {
-    "y": {
-      "field": "data",
-      "type": "quantitative"
-    },
-
-    "size": {
-      "field": "data",
-      "type": "quantitative",
-      "scale": null
-    }
+    "y": { "field": "data", "type": "quantitative" },
+    "size": { "field": "data", "type": "quantitative", "scale": null }
   }
 }

@@ -5,33 +5,19 @@
 
   "templates": {
     "viz": {
-      "view": {
-        "stroke": "lightgray"
-      },
-
+      "view": { "stroke": "lightgray" },
       "title": {
         "text": { "expr": "'Dataset: ' + dataset" },
         "style": "overlay",
         "fontSize": 20
       },
-
       "data": {
-        "url": {
-          "expr": "'data/' + dataset + '-table.csv'"
-        }
+        "url": { "expr": "'data/' + dataset + '-table.csv'" }
       },
-
       "mark": "point",
-
       "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative"
-        },
-        "y": {
-          "field": "y",
-          "type": "quantitative"
-        }
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
       }
     }
   },

@@ -3,9 +3,7 @@
 
   "description": "A grid view inside a scrollable viewport",
 
-  "data": {
-    "url": "data/sincos.csv"
-  },
+  "data": { "url": "data/sincos.csv" },
 
   "encoding": {
     "x": { "field": "x", "type": "quantitative" },
@@ -15,12 +13,23 @@
   "vconcat": [
     {
       "viewportHeight": 300,
-
       "vconcat": [
-        { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" },
-        { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" }
+        {
+          "height": 200,
+          "view": { "stroke": "lightgray" },
+          "mark": "point"
+        },
+        {
+          "height": 200,
+          "view": { "stroke": "lightgray" },
+          "mark": "point"
+        }
       ]
     },
-    { "height": 200, "view": { "stroke": "lightgray" }, "mark": "point" }
+    {
+      "height": 200,
+      "view": { "stroke": "lightgray" },
+      "mark": "point"
+    }
   ]
 }

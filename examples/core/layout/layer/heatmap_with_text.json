@@ -4,6 +4,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 40000, "as": "i" }
   },
+
   "transform": [
     { "type": "formula", "as": "x", "expr": "datum.i % 200" },
     { "type": "formula", "as": "y", "expr": "floor(datum.i / 200)" },
@@ -15,7 +16,9 @@
     }
   ],
 
-  "resolve": { "scale": { "color": "independent" } },
+  "resolve": {
+    "scale": { "color": "independent" }
+  },
 
   "encoding": {
     "x": { "field": "x", "type": "index" },
@@ -29,9 +32,7 @@
         "color": {
           "field": "z",
           "type": "quantitative",
-          "scale": {
-            "scheme": "viridis"
-          }
+          "scale": { "scheme": "viridis" }
         }
       }
     },
@@ -58,11 +59,10 @@
       }
     },
     {
-      "opacity": {
-        "unitsPerPixel": [0.1, 0.05],
-        "values": [1, 0]
+      "opacity": { "unitsPerPixel": [0.1, 0.05], "values": [1, 0] },
+      "data": {
+        "values": [{}]
       },
-      "data": { "values": [{}] },
       "mark": {
         "type": "text",
         "size": 13,

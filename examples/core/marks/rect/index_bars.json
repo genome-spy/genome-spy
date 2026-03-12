@@ -4,6 +4,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 100, "as": "x" }
   },
+
   "transform": [
     {
       "type": "formula",
@@ -11,9 +12,15 @@
       "as": "y"
     }
   ],
+
   "mark": "rect",
+
   "encoding": {
-    "x": { "field": "x", "type": "index", "scale": { "padding": 0.1 } },
+    "x": {
+      "field": "x",
+      "type": "index",
+      "scale": { "padding": 0.1 }
+    },
     "y": { "field": "y", "type": "quantitative" },
     "y2": { "datum": 0 },
     "color": {

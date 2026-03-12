@@ -1,14 +1,9 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "genome": {
-    "name": "hg38"
-  },
+  "genome": { "name": "hg38" },
 
-  "title": {
-    "text": "GC content",
-    "style": "overlay"
-  },
+  "title": { "text": "GC content", "style": "overlay" },
 
   "data": {
     "lazy": {
@@ -18,48 +13,27 @@
     }
   },
 
-  "transform": [
-    {
-      "type": "filter",
-      "expr": "datum.score > 0"
-    }
-  ],
+  "transform": [{ "type": "filter", "expr": "datum.score > 0" }],
 
   "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "start",
-      "type": "locus"
-    },
-    "x2": {
-      "chrom": "chrom",
-      "pos": "end"
-    }
+    "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "end" }
   },
 
-  "resolve": { "axis": { "x": "shared" } },
+  "resolve": {
+    "axis": { "x": "shared" }
+  },
 
   "vconcat": [
     {
       "height": 140,
-
-      "view": {
-        "stroke": "lightgray"
-      },
-
+      "view": { "stroke": "lightgray" },
       "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "start",
-          "type": "locus"
-        },
+        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
         "y": {
           "field": "score",
           "type": "quantitative",
-          "scale": {
-            "nice": true,
-            "zero": false
-          },
+          "scale": { "nice": true, "zero": false },
           "axis": {
             "title": "GC (%)",
             "grid": true,
@@ -77,18 +51,12 @@
     },
     {
       "height": 80,
-
-      "view": {
-        "stroke": "lightgray"
-      },
-
+      "view": { "stroke": "lightgray" },
       "encoding": {
         "color": {
           "field": "score",
           "type": "quantitative",
-          "scale": {
-            "zero": false
-          }
+          "scale": { "zero": false }
         }
       },
       "mark": {

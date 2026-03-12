@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "genome": { "name": "hg38" },
 
   "params": [
@@ -16,19 +17,14 @@
       { "chrom": "chr9", "pos": 34567890 }
     ]
   },
+
   "mark": "point",
+
   "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "pos",
-      "type": "locus"
-    },
+    "x": { "chrom": "chrom", "pos": "pos", "type": "locus" },
     "size": { "value": 200 },
     "color": {
-      "condition": {
-        "param": "brush",
-        "value": "red"
-      },
+      "condition": { "param": "brush", "value": "red" },
       "value": "#aaa"
     }
   }

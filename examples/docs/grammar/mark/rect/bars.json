@@ -1,13 +1,12 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Rect mark bar chart example.",
+
   "data": {
-    "sequence": {
-      "start": 0,
-      "stop": 60,
-      "as": "x"
-    }
+    "sequence": { "start": 0, "stop": 60, "as": "x" }
   },
+
   "transform": [
     {
       "type": "formula",
@@ -15,34 +14,24 @@
       "as": "y"
     }
   ],
+
   "mark": "rect",
+
   "encoding": {
     "x": {
       "field": "x",
       "type": "index",
-      "scale": {
-        "padding": 0.1
-      }
+      "scale": { "padding": 0.1 }
     },
-    "y": {
-      "field": "y",
-      "type": "quantitative"
-    },
-    "y2": {
-      "datum": 0
-    },
+    "y": { "field": "y", "type": "quantitative" },
+    "y2": { "datum": 0 },
     "color": {
       "field": "y",
       "type": "quantitative",
       "scale": {
         "type": "threshold",
-        "domain": [
-          0
-        ],
-        "range": [
-          "#ed553b",
-          "#20639b"
-        ]
+        "domain": [0],
+        "range": ["#ed553b", "#20639b"]
       }
     }
   }

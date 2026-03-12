@@ -24,7 +24,6 @@
             "font": "Lato",
             "fontWeight": 900
           },
-
           "encoding": {
             "y": { "value": 0.5 },
             "x": { "value": 0 },
@@ -52,7 +51,6 @@
             "clip": false,
             "font": "Indie Flower"
           },
-
           "encoding": {
             "y": { "value": 0.5 },
             "x": { "value": 0 },
@@ -80,7 +78,6 @@
             "clip": false,
             "font": "Oswald"
           },
-
           "encoding": {
             "y": { "value": 0.5 },
             "x": { "value": 0 },
@@ -109,7 +106,6 @@
             "font": "Oswald",
             "fontWeight": "bold"
           },
-
           "encoding": {
             "y": { "value": 0.5 },
             "x": { "value": 0 },

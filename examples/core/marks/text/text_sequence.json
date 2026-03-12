@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "width": "container",
+
   "height": "container",
 
   "data": {
@@ -26,7 +27,6 @@
   "layer": [
     {
       "mark": "rect",
-
       "encoding": {
         "color": { "field": "pos", "type": "nominal" }
       }
@@ -39,15 +39,12 @@
         "size": 1000,
         "squeeze": true,
         "fitToBand": true,
-
         "y": 0,
         "y2": 1,
         "paddingX": 0,
         "paddingY": 0,
-
         "logoLetters": true
       },
-
       "encoding": {
         "x": { "field": "pos", "type": "index" },
         "text": { "field": "base" }

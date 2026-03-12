@@ -1,6 +1,8 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Index scale example with half-open ranges.",
+
   "data": {
     "values": [
       { "from": 0, "to": 2 },
@@ -9,31 +11,23 @@
       { "from": 10, "to": 13 }
     ]
   },
+
   "encoding": {
-    "x": {
-      "field": "from",
-      "type": "index"
-    },
-    "x2": {
-      "field": "to"
-    }
+    "x": { "field": "from", "type": "index" },
+    "x2": { "field": "to" }
   },
+
   "layer": [
     {
       "mark": "rect",
       "encoding": {
-        "color": {
-          "field": "from",
-          "type": "nominal"
-        }
+        "color": { "field": "from", "type": "nominal" }
       }
     },
     {
       "mark": "text",
       "encoding": {
-        "text": {
-          "expr": "'[' + datum.from + ', ' + datum.to + ')'"
-        }
+        "text": { "expr": "'[' + datum.from + ', ' + datum.to + ')'" }
       }
     }
   ]

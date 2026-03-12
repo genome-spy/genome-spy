@@ -1,91 +1,53 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "A three-stage semantic zoom using the multiscale composition operator.",
-  "view": {
-    "stroke": "lightgray"
-  },
+
+  "view": { "stroke": "lightgray" },
+
   "resolve": {
-    "scale": {
-      "x": "shared"
-    }
+    "scale": { "x": "shared" }
   },
+
   "encoding": {
     "x": {
       "field": "x",
       "type": "quantitative",
-      "scale": {
-        "zoom": true
-      }
+      "scale": { "zoom": true }
     },
-    "y": {
-      "field": "y",
-      "type": "quantitative"
-    }
+    "y": { "field": "y", "type": "quantitative" }
   },
-  "stops": [
-    1,
-    0.1
-  ],
+
+  "stops": [1, 0.1],
+
   "multiscale": [
     {
       "data": {
-        "values": [
-          {  }
-        ]
+        "values": [{}]
       },
-      "mark": {
-        "type": "text",
-        "text": "Zoom in to see details",
-        "size": 16
-      },
+      "mark": { "type": "text", "text": "Zoom in to see details", "size": 16 },
       "encoding": {
-        "x": {
-          "value": 0.5
-        },
-        "y": {
-          "value": 0.5
-        },
-        "color": {
-          "value": "#666666"
-        }
+        "x": { "value": 0.5 },
+        "y": { "value": 0.5 },
+        "color": { "value": "#666666" }
       }
     },
     {
       "data": {
-        "sequence": {
-          "start": 0,
-          "stop": 4000,
-          "step": 16,
-          "as": "x"
-        }
+        "sequence": { "start": 0, "stop": 4000, "step": 16, "as": "x" }
       },
       "transform": [
-        {
-          "type": "formula",
-          "expr": "sin(datum.x / 40)",
-          "as": "y"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.x + 16",
-          "as": "x2"
-        }
+        { "type": "formula", "expr": "sin(datum.x / 40)", "as": "y" },
+        { "type": "formula", "expr": "datum.x + 16", "as": "x2" }
       ],
       "mark": "rect",
       "encoding": {
-        "x2": {
-          "field": "x2"
-        }
+        "x2": { "field": "x2" }
       }
     },
     {
       "data": {
-        "sequence": {
-          "start": 0,
-          "stop": 4000,
-          "step": 1,
-          "as": "x"
-        }
+        "sequence": { "start": 0, "stop": 4000, "step": 1, "as": "x" }
       },
       "transform": [
         {
@@ -96,9 +58,7 @@
       ],
       "mark": "point",
       "encoding": {
-        "opacity": {
-          "value": 0.7
-        }
+        "opacity": { "value": 0.7 }
       }
     }
   ]

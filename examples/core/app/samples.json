@@ -32,9 +32,7 @@
 
   "spec": {
     "mark": "rect",
-
     "view": { "fill": "#f0f0f0" },
-
     "encoding": {
       "sample": { "field": "sample" },
       "y": {

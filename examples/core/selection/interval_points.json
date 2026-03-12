@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": "2D scatter plot with normally distributed random data",
 
   "params": [
@@ -40,28 +41,25 @@
     }
   ],
 
-  "mark": {
-    "type": "point",
-    "size": 9,
-    "opacity": 0.3
-  },
+  "mark": { "type": "point", "size": 9, "opacity": 0.3 },
 
   "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "y": { "field": "y", "type": "quantitative", "scale": { "zoom": true } },
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
     "color": {
-      "condition": {
-        "param": "brush",
-        "value": "#38c"
-      },
+      "condition": { "param": "brush", "value": "#38c" },
       "value": "#aaa"
     },
     "size": {
-      "condition": {
-        "param": "brush",
-        "value": 10,
-        "empty": true
-      },
+      "condition": { "param": "brush", "value": 10, "empty": true },
       "value": 2
     }
   }

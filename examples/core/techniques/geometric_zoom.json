@@ -4,6 +4,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 200000, "as": "x" }
   },
+
   "transform": [
     { "type": "formula", "expr": "random() * 0.682", "as": "u" },
     {
@@ -12,12 +13,18 @@
       "as": "y"
     }
   ],
+
   "mark": {
     "type": "point",
     "size": { "expr": "min(1 * zoomLevel * zoomLevel, 200)" }
   },
+
   "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
     "y": { "field": "y", "type": "quantitative" },
     "opacity": { "value": 0.6 }
   }

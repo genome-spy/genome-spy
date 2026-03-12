@@ -3,15 +3,15 @@
 
   "height": 30,
 
-  "genome": {
-    "name": "hg38"
-  },
+  "genome": { "name": "hg38" },
 
   "stops": [8],
 
   "multiscale": [
     {
-      "data": { "values": [{}] },
+      "data": {
+        "values": [{}]
+      },
       "mark": {
         "type": "text",
         "text": "Zoom in to see the reference sequence",
@@ -31,11 +31,7 @@
           "field": "sequence",
           "as": ["rawPos", "base"]
         },
-        {
-          "type": "formula",
-          "expr": "datum.rawPos + datum.start",
-          "as": "pos"
-        }
+        { "type": "formula", "expr": "datum.rawPos + datum.start", "as": "pos" }
       ],
       "encoding": {
         "color": {
@@ -57,11 +53,7 @@
             ]
           }
         },
-        "x": {
-          "chrom": "chrom",
-          "pos": "pos",
-          "type": "locus"
-        }
+        "x": { "chrom": "chrom", "pos": "pos", "type": "locus" }
       },
       "layer": [
         {

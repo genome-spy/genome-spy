@@ -1,6 +1,8 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+
   "description": "A simple bar chart with embedded data.",
+
   "data": {
     "values": [
       { "a": "A", "b": 28 },
@@ -14,6 +16,7 @@
       { "a": "I", "b": 52 }
     ]
   },
+
   "encoding": {
     "x": {
       "field": "a",
@@ -22,10 +25,9 @@
     },
     "y": { "field": "b", "type": "quantitative" }
   },
+
   "layer": [
-    {
-      "mark": "rect"
-    },
+    { "mark": "rect" },
     {
       "mark": { "type": "text", "dy": -9 },
       "encoding": {

@@ -1,26 +1,16 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "data": {
-    "url": "data/sincos.csv"
-  },
+  "data": { "url": "data/sincos.csv" },
+
   "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative"
-    },
-    "y": {
-      "field": "sin",
-      "type": "quantitative"
-    }
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
   },
 
   "spacing": 14,
-  "separator": {
-    "color": "#999",
-    "strokeDash": [6, 4],
-    "size": 1
-  },
+
+  "separator": { "color": "#999", "strokeDash": [6, 4], "size": 1 },
 
   "hconcat": [
     {
@@ -32,17 +22,12 @@
         },
         {
           "spacing": 18,
-          "separator": {
-            "color": "#666",
-            "strokeDash": [2, 3],
-            "size": 1
-          },
+          "separator": { "color": "#666", "strokeDash": [2, 3], "size": 1 },
           "hconcat": [
             {
               "width": 150,
               "view": { "stroke": "lightgray" },
               "mark": "point",
-
               "encoding": {
                 "y": {
                   "field": "sin",
@@ -75,16 +60,24 @@
     {
       "spacing": 10,
       "columns": 2,
-      "separator": {
-        "color": "#bbb",
-        "strokeDash": [3, 3],
-        "size": 1
-      },
+      "separator": { "color": "#bbb", "strokeDash": [3, 3], "size": 1 },
       "concat": [
-        { "mark": "point", "view": { "stroke": "lightgray" } },
-        { "mark": "point", "view": { "stroke": "lightgray" } },
-        { "mark": "point", "view": { "stroke": "lightgray" } },
-        { "mark": "point", "view": { "stroke": "lightgray" } }
+        {
+          "mark": "point",
+          "view": { "stroke": "lightgray" }
+        },
+        {
+          "mark": "point",
+          "view": { "stroke": "lightgray" }
+        },
+        {
+          "mark": "point",
+          "view": { "stroke": "lightgray" }
+        },
+        {
+          "mark": "point",
+          "view": { "stroke": "lightgray" }
+        }
       ]
     }
   ]

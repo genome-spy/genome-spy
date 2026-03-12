@@ -1,6 +1,8 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "A bar chart with highlighting on hover and selecting on click. (Inspired by Tableau's interaction style.)",
+
   "data": {
     "values": [
       { "a": "A", "b": 28 },
@@ -14,57 +16,33 @@
       { "a": "I", "b": 52 }
     ]
   },
+
   "params": [
     {
       "name": "highlight",
-      "select": {
-        "type": "point",
-        "on": "pointerover"
-      }
+      "select": { "type": "point", "on": "pointerover" }
     },
-    {
-      "name": "select",
-      "select": "point"
-    }
+    { "name": "select", "select": "point" }
   ],
-  "mark": {
-    "type": "rect",
-    "fill": "#4C78A8",
-    "stroke": "black"
-  },
+
+  "mark": { "type": "rect", "fill": "#4C78A8", "stroke": "black" },
+
   "encoding": {
     "x": {
       "field": "a",
       "type": "ordinal",
-      "scale": {
-        "type": "band",
-        "padding": 0.2
-      }
+      "scale": { "type": "band", "padding": 0.2 }
     },
-    "y": {
-      "field": "b",
-      "type": "quantitative"
-    },
+    "y": { "field": "b", "type": "quantitative" },
     "fillOpacity": {
       "value": 0.3,
-      "condition": {
-        "param": "select",
-        "value": 1
-      }
+      "condition": { "param": "select", "value": 1 }
     },
     "strokeWidth": {
       "value": 0,
       "condition": [
-        {
-          "param": "select",
-          "value": 2,
-          "empty": false
-        },
-        {
-          "param": "highlight",
-          "value": 1,
-          "empty": false
-        }
+        { "param": "select", "value": 2, "empty": false },
+        { "param": "highlight", "value": 1, "empty": false }
       ]
     }
   }

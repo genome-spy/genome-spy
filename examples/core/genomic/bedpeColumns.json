@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": "BEDPE example with explicit format.columns for a headerless file.",
+
   "genome": { "name": "hg38" },
+
   "data": {
     "url": "data/eventsCustomColumns.tsv",
     "format": {
@@ -20,18 +23,18 @@
       ]
     }
   },
+
   "transform": [
-    {
-      "type": "filter",
-      "expr": "datum.start1 != null && datum.start2 != null"
-    }
+    { "type": "filter", "expr": "datum.start1 != null && datum.start2 != null" }
   ],
+
   "mark": {
     "type": "link",
     "linkShape": "dome",
     "orient": "vertical",
     "clampApex": true
   },
+
   "encoding": {
     "x": { "chrom": "chrom1", "pos": "start1", "type": "locus" },
     "x2": { "chrom": "chrom2", "pos": "start2" },

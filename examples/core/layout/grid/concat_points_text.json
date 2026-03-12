@@ -5,6 +5,7 @@
     "scale": { "y": "independent", "x": "shared" },
     "axis": { "x": "shared" }
   },
+
   "vconcat": [
     {
       "height": 200,
@@ -13,10 +14,7 @@
       "params": [
         {
           "name": "pointSelection",
-          "select": {
-            "type": "point",
-            "on": "pointerover"
-          }
+          "select": { "type": "point", "on": "pointerover" }
         }
       ],
       "data": {
@@ -30,10 +28,7 @@
           "as": "y"
         }
       ],
-      "mark": {
-        "type": "point",
-        "minPickingSize": 3
-      },
+      "mark": { "type": "point", "minPickingSize": 3 },
       "encoding": {
         "x": {
           "field": "x",
@@ -58,11 +53,7 @@
         },
         "opacity": {
           "value": 0.6,
-          "condition": {
-            "param": "pointSelection",
-            "empty": false,
-            "value": 1
-          }
+          "condition": { "param": "pointSelection", "empty": false, "value": 1 }
         }
       }
     },
@@ -72,73 +63,38 @@
       "params": [
         {
           "name": "textSelection",
-          "select": {
-            "type": "point",
-            "on": "pointerover"
-          }
+          "select": { "type": "point", "on": "pointerover" }
         }
       ],
       "data": {
         "sequence": { "start": 0, "stop": 300 }
       },
       "transform": [
-        {
-          "type": "formula",
-          "expr": "floor(random() * 200000)",
-          "as": "x"
-        },
-        {
-          "type": "formula",
-          "expr": "floor(random() * 1000)",
-          "as": "y"
-        },
+        { "type": "formula", "expr": "floor(random() * 200000)", "as": "x" },
+        { "type": "formula", "expr": "floor(random() * 1000)", "as": "y" },
         {
           "type": "formula",
           "expr": "'' + datum.x + 'x' + datum.y",
           "as": "text"
         },
-        {
-          "type": "formula",
-          "expr": "pow(40, random())",
-          "as": "size"
-        }
+        { "type": "formula", "expr": "pow(40, random())", "as": "size" }
       ],
       "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "buildIndex": false
-        },
-        "y": {
-          "field": "y",
-          "type": "quantitative"
-        },
-        "text": {
-          "field": "text"
-        },
+        "x": { "field": "x", "type": "quantitative", "buildIndex": false },
+        "y": { "field": "y", "type": "quantitative" },
+        "text": { "field": "text" },
         "size": {
           "field": "size",
           "type": "quantitative",
-          "scale": {
-            "range": [5, 200]
-          }
+          "scale": { "range": [5, 200] }
         },
         "opacity": {
           "field": "size",
           "type": "quantitative",
-          "scale": {
-            "range": [1, 0]
-          },
-          "condition": {
-            "param": "textSelection",
-            "value": 1,
-            "empty": false
-          }
+          "scale": { "range": [1, 0] },
+          "condition": { "param": "textSelection", "value": 1, "empty": false }
         },
-        "angle": {
-          "field": "x",
-          "type": "quantitative"
-        },
+        "angle": { "field": "x", "type": "quantitative" },
         "color": {
           "value": "black",
           "condition": {
@@ -148,12 +104,7 @@
           }
         }
       },
-
-      "mark": {
-        "type": "text",
-        "align": "center",
-        "baseline": "middle"
-      }
+      "mark": { "type": "text", "align": "center", "baseline": "middle" }
     }
   ]
 }

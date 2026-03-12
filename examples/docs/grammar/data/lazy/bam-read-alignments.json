@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "BAM read alignment example.",
+
   "assembly": "hg18",
+
   "data": {
     "lazy": {
       "type": "bam",
@@ -9,17 +12,16 @@
       "windowSize": 30000
     }
   },
+
   "resolve": {
-    "scale": {
-      "x": "shared"
-    }
+    "scale": { "x": "shared" }
   },
+
   "spacing": 5,
+
   "vconcat": [
     {
-      "view": {
-        "stroke": "lightgray"
-      },
+      "view": { "stroke": "lightgray" },
       "height": 40,
       "transform": [
         {
@@ -38,27 +40,14 @@
           "type": "locus",
           "axis": null
         },
-        "x2": {
-          "chrom": "chrom",
-          "pos": "end"
-        },
-        "y": {
-          "field": "coverage",
-          "type": "quantitative"
-        }
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": { "field": "coverage", "type": "quantitative" }
       }
     },
     {
-      "view": {
-        "stroke": "lightgray"
-      },
+      "view": { "stroke": "lightgray" },
       "transform": [
-        {
-          "type": "pileup",
-          "start": "start",
-          "end": "end",
-          "as": "_lane"
-        }
+        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
       ],
       "encoding": {
         "x": {
@@ -68,29 +57,17 @@
           "axis": {},
           "scale": {
             "domain": [
-              {
-                "chrom": "chr21",
-                "pos": 33037317
-              },
-              {
-                "chrom": "chr21",
-                "pos": 33039137
-              }
+              { "chrom": "chr21", "pos": 33037317 },
+              { "chrom": "chr21", "pos": 33039137 }
             ]
           }
         },
-        "x2": {
-          "chrom": "chrom",
-          "pos": "end"
-        },
+        "x2": { "chrom": "chrom", "pos": "end" },
         "y": {
           "field": "_lane",
           "type": "index",
           "scale": {
-            "domain": [
-              0,
-              60
-            ],
+            "domain": [0, 60],
             "padding": 0.3,
             "reverse": true,
             "zoom": false
@@ -99,16 +76,7 @@
         "color": {
           "field": "strand",
           "type": "nominal",
-          "scale": {
-            "domain": [
-              "+",
-              "-"
-            ],
-            "range": [
-              "crimson",
-              "orange"
-            ]
-          }
+          "scale": { "domain": ["+", "-"], "range": ["crimson", "orange"] }
         }
       },
       "mark": "rect"

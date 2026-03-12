@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
   "description": [
     "Two-way brushing and linking with hierarchical params.",
     "The top view pushes interval selection to an outer param.",
@@ -16,6 +17,7 @@
   "data": {
     "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
   },
+
   "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
 
   "vconcat": [
@@ -24,10 +26,7 @@
       "params": [
         {
           "name": "brush",
-          "select": {
-            "type": "interval",
-            "encodings": ["x"]
-          },
+          "select": { "type": "interval", "encodings": ["x"] },
           "push": "outer"
         }
       ],

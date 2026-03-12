@@ -2,24 +2,20 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "data": {
-    "sequence": {
-      "start": 0,
-      "stop": 100
-    }
+    "sequence": { "start": 0, "stop": 100 }
   },
 
   "transform": [
     { "type": "formula", "expr": "random()", "as": "x" },
     { "type": "formula", "expr": "random()", "as": "y" },
     { "type": "formula", "expr": "1 / (random() + 0.1)", "as": "z" },
-    { "type": "collect", "sort": { "field": "z" } }
+    {
+      "type": "collect",
+      "sort": { "field": "z" }
+    }
   ],
 
-  "mark": {
-    "type": "text",
-    "text": "Zoom!",
-    "font": "Teko"
-  },
+  "mark": { "type": "text", "text": "Zoom!", "font": "Teko" },
 
   "encoding": {
     "x": {

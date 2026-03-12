@@ -2,13 +2,12 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "width": 600,
+
   "height": 600,
 
   "description": "Check that the rules align to the pixel grid perfectly",
 
-  "view": {
-    "stroke": "#d0d0d0"
-  },
+  "view": { "stroke": "#d0d0d0" },
 
   "data": {
     "sequence": { "start": 0, "stop": 600, "step": 10 }

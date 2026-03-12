@@ -3,20 +3,11 @@
 
   "description": "Shared x-axis and scale, fixed view heights.",
 
-  "data": {
-    "url": "data/sincos.csv"
-  },
+  "data": { "url": "data/sincos.csv" },
 
   "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "title": null
-    },
-    "y": {
-      "field": "sin",
-      "type": "quantitative"
-    }
+    "x": { "field": "x", "type": "quantitative", "title": null },
+    "y": { "field": "sin", "type": "quantitative" }
   },
 
   "resolve": {

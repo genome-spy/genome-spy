@@ -2,10 +2,14 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "description": "A three-stage semantic zoom using the multiscale composition operator.",
+
   "view": { "stroke": "lightgray" },
+
   "height": 120,
 
-  "resolve": { "scale": { "x": "shared" } },
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
 
   "encoding": {
     "x": {
@@ -13,22 +17,17 @@
       "type": "quantitative",
       "scale": { "zoom": true }
     },
-    "y": {
-      "field": "y",
-      "type": "quantitative"
-    }
+    "y": { "field": "y", "type": "quantitative" }
   },
 
   "stops": [1, 0.1],
 
   "multiscale": [
     {
-      "data": { "values": [{}] },
-      "mark": {
-        "type": "text",
-        "text": "Zoom in to see details",
-        "size": 16
+      "data": {
+        "values": [{}]
       },
+      "mark": { "type": "text", "text": "Zoom in to see details", "size": 16 },
       "encoding": {
         "x": { "value": 0.5 },
         "y": { "value": 0.5 },
@@ -40,16 +39,8 @@
         "sequence": { "start": 0, "stop": 4000, "step": 16, "as": "x" }
       },
       "transform": [
-        {
-          "type": "formula",
-          "expr": "sin(datum.x / 40)",
-          "as": "y"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.x + 16",
-          "as": "x2"
-        }
+        { "type": "formula", "expr": "sin(datum.x / 40)", "as": "y" },
+        { "type": "formula", "expr": "datum.x + 16", "as": "x2" }
       ],
       "mark": "rect",
       "encoding": {

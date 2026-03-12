@@ -8,21 +8,12 @@
 
   "params": [{ "name": "brush" }],
 
-  "data": {
-    "values": ["A", "B", "C", "D", "E", "F", "G"]
-  },
+  "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },
+
   "transform": [
     { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
-    {
-      "type": "formula",
-      "expr": "datum.a + round(random() * 60)",
-      "as": "b"
-    },
-    {
-      "type": "formula",
-      "expr": "'Hello ' + floor(datum.a)",
-      "as": "text"
-    }
+    { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" },
+    { "type": "formula", "expr": "'Hello ' + floor(datum.a)", "as": "text" }
   ],
 
   "resolve": {
@@ -39,9 +30,7 @@
           "select": { "type": "interval", "encodings": ["x"] }
         }
       ],
-
       "view": { "stroke": "lightgray" },
-
       "encoding": {
         "x": {
           "field": "a",
@@ -95,21 +84,15 @@
     {
       "view": { "stroke": "lightgray" },
       "width": 40,
-
       "mark": "text",
-
       "transform": [
         { "type": "collect" },
         {
           "type": "filter",
           "param": "brush",
-          "fields": {
-            "x": "a",
-            "x2": "b"
-          }
+          "fields": { "x": "a", "x2": "b" }
         }
       ],
-
       "encoding": {
         "text": { "field": "data" },
         "y": { "field": "data", "type": "ordinal" },

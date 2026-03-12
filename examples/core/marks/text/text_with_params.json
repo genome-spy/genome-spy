@@ -5,20 +5,12 @@
     {
       "name": "size",
       "value": 50,
-      "bind": {
-        "input": "range",
-        "min": 1,
-        "max": 300
-      }
+      "bind": { "input": "range", "min": 1, "max": 300 }
     },
     {
       "name": "angle",
       "value": 0,
-      "bind": {
-        "input": "range",
-        "min": 0,
-        "max": 360
-      }
+      "bind": { "input": "range", "min": 0, "max": 360 }
     },
     {
       "name": "text",
@@ -36,7 +28,9 @@
     }
   ],
 
-  "data": { "values": [{}] },
+  "data": {
+    "values": [{}]
+  },
 
   "mark": {
     "type": "text",

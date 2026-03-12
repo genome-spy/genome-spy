@@ -1,13 +1,12 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Coverage and pileup transform example.",
+
   "data": {
-    "sequence": {
-      "start": 1,
-      "stop": 100,
-      "as": "start"
-    }
+    "sequence": { "start": 1, "stop": 100, "as": "start" }
   },
+
   "transform": [
     {
       "type": "formula",
@@ -15,62 +14,35 @@
       "as": "end"
     }
   ],
+
   "resolve": {
-    "scale": {
-      "x": "shared"
-    }
+    "scale": { "x": "shared" }
   },
+
   "vconcat": [
     {
       "transform": [
-        {
-          "type": "coverage",
-          "start": "start",
-          "end": "end",
-          "as": "coverage"
-        }
+        { "type": "coverage", "start": "start", "end": "end", "as": "coverage" }
       ],
       "mark": "rect",
       "encoding": {
-        "x": {
-          "field": "start",
-          "type": "index"
-        },
-        "x2": {
-          "field": "end"
-        },
-        "y": {
-          "field": "coverage",
-          "type": "quantitative"
-        }
+        "x": { "field": "start", "type": "index" },
+        "x2": { "field": "end" },
+        "y": { "field": "coverage", "type": "quantitative" }
       }
     },
     {
       "transform": [
-        {
-          "type": "pileup",
-          "start": "start",
-          "end": "end",
-          "as": "lane"
-        }
+        { "type": "pileup", "start": "start", "end": "end", "as": "lane" }
       ],
       "mark": "rect",
       "encoding": {
-        "x": {
-          "field": "start",
-          "type": "index"
-        },
-        "x2": {
-          "field": "end"
-        },
+        "x": { "field": "start", "type": "index" },
+        "x2": { "field": "end" },
         "y": {
           "field": "lane",
           "type": "index",
-          "scale": {
-            "padding": 0.2,
-            "reverse": true,
-            "zoom": false
-          }
+          "scale": { "padding": 0.2, "reverse": true, "zoom": false }
         }
       }
     }

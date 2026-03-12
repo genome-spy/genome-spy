@@ -11,29 +11,21 @@
   },
 
   "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative"
-    },
+    "x": { "field": "x", "type": "quantitative" },
     "size": {
-      "condition": {
-        "param": "brush",
-        "value": 80,
-        "empty": false
-      },
+      "condition": { "param": "brush", "value": 80, "empty": false },
       "value": 10
     }
   },
 
-  "resolve": { "scale": { "x": "shared" } },
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
 
   "params": [
     {
       "name": "brush",
-      "select": {
-        "type": "interval",
-        "encodings": ["x"]
-      }
+      "select": { "type": "interval", "encodings": ["x"] }
     }
   ],
 

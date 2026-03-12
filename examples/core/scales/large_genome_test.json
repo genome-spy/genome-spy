@@ -6,14 +6,8 @@
   "genome": {
     "name": "custom",
     "contigs": [
-      {
-        "name": "huge1",
-        "size": 20000000000
-      },
-      {
-        "name": "huge2",
-        "size": 40000000000
-      }
+      { "name": "huge1", "size": 20000000000 },
+      { "name": "huge2", "size": 40000000000 }
     ]
   },
 
@@ -25,14 +19,8 @@
   },
 
   "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "pos",
-      "type": "locus"
-    },
-    "text": {
-      "field": "pos"
-    }
+    "x": { "chrom": "chrom", "pos": "pos", "type": "locus" },
+    "text": { "field": "pos" }
   },
 
   "mark": "text"

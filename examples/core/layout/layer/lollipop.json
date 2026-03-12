@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "name": "The Root",
+
   "description": "Lollipop plot example",
 
   "view": { "stroke": "lightgray" },
@@ -18,7 +19,6 @@
     },
     {
       "name": "Arrows",
-
       "data": {
         "sequence": {
           "start": 0,
@@ -27,11 +27,9 @@
           "as": "x"
         }
       },
-
       "transform": [
         { "type": "formula", "expr": "sin(datum.x)", "as": "sin(x)" }
       ],
-
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": {
@@ -41,25 +39,14 @@
         },
         "color": { "field": "sin(x)", "type": "quantitative" }
       },
-
       "layer": [
         {
           "name": "Arrow shafts",
-
-          "mark": {
-            "type": "rule",
-            "size": 3
-          }
+          "mark": { "type": "rule", "size": 3 }
         },
         {
           "name": "Arrowheads",
-
-          "mark": {
-            "type": "point",
-            "size": 500,
-            "strokeWidth": 0
-          },
-
+          "mark": { "type": "point", "size": 500, "strokeWidth": 0 },
           "encoding": {
             "shape": {
               "field": "sin(x)",

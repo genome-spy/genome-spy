@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "resolve": { "scale": { "x": "shared" } },
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
 
   "vconcat": [
     {
@@ -42,9 +44,7 @@
     },
     {
       "height": 40,
-      "data": {
-        "values": [0, 2, 4, 7, 8, 10, 12]
-      },
+      "data": { "values": [0, 2, 4, 7, 8, 10, 12] },
       "encoding": {
         "x": { "field": "data", "type": "index" }
       },
@@ -58,10 +58,7 @@
         {
           "mark": "text",
           "encoding": {
-            "text": {
-              "field": "data",
-              "type": "quantitative"
-            }
+            "text": { "field": "data", "type": "quantitative" }
           }
         }
       ]

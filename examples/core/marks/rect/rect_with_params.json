@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "padding": 20,
+
   "view": {
     "stroke": "lightgray",
     "shadowOpacity": 0.2,
@@ -49,10 +50,7 @@
     {
       "name": "shadowColor",
       "value": "black",
-      "bind": {
-        "input": "radio",
-        "options": ["black", "red"]
-      }
+      "bind": { "input": "radio", "options": ["black", "red"] }
     },
     {
       "name": "shadowBlur",
@@ -88,25 +86,16 @@
       "transform": [
         { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
       ],
-
       "layer": [
         {
-          "mark": {
-            "type": "rule",
-            "strokeDash": [3, 3]
-          },
-
+          "mark": { "type": "rule", "strokeDash": [3, 3] },
           "encoding": {
             "x": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
           }
         },
         {
-          "mark": {
-            "type": "rule",
-            "strokeDash": [1, 5, 3, 5]
-          },
-
+          "mark": { "type": "rule", "strokeDash": [1, 5, 3, 5] },
           "encoding": {
             "y": { "field": "z", "type": "quantitative" },
             "color": { "value": "darkgray" }
@@ -129,7 +118,6 @@
         "shadowOffsetX": { "expr": "shadowOffsetX" },
         "shadowOffsetY": { "expr": "shadowOffsetY" }
       },
-
       "encoding": {
         "x": {
           "field": "x",

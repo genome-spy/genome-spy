@@ -1,14 +1,16 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "GFF3 gene annotation example.",
+
   "assembly": "hg38",
-  "height": {
-    "step": 28
-  },
+
+  "height": { "step": 28 },
+
   "viewportHeight": "container",
-  "view": {
-    "stroke": "lightgray"
-  },
+
+  "view": { "stroke": "lightgray" },
+
   "data": {
     "lazy": {
       "type": "gff3",
@@ -17,29 +19,19 @@
       "debounceDomainChange": 300
     }
   },
+
   "transform": [
-    {
-      "type": "flatten"
-    },
+    { "type": "flatten" },
     {
       "type": "formula",
       "expr": "datum.attributes.gene_name",
       "as": "gene_name"
     },
+    { "type": "flatten", "fields": ["child_features"] },
     {
       "type": "flatten",
-      "fields": [
-        "child_features"
-      ]
-    },
-    {
-      "type": "flatten",
-      "fields": [
-        "child_features"
-      ],
-      "as": [
-        "child_feature"
-      ]
+      "fields": ["child_features"],
+      "as": ["child_feature"]
     },
     {
       "type": "project",
@@ -78,21 +70,11 @@
     },
     {
       "type": "collect",
-      "sort": {
-        "field": [
-          "seq_id",
-          "start",
-          "transcript_id"
-        ]
-      }
+      "sort": { "field": ["seq_id", "start", "transcript_id"] }
     },
-    {
-      "type": "pileup",
-      "start": "start",
-      "end": "end",
-      "as": "_lane"
-    }
+    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
   ],
+
   "encoding": {
     "x": {
       "chrom": "seq_id",
@@ -101,36 +83,25 @@
       "type": "locus",
       "scale": {
         "domain": [
-          {
-            "chrom": "chr5",
-            "pos": 177482500
-          },
-          {
-            "chrom": "chr5",
-            "pos": 177518000
-          }
+          { "chrom": "chr5", "pos": 177482500 },
+          { "chrom": "chr5", "pos": 177518000 }
         ]
       }
     },
-    "x2": {
-      "chrom": "seq_id",
-      "pos": "end"
-    },
+    "x2": { "chrom": "seq_id", "pos": "end" },
     "y": {
       "field": "_lane",
       "type": "index",
       "scale": {
         "zoom": false,
         "reverse": true,
-        "domain": [
-          0,
-          40
-        ],
+        "domain": [0, 40],
         "padding": 0.5
       },
       "axis": null
     }
   },
+
   "layer": [
     {
       "name": "gencode-transcript",
@@ -147,31 +118,18 @@
         },
         {
           "name": "gencode-transcript-body",
-          "mark": {
-            "type": "rule",
-            "color": "#b0b0b0",
-            "tooltip": null
-          }
+          "mark": { "type": "rule", "color": "#b0b0b0", "tooltip": null }
         }
       ]
     },
     {
       "name": "gencode-exons",
       "transform": [
+        { "type": "flatten", "fields": ["_child_features"] },
         {
           "type": "flatten",
-          "fields": [
-            "_child_features"
-          ]
-        },
-        {
-          "type": "flatten",
-          "fields": [
-            "_child_features"
-          ],
-          "as": [
-            "child_feature"
-          ]
+          "fields": ["_child_features"],
+          "as": ["child_feature"]
         },
         {
           "type": "project",
@@ -200,12 +158,7 @@
       "layer": [
         {
           "title": "GENCODE exon",
-          "transform": [
-            {
-              "type": "filter",
-              "expr": "datum.type == 'exon'"
-            }
-          ],
+          "transform": [{ "type": "filter", "expr": "datum.type == 'exon'" }],
           "mark": {
             "type": "rect",
             "minWidth": 0.5,
@@ -236,16 +189,8 @@
               "field": "type",
               "type": "nominal",
               "scale": {
-                "domain": [
-                  "five_prime_UTR",
-                  "CDS",
-                  "three_prime_UTR"
-                ],
-                "range": [
-                  "#83bcb6",
-                  "#ffbf79",
-                  "#d6a5c9"
-                ]
+                "domain": ["five_prime_UTR", "CDS", "three_prime_UTR"],
+                "range": ["#83bcb6", "#ffbf79", "#d6a5c9"]
               }
             }
           }
@@ -272,9 +217,7 @@
             "tooltip": null
           },
           "encoding": {
-            "text": {
-              "field": "label"
-            }
+            "text": { "field": "label" }
           }
         }
       ]
@@ -296,9 +239,7 @@
         "color": "#505050"
       },
       "encoding": {
-        "text": {
-          "field": "label"
-        }
+        "text": { "field": "label" }
       }
     }
   ]

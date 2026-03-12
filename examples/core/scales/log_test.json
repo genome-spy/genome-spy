@@ -2,25 +2,17 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "data": {
-    "sequence": {
-      "start": 1,
-      "stop": 100,
-      "step": 5
-    }
+    "sequence": { "start": 1, "stop": 100, "step": 5 }
   },
+
   "mark": "point",
+
   "encoding": {
-    "x": {
-      "field": "data",
-      "type": "quantitative"
-    },
+    "x": { "field": "data", "type": "quantitative" },
     "y": {
       "field": "data",
       "type": "quantitative",
-      "scale": {
-        "type": "log",
-        "domain": [1, 10000]
-      }
+      "scale": { "type": "log", "domain": [1, 10000] }
     }
   }
 }

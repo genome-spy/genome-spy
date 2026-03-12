@@ -1,9 +1,8 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "data": {
-    "url": "data/sincos.csv"
-  },
+  "data": { "url": "data/sincos.csv" },
+
   "encoding": {
     "y": {
       "field": "sin",
@@ -17,9 +16,7 @@
   "hconcat": [
     {
       "columns": 1,
-
       "name": "left",
-
       "resolve": {
         "scale": { "x": "shared" },
         "axis": { "x": "shared" }
@@ -28,22 +25,16 @@
         "x": {
           "field": "x",
           "type": "quantitative",
-          "axis": {
-            "orient": "top",
-            "grid": true
-          }
+          "axis": { "orient": "top", "grid": true }
         }
       },
-
       "concat": [
         {
           "columns": 1,
-
           "resolve": {
             "scale": { "x": "shared" },
             "axis": { "x": "shared" }
           },
-
           "concat": [
             {
               "view": { "stroke": "lightgray" },
@@ -52,7 +43,6 @@
             {
               "view": { "stroke": "lightgray" },
               "mark": "point",
-
               "encoding": {
                 "y": {
                   "field": "sin",
@@ -71,34 +61,25 @@
     },
     {
       "columns": 1,
-
       "name": "right",
-
       "resolve": {
         "scale": { "x": "shared" },
         "axis": { "x": "shared" }
       },
-
       "encoding": {
         "x": {
           "field": "x",
           "type": "quantitative",
-          "axis": {
-            "orient": "bottom",
-            "grid": true
-          }
+          "axis": { "orient": "bottom", "grid": true }
         }
       },
-
       "concat": [
         {
           "columns": 1,
-
           "resolve": {
             "scale": { "x": "shared" },
             "axis": { "x": "shared" }
           },
-
           "concat": [
             {
               "view": { "stroke": "lightgray" },
@@ -107,7 +88,6 @@
             {
               "view": { "stroke": "lightgray" },
               "mark": "point",
-
               "encoding": {
                 "y": {
                   "field": "sin",

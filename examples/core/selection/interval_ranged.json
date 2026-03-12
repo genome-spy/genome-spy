@@ -10,13 +10,13 @@
     }
   ],
 
-  "data": {
-    "values": ["A", "B", "C", "D", "E", "F", "G"]
-  },
+  "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },
+
   "transform": [
     { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
     { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" }
   ],
+
   "encoding": {
     "x": {
       "field": "a",
@@ -31,6 +31,7 @@
       "scale": { "padding": 0.3 }
     }
   },
+
   "layer": [
     {
       "mark": "rect",
@@ -49,9 +50,7 @@
         "paddingX": 5
       },
       "encoding": {
-        "text": {
-          "expr": "'Hello ' + floor(datum.a)"
-        },
+        "text": { "expr": "'Hello ' + floor(datum.a)" },
         "size": { "value": 12 },
         "color": {
           "condition": { "param": "brush", "value": "white", "empty": false },

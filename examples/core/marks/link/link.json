@@ -21,7 +21,11 @@
   },
 
   "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
     "x2": { "field": "x2" },
     "y": {
       "field": "y",

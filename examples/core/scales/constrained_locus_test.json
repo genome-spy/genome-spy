@@ -5,8 +5,12 @@
 
   "genome": { "name": "hg38" },
 
-  "data": { "values": [{ "chr": 5, "pos": 50000000 }] },
+  "data": {
+    "values": [{ "chr": 5, "pos": 50000000 }]
+  },
+
   "mark": "point",
+
   "encoding": {
     "x": {
       "chrom": "chr",
@@ -14,7 +18,9 @@
       "type": "locus",
       "scale": {
         "domain": [{ "chrom": "chr5" }],
-        "zoom": { "extent": [{ "chrom": "chr3" }, { "chrom": "chr6" }] }
+        "zoom": {
+          "extent": [{ "chrom": "chr3" }, { "chrom": "chr6" }]
+        }
       }
     }
   }

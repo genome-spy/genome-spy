@@ -1,55 +1,34 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
   "description": "Text mark example positioned inside ranges.",
-  "data": {
-    "values": [
-      "A",
-      "B",
-      "C",
-      "D",
-      "E",
-      "F",
-      "G"
-    ]
-  },
+
+  "data": { "values": ["A", "B", "C", "D", "E", "F", "G"] },
+
   "transform": [
-    {
-      "type": "formula",
-      "expr": "round(random() * 100)",
-      "as": "a"
-    },
-    {
-      "type": "formula",
-      "expr": "datum.a + round(random() * 60)",
-      "as": "b"
-    }
+    { "type": "formula", "expr": "round(random() * 100)", "as": "a" },
+    { "type": "formula", "expr": "datum.a + round(random() * 60)", "as": "b" }
   ],
+
   "encoding": {
     "x": {
       "field": "a",
       "type": "quantitative",
-      "scale": {
-        "zoom": true
-      }
+      "scale": { "zoom": true }
     },
-    "x2": {
-      "field": "b"
-    },
+    "x2": { "field": "b" },
     "y": {
       "field": "data",
       "type": "nominal",
-      "scale": {
-        "padding": 0.3
-      }
+      "scale": { "padding": 0.3 }
     }
   },
+
   "layer": [
     {
       "mark": "rect",
       "encoding": {
-        "color": {
-          "value": "#eaeaea"
-        }
+        "color": { "value": "#eaeaea" }
       }
     },
     {
@@ -60,12 +39,8 @@
         "paddingX": 5
       },
       "encoding": {
-        "text": {
-          "expr": "'Hello ' + floor(datum.a)"
-        },
-        "size": {
-          "value": 12
-        }
+        "text": { "expr": "'Hello ' + floor(datum.a)" },
+        "size": { "value": 12 }
       }
     }
   ]
