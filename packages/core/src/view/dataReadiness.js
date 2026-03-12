@@ -1,5 +1,5 @@
 import DataSource from "../data/sources/dataSource.js";
-import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import UnitView from "./unitView.js";
 
 /**
@@ -215,14 +215,14 @@ export function awaitSubtreeLazyReady(
 /**
  * @param {View} subtreeRoot
  * @param {(view: View) => boolean} [viewFilter]
- * @returns {Set<SingleAxisWindowedSource>}
+ * @returns {Set<SingleAxisLazySource>}
  */
 function collectLazyDataSources(subtreeRoot, viewFilter) {
     const shouldConsiderView =
         viewFilter ??
         ((/** @type {View} */ view) => view.isConfiguredVisible());
 
-    /** @type {Set<SingleAxisWindowedSource>} */
+    /** @type {Set<SingleAxisLazySource>} */
     const dataSources = new Set();
 
     subtreeRoot.visit((view) => {
@@ -247,7 +247,7 @@ function collectLazyDataSources(subtreeRoot, viewFilter) {
         }
 
         const dataSource = current.flowHandle.dataSource;
-        if (!(dataSource instanceof SingleAxisWindowedSource)) {
+        if (!(dataSource instanceof SingleAxisLazySource)) {
             return;
         }
 
@@ -258,7 +258,7 @@ function collectLazyDataSources(subtreeRoot, viewFilter) {
 }
 
 /**
- * @param {SingleAxisWindowedSource} dataSource
+ * @param {SingleAxisLazySource} dataSource
  * @param {DataReadinessRequest | undefined} readinessRequest
  */
 function isLazySourceReady(dataSource, readinessRequest) {

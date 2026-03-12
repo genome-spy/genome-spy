@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
-import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
+import SingleAxisLazySource from "../data/sources/lazy/singleAxisLazySource.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -54,7 +54,7 @@ function createLazySubtree(options = {}) {
     const unitView = Object.create(UnitView.prototype);
     unitView.isConfiguredVisible = () => visible;
 
-    const dataSource = Object.create(SingleAxisWindowedSource.prototype);
+    const dataSource = Object.create(SingleAxisLazySource.prototype);
     dataSource.channel = "x";
     dataSource.scaleResolution = {
         getDomain: () => [0, 10],

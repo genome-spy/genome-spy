@@ -40,6 +40,7 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
 import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
+import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
@@ -563,7 +564,10 @@ export default class GenomeSpy {
             this.viewRoot.context,
             this.viewRoot,
             undefined,
-            signal
+            signal,
+            (view) =>
+                view.isConfiguredVisible() &&
+                view.getDataSource?.() instanceof SingleAxisWindowedSource
         );
     }
 
