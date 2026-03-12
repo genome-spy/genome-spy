@@ -57,7 +57,7 @@ function createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec) {
     const specPath = `examples/${relativePath}`;
     const pathSegments = relativePath.split("/");
     const sourceGroup = pathSegments[0];
-    const categorySegments = pathSegments.slice(1, -1);
+    const categorySegments = trimTrailingIndex(pathSegments.slice(1, -1));
     const title = getCatalogTitle(spec.description, pathSegments.at(-1));
     const screenshotPath = specPath.replace(/\.json$/, ".png");
     const hasScreenshot = fs.existsSync(absolutePath.replace(/\.json$/, ".png"));
@@ -151,4 +151,11 @@ function humanizeSegment(segment) {
             part.length > 0 ? part[0].toUpperCase() + part.slice(1) : part
         )
         .join(" ");
+}
+
+/**
+ * @param {string[]} segments
+ */
+function trimTrailingIndex(segments) {
+    return segments.at(-1) === "index" ? segments.slice(0, -1) : segments;
 }
