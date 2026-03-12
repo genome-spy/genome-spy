@@ -85,6 +85,24 @@ let exampleCatalogPromise;
 /** @type {ExampleCatalogEntry[]} */
 let exampleCatalog = [];
 
+function shouldAutoOpenExamplePicker() {
+    return window.location.hash === "#examples";
+}
+
+/**
+ * @param {boolean} open
+ */
+function setExamplePickerHash(open) {
+    const url = new URL(window.location.href);
+    const nextHash = open ? "#examples" : "";
+    if (url.hash === nextHash) {
+        return;
+    }
+
+    url.hash = nextHash;
+    window.history.replaceState({}, "", formatPlaygroundUrl(url));
+}
+
 async function loadSpec() {
     const urlParams = new URLSearchParams(window.location.search);
     const specParam = urlParams.get("spec");
@@ -146,12 +164,14 @@ function toggleLayout() {
 
 function openExamplePicker() {
     isExamplePickerOpen = true;
+    setExamplePickerHash(true);
     renderLayout();
     void ensureExampleCatalogLoaded();
 }
 
 function closeExamplePicker() {
     isExamplePickerOpen = false;
+    setExamplePickerHash(false);
     renderLayout();
 }
 
@@ -579,13 +599,27 @@ function renderLayout() {
     render(layoutTemplate(), document.body);
 }
 
+function syncExamplePickerFromUrl() {
+    if (shouldAutoOpenExamplePicker()) {
+        openExamplePicker();
+    } else if (isExamplePickerOpen) {
+        closeExamplePicker();
+    }
+}
+
 setFavicon(favIcon);
 renderLayout();
+syncExamplePickerFromUrl();
 
 loadSpec().then(setEditorSpec);
 
 window.addEventListener("popstate", () => {
+    syncExamplePickerFromUrl();
     loadSpec().then(setEditorSpec);
+});
+
+window.addEventListener("hashchange", () => {
+    syncExamplePickerFromUrl();
 });
 
 window.addEventListener("keydown", (event) => {
