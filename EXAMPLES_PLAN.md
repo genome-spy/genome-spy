@@ -825,6 +825,7 @@ Instead:
 - the catalog generator can look for a sibling `.png` next to each `.json`
 - when present, expose it as the example's screenshot URL
 - when absent, the example still remains valid and listed
+- the playground example picker can render those screenshot URLs as thumbnails without extra per-example metadata
 
 This keeps screenshots optional during rollout.
 
@@ -1022,6 +1023,7 @@ Implementation notes:
 - The planned catalog should be generated from the filesystem at runtime in local dev and emitted with the same shape at build time for docs/playground deployment.
 - The playground now exposes an `Examples` picker backed by that generated catalog.
 - Picker entries use the example `description` as the primary title and group curated specs from `examples/core/` and `examples/docs/`.
+- When a sibling screenshot exists, the picker renders it as a thumbnail card image.
 
 ### Draft commit messages
 

@@ -75,6 +75,8 @@ let exampleCatalogPromise;
  *   category: string;
  *   specPath: string;
  *   specUrl: string;
+ *   screenshotPath: string | null;
+ *   screenshotUrl: string | null;
  *   sourceMode: string;
  * }} ExampleCatalogEntry
  */
@@ -455,6 +457,23 @@ const exampleGroupTemplate = (groupLabel, entries) => html`
                         class="example-picker__entry"
                         @click=${() => openCatalogEntry(entry)}
                     >
+                        ${entry.screenshotUrl
+                            ? html`
+                                  <img
+                                      class="example-picker__entry-image"
+                                      src=${entry.screenshotUrl}
+                                      alt=""
+                                      loading="lazy"
+                                  />
+                              `
+                            : html`
+                                  <div
+                                      class="example-picker__entry-image example-picker__entry-image--placeholder"
+                                      aria-hidden="true"
+                                  >
+                                      <span>${entry.sourceLabel}</span>
+                                  </div>
+                              `}
                         <span class="example-picker__entry-title"
                             >${entry.title}</span
                         >
