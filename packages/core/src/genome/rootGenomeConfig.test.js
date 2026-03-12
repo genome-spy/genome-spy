@@ -10,13 +10,27 @@ describe("resolveRootGenomeConfig", () => {
         });
 
         expect(resolved.defaultAssembly).toBe("hg38");
-        expect(resolved.genomesByName.get("hg38")).toEqual({});
+        expect(resolved.genomesByName.size).toBe(0);
         expect(resolved.deprecationWarning).toContain("deprecated");
         expect(resolved.deprecationWarning).toContain("genomes");
         expect(resolved.deprecationWarning).toContain("assembly");
         expect(resolved.deprecationWarning).toContain(
             '{"genome":{"name":"hg38"}} -> {"assembly":"hg38"}'
         );
+    });
+
+    test("keeps legacy custom genome definitions in the configured map", () => {
+        const resolved = resolveRootGenomeConfig({
+            genome: {
+                name: "custom",
+                contigs: [{ name: "chr1", size: 10 }],
+            },
+        });
+
+        expect(resolved.defaultAssembly).toBe("custom");
+        expect(resolved.genomesByName.get("custom")).toEqual({
+            contigs: [{ name: "chr1", size: 10 }],
+        });
     });
 
     test("rejects mixed legacy and new root genome properties", () => {

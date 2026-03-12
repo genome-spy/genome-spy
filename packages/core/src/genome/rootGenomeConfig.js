@@ -34,8 +34,12 @@ export function resolveRootGenomeConfig(rootConfig) {
 
     if (rootConfig.genome) {
         const { name, ...config } = rootConfig.genome;
+        const hasDefinition = Object.keys(config).length > 0;
         return {
-            genomesByName: new Map([[name, config]]),
+            genomesByName:
+                !hasDefinition && isBuiltInAssembly(name)
+                    ? new Map()
+                    : new Map([[name, config]]),
             defaultAssembly: name,
             deprecationWarning: getLegacyGenomeWarning(),
         };
