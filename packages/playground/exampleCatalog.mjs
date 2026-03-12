@@ -114,7 +114,7 @@ function compareStrings(a, b) {
  */
 function normalizeDescription(description) {
     if (Array.isArray(description)) {
-        return description.join(" ");
+        return firstDescriptionLine(description) ?? "";
     } else if (typeof description === "string") {
         return description;
     } else {
@@ -128,9 +128,7 @@ function normalizeDescription(description) {
  */
 function getCatalogTitle(description, fileName) {
     if (Array.isArray(description)) {
-        const firstLine = description.find(
-            (line) => typeof line === "string" && line.trim().length > 0
-        );
+        const firstLine = firstDescriptionLine(description);
         if (firstLine) {
             return firstLine;
         }
@@ -158,4 +156,13 @@ function humanizeSegment(segment) {
  */
 function trimTrailingIndex(segments) {
     return segments.at(-1) === "index" ? segments.slice(0, -1) : segments;
+}
+
+/**
+ * @param {string[]} description
+ */
+function firstDescriptionLine(description) {
+    return description.find(
+        (line) => typeof line === "string" && line.trim().length > 0
+    );
 }
