@@ -176,6 +176,19 @@ export default class ExamplePicker extends LitElement {
                     var(--playground-border-faint, rgba(23, 32, 51, 0.08));
             }
 
+            img.preview {
+                opacity: 0;
+                transform: translateY(0.35rem) scale(0.985);
+                transition:
+                    opacity 180ms ease,
+                    transform 220ms ease;
+            }
+
+            img.preview.loaded {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
             .placeholder {
                 display: flex;
                 align-items: center;
@@ -233,6 +246,7 @@ export default class ExamplePicker extends LitElement {
         /** @type {ExampleCatalogEntry[]} */
         this.entries = [];
         this.search = "";
+        this.loadedPreviewIds = new Set();
     }
 
     /**
@@ -255,6 +269,7 @@ export default class ExamplePicker extends LitElement {
         }
 
         const groups = this.#getGroups();
+        let entryIndex = 0;
 
         return html`
             <div @click=${this.#close}>
@@ -289,9 +304,15 @@ export default class ExamplePicker extends LitElement {
                                 ? html`<p class="status">
                                       No examples matched the current search.
                                   </p>`
-                                : groups.map(([label, entries]) =>
-                                      this.#renderGroup(label, entries)
-                                  )}
+                                : groups.map(([label, entries]) => {
+                                      const startIndex = entryIndex;
+                                      entryIndex += entries.length;
+                                      return this.#renderGroup(
+                                          label,
+                                          entries,
+                                          startIndex
+                                      );
+                                  })}
                     </div>
                 </aside>
             </div>
@@ -301,13 +322,16 @@ export default class ExamplePicker extends LitElement {
     /**
      * @param {string} label
      * @param {ExampleCatalogEntry[]} entries
+     * @param {number} startIndex
      */
-    #renderGroup(label, entries) {
+    #renderGroup(label, entries, startIndex) {
         return html`
             <section class="group">
                 <h3>${label}</h3>
                 <div class="grid">
-                    ${entries.map((entry) => this.#renderCard(entry))}
+                    ${entries.map((entry, index) =>
+                        this.#renderCard(entry, startIndex + index)
+                    )}
                 </div>
             </section>
         `;
@@ -315,17 +339,24 @@ export default class ExamplePicker extends LitElement {
 
     /**
      * @param {ExampleCatalogEntry} entry
+     * @param {number} ordinal
      */
-    #renderCard(entry) {
+    #renderCard(entry, ordinal) {
+        const eager = ordinal < 8;
+        const isLoaded = this.loadedPreviewIds.has(entry.id);
         return html`
             <button class="card" @click=${() => this.#openEntry(entry)}>
                 ${entry.screenshotUrl
                     ? html`
                           <img
-                              class="preview"
+                              class="preview ${isLoaded ? "loaded" : ""}"
                               src=${entry.screenshotUrl}
                               alt=""
-                              loading="lazy"
+                              loading=${eager ? "eager" : "lazy"}
+                              decoding="async"
+                              fetchpriority=${eager ? "high" : "low"}
+                              @load=${() => this.#markPreviewLoaded(entry.id)}
+                              @error=${() => this.#markPreviewLoaded(entry.id)}
                           />
                       `
                     : html`
@@ -361,12 +392,21 @@ export default class ExamplePicker extends LitElement {
     /**
      * @param {InputEvent} event
      */
-    /**
-     * @param {InputEvent} event
-     */
     #handleSearch(event) {
         const target = /** @type {HTMLInputElement} */ (event.target);
         this.search = target.value;
+    }
+
+    /**
+     * @param {string} entryId
+     */
+    #markPreviewLoaded(entryId) {
+        if (this.loadedPreviewIds.has(entryId)) {
+            return;
+        }
+
+        this.loadedPreviewIds.add(entryId);
+        this.requestUpdate();
     }
 
     /**
