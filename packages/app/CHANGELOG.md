@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
+
+### Bug Fixes
+
+* **app:** refresh hidden summaries on visibility restore ([b0d4490](https://github.com/genome-spy/genome-spy/commit/b0d4490a19f6b2463d6fff2a271a4293f992ad7b)), closes [#342](https://github.com/genome-spy/genome-spy/issues/342) by @tuner
+* **core:** allow page wheel scroll on non-zoomable views, capture when zoomable ([99685dc](https://github.com/genome-spy/genome-spy/commit/99685dc4668585d68b8cde987f0419cf02b7e31b)) by @tuner
+
+### Features
+
+* **core:** add interval brushing-and-linking with selection-driven scale domains ([#343](https://github.com/genome-spy/genome-spy/issues/343)) ([6db392d](https://github.com/genome-spy/genome-spy/commit/6db392d0e3b27287bdeda8be319a78618faaa714)) by @tuner
+* **core:** support multi-assembly locus scales and modernize assembly configuration ([#351](https://github.com/genome-spy/genome-spy/issues/351)) ([ce61278](https://github.com/genome-spy/genome-spy/commit/ce61278ea13160bd982f098aeea096401ee78009)) by @tuner
+* reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
+
 # [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
 ### Features

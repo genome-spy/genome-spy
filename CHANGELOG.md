@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
+
+### Bug Fixes
+
+* **app:** refresh hidden summaries on visibility restore ([b0d4490](https://github.com/genome-spy/genome-spy/commit/b0d4490a19f6b2463d6fff2a271a4293f992ad7b)), closes [#342](https://github.com/genome-spy/genome-spy/issues/342) by @tuner
+* **core:** allow page wheel scroll on non-zoomable views, capture when zoomable ([99685dc](https://github.com/genome-spy/genome-spy/commit/99685dc4668585d68b8cde987f0419cf02b7e31b)) by @tuner
+* **core:** clarify unmapped tooltip color legends ([7138538](https://github.com/genome-spy/genome-spy/commit/7138538fdfc7cca88c6f99d5d01b8ef6d4f62053)) by @tuner
+* **core:** handle non-mouse wheel events in interval zoom ([2dbe533](https://github.com/genome-spy/genome-spy/commit/2dbe533880c72ae0655b604aa58788f6401609f4)) by @tuner
+* **core:** reduce blur at fractional DPR ([76c1ab3](https://github.com/genome-spy/genome-spy/commit/76c1ab3184a6aab7eb5b476c227b870600dfd5ef)), closes [#234](https://github.com/genome-spy/genome-spy/issues/234) by @tuner
+* **core:** skip empty lines in bed and bedpe formats ([a72236c](https://github.com/genome-spy/genome-spy/commit/a72236c86b210a18c4287a1789bdd7281805d190)) by @tuner
+
+### Features
+
+* **core:** add interval brushing-and-linking with selection-driven scale domains ([#343](https://github.com/genome-spy/genome-spy/issues/343)) ([6db392d](https://github.com/genome-spy/genome-spy/commit/6db392d0e3b27287bdeda8be319a78618faaa714)) by @tuner
+* **core:** add zoom snapping to link mark endpoints ([72bf275](https://github.com/genome-spy/genome-spy/commit/72bf275c1e61d566eb94cbf375db77c00d45a24c)), closes [#291](https://github.com/genome-spy/genome-spy/issues/291) by @tuner
+* **core:** multi-touch gesture zooming and panning ([#336](https://github.com/genome-spy/genome-spy/issues/336)) ([b90880f](https://github.com/genome-spy/genome-spy/commit/b90880f6bfb45568289222f81b5402d6cce6360b)) by @tuner
+* **core:** support eager BED and BEDPE in url data ([#349](https://github.com/genome-spy/genome-spy/issues/349)) ([804197e](https://github.com/genome-spy/genome-spy/commit/804197e596eee5253380420dfbb012a805306dee)) by @tuner
+* **core:** support gzip-compressed eager URL data ([#353](https://github.com/genome-spy/genome-spy/issues/353)) ([f077aa2](https://github.com/genome-spy/genome-spy/commit/f077aa2456b572e4ecb84322ed3aa04df2323c8d)) by @tuner
+* **core:** support multi-assembly locus scales and modernize assembly configuration ([#351](https://github.com/genome-spy/genome-spy/issues/351)) ([ce61278](https://github.com/genome-spy/genome-spy/commit/ce61278ea13160bd982f098aeea096401ee78009)) by @tuner
+* reorganize shared examples across docs, playground, and screenshot tooling ([#354](https://github.com/genome-spy/genome-spy/issues/354)) ([0be3e10](https://github.com/genome-spy/genome-spy/commit/0be3e10e4e7bcd3b57dc803e65934d0bcb23008a)) by @tuner
+
+### Performance Improvements
+
+* **core:** disable mipmaps for selection hash textures ([5dc8edc](https://github.com/genome-spy/genome-spy/commit/5dc8edc56b41cf1127cf370a5cb27079b90581b7)) by @tuner
+
 # [0.72.0](https://github.com/genome-spy/genome-spy/compare/v0.71.0...v0.72.0) (2026-02-25)
 
 ### Features
