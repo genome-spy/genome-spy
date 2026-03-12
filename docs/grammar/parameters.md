@@ -105,6 +105,6 @@ Two-way behavior is automatic when the linked scale is zoomable. You can still
 override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
 reference.
 
-#### Two-Way Linking (Interactive)
+##### Two-Way Linking Example
 
 EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250
