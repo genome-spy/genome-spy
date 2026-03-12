@@ -567,7 +567,7 @@ export default class GenomeSpy {
             signal,
             (view) =>
                 view.isConfiguredVisible() &&
-                view.getDataSource?.() instanceof SingleAxisWindowedSource
+                hasWindowedLazyDataSource(view)
         );
     }
 
@@ -673,4 +673,22 @@ export default class GenomeSpy {
         });
         return resolutions;
     }
+}
+
+/**
+ * @param {View} view
+ */
+function hasWindowedLazyDataSource(view) {
+    /** @type {View | null} */
+    let current = view;
+
+    while (current) {
+        const dataSource = current.flowHandle?.dataSource;
+        if (dataSource) {
+            return dataSource instanceof SingleAxisWindowedSource;
+        }
+        current = current.dataParent;
+    }
+
+    return false;
 }
