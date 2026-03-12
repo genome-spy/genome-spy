@@ -114,7 +114,10 @@ class MyPreprocessor(Preprocessor):
         base_url = 'examples/'
         playground_spec_path = '/docs/' + example_path
 
-        attributes = ['base-url="{}"'.format(base_url)]
+        attributes = [
+            'base-url="{}"'.format(base_url),
+            'playground-url="/playground/?spec={}"'.format(playground_spec_path),
+        ]
         if height:
             attributes.append('height="{}"'.format(height))
         if spec_hidden:
@@ -128,11 +131,6 @@ class MyPreprocessor(Preprocessor):
                 '```',
                 '',
                 '</genome-spy-doc-embed></div>',
-                '',
-                '<p class="example-playground-link"><a href="/playground/?spec={}">Open in Playground</a></p>'.format(
-                    playground_spec_path
-                ),
-                '',
             ]
         )
 

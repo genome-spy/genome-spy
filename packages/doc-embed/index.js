@@ -72,14 +72,19 @@ async function embedToDoc(container, conf, baseUrl) {
 export class GenomeSpyDocEmbed extends LitElement {
     static get styles() {
         return css`
-            .show-spec {
-                font-size: 70%;
+            .embed-links {
+                margin: 0.3em 0 0.6em;
                 text-align: center;
-            }
+                font-size: 80%;
 
-            .show-spec a {
-                color: #3f51b5;
-                text-decoration: none;
+                a {
+                    color: var(--md-typeset-a-color);
+                    text-decoration: none;
+                }
+
+                a:hover {
+                    color: var(--md-accent-fg-color);
+                }
             }
         `;
     }
@@ -89,6 +94,7 @@ export class GenomeSpyDocEmbed extends LitElement {
             height: { type: String },
             specHidden: { type: Boolean },
             baseUrl: { type: String, attribute: "base-url" },
+            playgroundUrl: { type: String, attribute: "playground-url" },
         };
     }
 
@@ -97,10 +103,13 @@ export class GenomeSpyDocEmbed extends LitElement {
         this.height = 300;
         this.specHidden = false;
         this.baseUrl = undefined;
+        this.playgroundUrl = undefined;
         this.embedRef = createRef();
     }
 
     render() {
+        const shouldShowLinks = this.playgroundUrl || this.specHidden;
+
         return html`
             <link rel="stylesheet" href=${getBaseUrl() + "/app/style.css"} />
             <div
@@ -110,17 +119,31 @@ export class GenomeSpyDocEmbed extends LitElement {
                 })}
                 ${ref(this.embedRef)}
             ></div>
-            ${this.specHidden
+            ${shouldShowLinks
                 ? html`
-                      <div class="show-spec">
-                          <a
-                              href="#"
-                              @click=${(event) => {
-                                  this.specHidden = false;
-                                  event.preventDefault();
-                              }}
-                              >Show specification</a
-                          >
+                      <div class="embed-links">
+                          ${this.specHidden
+                              ? html`
+                                    <a
+                                        href="#"
+                                        @click=${(event) => {
+                                            this.specHidden = false;
+                                            event.preventDefault();
+                                        }}
+                                        >Show specification</a
+                                    >
+                                `
+                              : nothing}
+                          ${this.playgroundUrl && this.specHidden
+                              ? html` - `
+                              : nothing}
+                          ${this.playgroundUrl
+                              ? html`
+                                    <a href=${this.playgroundUrl}
+                                        >Edit this example in Playground</a
+                                    >
+                                `
+                              : nothing}
                       </div>
                   `
                 : nothing}
