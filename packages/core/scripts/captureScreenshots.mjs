@@ -25,13 +25,14 @@ Options:
   --all                 Capture all curated examples under examples/core and examples/docs.
   --server-url URL      Use an already running server instead of launching packages/core/dev-server.mjs.
   --timeout-ms NUMBER   Max time to wait for visible lazy data before failing the example.
-  --overwrite           Overwrite existing sibling .png files. This is the default.
+  --overwrite           Overwrite existing sibling .png files.
   --help                Show this help text.
 
 Notes:
   - Screenshots are written next to their source specs as sibling .png files.
   - The script excludes app-only examples for now.
   - Remote lazy-data examples require network access during capture.
+  - Explicitly listed examples overwrite by default. Batch runs skip existing screenshots unless --overwrite is provided.
 `;
 
 async function main() {
@@ -46,6 +47,7 @@ async function main() {
         options.examplePaths.length > 0
             ? normalizeRequestedPaths(options.examplePaths)
             : collectCuratedExamplePaths();
+    const overwrite = options.overwrite ?? options.examplePaths.length > 0;
 
     if (!examplePaths.length) {
         throw new Error("No example specs selected for screenshot capture.");
@@ -96,21 +98,36 @@ async function main() {
 
             /** @type {{ examplePath: string, message: string }[]} */
             const failures = [];
+            let writtenCount = 0;
+            let skippedExistingCount = 0;
             for (const examplePath of examplePaths) {
                 currentExamplePath = examplePath;
                 try {
-                    await captureExample(
+                    const result = await captureExample(
                         page,
                         serverOrigin,
                         examplePath,
-                        options.timeoutMs
+                        options.timeoutMs,
+                        overwrite
                     );
+                    if (result === "written") {
+                        writtenCount += 1;
+                    } else if (result === "skipped") {
+                        skippedExistingCount += 1;
+                    }
                 } catch (error) {
                     const message =
                         error instanceof Error ? error.message : String(error);
                     failures.push({ examplePath, message });
                     console.error(`[${examplePath}] ${message}`);
                 }
+            }
+
+            if (!writtenCount && skippedExistingCount) {
+                console.log(
+                    "No screenshots were written because all selected outputs already exist. " +
+                        "Use --overwrite to refresh them."
+                );
             }
 
             if (failures.length) {
@@ -198,8 +215,22 @@ function visit(dir, visitor) {
  * @param {string} serverOrigin
  * @param {string} examplePath
  * @param {number} timeoutMs
+ * @param {boolean} overwrite
+ * @returns {Promise<"written" | "skipped">}
  */
-async function captureExample(page, serverOrigin, examplePath, timeoutMs) {
+async function captureExample(
+    page,
+    serverOrigin,
+    examplePath,
+    timeoutMs,
+    overwrite
+) {
+    const outputPath = getOutputPath(examplePath);
+    if (!overwrite && fs.existsSync(outputPath)) {
+        console.log(`Skipping existing ${examplePath}`);
+        return "skipped";
+    }
+
     const specUrl = `/${examplePath}`;
     const harnessUrl = new URL(screenshotHarnessPath, serverOrigin);
     harnessUrl.searchParams.set("spec", specUrl);
@@ -253,11 +284,15 @@ async function captureExample(page, serverOrigin, examplePath, timeoutMs) {
         return window.__genomeSpyScreenshot.capture();
     });
 
-    const outputPath = path.join(
-        repoRoot,
-        examplePath.replace(/\.json$/, ".png")
-    );
     fs.writeFileSync(outputPath, decodeDataUrl(capture.dataUrl));
+    return "written";
+}
+
+/**
+ * @param {string} examplePath
+ */
+function getOutputPath(examplePath) {
+    return path.join(repoRoot, examplePath.replace(/\.json$/, ".png"));
 }
 
 /**
@@ -365,6 +400,7 @@ function parseArgs(args) {
         examplePaths: [],
         serverUrl: undefined,
         timeoutMs: defaultLazyDataTimeoutMs,
+        overwrite: undefined,
     };
 
     for (let index = 0; index < args.length; index += 1) {
@@ -374,7 +410,7 @@ function parseArgs(args) {
         } else if (arg === "--all") {
             // `--all` is implicit when no positional paths are provided.
         } else if (arg === "--overwrite") {
-            // Overwrite is the default. Keep the flag for CLI readability.
+            options.overwrite = true;
         } else if (arg === "--server-url") {
             const serverUrl = args[index + 1];
             if (!serverUrl) {
