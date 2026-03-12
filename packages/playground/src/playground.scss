@@ -36,6 +36,7 @@ split-panel {
 
 #genome-spy-container,
 #editor-and-others,
+#editor-pane,
 code-editor,
 file-pane {
     position: absolute;
@@ -89,27 +90,6 @@ file-pane {
         flex-shrink: 1;
         font-style: italic;
         font-size: 85%;
-    }
-
-    > .base-url-indicator {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 80%;
-        white-space: nowrap;
-
-        > :first-child {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: min(26rem, 35vw);
-        }
-
-        .tool-button {
-            height: auto;
-            padding: 0.25rem 0.5rem;
-            border-radius: 999px;
-            background-color: rgba(255, 255, 255, 0.12);
-        }
     }
 
     .tool-button {
@@ -171,6 +151,25 @@ file-pane {
             display: none;
         }
     }
+}
+
+#editor-pane {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    inset: 0;
+}
+
+code-editor {
+    position: relative;
+    inset: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+base-url-notice {
+    flex: 0 0 auto;
+    height: 42px;
 }
 
 file-pane {

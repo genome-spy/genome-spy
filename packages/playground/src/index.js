@@ -21,6 +21,7 @@ import schema from "@genome-spy/core/schema.json";
 
 import packageJson from "../package.json";
 import "./splitPanel.js";
+import "./baseUrlNotice.js";
 import "./codeEditor.js";
 import "./examplePicker.js";
 import "./filePane.js";
@@ -56,7 +57,8 @@ let layout = layouts[0];
 let inheritedBaseUrl;
 
 let visTitle = "";
-let effectiveBaseUrlLabel = "";
+/** @type {{ summary: string, detail: string, canClear: boolean } | null} */
+let effectiveBaseUrlInfo = null;
 let isExamplePickerOpen = false;
 let isExampleCatalogLoading = false;
 let exampleCatalogError = "";
@@ -311,6 +313,28 @@ function formatUrlForDisplay(url) {
 }
 
 /**
+ * @param {string | undefined} explicitBaseUrl
+ * @param {string | undefined} sourceBaseUrl
+ */
+function getEffectiveBaseUrlInfo(explicitBaseUrl, sourceBaseUrl) {
+    if (explicitBaseUrl) {
+        return {
+            summary: `Explicit baseUrl: ${formatUrlForDisplay(explicitBaseUrl)}`,
+            detail: "Relative data and import URLs resolve against this base URL.",
+            canClear: true,
+        };
+    } else if (sourceBaseUrl) {
+        return {
+            summary: `Inherited baseUrl: ${formatUrlForDisplay(sourceBaseUrl)}`,
+            detail: "Relative data and import URLs resolve against this base URL until you clear or replace it.",
+            canClear: true,
+        };
+    } else {
+        return null;
+    }
+}
+
+/**
  * @param {string} name
  */
 function getNamedData(name) {
@@ -365,7 +389,10 @@ async function update(force = false) {
 
     try {
         const parsedSpec = JSON.parse(value);
-        const explicitBaseUrl = parsedSpec.baseUrl;
+        const explicitBaseUrl =
+            typeof parsedSpec.baseUrl === "string"
+                ? parsedSpec.baseUrl
+                : undefined;
         const effectiveBaseUrl = explicitBaseUrl || inheritedBaseUrl;
 
         // Don't update if the the new spec is equivalent
@@ -385,11 +412,10 @@ async function update(force = false) {
         }
 
         visTitle = asArray(parsedSpec.description)?.[0];
-        effectiveBaseUrlLabel = parsedSpec.baseUrl
-            ? "Spec base: " + formatUrlForDisplay(parsedSpec.baseUrl)
-            : inheritedBaseUrl
-              ? "Source base: " + formatUrlForDisplay(inheritedBaseUrl)
-              : "";
+        effectiveBaseUrlInfo = getEffectiveBaseUrlInfo(
+            explicitBaseUrl,
+            inheritedBaseUrl
+        );
         renderLayout();
 
         // TODO: Fix possible race condition
@@ -437,16 +463,6 @@ const toolbarTemplate = () => html`
             ${icon(faFolderOpen).node[0]}
             <span>Examples</span>
         </button>
-        ${effectiveBaseUrlLabel
-            ? html`
-                  <span class="base-url-indicator hide-mobile">
-                      <span>${effectiveBaseUrlLabel}</span>
-                      <button @click=${clearBaseUrl} class="tool-button">
-                          <span>Clear base</span>
-                      </button>
-                  </span>
-              `
-            : null}
         <span class="vis-title">
             <span class="hide-mobile">${visTitle}</span>
         </span>
@@ -504,12 +520,20 @@ const layoutTemplate = () => html`
                 slot="2"
                 id="editor-and-others"
             >
-                <code-editor
-                    style="position: absolute; inset: 0"
-                    ${ref(editorRef)}
-                    @change=${handleEditorChange}
-                    slot="1"
-                ></code-editor>
+                <section id="editor-pane" slot="1">
+                    ${effectiveBaseUrlInfo
+                        ? html`
+                              <base-url-notice
+                                  .info=${effectiveBaseUrlInfo}
+                                  @clear=${clearBaseUrl}
+                              ></base-url-notice>
+                          `
+                        : null}
+                    <code-editor
+                        ${ref(editorRef)}
+                        @change=${handleEditorChange}
+                    ></code-editor>
+                </section>
                 <section id="file-pane" slot="2">
                     <file-pane
                         @upload=${update}
