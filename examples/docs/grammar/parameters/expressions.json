@@ -1,0 +1,31 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Expression parameter example.",
+
+  "view": { "stroke": "lightgray" },
+
+  "params": [
+    {
+      "name": "A",
+      "value": 2,
+      "bind": { "input": "range", "min": 0, "max": 10, "step": 1 }
+    },
+    {
+      "name": "B",
+      "value": 3,
+      "bind": { "input": "range", "min": 0, "max": 10, "step": 1 }
+    },
+    { "name": "C", "expr": "A * B" }
+  ],
+
+  "data": {
+    "values": [{}]
+  },
+
+  "mark": {
+    "type": "text",
+    "size": 30,
+    "text": { "expr": "'' + A + ' * ' + B + ' = ' + C" }
+  }
+}

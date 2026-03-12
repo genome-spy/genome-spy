@@ -73,57 +73,12 @@ The index scale is used by default when the _field_ type is `"index"`.
 When only the primary positional channel is defined, marks such as `"rect"` fill
 the whole band.
 
-<div><genome-spy-doc-embed height="100" spechidden="true">
-
-```json
-{
-  "data": {
-    "values": [0, 2, 4, 7, 8, 10, 12]
-  },
-  "encoding": {
-    "x": { "field": "data", "type": "index" }
-  },
-  "layer": [
-    {
-      "mark": "rect",
-      "encoding": {
-        "color": { "field": "data", "type": "nominal" }
-      }
-    },
-    {
-      "mark": "text",
-      "encoding": {
-        "text": {
-          "field": "data"
-        }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/point-indices-bands.json height=100 spechidden
 
 Marks such as `"point"` that do not support the secondary positional channel are
 centered.
 
-<div><genome-spy-doc-embed height="100" spechidden="true">
-
-```json
-{
-  "data": {
-    "values": [0, 2, 4, 7, 8, 10, 12]
-  },
-  "mark": "point",
-  "encoding": {
-    "x": { "field": "data", "type": "index" },
-    "color": { "field": "data", "type": "nominal" },
-    "size": { "value": 300 }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/point-indices-centers.json height=100 spechidden
 
 #### Range indices
 
@@ -133,42 +88,7 @@ open](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-sy
 For example, if a segment should cover the indices 2, 3, and 4, a half-open
 range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
 
-<div><genome-spy-doc-embed height="100" spechidden="true">
-
-```json
-{
-  "data": {
-    "values": [
-      { "from": 0, "to": 2 },
-      { "from": 2, "to": 5 },
-      { "from": 8, "to": 9 },
-      { "from": 10, "to": 13 }
-    ]
-  },
-  "encoding": {
-    "x": { "field": "from", "type": "index" },
-    "x2": { "field": "to" }
-  },
-  "layer": [
-    {
-      "mark": "rect",
-      "encoding": {
-        "color": { "field": "from", "type": "nominal" }
-      }
-    },
-    {
-      "mark": "text",
-      "encoding": {
-        "text": {
-          "expr": "'[' + datum.from + ', ' + datum.to + ')'"
-        }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/range-indices.json height=100 spechidden
 
 #### Adjusting the indexing of axis labels
 
@@ -176,42 +96,7 @@ The index scale expects zero-based indexing. However, it may be desirable to dis
 the axis labels using one-based indexing. Use the `numberingOffset` property adjust
 the label indices.
 
-<div><genome-spy-doc-embed height="100" spechidden="true">
-
-```json
-{
-  "data": {
-    "values": [0, 2, 4, 7, 8, 10, 12]
-  },
-  "encoding": {
-    "x": {
-      "field": "data",
-      "type": "index",
-      "scale": {
-        "numberingOffset": 1
-      }
-    }
-  },
-  "layer": [
-    {
-      "mark": "rect",
-      "encoding": {
-        "color": { "field": "data", "type": "nominal" }
-      }
-    },
-    {
-      "mark": "text",
-      "encoding": {
-        "text": {
-          "field": "data"
-        }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/numbering-offset.json height=100 spechidden
 
 ### Locus scale
 
@@ -270,34 +155,7 @@ Somewhere inside the chromosome 1:
 
 #### Example
 
-<div><genome-spy-doc-embed height="80">
-
-```json
-{
-  "assembly": "hg38",
-  "data": {
-    "values": [
-      { "chrom": "chr3", "pos": 134567890 },
-      { "chrom": "chr4", "pos": 123456789 },
-      { "chrom": "chr9", "pos": 34567890 }
-    ]
-  },
-  "mark": "point",
-  "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "pos",
-      "type": "locus",
-      "scale": {
-        "domain": [{ "chrom": "chr3" }, { "chrom": "chr9" }]
-      }
-    },
-    "size": { "value": 200 }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/locus-scale-domain.json height=80
 
 ## Domain from Selection Parameters
 
@@ -412,42 +270,7 @@ The genome axis is a special axis for the `"locus"` scale. It displays
 chromosome names and the intra-chromosomal coordinates. You can adjust the style
 of the chromosome axis and grid using various parameters.
 
-<div><genome-spy-doc-embed height="150">
-
-```json
-{
-  "assembly": "hg38",
-  "data": { "values": [] },
-  "mark": "point",
-
-  "encoding": {
-    "x": {
-      "chrom": "a",
-      "pos": "b",
-      "type": "locus",
-
-      "axis": {
-        "chromTickColor": "#5F87F5",
-        "chromLabelColor": "#E16B67",
-
-        "grid": true,
-        "gridColor": "gray",
-        "gridOpacity": 0.5,
-        "gridDash": [1, 11],
-
-        "chromGrid": true,
-        "chromGridDash": [3, 3],
-        "chromGridColor": "#5F87F5",
-        "chromGridOpacity": 0.7,
-        "chromGridFillEven": "#BEFACC",
-        "chromGridFillOdd": "#FDFCE8"
-      }
-    }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/scale/genome-axis.json height=150
 
 #### Fully customized axes
 

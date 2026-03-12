@@ -1,0 +1,15 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Point mark example.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" },
+    "size": { "field": "x", "type": "quantitative" }
+  }
+}

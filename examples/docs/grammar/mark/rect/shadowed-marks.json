@@ -1,0 +1,31 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Rect mark example with drop shadows.",
+
+  "padding": 20,
+
+  "data": { "values": [1, 2, 3, 4] },
+
+  "mark": {
+    "type": "rect",
+    "shadowOpacity": 0.4,
+    "shadowBlur": 20,
+    "shadowOffsetX": 10,
+    "shadowOffsetY": 10,
+    "clip": true
+  },
+
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "ordinal",
+      "scale": { "padding": 0.3 }
+    },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
+  }
+}

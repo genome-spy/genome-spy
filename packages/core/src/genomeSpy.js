@@ -40,8 +40,10 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
 import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
+import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
+import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -548,6 +550,28 @@ export default class GenomeSpy {
     }
 
     /**
+     * Waits until lazy sources under the root view have loaded data for the
+     * current visible positional domain.
+     *
+     * @param {AbortSignal} [signal]
+     */
+    async awaitVisibleLazyData(signal) {
+        if (!this.viewRoot) {
+            return;
+        }
+
+        await awaitSubtreeLazyReady(
+            this.viewRoot.context,
+            this.viewRoot,
+            undefined,
+            signal,
+            (view) =>
+                view.isConfiguredVisible() &&
+                hasWindowedLazyDataSource(view)
+        );
+    }
+
+    /**
      * This method should be called in a mouseMove handler. If not called, the
      * tooltip will be hidden.
      *
@@ -594,6 +618,23 @@ export default class GenomeSpy {
         return this.#glHelper.getLogicalCanvasSize();
     }
 
+    getRenderedBounds() {
+        /** @type {{ width: number | undefined, height: number | undefined }} */
+        const bounds = {
+            width: undefined,
+            height: undefined,
+        };
+
+        this.viewRoot.visit((view) => {
+            for (const coords of view.facetCoords.values()) {
+                bounds.width = Math.max(bounds.width ?? 0, coords.x2);
+                bounds.height = Math.max(bounds.height ?? 0, coords.y2);
+            }
+        });
+
+        return bounds;
+    }
+
     computeLayout() {
         this.#renderCoordinator.computeLayout();
     }
@@ -632,4 +673,22 @@ export default class GenomeSpy {
         });
         return resolutions;
     }
+}
+
+/**
+ * @param {View} view
+ */
+function hasWindowedLazyDataSource(view) {
+    /** @type {View | null} */
+    let current = view;
+
+    while (current) {
+        const dataSource = current.flowHandle?.dataSource;
+        if (dataSource) {
+            return dataSource instanceof SingleAxisWindowedSource;
+        }
+        current = current.dataParent;
+    }
+
+    return false;
 }

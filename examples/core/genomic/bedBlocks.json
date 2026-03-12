@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "BED12 example with optional block-related fields.",
+
+  "genome": { "name": "hg38" },
+
+  "data": {
+    "url": "data/bedBlocks.bed",
+    "format": { "type": "bed" }
+  },
+
+  "mark": { "type": "rect", "minWidth": 2 },
+
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "chromEnd" },
+    "y": { "field": "name", "type": "nominal" },
+    "color": { "field": "name", "type": "nominal" }
+  }
+}

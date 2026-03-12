@@ -9,5 +9,5 @@ if (specUrl) {
     document.body.innerHTML = `
         <p style="color: firebrick">No 'spec' url parameter defined!</p>
         <p>Try this one from the "static" folder, for example:
-        <a href="?spec=examples/first.json">examples/first.json</a></p>`;
+        <a href="?spec=examples/core/first.json">examples/core/first.json</a></p>`;
 }

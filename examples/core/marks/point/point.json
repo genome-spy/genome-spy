@@ -1,0 +1,36 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 160, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "datum.z % 20", "as": "x" },
+    { "type": "formula", "expr": "floor(datum.z / 20)", "as": "y" }
+  ],
+
+  "mark": { "type": "point", "stroke": "black" },
+
+  "encoding": {
+    "x": { "field": "x", "type": "ordinal", "axis": null },
+    "y": { "field": "y", "type": "ordinal", "axis": null },
+    "shape": { "field": "x", "type": "nominal" },
+    "fill": { "field": "x", "type": "nominal" },
+    "size": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "type": "pow", "exponent": 2, "range": [0, 1000] }
+    },
+    "strokeWidth": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "range": [0, 4] }
+    },
+    "angle": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "range": [0, 45] }
+    }
+  }
+}

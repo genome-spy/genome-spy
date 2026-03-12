@@ -1,0 +1,137 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "padding": 20,
+
+  "view": {
+    "stroke": "lightgray",
+    "shadowOpacity": 0.2,
+    "shadowBlur": 17,
+    "shadowOffsetY": 3
+  },
+
+  "params": [
+    {
+      "name": "cornerRadius",
+      "value": 20,
+      "bind": { "input": "range", "min": 0, "max": 100, "step": 1 }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 5,
+      "bind": { "input": "range", "min": 0, "max": 50, "step": 0.5 }
+    },
+    {
+      "name": "fillOpacity",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "name": "Fill opacity",
+        "description": "A random help text. Adjust the slider!"
+      }
+    },
+    {
+      "name": "redStroke",
+      "value": false,
+      "bind": { "input": "checkbox" }
+    },
+    {
+      "name": "fillColor",
+      "value": "darkseagreen",
+      "bind": {
+        "input": "radio",
+        "options": ["darkseagreen", "purple"],
+        "labels": ["DarkSeaGreen", "Purple"]
+      }
+    },
+    {
+      "name": "shadowColor",
+      "value": "black",
+      "bind": { "input": "radio", "options": ["black", "red"] }
+    },
+    {
+      "name": "shadowBlur",
+      "value": 15,
+      "bind": { "input": "range", "min": 0, "max": 50, "step": 0.5 }
+    },
+    {
+      "name": "shadowOpacity",
+      "value": 0.4,
+      "bind": { "input": "range", "min": 0, "max": 1, "step": 0.01 }
+    },
+    {
+      "name": "shadowOffsetX",
+      "value": 0,
+      "bind": { "input": "range", "min": -20, "max": 20, "step": 0.5 }
+    },
+    {
+      "name": "shadowOffsetY",
+      "value": 5,
+      "bind": { "input": "range", "min": -20, "max": 20, "step": 0.5 }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "x": 0.2, "x2": 0.4 },
+      { "x": 0.6, "x2": 0.8 }
+    ]
+  },
+
+  "layer": [
+    {
+      "transform": [
+        { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
+      ],
+      "layer": [
+        {
+          "mark": { "type": "rule", "strokeDash": [3, 3] },
+          "encoding": {
+            "x": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        },
+        {
+          "mark": { "type": "rule", "strokeDash": [1, 5, 3, 5] },
+          "encoding": {
+            "y": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        }
+      ]
+    },
+    {
+      "mark": {
+        "type": "rect",
+        "strokeWidth": { "expr": "strokeWidth" },
+        "cornerRadius": { "expr": "cornerRadius" },
+        "fillOpacity": { "expr": "fillOpacity" },
+        "stroke": { "expr": "redStroke ? 'firebrick' : 'black'" },
+        "fill": { "expr": "fillColor" },
+        "hatch": "diagonal",
+        "shadowColor": { "expr": "shadowColor" },
+        "shadowBlur": { "expr": "shadowBlur" },
+        "shadowOpacity": { "expr": "shadowOpacity" },
+        "shadowOffsetX": { "expr": "shadowOffsetX" },
+        "shadowOffsetY": { "expr": "shadowOffsetY" }
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "x2": { "field": "x2" },
+        "y": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "y2": { "field": "x2" }
+      }
+    }
+  ]
+}

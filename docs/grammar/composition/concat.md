@@ -14,97 +14,20 @@ The spacing (in pixels) between concatenated views can be adjusted using the
 
 Using `vconcat` for a vertical layout.
 
-<div><genome-spy-doc-embed>
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-
-  "spacing": 20,
-
-  "vconcat": [
-    {
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "sin", "type": "quantitative" }
-      }
-    },
-    {
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "cos", "type": "quantitative" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/vertical-concat.json
 
 ### Horizontal
 
 Using `hconcat` for a horizontal layout.
 
-<div><genome-spy-doc-embed height="200">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-
-  "hconcat": [
-    {
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "sin", "type": "quantitative" }
-      }
-    },
-    {
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "cos", "type": "quantitative" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/horizontal-concat.json height=200
 
 ### Grid
 
 Using `concat` and `columns` for a grid layout. For simplicity, the same
 visualization is used for all panels in the grid.
 
-<div><genome-spy-doc-embed height="400">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "sin", "type": "quantitative" }
-  },
-
-  "columns": 3,
-  "concat": [
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" },
-    { "mark": "point" }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/grid-concat.json height=400
 
 ### Separators
 
@@ -114,33 +37,7 @@ Separators are centered within the spacing gaps and do not affect layout. Use
 [`rule` mark](../mark/rule.md) style object.
 Use `includePlotMargin: false` to keep the separators inside the plot area.
 
-<div><genome-spy-doc-embed height="280">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "sin", "type": "quantitative" }
-  },
-
-  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
-
-  "spacing": 29,
-
-  "separator": {
-    "color": "#bbb",
-    "strokeDash": [6, 4],
-    "size": 1,
-    "includePlotMargin": true
-  },
-
-  "vconcat": [{ "mark": "point" }, { "mark": "point" }, { "mark": "point" }]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/concat-separators.json height=280
 
 ## Child sizing
 
@@ -155,32 +52,7 @@ has a grow of `1`, and the right view has a grow of `2`. If you resize the web
 browser, you can observe that the width of the left view stays constant while
 the remaining space is distributed in proportions of 1:2.
 
-<div><genome-spy-doc-embed height="50">
-
-```json
-{
-  "data": { "values": [{}] },
-
-  "spacing": 10,
-
-  "hconcat": [
-    {
-      "width": { "px": 20 },
-      "mark": "rect"
-    },
-    {
-      "width": { "grow": 1 },
-      "mark": "rect"
-    },
-    {
-      "width": { "grow": 2 },
-      "mark": "rect"
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/child-sizing.json height=50
 
 ### SizeDef
 
@@ -199,22 +71,7 @@ the same as `{ grow: 1 }`. Undefined sizes generally default to `"container"`.
 Concatenation operators can nested flexibly to build complex layouts as in the
 following example.
 
-<div><genome-spy-doc-embed height="150">
-
-```json
-{
-  "data": { "values": [{}] },
-
-  "hconcat": [
-    { "mark": "rect" },
-    {
-      "vconcat": [{ "mark": "rect" }, { "mark": "rect" }]
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/sizedef-layout.json height=150
 
 ### Scrollable viewports
 
@@ -226,27 +83,7 @@ for the step size. Scrollable viewports are particularly useful for categorical
 data types (`"ordinal"` and `"nominal"`) and respective scales and axes that
 do not support zooming and panning.
 
-<div><genome-spy-doc-embed height="200">
-
-```json
-{
-  "height": { "step": 20 },
-  "viewportHeight": "container",
-
-  "view": { "stroke": "lightgray" },
-
-  "data": { "sequence": { "start": 0, "stop": 31, "step": 1 } },
-
-  "encoding": {
-    "x": { "field": "data", "type": "quantitative" },
-    "y": { "field": "data", "type": "ordinal" }
-  },
-
-  "mark": { "type": "point" }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/concat/scrollable-viewports.json height=200
 
 ## Resolve
 
@@ -261,31 +98,4 @@ Concatenation operators support shared axes on channels that also have shared
 scales. Axis domain line, ticks, and labels are drawn only once for each row or column.
 Grid lines are drawn for all participating views.
 
-<div><genome-spy-doc-embed height="350">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-
-  "resolve": {
-    "scale": { "x": "shared", "y": "shared" },
-    "axis": { "x": "shared", "y": "shared" }
-  },
-
-  "spacing": 20,
-
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative", "axis": { "grid": true } },
-    "y": { "field": "sin", "type": "quantitative", "axis": { "grid": true } }
-  },
-
-  "columns": 2,
-
-  "concat": [
-    { "mark": "point", "view": { "stroke": "lightgray" } },
-    { "mark": "point", "view": { "stroke": "lightgray" } },
-    { "mark": "point", "view": { "stroke": "lightgray" } },
-    { "mark": "point", "view": { "stroke": "lightgray" } }
-  ]
-}
-```
+EXAMPLE examples/docs/grammar/composition/concat/shared-axes.json height=350

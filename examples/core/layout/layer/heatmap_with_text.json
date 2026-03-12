@@ -1,0 +1,82 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 40000, "as": "i" }
+  },
+
+  "transform": [
+    { "type": "formula", "as": "x", "expr": "datum.i % 200" },
+    { "type": "formula", "as": "y", "expr": "floor(datum.i / 200)" },
+    { "type": "project", "fields": ["x", "y"] },
+    {
+      "type": "formula",
+      "as": "z",
+      "expr": "sin((sin(datum.x / 30) + cos(datum.y / 25 - 0.5 + sin(datum.x / 40) * 2)) * 4)"
+    }
+  ],
+
+  "resolve": {
+    "scale": { "color": "independent" }
+  },
+
+  "encoding": {
+    "x": { "field": "x", "type": "index" },
+    "y": { "field": "y", "type": "index" }
+  },
+
+  "layer": [
+    {
+      "mark": "rect",
+      "encoding": {
+        "color": {
+          "field": "z",
+          "type": "quantitative",
+          "scale": { "scheme": "viridis" }
+        }
+      }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "size": 12,
+        "opacity": 0.8,
+        "fitToBand": true,
+        "paddingX": 4,
+        "paddingY": 3
+      },
+      "encoding": {
+        "text": { "field": "z", "format": ".2f" },
+        "color": {
+          "field": "z",
+          "type": "quantitative",
+          "scale": {
+            "type": "threshold",
+            "domain": [0],
+            "range": ["white", "black"]
+          }
+        }
+      }
+    },
+    {
+      "opacity": { "unitsPerPixel": [0.1, 0.05], "values": [1, 0] },
+      "data": {
+        "values": [{}]
+      },
+      "mark": {
+        "type": "text",
+        "size": 13,
+        "color": "white",
+        "align": "left",
+        "baseline": "bottom",
+        "dx": 5,
+        "dy": -5,
+        "text": "Zoom in using the mouse wheel!"
+      },
+      "encoding": {
+        "x": { "value": 0 },
+        "y": { "value": 0 }
+      }
+    }
+  ]
+}

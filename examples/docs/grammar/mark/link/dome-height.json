@@ -1,0 +1,37 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Link mark example with variable dome heights.",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 20, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "round(random() * 1000)", "as": "x" },
+    {
+      "type": "formula",
+      "expr": "round(datum.x + random() * 500)",
+      "as": "x2"
+    },
+    { "type": "formula", "expr": "random() * 1000 - 500", "as": "y" }
+  ],
+
+  "mark": {
+    "type": "link",
+    "linkShape": "dome",
+    "orient": "vertical",
+    "clampApex": true,
+    "color": "gray"
+  },
+
+  "encoding": {
+    "x": { "field": "x", "type": "index" },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "axis": { "grid": true }
+    }
+  }
+}

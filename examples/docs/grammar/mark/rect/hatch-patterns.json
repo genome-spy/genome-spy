@@ -1,0 +1,44 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Rect mark hatch pattern example.",
+
+  "params": [
+    {
+      "name": "hatch",
+      "value": "diagonal",
+      "bind": {
+        "input": "select",
+        "options": [
+          "none",
+          "diagonal",
+          "antiDiagonal",
+          "cross",
+          "vertical",
+          "horizontal",
+          "grid",
+          "dots",
+          "rings",
+          "ringsLarge"
+        ]
+      }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 2,
+      "bind": { "input": "range", "min": 0, "max": 50, "step": 0.25 }
+    }
+  ],
+
+  "data": {
+    "values": {}
+  },
+
+  "mark": {
+    "type": "rect",
+    "fill": "#caf0f8",
+    "stroke": "black",
+    "strokeWidth": { "expr": "strokeWidth" },
+    "hatch": { "expr": "hatch" }
+  }
+}

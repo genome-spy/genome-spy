@@ -1,0 +1,75 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Indexed FASTA sequence track example.",
+
+  "assembly": "hg38",
+
+  "data": {
+    "lazy": {
+      "type": "indexedFasta",
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
+    }
+  },
+
+  "transform": [
+    {
+      "type": "flattenSequence",
+      "field": "sequence",
+      "as": ["rawPos", "base"]
+    },
+    { "type": "formula", "expr": "datum.rawPos + datum.start", "as": "pos" }
+  ],
+
+  "encoding": {
+    "x": {
+      "chrom": "chrom",
+      "pos": "pos",
+      "type": "locus",
+      "scale": {
+        "domain": [
+          { "chrom": "chr7", "pos": 20003500 },
+          { "chrom": "chr7", "pos": 20003540 }
+        ]
+      }
+    },
+    "color": {
+      "field": "base",
+      "type": "nominal",
+      "scale": {
+        "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
+        "range": [
+          "#7BD56C",
+          "#FF9B9B",
+          "#86BBF1",
+          "#FFC56C",
+          "#7BD56C",
+          "#FF9B9B",
+          "#86BBF1",
+          "#FFC56C",
+          "#E0E0E0"
+        ]
+      }
+    }
+  },
+
+  "layer": [
+    { "mark": "rect" },
+    {
+      "mark": {
+        "type": "text",
+        "size": 13,
+        "fitToBand": true,
+        "paddingX": 1.5,
+        "paddingY": 1,
+        "opacity": 0.7,
+        "flushX": false,
+        "tooltip": null
+      },
+      "encoding": {
+        "color": { "value": "black" },
+        "text": { "field": "base" }
+      }
+    }
+  ]
+}

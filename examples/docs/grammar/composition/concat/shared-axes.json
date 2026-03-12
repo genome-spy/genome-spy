@@ -1,0 +1,48 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Concatenation example with shared axes.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared" },
+    "axis": { "x": "shared", "y": "shared" }
+  },
+
+  "spacing": 20,
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": { "grid": true }
+    },
+    "y": {
+      "field": "sin",
+      "type": "quantitative",
+      "axis": { "grid": true }
+    }
+  },
+
+  "columns": 2,
+
+  "concat": [
+    {
+      "mark": "point",
+      "view": { "stroke": "lightgray" }
+    },
+    {
+      "mark": "point",
+      "view": { "stroke": "lightgray" }
+    },
+    {
+      "mark": "point",
+      "view": { "stroke": "lightgray" }
+    },
+    {
+      "mark": "point",
+      "view": { "stroke": "lightgray" }
+    }
+  ]
+}

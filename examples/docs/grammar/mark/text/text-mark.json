@@ -1,0 +1,21 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Text mark example.",
+
+  "data": {
+    "values": [
+      { "x": 1, "text": "Hello" },
+      { "x": 2, "text": "world!" }
+    ]
+  },
+
+  "mark": "text",
+
+  "encoding": {
+    "x": { "field": "x", "type": "ordinal" },
+    "color": { "field": "x", "type": "nominal" },
+    "text": { "field": "text" },
+    "size": { "value": 100 }
+  }
+}

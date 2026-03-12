@@ -38,46 +38,7 @@ bookmark creation and restore.
 The following example shows how to bind parameters to input elements and use
 them to control the size, angle, and text of a text mark.
 
-<div><genome-spy-doc-embed height="250">
-
-```json
-{
-  "padding": 0,
-  "view": { "fill": "#cbeef3" },
-  "params": [
-    {
-      "name": "size",
-      "value": 80,
-      "bind": { "input": "range", "min": 1, "max": 300 }
-    },
-    {
-      "name": "angle",
-      "value": 0,
-      "bind": { "input": "range", "min": 0, "max": 360 }
-    },
-    {
-      "name": "text",
-      "value": "Params are cool!",
-      "bind": {
-        "input": "select",
-        "options": ["Params are cool!", "GenomeSpy", "Hello", "World"]
-      }
-    }
-  ],
-
-  "data": { "values": [{}] },
-
-  "mark": {
-    "type": "text",
-    "font": "Lobster",
-    "text": { "expr": "text" },
-    "size": { "expr": "size" },
-    "angle": { "expr": "angle" }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/parameters/input-bindings.json height=250
 
 ## Expressions
 
@@ -85,39 +46,7 @@ Parameters can be based on [expressions](./expressions.md), which can depend on
 other parameters. They are automatically re-evaluated when the dependent
 parameters change.
 
-<div><genome-spy-doc-embed height="150">
-
-```json
-{
-  "view": { "stroke": "lightgray" },
-  "params": [
-    {
-      "name": "A",
-      "value": 2,
-      "bind": { "input": "range", "min": 0, "max": 10, "step": 1 }
-    },
-    {
-      "name": "B",
-      "value": 3,
-      "bind": { "input": "range", "min": 0, "max": 10, "step": 1 }
-    },
-    {
-      "name": "C",
-      "expr": "A * B"
-    }
-  ],
-
-  "data": { "values": [{}] },
-
-  "mark": {
-    "type": "text",
-    "size": 30,
-    "text": { "expr": "'' + A + ' * ' + B + ' = ' + C" }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
 ## Selection Parameters
 
@@ -133,60 +62,7 @@ with slight modifications (GenomeSpy provides no `"bar"` mark). The
 specification below is fully compatible with Vega-Lite. You can select multiple
 bars by holding down the `Shift` key.
 
-<div><genome-spy-doc-embed height="250">
-
-```json
-{
-  "description": "A bar chart with highlighting on hover and selecting on click. (Inspired by Tableau's interaction style.)",
-
-  "data": {
-    "values": [
-      { "a": "A", "b": 28 },
-      { "a": "B", "b": 55 },
-      { "a": "C", "b": 43 },
-      { "a": "D", "b": 91 },
-      { "a": "E", "b": 81 },
-      { "a": "F", "b": 53 },
-      { "a": "G", "b": 19 },
-      { "a": "H", "b": 87 },
-      { "a": "I", "b": 52 }
-    ]
-  },
-  "params": [
-    {
-      "name": "highlight",
-      "select": { "type": "point", "on": "pointerover" }
-    },
-    { "name": "select", "select": "point" }
-  ],
-  "mark": {
-    "type": "rect",
-    "fill": "#4C78A8",
-    "stroke": "black"
-  },
-  "encoding": {
-    "x": {
-      "field": "a",
-      "type": "ordinal",
-      "scale": { "type": "band", "padding": 0.2 }
-    },
-    "y": { "field": "b", "type": "quantitative" },
-    "fillOpacity": {
-      "value": 0.3,
-      "condition": { "param": "select", "value": 1 }
-    },
-    "strokeWidth": {
-      "value": 0,
-      "condition": [
-        { "param": "select", "value": 2, "empty": false },
-        { "param": "highlight", "value": 1, "empty": false }
-      ]
-    }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/parameters/point-selection.json height=250
 
 ### Interval Selection
 
@@ -211,40 +87,7 @@ By default, `select.zoom` is:
 You can override the behavior with `select.zoom: true/false` or an explicit
 wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
-<div><genome-spy-doc-embed height="250">
-
-```json
-{
-  "params": [
-    {
-      "name": "brush",
-      "value": { "x": [2, 4] },
-      "select": {
-        "type": "interval",
-        "encodings": ["x"]
-      }
-    }
-  ],
-
-  "data": { "url": "sincos.csv" },
-
-  "mark": { "type": "point", "size": 100 },
-
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "y": { "field": "sin", "type": "quantitative" },
-    "color": {
-      "condition": {
-        "param": "brush",
-        "value": "#38c"
-      },
-      "value": "#ddd"
-    }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=250
 
 #### Linking Scale Domains Across Views
 
@@ -262,55 +105,6 @@ Two-way behavior is automatic when the linked scale is zoomable. You can still
 override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
 reference.
 
-#### Two-Way Linking (Interactive)
+##### Two-Way Linking Example
 
-<div><genome-spy-doc-embed height="250">
-
-```json
-{
-  "params": [{ "name": "brush" }],
-
-  "resolve": { "scale": { "x": "independent" } },
-
-  "data": { "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" } },
-  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
-
-  "vconcat": [
-    {
-      "height": 100,
-      "params": [
-        {
-          "name": "brush",
-          "select": {
-            "type": "interval",
-            "encodings": ["x"]
-          },
-          "push": "outer"
-        }
-      ],
-      "mark": { "type": "point", "size": 20, "opacity": 0.35 },
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" }
-      }
-    },
-    {
-      "height": 120,
-      "mark": { "type": "point", "size": 55, "opacity": 0.75 },
-      "encoding": {
-        "x": {
-          "field": "x",
-          "type": "quantitative",
-          "scale": {
-            "zoom": true,
-            "domain": { "param": "brush" }
-          }
-        },
-        "y": { "field": "y", "type": "quantitative" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250

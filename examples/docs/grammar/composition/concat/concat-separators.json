@@ -1,0 +1,28 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Concatenation example with separators.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "shared" }
+  },
+
+  "spacing": 29,
+
+  "separator": {
+    "color": "#bbb",
+    "strokeDash": [6, 4],
+    "size": 1,
+    "includePlotMargin": true
+  },
+
+  "vconcat": [{ "mark": "point" }, { "mark": "point" }, { "mark": "point" }]
+}

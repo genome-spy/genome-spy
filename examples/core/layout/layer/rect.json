@@ -1,0 +1,56 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "data": {
+    "values": [
+      { "x": 0.2, "x2": 0.4 },
+      { "x": 0.6, "x2": 0.8 }
+    ]
+  },
+
+  "layer": [
+    {
+      "transform": [
+        { "type": "regexFold", "columnRegex": ["^(x.?)$"], "asValue": ["z"] }
+      ],
+      "layer": [
+        {
+          "mark": { "type": "rule", "strokeDash": [3, 3] },
+          "encoding": {
+            "x": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        },
+        {
+          "mark": { "type": "rule", "strokeDash": [1, 5, 3, 5] },
+          "encoding": {
+            "y": { "field": "z", "type": "quantitative" },
+            "color": { "value": "darkgray" }
+          }
+        }
+      ]
+    },
+    {
+      "mark": {
+        "type": "rect",
+        "strokeWidth": 5,
+        "cornerRadius": 20,
+        "stroke": "black"
+      },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "x2": { "field": "x2" },
+        "y": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": { "domain": [0, 1] }
+        },
+        "y2": { "field": "x2" }
+      }
+    }
+  ]
+}

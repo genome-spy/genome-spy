@@ -76,7 +76,10 @@ export async function embed(el, spec, options = {}) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
 
+        awaitVisibleLazyData: genomeSpy.awaitVisibleLazyData.bind(genomeSpy),
+        getRenderedBounds: genomeSpy.getRenderedBounds.bind(genomeSpy),
         updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
+        getLogicalCanvasSize: genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
         exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
     };
 }

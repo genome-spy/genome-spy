@@ -1,0 +1,67 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Link mark example showing shapes and orientations.",
+
+  "data": {
+    "values": [{ "x": 2, "x2": 8 }]
+  },
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared" },
+    "axis": { "x": "shared", "y": "shared" }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] },
+      "axis": { "grid": true }
+    },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] },
+      "axis": { "grid": true }
+    },
+    "y2": { "field": "x2" },
+    "size": { "value": 2 }
+  },
+
+  "columns": 4,
+
+  "spacing": 20,
+
+  "concat": [
+    {
+      "mark": { "type": "link", "linkShape": "arc", "orient": "vertical" }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "dome", "orient": "vertical" }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "diagonal", "orient": "vertical" }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "line", "orient": "vertical" }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "arc", "orient": "horizontal" }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "dome", "orient": "horizontal" }
+    },
+    {
+      "mark": {
+        "type": "link",
+        "linkShape": "diagonal",
+        "orient": "horizontal"
+      }
+    },
+    {
+      "mark": { "type": "link", "linkShape": "line", "orient": "horizontal" }
+    }
+  ]
+}

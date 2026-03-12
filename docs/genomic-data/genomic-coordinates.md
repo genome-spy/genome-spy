@@ -34,6 +34,9 @@ cross-species dot plots), set `assembly` separately in each locus scale:
 }
 ```
 
+See [Synteny between assemblies](#synteny-between-assemblies) for a complete
+example.
+
 When every locus scale sets `scale.assembly`, root `assembly` is optional.
 Also, if root `assembly` is omitted and `genomes` has exactly one entry, that
 single entry is used as the default assembly.
@@ -222,30 +225,7 @@ Point features cover a single position on a chromosome. An example of a point
 feature is a single nucleotide variant (SNV), where a nucleotide has been
 replaced by another.
 
-<div><genome-spy-doc-embed height="80">
-
-```json
-{
-  "assembly": "hg38",
-  "data": {
-    "values": [
-      { "chrom": "chr3", "pos": 134567890 },
-      { "chrom": "chr4", "pos": 123456789 },
-      { "chrom": "chr9", "pos": 34567890 }
-    ]
-  },
-  "mark": "point",
-  "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "pos",
-      "type": "locus"
-    }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/genomic-data/genomic-coordinates/point-features.json height=80
 
 ### Segment features
 
@@ -253,31 +233,11 @@ Segment features cover a range of positions on a chromosome. They are defined by
 their two end positions. An example of a segment feature is a copy number
 variant (CNV), where a region of the genome has been duplicated or deleted.
 
-<div><genome-spy-doc-embed height="80">
+EXAMPLE examples/docs/genomic-data/genomic-coordinates/segment-features.json height=80
 
-```json
-{
-  "assembly": "hg38",
-  "data": {
-    "values": [
-      { "chrom": "chr3", "startpos": 100000000, "endpos": 140000000 },
-      { "chrom": "chr4", "startpos": 70000000, "endpos": 170000000 },
-      { "chrom": "chr9", "startpos": 50000000, "endpos": 70000000 }
-    ]
-  },
-  "mark": "rect",
-  "encoding": {
-    "x": {
-      "chrom": "chrom",
-      "pos": "startpos",
-      "type": "locus"
-    },
-    "x2": {
-      "chrom": "chrom",
-      "pos": "endpos"
-    }
-  }
-}
-```
+### Synteny between assemblies
 
-</genome-spy-doc-embed></div>
+When each locus scale specifies its own assembly, rules can connect homologous
+or syntenic segments across species.
+
+EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=450

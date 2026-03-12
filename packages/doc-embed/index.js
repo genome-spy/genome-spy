@@ -39,15 +39,28 @@ function getBaseUrl() {
 }
 
 /**
+ * @param {string} sitePath
+ */
+function resolveSitePath(sitePath) {
+    if (/^(?:[a-z]+:|\/)/i.test(sitePath)) {
+        return sitePath;
+    }
+
+    return getBaseUrl() + "/" + sitePath;
+}
+
+/**
  * @param {HTMLElement} container
  * @param {object | string} conf configuration object or url to json configuration
+ * @param {string | undefined} baseUrl
  */
-async function embedToDoc(container, conf) {
-    const baseUrl = getBaseUrl();
-    const dataBaseUrl = `${baseUrl}/data/`;
+async function embedToDoc(container, conf, baseUrl) {
+    const examplesBaseUrl = resolveSitePath("examples/");
 
     try {
-        conf.baseUrl = conf.baseUrl || dataBaseUrl;
+        conf.baseUrl =
+            conf.baseUrl ||
+            (baseUrl ? resolveSitePath(baseUrl) : examplesBaseUrl);
         await embed(container, conf, { bare: true });
     } catch (e) {
         const pre = document.createElement("pre");
@@ -59,14 +72,19 @@ async function embedToDoc(container, conf) {
 export class GenomeSpyDocEmbed extends LitElement {
     static get styles() {
         return css`
-            .show-spec {
-                font-size: 70%;
+            .embed-links {
+                margin: 0.3em 0 0.6em;
                 text-align: center;
-            }
+                font-size: 80%;
 
-            .show-spec a {
-                color: #3f51b5;
-                text-decoration: none;
+                a {
+                    color: var(--md-typeset-a-color);
+                    text-decoration: none;
+                }
+
+                a:hover {
+                    color: var(--md-accent-fg-color);
+                }
             }
         `;
     }
@@ -75,6 +93,8 @@ export class GenomeSpyDocEmbed extends LitElement {
         return {
             height: { type: String },
             specHidden: { type: Boolean },
+            baseUrl: { type: String, attribute: "base-url" },
+            playgroundUrl: { type: String, attribute: "playground-url" },
         };
     }
 
@@ -82,10 +102,14 @@ export class GenomeSpyDocEmbed extends LitElement {
         super();
         this.height = 300;
         this.specHidden = false;
+        this.baseUrl = undefined;
+        this.playgroundUrl = undefined;
         this.embedRef = createRef();
     }
 
     render() {
+        const shouldShowLinks = this.playgroundUrl || this.specHidden;
+
         return html`
             <link rel="stylesheet" href=${getBaseUrl() + "/app/style.css"} />
             <div
@@ -95,17 +119,31 @@ export class GenomeSpyDocEmbed extends LitElement {
                 })}
                 ${ref(this.embedRef)}
             ></div>
-            ${this.specHidden
+            ${shouldShowLinks
                 ? html`
-                      <div class="show-spec">
-                          <a
-                              href="#"
-                              @click=${(event) => {
-                                  this.specHidden = false;
-                                  event.preventDefault();
-                              }}
-                              >Show specification</a
-                          >
+                      <div class="embed-links">
+                          ${this.specHidden
+                              ? html`
+                                    <a
+                                        href="#"
+                                        @click=${(event) => {
+                                            this.specHidden = false;
+                                            event.preventDefault();
+                                        }}
+                                        >Show specification</a
+                                    >
+                                `
+                              : nothing}
+                          ${this.playgroundUrl && this.specHidden
+                              ? html` - `
+                              : nothing}
+                          ${this.playgroundUrl
+                              ? html`
+                                    <a href=${this.playgroundUrl}
+                                        >Edit this example in Playground</a
+                                    >
+                                `
+                              : nothing}
                       </div>
                   `
                 : nothing}
@@ -133,7 +171,7 @@ export class GenomeSpyDocEmbed extends LitElement {
                     if (entry.isIntersecting) {
                         const container = entry.target;
 
-                        embedToDoc(container, JSON.parse(spec));
+                        embedToDoc(container, JSON.parse(spec), this.baseUrl);
 
                         observer.unobserve(container);
                     }

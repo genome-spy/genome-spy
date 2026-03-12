@@ -60,6 +60,8 @@ aware interactions.
   a random question and hasn't explicitly asked for editing work to start.
 - When planning, consider documentation in `docs/` for user-visible changes. New
   features in Core or App may need docs, while refactors typically do not.
+- When editing shared example specs under `examples/`, follow the formatting and
+  layout guidance in `examples/README.md`.
 
 ## Project and code guidelines
 

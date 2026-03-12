@@ -1,0 +1,16 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Rule mark example.",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 15, "as": "y" }
+  },
+
+  "mark": { "type": "rule", "strokeDash": [6, 3] },
+
+  "encoding": {
+    "x": { "field": "y", "type": "quantitative" },
+    "color": { "field": "y", "type": "nominal" }
+  }
+}

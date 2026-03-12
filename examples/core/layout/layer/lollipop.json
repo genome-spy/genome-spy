@@ -1,0 +1,65 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "name": "The Root",
+
+  "description": "Lollipop plot example",
+
+  "view": { "stroke": "lightgray" },
+
+  "layer": [
+    {
+      "name": "Baseline",
+      "data": { "values": [0] },
+      "mark": "rule",
+      "encoding": {
+        "y": { "field": "data", "type": "quantitative", "title": null },
+        "color": { "value": "lightgray" }
+      }
+    },
+    {
+      "name": "Arrows",
+      "data": {
+        "sequence": {
+          "start": 0,
+          "stop": 6.284,
+          "step": 0.39269908169,
+          "as": "x"
+        }
+      },
+      "transform": [
+        { "type": "formula", "expr": "sin(datum.x)", "as": "sin(x)" }
+      ],
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": {
+          "field": "sin(x)",
+          "type": "quantitative",
+          "scale": { "padding": 0.1 }
+        },
+        "color": { "field": "sin(x)", "type": "quantitative" }
+      },
+      "layer": [
+        {
+          "name": "Arrow shafts",
+          "mark": { "type": "rule", "size": 3 }
+        },
+        {
+          "name": "Arrowheads",
+          "mark": { "type": "point", "size": 500, "strokeWidth": 0 },
+          "encoding": {
+            "shape": {
+              "field": "sin(x)",
+              "type": "nominal",
+              "scale": {
+                "type": "threshold",
+                "domain": [-0.01, 0.01],
+                "range": ["triangle-down", "diamond", "triangle-up"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

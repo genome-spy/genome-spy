@@ -1,0 +1,22 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Genomic segment features example.",
+
+  "assembly": "hg38",
+
+  "data": {
+    "values": [
+      { "chrom": "chr3", "startpos": 100000000, "endpos": 140000000 },
+      { "chrom": "chr4", "startpos": 70000000, "endpos": 170000000 },
+      { "chrom": "chr9", "startpos": 50000000, "endpos": 70000000 }
+    ]
+  },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "startpos", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "endpos" }
+  }
+}

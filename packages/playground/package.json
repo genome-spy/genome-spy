@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test:tsc": "tsc -p tsconfig.json --noEmit",
     "serve": "vite preview"
   },
   "author": "Kari Lavikka",

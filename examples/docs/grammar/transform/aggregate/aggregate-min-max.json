@@ -1,0 +1,46 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Aggregate transform example calculating min and max.",
+
+  "data": {
+    "values": [
+      { "Category": "A", "Value": 5 },
+      { "Category": "A", "Value": 9 },
+      { "Category": "A", "Value": 9.5 },
+      { "Category": "B", "Value": 3 },
+      { "Category": "B", "Value": 5 },
+      { "Category": "B", "Value": 7.5 },
+      { "Category": "B", "Value": 8 }
+    ]
+  },
+
+  "encoding": {
+    "y": { "field": "Category", "type": "nominal" }
+  },
+
+  "layer": [
+    {
+      "encoding": {
+        "x": { "field": "Value", "type": "quantitative" }
+      },
+      "mark": "point"
+    },
+    {
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["Category"],
+          "fields": ["Value", "Value"],
+          "ops": ["min", "max"],
+          "as": ["minValue", "maxValue"]
+        }
+      ],
+      "encoding": {
+        "x": { "field": "minValue", "type": "quantitative" },
+        "x2": { "field": "maxValue" }
+      },
+      "mark": "rule"
+    }
+  ]
+}

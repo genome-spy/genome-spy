@@ -1,0 +1,43 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Human-mouse synteny example",
+    "Data source: http://bioinfo.konkuk.ac.kr/synteny_portal/"
+  ],
+
+  "width": 400,
+  "height": 400,
+
+  "view": { "stroke": "lightgray" },
+
+  "data": { "url": "data/synteny-hg38-mm10.tsv" },
+
+  "mark": {
+    "type": "rule",
+    "strokeCap": "round",
+    "size": 2
+  },
+
+  "encoding": {
+    "x": {
+      "chrom": "hg38_chrom",
+      "pos": "hg38_start",
+      "type": "locus",
+      "scale": { "type": "locus", "assembly": "hg38" },
+      "axis": { "chromGrid": true, "chromGridColor": "#bbb" },
+      "title": "hg38"
+    },
+    "x2": { "chrom": "hg38_chrom", "pos": "hg38_end" },
+    "y": {
+      "chrom": "mm10_chrom",
+      "pos": "mm10_start",
+      "type": "locus",
+      "scale": { "type": "locus", "assembly": "mm10" },
+      "axis": { "chromGrid": true, "chromGridColor": "#bbb" },
+      "title": "mm10"
+    },
+    "y2": { "chrom": "mm10_chrom", "pos": "mm10_end" },
+    "color": { "field": "mm10_chrom", "type": "nominal" }
+  }
+}

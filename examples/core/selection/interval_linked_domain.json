@@ -1,0 +1,54 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "One-way brushing and linking with hierarchical params.",
+    "The top view pushes interval selection to an outer param.",
+    "The bottom view uses that param as the x scale domain.",
+    "Brushing starts on plain drag by default because the brushed channel is not zoomable."
+  ],
+
+  "params": [{ "name": "brush" }],
+
+  "resolve": {
+    "scale": { "x": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
+  },
+
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
+
+  "vconcat": [
+    {
+      "height": 100,
+      "params": [
+        {
+          "name": "brush",
+          "select": { "type": "interval", "encodings": ["x"] },
+          "push": "outer"
+        }
+      ],
+      "mark": { "type": "point", "size": 20, "opacity": 0.35 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+    {
+      "height": 120,
+      "mark": { "type": "point", "size": 55, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": {
+            "domain": { "param": "brush" }
+          }
+        },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Axis genome data source example.",
+
+  "assembly": "hg38",
+
+  "data": {
+    "lazy": { "type": "axisGenome", "channel": "x" }
+  },
+
+  "encoding": {
+    "x": { "field": "continuousStart", "type": "locus" },
+    "x2": { "field": "continuousEnd" },
+    "text": { "field": "name" }
+  },
+
+  "layer": [
+    {
+      "transform": [{ "type": "filter", "expr": "datum.odd" }],
+      "mark": { "type": "rect", "fill": "#f0f0f0" }
+    },
+    {
+      "mark": {
+        "type": "text",
+        "size": 16,
+        "angle": -90,
+        "align": "right",
+        "baseline": "top",
+        "paddingX": 3,
+        "paddingY": 5,
+        "y": 1
+      }
+    }
+  ]
+}

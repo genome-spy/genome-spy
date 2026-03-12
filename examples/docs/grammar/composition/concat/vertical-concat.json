@@ -1,0 +1,26 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Vertical concatenation example.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "spacing": 20,
+
+  "vconcat": [
+    {
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "sin", "type": "quantitative" }
+      }
+    },
+    {
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "cos", "type": "quantitative" }
+      }
+    }
+  ]
+}

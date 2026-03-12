@@ -51,49 +51,7 @@ The example below shows an excerpt of segmented copy number data
 shared by default and the domain is unioned. As the `x` channel's scale is also
 shared, the zooming interaction affects both views.
 
-<div><genome-spy-doc-embed spechidden>
-
-```json
-{
-  "layer": [
-    {
-      "data": { "url": "../data/cnv_chr19_raw.tsv" },
-      "title": "Single probe",
-
-      "mark": {
-        "type": "point",
-        "geometricZoomBound": 9.5
-      },
-
-      "encoding": {
-        "x": { "field": "Position", "type": "index" },
-        "y": { "field": "logR", "type": "quantitative" },
-        "size": { "value": 225 },
-        "opacity": { "value": 0.15 }
-      }
-    },
-    {
-      "data": {
-        "url": "../data/cnv_chr19_segs.tsv"
-      },
-      "title": "Segment mean",
-      "mark": {
-        "type": "rule",
-        "size": 3.0,
-        "minLength": 3.0,
-        "color": "black"
-      },
-      "encoding": {
-        "x": { "field": "startpos", "type": "index" },
-        "x2": { "field": "endpos" },
-        "y": { "field": "segMean", "type": "quantitative" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/index/shared-resolution.json spechidden
 
 ### Independent
 
@@ -101,50 +59,4 @@ By specifying that the scales of the `y` channel should remain `"independent"`,
 both layers get their own scales and axes. Obviously, such a configuration makes
 no sense with these data.
 
-<div><genome-spy-doc-embed spechidden>
-
-```json
-{
-  "resolve": {
-    "scale": { "y": "independent" },
-    "axis": { "y": "independent" }
-  },
-  "layer": [
-    {
-      "data": { "url": "../data/cnv_chr19_raw.tsv" },
-      "title": "Single probe",
-
-      "mark": {
-        "type": "point",
-        "geometricZoomBound": 9.5
-      },
-
-      "encoding": {
-        "x": { "field": "Position", "type": "index" },
-        "y": { "field": "logR", "type": "quantitative" },
-        "size": { "value": 225 },
-        "opacity": { "value": 0.15 }
-      }
-    },
-    {
-      "data": {
-        "url": "../data/cnv_chr19_segs.tsv"
-      },
-      "title": "Segment mean",
-      "mark": {
-        "type": "rule",
-        "size": 3.0,
-        "minLength": 3.0,
-        "color": "black"
-      },
-      "encoding": {
-        "x": { "field": "startpos", "type": "index" },
-        "x2": { "field": "endpos" },
-        "y": { "field": "segMean", "type": "quantitative" }
-      }
-    }
-  ]
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/composition/index/independent-resolution.json spechidden

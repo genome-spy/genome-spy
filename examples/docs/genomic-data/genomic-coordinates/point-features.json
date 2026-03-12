@@ -1,0 +1,21 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Genomic point features example.",
+
+  "assembly": "hg38",
+
+  "data": {
+    "values": [
+      { "chrom": "chr3", "pos": 134567890 },
+      { "chrom": "chr4", "pos": 123456789 },
+      { "chrom": "chr9", "pos": 34567890 }
+    ]
+  },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "pos", "type": "locus" }
+  }
+}

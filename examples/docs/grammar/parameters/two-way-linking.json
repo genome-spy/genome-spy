@@ -1,0 +1,49 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Two-way interval linking example.",
+
+  "params": [{ "name": "brush" }],
+
+  "resolve": {
+    "scale": { "x": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" }
+  },
+
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 7)", "as": "y" }],
+
+  "vconcat": [
+    {
+      "height": 80,
+      "params": [
+        {
+          "name": "brush",
+          "select": { "type": "interval", "encodings": ["x"] },
+          "push": "outer"
+        }
+      ],
+      "mark": { "type": "point", "size": 20, "opacity": 0.35 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+    {
+      "mark": { "type": "point", "size": 55, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "scale": {
+            "zoom": true,
+            "domain": { "param": "brush" }
+          }
+        },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Link mark example.",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 30, "as": "z" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "round(random() * 800)", "as": "x" },
+    {
+      "type": "formula",
+      "expr": "round(datum.x + pow(2, random() * 10))",
+      "as": "x2"
+    }
+  ],
+
+  "mark": "link",
+
+  "encoding": {
+    "x": { "field": "x", "type": "index" },
+    "x2": { "field": "x2" }
+  }
+}

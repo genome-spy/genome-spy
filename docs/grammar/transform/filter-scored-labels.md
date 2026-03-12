@@ -21,41 +21,4 @@ SCHEMA FilterScoredLabelsParams
 Zoom in to see how the labels are filtered based on their score and the available
 space.
 
-<div><genome-spy-doc-embed height="100">
-
-```json
-{
-  "data": { "sequence": { "start": 0, "stop": 100000, "step": 1, "as": "_z" } },
-
-  "transform": [
-    { "type": "formula", "expr": "floor(random() * 10000000)", "as": "x" },
-    { "type": "formula", "expr": "floor(random() * 100000)", "as": "score" },
-    { "type": "formula", "expr": "'' + datum.score", "as": "label" },
-    {
-      "type": "measureText",
-      "fontSize": 16,
-      "field": "label",
-      "as": "textWidth"
-    },
-    {
-      "type": "filterScoredLabels",
-      "score": "score",
-      "width": "textWidth",
-      "pos": "x",
-      "padding": 5
-    }
-  ],
-
-  "mark": {
-    "type": "text",
-    "size": 16
-  },
-
-  "encoding": {
-    "x": { "field": "x", "type": "index", "scale": { "domain": [0, 1000000] } },
-    "text": { "field": "label" }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/transform/filter-scored-labels/filter-scored-labels.json height=100

@@ -27,6 +27,7 @@
   },
   "scripts": {
     "dev": "node dev-server.mjs",
+    "capture:screenshots": "node scripts/captureScreenshots.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",

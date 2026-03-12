@@ -1,0 +1,34 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Independent scale resolution example.",
+
+  "resolve": {
+    "scale": { "y": "independent" },
+    "axis": { "y": "independent" }
+  },
+
+  "layer": [
+    {
+      "data": { "url": "data/cnv_chr19_raw.tsv" },
+      "title": "Single probe",
+      "mark": { "type": "point", "geometricZoomBound": 9.5 },
+      "encoding": {
+        "x": { "field": "Position", "type": "index" },
+        "y": { "field": "logR", "type": "quantitative" },
+        "size": { "value": 225 },
+        "opacity": { "value": 0.15 }
+      }
+    },
+    {
+      "data": { "url": "data/cnv_chr19_segs.tsv" },
+      "title": "Segment mean",
+      "mark": { "type": "rule", "size": 3, "minLength": 3, "color": "black" },
+      "encoding": {
+        "x": { "field": "startpos", "type": "index" },
+        "x2": { "field": "endpos" },
+        "y": { "field": "segMean", "type": "quantitative" }
+      }
+    }
+  ]
+}

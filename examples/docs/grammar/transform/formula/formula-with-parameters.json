@@ -1,0 +1,38 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Formula transform example with parameters.",
+
+  "params": [
+    {
+      "name": "a",
+      "value": 200,
+      "bind": { "input": "range", "min": 10, "max": 2000, "step": 1 }
+    },
+    {
+      "name": "b",
+      "value": 270,
+      "bind": { "input": "range", "min": 10, "max": 2000, "step": 1 }
+    }
+  ],
+
+  "data": {
+    "sequence": { "start": 0, "stop": 1000, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "sin(datum.x * 2 * PI / a) + sin(datum.x * 2 * PI / b)",
+      "as": "y"
+    }
+  ],
+
+  "mark": "point",
+
+  "encoding": {
+    "size": { "value": 4 },
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" }
+  }
+}

@@ -76,12 +76,31 @@ export interface EmbedResult {
     getScaleResolutionByName: (name: string) => ScaleResolutionApi;
 
     /**
+     * Waits until lazy data sources have loaded data for the current visible
+     * positional domain.
+     */
+    awaitVisibleLazyData: (signal?: AbortSignal) => Promise<void>;
+
+    /**
      * Updates a named dataset
      *
      * @param name data source to update
      * @param data new data. If left undefined, the data is retrieved from a provider.
      */
     updateNamedData: (name: string, data?: any[]) => void;
+
+    /**
+     * Returns the bounds reached by the last rendered layout in CSS pixels.
+     */
+    getRenderedBounds: () => {
+        width: number | undefined;
+        height: number | undefined;
+    };
+
+    /**
+     * Returns the current logical canvas size in CSS pixels.
+     */
+    getLogicalCanvasSize: () => { width: number; height: number };
 
     /**
      * Returns a PNG data URL of the current canvas.

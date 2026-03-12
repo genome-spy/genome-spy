@@ -1,0 +1,42 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Parameter bindings example.",
+
+  "padding": 0,
+
+  "view": { "fill": "#cbeef3" },
+
+  "params": [
+    {
+      "name": "size",
+      "value": 80,
+      "bind": { "input": "range", "min": 1, "max": 300 }
+    },
+    {
+      "name": "angle",
+      "value": 0,
+      "bind": { "input": "range", "min": 0, "max": 360 }
+    },
+    {
+      "name": "text",
+      "value": "Params are cool!",
+      "bind": {
+        "input": "select",
+        "options": ["Params are cool!", "GenomeSpy", "Hello", "World"]
+      }
+    }
+  ],
+
+  "data": {
+    "values": [{}]
+  },
+
+  "mark": {
+    "type": "text",
+    "font": "Lobster",
+    "text": { "expr": "text" },
+    "size": { "expr": "size" },
+    "angle": { "expr": "angle" }
+  }
+}

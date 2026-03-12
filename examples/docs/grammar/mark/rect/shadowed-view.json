@@ -1,0 +1,26 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "View shadow example.",
+
+  "padding": 20,
+
+  "view": { "shadowOpacity": 0.2, "shadowBlur": 15, "shadowOffsetY": 3 },
+
+  "data": { "values": [1, 2, 3, 4] },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "data",
+      "type": "ordinal",
+      "scale": { "padding": 0.3 }
+    },
+    "y": {
+      "field": "data",
+      "type": "quantitative",
+      "scale": { "padding": 0.1 }
+    }
+  }
+}

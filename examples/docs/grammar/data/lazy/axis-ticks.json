@@ -1,0 +1,24 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Axis ticks data source example.",
+
+  "data": {
+    "lazy": {
+      "type": "axisTicks",
+      "channel": "x",
+      "axis": { "tickCount": 3 }
+    }
+  },
+
+  "mark": { "type": "text", "size": 20, "clip": false },
+
+  "encoding": {
+    "x": {
+      "field": "value",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10], "zoom": true }
+    },
+    "text": { "field": "label" }
+  }
+}

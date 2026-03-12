@@ -35,34 +35,7 @@ GenomeSpy and make your own tailored visualizations.
 
 The example below is interactive. You can zoom in using the mouse wheel.
 
-<div><genome-spy-doc-embed>
-
-```json
-{
-  "data": {
-    "sequence": { "start": 0, "stop": 200000, "as": "x" }
-  },
-  "transform": [
-    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
-    {
-      "type": "formula",
-      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618 + sin(datum.x / 10000)",
-      "as": "y"
-    }
-  ],
-  "mark": {
-    "type": "point",
-    "size": { "expr": "min(0.5 * pow(zoomLevel, 1.5), 200)" }
-  },
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative", "scale": { "zoom": true } },
-    "y": { "field": "y", "type": "quantitative" },
-    "opacity": { "value": 0.6 }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/index/interactive-overview.json
 
 ## About
 

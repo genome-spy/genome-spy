@@ -1,0 +1,85 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "BAM read alignment example.",
+
+  "assembly": "hg18",
+
+  "data": {
+    "lazy": {
+      "type": "bam",
+      "url": "https://data.genomespy.app/sample-data/bamExample.bam",
+      "windowSize": 30000
+    }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
+
+  "spacing": 5,
+
+  "vconcat": [
+    {
+      "view": { "stroke": "lightgray" },
+      "height": 40,
+      "transform": [
+        {
+          "type": "coverage",
+          "start": "start",
+          "end": "end",
+          "as": "coverage",
+          "chrom": "chrom"
+        }
+      ],
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": null
+        },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": { "field": "coverage", "type": "quantitative" }
+      }
+    },
+    {
+      "view": { "stroke": "lightgray" },
+      "transform": [
+        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
+      ],
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": {},
+          "scale": {
+            "domain": [
+              { "chrom": "chr21", "pos": 33037317 },
+              { "chrom": "chr21", "pos": 33039137 }
+            ]
+          }
+        },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": {
+          "field": "_lane",
+          "type": "index",
+          "scale": {
+            "domain": [0, 60],
+            "padding": 0.3,
+            "reverse": true,
+            "zoom": false
+          }
+        },
+        "color": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": { "domain": ["+", "-"], "range": ["crimson", "orange"] }
+        }
+      },
+      "mark": "rect"
+    }
+  ]
+}

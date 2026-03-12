@@ -1,0 +1,30 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Interval selection example.",
+
+  "params": [
+    {
+      "name": "brush",
+      "value": { "x": [2, 4] },
+      "select": { "type": "interval", "encodings": ["x"] }
+    }
+  ],
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": { "type": "point", "size": 100 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
+    "y": { "field": "sin", "type": "quantitative" },
+    "color": {
+      "condition": { "param": "brush", "value": "#38c" },
+      "value": "#ddd"
+    }
+  }
+}

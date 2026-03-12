@@ -1,0 +1,19 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Single view specification example.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "transform": [
+    { "type": "formula", "expr": "abs(datum.sin)", "as": "abs(sin)" }
+  ],
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "abs(sin)", "type": "quantitative" },
+    "size": { "field": "x", "type": "quantitative" }
+  }
+}

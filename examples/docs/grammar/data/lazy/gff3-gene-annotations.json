@@ -1,0 +1,246 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "GFF3 gene annotation example.",
+
+  "assembly": "hg38",
+
+  "height": { "step": 28 },
+
+  "viewportHeight": "container",
+
+  "view": { "stroke": "lightgray" },
+
+  "data": {
+    "lazy": {
+      "type": "gff3",
+      "url": "https://data.genomespy.app/sample-data/gencode.v43.annotation.sorted.gff3.gz",
+      "windowSize": 2000000,
+      "debounceDomainChange": 300
+    }
+  },
+
+  "transform": [
+    { "type": "flatten" },
+    {
+      "type": "formula",
+      "expr": "datum.attributes.gene_name",
+      "as": "gene_name"
+    },
+    { "type": "flatten", "fields": ["child_features"] },
+    {
+      "type": "flatten",
+      "fields": ["child_features"],
+      "as": ["child_feature"]
+    },
+    {
+      "type": "project",
+      "fields": [
+        "gene_name",
+        "child_feature.type",
+        "child_feature.strand",
+        "child_feature.seq_id",
+        "child_feature.start",
+        "child_feature.end",
+        "child_feature.attributes.gene_type",
+        "child_feature.attributes.transcript_type",
+        "child_feature.attributes.gene_id",
+        "child_feature.attributes.transcript_id",
+        "child_feature.attributes.transcript_name",
+        "child_feature.attributes.tag",
+        "source",
+        "child_feature.child_features"
+      ],
+      "as": [
+        "gene_name",
+        "type",
+        "strand",
+        "seq_id",
+        "start",
+        "end",
+        "gene_type",
+        "transcript_type",
+        "gene_id",
+        "transcript_id",
+        "transcript_name",
+        "tag",
+        "source",
+        "_child_features"
+      ]
+    },
+    {
+      "type": "collect",
+      "sort": { "field": ["seq_id", "start", "transcript_id"] }
+    },
+    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
+  ],
+
+  "encoding": {
+    "x": {
+      "chrom": "seq_id",
+      "pos": "start",
+      "offset": 1,
+      "type": "locus",
+      "scale": {
+        "domain": [
+          { "chrom": "chr5", "pos": 177482500 },
+          { "chrom": "chr5", "pos": 177518000 }
+        ]
+      }
+    },
+    "x2": { "chrom": "seq_id", "pos": "end" },
+    "y": {
+      "field": "_lane",
+      "type": "index",
+      "scale": {
+        "zoom": false,
+        "reverse": true,
+        "domain": [0, 40],
+        "padding": 0.5
+      },
+      "axis": null
+    }
+  },
+
+  "layer": [
+    {
+      "name": "gencode-transcript",
+      "layer": [
+        {
+          "name": "gencode-tooltip-trap",
+          "title": "GENCODE transcript",
+          "mark": {
+            "type": "rule",
+            "color": "#b0b0b0",
+            "opacity": 0,
+            "size": 7
+          }
+        },
+        {
+          "name": "gencode-transcript-body",
+          "mark": { "type": "rule", "color": "#b0b0b0", "tooltip": null }
+        }
+      ]
+    },
+    {
+      "name": "gencode-exons",
+      "transform": [
+        { "type": "flatten", "fields": ["_child_features"] },
+        {
+          "type": "flatten",
+          "fields": ["_child_features"],
+          "as": ["child_feature"]
+        },
+        {
+          "type": "project",
+          "fields": [
+            "gene_name",
+            "_lane",
+            "child_feature.type",
+            "child_feature.seq_id",
+            "child_feature.start",
+            "child_feature.end",
+            "child_feature.attributes.exon_number",
+            "child_feature.attributes.exon_id"
+          ],
+          "as": [
+            "gene_name",
+            "_lane",
+            "type",
+            "seq_id",
+            "start",
+            "end",
+            "exon_number",
+            "exon_id"
+          ]
+        }
+      ],
+      "layer": [
+        {
+          "title": "GENCODE exon",
+          "transform": [{ "type": "filter", "expr": "datum.type == 'exon'" }],
+          "mark": {
+            "type": "rect",
+            "minWidth": 0.5,
+            "minOpacity": 0.5,
+            "stroke": "#505050",
+            "fill": "#fafafa",
+            "strokeWidth": 1
+          }
+        },
+        {
+          "title": "GENCODE exon",
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.type != 'exon' && datum.type != 'start_codon' && datum.type != 'stop_codon'"
+            }
+          ],
+          "mark": {
+            "type": "rect",
+            "minWidth": 0.5,
+            "minOpacity": 0,
+            "strokeWidth": 1,
+            "strokeOpacity": 0,
+            "stroke": "gray"
+          },
+          "encoding": {
+            "fill": {
+              "field": "type",
+              "type": "nominal",
+              "scale": {
+                "domain": ["five_prime_UTR", "CDS", "three_prime_UTR"],
+                "range": ["#83bcb6", "#ffbf79", "#d6a5c9"]
+              }
+            }
+          }
+        },
+        {
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.type == 'three_prime_UTR' || datum.type == 'five_prime_UTR'"
+            },
+            {
+              "type": "formula",
+              "expr": "datum.type == 'three_prime_UTR' ? \"3'\" : \"5'\"",
+              "as": "label"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "color": "black",
+            "size": 11,
+            "opacity": 0.7,
+            "paddingX": 2,
+            "paddingY": 1.5,
+            "tooltip": null
+          },
+          "encoding": {
+            "text": { "field": "label" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "gencode-transcript-labels",
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "(datum.strand == '-' ? '< ' : '') + datum.transcript_name + ' - ' + datum.transcript_id + (datum.strand == '+' ? ' >' : '')",
+          "as": "label"
+        }
+      ],
+      "mark": {
+        "type": "text",
+        "size": 10,
+        "yOffset": 12,
+        "tooltip": null,
+        "color": "#505050"
+      },
+      "encoding": {
+        "text": { "field": "label" }
+      }
+    }
+  ]
+}

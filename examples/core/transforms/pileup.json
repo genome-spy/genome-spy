@@ -1,0 +1,56 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
+
+  "data": {
+    "sequence": { "start": 1, "stop": 99900, "as": "start" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.start + round((sin(datum.start / 10000 + sin(datum.start / 1500) * 2.2) + 1) * 300)",
+      "as": "start"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.start + 100 + ceil(random() * 50)",
+      "as": "end"
+    }
+  ],
+
+  "vconcat": [
+    {
+      "height": 100,
+      "transform": [
+        { "type": "coverage", "start": "start", "end": "end", "as": "coverage" }
+      ],
+      "mark": { "type": "rect", "minOpacity": 1, "buildIndex": true },
+      "encoding": {
+        "x": { "field": "start", "type": "index", "axis": null },
+        "x2": { "field": "end" },
+        "y": { "field": "coverage", "type": "quantitative" }
+      }
+    },
+    {
+      "height": "container",
+      "transform": [
+        { "type": "pileup", "start": "start", "end": "end", "as": "lane" }
+      ],
+      "mark": { "type": "rect", "buildIndex": true },
+      "encoding": {
+        "x": { "field": "start", "type": "index" },
+        "x2": { "field": "end" },
+        "y": {
+          "field": "lane",
+          "type": "ordinal",
+          "scale": { "padding": 0.2 },
+          "axis": null
+        }
+      }
+    }
+  ]
+}

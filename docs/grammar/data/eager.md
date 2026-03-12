@@ -23,12 +23,12 @@ processed with [transforms](../transform/index.md).
 
 The following eager source forms are available:
 
-| Form | Purpose | Typical use |
-| --- | --- | --- |
-| `values` | Embed data directly in the specification | Small examples, constants, test data |
-| `url` | Load data from one or more files | CSV/TSV/JSON and other eager file formats |
-| `name` | Bind a dataset by name | Root-level `datasets` or runtime-provided data |
-| `sequence` | Generate a numeric sequence | Derived coordinates, bins, synthetic data |
+| Form       | Purpose                                  | Typical use                                    |
+| ---------- | ---------------------------------------- | ---------------------------------------------- |
+| `values`   | Embed data directly in the specification | Small examples, constants, test data           |
+| `url`      | Load data from one or more files         | CSV/TSV/JSON and other eager file formats      |
+| `name`     | Bind a dataset by name                   | Root-level `datasets` or runtime-provided data |
+| `sequence` | Generate a numeric sequence              | Derived coordinates, bins, synthetic data      |
 
 ## Inline Data
 
@@ -70,11 +70,7 @@ value into an object with a `data` field.
 This produces rows equivalent to:
 
 ```json
-[
-  { "data": 1 },
-  { "data": 2 },
-  { "data": 3 }
-]
+[{ "data": 1 }, { "data": 2 }, { "data": 3 }]
 ```
 
 Finally, `values` may also be a string. String values are parsed according to
@@ -300,13 +296,7 @@ and examples.
 This generates the rows:
 
 ```json
-[
-  { "x": 0 },
-  { "x": 1 },
-  { "x": 2 },
-  { "x": 3 },
-  { "x": 4 }
-]
+[{ "x": 0 }, { "x": 1 }, { "x": 2 }, { "x": 3 }, { "x": 4 }]
 ```
 
 `start` and `stop` are required. The `stop` value is exclusive, `step` defaults
@@ -337,16 +327,9 @@ Behavior details:
   numeric arrays.
 - Non-BED12 extra columns are preserved as positional fallback fields (`fieldN`).
 
-```json
-{
-  "data": {
-    "url": "regions.bed",
-    "format": {
-      "type": "bed"
-    }
-  }
-}
-```
+#### Example
+
+EXAMPLE examples/docs/grammar/data/eager/bed.json height=160
 
 For larger BED files, consider using the lazy [BigBed data
 source](lazy.md#bigbed) instead of the eager `url` source.
@@ -375,16 +358,9 @@ Behavior details:
   with 1-based indexing).
 - Rows with fewer than six columns are rejected with a parse error.
 
-```json
-{
-  "data": {
-    "url": "events.bedpe",
-    "format": {
-      "type": "bedpe"
-    }
-  }
-}
-```
+#### Example
+
+EXAMPLE examples/docs/grammar/data/eager/bedpe.json height=160
 
 ### FASTA
 

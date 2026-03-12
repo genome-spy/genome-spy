@@ -1,0 +1,21 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Browser Extendible Data (BED) example.",
+
+  "assembly": "hg38",
+
+  "data": {
+    "url": "data/bedRegions.bed",
+    "format": { "type": "bed" }
+  },
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
+    "x2": { "chrom": "chrom", "pos": "chromEnd" },
+    "y": { "field": "name", "type": "nominal" },
+    "color": { "field": "strand", "type": "nominal" }
+  }
+}

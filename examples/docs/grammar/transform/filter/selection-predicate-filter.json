@@ -1,0 +1,48 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Filter transform example using a selection predicate.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "params": [{ "name": "brush" }],
+
+  "vconcat": [
+    {
+      "height": 30,
+      "transform": [
+        { "type": "collect" },
+        {
+          "type": "filter",
+          "param": "brush",
+          "fields": { "x": "x", "y": "sin" }
+        },
+        { "type": "aggregate" },
+        {
+          "type": "formula",
+          "as": "text",
+          "expr": "datum.count + ' points selected'"
+        }
+      ],
+      "mark": { "type": "text", "size": 20 },
+      "encoding": {
+        "text": { "field": "text" }
+      }
+    },
+    {
+      "params": [
+        {
+          "name": "brush",
+          "value": { "x": [2.5, 4], "y": [-0.6, 0.6] },
+          "select": { "type": "interval", "encodings": ["x", "y"] },
+          "push": "outer"
+        }
+      ],
+      "mark": { "type": "point", "size": 100 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "sin", "type": "quantitative" }
+      }
+    }
+  ]
+}

@@ -30,24 +30,7 @@ the fields of data are mapped to the visual channels of the mark. In addition,
 an optional `transform` steps allow for modifying the data before they are
 encoded into mark instances.
 
-<div><genome-spy-doc-embed height="200">
-
-```json
-{
-  "data": { "url": "sincos.csv" },
-  "transform": [
-    { "type": "formula", "expr": "abs(datum.sin)", "as": "abs(sin)" }
-  ],
-  "mark": "point",
-  "encoding": {
-    "x": { "field": "x", "type": "quantitative" },
-    "y": { "field": "abs(sin)", "type": "quantitative" },
-    "size": { "field": "x", "type": "quantitative" }
-  }
-}
-```
-
-</genome-spy-doc-embed></div>
+EXAMPLE examples/docs/grammar/index/single-view-specification.json height=200
 
 ### Properties
 

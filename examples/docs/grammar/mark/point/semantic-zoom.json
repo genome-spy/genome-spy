@@ -1,0 +1,37 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Point mark example with score-based semantic zoom.",
+
+  "data": {
+    "sequence": { "start": 0, "stop": 200000, "as": "x" }
+  },
+
+  "transform": [
+    { "type": "formula", "expr": "random() * 0.682", "as": "u" },
+    {
+      "type": "formula",
+      "expr": "((datum.u % 1e-8 > 5e-9 ? 1 : -1) * (sqrt(-log(max(1e-9, datum.u))) - 0.618)) * 1.618",
+      "as": "y"
+    },
+    { "type": "formula", "expr": "-log(random())", "as": "score" }
+  ],
+
+  "mark": { "type": "point", "semanticZoomFraction": 0.002 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
+    "y": { "field": "y", "type": "quantitative" },
+    "opacity": {
+      "field": "score",
+      "type": "quantitative",
+      "scale": { "range": [0.1, 1] }
+    },
+    "semanticScore": { "field": "score", "type": "quantitative" },
+    "size": { "value": 100 }
+  }
+}

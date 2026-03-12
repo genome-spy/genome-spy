@@ -1,0 +1,22 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Scrollable viewport example.",
+
+  "height": { "step": 20 },
+
+  "viewportHeight": "container",
+
+  "view": { "stroke": "lightgray" },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 31, "step": 1 }
+  },
+
+  "encoding": {
+    "x": { "field": "data", "type": "quantitative" },
+    "y": { "field": "data", "type": "ordinal" }
+  },
+
+  "mark": "point"
+}

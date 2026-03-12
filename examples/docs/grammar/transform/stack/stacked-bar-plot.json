@@ -1,0 +1,27 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Stacked bar plot example.",
+
+  "data": {
+    "values": [
+      { "x": 1, "q": "A", "z": 7 },
+      { "x": 1, "q": "B", "z": 3 },
+      { "x": 1, "q": "C", "z": 10 },
+      { "x": 2, "q": "A", "z": 8 },
+      { "x": 2, "q": "B", "z": 5 },
+      { "x": 3, "q": "B", "z": 10 }
+    ]
+  },
+
+  "transform": [{ "type": "stack", "field": "z", "groupby": ["x"] }],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": { "field": "x", "type": "nominal", "band": 0.8 },
+    "y": { "field": "y0", "type": "quantitative" },
+    "y2": { "field": "y1" },
+    "color": { "field": "q", "type": "nominal" }
+  }
+}
