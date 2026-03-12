@@ -484,7 +484,9 @@ const layoutTemplate = () => html`
             .error=${exampleCatalogError}
             .entries=${exampleCatalog}
             @close=${closeExamplePicker}
-            @open-example=${(event) => openCatalogEntry(event.detail.entry)}
+            @open-example=${(
+                /** @type {CustomEvent<{ entry: ExampleCatalogEntry }>} */ event
+            ) => openCatalogEntry(event.detail.entry)}
         ></gs-example-picker>
         ${toolbarTemplate()}
         <split-panel

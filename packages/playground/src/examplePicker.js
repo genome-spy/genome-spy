@@ -215,15 +215,21 @@ export default class ExamplePicker extends LitElement {
         this.open = false;
         this.loading = false;
         this.error = "";
+        /** @type {ExampleCatalogEntry[]} */
         this.entries = [];
         this.search = "";
     }
 
+    /**
+     * @param {import("lit").PropertyValues<this>} changedProperties
+     */
     updated(changedProperties) {
         if (changedProperties.has("open") && this.open) {
             this.search = "";
             queueMicrotask(() =>
-                this.renderRoot.querySelector(".search")?.focus()
+                /** @type {HTMLInputElement | null} */ (
+                    this.renderRoot.querySelector(".search")
+                )?.focus()
             );
         }
     }

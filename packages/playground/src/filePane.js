@@ -211,7 +211,7 @@ function makeDataTable(data) {
             (typeof data[0][col] === "number" ? "right" : "left")
     );
 
-    const makeRow = (/** @type {Datum[]} */ row) => html`
+    const makeRow = (/** @type {Datum} */ row) => html`
         <tr>
             ${cols.map(
                 (c, i) => html`<td style=${alignments[i]}>${row[c]}</td> `
