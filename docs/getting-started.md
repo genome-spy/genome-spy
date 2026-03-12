@@ -80,76 +80,19 @@ This template loads the spec from a separate `spec.json` file placed in the same
 This is the modern browser approach. It avoids global variables and is the
 recommended option for new pages.
 
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>GenomeSpy</title>
-  </head>
-  <body>
-    <script type="module">
-      import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x/dist/bundle/index.es.js";
-
-      await embed(document.body, "spec.json", {});
-    </script>
-  </body>
-</html>
-```
+SNIPPET getting-started/core-module-spec-file.html
 
 ##### Alternative: Plain Script Tag
 
 This version keeps the older global-style API for compatibility.
 
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>GenomeSpy</title>
-  </head>
-  <body>
-    <script
-      type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x"
-    ></script>
-
-    <script>
-      genomeSpyEmbed.embed(document.body, "spec.json", {});
-    </script>
-  </body>
-</html>
-```
+SNIPPET getting-started/core-plain-spec-file.html
 
 #### Embed the spec in the HTML document
 
 You can alternatively provide the specification as a JavaScript object.
 
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>GenomeSpy</title>
-  </head>
-  <body>
-    <script type="module">
-      import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/core@0.73.x/dist/bundle/index.es.js";
-
-      const spec = {
-        data: {
-          sequence: { start: 0, stop: 6.284, step: 0.39269908169, as: "x" },
-        },
-        transform: [{ type: "formula", expr: "sin(datum.x)", as: "sin" }],
-        mark: "point",
-        encoding: {
-          x: { field: "x", type: "quantitative" },
-          y: { field: "sin", type: "quantitative" },
-        },
-      };
-
-      await embed(document.body, spec, {});
-    </script>
-  </body>
-</html>
-```
+SNIPPET getting-started/core-module-inline-spec.html
 
 ### Genomespy.app website examples
 
