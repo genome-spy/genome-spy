@@ -689,13 +689,11 @@ Prefer:
 
 Future note:
 
-- later, add browser-driven screenshot generation for curated examples, likely with Playwright or a similar tool
-- treat that as a separate follow-up after the catalog and structural validation work is in place
-- details of screenshot orchestration, goldens, and CI cost should be decided later
+- later, discuss screenshot approval/update workflow and any CI integration for the existing browser-driven capture pipeline
 
 ## Screenshot Capture Follow-up
 
-Status: partially completed on branch `examples-reorg`
+Status: completed on branch `examples-reorg`
 
 This should be implemented as a browser-driven export workflow, not as a pure
 Node-side renderer.
@@ -1001,7 +999,7 @@ Implementation notes:
 
 ## Phase 6: Fix playground source and base handling
 
-Status: partially completed on branch `examples-reorg`
+Status: completed on branch `examples-reorg`
 
 1. Replace the current regex-based URL/base handling with URL objects.
 2. Preserve `?spec=...` while the loaded source remains untouched, but clear it on the first user edit.
@@ -1021,13 +1019,14 @@ Implementation notes:
 - Local storage now persists both the editor text and any inherited source base URL.
 - Website examples loaded from `/examples/...` outside the curated `core/docs/app` prefixes get `baseUrl` injected into the editor text immediately.
 - Shared examples loaded from `/examples/core/...`, `/examples/docs/...`, `/examples/app/...`, or `/docs/examples/...` keep an inherited examples-root base URL instead of modifying the editor text.
-- The toolbar now shows the effective base URL and provides a clear button.
+- The playground now shows the effective base URL in a compact notice above the editor, with an inline clear action and expandable explanation.
 - The playground Vite dev server now serves repo-root `examples/` at both `/examples` and `/docs/examples` for local parity with deployed curated-example URLs.
-- The planned catalog should be generated from the filesystem at runtime in local dev and emitted with the same shape at build time for docs/playground deployment.
+- The catalog is generated from the filesystem at runtime in local dev and emitted with the same shape at build time for docs/playground deployment.
 - The playground now exposes an `Examples` picker backed by that generated catalog.
-- Picker entries use the example `description` as the primary title and group curated specs from `examples/core/` and `examples/docs/`.
+- Picker entries use the example `description` as the primary title and group curated specs from `examples/docs/` and `examples/core/`, with docs examples prioritized first.
 - When a sibling screenshot exists, the picker renders it as a thumbnail card image.
 - The picker is now implemented as a standalone LitElement web component instead of inline page-template markup.
+- Displayed picker categories omit a trailing `index` path segment when present.
 
 ### Draft commit messages
 
@@ -1071,10 +1070,18 @@ Implementation notes:
 
 ## Phase 9: Remove obsolete paths and cleanup
 
+Status: partially completed on branch `examples-reorg`
+
 1. Remove old `packages/core/examples/` references.
 2. Remove old `packages/core/private/` references.
 3. Update README and contributor guidance.
 4. Decide whether any compatibility symlinks or transitional copies can be dropped.
+
+Implementation notes:
+
+- `examples/README.md` now documents the curated examples layout and formatting style.
+- `AGENTS.md` now links to the examples style guide for human and LLM contributors.
+- Some compatibility support still remains intentionally, especially the legacy `packages/core/private/` fallback in dev-server routes and warnings.
 
 ### Draft commit messages
 
