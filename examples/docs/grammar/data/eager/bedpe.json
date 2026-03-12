@@ -1,9 +1,9 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": "BEDPE example using link marks between paired breakpoints.",
 
-  "genome": { "name": "hg38" },
+  "assembly": "hg38",
 
   "data": {
     "url": "data/events.bedpe",

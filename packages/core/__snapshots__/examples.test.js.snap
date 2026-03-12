@@ -100,57 +100,6 @@ exports[`shared examples > initializes examples/core/genomic/bedBlocks.json 1`] 
 }
 `;
 
-exports[`shared examples > initializes examples/core/genomic/bedSimple.json 1`] = `
-{
-  "assemblies": [
-    "hg38",
-  ],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": "{"params":{"url":"data/bedRegions.bed","format":{"type":"bed"}},"baseUrl":"examples/"}",
-      "type": "UrlSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-    ],
-    "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
 exports[`shared examples > initializes examples/core/genomic/bedpeColumns.json 1`] = `
 {
   "assemblies": [
@@ -183,57 +132,6 @@ exports[`shared examples > initializes examples/core/genomic/bedpeColumns.json 1
     },
     {
       "identifier": "{"params":{"url":"data/eventsCustomColumns.tsv","format":{"type":"bedpe","columns":["chrom1","start1","end1","chrom2","start2","end2","name","strand1","strand2","score"]}},"baseUrl":"examples/"}",
-      "type": "UrlSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-    ],
-    "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
-exports[`shared examples > initializes examples/core/genomic/bedpeEndpoints.json 1`] = `
-{
-  "assemblies": [
-    "hg38",
-  ],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": "{"params":{"url":"data/events.bedpe","format":{"type":"bedpe"}},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -5685,6 +5583,108 @@ exports[`shared examples > initializes examples/docs/grammar/composition/multisc
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/data/eager/bed.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/bedRegions.bed","format":{"type":"bed"}},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/data/eager/bedpe.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/events.bedpe","format":{"type":"bedpe"}},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/data/lazy/axis-genome.json 1`] = `
 {
   "assemblies": [
@@ -6601,55 +6601,6 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rect/shadowed-
 }
 `;
 
-exports[`shared examples > initializes examples/docs/grammar/mark/rule/diagonal-rules.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "SequenceSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-    ],
-    "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
 exports[`shared examples > initializes examples/docs/grammar/mark/rule/ranged-rules.json 1`] = `
 {
   "assemblies": [],
@@ -6718,6 +6669,78 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rule/rule-mark
     {
       "identifier": null,
       "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/rule/synteny-hg38-mm10.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+    "mm10",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/synteny-hg38-mm10.tsv"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
     },
   ],
   "hierarchy": {
