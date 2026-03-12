@@ -57,7 +57,6 @@ jobs:
                   ref: master
                   path: deploy-site
                   ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-                  persist-credentials: false
 
             - name: Update site contents
               run: |
