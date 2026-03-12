@@ -855,6 +855,9 @@ Implementation notes:
 - The core embed API now exposes `getLogicalCanvasSize()` and
   `awaitVisibleLazyData()` so the harness can size exports correctly and wait
   until visible lazy sources have loaded their current domain.
+- Screenshot readiness currently waits for windowed async lazy sources
+  (`BigWig`, `BigBed`, `BAM`, `Tabix`, `IndexedFasta`) and intentionally does
+  not block on synchronous helper sources such as generated axis ticks.
 - `packages/core/scripts/captureScreenshots.mjs` can capture a specific curated
   example or batch all curated `examples/core/**` and `examples/docs/**`
   examples, writing sibling `.png` files next to the source specs.

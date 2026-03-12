@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import Collector from "../data/collector.js";
 import DataSource from "../data/sources/dataSource.js";
+import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
 import {
     awaitSubtreeLazyReady,
     buildReadinessRequest,
@@ -53,11 +54,14 @@ function createLazySubtree(options = {}) {
     const unitView = Object.create(UnitView.prototype);
     unitView.isConfiguredVisible = () => visible;
 
-    const dataSource = new (class extends DataSource {
-        isDataReadyForDomain() {
-            return readyState.value;
-        }
-    })(/** @type {import("./view.js").default} */ (/** @type {any} */ ({})));
+    const dataSource = Object.create(SingleAxisWindowedSource.prototype);
+    dataSource.channel = "x";
+    dataSource.scaleResolution = {
+        getDomain: () => [0, 10],
+    };
+    dataSource.isDataReadyForDomain = function () {
+        return readyState.value;
+    };
 
     const collector = new Collector();
 
@@ -161,10 +165,13 @@ describe("dataReadiness", () => {
         expect(isSubtreeLazyReady(subtreeRoot, undefined)).toBe(true);
     });
 
-    it("returns false when lazy readiness request is missing", () => {
-        const { subtreeRoot } = createLazySubtree({ ready: true });
+    it("uses current domains when lazy readiness request is missing", () => {
+        const { subtreeRoot, readyState } = createLazySubtree({ ready: false });
 
         expect(isSubtreeLazyReady(subtreeRoot, undefined)).toBe(false);
+
+        readyState.value = true;
+        expect(isSubtreeLazyReady(subtreeRoot, undefined)).toBe(true);
     });
 
     it("uses lazy source readiness for the requested domain", () => {

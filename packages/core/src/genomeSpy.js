@@ -42,8 +42,7 @@ import bed from "./data/formats/bed.js";
 import bedpe from "./data/formats/bedpe.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
-import { primaryPositionalChannels } from "./encoder/encoder.js";
-import { awaitSubtreeLazyReady, buildReadinessRequest } from "./view/dataReadiness.js";
+import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -560,15 +559,10 @@ export default class GenomeSpy {
             return;
         }
 
-        const readinessRequest = buildReadinessRequest(
-            this.viewRoot,
-            primaryPositionalChannels
-        );
-
         await awaitSubtreeLazyReady(
             this.viewRoot.context,
             this.viewRoot,
-            readinessRequest,
+            undefined,
             signal
         );
     }

@@ -1,4 +1,5 @@
 import DataSource from "../data/sources/dataSource.js";
+import SingleAxisWindowedSource from "../data/sources/lazy/singleAxisWindowedSource.js";
 import UnitView from "./unitView.js";
 
 /**
@@ -95,54 +96,14 @@ export function isSubtreeReady(subtreeRoot, readinessRequest, viewFilter) {
  * @returns {boolean}
  */
 export function isSubtreeLazyReady(subtreeRoot, readinessRequest, viewFilter) {
-    const shouldConsiderView =
-        viewFilter ??
-        ((/** @type {View} */ view) => view.isConfiguredVisible());
-
-    /** @type {Set<DataSource>} */
-    const dataSources = new Set();
-
-    subtreeRoot.visit((view) => {
-        if (!(view instanceof UnitView)) {
-            return;
-        }
-        if (!shouldConsiderView(view)) {
-            return;
-        }
-
-        /** @type {View | null} */
-        let current = view;
-        while (current) {
-            if (current.flowHandle && current.flowHandle.dataSource) {
-                break;
-            }
-            current = current.dataParent;
-        }
-
-        if (!current || !current.flowHandle) {
-            return;
-        }
-        const dataSource = current.flowHandle.dataSource;
-        if (!("isDataReadyForDomain" in dataSource)) {
-            return;
-        }
-        dataSources.add(dataSource);
-    });
+    const dataSources = collectLazyDataSources(subtreeRoot, viewFilter);
 
     if (!dataSources.size) {
         return true;
     }
 
-    if (!readinessRequest) {
-        return false;
-    }
-
     for (const dataSource of dataSources) {
-        const checkReady =
-            /** @type {import("../data/sources/lazy/singleAxisLazySource.js").DataReadinessCheckable["isDataReadyForDomain"]} */ (
-                /** @type {any} */ (dataSource).isDataReadyForDomain
-            );
-        if (!checkReady.call(dataSource, readinessRequest)) {
+        if (!isLazySourceReady(dataSource, readinessRequest)) {
             return false;
         }
     }
@@ -171,21 +132,6 @@ export function awaitSubtreeLazyReady(
     const shouldConsiderView =
         viewFilter ??
         ((/** @type {View} */ view) => view.isConfiguredVisible());
-
-    if (!readinessRequest) {
-        if (
-            isSubtreeLazyReady(
-                subtreeRoot,
-                readinessRequest,
-                shouldConsiderView
-            )
-        ) {
-            return Promise.resolve();
-        }
-        return Promise.reject(
-            new Error("Lazy subtree readiness requires a readiness request.")
-        );
-    }
 
     return new Promise((resolve, reject) => {
         /** @type {Set<() => void>} */
@@ -264,4 +210,63 @@ export function awaitSubtreeLazyReady(
             signal.addEventListener("abort", abortHandler, { once: true });
         }
     });
+}
+
+/**
+ * @param {View} subtreeRoot
+ * @param {(view: View) => boolean} [viewFilter]
+ * @returns {Set<SingleAxisWindowedSource>}
+ */
+function collectLazyDataSources(subtreeRoot, viewFilter) {
+    const shouldConsiderView =
+        viewFilter ??
+        ((/** @type {View} */ view) => view.isConfiguredVisible());
+
+    /** @type {Set<SingleAxisWindowedSource>} */
+    const dataSources = new Set();
+
+    subtreeRoot.visit((view) => {
+        if (!(view instanceof UnitView)) {
+            return;
+        }
+        if (!shouldConsiderView(view)) {
+            return;
+        }
+
+        /** @type {View | null} */
+        let current = view;
+        while (current) {
+            if (current.flowHandle && current.flowHandle.dataSource) {
+                break;
+            }
+            current = current.dataParent;
+        }
+
+        if (!current || !current.flowHandle) {
+            return;
+        }
+
+        const dataSource = current.flowHandle.dataSource;
+        if (!(dataSource instanceof SingleAxisWindowedSource)) {
+            return;
+        }
+
+        dataSources.add(dataSource);
+    });
+
+    return dataSources;
+}
+
+/**
+ * @param {SingleAxisWindowedSource} dataSource
+ * @param {DataReadinessRequest | undefined} readinessRequest
+ */
+function isLazySourceReady(dataSource, readinessRequest) {
+    const request =
+        readinessRequest ??
+        ({
+            [dataSource.channel]: Array.from(dataSource.scaleResolution.getDomain()),
+        });
+
+    return dataSource.isDataReadyForDomain(request);
 }
