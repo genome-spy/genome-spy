@@ -4,6 +4,8 @@ import { format as d3format } from "d3-format";
 import scaleIndex from "./scaleIndex.js";
 import { isChromosomalLocus, isChromosomalLocusInterval } from "./genome.js";
 
+const EXACT_LOCUS_LABEL_STEP_THRESHOLD = 1e6;
+
 export default function scaleLocus() {
     /** @type {import("./scaleLocus.js").ScaleLocus} */
     const scale = /** @type {any} */ (scaleIndex().numberingOffset(1));
@@ -27,14 +29,26 @@ export default function scaleLocus() {
         }
 
         const domain = scale.domain();
+        const domainSpan = domain[1] - domain[0];
         const numberingOffset = scale.numberingOffset();
 
-        const [minChrom, maxChrom] = [
-            Math.max(domain[0], 0),
-            Math.min(domain[1], genome.totalSize - 1),
-        ].map((x) => genome.toChromosome(x));
+        const minChrom = genome.toChromosome(Math.max(domain[0], 0));
+        const maxChrom = genome.toChromosome(
+            Math.min(domain[1], genome.totalSize - 1)
+        );
 
-        const step = Math.max(1, tickStep(domain[0], domain[1], count));
+        const requestedCount = Math.max(
+            1,
+            Math.min(count ?? 10, Math.ceil(domainSpan))
+        );
+
+        let step = tickStep(domain[0], domain[1], requestedCount);
+
+        if (step < EXACT_LOCUS_LABEL_STEP_THRESHOLD) {
+            step = tickStep(domain[0], domain[1], requestedCount * 0.65);
+        }
+
+        step = Math.max(1, step);
 
         const ticks = [];
 
@@ -75,12 +89,17 @@ export default function scaleLocus() {
         const step = tickStep(
             domain[0],
             domain[1],
-            Math.min(count, Math.ceil(domainSpan))
+            Math.max(1, Math.min(count ?? 10, Math.ceil(domainSpan)))
         );
         // Use higher display precision for smaller spans
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
-        const numberFormat = step < 1e6 ? d3format(",") : d3format(".3s");
+        const numberFormat =
+            step < EXACT_LOCUS_LABEL_STEP_THRESHOLD
+                ? d3format(",")
+                : d3format(".3s");
 
+        // Axis tick values live in the continuous whole-genome coordinate
+        // system, but labels should show chromosome-local one-based positions.
         /** @type {function(number):number} */
         const fixer = (x) => x - genome.toChromosome(x).continuousStart;
 

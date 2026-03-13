@@ -51,3 +51,39 @@ describe("scaleLocus helpers", () => {
         expect(getGenomeExtent(scale)).toEqual([0, 150]);
     });
 });
+
+describe("scaleLocus ticks", () => {
+    /**
+     * @param {number} chromosomeSize
+     * @param {number[]} domain
+     */
+    function createScale(chromosomeSize, domain) {
+        return scaleLocus()
+            .genome(
+                new Genome({
+                    name: "test",
+                    contigs: [{ name: "chr1", size: chromosomeSize }],
+                })
+            )
+            .domain(domain);
+    }
+
+    test("returns fewer ticks for long exact labels", () => {
+        const longLabels = createScale(200_000_000, [100_000_000, 100_100_000]);
+        const shortLabels = createScale(200_000_000, [0, 4_000]);
+
+        expect(longLabels.ticks(10).length).toBeLessThan(
+            shortLabels.ticks(10).length
+        );
+        expect(longLabels.tickFormat(10)(longLabels.ticks(10)[0])).toContain(
+            ","
+        );
+    });
+
+    test("keeps abbreviated labels for large spans", () => {
+        const scale = createScale(200_000_000, [0, 200_000_000]);
+        const tick = scale.ticks(7)[0];
+
+        expect(scale.tickFormat(7)(tick)).toContain("M");
+    });
+});
