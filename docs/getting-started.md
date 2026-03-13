@@ -11,10 +11,9 @@ genomic data in web browsers. To visualize data with GenomeSpy, you need to:
    the data
 4. Open the web page with your web browser
 
-However, there are three ways to get quickly started with GenomeSpy
-visualizations: the Playground app, Observable notebooks, and embedding
-GenomeSpy on HTML pages. More advanced users can use GenomeSpy as a
-visualization library in web applications.
+You can get started with GenomeSpy in three ways: the Playground app, Observable
+notebooks, and embedding GenomeSpy on HTML pages. More advanced users can use
+GenomeSpy as a visualization library in web applications.
 
 ## Playground
 
@@ -27,19 +26,19 @@ still rudimentary and does not support saving or sharing visualizations.
 ## Observable notebooks
 
 You can embed GenomeSpy into an [Observable](https://observablehq.com) notebook.
-Please check the [GenomeSpy
+See the [GenomeSpy
 collection](https://observablehq.com/collection/@tuner/genomespy) for usage
 examples.
 
 ## Local or remote web server
 
-For more serious work, you should use the GenomeSpy JavaScript library to
-create a web page for the visualization:
+For more serious work, use the GenomeSpy JavaScript library to create a web
+page for your visualization:
 
-1. Create an HTML document (web page) by using the example below
+1. Create an HTML document by using one of the examples below
 2. Place the visualization specification (spec) and your data files into the same
    directory as the HTML document
-3. Copy them onto a remote web server or start a local web server in the directory
+3. Copy them to a remote web server or start a local web server in that directory
 
 ### Local web server
 
@@ -62,7 +61,7 @@ not yet 100% stable, it is recommended to use a specific version.
 The `embed` function initializes a visualization into the HTML element given as
 the first parameter using the specification given as the second parameter. The
 function returns a promise that resolves into an object that provides the
-current public API. For deails, see the [API Documentation](./api.md).
+current public API. For details, see the [API Documentation](./api.md).
 
 #### Load the spec from a file
 
@@ -87,21 +86,21 @@ You can alternatively provide the specification as a JavaScript object.
 
 SNIPPET getting-started/core-module-inline-spec.html
 
-### Genomespy.app website examples
+### genomespy.app website examples
 
-The examples on the [genomespy.app](https://genomespy.app/) main page are stored
+The examples on the [genomespy.app](https://genomespy.app/) home page are stored
 in the [website-examples](https://github.com/genome-spy/website-examples) GitHub
 repository. You can clone the repository and launch the examples locally for
 further experimentation.
 
 ## Using GenomeSpy as a visualization library in web applications
 
-The [@genome-spy/core](https://www.npmjs.com/package/@genome-spy/core) NPM
-package contains a bundled library that can be used on web pages as shown in the
-examples above. In addition, it contains the source code in
+The [@genome-spy/core](https://www.npmjs.com/package/@genome-spy/core) npm
+package provides browser-ready bundles for use on web pages, as shown in the
+examples above. It also provides
 [ESM](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
-format, allowing use with bundlers such as [Vite](https://vitejs.dev) and
-[Webpack](https://webpack.js.org/). For examples of such use, see:
+sources for use with bundlers such as [Vite](https://vitejs.dev) and
+[Webpack](https://webpack.js.org/). For examples of this kind of integration, see:
 
 - The [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
   package contains examples of embedding GenomeSpy in web applications and using the API.
