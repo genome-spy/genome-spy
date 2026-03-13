@@ -2,8 +2,6 @@
 const int BUTT = 0;
 const int SQUARE = 1;
 const int ROUND = 2;
-const int HORIZONTAL = 0;
-const int VERTICAL = 1;
 
 /** Position along the rule */
 in float pos;
@@ -36,20 +34,8 @@ void main(void) {
         size = pixelSize;
     }
 
-    vec2 a;
-    vec2 b;
-    if (uTickMode != 0) {
-        vec2 center = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-        vec2 offsetInPixels = uTickOrient == VERTICAL
-            ? vec2(0.0, uTickLength / 2.0)
-            : vec2(uTickLength / 2.0, 0.0);
-
-        a = center - offsetInPixels / uViewportSize;
-        b = center + offsetInPixels / uViewportSize;
-    } else {
-        a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-        b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
-    }
+    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
+    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
 
     vec2 tangent = b - a;
 

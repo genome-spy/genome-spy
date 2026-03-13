@@ -26,7 +26,6 @@ export default class RuleMark extends Mark {
         super(unitView);
 
         this.dashTextureSize = 0;
-        this.tickOrient = undefined;
 
         this.augmentDefaultProperties({
             x2: undefined,
@@ -35,7 +34,6 @@ export default class RuleMark extends Mark {
             color: "black",
             opacity: 1.0,
             orient: undefined,
-            bandSize: 14,
             thickness: 1,
 
             minLength: 0.0,
@@ -144,8 +142,6 @@ export default class RuleMark extends Mark {
 
         encoding.x ??= { value: 0.5 };
         encoding.y ??= { value: 0.5 };
-        encoding.x2 = encoding.x;
-        encoding.y2 = encoding.y;
         encoding.size = { value: props.thickness };
 
         const orient = props.orient ?? inferTickOrient(encoding);
@@ -155,7 +151,7 @@ export default class RuleMark extends Mark {
             );
         }
 
-        this.tickOrient = orient;
+        applyTickSpan(encoding, orient);
 
         return encoding;
     }
@@ -187,31 +183,12 @@ export default class RuleMark extends Mark {
         this.gl.useProgram(this.programInfo.program);
 
         const props = this.properties;
-        const tickProps = /** @type {import("../spec/mark.js").TickProps} */ (
-            props
-        );
 
         this.registerMarkUniformValue("uMinLength", props.minLength);
         this.registerMarkUniformValue(
             "uStrokeCap",
             props.strokeCap ?? "butt",
             (cap) => ["butt", "square", "round"].indexOf(cap)
-        );
-        this.registerMarkUniformValue(
-            "uTickMode",
-            this.getType() == "tick",
-            (x) => +x
-        );
-        this.registerMarkUniformValue(
-            "uTickOrient",
-            this.getType() == "tick"
-                ? (this.tickOrient ?? tickProps.orient ?? VERTICAL)
-                : VERTICAL,
-            (orient) => (orient == VERTICAL ? 1 : 0)
-        );
-        this.registerMarkUniformValue(
-            "uTickLength",
-            this.getType() == "tick" ? (tickProps.bandSize ?? 14) : 1
         );
 
         setBlockUniforms(this.markUniformInfo, {
@@ -330,28 +307,73 @@ function createDashTextureArray(pattern) {
  * @returns {"vertical" | "horizontal" | undefined}
  */
 function inferTickOrient(encoding) {
-    const xContinuous =
-        isChannelDefWithScale(encoding.x) &&
-        isContinuousTickType(encoding.x.type);
-    const yContinuous =
-        isChannelDefWithScale(encoding.y) &&
-        isContinuousTickType(encoding.y.type);
-
-    if (xContinuous && !yContinuous) {
+    if (!encoding.y) {
         return VERTICAL;
-    } else if (!xContinuous && yContinuous) {
+    } else if (!encoding.x) {
         return HORIZONTAL;
-    } else if (xContinuous && yContinuous) {
+    }
+
+    const xBand = isBandChannelDef(encoding.x);
+    const yBand = isBandChannelDef(encoding.y);
+
+    if (!xBand && yBand) {
         return VERTICAL;
+    } else if (xBand && !yBand) {
+        return HORIZONTAL;
     } else {
         return undefined;
     }
 }
 
 /**
- * @param {import("../spec/channel.js").Type} type
- * @returns {boolean}
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {"vertical" | "horizontal"} orient
  */
-function isContinuousTickType(type) {
-    return type == "quantitative" || type == "index" || type == "locus";
+function applyTickSpan(encoding, orient) {
+    if (orient == VERTICAL) {
+        encoding.x2 = encoding.x;
+
+        if (isBandChannelDef(encoding.y)) {
+            const original = encoding.y;
+            encoding.y = withBand(original, 0);
+            encoding.y2 = withBand(original, 1);
+        } else {
+            encoding.y = { value: 0 };
+            encoding.y2 = { value: 1 };
+        }
+    } else {
+        encoding.y2 = encoding.y;
+
+        if (isBandChannelDef(encoding.x)) {
+            const original = encoding.x;
+            encoding.x = withBand(original, 0);
+            encoding.x2 = withBand(original, 1);
+        } else {
+            encoding.x = { value: 0 };
+            encoding.x2 = { value: 1 };
+        }
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @returns {channelDef is import("../spec/channel.js").ChannelDefWithScale}
+ */
+function isBandChannelDef(channelDef) {
+    return (
+        isChannelDefWithScale(channelDef) &&
+        (channelDef.type == "ordinal" || channelDef.type == "nominal")
+    );
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ * @param {number} band
+ * @returns {import("../spec/channel.js").ChannelDefWithScale}
+ */
+function withBand(channelDef, band) {
+    return /** @type {import("../spec/channel.js").ChannelDefWithScale} */ ({
+        ...channelDef,
+        band,
+    });
 }

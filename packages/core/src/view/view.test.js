@@ -109,7 +109,16 @@ describe("Trivial creations and initializations", () => {
         );
 
         expect(view.mark.encoding.x2).toEqual(view.mark.encoding.x);
-        expect(view.mark.encoding.y2).toEqual(view.mark.encoding.y);
+        expect(view.mark.encoding.y).toEqual({
+            field: "Cylinders",
+            type: "ordinal",
+            band: 0,
+        });
+        expect(view.mark.encoding.y2).toEqual({
+            field: "Cylinders",
+            type: "ordinal",
+            band: 1,
+        });
         expect(view.mark.encoding.size).toEqual({ value: 1 });
     });
 

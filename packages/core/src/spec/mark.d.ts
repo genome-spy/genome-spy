@@ -340,13 +340,6 @@ export interface TickProps extends MarkPropsBase {
     orient?: "vertical" | "horizontal";
 
     /**
-     * The length of the tick mark in pixels.
-     *
-     * **Default value:** `14`
-     */
-    bandSize?: number;
-
-    /**
      * The thickness of the tick mark in pixels.
      *
      * **Default value:** `1`
