@@ -292,13 +292,10 @@ export interface RectProps
         | ExprRef;
 }
 
-export interface RuleProps
-    extends MarkPropsBase, SecondaryPositionProps, SizeProps {
-    type: "rule";
-
+export interface StrokeStyleProps {
     /**
-     * The minimum length of the rule in pixels. Use this property to ensure that
-     * very short ranged rules remain visible even when the user zooms out.
+     * The minimum stroke length in pixels. Use this property to ensure that
+     * very short strokes remain visible even when the user zooms out.
      *
      * **Default value:** `0`
      */
@@ -326,14 +323,21 @@ export interface RuleProps
     strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
-export interface TickProps extends MarkPropsBase {
+export interface RuleProps
+    extends MarkPropsBase, SecondaryPositionProps, SizeProps, StrokeStyleProps {
+    type: "rule";
+}
+
+export interface TickProps extends MarkPropsBase, StrokeStyleProps {
     type: "tick";
 
     /**
      * The orientation of the tick mark.
      *
-     * If omitted, GenomeSpy infers the orientation from the encoded `x` and `y`
-     * channels when possible.
+     * If omitted, GenomeSpy infers the orientation when one positional channel
+     * uses a band-like scale and the other does not, or when the orthogonal
+     * channel is omitted. Specify `orient` explicitly when both `x` and `y`
+     * use band-like scales.
      *
      * **Default value:** inferred
      */
@@ -341,38 +345,11 @@ export interface TickProps extends MarkPropsBase {
 
     /**
      * The thickness of the tick mark in pixels.
+     * Equivalent to the `size` of the underlying rule mark.
      *
      * **Default value:** `1`
      */
     thickness?: number;
-
-    /**
-     * The minimum length of the tick in pixels.
-     *
-     * **Default value:** `0`
-     */
-    minLength?: number;
-
-    /**
-     * An array of of alternating stroke and gap lengths or `null` for solid strokes.
-     *
-     * **Default value:** `null`
-     */
-    strokeDash?: number[];
-
-    /**
-     * An offset for the stroke dash pattern.
-     *
-     * **Default value:** `0`
-     */
-    strokeDashOffset?: number;
-
-    /**
-     * The style of stroke ends. Available choices: `"butt"`, `"round`", and `"square"`.
-     *
-     * **Default value:** `"butt"`
-     */
-    strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
 export interface TextProps
