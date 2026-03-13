@@ -37,8 +37,8 @@ For more serious work, you should use the GenomeSpy JavaScript library to
 create a web page for the visualization:
 
 1. Create an HTML document (web page) by using the example below
-2. Place the visualization spec and your data files into the same directory
-   as the HTML document
+2. Place the visualization specification (spec) and your data files into the same
+   directory as the HTML document
 3. Copy them onto a remote web server or start a local web server in the directory
 
 ### Local web server
@@ -63,13 +63,6 @@ The `embed` function initializes a visualization into the HTML element given as
 the first parameter using the specification given as the second parameter. The
 function returns a promise that resolves into an object that provides the
 current public API. For deails, see the [API Documentation](./api.md).
-
-!!! warning "Check the latest version!"
-
-    The versions in the examples below may be slightly out of date. The current
-    version is:
-
-    ![npm version](https://img.shields.io/npm/v/@genome-spy/core)
 
 #### Load the spec from a file
 
