@@ -1,6 +1,7 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Tick mark example.",
+
   "data": { "url": "data/cars.json" },
   "mark": "tick",
   "encoding": {
@@ -8,7 +9,7 @@
     "y": {
       "field": "Cylinders",
       "type": "ordinal",
-      "scale": { "padding": 0.3 }
+      "scale": { "padding": 0.25 }
     }
   }
 }
