@@ -3,7 +3,7 @@
 ![Marks](../../img/block-mark.svg){align="right" style="width: 30%"}
 
 In GenomeSpy, visualizations are built from marks, which are geometric shapes,
-such as points, rectangles, and lines, that represent data objects (or rows in
+such as points, ticks, rectangles, and lines, that represent data objects (or rows in
 tabular data). These marks are mapped to the data using the `encoding` property,
 which specifies which visual channels, such as `x`, `color`, and `size`, should
 be used to encode the data fields. By adjusting the encodings, you can present
