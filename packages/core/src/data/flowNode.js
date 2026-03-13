@@ -19,7 +19,9 @@ export const BEHAVIOR_MODIFIES = 1 << 1;
 export const BEHAVIOR_COLLECTS = 1 << 2;
 
 /**
- * @typedef {{paramRuntime?: import("../paramRuntime/viewParamRuntime.js").default}} ParamRuntimeProvider
+ * @typedef {object} ParamRuntimeProvider
+ * @prop {import("../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
+ * @prop {import("../types/viewContext.js").default} [context]
  */
 
 /**

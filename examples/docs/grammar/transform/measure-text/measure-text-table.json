@@ -1,0 +1,63 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Measure text widths in a table-like layout.",
+
+  "data": {
+    "values": [
+      { "label": "BRCA1" },
+      { "label": "GenomeSpy" },
+      { "label": "Copy-number profile" },
+      { "label": "Structural variant" },
+      { "label": "Tumor suppressor gene" }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "measureText",
+      "field": "label",
+      "font": "Roboto Condensed",
+      "fontWeight": "bold",
+      "fontSize": 16,
+      "as": "width"
+    }
+  ],
+
+  "resolve": { "scale": { "y": "shared" } },
+
+  "spacing": 24,
+  "padding": { "top": 30, "bottom": 10, "left": 10, "right": 10 },
+
+  "encoding": {
+    "y": { "field": "label", "type": "ordinal", "axis": null }
+  },
+
+  "hconcat": [
+    {
+      "title": "Text",
+      "mark": {
+        "type": "text",
+        "size": 16,
+        "font": "Roboto Condensed",
+        "fontWeight": "bold",
+        "align": "left"
+      },
+      "encoding": {
+        "text": { "field": "label" }
+      }
+    },
+
+    {
+      "title": "Measured width (px)",
+      "mark": {
+        "type": "text",
+        "size": 14,
+        "align": "right"
+      },
+      "encoding": {
+        "text": { "field": "width", "format": ".1f" }
+      }
+    }
+  ]
+}

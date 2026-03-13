@@ -1,4 +1,5 @@
 import { PositionalChannel } from "./channel.js";
+import { FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
 /**
@@ -426,13 +427,45 @@ export interface SampleParams extends TransformParamsBase {
 export interface MeasureTextParams extends TransformParamsBase {
     type: "measureText";
 
+    /**
+     * The field that contains the text to be measured.
+     */
     field: Field;
 
+    /**
+     * The font size in pixels.
+     */
     fontSize: number | ExprRef;
 
-    as: string;
+    /**
+     * The font typeface. Uses the same asynchronously loaded SDF fonts as the
+     * `"text"` mark.
+     *
+     * **Default:** `"Lato"`
+     */
+    font?: string;
 
-    // TODO: FontFamily etc
+    /**
+     * The font style. Valid values: `"normal"` and `"italic"`.
+     *
+     * **Default:** `"normal"`
+     */
+    fontStyle?: FontStyle;
+
+    /**
+     * The font weight. The following strings and numbers are valid values:
+     * `"thin"` (`100`), `"light"` (`300`), `"regular"` (`400`),
+     * `"normal"` (`400`), `"medium"` (`500`), `"bold"` (`700`),
+     * `"black"` (`900`)
+     *
+     * **Default:** `"regular"`
+     */
+    fontWeight?: FontWeight;
+
+    /**
+     * The output field where the measured width is written.
+     */
+    as: string;
 }
 
 export interface MergeFacetsParams extends TransformParamsBase {

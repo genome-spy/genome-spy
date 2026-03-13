@@ -191,6 +191,100 @@ describe("viewDataInit", () => {
         initializeSpy.mockRestore();
     });
 
+    test("waits for measureText custom fonts before loading data", async () => {
+        const context = createTestViewContext();
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+
+        const fontEntry = /** @type {any} */ ({
+            metrics: undefined,
+            texture: undefined,
+        });
+        /** @type {(() => void) | undefined} */
+        let resolveFont;
+        let fontRequest;
+        const fontReady = new Promise((resolve) => {
+            resolveFont = () => {
+                fontEntry.metrics = /** @type {any} */ ({
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                });
+                resolve();
+            };
+        });
+
+        const fontManager = /** @type {any} */ ({
+            getFont: (
+                /** @type {string} */ family,
+                /** @type {import("../spec/font.js").FontStyle | undefined} */ style,
+                /** @type {import("../spec/font.js").FontWeight | undefined} */ weight
+            ) => {
+                fontRequest = { family, style, weight };
+                return fontEntry;
+            },
+            getDefaultFont: () => {
+                throw new Error("Default font should not be used.");
+            },
+            waitUntilReady: () => fontReady,
+        });
+        context.fontManager = fontManager;
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ label: "abcd" }] },
+            transform: [
+                {
+                    type: "measureText",
+                    field: "label",
+                    font: "Roboto Condensed",
+                    fontStyle: "italic",
+                    fontWeight: "bold",
+                    fontSize: 6,
+                    as: "width",
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "width", type: "quantitative" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        const initPromise = initializeViewData(
+            root,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        expect(fontRequest).toEqual({
+            family: "Roboto Condensed",
+            style: "italic",
+            weight: "bold",
+        });
+
+        let initialized = false;
+        initPromise.then(() => {
+            initialized = true;
+        });
+        await Promise.resolve();
+        expect(initialized).toBe(false);
+
+        // Simulate the async font loader filling in metrics before init resumes.
+        if (!resolveFont) {
+            throw new Error("Expected the font manager to expose a resolver.");
+        }
+        const resolvePendingFont = resolveFont;
+        resolvePendingFont();
+        await initPromise;
+
+        const collector = root.flowHandle?.collector;
+        const datum = collector ? [...collector.getData()][0] : undefined;
+        expect(datum?.width).toBe(24);
+    });
+
     test("completed collectors repropagate to newly attached views", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;

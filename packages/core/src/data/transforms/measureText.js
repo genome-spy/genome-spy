@@ -1,6 +1,4 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
-import fontMetadata from "../../fonts/Lato-Regular.json" with { type: "json" };
-import getMetrics from "../../fonts/bmFontMetrics.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
@@ -23,10 +21,8 @@ export default class MeasureTextTransform extends Transform {
 
         this.params = params;
 
-        const metrics = getMetrics(fontMetadata);
         const accessor = field(params.field);
         const as = params.as;
-        // TODO: Support custom fonts.
 
         let size = 0;
 
@@ -56,11 +52,24 @@ export default class MeasureTextTransform extends Transform {
         this.handle = (datum) => {
             const text = accessor(datum);
             if (text !== undefined) {
-                datum[as] = metrics.measureWidth(text, size);
+                datum[as] = this.font.metrics.measureWidth(text, size);
             } else {
                 datum[as] = 0;
             }
             this._propagate(datum);
         };
+    }
+
+    initialize() {
+        const fontManager = this.paramRuntimeProvider.context.fontManager;
+        // Resolve the font during flow initialization so viewDataInit's global
+        // font wait also covers measureText before any rows are propagated.
+        this.font = this.params.font
+            ? fontManager.getFont(
+                  this.params.font,
+                  this.params.fontStyle,
+                  this.params.fontWeight
+              )
+            : fontManager.getDefaultFont();
     }
 }

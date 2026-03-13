@@ -32,9 +32,11 @@ export async function initializeViewData(
     onDataFlowBuilt(builtDataFlow);
 
     // Have to wait until asynchronous font loading is complete.
-    // Text mark's geometry builder needs font metrics before data can be
-    // converted into geometries.
-    // TODO: Make updateGraphicsData async and await font loading there.
+    // Text mark's geometry builder and measureText transforms need font metrics
+    // before data can be converted into geometries or derived widths.
+    // TODO: Replace this subtree-wide wait with consumer-specific waits:
+    // await fonts inside text mark graphics updates and before loading data for
+    // subtrees that contain measureText transforms.
     await fontManager.waitUntilReady();
 
     // Find all data sources and initiate loading.
@@ -108,6 +110,8 @@ export async function initializeVisibleViewData(
         viewInitializationPredicate
     );
 
+    // Newly visible subtrees may introduce text marks or measureText transforms
+    // that request fonts during initializeViewSubtree.
     await fontManager.waitUntilReady();
 
     for (const collector of collectorsToRepropagate) {
