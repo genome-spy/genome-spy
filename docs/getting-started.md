@@ -67,24 +67,15 @@ current public API. For details, see the [API Documentation](./api.md).
 
 This template loads the spec from a separate `spec.json` file placed in the same directory.
 
-##### Recommended: Module Script
+SNIPPET getting-started/core-module-spec-file.html title="Recommended: Module Script"
 
-This is the modern browser approach. It avoids global variables and is the
-recommended option for new pages.
-
-SNIPPET getting-started/core-module-spec-file.html
-
-##### Alternative: Plain Script Tag
-
-This version keeps the older global-style API for compatibility.
-
-SNIPPET getting-started/core-plain-spec-file.html
+SNIPPET getting-started/core-plain-spec-file.html title="Legacy Alternative: Plain Script Tag"
 
 #### Embed the spec in the HTML document
 
 You can alternatively provide the specification as a JavaScript object.
 
-SNIPPET getting-started/core-module-inline-spec.html
+SNIPPET getting-started/core-module-inline-spec.html title="Module Script"
 
 ### genomespy.app website examples
 

@@ -140,7 +140,16 @@ class MyPreprocessor(Preprocessor):
 
         return lines
 
-    def getSnippet(self, snippet_path):
+    def getSnippet(self, argument_string):
+        try:
+            tokens = shlex.split(argument_string)
+        except ValueError as exc:
+            return ['Invalid SNIPPET arguments: {}'.format(exc)]
+
+        if not tokens:
+            return ['Invalid SNIPPET usage: missing snippet path']
+
+        snippet_path = tokens[0]
         generated_dir = os.path.join(self.repo_root, 'docs', 'generated-snippets')
         normalized_path = os.path.normpath(snippet_path)
         source_path = os.path.abspath(os.path.join(generated_dir, normalized_path))
@@ -155,8 +164,13 @@ class MyPreprocessor(Preprocessor):
             return ['Cannot open snippet file: {}'.format(snippet_path)]
 
         language = self.getSnippetLanguage(source_path)
+        fence_attributes = self.formatFenceAttributes(tokens[1:])
 
-        return ['```{}'.format(language), *snippet_text.splitlines(), '```']
+        fence_header = '```{}'.format(language)
+        if fence_attributes:
+            fence_header += ' ' + ' '.join(fence_attributes)
+
+        return [fence_header, *snippet_text.splitlines(), '```']
 
     def getSnippetLanguage(self, source_path):
         extension = os.path.splitext(source_path)[1]
@@ -166,6 +180,19 @@ class MyPreprocessor(Preprocessor):
             '.json': 'json',
             '.css': 'css',
         }.get(extension, 'text')
+
+    def formatFenceAttributes(self, tokens):
+        attributes = []
+
+        for token in tokens:
+            if '=' in token:
+                key, value = token.split('=', 1)
+                escaped_value = value.replace('"', '&quot;')
+                attributes.append('{}="{}"'.format(key, escaped_value))
+            else:
+                attributes.append(token)
+
+        return attributes
 
     def stripSchemaLine(self, spec_text):
         lines = spec_text.splitlines()
