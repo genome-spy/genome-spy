@@ -73,6 +73,7 @@ nav:
                 - Rect: "grammar/mark/rect.md"
                 - Rule: "grammar/mark/rule.md"
                 - Text: "grammar/mark/text.md"
+          - Conditional Encoding: "grammar/conditional-encoding.md"
           - View Composition:
                 - "grammar/composition/index.md"
                 - Concat: "grammar/composition/concat.md"

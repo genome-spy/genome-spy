@@ -1,12 +1,9 @@
 # Parameters
 
-!!! note "Work in progress"
-
-    This page is a work in progress and is incomplete.
-
 Parameters enable various dynamic behaviors in GenomeSpy visualizations, such as
-interactive selections, conditional encoding, and data filtering with
-[expressions](./expressions.md). They also enable parameterization when
+interactive selections, [conditional encoding](./conditional-encoding.md), and
+data filtering with [expressions](./expressions.md). They also enable
+parameterization when
 [importing](./import.md) specification fragments from external files or named
 templates. Parameters in GenomeSpy are heavily inspired by the
 [parameters](https://vega.github.io/vega-lite/docs/parameter.html) concept of
@@ -51,8 +48,10 @@ EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 ## Selection Parameters
 
 Parameters allow for defining interactive selections, which can be used in
-conditional encodings. GenomeSpy compiles the conditional encoding rules into
-efficient GPU shader code, enabling fast interactions in very large data sets.
+[conditional encodings](./conditional-encoding.md) and
+[`"filter"`](./transform/filter.md) transforms. GenomeSpy compiles the
+conditional encoding rules into efficient GPU shader code, enabling fast
+interactions in very large data sets.
 
 ### Point Selection
 
@@ -89,7 +88,7 @@ wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 
-Selections can also drive ["filter"](../transform/filter.md) transforms, allowing for
+Selections can also drive ["filter"](./transform/filter.md) transforms, allowing for
 aggregating or otherwise transforming only the selected data points. The example
 below shows how to aggregate only the brushed penguins from the [Palmer
 Penguins](https://allisonhorst.github.io/palmerpenguins/) dataset.

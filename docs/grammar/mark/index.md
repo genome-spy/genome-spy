@@ -155,6 +155,9 @@ channels. The most common method is to map a [field](#field) of the data to a
 channel, but you can also use [expressions](#expression), [values](#value), or
 [data values](#datum) belonging to the data domain.
 
+For interaction-driven styling, see [Conditional
+Encoding](../conditional-encoding.md).
+
 Expect for the `value` method, all methods require specifying the data type
 using the `type` property, which must be one of: `"quantitative"`, `"nominal"`,
 or `"ordinal"`, `"index"`, or
