@@ -22,6 +22,7 @@ node_modules/
 /docs/schema.json
 /docs/app-schema.json
 /docs/genome-spy-schema.json
+/docs/generated-snippets/
 
 build/
 dist/

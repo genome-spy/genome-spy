@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>GenomeSpy</title>
+  </head>
+  <body>
+    <script type="module">
+      import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/core@{{CORE_VERSION}}/dist/bundle/index.es.js";
+
+      await embed(document.body, "spec.json", {});
+    </script>
+  </body>
+</html>

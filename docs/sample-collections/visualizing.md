@@ -13,32 +13,7 @@ and the visualization specification from a separate `spec.json` file placed
 in the same directory. See the [getting started](../getting-started.md#local-or-remote-web-server)
 page for more information.
 
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>GenomeSpy</title>
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.51.x/dist/style.css"
-    />
-  </head>
-  <body>
-    <script
-      type="text/javascript"
-      src="https://cdn.jsdelivr.net/npm/@genome-spy/app@0.51.x"
-    ></script>
-
-    <script>
-      genomeSpyApp.embed(document.body, "spec.json", {
-        // Show the dataflow inspector button in the toolbar (default: true)
-        showInspectorButton: true,
-      });
-    </script>
-  </body>
-</html>
-```
+SNIPPET sample-collections/app-module-spec-file.html
 
 For a complete example, check the
 [website-examples](https://github.com/genome-spy/website-examples/blob/master/index.html)

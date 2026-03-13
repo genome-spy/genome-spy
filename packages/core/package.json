@@ -14,6 +14,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
+    "./browser": {
+      "import": "./dist/bundle/index.es.js",
+      "default": "./dist/bundle/index.js"
+    },
     "./*": "./src/*",
     "./schema.json": "./dist/schema.json"
   },

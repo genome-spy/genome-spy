@@ -46,12 +46,14 @@ class MyPreprocessor(Preprocessor):
         self.repo_root = repo_root
         self.schema_pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
         self.example_pattern = re.compile(r'^EXAMPLE\s+(.+)$')
+        self.snippet_pattern = re.compile(r'^SNIPPET\s+(.+)$')
 
     def run(self, lines):
         new_lines = []
         for line in lines:
             m = self.schema_pattern.match(line)
             example_match = self.example_pattern.match(line)
+            snippet_match = self.snippet_pattern.match(line)
             if m:
                 prop_list = []
                 if m.group(3):
@@ -60,6 +62,8 @@ class MyPreprocessor(Preprocessor):
                 new_lines.extend(self.getType(m.group(2), prop_list, schema))
             elif example_match:
                 new_lines.extend(self.getExample(example_match.group(1)))
+            elif snippet_match:
+                new_lines.extend(self.getSnippet(snippet_match.group(1)))
             else:
                 new_lines.append(line)
 
@@ -135,6 +139,60 @@ class MyPreprocessor(Preprocessor):
         )
 
         return lines
+
+    def getSnippet(self, argument_string):
+        try:
+            tokens = shlex.split(argument_string)
+        except ValueError as exc:
+            return ['Invalid SNIPPET arguments: {}'.format(exc)]
+
+        if not tokens:
+            return ['Invalid SNIPPET usage: missing snippet path']
+
+        snippet_path = tokens[0]
+        generated_dir = os.path.join(self.repo_root, 'docs', 'generated-snippets')
+        normalized_path = os.path.normpath(snippet_path)
+        source_path = os.path.abspath(os.path.join(generated_dir, normalized_path))
+
+        if not source_path.startswith(os.path.abspath(generated_dir) + os.sep):
+            return ['Only `docs/generated-snippets/...` paths are supported in SNIPPET macros.']
+
+        try:
+            with open(source_path, 'r') as f:
+                snippet_text = f.read().rstrip('\n')
+        except IOError:
+            return ['Cannot open snippet file: {}'.format(snippet_path)]
+
+        language = self.getSnippetLanguage(source_path)
+        fence_attributes = self.formatFenceAttributes(tokens[1:])
+
+        fence_header = '```{}'.format(language)
+        if fence_attributes:
+            fence_header += ' ' + ' '.join(fence_attributes)
+
+        return [fence_header, *snippet_text.splitlines(), '```']
+
+    def getSnippetLanguage(self, source_path):
+        extension = os.path.splitext(source_path)[1]
+        return {
+            '.html': 'html',
+            '.js': 'js',
+            '.json': 'json',
+            '.css': 'css',
+        }.get(extension, 'text')
+
+    def formatFenceAttributes(self, tokens):
+        attributes = []
+
+        for token in tokens:
+            if '=' in token:
+                key, value = token.split('=', 1)
+                escaped_value = value.replace('"', '&quot;')
+                attributes.append('{}="{}"'.format(key, escaped_value))
+            else:
+                attributes.append(token)
+
+        return attributes
 
     def stripSchemaLine(self, spec_text):
         lines = spec_text.splitlines()

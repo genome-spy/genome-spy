@@ -10,10 +10,19 @@
   "homepage": "https://genomespy.app/",
   "version": "0.73.0",
   "main": "dist/index.js",
+  "module": "dist/index.es.js",
   "type": "module",
   "exports": {
-    ".": "./dist/index.js",
-    "./schema.json": "./dist/schema.json"
+    ".": {
+      "import": "./dist/index.es.js",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "import": "./dist/index.es.js",
+      "default": "./dist/index.js"
+    },
+    "./schema.json": "./dist/schema.json",
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist/"
