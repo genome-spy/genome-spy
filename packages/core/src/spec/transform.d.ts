@@ -204,7 +204,9 @@ export type AggregateOp =
     | "min"
     | "max"
     | "mean"
+    | "q1"
     | "median"
+    | "q3"
     | "variance";
 
 export interface AggregateParams extends TransformParamsBase {
@@ -225,7 +227,7 @@ export interface AggregateParams extends TransformParamsBase {
 
     /**
      * The aggregation operations to be performed on the fields, such as `"sum"`,
-     * `"average"`, or `"count"`.
+     * `"q1"`, `"median"`, `"q3"`, or `"count"`.
      */
     ops?: AggregateOp[];
 

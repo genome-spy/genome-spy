@@ -101,6 +101,37 @@ describe("Aggregate transform", () => {
         ]);
     });
 
+    test("Compute quartiles with Vega-compatible q1 and q3 ops", () => {
+        const input = [
+            { name: "alpha", data: 1 },
+            { name: "alpha", data: 2 },
+            { name: "alpha", data: 3 },
+            { name: "alpha", data: 4 },
+            { name: "alpha", data: 5 },
+            { name: "beta", data: 10 },
+            { name: "beta", data: 20 },
+            { name: "beta", data: 30 },
+            { name: "beta", data: 40 },
+            { name: "beta", data: 50 },
+        ];
+
+        expect(
+            transform(
+                {
+                    type: "aggregate",
+                    groupby: ["name"],
+                    fields: ["data", "data", "data"],
+                    ops: ["q1", "median", "q3"],
+                    as: ["q1", "median", "q3"],
+                },
+                input
+            )
+        ).toEqual([
+            { name: "alpha", q1: 2, median: 3, q3: 4 },
+            { name: "beta", q1: 20, median: 30, q3: 40 },
+        ]);
+    });
+
     test("Throw if the length of fields and ops does not match", () => {
         const input = [{ name: "beta", data: 789 }];
 
