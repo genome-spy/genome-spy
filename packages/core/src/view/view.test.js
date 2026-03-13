@@ -122,6 +122,31 @@ describe("Trivial creations and initializations", () => {
         expect(view.mark.encoding.size).toEqual({ value: 1 });
     });
 
+    test("Uses band like rect marks when shortening tick span", async () => {
+        const view = await create(
+            {
+                mark: "tick",
+                encoding: {
+                    x: { field: "category", type: "nominal", band: 0.3 },
+                    y: { field: "value", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.encoding.x).toEqual({
+            field: "category",
+            type: "nominal",
+            band: 0.35,
+            buildIndex: true,
+        });
+        expect(view.mark.encoding.x2).toEqual({
+            field: "category",
+            type: "nominal",
+            band: 0.65,
+        });
+    });
+
     test("Requires an explicit orient when tick orientation is ambiguous", () =>
         expect(
             create(

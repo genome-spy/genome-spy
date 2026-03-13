@@ -31,7 +31,7 @@ export default class RuleMark extends Mark {
             x2: undefined,
             y2: undefined,
             size: 1,
-            color: "black",
+            color: "#4c78a8",
             opacity: 1.0,
             orient: undefined,
             thickness: 1,
@@ -334,9 +334,9 @@ function applyTickSpan(encoding, orient) {
         encoding.x2 = encoding.x;
 
         if (isBandChannelDef(encoding.y)) {
-            const original = encoding.y;
-            encoding.y = withBand(original, 0);
-            encoding.y2 = withBand(original, 1);
+            const [primary, secondary] = createBandCoverage(encoding.y);
+            encoding.y = primary;
+            encoding.y2 = secondary;
         } else {
             encoding.y = { value: 0 };
             encoding.y2 = { value: 1 };
@@ -345,9 +345,9 @@ function applyTickSpan(encoding, orient) {
         encoding.y2 = encoding.y;
 
         if (isBandChannelDef(encoding.x)) {
-            const original = encoding.x;
-            encoding.x = withBand(original, 0);
-            encoding.x2 = withBand(original, 1);
+            const [primary, secondary] = createBandCoverage(encoding.x);
+            encoding.x = primary;
+            encoding.x2 = secondary;
         } else {
             encoding.x = { value: 0 };
             encoding.x2 = { value: 1 };
@@ -376,4 +376,20 @@ function withBand(channelDef, band) {
         ...channelDef,
         band,
     });
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ * @returns {[import("../spec/channel.js").ChannelDefWithScale, import("../spec/channel.js").ChannelDefWithScale]}
+ */
+function createBandCoverage(channelDef) {
+    const band = /** @type {import("../spec/channel.js").BandMixins} */ (
+        channelDef
+    ).band;
+    const adjustment = (1 - (band ?? 1)) / 2;
+
+    return [
+        withBand(channelDef, adjustment),
+        withBand(channelDef, 1 - adjustment),
+    ];
 }

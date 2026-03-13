@@ -93,54 +93,46 @@
 
         {
           "mark": {
-            "type": "rule",
+            "type": "tick",
             "color": "#102a43",
-            "size": 2,
+            "thickness": 2,
             "tooltip": null
           },
           "encoding": {
-            "x": {
-              "field": "species",
-              "type": "nominal",
-              "band": 0
-            },
-            "x2": { "field": "species", "band": 1 },
             "y": { "field": "medianBodyMass", "type": "quantitative" }
           }
         },
 
         {
           "mark": {
-            "type": "rule",
+            "type": "tick",
             "color": "#243b53",
-            "size": 2,
+            "thickness": 2,
             "tooltip": null
           },
           "encoding": {
             "x": {
               "field": "species",
               "type": "nominal",
-              "band": 0.35
+              "band": 0.3
             },
-            "x2": { "field": "species", "band": 0.65 },
             "y": { "field": "minBodyMass", "type": "quantitative" }
           }
         },
 
         {
           "mark": {
-            "type": "rule",
+            "type": "tick",
             "color": "#243b53",
-            "size": 2,
+            "thickness": 2,
             "tooltip": null
           },
           "encoding": {
             "x": {
               "field": "species",
               "type": "nominal",
-              "band": 0.35
+              "band": 0.3
             },
-            "x2": { "field": "species", "band": 0.65 },
             "y": { "field": "maxBodyMass", "type": "quantitative" }
           }
         }

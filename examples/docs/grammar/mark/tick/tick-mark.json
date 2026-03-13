@@ -5,6 +5,10 @@
   "mark": "tick",
   "encoding": {
     "x": { "field": "Horsepower", "type": "quantitative" },
-    "y": { "field": "Cylinders", "type": "ordinal" }
+    "y": {
+      "field": "Cylinders",
+      "type": "ordinal",
+      "scale": { "padding": 0.3 }
+    }
   }
 }
