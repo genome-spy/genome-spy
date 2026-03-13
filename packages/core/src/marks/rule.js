@@ -12,8 +12,11 @@ import COMMON_SHADER from "./rule.common.glsl";
 import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
 
+const HORIZONTAL = "horizontal";
+const VERTICAL = "vertical";
+
 /**
- * @extends {Mark<import("../spec/mark.js").RuleProps>}
+ * @extends {Mark<import("../spec/mark.js").RuleProps | import("../spec/mark.js").TickProps>}
  */
 export default class RuleMark extends Mark {
     /**
@@ -23,6 +26,7 @@ export default class RuleMark extends Mark {
         super(unitView);
 
         this.dashTextureSize = 0;
+        this.tickOrient = undefined;
 
         this.augmentDefaultProperties({
             x2: undefined,
@@ -30,6 +34,9 @@ export default class RuleMark extends Mark {
             size: 1,
             color: "black",
             opacity: 1.0,
+            orient: undefined,
+            bandSize: 14,
+            thickness: 1,
 
             minLength: 0.0,
             /** @type {number[]} */
@@ -69,6 +76,10 @@ export default class RuleMark extends Mark {
      */
     // eslint-disable-next-line complexity
     fixEncoding(encoding) {
+        if (this.getType() == "tick") {
+            return this.fixTickEncoding(encoding);
+        }
+
         // TODO: Write test for this mess
         if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
             // Everything is defined
@@ -122,6 +133,33 @@ export default class RuleMark extends Mark {
         return encoding;
     }
 
+    /**
+     * @param {import("../spec/channel.js").Encoding} encoding
+     * @returns {import("../spec/channel.js").Encoding}
+     */
+    fixTickEncoding(encoding) {
+        const props = /** @type {import("../spec/mark.js").TickProps} */ (
+            this.properties
+        );
+
+        encoding.x ??= { value: 0.5 };
+        encoding.y ??= { value: 0.5 };
+        encoding.x2 = encoding.x;
+        encoding.y2 = encoding.y;
+        encoding.size = { value: props.thickness };
+
+        const orient = props.orient ?? inferTickOrient(encoding);
+        if (!orient) {
+            throw new Error(
+                "Cannot infer tick orientation from the encoding. Specify the tick mark's orient explicitly."
+            );
+        }
+
+        this.tickOrient = orient;
+
+        return encoding;
+    }
+
     async initializeGraphics() {
         await super.initializeGraphics();
 
@@ -149,12 +187,31 @@ export default class RuleMark extends Mark {
         this.gl.useProgram(this.programInfo.program);
 
         const props = this.properties;
+        const tickProps = /** @type {import("../spec/mark.js").TickProps} */ (
+            props
+        );
 
         this.registerMarkUniformValue("uMinLength", props.minLength);
         this.registerMarkUniformValue(
             "uStrokeCap",
             props.strokeCap ?? "butt",
             (cap) => ["butt", "square", "round"].indexOf(cap)
+        );
+        this.registerMarkUniformValue(
+            "uTickMode",
+            this.getType() == "tick",
+            (x) => +x
+        );
+        this.registerMarkUniformValue(
+            "uTickOrient",
+            this.getType() == "tick"
+                ? (this.tickOrient ?? tickProps.orient ?? VERTICAL)
+                : VERTICAL,
+            (orient) => (orient == VERTICAL ? 1 : 0)
+        );
+        this.registerMarkUniformValue(
+            "uTickLength",
+            this.getType() == "tick" ? (tickProps.bandSize ?? 14) : 1
         );
 
         setBlockUniforms(this.markUniformInfo, {
@@ -266,4 +323,35 @@ function createDashTextureArray(pattern) {
     }
 
     return texture;
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @returns {"vertical" | "horizontal" | undefined}
+ */
+function inferTickOrient(encoding) {
+    const xContinuous =
+        isChannelDefWithScale(encoding.x) &&
+        isContinuousTickType(encoding.x.type);
+    const yContinuous =
+        isChannelDefWithScale(encoding.y) &&
+        isContinuousTickType(encoding.y.type);
+
+    if (xContinuous && !yContinuous) {
+        return VERTICAL;
+    } else if (!xContinuous && yContinuous) {
+        return HORIZONTAL;
+    } else if (xContinuous && yContinuous) {
+        return VERTICAL;
+    } else {
+        return undefined;
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").Type} type
+ * @returns {boolean}
+ */
+function isContinuousTickType(type) {
+    return type == "quantitative" || type == "index" || type == "locus";
 }

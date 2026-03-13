@@ -42,6 +42,8 @@ export const markTypes = {
     // @ts-ignore
     rule: RuleMark,
     // @ts-ignore
+    tick: RuleMark,
+    // @ts-ignore
     link: LinkMark,
     // @ts-ignore
     text: TextMark,

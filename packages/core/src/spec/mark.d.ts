@@ -3,7 +3,7 @@ import { ExprRef } from "./parameter.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
-export type MarkType = "rect" | "point" | "rule" | "text" | "link";
+export type MarkType = "rect" | "point" | "rule" | "tick" | "text" | "link";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -196,7 +196,8 @@ export interface ViewportEdgeFadeProps {
 }
 
 export interface RectProps
-    extends MarkPropsBase,
+    extends
+        MarkPropsBase,
         SecondaryPositionProps,
         FillAndStrokeProps,
         ShadowProps {
@@ -292,9 +293,7 @@ export interface RectProps
 }
 
 export interface RuleProps
-    extends MarkPropsBase,
-        SecondaryPositionProps,
-        SizeProps {
+    extends MarkPropsBase, SecondaryPositionProps, SizeProps {
     type: "rule";
 
     /**
@@ -327,8 +326,65 @@ export interface RuleProps
     strokeCap?: "butt" | "square" | "round" | ExprRef;
 }
 
+export interface TickProps extends MarkPropsBase {
+    type: "tick";
+
+    /**
+     * The orientation of the tick mark.
+     *
+     * If omitted, GenomeSpy infers the orientation from the encoded `x` and `y`
+     * channels when possible.
+     *
+     * **Default value:** inferred
+     */
+    orient?: "vertical" | "horizontal";
+
+    /**
+     * The length of the tick mark in pixels.
+     *
+     * **Default value:** `14`
+     */
+    bandSize?: number;
+
+    /**
+     * The thickness of the tick mark in pixels.
+     *
+     * **Default value:** `1`
+     */
+    thickness?: number;
+
+    /**
+     * The minimum length of the tick in pixels.
+     *
+     * **Default value:** `0`
+     */
+    minLength?: number;
+
+    /**
+     * An array of of alternating stroke and gap lengths or `null` for solid strokes.
+     *
+     * **Default value:** `null`
+     */
+    strokeDash?: number[];
+
+    /**
+     * An offset for the stroke dash pattern.
+     *
+     * **Default value:** `0`
+     */
+    strokeDashOffset?: number;
+
+    /**
+     * The style of stroke ends. Available choices: `"butt"`, `"round`", and `"square"`.
+     *
+     * **Default value:** `"butt"`
+     */
+    strokeCap?: "butt" | "square" | "round" | ExprRef;
+}
+
 export interface TextProps
-    extends MarkPropsBase,
+    extends
+        MarkPropsBase,
         SecondaryPositionProps,
         AngleProps,
         ViewportEdgeFadeProps,
@@ -457,7 +513,8 @@ export interface TextProps
 }
 
 export interface PointProps
-    extends MarkPropsBase,
+    extends
+        MarkPropsBase,
         FillAndStrokeProps,
         AngleProps,
         SizeProps,
@@ -507,7 +564,8 @@ export interface PointProps
 }
 
 export interface LinkProps
-    extends MarkPropsBase,
+    extends
+        MarkPropsBase,
         SecondaryPositionProps,
         SizeProps,
         MinPickingSizeProps {
@@ -603,5 +661,6 @@ export type MarkProps =
     | RectProps
     | TextProps
     | RuleProps
+    | TickProps
     | LinkProps
     | PointProps;

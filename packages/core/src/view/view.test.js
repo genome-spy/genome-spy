@@ -26,6 +26,9 @@ describe("Trivial creations and initializations", () => {
         await expect(create({ mark: "point" }, View)).resolves.toBeInstanceOf(
             UnitView
         );
+        await expect(
+            create({ mark: { type: "tick", orient: "vertical" } }, View)
+        ).resolves.toBeInstanceOf(UnitView);
         await expect(create({ layer: [] }, View)).resolves.toBeInstanceOf(
             LayerView
         );
@@ -91,6 +94,38 @@ describe("Trivial creations and initializations", () => {
                 View
             )
         ).resolves.toBeInstanceOf(UnitView));
+
+    test("Normalizes tick mark encoding from center position and properties", async () => {
+        const view = await create(
+            {
+                mark: "tick",
+                encoding: {
+                    x: { field: "Horsepower", type: "quantitative" },
+                    y: { field: "Cylinders", type: "ordinal" },
+                    size: { value: 10 },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.encoding.x2).toEqual(view.mark.encoding.x);
+        expect(view.mark.encoding.y2).toEqual(view.mark.encoding.y);
+        expect(view.mark.encoding.size).toEqual({ value: 1 });
+    });
+
+    test("Requires an explicit orient when tick orientation is ambiguous", () =>
+        expect(
+            create(
+                {
+                    mark: "tick",
+                    encoding: {
+                        x: { field: "foo", type: "ordinal" },
+                        y: { field: "bar", type: "ordinal" },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow("Cannot infer tick orientation from the encoding."));
 
     test("Broadcast handler disposer unregisters listener", async () => {
         const view = await create({ mark: "point" }, View);

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Tick mark example.",
+  "data": { "url": "data/cars.json" },
+  "mark": "tick",
+  "encoding": {
+    "x": { "field": "Horsepower", "type": "quantitative" },
+    "y": { "field": "Cylinders", "type": "ordinal" }
+  }
+}

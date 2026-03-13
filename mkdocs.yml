@@ -72,6 +72,7 @@ nav:
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
                 - Rule: "grammar/mark/rule.md"
+                - Tick: "grammar/mark/tick.md"
                 - Text: "grammar/mark/text.md"
           - Conditional Encoding: "grammar/conditional-encoding.md"
           - View Composition:
