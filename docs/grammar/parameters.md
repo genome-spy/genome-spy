@@ -87,7 +87,14 @@ By default, `select.zoom` is:
 You can override the behavior with `select.zoom: true/false` or an explicit
 wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
-EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=250
+EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
+
+Selections can also drive ["filter"](../transform/filter.md) transforms, allowing for
+aggregating or otherwise transforming only the selected data points. The example
+below shows how to aggregate only the brushed penguins from the [Palmer
+Penguins](https://allisonhorst.github.io/palmerpenguins/) dataset.
+
+EXAMPLE examples/docs/grammar/parameters/penguins.json height=380 spechidden
 
 #### Linking Scale Domains Across Views
 

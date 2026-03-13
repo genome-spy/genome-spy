@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
     "Aggregating brushed penguins",
@@ -8,9 +8,14 @@
 
   "height": 350,
 
-  "padding": 30,
+  "padding": 10,
 
-  "data": { "url": "data/penguins_size.csv" },
+  "data": {
+    "url": "data/penguins_size.csv",
+    "format": {
+      "parse": { "culmen_length_mm": "number", "culmen_depth_mm": "number" }
+    }
+  },
 
   "transform": [{ "type": "collect" }],
 
@@ -85,7 +90,10 @@
             "x": {
               "field": "species",
               "type": "nominal",
-              "scale": { "padding": 0.3 },
+              "scale": {
+                "domain": ["Chinstrap", "Adelie", "Gentoo"],
+                "padding": 0.3
+              },
               "axis": { "labelAngle": 0 }
             },
             "color": { "field": "species", "type": "nominal" }
@@ -106,7 +114,7 @@
             "x": {
               "field": "sex",
               "type": "nominal",
-              "scale": { "padding": 0.3 },
+              "scale": { "domain": ["MALE", "FEMALE"], "padding": 0.3 },
               "axis": { "labelAngle": 0 }
             },
             "color": { "value": "gray" }
