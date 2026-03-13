@@ -5,7 +5,7 @@ import COMMON_SHADER from "./rect.common.glsl";
 import { RectVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
-import { fixFill, fixPositional, fixStroke } from "./markUtils.js";
+import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 import { asArray } from "../utils/arrayUtils.js";
 import { isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
@@ -107,8 +107,8 @@ export default class RectMark extends Mark {
      */
     fixEncoding(encoding) {
         // TODO: Ensure that both the primary and secondary channel are either variables or constants (values)
-        fixPositional(encoding, "x");
-        fixPositional(encoding, "y");
+        fixCoveragePositional(encoding, "x");
+        fixCoveragePositional(encoding, "y");
 
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);

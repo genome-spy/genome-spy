@@ -12,7 +12,7 @@ import COMMON_SHADER from "./text.common.glsl";
 import { TextVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
-import { fixPositional } from "./markUtils.js";
+import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
 
 /** For GLSL uniforms */
@@ -150,7 +150,9 @@ export default class TextMark extends Mark {
 
         for (const channel of primaryPositionalChannels) {
             if (this.properties.fitToBand) {
-                fixPositional(encoding, channel);
+                fixCoveragePositional(encoding, channel);
+            } else {
+                fixHalfOpenRangedText(encoding, channel);
             }
         }
 

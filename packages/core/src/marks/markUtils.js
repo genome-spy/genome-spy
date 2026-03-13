@@ -12,10 +12,15 @@ import {
  */
 
 /**
+ * Expands a primary positional channel into a coverage range.
+ *
+ * Rect-like marks use this to turn a discrete position into band coverage and
+ * a quantitative position into a zero-anchored span.
+ *
  * @param {Encoding} encoding
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  */
-export function fixPositional(encoding, channel) {
+export function fixCoveragePositional(encoding, channel) {
     const secondaryChannel = getSecondaryChannel(channel);
 
     // Must make copies because the definition may be shared with other views/marks
@@ -48,9 +53,6 @@ export function fixPositional(encoding, channel) {
                 const adjustment = (1 - (primary.band ?? 1)) / 2;
                 primary.band = 0 + adjustment;
                 secondary.band = 1 - adjustment;
-
-                // TODO: If the secondary channel duplicates the primary channel
-                // the data should be uploaded to the GPU only once.
             }
         } else if (primary.type != "quantitative") {
             const adjustment = (1 - (primary.band || 1)) / 2;
@@ -65,6 +67,52 @@ export function fixPositional(encoding, channel) {
 
     encoding[channel] = primary;
     encoding[secondaryChannel] = secondary;
+}
+
+/**
+ * Rewrites explicit ranged text on zero-based half-open coordinate systems to
+ * use interval edges instead of default band centers.
+ *
+ * With only `x`, text stays centered inside one band (`band = 0.5`). When both
+ * `x` and `x2` are defined for `index`/`locus`, the pair is interpreted as
+ * half-open interval edges, e.g. `[0, 1)`, so both endpoints use `band = 0`.
+ *
+ * @param {Encoding} encoding
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ */
+export function fixHalfOpenRangedText(encoding, channel) {
+    const secondaryChannel = getSecondaryChannel(channel);
+
+    const primary = encoding[channel];
+    const secondary = encoding[secondaryChannel];
+
+    if (
+        !primary ||
+        !secondary ||
+        isValueDef(primary) ||
+        isValueDef(secondary)
+    ) {
+        return;
+    }
+
+    if (
+        !isChannelDefWithScale(primary) ||
+        !isChannelDefWithScale(secondary) ||
+        !["index", "locus"].includes(primary.type)
+    ) {
+        return;
+    }
+
+    const primaryBand = /** @type {import("../spec/channel.js").BandMixins} */ (
+        primary
+    ).band;
+    const secondaryBand =
+        /** @type {import("../spec/channel.js").BandMixins} */ (secondary).band;
+
+    const band = primaryBand ?? secondaryBand ?? 0;
+
+    encoding[channel] = { ...primary, band };
+    encoding[secondaryChannel] = { ...secondary, band: secondaryBand ?? band };
 }
 
 /**
