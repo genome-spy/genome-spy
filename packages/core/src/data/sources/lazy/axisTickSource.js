@@ -43,24 +43,24 @@ export default class AxisTickSource extends SingleAxisLazySource {
         // Force the ticks to be recalculated. This is needed because the async
         // initialization process and non-deterministic order of events.
         this.ticks = null;
-        this.onDomainChanged();
+        await this.onDomainChanged();
     }
 
-    onDomainChanged() {
-        // Note, although this function is async, it is not awaited. Data are updated
-        // synchronously to ensure that the new ticks are available before the next frame is drawn.
-
+    async onDomainChanged() {
         const scale = this.scaleResolution.getScale();
         const axisLength = this.scaleResolution.getAxisLength();
         const axisParams = this.params.axis;
 
         /**
-         * Make ticks more dense in small plots.
+         * Make ticks denser in small plots.
          * TODO: Make configurable
          *
-         * @param {number} length
+         * @type {(length: number) => number}
          */
-        const tickSpacing = (length) => 25 + 60 * smoothstep(100, 700, length);
+        const tickSpacing =
+            scale.type != "locus"
+                ? (length) => 30 + 55 * smoothstep(100, 700, length)
+                : () => 85;
 
         const requestedCount = isNumber(axisParams.tickCount)
             ? axisParams.tickCount
