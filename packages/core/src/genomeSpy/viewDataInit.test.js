@@ -373,7 +373,8 @@ describe("viewDataInit", () => {
         expect(summaryCollector).toBeDefined();
         expect(summaryCollector?.completed).toBe(true);
         let datumCount = 0;
-        for (const _ of summaryCollector?.getData() ?? []) {
+        for (const datum of summaryCollector?.getData() ?? []) {
+            void datum;
             datumCount++;
         }
         expect(datumCount).toBeGreaterThan(0);

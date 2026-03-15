@@ -87,7 +87,7 @@ describe("resetProvenanceHistory", () => {
     it("restores eager metadata when undoing a later user action", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
-        const provenance = new Provenance(store);
+        new Provenance(store);
 
         intentExecutor.dispatch(
             sampleSlice.actions.setSamples({

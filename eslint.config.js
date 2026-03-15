@@ -6,10 +6,6 @@ import tseslint from "@typescript-eslint/eslint-plugin";
 
 export default defineConfig(
     {
-        ignores: ["**/*.test.js"],
-    },
-
-    {
         name: "genomespy/linter-options",
         linterOptions: {
             reportUnusedDisableDirectives: "warn",
@@ -28,6 +24,18 @@ export default defineConfig(
                 },
             },
             globals: globals.browser,
+        },
+    },
+
+    {
+        name: "genomespy/tests",
+        files: ["packages/*/src/**/*.test.js"],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                ...globals.vitest,
+            },
         },
     },
 

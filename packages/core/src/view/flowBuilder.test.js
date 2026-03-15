@@ -1,6 +1,5 @@
 import { expect, test } from "vitest";
 import Collector from "../data/collector.js";
-import FlowNode from "../data/flowNode.js";
 import FilterTransform from "../data/transforms/filter.js";
 import FormulaTransform from "../data/transforms/formula.js";
 import InlineSource from "../data/sources/inlineSource.js";
@@ -10,6 +9,8 @@ import { create } from "./testUtils.js";
 import CloneTransform from "../data/transforms/clone.js";
 import LayerView from "./layerView.js";
 import UnitView from "./unitView.js";
+
+/** @typedef {import("../data/flowNode.js").default} FlowNode */
 
 /**
  *

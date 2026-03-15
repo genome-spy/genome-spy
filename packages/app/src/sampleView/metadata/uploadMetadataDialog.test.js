@@ -1,5 +1,5 @@
 // @ts-check
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
     validateMetadata,
     MISSING_SAMPLE_FIELD_ERROR,

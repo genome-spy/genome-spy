@@ -8,9 +8,9 @@ import {
 class TestClass {
     constructor() {
         /** @type {number} */
-        this._x;
+        this._x = 0;
         /** @type {number} */
-        this._y;
+        this._y = 0;
 
         this._xCalls = 0;
         this._yCalls = 0;

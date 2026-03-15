@@ -194,7 +194,7 @@ describe("GridView keyboard navigation", () => {
         const callback = harness.transitions.shift();
         callback(5000);
 
-        const [_scaleFactor, anchor] = harness.resolution.zoom.mock.calls[0];
+        const [, anchor] = harness.resolution.zoom.mock.calls[0];
         expect(anchor).toBeCloseTo(0.25, 6);
         expect(getKeyboardZoomAnchorX).toHaveBeenCalledTimes(1);
     });

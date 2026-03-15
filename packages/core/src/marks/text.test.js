@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import LayerView from "../view/layerView.js";
-import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
+
+/** @typedef {import("../view/unitView.js").default} UnitView */
 
 /**
  * @param {import("../spec/channel.js").PositionDef | import("../spec/channel.js").Position2Def} channelDef
