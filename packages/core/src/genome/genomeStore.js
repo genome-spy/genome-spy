@@ -207,7 +207,7 @@ export default class GenomeStore {
     #tryCreateBuiltInGenome(name) {
         try {
             return new Genome({ name });
-        } catch (_error) {
+        } catch {
             return undefined;
         }
     }

@@ -1,48 +1,42 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
+import { defineConfig } from "eslint/config";
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
+import eslintConfigPrettier from "eslint-config-prettier";
+import globals from "globals";
+import tseslint from "@typescript-eslint/eslint-plugin";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-});
-
-export default [
-    {
-        linterOptions: {
-            reportUnusedDisableDirectives: "off",
-        },
-    },
-
+export default defineConfig(
     {
         ignores: ["**/*.test.js"],
     },
 
-    ...compat.config({
-        parser: "@typescript-eslint/parser",
-        plugins: ["@typescript-eslint"],
-        env: {
-            browser: true,
-            es6: true,
+    {
+        name: "genomespy/linter-options",
+        linterOptions: {
+            reportUnusedDisableDirectives: "warn",
         },
-        extends: [
-            "eslint:recommended",
-            "plugin:@typescript-eslint/eslint-recommended",
-            "plugin:@typescript-eslint/recommended",
-            "prettier",
-        ],
-        parserOptions: {
-            ecmaVersion: 2022,
+    },
+
+    {
+        name: "genomespy/files",
+        files: ["packages/*/src/**/*.{js,mjs,cjs,jsx,ts,tsx,d.ts}"],
+        languageOptions: {
+            ecmaVersion: "latest",
             sourceType: "module",
-            ecmaFeatures: {
-                jsx: true,
+            parserOptions: {
+                ecmaFeatures: {
+                    jsx: true,
+                },
             },
+            globals: globals.browser,
         },
+    },
+
+    js.configs.recommended,
+    ...tseslint.configs["flat/recommended"],
+    eslintConfigPrettier,
+
+    {
+        name: "genomespy/customizations",
         rules: {
             "callback-return": "off",
             "no-new-func": "off",
@@ -50,15 +44,12 @@ export default [
             "no-undefined": "off",
             "no-nested-ternary": "off",
             "dot-notation": "off",
-            "no-unused-private-class-members": "off",
-            "no-useless-assignment": "off",
-            "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }],
-            "preserve-caught-error": "off",
+            "no-unused-vars": ["error", { args: "none" }],
             "require-await": "off",
             "@typescript-eslint/no-unused-vars": "off",
             "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-this-alias": "off",
         },
-    }),
-];
+    }
+);

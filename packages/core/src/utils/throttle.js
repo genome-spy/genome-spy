@@ -19,9 +19,7 @@ export default function throttle(func, limit) {
     let lastContext = null;
 
     const throttled = function () {
-        // eslint-disable-next-line no-invalid-this
         lastContext = this;
-        // eslint-disable-next-line prefer-rest-params
         lastArgs = arguments;
 
         const now = Date.now();

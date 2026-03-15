@@ -80,7 +80,7 @@ export function resolveSelectionExpansionContext(rootView, hover) {
     let keyFields;
     try {
         keyFields = getEncodingKeyFields(hoveredView.getEncoding());
-    } catch (_error) {
+    } catch {
         return { status: "unavailable" };
     }
 
@@ -100,14 +100,14 @@ export function resolveSelectionExpansionContext(rootView, hover) {
 
     try {
         resolveParamSelector(rootView, selector);
-    } catch (_error) {
+    } catch {
         return { status: "unavailable" };
     }
 
     let originViewSelector;
     try {
         originViewSelector = getViewSelector(hoveredView);
-    } catch (_error) {
+    } catch {
         return { status: "unavailable" };
     }
 

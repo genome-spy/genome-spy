@@ -2,7 +2,7 @@
  * Adapted from: https://stackoverflow.com/a/18639999/1547896
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports, global-require, no-undef */
+/* eslint-disable @typescript-eslint/no-require-imports, no-undef */
 /**
  * A hack for nodejs (and jest)
  * @returns {TextEncoder}
@@ -18,7 +18,7 @@ function getEncoder() {
     }
     return new TextEncoder();
 }
-/* eslint-enable @typescript-eslint/no-require-imports, global-require, no-undef */
+/* eslint-enable @typescript-eslint/no-require-imports, no-undef */
 
 /** @type {number[]} */
 let table;

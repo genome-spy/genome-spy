@@ -91,7 +91,6 @@ export default class ArrayBuilder {
         let updater;
         let i = 0;
 
-        // eslint-disable-next-line new-cap
         const array = new targetArrayType(this.size * numComponents);
 
         this.arrays[attributeName] = {
@@ -178,7 +177,6 @@ export default class ArrayBuilder {
                 .join("\n");
             const pushs = this.pushers.map((_v, i) => `  p${i}();`).join("\n");
 
-            // eslint-disable-next-line no-new-func
             this.pushAll = new Function(
                 "that",
                 `${preps}
@@ -206,7 +204,6 @@ ${pushs}
                 .map((_v, i) => `  u${i}(datum);`)
                 .join("\n");
 
-            // eslint-disable-next-line no-new-func
             this.updateFromDatum = new Function(
                 "that",
                 "datum",

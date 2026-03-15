@@ -260,7 +260,6 @@ export function buildDataFlow(
                 });
                 processView(node.ref);
             },
-            // eslint-disable-next-line no-loop-func
             postOrder: () => {
                 const { nodeStackDepth } = viewStack.pop();
                 nodeStack.length = nodeStackDepth;

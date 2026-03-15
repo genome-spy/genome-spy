@@ -58,7 +58,7 @@ export function resolveUrl(base, append, runtimeBase = getRuntimeBase()) {
         } else if (runtimeBase) {
             return new URL(append, runtimeBase).href;
         }
-    } catch (_error) {
+    } catch {
         // Fall back to simple concatenation below.
     }
 

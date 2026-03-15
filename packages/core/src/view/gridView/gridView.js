@@ -1,4 +1,3 @@
-/* eslint-disable max-depth */
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import {
     FlexDimensions,
@@ -543,7 +542,6 @@ export default class GridView extends ContainerView {
      * @param {import("../layout/rectangle.js").default} coords
      * @param {import("../../types/rendering.js").RenderingOptions} [options]
      */
-    // eslint-disable-next-line complexity
     render(context, coords, options = {}) {
         super.render(context, coords, options);
 

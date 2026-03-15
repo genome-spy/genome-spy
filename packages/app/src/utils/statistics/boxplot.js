@@ -73,8 +73,8 @@ export function boxplotStats(data, accessor, opts = {}) {
     const min = values[0];
     const max = values[values.length - 1];
 
-    let lowerWhisker = min;
-    let upperWhisker = max;
+    let lowerWhisker;
+    let upperWhisker;
 
     /** @type {any[]} */
     const outliers = [];

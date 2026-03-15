@@ -129,7 +129,6 @@ export default class Genome {
                 continuousInterval: [pos, pos + size],
                 index: i,
                 number: i + 1,
-                // eslint-disable-next-line no-bitwise
                 odd: !(i & 1),
             };
 

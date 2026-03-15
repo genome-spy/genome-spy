@@ -69,7 +69,7 @@ export default class ShareBookmarkDialog extends BaseDialog {
                 await navigator.clipboard.writeText(url);
                 this.finish({ ok: true });
                 this.triggerClose();
-            } catch (e) {
+            } catch {
                 // keep dialog open and show minimal message (could be improved)
                 // fallback: nothing
             }

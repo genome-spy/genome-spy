@@ -132,7 +132,7 @@ async function openSubmenu(item, li, level) {
         } else {
             renderAndPositionSubmenu(submenuSource, li, level);
         }
-    } catch (_error) {
+    } catch {
         if (!li.isConnected) {
             return;
         }

@@ -116,26 +116,22 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             }
         }
 
-        let handled = false;
-        if (Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)) {
-            handled =
-                handleZoom({
-                    x,
-                    y,
-                    xDelta: 0,
-                    yDelta: 0,
-                    zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300,
-                }) === true;
-        } else {
-            handled =
-                handleZoom({
-                    x,
-                    y,
-                    xDelta: -wheelEvent.deltaX * wheelMultiplier,
-                    yDelta: 0,
-                    zDelta: 0,
-                }) === true;
-        }
+        const handled =
+            Math.abs(wheelEvent.deltaX) < Math.abs(wheelEvent.deltaY)
+                ? handleZoom({
+                      x,
+                      y,
+                      xDelta: 0,
+                      yDelta: 0,
+                      zDelta: (wheelEvent.deltaY * wheelMultiplier) / 300,
+                  }) === true
+                : handleZoom({
+                      x,
+                      y,
+                      xDelta: -wheelEvent.deltaX * wheelMultiplier,
+                      yDelta: 0,
+                      zDelta: 0,
+                  }) === true;
 
         if (handled) {
             wheelEvent.preventDefault();

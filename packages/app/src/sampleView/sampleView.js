@@ -1163,7 +1163,7 @@ export default class SampleView extends ContainerView {
                     type: "selection",
                     selector,
                 };
-            } catch (error) {
+            } catch {
                 selectionIntervalSource = undefined;
             }
         }

@@ -535,7 +535,7 @@ function verifyLinearizationMapping(datum, linearizedField, mapping, mark) {
     let expected;
     try {
         expected = genome.toContinuous(chrom, numericPos - mapping.offset);
-    } catch (_error) {
+    } catch {
         return false;
     }
 

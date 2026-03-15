@@ -54,7 +54,6 @@ export async function embed(el, spec, options = {}) {
         applyOptions(genomeSpy, options);
         await genomeSpy.launch();
     } catch (e) {
-        // eslint-disable-next-line require-atomic-updates
         element.innerText = e.toString();
         console.error(e);
     }

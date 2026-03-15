@@ -25,7 +25,6 @@ export function field(fieldExpr, name = fieldExpr) {
             }
         };
 
-        // eslint-disable-next-line no-new-func
         const fn = /** @type {import("vega-util").AccessorFn} */ (
             new Function(
                 "validator",

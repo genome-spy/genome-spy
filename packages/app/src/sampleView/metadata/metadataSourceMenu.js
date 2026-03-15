@@ -36,7 +36,7 @@ export class MetadataSourceMenuController {
         }
 
         /** @type {ImportableMetadataSource[]} */
-        let importableSources = [];
+        let importableSources;
         try {
             importableSources = await this.#getImportableSources(sampleView);
         } catch (error) {

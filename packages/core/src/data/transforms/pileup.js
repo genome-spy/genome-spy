@@ -1,4 +1,3 @@
-/* eslint-disable no-unmodified-loop-condition */
 import FlatQueue from "flatqueue";
 import { isNumber } from "vega-util";
 import { field } from "../../utils/field.js";
@@ -68,7 +67,7 @@ export default class PileupTransform extends Transform {
                 const preferredLane = preferredOrder.indexOf(
                     preferenceAccessor(datum)
                 );
-                let lane = -1;
+                let lane;
                 if (preferredLane >= 0 && freeLaneMap[preferredLane] < start) {
                     lane = preferredLane;
                 } else {

@@ -34,7 +34,6 @@ const functionContext = {
     isRegExp,
     isString,
     isValid(/** @type {any} */ _) {
-        // eslint-disable-next-line no-self-compare
         return _ != null && _ === _;
     },
     lerp,
@@ -54,7 +53,6 @@ const functionContext = {
  */
 function buildFunctions(codegen) {
     const fn = functions(codegen);
-    // eslint-disable-next-line guard-for-in
     for (const name in functionContext) {
         fn[name] = `this.${name}`;
     }
@@ -85,7 +83,6 @@ export default function createFunction(expr, globalObject = {}) {
         const parsed = parseExpression(expr);
         const generatedCode = cg(parsed);
 
-        // eslint-disable-next-line no-new-func
         const fn = Function(
             "datum",
             "globalObject",
@@ -127,7 +124,6 @@ export function createEventFilterFunction(expr) {
         const parsed = parseExpression(expr);
         const generatedCode = eventFilterCg(parsed);
 
-        // eslint-disable-next-line no-new-func
         const fn = Function(
             "event",
             "globalObject",

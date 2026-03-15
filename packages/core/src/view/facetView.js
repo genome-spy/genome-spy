@@ -359,9 +359,9 @@ export default class FacetView extends ContainerView {
             );
         };
 
-        let nCols = 0;
-        let nRows = 0;
-        let n = 0;
+        let nCols;
+        let nRows;
+        let n;
 
         if (wrap) {
             // Wrapping layout

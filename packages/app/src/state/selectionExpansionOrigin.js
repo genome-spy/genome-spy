@@ -37,7 +37,7 @@ export function tryResolvePointExpandOriginDatum(originView, origin) {
     let keyFields;
     try {
         keyFields = getEncodingKeyFields(originView.getEncoding());
-    } catch (_error) {
+    } catch {
         return { reason: "missingEncodingKey" };
     }
 

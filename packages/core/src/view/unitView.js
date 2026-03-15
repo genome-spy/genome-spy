@@ -293,7 +293,6 @@ export default class UnitView extends View {
      *
      * @param {ResolutionTarget} [type] If not specified, both scales and axes are resolved.
      */
-    // eslint-disable-next-line complexity
     resolve(type) {
         if (!type) {
             this.resolve("scale");
@@ -348,7 +347,6 @@ export default class UnitView extends View {
                 continue;
             }
 
-            // eslint-disable-next-line consistent-this
             let view = this;
             while (
                 (view.getConfiguredOrDefaultResolution(targetChannel, type) ==

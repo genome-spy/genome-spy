@@ -131,7 +131,7 @@ export default class BmFontManager {
 
             fontEntry.texture = await texturePromise;
             fontEntry.metrics = await metricsPromise;
-        } catch (error) {
+        } catch {
             console.warn(
                 `Cannot load font: "${key.family}". Using the embedded default font.`
             );

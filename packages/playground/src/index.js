@@ -468,7 +468,6 @@ async function update(force = false) {
         renderLayout();
 
         // TODO: Fix possible race condition
-        // eslint-disable-next-line require-atomic-updates
         embedResult = await embed(
             /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
             parsedSpec,

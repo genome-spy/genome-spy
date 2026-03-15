@@ -370,7 +370,6 @@ export class RuleVertexBuilder extends GeometryBuilder {
         this.variableBuilder.configure();
     }
 
-    /* eslint-disable complexity */
     /**
      *
      * @param {any} key
@@ -581,9 +580,9 @@ export class TextVertexBuilder extends GeometryBuilder {
                 x -= (firstChar.width - firstChar.xadvance) / base / 2; // TODO: Fix, this is a bit off..
             }
 
-            let bottom = -0.5,
-                height = 1,
-                normalWidth = 1;
+            let bottom;
+            let height;
+            let normalWidth;
 
             for (let i = 0; i < str.length; i++) {
                 const c = this.metrics.getCharByCode(str.charCodeAt(i));

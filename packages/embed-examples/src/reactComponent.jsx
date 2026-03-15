@@ -1,10 +1,6 @@
 import { createRoot } from "react-dom/client";
-// eslint-disable-next-line no-unused-vars
-import React from "react";
-// eslint-disable-next-line no-unused-vars
 import GenomeSpy from "@genome-spy/react-component";
 
-// eslint-disable-next-line no-unused-vars
 const App = () => {
     /** @type {import("packages/core/src/spec/root.js").RootSpec} */
     const spec = {

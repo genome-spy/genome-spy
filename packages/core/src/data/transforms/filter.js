@@ -17,7 +17,7 @@ export default class FilterTransform extends Transform {
     }
 
     initialize() {
-        let expression = "";
+        let expression;
 
         if (isExprFilterParams(this.params)) {
             expression = this.params.expr;
