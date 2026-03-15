@@ -44,7 +44,8 @@ export default async function bed(data) {
             throw new Error(
                 `Cannot parse BED line ${i + 1}: ${
                     /** @type {Error} */ (error).message
-                }`
+                }`,
+                { cause: error }
             );
         }
     }

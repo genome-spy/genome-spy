@@ -105,7 +105,9 @@ export default function createFunction(expr, globalObject = {}) {
 
         return exprFunction;
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`);
+        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
+            cause: e,
+        });
     }
 }
 
@@ -141,6 +143,8 @@ export function createEventFilterFunction(expr) {
             /** @type {any} */ (fn)
         );
     } catch (e) {
-        throw new Error(`Invalid expression: ${expr}, ${e.message}`);
+        throw new Error(`Invalid expression: ${expr}, ${e.message}`, {
+            cause: e,
+        });
     }
 }

@@ -101,7 +101,8 @@ export default class UrlSource extends DataSource {
                 return await readResponseBody(result, url, type);
             } catch (e) {
                 throw new Error(
-                    `Could not load data: ${url}. Reason: ${e.message}`
+                    `Could not load data: ${url}. Reason: ${e.message}`,
+                    { cause: e }
                 );
             }
         };
@@ -124,7 +125,9 @@ export default class UrlSource extends DataSource {
                 }
             } catch (e) {
                 console.warn(e);
-                throw new Error(`Cannot parse: ${url}: ${e.message}`);
+                throw new Error(`Cannot parse: ${url}: ${e.message}`, {
+                    cause: e,
+                });
             }
         };
 

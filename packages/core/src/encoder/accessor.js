@@ -114,7 +114,9 @@ export function createAccessor(channel, channelDef, paramRuntime) {
         try {
             return asAccessor(field(channelDef.field));
         } catch (e) {
-            throw new Error(`Invalid field definition: ${e.message}`);
+            throw new Error(`Invalid field definition: ${e.message}`, {
+                cause: e,
+            });
         }
     } else if (isExprDef(channelDef)) {
         // TODO: If parameters change, the data should be re-evaluated

@@ -166,7 +166,8 @@ export async function loadExternalViewSpec(spec, baseUrl, viewContext) {
         );
     } catch (e) {
         throw new Error(
-            `Could not load imported view spec: ${url}. Reason: ${e.message}`
+            `Could not load imported view spec: ${url}. Reason: ${e.message}`,
+            { cause: e }
         );
     }
 

@@ -35,14 +35,19 @@ async function defaultLoadJson(url, signal) {
                 "Invalid JSON in metadata source import " +
                     url +
                     ": " +
-                    error.message
+                    error.message,
+                { cause: error }
             );
         }
 
         const message = error instanceof Error ? error.message : String(error);
 
         throw new Error(
-            "Could not load metadata source import from " + url + ": " + message
+            "Could not load metadata source import from " +
+                url +
+                ": " +
+                message,
+            { cause: error }
         );
     }
 }

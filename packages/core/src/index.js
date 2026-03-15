@@ -110,7 +110,8 @@ export async function loadSpec(url) {
         spec = /** @type {any} */ (await fetchJson(url));
     } catch (e) {
         throw new Error(
-            `Could not load or parse configuration: ${url}, reason: ${e.message}`
+            `Could not load or parse configuration: ${url}, reason: ${e.message}`,
+            { cause: e }
         );
     }
 

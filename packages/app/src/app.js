@@ -394,7 +394,9 @@ export default class App {
         try {
             await this.#ensureRemoteBookmarks(remoteBookmarkPromise);
         } catch (e) {
-            throw new Error(`Cannot load remote bookmarks: ${e}`);
+            throw new Error(`Cannot load remote bookmarks: ${e}`, {
+                cause: e,
+            });
         }
 
         try {

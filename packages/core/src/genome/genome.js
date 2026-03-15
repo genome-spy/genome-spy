@@ -97,7 +97,8 @@ export default class Genome {
             this.setChromSizes(parseChromSizes(await result.text()));
         } catch (e) {
             throw new Error(
-                `Could not load chrom sizes: ${this.config.url}. Reason: ${e.message}`
+                `Could not load chrom sizes: ${this.config.url}. Reason: ${e.message}`,
+                { cause: e }
             );
         }
     }

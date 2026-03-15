@@ -106,7 +106,8 @@ export function buildDataFlow(
             } catch (e) {
                 console.warn(e);
                 throw new Error(
-                    `Cannot initialize "${params.type}" transform: ${e}`
+                    `Cannot initialize "${params.type}" transform: ${e}`,
+                    { cause: e }
                 );
             }
 
