@@ -9,8 +9,6 @@ import { expect, test } from "vitest";
  * BSD-3-Clause License: https://github.com/vega/vega-lite/blob/master/LICENSE
  */
 
-/* eslint-disable */
-
 import { validTicks } from "./ticks.js";
 
 test("validTicks uses count correctly", function () {

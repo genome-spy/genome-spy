@@ -8,7 +8,7 @@ export default defineConfig(
     {
         name: "genomespy/linter-options",
         linterOptions: {
-            reportUnusedDisableDirectives: "warn",
+            reportUnusedDisableDirectives: "error",
         },
     },
 
