@@ -26,12 +26,6 @@ export default class RuleMark extends Mark {
         super(unitView);
 
         this.dashTextureSize = 0;
-
-        // Tick-only properties are not part of the shared rule config.
-        this.augmentDefaultProperties({
-            orient: undefined,
-            thickness: 1,
-        });
     }
 
     /**

@@ -4,6 +4,7 @@ import {
     POINT_MARK_DEFAULTS,
     RECT_MARK_DEFAULTS,
     RULE_MARK_DEFAULTS,
+    TICK_MARK_DEFAULTS,
     TEXT_MARK_DEFAULTS,
 } from "./defaults/markDefaults.js";
 import { AXIS_DEFAULTS, LOCUS_AXIS_DEFAULTS } from "./defaults/axisDefaults.js";
@@ -22,6 +23,7 @@ export const INTERNAL_DEFAULT_CONFIG = {
     point: POINT_MARK_DEFAULTS,
     rect: RECT_MARK_DEFAULTS,
     rule: RULE_MARK_DEFAULTS,
+    tick: TICK_MARK_DEFAULTS,
     text: TEXT_MARK_DEFAULTS,
     link: LINK_MARK_DEFAULTS,
 

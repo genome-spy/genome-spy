@@ -52,6 +52,18 @@ export const RULE_MARK_DEFAULTS = {
     strokeCap: "butt",
 };
 
+/** @type {import("../../spec/config.js").TickConfig} */
+export const TICK_MARK_DEFAULTS = {
+    color: "black",
+    opacity: 1.0,
+    minLength: 0.0,
+    strokeDash: null,
+    strokeDashOffset: 0,
+    strokeCap: "butt",
+    orient: undefined,
+    thickness: 1,
+};
+
 /** @type {import("../../spec/config.js").TextConfig} */
 export const TEXT_MARK_DEFAULTS = {
     x: 0.5,

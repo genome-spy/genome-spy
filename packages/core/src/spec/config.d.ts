@@ -6,6 +6,7 @@ import {
     RectProps,
     RuleProps,
     ShadowProps,
+    TickProps,
     TextProps,
 } from "./mark.js";
 import { Scale, SchemeParams } from "./scale.js";
@@ -34,6 +35,8 @@ export type PointConfig = Partial<Omit<PointProps, "type">>;
 export type RectConfig = Partial<Omit<RectProps, "type">>;
 
 export type RuleConfig = Partial<Omit<RuleProps, "type">>;
+
+export type TickConfig = Partial<Omit<TickProps, "type">>;
 
 export type TextConfig = Partial<Omit<TextProps, "type">>;
 
@@ -75,8 +78,11 @@ type MergeProps<A, B> = {
 type CombinedStyleConfig = MergeProps<
     MergeProps<
         MergeProps<
-            MergeProps<MergeProps<MarkConfig, PointConfig>, RectConfig>,
-            RuleConfig
+            MergeProps<
+                MergeProps<MergeProps<MarkConfig, PointConfig>, RectConfig>,
+                RuleConfig
+            >,
+            TickConfig
         >,
         TextConfig
     >,
@@ -92,6 +98,7 @@ export interface GenomeSpyConfig {
     point?: PointConfig;
     rect?: RectConfig;
     rule?: RuleConfig;
+    tick?: TickConfig;
     text?: TextConfig;
     link?: LinkConfig;
 

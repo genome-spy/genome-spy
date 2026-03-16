@@ -162,4 +162,33 @@ describe("mark config precedence", () => {
 
         expect(explicit.mark.properties.color).toBe("firebrick");
     });
+
+    test("tick uses config.tick instead of config.rule", async () => {
+        const view = /** @type {UnitView} */ (
+            await create(
+                {
+                    config: {
+                        rule: {
+                            color: "orange",
+                        },
+                        tick: {
+                            color: "seagreen",
+                            thickness: 7,
+                        },
+                    },
+                    mark: {
+                        type: "tick",
+                        orient: "vertical",
+                    },
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(view.mark.properties.color).toBe("seagreen");
+        expect(/** @type {any} */ (view.mark.properties).thickness).toBe(7);
+    });
 });
