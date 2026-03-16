@@ -62,7 +62,7 @@ The effective order is:
 
 1. internal defaults
 2. built-in default theme
-3. embed-level theme override, if provided
+3. [embed-level theme override](../api.md#theme-config)
 4. root `theme`
 5. root `config`
 6. ancestor view `config`
@@ -77,12 +77,8 @@ Mark defaults come first from `config.mark`, then from a mark-type bucket such
 as `config.point`, `config.rect`, `config.rule`, or `config.tick`, and then
 from style buckets.
 
-GenomeSpy also supports an implicit mark-type style layer. For example,
+For example,
 `config.style.point` affects point marks even when `mark.style` is omitted.
-
-The `"tick"` mark shares its renderer implementation with `"rule"`, but it is a
-first-class mark in the config model. That means `config.tick` and
-`config.style.tick` apply to ticks, while `config.rule` applies to rules.
 
 ## Axis defaults
 
@@ -122,13 +118,3 @@ View background defaults come from `config.view` and from styles referenced by
 backgrounds.
 
 EXAMPLE examples/docs/grammar/config/title-styles.json height=280
-
-## Examples
-
-- `examples/core/config/config-basic.json`
-- `examples/core/config/config-scoped-view.json`
-- `examples/core/config/config-imported-track.json`
-- `examples/core/config/config-import-override.json`
-- `examples/core/config/config-scale-schemes-by-type.json`
-- `examples/core/config/config-theme-comparison-bars.json`
-- `examples/core/config/config-crazy-theme-style-showcase.json`
