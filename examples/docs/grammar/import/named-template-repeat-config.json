@@ -1,27 +1,31 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "Template import example with repeated named tracks.",
+  "description": "Template import example with import-site config overrides.",
 
   "vconcat": [
     {
       "import": { "template": "myTrack" },
-      "name": "trackA",
-      "params": [{ "name": "size", "value": 5 }]
+      "params": { "offset": 0 },
+      "config": {
+        "point": { "color": "#1f77b4", "size": 40 },
+        "axisQuantitative": { "grid": true, "gridColor": "#d6e4f0" },
+        "view": { "stroke": "#1f77b4", "strokeWidth": 1 }
+      }
     },
     {
       "import": { "template": "myTrack" },
-      "name": "trackB",
-      "params": { "offset": 3.141, "size": 20 }
+      "params": { "offset": 3.141 },
+      "config": {
+        "point": { "color": "#d62728", "size": 120 },
+        "axisQuantitative": { "grid": true, "gridColor": "#f3d7d7" },
+        "view": { "stroke": "#d62728", "strokeWidth": 1 }
+      }
     }
   ],
 
   "templates": {
     "myTrack": {
-      "params": [
-        { "name": "offset", "value": 0 },
-        { "name": "size", "value": 10 }
-      ],
       "data": {
         "sequence": { "start": 0, "stop": 20, "step": 0.2, "as": "x" }
       },
@@ -30,9 +34,6 @@
       ],
       "mark": "point",
       "encoding": {
-        "size": {
-          "value": { "expr": "size" }
-        },
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
       }
