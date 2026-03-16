@@ -25,11 +25,6 @@ Use `theme` when you want a broad preset for the whole visualization. Use
 `config` when you want defaults for a scope. Use `style` when the same visual
 treatment should be referenced by name from marks, axes, titles, or views.
 
-This is roughly similar to choosing a design system, defining scoped defaults,
-and then using reusable class-like tokens. The analogy is only partial:
-GenomeSpy has no selector matching and no selector specificity. Precedence is
-fixed by the config resolution model.
-
 ## Built-in themes
 
 GenomeSpy currently supports these built-in themes:
@@ -41,12 +36,11 @@ GenomeSpy currently supports these built-in themes:
 - `fivethirtyeight`
 - `urbaninstitute`
 
-The `genomespy` theme preserves GenomeSpy defaults. The `vegalite` theme is a
-best-effort mapping of Vega-Lite defaults for overlapping features. The
-Vega-inspired themes are layered on top of `vegalite`.
+The `genomespy` theme is the default GenomeSpy look. The `vegalite` theme
+follows Vega-Lite defaults where GenomeSpy supports the same features. The
+Vega-inspired themes are based on `vegalite`.
 
-Theme selection is currently root-only. GenomeSpy supports selecting built-in
-themes, but not defining custom named themes inside the spec.
+Theme selection is root-only. Specs can choose one of the built-in themes.
 
 EXAMPLE examples/docs/grammar/config/theme.json height=220
 
@@ -96,9 +90,6 @@ Axis defaults come from `config.axis` and then from more specific buckets such
 as `config.axisX`, `config.axisTop`, or `config.axisQuantitative`. Axis styles
 can be provided by config buckets and by explicit `axis.style` references in
 channel definitions.
-
-Shared axes use deterministic merge ordering, so the result no longer depends
-on registration order.
 
 See also [Scale](./scale.md).
 
