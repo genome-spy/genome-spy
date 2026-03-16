@@ -56,7 +56,7 @@ describe("resolveConfig", () => {
         const fiveThirtyEight = resolveThemeSelection("fivethirtyeight");
         expect(fiveThirtyEight.mark.color).toBe("#30a2da");
         expect(fiveThirtyEight.axis.grid).toBe(true);
-        expect(fiveThirtyEight.point.filled).toBe(false);
+        expect(fiveThirtyEight.point.filled).toBe(true);
 
         const urbanInstitute = resolveThemeSelection("urbaninstitute");
         expect(urbanInstitute.mark.color).toBe("#1696d2");

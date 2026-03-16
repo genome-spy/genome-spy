@@ -130,6 +130,10 @@ const BUILT_IN_THEME_DEFINITIONS = {
             mark: {
                 color: "#30a2da",
             },
+            point: {
+                filled: true,
+                shape: "circle",
+            },
             axis: {
                 domainColor: "#cbcbcb",
                 grid: true,

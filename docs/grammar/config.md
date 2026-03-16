@@ -1,40 +1,38 @@
 # Global Config, Themes, and Styles
 
-GenomeSpy supports a Vega-Lite-like configuration model for controlling visual
-defaults. Instead of repeating the same axis, mark, scale, title, and view
-settings in every spec fragment, you can move them into `config`. GenomeSpy
-also supports built-in `theme` selection and reusable named `style` buckets.
+GenomeSpy supports visual defaults through `config`, built-in theme selection
+through `theme`, and reusable named buckets through `config.style`. The key
+idea is that configuration is hierarchical: it can be defined at the root, on
+nested views, and at import sites, which makes it practical for large
+visualizations composed of multiple panels, tracks, and reusable imported
+subtrees that each need their own local defaults while still fitting into a
+shared overall design.
 
-Unlike Vega-Lite, configuration in GenomeSpy is hierarchical. A root
-visualization can define defaults for the whole view tree, and nested views or
-import sites can narrow those defaults for a subtree.
+## Quick example
 
-## Mental Model
+The example below configures quantitative axes to show grid lines, changes
+point defaults, and defines a reusable style bucket for the view background.
 
-GenomeSpy has three related mechanisms that serve different purposes.
+EXAMPLE examples/docs/grammar/config/config-overview.json height=220
 
-`theme` selects a broad visual preset for the whole visualization. It is useful
-when you want a recognizable overall look such as the default GenomeSpy theme,
-a Vega-Lite-like theme, or one of the built-in Vega-inspired themes.
+## Properties
 
-`config` defines defaults for a scope. Use it when you want to say that all
-quantitative axes in some subtree should have grid lines, or that all point
-marks inside a reusable track should be unfilled by default.
+SCHEMA GenomeSpyConfig
 
-`style` defines named reusable property buckets inside `config.style`. Use it
-when the same visual treatment should be referenced from multiple marks, axes,
-titles, or view backgrounds.
+## Theme, Config, and Style
 
-An approximate CSS analogy can be helpful: `theme` is like choosing a design
-system, `config` is like scoped default rules, and `style` is like reusable
-class-like tokens. The analogy is limited, though. GenomeSpy has no selector
-matching and no selector specificity; precedence is fixed by the config
-resolution model.
+Use `theme` when you want a broad preset for the whole visualization. Use
+`config` when you want defaults for a scope. Use `style` when the same visual
+treatment should be referenced by name from marks, axes, titles, or views.
 
-## Theme Selection
+This is roughly similar to choosing a design system, defining scoped defaults,
+and then using reusable class-like tokens. The analogy is only partial:
+GenomeSpy has no selector matching and no selector specificity. Precedence is
+fixed by the config resolution model.
 
-Theme selection is supported at the root specification. The currently supported
-built-in themes are:
+## Built-in themes
+
+GenomeSpy currently supports these built-in themes:
 
 - `genomespy`
 - `vegalite`
@@ -43,126 +41,99 @@ built-in themes are:
 - `fivethirtyeight`
 - `urbaninstitute`
 
-The `genomespy` theme preserves GenomeSpy's default behavior. The `vegalite`
-theme is a best-effort attempt to match Vega-Lite defaults where the feature
-sets overlap. The Vega-inspired themes are layered on top of `vegalite`, so
-they reuse the same general design direction and override the supported parts.
+The `genomespy` theme preserves GenomeSpy defaults. The `vegalite` theme is a
+best-effort mapping of Vega-Lite defaults for overlapping features. The
+Vega-inspired themes are layered on top of `vegalite`.
 
-Some themes also define a default root canvas `background`. An explicit
-root-level `background` property still has higher precedence.
+Theme selection is currently root-only. GenomeSpy supports selecting built-in
+themes, but not defining custom named themes inside the spec.
 
-!!! note
+EXAMPLE examples/docs/grammar/config/theme.json height=220
 
-    GenomeSpy currently supports selecting built-in themes, but not defining
-    custom named themes inside the spec. For now, new appearances should be
-    built using built-in `theme` together with `config` and `style`.
+## Config scopes
 
-## Config Scopes
+Config can appear in the root spec, in any view, and at an import site. Scopes
+are merged from outermost to innermost, so the closest scope wins.
 
-Config can appear in three places: the root spec, any view, and an import site.
-Those scopes are merged from outermost to innermost. In practice, this means
-that a reusable imported track can define sensible defaults for itself, while a
-host specification can still adapt the surrounding context.
+For imports, import-site config is merged before the imported spec's own root
+config. This allows imported tracks to stay self-contained while still fitting
+their host visualization.
 
-When multiple config scopes contribute values for the same property, the
-closest scope wins. After that, explicit local properties in the spec still
-override config-derived defaults. For example, a local `mark.color` or
-`encoding.x.axis.tickColor` always wins over inherited config.
+Explicit local properties still override resolved defaults. For example,
+`mark.color` or `encoding.x.axis.tickColor` wins over inherited config.
 
-For imports, the import-site config is merged before the imported spec's own
-root config. This keeps imported tracks self-contained while still allowing the
-host visualization to provide context-level defaults.
+## Resolution order
 
-## Theme, Config, and Style Together
+The effective order is:
 
-A practical way to think about the layers is to start broad and then get more
-specific. Choose a root `theme` first if you want one. Then use `config` to set
-policy-like defaults for a scope. Finally, use `style` for repeated visual
-treatments that should be referenced by name. Explicit properties should be
-reserved for local exceptions.
+1. internal defaults
+2. built-in default theme
+3. embed-level theme override, if provided
+4. root `theme`
+5. root `config`
+6. ancestor view `config`
+7. import-site `config`
+8. imported root `config`
+9. local view `config`
+10. explicit local properties
 
-This distinction matters because `theme` and `style` are not interchangeable.
-A theme may contain style buckets as part of its config, but `style` remains
-the mechanism that marks, axes, titles, and view backgrounds actually reference.
-In other words, `theme` selects a preset configuration, whereas `style` is part
-of that configuration.
+## Mark defaults
 
-## Mark Defaults
+Mark defaults come first from `config.mark`, then from a mark-type bucket such
+as `config.point`, `config.rect`, `config.rule`, or `config.tick`, and then
+from style buckets.
 
-Mark defaults are resolved from `config.mark`, then from the mark-type bucket
-such as `config.point`, `config.rect`, or `config.tick`, and then from style
-buckets. GenomeSpy also follows a Vega-Lite-like pattern where
-`config.style.<markType>` acts as an implicit style layer even if `mark.style`
-is not specified explicitly.
+GenomeSpy also supports an implicit mark-type style layer. For example,
+`config.style.point` affects point marks even when `mark.style` is omitted.
 
 The `"tick"` mark shares its renderer implementation with `"rule"`, but it is a
 first-class mark in the config model. That means `config.tick` and
 `config.style.tick` apply to ticks, while `config.rule` applies to rules.
 
-See:
+## Axis defaults
 
-- `examples/core/config/config-basic.json`
-- `examples/core/config/config-scoped-view.json`
+Axis defaults come from `config.axis` and then from more specific buckets such
+as `config.axisX`, `config.axisTop`, or `config.axisQuantitative`. Axis styles
+can be provided by config buckets and by explicit `axis.style` references in
+channel definitions.
 
-## Axis Defaults
+Shared axes use deterministic merge ordering, so the result no longer depends
+on registration order.
 
-Axis defaults are read from `config.axis` and then refined through more
-specific buckets such as `config.axisX`, `config.axisY`, orient-specific
-buckets, and type-specific buckets like `config.axisQuantitative`.
+See also [Scale](./scale.md).
 
-Axis styles can come both from config buckets and from explicit axis `style`
-references in channel definitions. Explicit `encoding.<channel>.axis` values
-still override config-derived defaults.
+## Scale defaults
 
-When a shared axis has conflicting settings from sibling views, GenomeSpy uses a
-deterministic merge order based on stable view paths. This avoids
-registration-order dependence, although conflicting explicit values still
-follow a first-value-wins rule with a warning.
+Scale defaults come from `config.scale` and `config.range`.
 
-## Scale Defaults
-
-Scale defaults are configured through `config.scale` and `config.range`.
 `config.scale` provides shared defaults and data-type-specific buckets such as
-`nominal`, `ordinal`, `quantitative`, `index`, and `locus`.
+`nominal`, `ordinal`, `quantitative`, `index`, and `locus`. Color scheme
+defaults can be configured with `nominalColorScheme`, `ordinalColorScheme`, and
+`quantitativeColorScheme`.
 
-Color scheme defaults can be configured by data type using
-`nominalColorScheme`, `ordinalColorScheme`, and `quantitativeColorScheme`.
-Named scale ranges such as `"shape"`, `"size"`, `"angle"`, `"heatmap"`,
-`"ramp"`, and `"diverging"` are resolved through `config.range`.
+Named ranges such as `"shape"`, `"size"`, `"angle"`, `"heatmap"`, `"ramp"`, and
+`"diverging"` are resolved through `config.range`.
 
-GenomeSpy keeps a few scale invariants outside theming. In particular,
-positional channels always use the unit range `[0, 1]` internally, so explicit
+GenomeSpy keeps positional scale ranges as an internal invariant, so explicit
 or configured positional `range` values are ignored.
 
-See:
+See also [Scale](./scale.md).
 
-- `examples/core/config/config-scale-schemes-by-type.json`
-
-## Title and View Defaults
+## Title and view defaults
 
 Title defaults come from `config.title` and from style buckets. If `title.style`
-is omitted, GenomeSpy uses an implicit `"group-title"` style fallback when one
-is available. This mirrors the style-first direction used elsewhere in the
-config system.
+is omitted, GenomeSpy can use the implicit `"group-title"` style fallback.
 
 View background defaults come from `config.view` and from styles referenced by
-`view.style`. When no explicit view style is given, GenomeSpy can also use the
-implicit `"cell"` style model for view backgrounds.
-
-As with other domains, explicit local `title` and `view` properties override the
-resolved defaults.
+`view.style`. GenomeSpy also supports the implicit `"cell"` style model for view
+backgrounds.
 
 ## Examples
-
-The following examples cover the most important configuration patterns:
 
 - `examples/core/config/config-basic.json`
 - `examples/core/config/config-scoped-view.json`
 - `examples/core/config/config-imported-track.json`
 - `examples/core/config/config-import-override.json`
+- `examples/core/config/config-scale-schemes-by-type.json`
 - `examples/core/config/config-theme-comparison-bars.json`
 - `examples/core/config/config-crazy-theme-style-showcase.json`
-
-## Properties
-
-SCHEMA GenomeSpyConfig

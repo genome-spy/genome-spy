@@ -1,0 +1,32 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Configuration overview example.",
+
+  "config": {
+    "view": {
+      "style": "cell"
+    },
+    "point": {
+      "filled": false,
+      "size": 50
+    },
+    "axisQuantitative": {
+      "grid": true
+    },
+    "style": {
+      "cell": {
+        "stroke": "#d0d0d0",
+        "strokeWidth": 1
+      }
+    }
+  },
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
+  }
+}
