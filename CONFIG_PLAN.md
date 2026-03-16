@@ -77,8 +77,8 @@ Done:
 - ✅ hierarchical config scopes (`root -> view -> import-site -> imported subtree`) and deterministic scope resolution
 - ✅ config-driven defaults for mark, axis, scale, title, and view domains
 - ✅ built-in themes: `genomespy` and `vegalite`
-- ✅ per-subtree built-in theme selection using `theme` on view specs and import specs
-- ✅ docs and examples for config/theme usage under `packages/core/examples/config/` and `docs/grammar/config.md`
+- ✅ root-level built-in theme selection using `theme`
+- ✅ docs and examples for config/theme usage under `examples/core/config/` and `docs/grammar/config.md`
 - ✅ style precedence plumbing for mark/axis/title domains
 - ✅ deterministic shared axis/scale merge ordering
 - ✅ quantitative color defaults now modeled after Vega-Lite logic using `config.range` slots
@@ -746,7 +746,7 @@ Acceptance criteria:
 Current progress:
 
 - ✅ full suite green (`npm test`)
-- ✅ config-related example/layout snapshots already in `packages/core/examples/layout.test.js`
+- ✅ config-related example/layout snapshots already in `packages/core/layout.test.js`
 - ⏳ docs build pending local `mkdocs` availability
 
 ### 10.5 App-Level Theme Integration (Optional but Valuable)
@@ -806,11 +806,11 @@ Acceptance criteria:
 
 Examples location:
 
-- all new config examples should be added under `packages/core/examples/`
+- all new config examples should be added under `examples/core/`
 
 Status:
 
-- ✅ implemented (`packages/core/examples/config/` and docs/grammar/config.md)
+- ✅ implemented (`examples/core/config/` and docs/grammar/config.md)
 
 Recommended example set:
 

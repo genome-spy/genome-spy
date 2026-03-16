@@ -101,8 +101,8 @@ Mark defaults are resolved from:
 
 See examples:
 
-- `packages/core/examples/config/config-basic.json`
-- `packages/core/examples/config/config-scoped-view.json`
+- `examples/core/config/config-basic.json`
+- `examples/core/config/config-scoped-view.json`
 
 ## Axis Defaults
 
@@ -147,7 +147,7 @@ Additional scale policy notes:
 
 Example:
 
-- `packages/core/examples/config/config-scale-schemes-by-type.json`
+- `examples/core/config/config-scale-schemes-by-type.json`
 
 ## Title And View Defaults
 
@@ -183,5 +183,5 @@ context-level theming.
 
 Examples:
 
-- `packages/core/examples/config/config-imported-track.json`
-- `packages/core/examples/config/config-import-override.json`
+- `examples/core/config/config-imported-track.json`
+- `examples/core/config/config-import-override.json`

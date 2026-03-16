@@ -10,7 +10,6 @@
       "grid": true
     }
   },
->>>>>>> 09e05840 (chore(core): move grid example styling into config):packages/core/examples/layout/grid/complex_grid_layout2.json
   "encoding": {
     "y": {
       "field": "sin",
@@ -29,13 +28,13 @@
         "axis": { "x": "shared" }
       },
       "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "axis": {
-        "orient": "top"
-      }
-    }
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "axis": {
+            "orient": "top"
+          }
+        }
       },
       "concat": [
         {
@@ -73,13 +72,13 @@
         "axis": { "x": "shared" }
       },
       "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "axis": {
-        "orient": "bottom"
-      }
-    }
+        "x": {
+          "field": "x",
+          "type": "quantitative",
+          "axis": {
+            "orient": "bottom"
+          }
+        }
       },
       "concat": [
         {

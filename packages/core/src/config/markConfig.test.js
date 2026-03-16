@@ -61,4 +61,23 @@ describe("markConfig", () => {
         expect(defaults.size).toBe(11);
         expect(defaults.opacity).toBe(0.8);
     });
+
+    test("tick resolves through rule config buckets", () => {
+        const defaults = getConfiguredMarkDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    rule: {
+                        color: "orange",
+                        minLength: 4,
+                    },
+                },
+            ],
+            "tick",
+            undefined
+        );
+
+        expect(defaults.color).toBe("orange");
+        expect(defaults.minLength).toBe(4);
+    });
 });
