@@ -81,6 +81,31 @@ package.
 
 See [Named data](#named-data).
 
+### Theme config
+
+Use the `theme` embed option to provide global defaults without modifying the
+specification itself:
+
+```js
+embed(container, spec, {
+  theme: {
+    mark: { color: "#1f77b4" },
+    point: { size: 80 },
+    scale: { nominalColorScheme: "set2" },
+  },
+});
+```
+
+Theme config is merged before `spec.config`, so spec-local config and explicit
+properties still take precedence.
+
+See also [Config, Themes, and Styles](./grammar/config.md).
+
+### Named scales
+
+Named scales can be accessed through `getScaleResolutionByName()`. To define a
+named scale in a spec, set `scale.name`. See [Scale](./grammar/scale.md).
+
 ### Custom tooltip handlers
 
 GenomeSpy provides two built-in tooltip handlers.

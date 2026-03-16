@@ -1,0 +1,45 @@
+{
+  "description": "Child views can override parent config scopes.",
+  "config": {
+    "mark": {
+      "color": "#4c78a8"
+    },
+    "point": {
+      "size": 70
+    }
+  },
+  "data": {
+    "values": [
+      { "x": 1, "y": 1.0 },
+      { "x": 2, "y": 2.2 },
+      { "x": 3, "y": 2.7 },
+      { "x": 4, "y": 1.9 }
+    ]
+  },
+  "vconcat": [
+    {
+      "name": "inherits-parent",
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+    {
+      "name": "overrides-parent",
+      "config": {
+        "mark": {
+          "color": "#f58518"
+        },
+        "point": {
+          "size": 140
+        }
+      },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
+}

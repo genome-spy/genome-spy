@@ -1,0 +1,46 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Built-in title style examples.",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "cos", "type": "quantitative", "axis": null }
+  },
+
+  "vconcat": [
+    {
+      "title": { "text": "Group title (the default)", "style": "group-title" },
+      "padding": { "top": 18 },
+      "mark": "point"
+    },
+    {
+      "title": { "text": "Track title", "style": "track-title" },
+      "padding": { "left": 65 },
+      "mark": "point"
+    },
+    {
+      "title": { "text": "Overlay title", "style": "overlay-title" },
+      "mark": "point"
+    },
+    {
+      "title": { "text": "Custom title", "style": "custom-title" },
+      "padding": { "top": 28 },
+      "mark": "point"
+    }
+  ],
+
+  "config": {
+    "style": {
+      "custom-title": {
+        "fontSize": 18,
+        "fontWeight": "bold",
+        "color": "#4a90e2"
+      }
+    },
+    "view": { "stroke": "#d0d0d0", "strokeWidth": 1 }
+  },
+
+  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } }
+}

@@ -7,13 +7,11 @@
     {
       "import": { "template": "myTrack" },
       "name": "trackA",
-      "visible": true,
       "params": [{ "name": "size", "value": 5 }]
     },
     {
       "import": { "template": "myTrack" },
       "name": "trackB",
-      "visible": true,
       "params": { "offset": 3.141, "size": 20 }
     }
   ],

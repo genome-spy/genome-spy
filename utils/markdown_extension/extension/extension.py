@@ -7,6 +7,7 @@ import shlex
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
 
+# TODO: Don't use absolute URLs. Instead generate relative links.
 docs_baseurl = 'https://genomespy.app/docs'
 
 types_with_links = {
@@ -18,11 +19,26 @@ types_with_links = {
     'SelectionParameter': '/grammar/parameters/',
     'UrlImport': '/grammar/import/#urlimport',
     'TemplateImport': '/grammar/import/#templateimport',
+    'MarkConfig': '/grammar/mark/#properties',
+    'PointConfig': '/grammar/mark/point/#properties',
+    'RectConfig': '/grammar/mark/rect/#properties',
+    'RuleConfig': '/grammar/mark/rule/#properties',
+    'TickConfig': '/grammar/mark/tick/#properties',
+    'TextConfig': '/grammar/mark/text/#properties',
+    'LinkConfig': '/grammar/mark/link/#properties',
     'LinkProps': '/grammar/mark/link/#properties',
     'PointProps': '/grammar/mark/point/#properties',
     'RectProps': '/grammar/mark/rect/#properties',
     'RuleProps': '/grammar/mark/rule/#properties',
+    'TickProps': '/grammar/mark/tick/#properties',
     'TextProps': '/grammar/mark/text/#properties',
+    'AxisConfig': '/grammar/scale/#axes',
+    'ScaleConfig': '/grammar/scale/#scale-defaults',
+    'RangeConfig': '/grammar/scale/#scale-defaults',
+    'TitleConfig': '/grammar/config/#title-and-view-defaults',
+    'ViewConfig': '/grammar/config/#title-and-view-defaults',
+    'StyleConfig': '/grammar/config/#theme-config-and-style',
+    'GenomeSpyConfig': '/grammar/config/#properties',
     'UrlData': '/grammar/data/eager/',
     'InlineData': '/grammar/data/eager/',
     'NamedData': '/grammar/data/eager/',

@@ -12,6 +12,12 @@ import specComplexGridLayout2 from "../../examples/core/layout/grid/complex_grid
 import specConcatPointsText from "../../examples/core/layout/grid/concat_points_text.json";
 import specSharedAxisAtRoot from "../../examples/core/layout/grid/shared_axis_at_root.json";
 import specCondensedConcat from "../../examples/core/layout/grid/condensed_concat.json";
+import specConfigBasic from "../../examples/core/config/config-basic.json";
+import specConfigScopedView from "../../examples/core/config/config-scoped-view.json";
+import specConfigImportedTrack from "../../examples/core/config/config-imported-track.json";
+import specConfigImportOverride from "../../examples/core/config/config-import-override.json";
+import specConfigScaleSchemesByType from "../../examples/core/config/config-scale-schemes-by-type.json";
+import specConfigThemeComparisonBars from "../../examples/core/config/config-theme-comparison-bars.json";
 import View from "./src/view/view";
 
 /**
@@ -69,5 +75,33 @@ describe("Test layout process", () => {
 
     test("layout/grid/condensed_concat.json", async () => {
         expect(await specToLayout(specCondensedConcat)).toMatchSnapshot();
+    });
+
+    test("config/config-basic.json", async () => {
+        expect(await specToLayout(specConfigBasic)).toMatchSnapshot();
+    });
+
+    test("config/config-scoped-view.json", async () => {
+        expect(await specToLayout(specConfigScopedView)).toMatchSnapshot();
+    });
+
+    test("config/config-imported-track.json", async () => {
+        expect(await specToLayout(specConfigImportedTrack)).toMatchSnapshot();
+    });
+
+    test("config/config-import-override.json", async () => {
+        expect(await specToLayout(specConfigImportOverride)).toMatchSnapshot();
+    });
+
+    test("config/config-scale-schemes-by-type.json", async () => {
+        expect(
+            await specToLayout(specConfigScaleSchemesByType)
+        ).toMatchSnapshot();
+    });
+
+    test("config/config-theme-comparison-bars.json", async () => {
+        expect(
+            await specToLayout(specConfigThemeComparisonBars)
+        ).toMatchSnapshot();
     });
 });

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Built-in FiveThirtyEight theme example.",
+
+  "theme": "fivethirtyeight",
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "cos", "type": "quantitative" }
+  }
+}

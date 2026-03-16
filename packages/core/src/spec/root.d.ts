@@ -1,4 +1,5 @@
 import { GenomeConfig, GenomeDefinition } from "./genome.js";
+import { BuiltInThemeName, GenomeSpyConfig } from "./config.js";
 import { ViewSpec } from "./view.js";
 
 export type NamedGenomeConfig = GenomeDefinition | Record<string, never>;
@@ -36,6 +37,19 @@ export interface RootConfig {
      * https://vega.github.io/vega-lite/docs/data.html#datasets
      */
     datasets?: Record<string, any[]>;
+
+    /**
+     * Global configuration defaults and theme tokens.
+     *
+     * The configuration is inherited by descendant views and can be overridden
+     * by view-local `config` objects.
+     */
+    config?: GenomeSpyConfig;
+
+    /**
+     * Selects built-in theme preset(s) for the whole visualization.
+     */
+    theme?: BuiltInThemeName | BuiltInThemeName[];
 }
 
 export type RootSpec = ViewSpec & RootConfig;

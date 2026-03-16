@@ -29,7 +29,7 @@
 
   "hconcat": [
     {
-      "title": { "text": "Palmer Penguins", "style": "overlay" },
+      "title": { "text": "Palmer Penguins", "style": "overlay-title" },
       "name": "scatterPlot",
       "params": [
         {

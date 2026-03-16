@@ -8,6 +8,12 @@ export type MarkType = "rect" | "point" | "rule" | "tick" | "text" | "link";
 export interface MarkPropsBase {
     type: MarkType;
 
+    /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     */
+    style?: string | string[];
+
     // Channels.
 
     /**
@@ -510,12 +516,45 @@ export interface PointProps
     inwardStroke?: boolean | ExprRef;
 
     /**
+     * Horizontal offset in pixels.
+     *
+     * **Default value:** `0`
+     */
+    dx?: number | ExprRef;
+
+    /**
+     * Vertical offset in pixels.
+     *
+     * **Default value:** `0`
+     */
+    dy?: number | ExprRef;
+
+    /**
+     * Additional padding used by sample facets.
+     *
+     * **Default value:** `0.1`
+     *
+     * @internal
+     */
+    sampleFacetPadding?: number;
+
+    /**
      * Gradient strength controls the amount of the gradient eye-candy effect in the fill color.
      * Valid values are between `0` and `1`.
      *
      * **Default value:** `0`
      */
     fillGradientStrength?: number | ExprRef;
+
+    /**
+     * The semantic score used by semantic zooming in the point mark.
+     * This is primarily intended for internal use.
+     *
+     * **Default value:** `0`
+     *
+     * @internal
+     */
+    semanticScore?: number | ExprRef;
 
     /**
      * TODO

@@ -18,9 +18,16 @@ aware interactions.
 - JavaScript (Modern ESNext) typed with JSDoc
 - TypeScript for more complex type definitions and JSON Schema generation
 - Monorepo managed with lerna-lite
+
+## Documentation
+
 - TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
 - When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
 - Keep docs focused on user-visible behavior and semantics; avoid implementation details unless they are necessary for correct usage
+- Prefer concise, direct wording in docs
+- Avoid vague or tentative phrasing unless it carries real meaning
+- Prefer plain statements about behavior over analogies or design commentary
+- If a sentence does not help the reader use the feature, shorten it or remove it
 - Docs macros:
   - `SCHEMA <TypeName>` embeds schema-derived property docs (for example, `SCHEMA ExprRef`)
   - `EXAMPLE examples/docs/...json` embeds a small self-contained docs spec from `examples/docs/`

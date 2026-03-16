@@ -2,12 +2,18 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "data": { "url": "data/sincos.csv" },
-
+  "config": {
+    "view": {
+      "stroke": "lightgray"
+    },
+    "axisQuantitative": {
+      "grid": true
+    }
+  },
   "encoding": {
     "y": {
       "field": "sin",
-      "type": "quantitative",
-      "axis": { "grid": true }
+      "type": "quantitative"
     }
   },
 
@@ -25,7 +31,9 @@
         "x": {
           "field": "x",
           "type": "quantitative",
-          "axis": { "orient": "top", "grid": true }
+          "axis": {
+            "orient": "top"
+          }
         }
       },
       "concat": [
@@ -37,24 +45,21 @@
           },
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]
@@ -70,7 +75,9 @@
         "x": {
           "field": "x",
           "type": "quantitative",
-          "axis": { "orient": "bottom", "grid": true }
+          "axis": {
+            "orient": "bottom"
+          }
         }
       },
       "concat": [
@@ -82,24 +89,21 @@
           },
           "concat": [
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             },
             {
-              "view": { "stroke": "lightgray" },
               "mark": "point",
               "encoding": {
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right", "grid": true }
+                  "axis": { "orient": "right" }
                 }
               }
             }
           ]
         },
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         }
       ]

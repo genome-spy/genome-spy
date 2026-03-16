@@ -3,7 +3,7 @@
 
   "genome": { "name": "hg38" },
 
-  "title": { "text": "GC content", "style": "overlay" },
+  "title": { "text": "GC content", "style": "overlay-title" },
 
   "data": {
     "lazy": {

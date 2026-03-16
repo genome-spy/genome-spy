@@ -70,3 +70,17 @@ Import specs can also override the imported view's default visibility using
 different parameters and choosing which instance is shown by default.
 
 EXAMPLE examples/docs/grammar/import/named-template-repeat.json height=250
+
+## Import-site config
+
+Import specs can also provide `config`. Import-site config is merged before the
+imported spec's own root `config`, so imported tracks remain self-contained and
+can still override host-level defaults when needed.
+
+Track authors should expose customization hooks via `config.style` and `config`
+buckets. Host specs can then customize imported tracks through import-site
+`config`/`style` overrides and explicit properties.
+
+See also [Config, Themes, and Styles](./config.md).
+
+EXAMPLE examples/docs/grammar/import/named-template-repeat-config.json height=250

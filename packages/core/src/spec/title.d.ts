@@ -24,7 +24,7 @@ export interface Title {
     /**
      * A mark style property to apply to the title text mark. If not specified, a default style of `"group-title"` is applied.
      */
-    style?: string;
+    style?: string | string[];
 
     /**
      * The anchor position for placing the title and subtitle text. One of `"start"`, `"middle"`, or `"end"`. For example, with an orientation of top these anchor positions map to a left-, center-, or right-aligned title.

@@ -1,9 +1,16 @@
 import { isDiscrete } from "vega-scale";
+import { isColorChannel } from "../encoder/encoder.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
-import { getDefaultScaleProperties } from "../config/scaleDefaults.js";
+import {
+    getConfiguredScaleConfig,
+    getConfiguredScaleDefaults,
+    getConfiguredNamedRange,
+    isConfigRangeName,
+} from "../config/scaleConfig.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -17,6 +24,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {Set<ScaleResolutionMember>} options.members
  * @param {boolean} options.isExplicitDomain
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
  */
 export function resolveScalePropsBase({
@@ -24,8 +32,17 @@ export function resolveScalePropsBase({
     dataType,
     members,
     isExplicitDomain,
+    configScopes,
 }) {
-    const propArray = Array.from(members)
+    const markTypes = [...members]
+        .map((member) =>
+            typeof member.view.getMarkType == "function"
+                ? member.view.getMarkType()
+                : undefined
+        )
+        .filter((markType) => !!markType);
+
+    const propArray = orderResolutionMembers(members)
         .map((member) => member.channelDef.scale)
         .filter((props) => props !== undefined);
 
@@ -36,12 +53,66 @@ export function resolveScalePropsBase({
     }
 
     const props = {
-        ...getDefaultScaleProperties(channel, dataType, isExplicitDomain),
+        ...getConfiguredScaleDefaults(configScopes, {
+            channel,
+            dataType,
+            isExplicitDomain,
+            markTypes: /** @type {import("../spec/mark.js").MarkType[]} */ (
+                markTypes
+            ),
+            hasDomainMid: mergedProps.domainMid !== undefined,
+        }),
         ...mergedProps,
     };
 
     if (!props.type) {
+        // TODO: When discrete positional scale inference is revisited, plumb
+        // mark-level context into getDefaultScaleType instead of deciding only
+        // from channel + data type. The `markTypes` collection above is the
+        // natural starting point for a Vega-Lite-like band-vs-point choice,
+        // including future rect-backed marks such as "bar".
         props.type = getDefaultScaleType(channel, dataType);
+    }
+
+    if (typeof props.range == "string") {
+        if (!isConfigRangeName(props.range)) {
+            throw new Error(
+                'Unknown named scale range "' +
+                    props.range +
+                    '". Supported names: shape, size, angle, heatmap, ramp, diverging.'
+            );
+        }
+
+        const resolvedNamedRange = getConfiguredNamedRange(
+            configScopes,
+            props.range
+        );
+        if (resolvedNamedRange === undefined) {
+            throw new Error(
+                'Named scale range "' +
+                    props.range +
+                    '" is not configured in config.range.'
+            );
+        }
+
+        if (
+            isColorChannel(channel) &&
+            (typeof resolvedNamedRange == "string" ||
+                (resolvedNamedRange != null &&
+                    typeof resolvedNamedRange == "object" &&
+                    !Array.isArray(resolvedNamedRange)))
+        ) {
+            props.scheme =
+                /** @type {import("../spec/scale.js").Scale["scheme"]} */ (
+                    resolvedNamedRange
+                );
+            delete props.range;
+        } else {
+            props.range =
+                /** @type {import("../spec/scale.js").Scale["range"]} */ (
+                    resolvedNamedRange
+                );
+        }
     }
 
     // Reverse discrete y axis
@@ -58,9 +129,15 @@ export function resolveScalePropsBase({
         // TODO: Props should be set more intelligently
     }
 
-    // By default, index and locus scales are zoomable, others are not
-    if (!("zoom" in props) && [INDEX, LOCUS].includes(props.type)) {
-        props.zoom = true;
+    // By default, index and locus scales are zoomable, others are not.
+    // Config can override this baseline via scale.zoom.
+    if (!("zoom" in props)) {
+        const scaleConfig = getConfiguredScaleConfig(configScopes, dataType);
+        if (scaleConfig.zoom !== undefined) {
+            props.zoom = scaleConfig.zoom;
+        } else if ([INDEX, LOCUS].includes(props.type)) {
+            props.zoom = true;
+        }
     }
 
     applyLockedProperties(props, channel);

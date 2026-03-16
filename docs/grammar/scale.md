@@ -9,6 +9,11 @@ By default, GenomeSpy configures scales automatically based on the data type
 (e.g., `"ordinal"`), the visual channel, and the data domain. As the defaults
 may not always be optimal, the scales can be configured explicitly.
 
+Scale defaults can also be configured globally using `config.scale` and
+`config.range`. For example, color defaults by data type can be set with
+`nominalColorScheme`, `ordinalColorScheme`, and `quantitativeColorScheme`. See
+[Config, Themes, and Styles](./config.md).
+
 ```json title="Specifying a scale for a channel"
 {
   "encoding": {
@@ -222,7 +227,7 @@ the `"locus"` scale, where it includes the whole genome. Example:
 ## Named scales
 
 By giving the scale a name, it can be accessed through the
-[API](../api.md#api_getScaleResolutionByName).
+[API](../api.md#named-scales).
 
 ```json
 {
@@ -261,8 +266,8 @@ for supported properties. TODO: Write a proper documentation.
 !!! note "Grid lines"
 
     Grid lines are hidden by default in GenomeSpy and can be enabled for each
-    view using the `grid` property. The default behavior will be configurable
-    once GenomeSpy supports themes.
+    view using the `grid` property. Global defaults can be configured with
+    [`config.axis*`](./config.md).
 
 ### Genome axis for loci
 

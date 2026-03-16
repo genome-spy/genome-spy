@@ -10,6 +10,7 @@ import ContainerView from "./containerView.js";
 import ViewError from "./viewError.js";
 import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import { asSelectionConfig } from "../selection/selection.js";
+import { resolveImportedSpecConfig } from "../config/resolveConfig.js";
 import {
     markViewAsNonAddressable,
     registerImportInstance,
@@ -244,9 +245,11 @@ export class ViewFactory {
                 hasIntervalSelection(viewSpec)) &&
             defaultName === VIEW_ROOT_NAME
         ) {
+            const wrappedChild = { ...viewSpec };
+            delete (/** @type {any} */ (wrappedChild).theme);
             viewSpec = {
                 name: "implicitRoot",
-                vconcat: [viewSpec],
+                vconcat: [wrappedChild],
             };
             isImplicitRoot = true;
         }
@@ -309,6 +312,11 @@ function applyParamsToImportedSpec(importedSpec, importSpec) {
     if (importSpec.visible != null) {
         importedSpec.visible = importSpec.visible;
     }
+
+    importedSpec.config = resolveImportedSpecConfig(
+        importSpec.config,
+        importedSpec.config
+    );
 
     const params = isArray(importSpec.params)
         ? importSpec.params

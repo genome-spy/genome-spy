@@ -20,6 +20,7 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
+import { mergeConfigScopes } from "../config/mergeConfig.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -69,6 +70,9 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 export default class View {
     /** @type {TSpec} */
     spec;
+
+    /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
+    #configScopes;
 
     /** @type {string | undefined} */
     #defaultName;
@@ -134,6 +138,21 @@ export default class View {
         this.dataParent = dataParent;
         this.#defaultName = name;
         this.spec = spec;
+
+        if (dataParent && /** @type {any} */ (spec).theme !== undefined) {
+            throw new Error(
+                '"theme" is only supported at the root specification. Use "config" and "style" for subtree customization.'
+            );
+        }
+
+        const inheritedScopes = dataParent
+            ? dataParent.getConfigScopes()
+            : [context.getBaseConfig()];
+        const localScope = spec.config;
+        this.#configScopes =
+            /** @type {import("../spec/config.js").GenomeSpyConfig[]} */ (
+                [...inheritedScopes, localScope].filter((scope) => !!scope)
+            );
 
         this.resolutions = {
             /**
@@ -214,6 +233,16 @@ export default class View {
      */
     get defaultName() {
         return this.#defaultName;
+    }
+
+    getConfig() {
+        return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
+            mergeConfigScopes(this.#configScopes)
+        );
+    }
+
+    getConfigScopes() {
+        return this.#configScopes.slice();
     }
 
     /**

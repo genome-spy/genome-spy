@@ -1,0 +1,47 @@
+{
+  "description": "Configure nominal/ordinal/quantitative color schemes globally.",
+  "config": {
+    "scale": {
+      "nominalColorScheme": "set2",
+      "ordinalColorScheme": "oranges",
+      "quantitativeColorScheme": "inferno"
+    }
+  },
+  "data": {
+    "values": [
+      { "x": 1, "y": 1.0, "cat": "A", "score": 0.1 },
+      { "x": 2, "y": 1.7, "cat": "B", "score": 0.3 },
+      { "x": 3, "y": 2.4, "cat": "C", "score": 0.6 },
+      { "x": 4, "y": 1.5, "cat": "A", "score": 0.9 }
+    ]
+  },
+  "resolve": {
+    "scale": {
+      "color": "independent"
+    }
+  },
+  "layer": [
+    {
+      "mark": { "type": "point", "size": 180, "opacity": 0.45 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": { "field": "cat", "type": "nominal" }
+      }
+    },
+    {
+      "mark": { "type": "point", "size": 50 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "score",
+          "type": "quantitative",
+          "scale": {
+            "domain": [0, 1]
+          }
+        }
+      }
+    }
+  ]
+}

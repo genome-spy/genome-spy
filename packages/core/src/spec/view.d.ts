@@ -17,6 +17,7 @@ import {
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { Parameter } from "./parameter.js";
+import { GenomeSpyConfig } from "./config.js";
 
 export interface SizeDef {
     /**
@@ -85,7 +86,13 @@ export type Paddings = Partial<Record<Side, number>>;
 export type PaddingConfig = Paddings | number;
 
 interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
-    // TODO: style?: string | string[];
+    /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     *
+     * __Default value:__ `"cell"`
+     */
+    style?: string | string[];
 
     // TODO: Move to FillAndStrokeProps or something
     strokeWidth?: number;
@@ -93,7 +100,12 @@ interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
 
 export type ViewBackground = Pick<
     CompleteViewBackground,
-    "fill" | "fillOpacity" | "stroke" | "strokeWidth" | "strokeOpacity"
+    | "style"
+    | "fill"
+    | "fillOpacity"
+    | "stroke"
+    | "strokeWidth"
+    | "strokeOpacity"
 > &
     ShadowProps;
 
@@ -171,6 +183,13 @@ export interface ViewSpecBase extends ResolveSpec {
      * a visualization.
      */
     params?: Parameter[];
+
+    /**
+     * Configures defaults for this view subtree.
+     *
+     * Properties in child views override properties inherited from ancestors.
+     */
+    config?: GenomeSpyConfig;
 
     /**
      * Specifies a [data source](https://genomespy.app/docs/grammar/data/).
@@ -432,6 +451,15 @@ export interface ImportSpec {
      * If not specified, the imported specification's `visible` property is used.
      */
     visible?: boolean;
+
+    /**
+     * Configures defaults for the imported subtree at the import site.
+     *
+     * This config is merged before the imported spec's own root-level `config`,
+     * so imported specs can remain self-contained and override import-site
+     * defaults where needed.
+     */
+    config?: GenomeSpyConfig;
 
     /**
      * The method to import a specification.
