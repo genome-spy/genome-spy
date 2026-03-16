@@ -318,7 +318,7 @@ export default class View {
 
             if (scale) {
                 // Note: this and all ancestral views need to be refreshed when the domain is changed.
-                let steps = 0;
+                let steps;
                 if (isDiscrete(scale.type)) {
                     steps = scale.domain().length;
                 } else if (["locus", "index"].includes(scale.type)) {
@@ -478,7 +478,6 @@ export default class View {
     #getAncestors(prop) {
         /** @type {View[]} */
         const ancestors = [];
-        // eslint-disable-next-line consistent-this
         let view = /** @type {View} */ (this);
         do {
             ancestors.push(view);

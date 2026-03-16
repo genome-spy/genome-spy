@@ -241,7 +241,6 @@ ${attributeType} ${accessorFunctionName}() {
  * @param {any} scale
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  */
-// eslint-disable-next-line complexity
 export function generateScaleGlsl(channel, scale, channelDef) {
     scale ??= scaleNull();
 
@@ -272,7 +271,6 @@ export function generateScaleGlsl(channel, scale, channelDef) {
      * @param {...any} args
      */
     const makeScaleCall = (name, ...args) =>
-        // eslint-disable-next-line no-useless-call
         makeFunctionCall.apply(null, [name, "value", ...args]);
 
     let functionCall;

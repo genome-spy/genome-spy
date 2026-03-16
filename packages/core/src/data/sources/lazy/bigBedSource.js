@@ -87,7 +87,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                             const fastParser = makeFastParser(this.parser);
                             this.parseLine = (chrom, f) =>
                                 fastParser(chrom, f.start, f.end, f.rest);
-                        } catch (e) {
+                        } catch {
                             this.parseLine = (chrom, f) =>
                                 this.parser.parseLine(
                                     `${chrom}\t${f.start}\t${f.end}\t${f.rest}`

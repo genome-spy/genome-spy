@@ -67,7 +67,7 @@ export default class Grid {
      * @param {number} row
      */
     getCellIndex(col, row) {
-        let i = 0;
+        let i;
 
         if (this.maxCols == Infinity) {
             i = row == 0 ? col : undefined;

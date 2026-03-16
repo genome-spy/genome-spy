@@ -303,10 +303,9 @@ class Histogram extends LitElement {
             const b = bins[i];
             const x = s(b.x0);
             let y = 0;
-            let count = 0;
             if (eq) {
                 for (let j = 0; j <= 1; j++) {
-                    count = countMatches(b, this.thresholds[0], j > 0);
+                    const count = countMatches(b, this.thresholds[0], j > 0);
                     if (count) {
                         bars.push({
                             x,
@@ -320,7 +319,7 @@ class Histogram extends LitElement {
             } else if (this.thresholds.length) {
                 for (let j = 0; j < thresholdsWithEndpoints.length - 1; j++) {
                     const k = fix(j);
-                    count = countWithin(
+                    const count = countWithin(
                         b,
                         thresholdsWithEndpoints[k],
                         thresholdsWithEndpoints[k + 1],
@@ -338,7 +337,7 @@ class Histogram extends LitElement {
                     y += count;
                 }
             } else {
-                count = b.length;
+                const count = b.length;
                 if (count) {
                     bars.push({ x, y, height: count * hFactor, group: null });
                 }

@@ -310,7 +310,7 @@ function getParamActionIcon(value) {
 function safeResolve(resolver, ...args) {
     try {
         return resolver(...args);
-    } catch (error) {
+    } catch {
         return undefined;
     }
 }

@@ -39,7 +39,6 @@ export default function radixSort(arr) {
         /**
          * @param {*} i number
          */
-        // eslint-disable-next-line no-loop-func
         const getDigit = (/** @type {number} */ i) => {
             const value = arr[i];
 
@@ -117,7 +116,6 @@ export function radixSortIntoLookupArray(arr) {
         /**
          * @param {*} i number
          */
-        // eslint-disable-next-line no-loop-func
         const getDigit = (i) => {
             const value = arr[indexes[i]]; // Use index to access array value
 

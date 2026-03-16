@@ -80,7 +80,6 @@ export function makeEventTemplate(event) {
     const acceptedTypes = ["string", "number", "boolean"];
     const rejectedProps = ["wheelDelta", "wheelDeltaX", "wheelDeltaY"];
 
-    // eslint-disable-next-line guard-for-in
     for (const key in event) {
         const k = /** @type {keyof T} */ (key);
         if (

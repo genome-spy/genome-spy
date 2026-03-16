@@ -111,9 +111,7 @@ async function initializeHarness(url) {
             },
         };
 
-        setStatus(
-            `Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`
-        );
+        setStatus(`Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`);
     } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -144,7 +142,8 @@ async function waitForVisibleLazyData(api, timeoutMs) {
     } catch (error) {
         if (timedOut) {
             throw new Error(
-                `Timed out after ${timeoutMs} ms while waiting for visible lazy data.`
+                `Timed out after ${timeoutMs} ms while waiting for visible lazy data.`,
+                { cause: error }
             );
         }
 

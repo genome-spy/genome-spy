@@ -1,4 +1,3 @@
-/* eslint-disable max-depth */
 import { isObject } from "vega-util";
 
 /**
@@ -40,7 +39,6 @@ export default function mergeObjects(objects, propertyOf, skip) {
 
     /** @param {any} obj */
     const merger = (obj) => {
-        // eslint-disable-next-line guard-for-in
         for (let prop in obj) {
             const sourceValue = obj[prop];
             if (!skip.includes(prop) && sourceValue !== undefined) {

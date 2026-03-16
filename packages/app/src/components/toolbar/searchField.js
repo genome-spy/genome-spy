@@ -133,9 +133,7 @@ export default class SearchField extends LitElement {
     /**
      * @param {string} term
      */
-    // eslint-disable-next-line require-await
     async search(term) {
-        // eslint-disable-next-line require-await
         const doSearch = async () => {
             if (this._genomeResolution && this._genome) {
                 const interval = this._genome.parseInterval(term);

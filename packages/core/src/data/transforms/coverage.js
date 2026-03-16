@@ -147,7 +147,7 @@ export default class CoverageTransform extends Transform {
         };
 
         const flushQueue = () => {
-            let edge = 0;
+            let edge;
             while ((edge = ends.peekValue()) !== undefined) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;
@@ -166,7 +166,7 @@ export default class CoverageTransform extends Transform {
         this.handle = (datum) => {
             const start = startAccessor(datum);
 
-            let edge = 0;
+            let edge;
             while ((edge = ends.peekValue()) !== undefined && edge < start) {
                 pushSegment(prevEdge, edge, coverage);
                 prevEdge = edge;

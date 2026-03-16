@@ -279,11 +279,6 @@ export default class CustomSelect extends LitElement {
     }
 
     /** @returns {void} */
-    #attachOutsideClose() {
-        // Popover API handles light dismiss automatically
-    }
-
-    /** @returns {void} */
     #detachOutsideClose() {
         // Popover API handles cleanup automatically
     }

@@ -298,7 +298,7 @@ export function getActionInfo(action, getAttributeInfo) {
     if (attribute) {
         try {
             attributeInfo = getAttributeInfo(attribute);
-        } catch (error) {
+        } catch {
             attributeInfo = undefined;
         }
     }

@@ -97,7 +97,8 @@ export default class Genome {
             this.setChromSizes(parseChromSizes(await result.text()));
         } catch (e) {
             throw new Error(
-                `Could not load chrom sizes: ${this.config.url}. Reason: ${e.message}`
+                `Could not load chrom sizes: ${this.config.url}. Reason: ${e.message}`,
+                { cause: e }
             );
         }
     }
@@ -129,7 +130,6 @@ export default class Genome {
                 continuousInterval: [pos, pos + size],
                 index: i,
                 number: i + 1,
-                // eslint-disable-next-line no-bitwise
                 odd: !(i & 1),
             };
 

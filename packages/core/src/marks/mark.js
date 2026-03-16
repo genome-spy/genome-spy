@@ -445,7 +445,6 @@ export default class Mark {
      * @param {string[]} [extraHeaders]
      * @protected
      */
-    // eslint-disable-next-line complexity
     createAndLinkShaders(vertexShader, fragmentShader, extraHeaders = []) {
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
@@ -1196,7 +1195,6 @@ export default class Mark {
      * @param {import("../types/rendering.js").GlobalRenderingOptions} options
      * @returns {(() => void)[]}
      */
-    // eslint-disable-next-line complexity
     prepareRender(options) {
         const glHelper = this.glHelper;
         const gl = this.gl;
@@ -1339,7 +1337,6 @@ export default class Mark {
             return () => undefined;
         }
 
-        // eslint-disable-next-line consistent-this
         const self = this;
 
         /** @type {function(import("../gl/dataToVertices.js").RangeEntry):void} rangeEntry */

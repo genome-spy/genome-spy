@@ -178,7 +178,7 @@ export default class DataGrid extends LitElement {
         try {
             const metrics = this.#ctx.measureText(String(text));
             return metrics.width ?? 0;
-        } catch (e) {
+        } catch {
             return String(text).length * (parseFloat(fontSize) ?? 14) * 0.6;
         }
     }

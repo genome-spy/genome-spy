@@ -35,7 +35,7 @@ export function parseViewSelectorKey(key) {
     let parsed;
     try {
         parsed = JSON.parse(payload);
-    } catch (error) {
+    } catch {
         return;
     }
 

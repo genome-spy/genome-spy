@@ -243,7 +243,10 @@ export default class DataMetadataSourceAdapter {
         try {
             response = await fetch(url, { signal });
         } catch (error) {
-            throw new Error("Could not load metadata source: " + error.message);
+            throw new Error(
+                "Could not load metadata source: " + error.message,
+                { cause: error }
+            );
         }
 
         if (!response.ok) {

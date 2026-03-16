@@ -183,7 +183,6 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 continue;
             }
 
-            // eslint-disable-next-line no-loop-func
             this.#batch.push(() => {
                 enabled = mark.unitView.getEffectiveOpacity() > 0;
             });
@@ -201,7 +200,6 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 // Render each facet
                 if (!coords.equals(previousCoords)) {
                     this.#batch.push(
-                        // eslint-disable-next-line no-loop-func
                         ifEnabled(() => {
                             // Suppress rendering if viewport is outside the clipRect
                             viewportVisible = mark.setViewport(

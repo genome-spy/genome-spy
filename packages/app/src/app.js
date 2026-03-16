@@ -54,17 +54,12 @@ transforms.mergeFacets = MergeSampleFacets;
  * A wrapper for the GenomeSpy core. Provides SampleView, provenance, a toolbar, etc.
  */
 export default class App {
-    /** @type {(() => void) | undefined} */
-    #intentStatusDisposer;
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
      * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
-        // eslint-disable-next-line consistent-this
-        const self = this;
-
         this.rootSpec = rootSpec;
 
         this.options = {
@@ -98,7 +93,7 @@ export default class App {
                     /** @type {import("./appTypes.js").DependencyQueryEvent} */ event
                 ) => {
                     if (event.detail.name == "app") {
-                        event.detail.setter(self);
+                        event.detail.setter(this);
                         event.stopPropagation();
                     }
                 }
@@ -390,7 +385,7 @@ export default class App {
                 context.animator.requestRender();
             })
         );
-        this.#intentStatusDisposer = attachIntentStatusUi({
+        attachIntentStatusUi({
             store: this.store,
             intentPipeline: this.intentPipeline,
             provenance: this.provenance,
@@ -399,7 +394,9 @@ export default class App {
         try {
             await this.#ensureRemoteBookmarks(remoteBookmarkPromise);
         } catch (e) {
-            throw new Error(`Cannot load remote bookmarks: ${e}`);
+            throw new Error(`Cannot load remote bookmarks: ${e}`, {
+                cause: e,
+            });
         }
 
         try {
@@ -465,7 +462,7 @@ export default class App {
                     viewSettingsSlice.actions.setViewSettings(normalized)
                 );
             }
-        } catch (e) {
+        } catch {
             // Ignore invalid hashes here; _restoreStateFromUrl handles reporting.
         }
     }

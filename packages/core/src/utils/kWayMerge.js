@@ -26,7 +26,7 @@ export default function kWayMerge(arrays, handler, accessor = (x) => +x) {
         }
     }
 
-    let i = 0;
+    let i;
     while ((i = heap.pop()) !== undefined) {
         const array = arrays[i];
         let pointer = pointers[i];

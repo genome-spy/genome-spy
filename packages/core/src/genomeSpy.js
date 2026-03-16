@@ -322,7 +322,6 @@ export default class GenomeSpy {
         this.genomeStore.configureGenomes(genomesByName, defaultAssembly);
 
         if (deprecationWarning) {
-            // eslint-disable-next-line no-console
             console.warn(deprecationWarning);
         }
     }
@@ -465,7 +464,6 @@ export default class GenomeSpy {
      */
     #finalizeViewInitialization(context) {
         // Allow layout computation (in case a custom context overrode the early assignment).
-        // eslint-disable-next-line require-atomic-updates
         context.requestLayoutReflow = this.computeLayout.bind(this);
 
         // Invalidate cached sizes to ensure that step-based sizes are current.

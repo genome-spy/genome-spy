@@ -331,17 +331,16 @@ describe("MetadataView", () => {
                 (view) => view instanceof UnitView && view.spec.encoding?.color
             );
 
-        const dottedView = unitViews.find(
-            (view) =>
-                /** @type {any} */ (view.spec.encoding?.color).field ===
-                "group1\\.foo"
-        );
+        const dottedView = unitViews.find((view) => {
+            const color = view.spec.encoding?.color;
+            return color && /** @type {any} */ (color).field === "group1\\.foo";
+        });
         expect(dottedView).toBeDefined();
 
-        const plainView = unitViews.find(
-            (view) =>
-                /** @type {any} */ (view.spec.encoding?.color).field === "plain"
-        );
+        const plainView = unitViews.find((view) => {
+            const color = view.spec.encoding?.color;
+            return color && /** @type {any} */ (color).field === "plain";
+        });
         expect(plainView).toBeDefined();
 
         metadataView.dispose();

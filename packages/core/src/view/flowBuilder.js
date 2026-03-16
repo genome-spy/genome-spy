@@ -106,7 +106,8 @@ export function buildDataFlow(
             } catch (e) {
                 console.warn(e);
                 throw new Error(
-                    `Cannot initialize "${params.type}" transform: ${e}`
+                    `Cannot initialize "${params.type}" transform: ${e}`,
+                    { cause: e }
                 );
             }
 
@@ -260,7 +261,6 @@ export function buildDataFlow(
                 });
                 processView(node.ref);
             },
-            // eslint-disable-next-line no-loop-func
             postOrder: () => {
                 const { nodeStackDepth } = viewStack.pop();
                 nodeStack.length = nodeStackDepth;

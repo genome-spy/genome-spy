@@ -9,10 +9,9 @@ import {
 } from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createSinglePointSelection } from "../selection/selection.js";
-import { isArray } from "vega-util";
 import { scaleLinear } from "d3-scale";
 
-/** @type {import("../spec/channel.js").Encoding} */
+/** @type {import("../spec/channel.js").Encoding} */
 const encoding = {
     x: { value: 42 },
     y: {

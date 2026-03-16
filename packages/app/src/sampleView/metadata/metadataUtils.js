@@ -920,7 +920,7 @@ function safeStringify(value) {
     try {
         const json = JSON.stringify(value);
         return json ?? String(value);
-    } catch (error) {
+    } catch {
         return String(value);
     }
 }

@@ -107,7 +107,6 @@ export default class RegexFoldTransform extends Transform {
                 ...as.map((a, i) => JSON.stringify(a) + `: datum[attrs[${i}]]`),
             ];
 
-            // eslint-disable-next-line no-new-func
             create = /** @type {any} */ (
                 new Function(
                     "datum",

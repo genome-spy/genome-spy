@@ -72,7 +72,6 @@ export default class RuleMark extends Mark {
      * @param {import("../spec/channel.js").Encoding} encoding
      * @returns {import("../spec/channel.js").Encoding}
      */
-    // eslint-disable-next-line complexity
     fixEncoding(encoding) {
         if (this.getType() == "tick") {
             return this.fixTickEncoding(encoding);

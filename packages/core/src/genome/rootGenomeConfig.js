@@ -92,7 +92,7 @@ function isBuiltInAssembly(name) {
     try {
         getContigs(name);
         return true;
-    } catch (_error) {
+    } catch {
         return false;
     }
 }

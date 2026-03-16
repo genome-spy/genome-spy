@@ -70,6 +70,7 @@ aware interactions.
 
 - Always use type hints in any language which supports them
 - JavaScript/TypeScript files should use JSDoc for type annotations
+- Class members without a clear initializer should have an explicit JSDoc type; members with a clear initializer may rely on initializer inference
 - Use a blank line between adjacent members with JSDoc; skip it for the first member in a block
 - When removing a function/class, also remove its JSDoc block to avoid orphaned docs
 - JavaScript is indented with 4 spaces, no tabs
