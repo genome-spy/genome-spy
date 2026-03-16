@@ -413,12 +413,16 @@ export default class ScaleResolution {
             if (!this.type) {
                 this.type = type;
             } else if (type !== this.type && !isSecondaryChannel(channel)) {
+                // TODO: Revisit shared discrete positional scales when
+                // implementing Vega-Lite-like band-vs-point inference.
+                // Nominal/ordinal members should be able to share a scale even
+                // if one member wants "point" and another wants "band"; the
+                // merged result should resolve to "band". Explicit
+                // user-specified incompatible scale types should still error.
                 // TODO: Include a reference to the layer
                 throw new Error(
                     `Can not use shared scale for different data types: ${this.type} vs. ${type}. Use "resolve: independent" for channel ${this.channel}`
                 );
-                // Actually, point scale could be changed into band scale
-                // TODO: Use the same merging logic as in: https://github.com/vega/vega-lite/blob/master/src/scale.ts
             }
         }
 

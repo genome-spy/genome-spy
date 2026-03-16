@@ -22,6 +22,15 @@ import {
  * @returns {import("../spec/scale.js").ScaleType}
  */
 export function getDefaultScaleType(channel, dataType) {
+    // TODO: Follow up with Vega-Lite-like discrete positional scale inference.
+    // For nominal/ordinal x/y channels, the default should not always be "band".
+    // The choice should depend on resolved mark usage and related signals:
+    // - rect/bar/rule/tick-like coverage -> "band"
+    // - point/text/link-like centered positions -> "point"
+    // - explicit relative band sizing / axis tickBand / nested offsets -> "band"
+    // This requires passing richer context than just channel + dataType.
+    //
+    // Keep the current behavior in this branch to avoid changing existing specs.
     // TODO: Band scale, Bin-Quantitative
 
     if (dataType == INDEX || dataType == LOCUS) {

@@ -66,6 +66,11 @@ export function resolveScalePropsBase({
     };
 
     if (!props.type) {
+        // TODO: When discrete positional scale inference is revisited, plumb
+        // mark-level context into getDefaultScaleType instead of deciding only
+        // from channel + data type. The `markTypes` collection above is the
+        // natural starting point for a Vega-Lite-like band-vs-point choice,
+        // including future rect-backed marks such as "bar".
         props.type = getDefaultScaleType(channel, dataType);
     }
 
