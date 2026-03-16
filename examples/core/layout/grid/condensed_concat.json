@@ -17,17 +17,17 @@
 
   "vconcat": [
     {
-      "title": { "text": "First", "style": "overlay" },
+      "title": { "text": "First", "style": "overlay-title" },
       "view": { "stroke": "lightgray" },
       "mark": "point"
     },
     {
-      "title": { "text": "Second", "style": "overlay" },
+      "title": { "text": "Second", "style": "overlay-title" },
       "view": { "stroke": "lightgray" },
       "mark": "point"
     },
     {
-      "title": { "text": "Third", "style": "overlay" },
+      "title": { "text": "Third", "style": "overlay-title" },
       "view": { "stroke": "lightgray" },
       "mark": "point"
     }

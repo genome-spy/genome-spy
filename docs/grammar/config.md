@@ -122,11 +122,15 @@ See also [Scale](./scale.md).
 ## Title and view defaults
 
 Title defaults come from `config.title` and from style buckets. If `title.style`
-is omitted, GenomeSpy can use the implicit `"group-title"` style fallback.
+is omitted, GenomeSpy applies the default `"group-title"` style name.
+GenomeSpy also provides built-in title styles such as `"track-title"` and
+`"overlay-title"` for common layout patterns.
 
 View background defaults come from `config.view` and from styles referenced by
 `view.style`. GenomeSpy also supports the implicit `"cell"` style model for view
 backgrounds.
+
+EXAMPLE examples/docs/grammar/config/title-styles.json height=280
 
 ## Examples
 

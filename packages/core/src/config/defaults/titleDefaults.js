@@ -35,4 +35,13 @@ export const TITLE_STYLE_DEFAULTS = {
         dx: 10,
         fontSize: 12,
     },
+    "overlay-title": {
+        orient: "top",
+        anchor: "start",
+        align: "left",
+        baseline: "top",
+        offset: -10,
+        dx: 10,
+        fontSize: 12,
+    },
 };
