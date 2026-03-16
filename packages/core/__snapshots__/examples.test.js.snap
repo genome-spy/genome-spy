@@ -6387,6 +6387,93 @@ exports[`shared examples > initializes examples/docs/grammar/config/theme.json 1
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/config/title-styles.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": "{"params":{"url":"data/sincos.csv"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid2",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid3",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/data/eager/bed.json 1`] = `
 {
   "assemblies": [
