@@ -54,7 +54,7 @@ aware interactions.
 
 - From repo root, run the full unit suite: `npm test`
 - Run a focused Vitest suite: `npx vitest run packages/app/src/sampleView/sampleView.test.js`
-- TypeScript checks for workspaces (if present): `npm -ws run test:tsc --if-present`
+- TypeScript checks for workspaces (if present): `npm --workspaces run test:tsc --if-present`
 - Lint the workspace sources: `npm run lint`
 
 ## Workflow expectations
