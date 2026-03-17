@@ -58,6 +58,17 @@ export default class FlowNode {
     }
 
     /**
+     * Scale channels whose current domain affects this node's output.
+     * Downstream views must not feed these channels back into shared-domain
+     * resolution or domain-dependent flows can invalidate themselves.
+     *
+     * @returns {import("../spec/channel.js").ChannelWithScale[]}
+     */
+    get domainSensitiveScaleChannels() {
+        return [];
+    }
+
+    /**
      * A human-readable label for the node. Used for debugging and logging.
      *
      * @returns {string}
@@ -396,6 +407,29 @@ export default class FlowNode {
     _propagate(datum) {
         // Implementation is set dynamically in add/removeChild
     }
+}
+
+/**
+ * Walks upstream from a flow node and collects scale channels whose current
+ * domain affects the produced data. Downstream encodings on these channels
+ * must not re-register as domain contributors or they will invalidate the
+ * domain that they themselves depend on.
+ *
+ * @param {FlowNode | undefined} node
+ * @returns {Set<import("../spec/channel.js").ChannelWithScale>}
+ */
+export function collectDomainSensitiveScaleChannels(node) {
+    /** @type {Set<import("../spec/channel.js").ChannelWithScale>} */
+    const channels = new Set();
+
+    while (node) {
+        for (const channel of node.domainSensitiveScaleChannels) {
+            channels.add(channel);
+        }
+        node = node.parent;
+    }
+
+    return channels;
 }
 
 /**

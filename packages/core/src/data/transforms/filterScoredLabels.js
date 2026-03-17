@@ -11,6 +11,15 @@ export default class FilterScoredLabelsTransform extends Transform {
     }
 
     /**
+     * The transform emits only labels that fit in the current visible interval,
+     * so downstream x/y values derived from its output must not feed back into
+     * shared-domain resolution.
+     */
+    get domainSensitiveScaleChannels() {
+        return [this.channel];
+    }
+
+    /**
      *
      * @param {import("../../spec/transform.js").FilterScoredLabelsParams} params
      * @param {import("../../view/view.js").default} view

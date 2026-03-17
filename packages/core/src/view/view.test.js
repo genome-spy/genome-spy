@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import UnitView from "./unitView.js";
 
 import {
@@ -15,6 +15,15 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
+import Collector from "../data/collector.js";
+import FlowNode from "../data/flowNode.js";
+
+class DomainSensitiveNode extends FlowNode {
+    /** @returns {import("../spec/channel.js").ChannelWithScale[]} */
+    get domainSensitiveScaleChannels() {
+        return ["x"];
+    }
+}
 
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
@@ -646,6 +655,39 @@ describe("Test domain handling", () => {
             },
             LayerView
         ).then((view) => expect(view.children[0].isDomainInert()).toBe(true)));
+
+    test("domain-sensitive upstream flows do not register matching domain subscriptions", async () => {
+        const view = await create(
+            {
+                data: { values: [{ a: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "a", type: "quantitative" },
+                    y: { value: 0 },
+                },
+            },
+            UnitView
+        );
+
+        view.mark.initializeEncoders();
+
+        const collector = new Collector();
+        new DomainSensitiveNode().addChild(collector);
+        view.flowHandle = {
+            ...view.flowHandle,
+            collector,
+        };
+
+        const resolution = view.getScaleResolution("x");
+        const registerSpy = vi.spyOn(
+            resolution,
+            "registerCollectorSubscriptions"
+        );
+
+        view.registerDomainSubscriptions();
+
+        expect(registerSpy).not.toHaveBeenCalled();
+    });
 });
 
 describe("Step sizing and domain updates", () => {

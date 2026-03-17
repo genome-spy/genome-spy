@@ -28,6 +28,7 @@ import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createEventFilterFunction } from "../utils/expression.js";
 import { field } from "../utils/field.js";
+import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 
 /**
  *
@@ -526,6 +527,9 @@ export default class UnitView extends View {
 
         this.#domainSubscriptionsRegistered = true;
 
+        const domainDependentChannels =
+            collectDomainSensitiveScaleChannels(collector);
+
         /** @type {Map<import("../scales/scaleResolution.js").default, Set<import("../types/encoder.js").ScaleAccessor>>} */
         const accessorsByResolution = new Map();
 
@@ -544,6 +548,9 @@ export default class UnitView extends View {
                     continue;
                 }
                 if (accessor.channelDef.domainInert) {
+                    continue;
+                }
+                if (createsDomainFeedback(accessor, domainDependentChannels)) {
                     continue;
                 }
                 const resolution = this.getScaleResolution(
@@ -614,4 +621,25 @@ export default class UnitView extends View {
         // This affects the sample aggregate views.
         return channel == "x" ? "shared" : "independent";
     }
+}
+
+/**
+ * Returns true when subscribing this accessor as a domain contributor would
+ * create a feedback loop: the current scale domain already affects the
+ * collector output upstream, so the derived values must not feed back into
+ * the same shared-domain resolution.
+ *
+ * Example: `filterScoredLabels` recomputes visible labels from the current
+ * x-domain, so downstream label x positions must not contribute to x-domain.
+ *
+ * @param {import("../types/encoder.js").ScaleAccessor} accessor
+ * @param {Set<import("../spec/channel.js").ChannelWithScale>} domainDependentChannels
+ * @returns {boolean}
+ */
+function createsDomainFeedback(accessor, domainDependentChannels) {
+    return domainDependentChannels.has(
+        /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+            getPrimaryChannel(accessor.scaleChannel)
+        )
+    );
 }
