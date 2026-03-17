@@ -3,6 +3,8 @@ import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const console = globalThis.console;
+
 // Centralized docs asset staging for both local builds and CI.
 // This keeps schema/docs copy behavior in one place instead of shell snippets.
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +48,13 @@ const docsGeneratedSnippetsDir = path.join(docsDir, "generated-snippets");
 const coreSchemaTarget = path.join(docsDir, "schema.json");
 const appSchemaTarget = path.join(docsDir, "app-schema.json");
 const examplesSourceDir = path.join(repoRoot, "examples");
+const vegaDatasetsSourceDir = path.join(
+    repoRoot,
+    "node_modules",
+    "vega-datasets",
+    "data"
+);
+const docsVegaDatasetsDir = path.join(docsExamplesDir, "vega-datasets");
 
 /**
  * @param {string} sourcePath
@@ -108,6 +117,7 @@ await ensureReadable(appSchemaSource);
 await ensureReadable(corePackageSource);
 await ensureReadable(appPackageSource);
 await ensureReadable(examplesSourceDir);
+await ensureReadable(vegaDatasetsSourceDir);
 await ensureReadable(docsSnippetTemplatesDir);
 
 const corePackage = JSON.parse(await readFile(corePackageSource, "utf8"));
@@ -128,6 +138,7 @@ await cp(examplesSourceDir, docsExamplesDir, {
     recursive: true,
     filter: includeDocsAsset,
 });
+await cp(vegaDatasetsSourceDir, docsVegaDatasetsDir, { recursive: true });
 await cp(coreSchemaSource, coreSchemaTarget);
 await cp(appSchemaSource, appSchemaTarget);
 

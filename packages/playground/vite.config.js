@@ -8,6 +8,12 @@ import { generateExampleCatalog } from "./exampleCatalog.mjs";
 const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
+const vegaDatasetsDir = path.join(
+    repoRoot,
+    "node_modules",
+    "vega-datasets",
+    "data"
+);
 
 export default defineConfig({
     root: "src",
@@ -20,6 +26,14 @@ export default defineConfig({
             name: "serve-shared-examples",
 
             configureServer(server) {
+                server.middlewares.use(
+                    "/examples/vega-datasets",
+                    express.static(vegaDatasetsDir)
+                );
+                server.middlewares.use(
+                    "/docs/examples/vega-datasets",
+                    express.static(vegaDatasetsDir)
+                );
                 server.middlewares.use(
                     "/examples",
                     express.static(examplesDir)
