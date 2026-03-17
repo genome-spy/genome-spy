@@ -163,11 +163,11 @@ export default class GridChild {
             const scaleResolutions = Object.fromEntries(
                 channels.map((channel) => {
                     const resolution = this.view.getScaleResolution(channel);
-                    const scale = resolution?.getScale();
+                    const scaleType = resolution?.getResolvedScaleType();
 
-                    if (!scale || !isContinuous(scale.type)) {
+                    if (!resolution || !scaleType || !isContinuous(scaleType)) {
                         throw new Error(
-                            `No continuous scale found for interval selection param "${name}" on channel "${channel}"! Scale type is "${scale?.type ?? "none"}".`
+                            `No continuous scale found for interval selection param "${name}" on channel "${channel}"! Scale type is "${scaleType ?? "none"}".`
                         );
                     }
                     return [channel, resolution];

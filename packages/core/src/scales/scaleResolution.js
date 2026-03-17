@@ -610,6 +610,23 @@ export default class ScaleResolution {
     }
 
     /**
+     * Returns the resolved scale type without instantiating the scale.
+     *
+     * Useful during view construction, before assembly preflight has loaded
+     * URL-backed locus genomes.
+     *
+     * @returns {import("../spec/scale.js").Scale["type"] | undefined}
+     */
+    getResolvedScaleType() {
+        const props = this.#getMergedScaleProps();
+        if (props === null || props.type === "null") {
+            return undefined;
+        }
+
+        return props.type;
+    }
+
+    /**
      * Returns the merged scale properties supplemented with inferred properties
      * and domain.
      *
@@ -937,8 +954,14 @@ export default class ScaleResolution {
      * Returns true if zooming is supported and allowed in view spec.
      */
     isZoomable() {
-        // Check explicit configuration
-        return this.#interactionController.isZoomable();
+        const props = this.#getMergedScaleProps();
+        if (props === null || props.type === "null") {
+            return false;
+        }
+
+        return (
+            isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom
+        );
     }
 
     /**
