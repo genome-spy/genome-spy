@@ -2685,7 +2685,7 @@ exports[`shared examples > initializes examples/core/marks/point/point2d.json 1`
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/cars.json"},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -4667,112 +4667,6 @@ exports[`shared examples > initializes examples/core/techniques/geometric_zoom_e
       },
     ],
     "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
-exports[`shared examples > initializes examples/core/techniques/import_from_template.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": "{"params":{"url":"data/cos-table.csv"},"baseUrl":"examples/"}",
-      "type": "UrlSource",
-    },
-    {
-      "identifier": "{"params":{"url":"data/sin-table.csv"},"baseUrl":"examples/"}",
-      "type": "UrlSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": "examples/",
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "grid0",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "grid1",
-            "type": "UnitView",
-          },
-        ],
-        "name": "grid0",
-        "type": "ConcatView",
-      },
-    ],
-    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -7934,7 +7828,7 @@ exports[`shared examples > initializes examples/docs/grammar/mark/tick/tick-mark
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/cars.json"},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -8150,7 +8044,7 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/penguins_size.csv","format":{"parse":{"culmen_length_mm":"number","culmen_depth_mm":"number"}}},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -8627,7 +8521,7 @@ exports[`shared examples > initializes examples/docs/grammar/transform/aggregate
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/penguins_size.csv","format":{"parse":{"body_mass_g":"number"}}},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],

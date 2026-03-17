@@ -6,9 +6,17 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { URL } from "url";
 
+const console = globalThis.console;
+const process = globalThis.process;
 const __dirname = new URL(".", import.meta.url).pathname;
 const repoRoot = path.resolve(__dirname, "..", "..");
 const examplesDir = path.join(repoRoot, "examples");
+const vegaDatasetsDir = path.join(
+    repoRoot,
+    "node_modules",
+    "vega-datasets",
+    "data"
+);
 const privateDir = path.join(repoRoot, "private");
 const legacyPrivateDir = path.join(repoRoot, "packages", "core", "private");
 const screenshotPagePath = path.join(__dirname, "screenshot.html");
@@ -29,6 +37,10 @@ async function createServer() {
         );
     }
 
+    app.use(
+        "/examples/vega-datasets",
+        express.static(vegaDatasetsDir)
+    );
     app.use("/examples", express.static(examplesDir));
 
     app.use("/private", express.static(privateDir));

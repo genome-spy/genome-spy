@@ -24,7 +24,23 @@ reuse, and stable enough for automated tooling.
 - `core/` is for curated shared examples that work with GenomeSpy Core.
 - `docs/` is for examples extracted from documentation pages.
 - `app/` is reserved for app-only examples.
-- `data/` contains shared data files referenced by examples.
+- `data/` contains small GenomeSpy-owned fixtures referenced by examples.
+- `vega-datasets/` is reserved for upstream `vega-datasets` files served at
+  runtime and staged into the built docs site.
+
+## Data Sources
+
+Shared examples use three dataset classes:
+
+- `data/...` for small local fixtures that belong to this repo
+- `vega-datasets/...` for files served unchanged from the `vega-datasets`
+  package
+- `https://data.genomespy.app/...` for larger externally hosted genomic assets
+
+Use example-root-relative URLs such as `"url": "data/sincos.csv"` and
+`"url": "vega-datasets/cars.json"`. Do not hardcode `"/examples/..."` in specs.
+The same spec must work both in local dev and in deployed docs under
+`/docs/examples/...`.
 
 ## Formatting
 
@@ -59,9 +75,10 @@ This section is a style guide for both humans and LLMs editing example specs.
 ### Docs examples
 
 - Docs examples should stay simple and self-contained.
-- They may reference shared files under `data/`.
+- They may reference shared files under `data/` or `vega-datasets/`.
 - They should not import other example specs or views.
-- Prefer tidy URLs such as `"url": "data/sincos.csv"`.
+- Prefer tidy URLs such as `"url": "data/sincos.csv"` or
+  `"url": "vega-datasets/cars.json"`.
 
 ### What to optimize for
 

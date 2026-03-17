@@ -10,17 +10,14 @@
   "height": 200,
 
   "data": {
-    "url": "data/penguins_size.csv",
-    "format": {
-      "parse": { "body_mass_g": "number" }
-    }
+    "url": "vega-datasets/penguins.json"
   },
 
-  "transform": [{ "type": "filter", "expr": "isFinite(datum.body_mass_g)" }],
+  "transform": [{ "type": "filter", "expr": "isFinite(datum['Body Mass (g)'])" }],
 
   "encoding": {
     "x": {
-      "field": "species",
+      "field": "Species",
       "type": "nominal",
       "title": null,
       "scale": { "padding": 0.4 },
@@ -33,13 +30,13 @@
       "transform": [
         {
           "type": "aggregate",
-          "groupby": ["species"],
+          "groupby": ["Species"],
           "fields": [
-            "body_mass_g",
-            "body_mass_g",
-            "body_mass_g",
-            "body_mass_g",
-            "body_mass_g"
+            "Body Mass (g)",
+            "Body Mass (g)",
+            "Body Mass (g)",
+            "Body Mass (g)",
+            "Body Mass (g)"
           ],
           "ops": ["min", "q1", "median", "q3", "max"],
           "as": [
@@ -81,7 +78,7 @@
             "y": { "field": "q3BodyMass", "type": "quantitative" },
             "y2": { "field": "q1BodyMass" },
             "color": {
-              "field": "species",
+              "field": "Species",
               "type": "nominal",
               "scale": {
                 "domain": ["Chinstrap", "Adelie", "Gentoo"],
@@ -112,7 +109,7 @@
           },
           "encoding": {
             "x": {
-              "field": "species",
+              "field": "Species",
               "type": "nominal",
               "band": 0.3
             },
@@ -129,7 +126,7 @@
           },
           "encoding": {
             "x": {
-              "field": "species",
+              "field": "Species",
               "type": "nominal",
               "band": 0.3
             },

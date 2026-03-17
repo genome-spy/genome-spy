@@ -7,7 +7,7 @@
 
   "width": 200,
 
-  "data": { "url": "data/cars.json" },
+  "data": { "url": "vega-datasets/cars.json" },
 
   "mark": { "type": "point", "filled": false, "opacity": 0.7, "size": 30 },
 
