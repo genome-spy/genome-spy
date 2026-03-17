@@ -1,0 +1,144 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "ClinVar variants track example.",
+    "Replicates the small-variant classification view described in NCBI's \"New ClinVar graphical display\" post.",
+    "Data source: mirrored copy of the ClinVar GRCh38 VCF release from NCBI FTP (`/pub/clinvar/vcf_GRCh38/`). Terms: attribute ClinVar as the data source."
+  ],
+
+  "assembly": "hg38",
+
+  "name": "clinvar",
+  "title": {
+    "text": "ClinVar Variants",
+    "style": "overlay"
+  },
+
+  "height": { "step": 13 },
+
+  "view": { "fill": "#f8f8f8" },
+
+  "layer": [
+    {
+      "name": "baseline",
+      "data": {
+        "values": [{}]
+      },
+      "mark": {
+        "type": "rule",
+        "color": "lightgray"
+      },
+      "encoding": {
+        "y": { "datum": "Uncertain significance", "type": "ordinal" }
+      }
+    },
+    {
+      "data": {
+        "lazy": {
+          "type": "vcf",
+          "url": "https://data.genomespy.app/sample-data/clinvar_20241215.vcf.gz",
+          "addChrPrefix": true,
+          "windowSize": 1000000
+        }
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "replace(datum.INFO['CLNSIG'], /_/g, ' ')",
+          "as": "Germline classification"
+        },
+        {
+          "type": "regexExtract",
+          "field": "Germline classification",
+          "regex": "^([^/]+)",
+          "as": "Germline classification"
+        },
+        {
+          "type": "formula",
+          "expr": "replace(datum['Germline classification'], /^Conflicting.*/g, 'Conflicting')",
+          "as": "Germline classification"
+        },
+        {
+          "type": "filter",
+          "expr": "datum['Germline classification'] == 'Pathogenic' || datum['Germline classification'] == 'Likely pathogenic' || datum['Germline classification'] == 'Uncertain significance' || datum['Germline classification'] == 'Likely benign' || datum['Germline classification'] == 'Benign' || datum['Germline classification'] == 'Conflicting'"
+        }
+      ],
+      "layer": [
+        {
+          "name": "sticks",
+          "mark": {
+            "type": "rule",
+            "tooltip": false
+          },
+          "encoding": {
+            "y2": { "datum": "Uncertain significance" }
+          }
+        },
+        {
+          "name": "balls",
+          "mark": {
+            "type": "point",
+            "size": 80,
+            "geometricZoomBound": 13
+          }
+        }
+      ],
+      "encoding": {
+        "x": {
+          "chrom": "CHROM",
+          "pos": "POS",
+          "type": "locus",
+          "offset": 1,
+          "axis": null,
+          "scale": {
+            "domain": [
+              { "chrom": "chr18", "pos": 31524101 },
+              { "chrom": "chr18", "pos": 31525003 }
+            ]
+          }
+        },
+        "y": {
+          "field": "Germline classification",
+          "type": "ordinal",
+          "scale": {
+            "domain": [
+              "Pathogenic",
+              "Likely pathogenic",
+              "Uncertain significance",
+              "Likely benign",
+              "Benign",
+              "Conflicting"
+            ]
+          },
+          "axis": {
+            "minExtent": 120,
+            "title": "Classification"
+          }
+        },
+        "color": {
+          "field": "Germline classification",
+          "type": "ordinal",
+          "scale": {
+            "domain": [
+              "Pathogenic",
+              "Likely pathogenic",
+              "Uncertain significance",
+              "Likely benign",
+              "Benign",
+              "Conflicting"
+            ],
+            "range": [
+              "firebrick",
+              "orange",
+              "#f0f000",
+              "#00a000",
+              "darkgreen",
+              "gray"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

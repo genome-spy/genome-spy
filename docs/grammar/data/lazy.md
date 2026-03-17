@@ -139,9 +139,23 @@ SCHEMA VcfData
 
 ### Example
 
-TODO
+The visualization below replicates the small-variant classification view
+described in NCBI's
+["New ClinVar graphical display"](https://ncbiinsights.ncbi.nlm.nih.gov/2022/08/30/clinvar-graphical-view/)
+post. It places ClinVar variants by genomic position and germline
+classification and uses color to distinguish the classification categories.
 
-The data source is vased on [GMOD](http://gmod.org/)'s
+EXAMPLE examples/docs/grammar/data/lazy/vcf-clinvar.json height=100 spechidden
+
+!!! disclaimer ""
+
+    The visualization uses a mirrored copy of the ClinVar GRCh38 VCF release
+    from NCBI's
+    [ClinVar FTP downloads](https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/).
+    ClinVar asks that redistributed data be attributed to ClinVar as the data
+    source.
+
+The data source is based on [GMOD](http://gmod.org/)'s
 [vcf-js](https://github.com/GMOD/vcf-js) library.
 
 ## GFF3
