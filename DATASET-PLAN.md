@@ -145,3 +145,99 @@ The resulting boundaries should be:
 - `examples/data/`: small local fixtures owned by GenomeSpy
 - `examples/vega-datasets/`: upstream datasets served from `vega-datasets`
 - `https://data.genomespy.app/...`: external genomic datasets
+
+## Phased Rollout
+
+Implement this refactor as a sequence of small commits.
+
+### Phase 1. Serve `vega-datasets` in dev
+
+Update local development servers so that `vega-datasets` is available at:
+
+- `/examples/vega-datasets/...`
+- `/docs/examples/vega-datasets/...` where needed
+
+This should cover:
+
+- `packages/core/dev-server.mjs`
+- `packages/app/dev-server.mjs`
+- `packages/playground/vite.config.js`
+
+Suggested separate commit:
+
+- `chore(examples): serve vega-datasets in dev`
+
+### Phase 2. Stage `vega-datasets` for docs builds
+
+Update the docs asset preparation step so that the built docs include
+`docs/examples/vega-datasets/...` without tracking those files in git.
+
+This should be done in:
+
+- `scripts/prepare-docs-assets.mjs`
+
+Suggested separate commit:
+
+- `build(docs): stage vega-datasets for static examples`
+
+### Phase 3. Reorganize repo-owned example fixtures
+
+Clean up `examples/data/` so that it only contains GenomeSpy-owned trivial
+fixtures.
+
+This may include:
+
+- moving files into clearer subdirectories if that improves readability
+- adding `examples/data/README.md`
+- removing ambiguous or redundant fixture files
+
+Suggested separate commit:
+
+- `chore(examples): organize local data fixtures`
+
+### Phase 4. Migrate example specs to the new paths
+
+Update shared specs to use the new path policy:
+
+- local fixtures via `data/...`
+- upstream fixtures via `vega-datasets/...`
+- external genomic assets via `https://data.genomespy.app/...`
+
+This should cover:
+
+- `examples/core/**`
+- `examples/docs/**`
+- `examples/app/**` if applicable
+
+Suggested separate commit:
+
+- `refactor(examples): adopt explicit dataset paths`
+
+### Phase 5. Document dataset ownership and provenance
+
+Add or update documentation that explains the three dataset classes and where
+their provenance information lives.
+
+This should cover:
+
+- `examples/README.md`
+- `examples/data/README.md`
+- a central docs page for hosted genomic datasets
+- brief cross-links from `docs/grammar/data/lazy.md`
+
+Suggested separate commit:
+
+- `docs: document dataset classes and provenance`
+
+### Phase 6. Verify shared tooling
+
+Run and fix any issues in the flows that depend on shared examples:
+
+- docs build
+- playground build
+- example validation tests
+- screenshot capture tooling
+
+Suggested separate commit:
+
+- `test(examples): verify shared dataset paths`
