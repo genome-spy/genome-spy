@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "BigWig GC content example.",
+  "description": [
+    "BigWig GC content example.",
+    "Data source: UCSC hg38 GC Percent in 5-base windows (`goldenPath/hg38/bigZips/latest/hg38.gc5Base.bw`). Terms: UCSC downloadable data files are freely reusable."
+  ],
 
   "assembly": "hg38",
 

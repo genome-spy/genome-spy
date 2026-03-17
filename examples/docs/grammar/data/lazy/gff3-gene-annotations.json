@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "GFF3 gene annotation example.",
+  "description": [
+    "GFF3 gene annotation example.",
+    "Data source: sorted and bgzip-compressed copy of the GENCODE human release 43 (GRCh38.p13) comprehensive gene annotation GFF3. Terms: GENCODE project data are open access."
+  ],
 
   "assembly": "hg38",
 

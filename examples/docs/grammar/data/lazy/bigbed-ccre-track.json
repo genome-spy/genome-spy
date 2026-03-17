@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "BigBed cCRE track example.",
+  "description": [
+    "BigBed cCRE track example.",
+    "Data source: ENCODE Registry of candidate cis-Regulatory Elements, distributed by UCSC as `gbdb/hg38/encode3/ccre/encodeCcreCombined.bb`. Terms: ENCODE data are unrestricted and UCSC downloadable data files are freely reusable."
+  ],
 
   "assembly": "hg38",
 

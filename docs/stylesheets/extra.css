@@ -46,3 +46,7 @@
 .screenshot {
     border-radius: 0.2rem;
 }
+
+.md-typeset .admonition.disclaimer {
+    border-color: lightgray;
+}

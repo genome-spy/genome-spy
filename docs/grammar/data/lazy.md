@@ -43,7 +43,7 @@ SCHEMA IndexedFastaData
 
 ### Example
 
-The example below shows how to specify a sequence track using an indexed FASTA
+The visualization below shows how to specify a sequence track using an indexed FASTA
 file. The sequence chunks are split into separate data objects using the
 [`"flattenSequence"`](../transform/flatten-sequence.md) transform, and the final
 position of each nucleotide is computed using the
@@ -52,6 +52,15 @@ fetched only when the user zooms into a region smaller than the window size
 (default: 7000 bp).
 
 EXAMPLE examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json height=60 spechidden
+
+!!! disclaimer ""
+
+    The visualization uses a mirrored, indexed copy of UCSC's hg38 / GRCh38
+    reference FASTA from
+    [goldenPath/hg38/bigZips/latest/hg38.fa.gz](https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/latest/hg38.fa.gz).
+    UCSC states that its downloadable data files and database tables are freely
+    available for public and commercial use, subject to any upstream
+    restrictions noted for the original assembly data.
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [indexedfasta-js](https://github.com/GMOD/indexedfasta-js) library.
@@ -72,10 +81,18 @@ SCHEMA BigWigData
 
 ### Example
 
-The example below shows the GC content of the human genome in 5-base windows.
+The visualization below shows the GC content of the human genome in 5-base windows.
 When you zoom in, the resolution of the data automatically increases.
 
 EXAMPLE examples/docs/grammar/data/lazy/bigwig-gc-content.json height=120 spechidden
+
+!!! disclaimer ""
+
+    The visualization uses UCSC's hg38 GC Percent in 5-base windows track,
+    distributed as
+    [goldenPath/hg38/bigZips/latest/hg38.gc5Base.bw](https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/latest/hg38.gc5Base.bw).
+    UCSC states that its downloadable data files and database tables are freely
+    available for public and commercial use.
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
@@ -91,9 +108,20 @@ SCHEMA BigBedData
 
 ### Example
 
-The example below displays "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types" dataset for the hg38 genome.
+The visualization below displays the "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types" dataset for the hg38 genome.
 
 EXAMPLE examples/docs/grammar/data/lazy/bigbed-ccre-track.json height=70 spechidden
+
+!!! disclaimer ""
+
+    The visualization uses the ENCODE Registry of candidate cis-Regulatory
+    Elements (cCREs), distributed by UCSC as
+    [gbdb/hg38/encode3/ccre/encodeCcreCombined.bb](https://hgdownload.soe.ucsc.edu/gbdb/hg38/encode3/ccre/encodeCcreCombined.bb);
+    see ENCODE Encyclopedia Version 2: [Genomic and Transcriptomic
+    Annotations](https://www.encodeproject.org/data/annotations/). ENCODE data
+    may be freely downloaded, analyzed, and published without restriction, and
+    UCSC also states that its downloadable data files are freely available for
+    public and commercial use.
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
@@ -124,7 +152,7 @@ is described in [gff-js](https://github.com/GMOD/gff-js#object-format)'s
 documentation. The [flatten](../transform/flatten.md) and
 [project](../transform/project.md) transforms are useful when extracting the
 child features and attributes from the hierarchical data structure. See the
-example below.
+visualization below.
 
 ### Parameters
 
@@ -132,12 +160,19 @@ SCHEMA Gff3Data
 
 ### Example
 
-The example below displays the human (GRCh38.p13)
+The visualization below displays the human (GRCh38.p13)
 [GENCODE](https://www.gencodegenes.org/) v43 annotation dataset. Please note
 that the example shows a maximum of ten overlapping features per locus as
 vertical scrolling is currently not supported properly.
 
 EXAMPLE examples/docs/grammar/data/lazy/gff3-gene-annotations.json height=360 spechidden
+
+!!! disclaimer ""
+
+    The visualization uses a sorted and bgzip-compressed copy of the GENCODE
+    human [release 43 (GRCh38.p13) comprehensive gene annotation
+    GFF3](https://www.gencodegenes.org/human/release_43.html). GENCODE states
+    that all project data are open access.
 
 The data source is based on [GMOD](http://gmod.org/)'s
 [tabix-js](https://github.com/GMOD/tabix-js) and [gff-js](https://github.com/GMOD/gff-js) libraries.
@@ -158,6 +193,15 @@ SCHEMA BamData
 
 EXAMPLE examples/docs/grammar/data/lazy/bam-read-alignments.json height=350 spechidden
 
+!!! disclaimer ""
+
+    The visualization uses a mirrored copy of UCSC's
+    [bamExample.bam](http://genome.ucsc.edu/goldenPath/help/examples/bamExample.bam),
+    which the UCSC BAM format documentation describes as 1000 Genomes read
+    alignments for individual NA12878 on hg18. UCSC states that its downloadable
+    data files are freely available for public and commercial use, and the
+    underlying 1000 Genomes / IGSR data are also openly available.
+
 The data source is based on [GMOD](http://gmod.org/)'s
 [bam-js](https://github.com/GMOD/bam-js) library.
 
@@ -175,7 +219,7 @@ SCHEMA AxisTicksData
 
 ### Example
 
-The example below generates approximately three ticks for the `x` axis.
+The visualization below generates approximately three ticks for the `x` axis.
 
 EXAMPLE examples/docs/grammar/data/lazy/axis-ticks.json height=80 spechidden
 

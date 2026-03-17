@@ -1,7 +1,10 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "BAM read alignment example.",
+  "description": [
+    "BAM read alignment example.",
+    "Data source: mirrored copy of UCSC's `bamExample.bam`, described by UCSC as 1000 Genomes NA12878 read alignments for hg18. Terms: UCSC downloadable data files are freely reusable."
+  ],
 
   "assembly": "hg18",
 
