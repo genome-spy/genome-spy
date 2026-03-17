@@ -13,36 +13,21 @@
   "spacing": 20,
 
   "encoding": {
-    "x": {
-      "field": "x",
-      "type": "quantitative",
-      "axis": { "grid": true }
-    },
-    "y": {
-      "field": "sin",
-      "type": "quantitative",
-      "axis": { "grid": true }
-    }
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "sin", "type": "quantitative" }
   },
 
   "columns": 2,
 
   "concat": [
-    {
-      "mark": "point",
-      "view": { "stroke": "lightgray" }
-    },
-    {
-      "mark": "point",
-      "view": { "stroke": "lightgray" }
-    },
-    {
-      "mark": "point",
-      "view": { "stroke": "lightgray" }
-    },
-    {
-      "mark": "point",
-      "view": { "stroke": "lightgray" }
-    }
-  ]
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" },
+    { "mark": "point" }
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" },
+    "axisQuantitative": { "grid": true }
+  }
 }

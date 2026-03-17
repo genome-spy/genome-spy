@@ -27,7 +27,6 @@
   "vconcat": [
     {
       "height": 140,
-      "view": { "stroke": "lightgray" },
       "encoding": {
         "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
         "y": {
@@ -51,7 +50,6 @@
     },
     {
       "height": 80,
-      "view": { "stroke": "lightgray" },
       "encoding": {
         "color": {
           "field": "score",
@@ -66,5 +64,9 @@
         "tooltip": null
       }
     }
-  ]
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
 }

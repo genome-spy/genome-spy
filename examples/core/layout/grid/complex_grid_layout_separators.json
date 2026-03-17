@@ -17,7 +17,6 @@
       "separator": true,
       "vconcat": [
         {
-          "view": { "stroke": "lightgray" },
           "mark": "point"
         },
         {
@@ -26,7 +25,6 @@
           "hconcat": [
             {
               "width": 150,
-              "view": { "stroke": "lightgray" },
               "mark": "point",
               "encoding": {
                 "y": {
@@ -45,7 +43,6 @@
                 "fontWeight": "bold"
               },
               "width": { "grow": 0.5 },
-              "view": { "stroke": "lightgray" },
               "mark": "point"
             }
           ]
@@ -54,7 +51,6 @@
     },
     {
       "padding": { "left": 20, "right": 20 },
-      "view": { "stroke": "lightgray" },
       "mark": "point"
     },
     {
@@ -63,22 +59,22 @@
       "separator": { "color": "#bbb", "strokeDash": [3, 3], "size": 1 },
       "concat": [
         {
-          "mark": "point",
-          "view": { "stroke": "lightgray" }
+          "mark": "point"
         },
         {
-          "mark": "point",
-          "view": { "stroke": "lightgray" }
+          "mark": "point"
         },
         {
-          "mark": "point",
-          "view": { "stroke": "lightgray" }
+          "mark": "point"
         },
         {
-          "mark": "point",
-          "view": { "stroke": "lightgray" }
+          "mark": "point"
         }
       ]
     }
-  ]
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
 }

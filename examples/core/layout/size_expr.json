@@ -10,7 +10,6 @@
   "hconcat": [
     {
       "width": { "grow": 1 },
-      "view": { "stroke": "lightgray" },
       "mark": {
         "type": "text",
         "size": 20,
@@ -19,12 +18,15 @@
     },
     {
       "width": { "grow": 2 },
-      "view": { "stroke": "lightgray" },
       "mark": {
         "type": "text",
         "size": 20,
         "text": { "expr": "'' + width + ' x ' + height" }
       }
     }
-  ]
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
 }

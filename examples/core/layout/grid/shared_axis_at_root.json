@@ -18,13 +18,15 @@
   "vconcat": [
     {
       "height": 100,
-      "view": { "stroke": "lightgray" },
       "mark": "point"
     },
     {
       "height": 200,
-      "view": { "stroke": "lightgray" },
       "mark": "point"
     }
-  ]
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
 }

@@ -21,7 +21,6 @@
 
   "vconcat": [
     {
-      "view": { "stroke": "lightgray" },
       "height": 40,
       "transform": [
         {
@@ -45,7 +44,6 @@
       }
     },
     {
-      "view": { "stroke": "lightgray" },
       "transform": [
         { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
       ],
@@ -81,5 +79,9 @@
       },
       "mark": "rect"
     }
-  ]
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
 }
