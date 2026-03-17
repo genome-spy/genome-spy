@@ -209,6 +209,24 @@ This should cover:
 - `examples/docs/**`
 - `examples/app/**` if applicable
 
+Initial migration targets already identified in the current shared examples:
+
+- `examples/core/marks/point/point2d.json` currently uses `data/cars.json`
+- `examples/docs/grammar/mark/tick/tick-mark.json` currently uses
+  `data/cars.json`
+- `examples/docs/grammar/parameters/penguins.json` currently uses
+  `data/penguins_size.csv`
+- `examples/docs/grammar/transform/aggregate/aggregate-boxplot.json`
+  currently uses `data/penguins_size.csv`
+
+These should move to:
+
+- `vega-datasets/cars.json`
+- `vega-datasets/penguins_size.csv`
+
+Phase 4 should also include a repo-wide audit for other upstream-style dataset
+names that may have been copied into `examples/data/` over time.
+
 Suggested separate commit:
 
 - `refactor(examples): adopt explicit dataset paths`
