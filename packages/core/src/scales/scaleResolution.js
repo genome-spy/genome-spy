@@ -31,6 +31,7 @@ import {
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
+import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
 import {
     normalizeIntervalForSelection,
@@ -430,7 +431,7 @@ export default class ScaleResolution {
         if (member.contributesToDomain) {
             this.#dataDomainMembers.add(member);
         }
-        this.#domainAggregator.invalidateConfiguredDomain();
+        this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         return member;
     }
@@ -445,7 +446,7 @@ export default class ScaleResolution {
             const removed = this.#members.delete(registeredMember);
             if (removed) {
                 this.#dataDomainMembers.delete(registeredMember);
-                this.#domainAggregator.invalidateConfiguredDomain();
+                this.#invalidateConfiguredDomain();
                 this.#refreshSelectionDomainParamSubscriptions();
             }
             return removed && this.#members.size === 0;
@@ -486,7 +487,7 @@ export default class ScaleResolution {
 
         this.#selectionDomainParamUnsubscribers.push(
             runtime.subscribe(linkInfo.param, () => {
-                this.#domainAggregator.invalidateConfiguredDomain();
+                this.#invalidateConfiguredDomain();
                 this.reconfigureDomain();
             })
         );
@@ -573,13 +574,24 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        return resolveScalePropsBase({
-            channel: this.channel,
-            dataType: this.type,
-            members: this.#members,
-            isExplicitDomain: this.#isExplicitDomain(),
-            configScopes: this.#firstMemberView.getConfigScopes(),
-        });
+        return getCachedOrCall(this, "mergedScaleProps", () =>
+            resolveScalePropsBase({
+                channel: this.channel,
+                dataType: this.type,
+                members: this.#members,
+                isExplicitDomain: this.#isExplicitDomain(),
+                configScopes: this.#firstMemberView.getConfigScopes(),
+            })
+        );
+    }
+
+    #invalidateMergedScaleProps() {
+        invalidate(this, "mergedScaleProps");
+    }
+
+    #invalidateConfiguredDomain() {
+        this.#domainAggregator.invalidateConfiguredDomain();
+        this.#invalidateMergedScaleProps();
     }
 
     /**
@@ -641,12 +653,14 @@ export default class ScaleResolution {
             return { type: "null" };
         }
 
+        const resolvedProps = { ...props };
+
         const domain = this.#domainAggregator.getConfiguredOrDefaultDomain(
             extractDataDomain,
-            props.type === LOCUS ? props.assembly : undefined
+            resolvedProps.type === LOCUS ? resolvedProps.assembly : undefined
         );
 
-        if (isDiscrete(props.type)) {
+        if (isDiscrete(resolvedProps.type)) {
             const isExplicit = this.#isExplicitDomain();
             const indexer = this.#getCategoricalIndexer(isExplicit);
             if (domain != null) {
@@ -663,7 +677,7 @@ export default class ScaleResolution {
                 const indexedDomain = indexer
                     .domain()
                     .filter((value) => active.has(value));
-                props.domain =
+                resolvedProps.domain =
                     indexedDomain.length > 0
                         ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
                               indexedDomain
@@ -671,7 +685,7 @@ export default class ScaleResolution {
                         : new NominalDomain();
             } else {
                 const indexedDomain = indexer.domain();
-                props.domain =
+                resolvedProps.domain =
                     indexedDomain.length > 0
                         ? /** @type {import("../spec/scale.js").ScalarDomain} */ (
                               indexedDomain
@@ -679,18 +693,21 @@ export default class ScaleResolution {
                         : new NominalDomain();
             }
             // Scale props are spec-shaped; keep the indexer off the public type.
-            /** @type {any} */ (props).domainIndexer = indexer;
+            /** @type {any} */ (resolvedProps).domainIndexer = indexer;
         } else if (domain && domain.length > 0) {
-            props.domain = domain;
+            resolvedProps.domain = domain;
         }
 
-        if (!props.domain && props.domainMid !== undefined) {
+        if (!resolvedProps.domain && resolvedProps.domainMid !== undefined) {
             // Initialize with a bogus domain so that scale.js can inject the domainMid.
             // The number of domain elements must be know before the glsl scale is generated.
-            props.domain = [props.domainMin ?? 0, props.domainMax ?? 1];
+            resolvedProps.domain = [
+                resolvedProps.domainMin ?? 0,
+                resolvedProps.domainMax ?? 1,
+            ];
         }
 
-        return props;
+        return resolvedProps;
     }
 
     /**
@@ -715,7 +732,7 @@ export default class ScaleResolution {
      */
     reconfigure() {
         this.#withSelectionReverseSyncSuppressed(() => {
-            this.#domainAggregator.invalidateConfiguredDomain();
+            this.#invalidateConfiguredDomain();
             const state = this.#computeScaleState(true);
             if (!state) {
                 return;
@@ -735,6 +752,7 @@ export default class ScaleResolution {
      */
     reconfigureDomain() {
         this.#withSelectionReverseSyncSuppressed(() => {
+            this.#invalidateMergedScaleProps();
             const state = this.#computeScaleState(true, true);
             if (!state) {
                 return;

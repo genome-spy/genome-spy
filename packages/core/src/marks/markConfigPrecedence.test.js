@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
 
@@ -71,6 +71,31 @@ describe("mark config precedence", () => {
 
         expect(view.mark.properties.color).toBe("purple");
         expect(/** @type {any} */ (view.mark.properties).size).toBe(7);
+    });
+
+    test("zoomability-backed clip default is cached", async () => {
+        const view = /** @type {UnitView} */ (
+            await create(
+                {
+                    data: {
+                        values: [{ x: 1, y: 1 }],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "index" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        );
+
+        const xResolution = view.getScaleResolution("x");
+        const zoomSpy = vi.spyOn(xResolution, "isZoomable");
+
+        expect(view.mark.properties.clip).toBe(true);
+        expect(view.mark.properties.clip).toBe(true);
+        expect(zoomSpy).toHaveBeenCalledTimes(1);
     });
 
     test("mark style applies after mark buckets and before explicit props", async () => {

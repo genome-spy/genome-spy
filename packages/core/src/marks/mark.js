@@ -104,6 +104,7 @@ export default class Mark {
      */
     constructor(unitView) {
         this.unitView = unitView;
+        const mark = this;
 
         /** @type {Partial<Record<Channel, import("../types/encoder.js").Encoder>>} */
         this.encoders = undefined;
@@ -181,15 +182,22 @@ export default class Mark {
 
         this.defaultProperties = /** @type {P} */ ({
             get clip() {
-                // TODO: Cache once the scales have been resolved
-                // TODO: Only check channels that are used
-                // TODO: provide more fine-grained xClip and yClip props
-                return /** @type {import("../spec/channel.js").PositionalChannel[]} */ ([
-                    "x",
-                    "y",
-                ])
-                    .map((channel) => unitView.getScaleResolution(channel))
-                    .some((resolution) => resolution?.isZoomable() ?? false);
+                return getCachedOrCall(mark, "defaultClip", () => {
+                    // TODO: Only check channels that are used
+                    // TODO: provide more fine-grained xClip and yClip props
+                    for (const channel of /** @type {import("../spec/channel.js").PositionalChannel[]} */ ([
+                        "x",
+                        "y",
+                    ])) {
+                        if (
+                            unitView.getScaleResolution(channel)?.isZoomable()
+                        ) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                });
             },
             xOffset: 0,
             yOffset: 0,
