@@ -8150,7 +8150,7 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/penguins_size.csv","format":{"parse":{"culmen_length_mm":"number","culmen_depth_mm":"number"}}},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -8627,7 +8627,7 @@ exports[`shared examples > initializes examples/docs/grammar/transform/aggregate
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/penguins_size.csv","format":{"parse":{"body_mass_g":"number"}}},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],

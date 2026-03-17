@@ -11,10 +11,7 @@
   "padding": 10,
 
   "data": {
-    "url": "data/penguins_size.csv",
-    "format": {
-      "parse": { "culmen_length_mm": "number", "culmen_depth_mm": "number" }
-    }
+    "url": "vega-datasets/penguins.json"
   },
 
   "transform": [{ "type": "collect" }],
@@ -42,19 +39,19 @@
       "mark": { "type": "point", "filled": false, "size": 40, "opacity": 0.7 },
       "encoding": {
         "x": {
-          "field": "culmen_length_mm",
+          "field": "Beak Length (mm)",
           "type": "quantitative",
           "scale": { "zero": false, "padding": 0.1 }
         },
         "y": {
-          "field": "culmen_depth_mm",
+          "field": "Beak Depth (mm)",
           "type": "quantitative",
           "scale": { "zero": false, "padding": 0.1 }
         },
         "color": {
           "condition": {
             "param": "brush",
-            "field": "species",
+            "field": "Species",
             "type": "nominal",
             "scale": {
               "domain": ["Chinstrap", "Adelie", "Gentoo"],
@@ -72,7 +69,7 @@
         {
           "type": "filter",
           "param": "brush",
-          "fields": { "x": "culmen_length_mm", "y": "culmen_depth_mm" }
+          "fields": { "x": "Beak Length (mm)", "y": "Beak Depth (mm)" }
         }
       ],
       "resolve": {
@@ -84,11 +81,11 @@
       "vconcat": [
         {
           "name": "speciesChart",
-          "transform": [{ "type": "aggregate", "groupby": ["species"] }],
+          "transform": [{ "type": "aggregate", "groupby": ["Species"] }],
           "mark": "rect",
           "encoding": {
             "x": {
-              "field": "species",
+              "field": "Species",
               "type": "nominal",
               "scale": {
                 "domain": ["Chinstrap", "Adelie", "Gentoo"],
@@ -96,7 +93,7 @@
               },
               "axis": { "labelAngle": 0 }
             },
-            "color": { "field": "species", "type": "nominal" }
+            "color": { "field": "Species", "type": "nominal" }
           }
         },
         {
@@ -105,14 +102,14 @@
           "transform": [
             {
               "type": "filter",
-              "expr": "datum.sex == 'MALE' || datum.sex == 'FEMALE'"
+              "expr": "datum['Sex'] == 'MALE' || datum['Sex'] == 'FEMALE'"
             },
-            { "type": "aggregate", "groupby": ["sex"] }
+            { "type": "aggregate", "groupby": ["Sex"] }
           ],
           "mark": "rect",
           "encoding": {
             "x": {
-              "field": "sex",
+              "field": "Sex",
               "type": "nominal",
               "scale": { "domain": ["MALE", "FEMALE"], "padding": 0.3 },
               "axis": { "labelAngle": 0 }
