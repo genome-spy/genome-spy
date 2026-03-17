@@ -2685,7 +2685,7 @@ exports[`shared examples > initializes examples/core/marks/point/point2d.json 1`
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/cars.json"},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],
@@ -7934,7 +7934,7 @@ exports[`shared examples > initializes examples/docs/grammar/mark/tick/tick-mark
       "type": "InlineSource",
     },
     {
-      "identifier": "{"params":{"url":"data/cars.json"},"baseUrl":"examples/"}",
+      "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
   ],

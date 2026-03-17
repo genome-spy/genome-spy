@@ -219,10 +219,12 @@ Initial migration targets already identified in the current shared examples:
 - `examples/docs/grammar/transform/aggregate/aggregate-boxplot.json`
   currently uses `data/penguins_size.csv`
 
-These should move to:
+Current migration intent:
 
-- `vega-datasets/cars.json`
-- `vega-datasets/penguins_size.csv`
+- move the cars-based examples to `vega-datasets/cars.json`
+- keep `penguins_size.csv` as a local fixture for now, because
+  `vega-datasets` provides `penguins.json` instead of the adapted
+  `penguins_size.csv` file currently used by the examples
 
 Phase 4 should also include a repo-wide audit for other upstream-style dataset
 names that may have been copied into `examples/data/` over time.
