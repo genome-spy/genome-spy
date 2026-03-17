@@ -88,7 +88,10 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
     const genomicRows = tooltipContext.genomicRows ?? [];
     const hiddenRowKeys = new Set(tooltipContext.hiddenRowKeys ?? []);
 
-    const visibleRawRows = rawRows.filter((row) => !hiddenRowKeys.has(row.key));
+    const visibleRawRows = rawRows.filter(
+        (row) =>
+            !hiddenRowKeys.has(row.key) || legend(row.key, row.value, datum)
+    );
     const orderedRows = [...genomicRows, ...visibleRawRows];
     if (!orderedRows.length) {
         return;
