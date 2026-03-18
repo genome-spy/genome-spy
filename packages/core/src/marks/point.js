@@ -10,6 +10,7 @@ import FRAGMENT_SHADER from "./point.fragment.glsl";
 import COMMON_SHADER from "./point.common.glsl";
 
 import Mark from "./mark.js";
+import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { sampleIterable } from "../data/transforms/sample.js";
 import { fixFill, fixStroke } from "./markUtils.js";
@@ -118,8 +119,11 @@ export default class PointMark extends Mark {
 
         // Semantic zooming is currently solely a feature of point mark.
         // Build a sorted sample that allows for computing p-quantiles
-        const semanticScoreAccessor =
-            this.encoders["semanticScore"]?.dataAccessor?.asNumberAccessor();
+        const semanticScoreAccessor = this.encoders["semanticScore"]
+            ? getEncoderDataAccessor(
+                  this.encoders["semanticScore"]
+              )?.asNumberAccessor()
+            : undefined;
         if (semanticScoreAccessor) {
             // n chosen using Stetson-Harrison
             // TODO: Throw on missing scores

@@ -7,7 +7,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 import { asArray } from "../utils/arrayUtils.js";
-import { isValueDef } from "../encoder/encoder.js";
+import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import { getCachedOrCall } from "../utils/propertyCacher.js";
 import { isDiscrete } from "vega-scale";
 import { cssColorToArray } from "../gl/colorUtils.js";
@@ -275,13 +275,19 @@ export default class RectMark extends Mark {
         const scaleType = e.x.scale.type;
 
         if (isDiscrete(scaleType)) {
-            const a = e.x.dataAccessor;
+            const a = getEncoderDataAccessor(e.x);
+            if (!a) {
+                return;
+            }
             // TODO: Binary search
             return data.find((d) => x == a(d));
         } else {
             // TODO: Handle point features on locus/index scales
-            const a = e.x.dataAccessor;
-            const a2 = e.x2.dataAccessor;
+            const a = getEncoderDataAccessor(e.x);
+            const a2 = getEncoderDataAccessor(e.x2);
+            if (!a || !a2) {
+                return;
+            }
             // TODO: Binary search
             return data.find((d) => x >= a(d) && x < a2(d));
         }

@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
+import { scaleOrdinal } from "d3-scale";
 import { render } from "lit";
 import { expect, test } from "vitest";
+import {
+    createConditionalBranches,
+    createSimpleOrConditionalEncoder,
+} from "../encoder/encoder.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
+import { createIntervalSelection } from "../selection/selection.js";
 import dataTooltipHandler from "./dataTooltipHandler.js";
 
 /**
@@ -75,11 +82,16 @@ test("Matches color legend fields that use bracket notation", async () => {
         category: "A",
     };
 
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["['category']"],
+        })
+    );
+
     const fillEncoder = /** @type {any} */ (
         Object.assign(() => "#ff0000", {
-            dataAccessor: {
-                fields: ["['category']"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 
@@ -107,11 +119,15 @@ test("Shows an empty swatch when color scale returns null for a present value", 
      * @returns {null}
      */
     const fillEncoderFn = () => null;
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["category"],
+        })
+    );
     const fillEncoder = /** @type {any} */ (
         Object.assign(fillEncoderFn, {
-            dataAccessor: {
-                fields: ["category"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 
@@ -140,11 +156,15 @@ test("Does not show swatch for null value when color scale returns null", async 
      * @returns {null}
      */
     const fillEncoderFn = () => null;
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["category"],
+        })
+    );
     const fillEncoder = /** @type {any} */ (
         Object.assign(fillEncoderFn, {
-            dataAccessor: {
-                fields: ["category"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 
@@ -161,4 +181,96 @@ test("Does not show swatch for null value when color scale returns null", async 
     const container = toContainer(content);
     const legend = container.querySelector(".color-legend");
     expect(legend).toBeNull();
+});
+
+test("Uses the active conditional color branch for point tooltip legends", async () => {
+    const datum = {
+        Species: "Gentoo",
+        "Beak Length (mm)": 47,
+        "Beak Depth (mm)": 17,
+    };
+
+    const colorEncoding = {
+        condition: {
+            param: "brush",
+            field: "Species",
+            type: "nominal",
+            scale: {
+                domain: ["Chinstrap", "Adelie", "Gentoo"],
+                range: ["#BF5CCA", "#FF6C02", "#0F7574"],
+            },
+        },
+        value: "lightgrey",
+    };
+
+    const paramRuntime = new ViewParamRuntime();
+    const setBrush = paramRuntime.allocateSetter(
+        "brush",
+        createIntervalSelection(["x", "y"])
+    );
+    setBrush({
+        type: "interval",
+        intervals: {
+            x: [40, 50],
+            y: [15, 20],
+        },
+    });
+
+    const colorScale = Object.assign(
+        scaleOrdinal()
+            .domain(colorEncoding.condition.scale.domain)
+            .range(colorEncoding.condition.scale.range),
+        {
+            type: "ordinal",
+        }
+    );
+
+    const colorEncoder = createSimpleOrConditionalEncoder(
+        createConditionalBranches(
+            "color",
+            colorEncoding,
+            {
+                x: {
+                    field: "Beak Length (mm)",
+                    type: "quantitative",
+                },
+                y: {
+                    field: "Beak Depth (mm)",
+                    type: "quantitative",
+                },
+                color: colorEncoding,
+            },
+            paramRuntime
+        ),
+        () => colorScale
+    );
+
+    const mark = /** @type {any} */ ({
+        encoding: {
+            x: {
+                field: "Beak Length (mm)",
+                type: "quantitative",
+            },
+            y: {
+                field: "Beak Depth (mm)",
+                type: "quantitative",
+            },
+            color: colorEncoding,
+        },
+        encoders: {
+            color: colorEncoder,
+        },
+        getType: () => "point",
+        unitView: {
+            getTitleText: () => "",
+            paramRuntime,
+        },
+    });
+
+    const content = await dataTooltipHandler(datum, mark);
+    const container = toContainer(content);
+    const legends = Array.from(container.querySelectorAll(".color-legend"));
+
+    expect(legends).toHaveLength(1);
+    expect(legends[0].getAttribute("style")).toContain("#0F7574");
 });

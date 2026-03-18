@@ -2,62 +2,155 @@ import {
     isIntervalSelection,
     makeSelectionTestExpression,
 } from "../selection/selection.js";
-import { createConditionalAccessors } from "./accessor.js";
+import { createAccessor } from "./accessor.js";
+import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
- * TODO: Complete this. Not tested yet.
- *
- * Creates a selection predicate that can be used in conditional encoding.
+ * Creates a host-side predicate for selection-driven conditional encoding.
+ * The selection test expression is compiled lazily when the predicate is
+ * first evaluated so encoder construction does not depend on eager selection
+ * materialization.
  *
  * @param {string} param
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {boolean} empty
+ * @returns {import("../types/encoder.js").Predicate}
  */
-// eslint-disable-next-line no-unused-vars
-function createSelectionPredicate(param, encoding, paramRuntime, empty) {
-    const selection =
-        /** @type {import("../types/selectionTypes.js").Selection} */ (
+export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
+    /**
+     * @typedef {import("../data/flowNode.js").Datum} Datum
+     * @typedef {import("../types/selectionTypes.js").Selection} Selection
+     * @typedef {import("../types/encoder.js").Predicate} Predicate
+     */
+
+    /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
+    let compiled;
+
+    const fallback = makeConstantExprRef(false);
+
+    const ensureCompiled = () => {
+        if (compiled) {
+            return compiled;
+        }
+
+        const selection = /** @type {Selection | undefined} */ (
             paramRuntime.findValue(param)
         );
-    if (!selection) {
-        throw new Error(`No selection parameter found: ${param}`);
-    }
-
-    /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-    const fields = {};
-    if (isIntervalSelection(selection)) {
-        const channels = Object.keys(selection.intervals);
-        for (const channel of channels) {
-            const channelDef = encoding[channel];
-            if (isFieldDef(channelDef)) {
-                fields[channel] = channelDef.field;
-                continue;
-            } else if ("condition" in channelDef) {
-                const condition = channelDef.condition;
-                if (isFieldDef(condition)) {
-                    fields[channel] = condition.field;
-                    continue;
-                }
-            }
-            throw new Error(
-                `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
-            );
+        if (!selection) {
+            return fallback;
         }
-    }
 
-    const expr = makeSelectionTestExpression(
-        { type: "filter", param, fields, empty },
-        selection
+        /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+        const fields = {};
+        if (isIntervalSelection(selection)) {
+            const channels = Object.keys(selection.intervals);
+            for (const channel of channels) {
+                const channelDef = encoding[channel];
+                if (isFieldDef(channelDef)) {
+                    fields[channel] = channelDef.field;
+                    continue;
+                } else if (channelDef && "condition" in channelDef) {
+                    const condition = channelDef.condition;
+                    if (isFieldDef(condition)) {
+                        fields[channel] = condition.field;
+                        continue;
+                    }
+                }
+                throw new Error(
+                    `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                );
+            }
+        }
+
+        const expr = makeSelectionTestExpression(
+            { type: "filter", param, fields, empty },
+            selection
+        );
+
+        compiled = paramRuntime.createExpression(expr);
+        return compiled;
+    };
+
+    /** @type {Predicate} */
+    const predicate = Object.assign(
+        /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
+        {
+            param,
+            empty: empty ?? true,
+        }
     );
 
-    return paramRuntime.createExpression(expr);
+    return predicate;
 }
 
 /**
- * Creates an object that contains encoders for every channel of a mark
+ * Creates ordered conditional branches for a channel definition. The last
+ * branch is always the fallback branch.
  *
- * TODO: This method should have a test. But how to mock Mark...
+ * @param {import("../spec/channel.js").Channel} channel
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @returns {import("../types/encoder.js").EncodingBranch[]}
+ */
+export function createConditionalBranches(
+    channel,
+    channelDef,
+    encoding,
+    paramRuntime
+) {
+    const conditions =
+        isFieldOrDatumDefWithCondition(channelDef) ||
+        isValueDefWithCondition(channelDef)
+            ? Array.isArray(channelDef.condition)
+                ? channelDef.condition
+                : [channelDef.condition]
+            : [];
+
+    const branchChannelDefs = [...conditions, channelDef];
+
+    /** @type {import("../types/encoder.js").EncodingBranch[]} */
+    const branches = branchChannelDefs.map((branchChannelDef, index) => {
+        const condition = conditions[index];
+        const accessor = createAccessor(
+            channel,
+            branchChannelDef,
+            paramRuntime
+        );
+
+        /** @type {import("../types/encoder.js").Predicate} */
+        const predicate = condition?.param
+            ? createSelectionPredicate(
+                  condition.param,
+                  encoding,
+                  paramRuntime,
+                  condition.empty
+              )
+            : Object.assign(
+                  makeConstantExprRef(index === branchChannelDefs.length - 1),
+                  {
+                      empty: false,
+                  }
+              );
+
+        return {
+            accessor,
+            predicate,
+        };
+    });
+
+    if (branches.filter((branch) => !branch.accessor.constant).length > 1) {
+        throw new Error(
+            "Only one accessor can be non-constant. Channel: " + channel
+        );
+    }
+
+    return branches;
+}
+
+/**
+ * Creates encoders for direct mark-property channels in an encoding object.
  *
  * @param {import("../view/unitView.js").default} unitView
  * @param {import("../spec/channel.js").Encoding} encoding
@@ -91,9 +184,10 @@ export default function createEncoders(unitView, encoding) {
         const typedChannelDef =
             /** @type {import("../spec/channel.js").ChannelDef} */ (channelDef);
         encoders[typedChannel] = createSimpleOrConditionalEncoder(
-            createConditionalAccessors(
+            createConditionalBranches(
                 typedChannel,
                 typedChannelDef,
+                encoding,
                 unitView.paramRuntime
             ),
             scaleSource
@@ -116,23 +210,46 @@ export function isNonMarkPropertyChannel(channel) {
 }
 
 /**
- * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {import("../types/encoder.js").Encoder} encoder
+ * @returns {import("../types/encoder.js").Accessor[]}
+ */
+export function getEncoderAccessors(encoder) {
+    return encoder.branches.map((branch) => branch.accessor);
+}
+
+/**
+ * @param {import("../types/encoder.js").Encoder} encoder
+ * @returns {import("../types/encoder.js").Accessor | undefined}
+ */
+export function getEncoderDataAccessor(encoder) {
+    return encoder.branches.find((branch) => !branch.accessor.constant)
+        ?.accessor;
+}
+
+/**
+ * Creates an encoder from ordered branches. The first matching branch wins.
+ *
+ * @param {import("../types/encoder.js").EncodingBranch[]} branches
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
  */
-export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
+export function createSimpleOrConditionalEncoder(branches, scaleSource) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
-     * @typedef {import("../types/encoder.js").Accessor} Accessor
      * @typedef {import("../data/flowNode.js").Datum} Datum
      */
-    if (accessors.length === 1) {
-        return createEncoder(accessors[0], scaleSource);
+    if (branches.length === 1) {
+        const encoder = createEncoder(branches[0].accessor, scaleSource);
+        return Object.assign(encoder, {
+            branches,
+        });
     }
 
-    const predicates = accessors.map((a) => a.predicate);
+    const predicates = branches.map((branch) => branch.predicate);
 
-    const encoders = accessors.map((a) => createEncoder(a, scaleSource));
+    const encoders = branches.map((branch) =>
+        createEncoder(branch.accessor, scaleSource)
+    );
 
     const encoder = Object.assign(
         (/** @type {Datum} */ datum) => {
@@ -144,12 +261,9 @@ export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
         },
         {
             constant: false,
-            accessors: /** @type {Accessor[]} */ (
-                encoders.map((e) => e.accessors[0])
-            ),
-            dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
+            branches,
             scale: encoders.map((e) => e.scale).find((s) => s),
-            channelDef: accessors.at(-1).channelDef,
+            channelDef: branches.at(-1).accessor.channelDef,
         }
     );
 
@@ -157,6 +271,8 @@ export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
 }
 
 /**
+ * Wraps a single accessor with optional scale application and encoder metadata.
+ *
  * @param {Accessor} accessor
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
@@ -189,17 +305,18 @@ export function createEncoder(accessor, scaleSource) {
         {
             scale,
             constant: accessor.constant,
-            accessors: [accessor],
-            dataAccessor: accessor.constant ? undefined : accessor,
-            // TODO: Accessor already has the channelDef
+            branches: [
+                {
+                    accessor,
+                    predicate: makeConstantExprRef(true),
+                },
+            ],
             channelDef,
         }
     );
 }
 
 /**
- * TODO: Move to a more generic place
- *
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel.js").ValueDef}
  */
@@ -224,11 +341,13 @@ export function isDatumDef(channelDef) {
 }
 
 /**
+ * Returns true for direct channel definitions that participate in scale
+ * resolution. Conditional wrappers must be unwrapped by the caller first.
+ *
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel.js").ChannelDefWithScale}
  */
 export function isChannelDefWithScale(channelDef) {
-    // TODO: Not accurate, fix
     return (
         isFieldDef(channelDef) ||
         isDatumDef(channelDef) ||

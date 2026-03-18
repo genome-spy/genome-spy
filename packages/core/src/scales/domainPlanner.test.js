@@ -31,7 +31,16 @@ function createMember(accessors, collector, contributesToDomain = true) {
         channelDef: { type: "quantitative", scale: {} },
         contributesToDomain,
         view: {
-            mark: { encoders: { x: { accessors } } },
+            mark: {
+                encoders: {
+                    x: {
+                        branches: accessors.map((accessor) => ({
+                            accessor,
+                            predicate: () => true,
+                        })),
+                    },
+                },
+            },
             getCollector: () => collector,
         },
     };

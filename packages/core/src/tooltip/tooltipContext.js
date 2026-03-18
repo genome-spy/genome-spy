@@ -5,6 +5,7 @@
  */
 
 import { asArray } from "../utils/arrayUtils.js";
+import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
@@ -366,7 +367,7 @@ function readLocusCoordinate(mark, channel, datum) {
         return;
     }
 
-    const accessor = encoder.dataAccessor;
+    const accessor = getEncoderDataAccessor(encoder);
     if (!accessor) {
         return;
     }

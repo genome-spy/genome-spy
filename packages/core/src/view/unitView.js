@@ -6,6 +6,8 @@ import TextMark from "../marks/text.js";
 
 import ScaleResolution from "../scales/scaleResolution.js";
 import {
+    getEncoderAccessors,
+    getEncoderDataAccessor,
     isPositionalChannel,
     isChannelDefWithScale,
     primaryPositionalChannels,
@@ -463,7 +465,9 @@ export default class UnitView extends View {
         if (!encoders) {
             return undefined;
         }
-        return encoders[channel]?.dataAccessor;
+        return encoders[channel]
+            ? getEncoderDataAccessor(encoders[channel])
+            : undefined;
     }
 
     /**
@@ -538,7 +542,7 @@ export default class UnitView extends View {
                 continue;
             }
 
-            const accessors = encoder.accessors ?? [];
+            const accessors = getEncoderAccessors(encoder);
             if (accessors.length === 0) {
                 continue;
             }

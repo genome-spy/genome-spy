@@ -25,7 +25,6 @@ import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
-import { ExprRefFunction } from "../paramRuntime/types.js";
 
 export interface Accessor<T = Scalar> {
     (datum: Datum): T;
@@ -86,11 +85,6 @@ export interface Accessor<T = Scalar> {
      * Format: <type>|<domainKeyBase>
      */
     domainKey?: string;
-
-    /**
-     * This accessor should be used when the predicate is true
-     */
-    predicate: Predicate;
 }
 
 export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
@@ -99,7 +93,9 @@ export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
     domainKeyBase: string;
 }
 
-export interface Predicate extends ExprRefFunction {
+export interface Predicate {
+    (datum: Datum): boolean;
+
     /**
      * The parameter the predicate is based on
      */
@@ -111,6 +107,18 @@ export interface Predicate extends ExprRefFunction {
      * **Default:** `true`
      */
     empty?: boolean;
+}
+
+export interface EncodingBranch {
+    /**
+     * The accessor used by this branch.
+     */
+    accessor: Accessor;
+
+    /**
+     * Predicate controlling whether this branch is active.
+     */
+    predicate: Predicate;
 }
 
 /**
@@ -134,15 +142,9 @@ export interface Encoder {
     scale?: VegaScale;
 
     /**
-     * An accessor, or if the ChannelDef has conditions, all the accessors.
+     * Ordered branches of this encoder. The last branch is the fallback branch.
      */
-    accessors: Accessor[];
-
-    /**
-     * The encoded channel may have a maximum of one accessor accessing the
-     * data fields. It's this one.
-     */
-    dataAccessor?: Accessor;
+    branches: EncodingBranch[];
 
     /**
      * The ChannelDef that the encoder is based on
