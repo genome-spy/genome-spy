@@ -2,7 +2,7 @@ import {
     isIntervalSelection,
     makeSelectionTestExpression,
 } from "../selection/selection.js";
-import { createConditionalAccessors } from "./accessor.js";
+import { createAccessor } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
@@ -109,15 +109,6 @@ export function createConditionalBranches(
     encoding,
     paramRuntime
 ) {
-    const accessors = createConditionalAccessors(
-        channel,
-        channelDef,
-        paramRuntime
-    );
-
-    /** @type {import("../types/encoder.js").EncodingBranch[]} */
-    const branches = [];
-
     const conditions =
         isFieldOrDatumDefWithCondition(channelDef) ||
         isValueDefWithCondition(channelDef)
@@ -126,9 +117,17 @@ export function createConditionalBranches(
                 : [channelDef.condition]
             : [];
 
-    for (let i = 0; i < accessors.length; i++) {
-        const accessor = accessors[i];
-        const condition = conditions[i];
+    const branchChannelDefs = [...conditions, channelDef];
+
+    /** @type {import("../types/encoder.js").EncodingBranch[]} */
+    const branches = branchChannelDefs.map((branchChannelDef, index) => {
+        const condition = conditions[index];
+        const accessor = createAccessor(
+            channel,
+            branchChannelDef,
+            paramRuntime
+        );
+
         /** @type {import("../types/encoder.js").Predicate} */
         const predicate = condition?.param
             ? createSelectionPredicate(
@@ -137,14 +136,23 @@ export function createConditionalBranches(
                   paramRuntime,
                   condition.empty
               )
-            : Object.assign(makeConstantExprRef(i === accessors.length - 1), {
-                  empty: false,
-              });
+            : Object.assign(
+                  makeConstantExprRef(index === branchChannelDefs.length - 1),
+                  {
+                      empty: false,
+                  }
+              );
 
-        branches.push({
+        return {
             accessor,
             predicate,
-        });
+        };
+    });
+
+    if (branches.filter((branch) => !branch.accessor.constant).length > 1) {
+        throw new Error(
+            "Only one accessor can be non-constant. Channel: " + channel
+        );
     }
 
     return branches;

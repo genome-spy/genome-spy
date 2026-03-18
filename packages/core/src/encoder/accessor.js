@@ -4,9 +4,7 @@ import {
     isDatumDef,
     isExprDef,
     isFieldDef,
-    isFieldOrDatumDefWithCondition,
     isValueDef,
-    isValueDefWithCondition,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
@@ -118,47 +116,6 @@ export function createAccessor(channel, channelDef, paramRuntime) {
             )}! The channel definition must contain one of the following properties: "field", "datum", "value" or "expr".`
         );
     }
-}
-
-/**
- * Creates ordered accessors for a conditional channel definition.
- * The fallback accessor is always the last element in the array, and
- * branch predicates are resolved separately in `encoder.js`.
- *
- * @param {import("../spec/channel.js").Channel} channel
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
- * @returns {import("../types/encoder.js").Accessor[]}
- */
-export function createConditionalAccessors(channel, channelDef, paramRuntime) {
-    /** @type {import("../types/encoder.js").Accessor[]} */
-    const conditionalAccessors = [];
-
-    if (
-        isFieldOrDatumDefWithCondition(channelDef) ||
-        isValueDefWithCondition(channelDef)
-    ) {
-        const conditions = Array.isArray(channelDef.condition)
-            ? channelDef.condition
-            : [channelDef.condition];
-
-        for (const condition of conditions) {
-            conditionalAccessors.push(
-                createAccessor(channel, condition, paramRuntime)
-            );
-        }
-    }
-
-    conditionalAccessors.push(
-        createAccessor(channel, channelDef, paramRuntime)
-    );
-
-    if (conditionalAccessors.filter((a) => !a.constant).length > 1) {
-        throw new Error(
-            "Only one accessor can be non-constant. Channel: " + channel
-        );
-    }
-    return conditionalAccessors;
 }
 
 /**
