@@ -14,8 +14,7 @@ import { createConditionalAccessors } from "./accessor.js";
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {boolean} empty
  */
-// eslint-disable-next-line no-unused-vars
-function createSelectionPredicate(param, encoding, paramRuntime, empty) {
+export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
     const selection =
         /** @type {import("../types/selectionTypes.js").Selection} */ (
             paramRuntime.findValue(param)
