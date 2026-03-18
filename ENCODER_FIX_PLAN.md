@@ -60,6 +60,46 @@ If a step reveals a meaningful clarification or refactoring opportunity in the
    before broadening scope, unless the refactor is already within the agreed
    plan and directly supports the encoder repair.
 
+## Step 1 Notes
+
+Current baseline status:
+
+- `npx vitest run packages/core/src/encoder/accessor.test.js packages/core/src/encoder/encoder.test.js packages/core/src/tooltip/dataTooltipHandler.test.js`
+  passes, with the existing conditional encoder/accessor suites still skipped
+- `npx vitest run packages/core/src/view/view.test.js packages/core/src/scales/scaleResolution.domain.test.js`
+  passes
+
+Canonical documented fixtures chosen for the first pass:
+
+- `examples/docs/grammar/parameters/interval-selection.json`
+  - point mark
+  - interval selection
+  - conditional value branch on color
+- `examples/docs/grammar/parameters/point-selection.json`
+  - rect mark
+  - point selections
+  - conditional value branches, including ordered conditions
+- `examples/docs/grammar/parameters/penguins.json`
+  - point mark
+  - interval selection
+  - conditional field branch with scale on color
+  - use only the scatter-plot branch for focused testing and snapshots
+
+Initial `accessor` / `encoder` findings:
+
+- `Accessor` currently carries both raw-source responsibilities and
+  conditional-predicate responsibilities.
+- `Encoder` currently acts both as a scale wrapper and as an implicit
+  conditional branch resolver through ordered `accessors[]`.
+- `createSelectionPredicate(...)` needs full encoding context, which is a sign
+  that predicate construction may not fit naturally inside low-level accessor
+  creation.
+- `dataAccessor` and `scale` on conditional encoders collapse branch-specific
+  state into a single representative property, which is convenient for callers
+  but conceptually unclear.
+- Shader generation already treats branch ordering as a first-class concern,
+  which argues for a more explicit branch model on the JavaScript side as well.
+
 ## Step 1: Lock Down Expected Behavior And Current Responsibilities
 
 Write down the exact behavior the repaired JavaScript encoder must have.
