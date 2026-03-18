@@ -82,11 +82,16 @@ test("Matches color legend fields that use bracket notation", async () => {
         category: "A",
     };
 
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["['category']"],
+        })
+    );
+
     const fillEncoder = /** @type {any} */ (
         Object.assign(() => "#ff0000", {
-            dataAccessor: {
-                fields: ["['category']"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 
@@ -114,11 +119,15 @@ test("Shows an empty swatch when color scale returns null for a present value", 
      * @returns {null}
      */
     const fillEncoderFn = () => null;
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["category"],
+        })
+    );
     const fillEncoder = /** @type {any} */ (
         Object.assign(fillEncoderFn, {
-            dataAccessor: {
-                fields: ["category"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 
@@ -147,11 +156,15 @@ test("Does not show swatch for null value when color scale returns null", async 
      * @returns {null}
      */
     const fillEncoderFn = () => null;
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["category"],
+        })
+    );
     const fillEncoder = /** @type {any} */ (
         Object.assign(fillEncoderFn, {
-            dataAccessor: {
-                fields: ["category"],
-            },
+            branches: [{ accessor: fieldAccessor }],
         })
     );
 

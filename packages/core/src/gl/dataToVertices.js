@@ -4,7 +4,7 @@ import { isString } from "vega-util";
 import ArrayBuilder from "./arrayBuilder.js";
 import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
 import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
-import { isValueDef } from "../encoder/encoder.js";
+import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import {
     dedupeEncodingFields,
     getAttributeAndArrayTypes,
@@ -60,7 +60,7 @@ export class GeometryBuilder {
 
         // Create converters and updaters for all variable channels.
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
-            const accessor = ce.dataAccessor;
+            const accessor = getEncoderDataAccessor(ce);
             if (!accessor) {
                 continue;
             }
@@ -211,8 +211,14 @@ export class GeometryBuilder {
 
         // Only index variable data
         if (xe && !xe.constant && (!x2e || !x2e.constant)) {
-            const xa = xe.dataAccessor.asNumberAccessor();
-            const x2a = x2e ? x2e.dataAccessor.asNumberAccessor() : xa;
+            const xa = getEncoderDataAccessor(xe)?.asNumberAccessor();
+            const x2a = x2e
+                ? getEncoderDataAccessor(x2e)?.asNumberAccessor()
+                : xa;
+            if (!xa || !x2a) {
+                disable();
+                return;
+            }
 
             /** @type {[number, number]} */
             const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];

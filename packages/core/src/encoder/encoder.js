@@ -211,6 +211,23 @@ export function isNonMarkPropertyChannel(channel) {
 }
 
 /**
+ * @param {import("../types/encoder.js").Encoder} encoder
+ * @returns {import("../types/encoder.js").Accessor[]}
+ */
+export function getEncoderAccessors(encoder) {
+    return encoder.branches.map((branch) => branch.accessor);
+}
+
+/**
+ * @param {import("../types/encoder.js").Encoder} encoder
+ * @returns {import("../types/encoder.js").Accessor | undefined}
+ */
+export function getEncoderDataAccessor(encoder) {
+    return encoder.branches.find((branch) => !branch.accessor.constant)
+        ?.accessor;
+}
+
+/**
  * Creates an encoder from ordered branches. The first matching branch wins.
  *
  * @param {import("../types/encoder.js").EncodingBranch[]} branches
@@ -246,8 +263,6 @@ export function createSimpleOrConditionalEncoder(branches, scaleSource) {
         {
             constant: false,
             branches,
-            accessors: branches.map((branch) => branch.accessor),
-            dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
             scale: encoders.map((e) => e.scale).find((s) => s),
             channelDef: branches.at(-1).accessor.channelDef,
         }
@@ -297,8 +312,6 @@ export function createEncoder(accessor, scaleSource) {
                     predicate: makeConstantExprRef(true),
                 },
             ],
-            accessors: [accessor],
-            dataAccessor: accessor.constant ? undefined : accessor,
             channelDef,
         }
     );

@@ -86,7 +86,6 @@ export interface Accessor<T = Scalar> {
      * Format: <type>|<domainKeyBase>
      */
     domainKey?: string;
-
 }
 
 export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
@@ -145,18 +144,6 @@ export interface Encoder {
      * Ordered branches of this encoder. The last branch is the fallback branch.
      */
     branches: EncodingBranch[];
-
-    /**
-     * Accessors for compatibility with existing scale/domain code. Derived from
-     * `branches` in the same order.
-     */
-    accessors: Accessor[];
-
-    /**
-     * The encoded channel may have a maximum of one accessor accessing the
-     * data fields. It's this one.
-     */
-    dataAccessor?: Accessor;
 
     /**
      * The ChannelDef that the encoder is based on

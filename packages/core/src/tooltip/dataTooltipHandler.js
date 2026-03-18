@@ -1,5 +1,6 @@
 import { html } from "lit";
 import { splitAccessPath } from "vega-util";
+import { getEncoderDataAccessor } from "../encoder/encoder.js";
 import formatObject from "../utils/formatObject.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
 import createTooltipContext from "./tooltipContext.js";
@@ -35,7 +36,9 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
      */
     const legend = (key, value, datum) => {
         for (const [channel, encoder] of Object.entries(mark.encoders)) {
-            const fields = encoder?.dataAccessor?.fields;
+            const fields = encoder
+                ? getEncoderDataAccessor(encoder)?.fields
+                : undefined;
             if (
                 fields &&
                 fields.some(

@@ -6,6 +6,8 @@ import {
     createEncoder,
     createConditionalBranches,
     createSimpleOrConditionalEncoder,
+    getEncoderAccessors,
+    getEncoderDataAccessor,
     isNonMarkPropertyChannel,
 } from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
@@ -72,15 +74,15 @@ describe("Encoder", () => {
         })
     );
 
-    test("has a single accessors", () => {
-        expect(e.x.accessors?.length).toBe(1);
+    test("has a single branch accessor", () => {
+        expect(getEncoderAccessors(e.x)).toHaveLength(1);
     });
 
     test("provides a data accessor for a FieldDef", () =>
-        expect(e.y.dataAccessor.fields).toContain("a"));
+        expect(getEncoderDataAccessor(e.y).fields).toContain("a"));
 
     test("doesn't provide a data accessor for a ValueDef", () =>
-        expect(e.x.dataAccessor).toBeUndefined());
+        expect(getEncoderDataAccessor(e.x)).toBeUndefined());
 
     test("returns a value", () => expect(e.x(datum)).toEqual(42));
 
@@ -106,12 +108,12 @@ describe("Conditional encoder with a field and a conditional value", () => {
         scaleSource
     );
 
-    test("has multiple accessors", () => {
-        expect(e.accessors.length).toBe(2);
+    test("has multiple branch accessors", () => {
+        expect(getEncoderAccessors(e)).toHaveLength(2);
     });
 
     test("accesses the field using the dataAccessor", () =>
-        expect(e.dataAccessor(datum)).toBe(100));
+        expect(getEncoderDataAccessor(e)(datum)).toBe(100));
 
     test("encodes the default when a predicate is false", () => {
         setter(createSinglePointSelection(null));

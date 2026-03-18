@@ -9,7 +9,7 @@ import {
 import { requireIntervalSelection } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
-import { getPrimaryChannel } from "../encoder/encoder.js";
+import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
     hasExplicitLocusUpperBound,
     isChromosomalLocusInterval,
@@ -213,7 +213,7 @@ export default class DomainPlanner {
             return [];
         }
 
-        const accessors = encoder.accessors ?? [];
+        const accessors = getEncoderAccessors(encoder);
         if (accessors.length === 0) {
             return [];
         }
