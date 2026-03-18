@@ -12,6 +12,9 @@ import { field } from "../utils/field.js";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
+ * Creates a raw accessor for a single channel definition branch and attaches
+ * metadata used by scale resolution and equality checks.
+ *
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef | import("../spec/channel.js").Conditional<import("../spec/channel.js").ChannelDef>} channelDef
  * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
@@ -24,8 +27,7 @@ export function createAccessor(channel, channelDef, paramRuntime) {
      */
 
     if (!channel) {
-        // TODO: Don't call with an undefined channel
-        return;
+        throw new Error("Cannot create an accessor without a channel.");
     }
 
     /**
@@ -72,8 +74,10 @@ export function createAccessor(channel, channelDef, paramRuntime) {
     }
 
     /**
+     * Creates an accessor for a literal value or an expression reference.
      *
      * @param {Scalar | import("../spec/parameter.js").ExprRef} potentialExprRef
+     * @returns {import("../types/encoder.js").Accessor<Scalar>}
      */
     function potentialExprRefToAccessor(potentialExprRef) {
         if (isExprRef(potentialExprRef)) {
@@ -102,7 +106,6 @@ export function createAccessor(channel, channelDef, paramRuntime) {
             });
         }
     } else if (isExprDef(channelDef)) {
-        // TODO: If parameters change, the data should be re-evaluated
         return asAccessor(paramRuntime.createExpression(channelDef.expr));
     } else if (isDatumDef(channelDef)) {
         return potentialExprRefToAccessor(channelDef.datum);
@@ -118,19 +121,19 @@ export function createAccessor(channel, channelDef, paramRuntime) {
 }
 
 /**
- * Returns an array of acessors and their predicates. A returned array with
- * a single element indicates that no conditions are present.
- * The default accessor is always the last element in the array.
+ * Creates ordered accessors for a conditional channel definition.
+ * The fallback accessor is always the last element in the array, and
+ * branch predicates are resolved separately in `encoder.js`.
  *
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
+ * @returns {import("../types/encoder.js").Accessor[]}
  */
 export function createConditionalAccessors(channel, channelDef, paramRuntime) {
     /** @type {import("../types/encoder.js").Accessor[]} */
     const conditionalAccessors = [];
 
-    // TODO: Support an array of conditions
     if (
         isFieldOrDatumDefWithCondition(channelDef) ||
         isValueDefWithCondition(channelDef)

@@ -6,74 +6,97 @@ import { createConditionalAccessors } from "./accessor.js";
 import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
- * TODO: Complete this. Not tested yet.
- *
- * Creates a selection predicate that can be used in conditional encoding.
+ * Creates a host-side predicate for selection-driven conditional encoding.
+ * The selection test expression is compiled lazily when the predicate is
+ * first evaluated so encoder construction does not depend on eager selection
+ * materialization.
  *
  * @param {string} param
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {{ findValue: (param: string) => any, createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction }} paramRuntime
  * @param {boolean} empty
+ * @returns {import("../types/encoder.js").Predicate}
  */
 export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
+    /**
+     * @typedef {import("../data/flowNode.js").Datum} Datum
+     * @typedef {import("../types/selectionTypes.js").Selection} Selection
+     * @typedef {import("../types/encoder.js").Predicate} Predicate
+     */
+
     /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
     let compiled;
 
-    const predicate = Object.assign(
-        (datum) => {
-            if (!compiled) {
-                const selection =
-                    /** @type {import("../types/selectionTypes.js").Selection} */ (
-                        paramRuntime.findValue(param)
-                    );
-                if (!selection) {
-                    return false;
-                }
+    const fallback = makeConstantExprRef(false);
 
-                /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-                const fields = {};
-                if (isIntervalSelection(selection)) {
-                    const channels = Object.keys(selection.intervals);
-                    for (const channel of channels) {
-                        const channelDef = encoding[channel];
-                        if (isFieldDef(channelDef)) {
-                            fields[channel] = channelDef.field;
-                            continue;
-                        } else if (channelDef && "condition" in channelDef) {
-                            const condition = channelDef.condition;
-                            if (isFieldDef(condition)) {
-                                fields[channel] = condition.field;
-                                continue;
-                            }
-                        }
-                        throw new Error(
-                            `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
-                        );
+    const ensureCompiled = () => {
+        if (compiled) {
+            return compiled;
+        }
+
+        const selection = /** @type {Selection | undefined} */ (
+            paramRuntime.findValue(param)
+        );
+        if (!selection) {
+            return fallback;
+        }
+
+        /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+        const fields = {};
+        if (isIntervalSelection(selection)) {
+            const channels = Object.keys(selection.intervals);
+            for (const channel of channels) {
+                const channelDef = encoding[channel];
+                if (isFieldDef(channelDef)) {
+                    fields[channel] = channelDef.field;
+                    continue;
+                } else if (channelDef && "condition" in channelDef) {
+                    const condition = channelDef.condition;
+                    if (isFieldDef(condition)) {
+                        fields[channel] = condition.field;
+                        continue;
                     }
                 }
-
-                const expr = makeSelectionTestExpression(
-                    { type: "filter", param, fields, empty },
-                    selection
+                throw new Error(
+                    `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
                 );
-
-                compiled = paramRuntime.createExpression(expr);
             }
+        }
 
-            return compiled(datum);
-        },
+        const expr = makeSelectionTestExpression(
+            { type: "filter", param, fields, empty },
+            selection
+        );
+
+        compiled = paramRuntime.createExpression(expr);
+        predicate.fields = compiled.fields;
+        predicate.globals = compiled.globals;
+        predicate.code = compiled.code;
+        return compiled;
+    };
+
+    /** @type {Predicate} */
+    const predicate = Object.assign(
+        /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
+        fallback,
         {
+            /** @param {() => void} listener */
+            subscribe: (listener) => ensureCompiled().subscribe(listener),
+            invalidate: () => compiled?.invalidate(),
+            identifier: () =>
+                compiled ? compiled.identifier() : `selection:${param}`,
             param,
             empty: empty ?? true,
         }
     );
 
-    predicate.param = param;
-    predicate.empty = empty ?? true;
     return predicate;
 }
 
 /**
+ * Creates ordered conditional branches for a channel definition. The last
+ * branch is always the fallback branch.
+ *
  * @param {import("../spec/channel.js").Channel} channel
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @param {import("../spec/channel.js").Encoding} encoding
@@ -86,7 +109,11 @@ export function createConditionalBranches(
     encoding,
     paramRuntime
 ) {
-    const accessors = createConditionalAccessors(channel, channelDef, paramRuntime);
+    const accessors = createConditionalAccessors(
+        channel,
+        channelDef,
+        paramRuntime
+    );
 
     /** @type {import("../types/encoder.js").EncodingBranch[]} */
     const branches = [];
@@ -102,6 +129,7 @@ export function createConditionalBranches(
     for (let i = 0; i < accessors.length; i++) {
         const accessor = accessors[i];
         const condition = conditions[i];
+        /** @type {import("../types/encoder.js").Predicate} */
         const predicate = condition?.param
             ? createSelectionPredicate(
                   condition.param,
@@ -109,11 +137,9 @@ export function createConditionalBranches(
                   paramRuntime,
                   condition.empty
               )
-            : makeConstantExprRef(i === accessors.length - 1);
-
-        if (!condition?.param) {
-            predicate.empty = false;
-        }
+            : Object.assign(makeConstantExprRef(i === accessors.length - 1), {
+                  empty: false,
+              });
 
         branches.push({
             accessor,
@@ -125,9 +151,7 @@ export function createConditionalBranches(
 }
 
 /**
- * Creates an object that contains encoders for every channel of a mark
- *
- * TODO: This method should have a test. But how to mock Mark...
+ * Creates encoders for direct mark-property channels in an encoding object.
  *
  * @param {import("../view/unitView.js").default} unitView
  * @param {import("../spec/channel.js").Encoding} encoding
@@ -187,6 +211,8 @@ export function isNonMarkPropertyChannel(channel) {
 }
 
 /**
+ * Creates an encoder from ordered branches. The first matching branch wins.
+ *
  * @param {import("../types/encoder.js").EncodingBranch[]} branches
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
@@ -231,6 +257,8 @@ export function createSimpleOrConditionalEncoder(branches, scaleSource) {
 }
 
 /**
+ * Wraps a single accessor with optional scale application and encoder metadata.
+ *
  * @param {Accessor} accessor
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
@@ -271,15 +299,12 @@ export function createEncoder(accessor, scaleSource) {
             ],
             accessors: [accessor],
             dataAccessor: accessor.constant ? undefined : accessor,
-            // TODO: Accessor already has the channelDef
             channelDef,
         }
     );
 }
 
 /**
- * TODO: Move to a more generic place
- *
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel.js").ValueDef}
  */
@@ -304,11 +329,13 @@ export function isDatumDef(channelDef) {
 }
 
 /**
+ * Returns true for direct channel definitions that participate in scale
+ * resolution. Conditional wrappers must be unwrapped by the caller first.
+ *
  * @param {import("../spec/channel.js").ChannelDef} channelDef
  * @returns {channelDef is import("../spec/channel.js").ChannelDefWithScale}
  */
 export function isChannelDefWithScale(channelDef) {
-    // TODO: Not accurate, fix
     return (
         isFieldDef(channelDef) ||
         isDatumDef(channelDef) ||

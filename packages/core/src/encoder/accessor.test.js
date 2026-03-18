@@ -141,6 +141,7 @@ describe("createConditionalBranches", () => {
     const paramRuntime = new ViewParamRuntime(() => undefined);
     paramRuntime.allocateSetter("p", createSinglePointSelection(data[0]));
 
+    /** @type {any} */
     const encodingA = {
         x: {
             field: "a",
@@ -149,8 +150,14 @@ describe("createConditionalBranches", () => {
         },
     };
 
-    const a = createConditionalBranches("x", encodingA.x, encodingA, paramRuntime);
+    const a = createConditionalBranches(
+        "x",
+        encodingA.x,
+        encodingA,
+        paramRuntime
+    );
 
+    /** @type {any} */
     const encodingB = {
         x: {
             field: "a",
@@ -162,8 +169,14 @@ describe("createConditionalBranches", () => {
         },
     };
 
-    const b = createConditionalBranches("x", encodingB.x, encodingB, paramRuntime);
+    const b = createConditionalBranches(
+        "x",
+        encodingB.x,
+        encodingB,
+        paramRuntime
+    );
 
+    /** @type {any} */
     const encodingC = {
         x: {
             value: 123,
@@ -175,7 +188,12 @@ describe("createConditionalBranches", () => {
         },
     };
 
-    const c = createConditionalBranches("x", encodingC.x, encodingC, paramRuntime);
+    const c = createConditionalBranches(
+        "x",
+        encodingC.x,
+        encodingC,
+        paramRuntime
+    );
 
     // TODO: Add more combinations of datum, field, expr, etc
 
@@ -208,54 +226,47 @@ describe("createConditionalBranches", () => {
     });
 
     test("Throws if multiple non-constant accessors are used", () => {
-        expect(() =>
-            createConditionalBranches("x", {
-                    field: "a",
+        /** @type {any} */
+        const invalidFieldConditionEncoding = {
+            x: {
+                field: "a",
+                type: "quantitative",
+                condition: {
+                    param: "p",
+                    field: "b",
                     type: "quantitative",
-                    condition: {
-                        param: "p",
-                        field: "b",
-                        type: "quantitative",
-                    },
                 },
-                {
-                    x: {
-                        field: "a",
-                        type: "quantitative",
-                        condition: {
-                            param: "p",
-                            field: "b",
-                            type: "quantitative",
-                        },
-                    },
-                },
+            },
+        };
+
+        expect(() =>
+            createConditionalBranches(
+                "x",
+                invalidFieldConditionEncoding.x,
+                invalidFieldConditionEncoding,
                 paramRuntime
             )
         ).toThrow();
 
+        const invalidExprCondition = /** @type {any} */ ({
+            field: "a",
+            type: "quantitative",
+            condition: {
+                param: "p",
+                expr: "datum.b",
+                type: "quantitative",
+            },
+        });
+
+        const invalidExprEncoding = /** @type {any} */ ({
+            x: invalidExprCondition,
+        });
+
         expect(() =>
-            createConditionalBranches("x", {
-                    field: "a",
-                    type: "quantitative",
-                    condition: {
-                        param: "p",
-                        // @ts-expect-error
-                        expr: "datum.b",
-                        type: "quantitative",
-                    },
-                },
-                {
-                    x: {
-                        field: "a",
-                        type: "quantitative",
-                        condition: {
-                            param: "p",
-                            // @ts-expect-error
-                            expr: "datum.b",
-                            type: "quantitative",
-                        },
-                    },
-                },
+            createConditionalBranches(
+                "x",
+                invalidExprCondition,
+                invalidExprEncoding,
                 paramRuntime
             )
         ).toThrow();
@@ -274,6 +285,7 @@ describe("createConditionalBranches", () => {
             },
         });
 
+        /** @type {import("../spec/channel.js").Encoding} */
         const encoding = {
             x: {
                 field: "x",

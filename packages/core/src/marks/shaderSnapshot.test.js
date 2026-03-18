@@ -9,6 +9,7 @@ const FRAGMENT_SHADER = 0x8b30;
 
 /**
  * @param {string} relativePath
+ * @returns {import("../spec/root.js").RootSpec}
  */
 function loadSpec(relativePath) {
     return JSON.parse(
@@ -16,25 +17,85 @@ function loadSpec(relativePath) {
     );
 }
 
+/**
+ * @typedef {{ type: number, source: string }} FakeShader
+ */
+
+/**
+ * @returns {{
+ *   gl: {
+ *     VERTEX_SHADER: number,
+ *     FRAGMENT_SHADER: number,
+ *     LINK_STATUS: number,
+ *     COMPILE_STATUS: number,
+ *     createProgram: () => object,
+ *     attachShader: () => void,
+ *     linkProgram: () => void,
+ *     getProgramParameter: () => boolean,
+ *     getProgramInfoLog: () => string,
+ *     getShaderParameter: () => boolean,
+ *     getShaderInfoLog: () => string,
+ *     getShaderSource: (shader: FakeShader) => string,
+ *     deleteShader: () => void,
+ *     deleteProgram: () => void,
+ *   },
+ *   rangeTextures: WeakMap<object, object>,
+ *   selectionTextures: WeakMap<object, object>,
+ *   createSelectionTexture: (selection: object) => void,
+ *   compileShader: (type: number, glsl: string | string[]) => FakeShader,
+ *   getCapturedSources: () => { vertex: string | undefined, fragment: string | undefined },
+ * }}
+ */
 function createFakeGlHelper() {
+    /** @type {Map<number, string>} */
     const captured = new Map();
 
-    const gl = {
-        VERTEX_SHADER,
-        FRAGMENT_SHADER,
-        LINK_STATUS: 0x8b82,
-        COMPILE_STATUS: 0x8b81,
-        createProgram: () => ({}),
-        attachShader: () => undefined,
-        linkProgram: () => undefined,
-        getProgramParameter: () => true,
-        getProgramInfoLog: () => "",
-        getShaderParameter: () => true,
-        getShaderInfoLog: () => "",
-        getShaderSource: (shader) => shader.source,
-        deleteShader: () => undefined,
-        deleteProgram: () => undefined,
-    };
+    const gl =
+        /** @type {{
+         *   VERTEX_SHADER: number,
+         *   FRAGMENT_SHADER: number,
+         *   LINK_STATUS: number,
+         *   COMPILE_STATUS: number,
+         *   createProgram: () => object,
+         *   attachShader: () => void,
+         *   linkProgram: () => void,
+         *   getProgramParameter: () => boolean,
+         *   getProgramInfoLog: () => string,
+         *   getShaderParameter: () => boolean,
+         *   getShaderInfoLog: () => string,
+         *   getShaderSource: (shader: FakeShader) => string,
+         *   deleteShader: () => void,
+         *   deleteProgram: () => void,
+         * }} */
+        ({
+            VERTEX_SHADER,
+            FRAGMENT_SHADER,
+            LINK_STATUS: 0x8b82,
+            COMPILE_STATUS: 0x8b81,
+            createProgram() {
+                return {};
+            },
+            attachShader() {},
+            linkProgram() {},
+            getProgramParameter() {
+                return true;
+            },
+            getProgramInfoLog() {
+                return "";
+            },
+            getShaderParameter() {
+                return true;
+            },
+            getShaderInfoLog() {
+                return "";
+            },
+            /** @param {FakeShader} shader */
+            getShaderSource(shader) {
+                return shader.source;
+            },
+            deleteShader() {},
+            deleteProgram() {},
+        });
 
     return {
         gl,
@@ -125,7 +186,9 @@ describe("generated shader snapshots", () => {
 
     test("interval selection example", async () => {
         const sources = await captureShaderSources(
-            loadSpec("../../../../examples/docs/grammar/parameters/interval-selection.json")
+            loadSpec(
+                "../../../../examples/docs/grammar/parameters/interval-selection.json"
+            )
         );
 
         expect(sources).toMatchSnapshot();
@@ -133,7 +196,9 @@ describe("generated shader snapshots", () => {
 
     test("point selection example", async () => {
         const sources = await captureShaderSources(
-            loadSpec("../../../../examples/docs/grammar/parameters/point-selection.json")
+            loadSpec(
+                "../../../../examples/docs/grammar/parameters/point-selection.json"
+            )
         );
 
         expect(sources).toMatchSnapshot();
@@ -141,7 +206,9 @@ describe("generated shader snapshots", () => {
 
     test("penguins scatter plot example", async () => {
         const sources = await captureShaderSources(
-            loadSpec("../../../../examples/docs/grammar/parameters/penguins.json"),
+            loadSpec(
+                "../../../../examples/docs/grammar/parameters/penguins.json"
+            ),
             "scatterPlot"
         );
 
