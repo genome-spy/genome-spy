@@ -1,17 +1,18 @@
 const css = `
-:root {
+@scope {
+:scope {
 --genome-spy-basic-spacing: 10px;
---genome-spy-font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial,
-sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-}
+--genome-spy-font-family:
+system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
-.genome-spy {
 font-family: var(--genome-spy-font-family);
 
 position: relative;
 
 display: flex;
 flex-direction: column;
+}
 
 .canvas-wrapper {
 position: relative;
@@ -190,23 +191,6 @@ font-size: 90%;
 }
 }
 
-.message-box {
-display: flex;
-align-items: center;
-justify-content: center;
-position: absolute;
-top: 0;
-height: 100%;
-width: 100%;
-
-> div {
-border: 1px solid red;
-padding: 10px;
-background: #fff0f0;
-}
-}
-}
-
 .gs-input-binding {
 display: grid;
 grid-template-columns: max-content max-content;
@@ -249,6 +233,23 @@ margin-top: -0.5em;
 flex-basis: content;
 font-size: 14px;
 padding: var(--genome-spy-basic-spacing);
+}
+
+.message-box {
+display: flex;
+align-items: center;
+justify-content: center;
+position: absolute;
+top: 0;
+height: 100%;
+width: 100%;
+
+> div {
+border: 1px solid red;
+padding: 10px;
+background: #fff0f0;
+}
+}
 }
 `;
 export default css;

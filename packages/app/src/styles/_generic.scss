@@ -28,6 +28,50 @@ $menu-active-bg-color: #e8e8e8;
 $menu-item-h-padding: 15px;
 $menu-line-height: 22px;
 
+.gs-input-binding {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    column-gap: 1em;
+    row-gap: 0.3em;
+    justify-items: start;
+
+    > select,
+    > input:not([type="checkbox"]) {
+        width: 100%;
+    }
+
+    input[type="range"] + span {
+        display: inline-block;
+        margin-left: 0.3em;
+        min-width: 2.2em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"],
+    input[type="radio"] {
+        vertical-align: text-bottom;
+    }
+
+    .radio-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .description {
+        max-width: 26em;
+        grid-column: 1 / -1;
+        color: #777;
+        font-size: 90%;
+        margin-top: -0.5em;
+    }
+}
+
+.gs-input-bindings {
+    flex-basis: content;
+    font-size: $font-size;
+    padding: $basic-spacing;
+}
+
 .gs-menu,
 .gs-context-menu,
 .gs-dropdown-menu {

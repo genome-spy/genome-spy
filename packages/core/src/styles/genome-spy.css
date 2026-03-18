@@ -1,17 +1,17 @@
-:root {
-    --genome-spy-basic-spacing: 10px;
-    --genome-spy-font-family:
-        system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-}
+@scope {
+    :scope {
+        --genome-spy-basic-spacing: 10px;
+        --genome-spy-font-family:
+            system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+            "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
-.genome-spy {
-    font-family: var(--genome-spy-font-family);
+        font-family: var(--genome-spy-font-family);
 
-    position: relative;
+        position: relative;
 
-    display: flex;
-    flex-direction: column;
+        display: flex;
+        flex-direction: column;
+    }
 
     .canvas-wrapper {
         position: relative;
@@ -190,6 +190,50 @@
         }
     }
 
+    .gs-input-binding {
+        display: grid;
+        grid-template-columns: max-content max-content;
+        column-gap: 1em;
+        row-gap: 0.3em;
+        justify-items: start;
+
+        > select,
+        > input:not([type="checkbox"]) {
+            width: 100%;
+        }
+
+        input[type="range"] + span {
+            display: inline-block;
+            margin-left: 0.3em;
+            min-width: 2.2em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"],
+        input[type="radio"] {
+            vertical-align: text-bottom;
+        }
+
+        .radio-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .description {
+            max-width: 26em;
+            grid-column: 1 / -1;
+            color: #777;
+            font-size: 90%;
+            margin-top: -0.5em;
+        }
+    }
+
+    .gs-input-bindings {
+        flex-basis: content;
+        font-size: 14px;
+        padding: var(--genome-spy-basic-spacing);
+    }
+
     .message-box {
         display: flex;
         align-items: center;
@@ -205,48 +249,4 @@
             background: #fff0f0;
         }
     }
-}
-
-.gs-input-binding {
-    display: grid;
-    grid-template-columns: max-content max-content;
-    column-gap: 1em;
-    row-gap: 0.3em;
-    justify-items: start;
-
-    > select,
-    > input:not([type="checkbox"]) {
-        width: 100%;
-    }
-
-    input[type="range"] + span {
-        display: inline-block;
-        margin-left: 0.3em;
-        min-width: 2.2em;
-        font-variant-numeric: tabular-nums;
-    }
-
-    input[type="range"],
-    input[type="radio"] {
-        vertical-align: text-bottom;
-    }
-
-    .radio-group {
-        display: flex;
-        align-items: center;
-    }
-
-    .description {
-        max-width: 26em;
-        grid-column: 1 / -1;
-        color: #777;
-        font-size: 90%;
-        margin-top: -0.5em;
-    }
-}
-
-.gs-input-bindings {
-    flex-basis: content;
-    font-size: 14px;
-    padding: var(--genome-spy-basic-spacing);
 }
