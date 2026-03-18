@@ -16,17 +16,7 @@ const curatedBaseUrl = "examples/";
 
 // App-only sample specs are not supported by the core test harness yet and
 // should move under examples/app once that tree is introduced.
-const excludedExamples = new Set([
-    "examples/core/app/samples.json",
-    "examples/core/lazy-data/bigbed.json",
-    "examples/core/lazy-data/bigwig.json",
-    "examples/core/lazy-data/indexed_fasta.json",
-    "examples/docs/grammar/data/lazy/bam-read-alignments.json",
-    "examples/docs/grammar/data/lazy/bigbed-ccre-track.json",
-    "examples/docs/grammar/data/lazy/bigwig-gc-content.json",
-    "examples/docs/grammar/data/lazy/gff3-gene-annotations.json",
-    "examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json",
-]);
+const excludedExamples = new Set(["examples/core/app/samples.json"]);
 
 const examplePaths = collectExamplePaths();
 
@@ -44,7 +34,12 @@ function collectExamplePaths() {
         visit(path.join(repoRoot, dir), (absolutePath) => {
             const relativePath = path.relative(repoRoot, absolutePath);
             const normalizedPath = relativePath.split(path.sep).join("/");
-            if (!excludedExamples.has(normalizedPath)) {
+            const spec = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+
+            if (
+                !excludedExamples.has(normalizedPath) &&
+                !hasExternalDataUrl(spec)
+            ) {
                 paths.push(normalizedPath);
             }
         });
@@ -191,4 +186,42 @@ function visitSpec(node, visitor) {
             visitSpec(value, visitor);
         }
     }
+}
+
+/**
+ * Exclude examples that require network access from the offline snapshot suite.
+ *
+ * @param {any} node
+ */
+function hasExternalDataUrl(node) {
+    let foundExternalUrl = false;
+
+    visitSpec(node, (currentNode) => {
+        if (
+            foundExternalUrl ||
+            !currentNode ||
+            typeof currentNode !== "object"
+        ) {
+            return;
+        }
+
+        if (isAbsoluteHttpUrl(currentNode.url)) {
+            foundExternalUrl = true;
+        } else if (
+            currentNode.name === "url" &&
+            (isAbsoluteHttpUrl(currentNode.value) ||
+                currentNode.bind?.options?.some(isAbsoluteHttpUrl))
+        ) {
+            foundExternalUrl = true;
+        }
+    });
+
+    return foundExternalUrl;
+}
+
+/**
+ * @param {unknown} value
+ */
+function isAbsoluteHttpUrl(value) {
+    return typeof value === "string" && /^https?:\/\//.test(value);
 }

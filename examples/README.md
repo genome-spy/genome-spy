@@ -42,6 +42,10 @@ Use example-root-relative URLs such as `"url": "data/sincos.csv"` and
 The same spec must work both in local dev and in deployed docs under
 `/docs/examples/...`.
 
+The offline shared-example Vitest suite skips specs that contain absolute
+`http://` or `https://` data URLs. Those examples remain available in docs, the
+playground, and screenshot capture.
+
 ## Formatting
 
 This section is a style guide for both humans and LLMs editing example specs.
