@@ -1,0 +1,4462 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generated shader snapshots > interval selection example 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    // Selection parameter
+    uniform highp float[2] uParam_brush_x;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+const lowp vec4 white = vec4(1.0);
+const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+
+flat in float vRadius;
+flat in float vRadiusWithPadding;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in lowp float vShape;
+flat in lowp float vHalfStrokeWidth;
+
+flat in mat2 vRotationMatrix;
+
+out lowp vec4 fragColor;
+
+// Copypaste from vertex shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TICK_UP = 8.0;
+
+// The distance functions are inspired by:
+// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// However, these are not true distance functions, because the corners need to be sharp.
+
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float square(vec2 p, float r) {
+    p = abs(p);
+    return max(p.x, p.y) - r;
+}
+
+float tickUp(vec2 p, float r) {
+    float halfR = r * 0.5;
+    p.y += halfR;
+    p = abs(p);
+    return max(p.x - r * 0.15, p.y - halfR);
+}
+
+float equilateralTriangle(vec2 p, float r) {
+    p.y = -p.y;
+    float k = sqrt(3.0);
+    float kr = k * r;
+    p.y -= kr / 2.0;
+    return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
+}
+
+float crossShape(vec2 p, float r) {
+    p = abs(p);
+
+	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 v = abs(p) - b.xy;
+    vec2 h = abs(p) - b.yx;
+    return min(max(v.x, v.y), max(h.x, h.y));
+}
+
+float diamond(vec2 p, float r) {
+    p = abs(p);
+    return (max(abs(p.x - p.y), abs(p.x + p.y)) - r) / sqrt(2.0);
+}
+
+void main() {
+    float d;
+
+	/** Normalized point coord */
+    vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
+	float r = vRadius;
+
+    // We could also use textures here. Could even be faster, because we have plenty of branching here.
+    if (vShape == CIRCLE) {
+        d = circle(p, r);
+
+    } else if (vShape == SQUARE) {
+        d = square(p, r);
+
+    } else if (vShape == CROSS) {
+        d = crossShape(p, r);
+
+    } else if (vShape == DIAMOND) {
+        d = diamond(p, r);
+
+    } else if (vShape == TRIANGLE_UP) {
+        d = equilateralTriangle(p, r);
+
+    } else if (vShape == TICK_UP) {
+        d = tickUp(p, r);
+
+    } else {
+        d = 0.0;
+    }
+
+	if (!uPickingEnabled) {
+		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
+
+		fragColor = distanceToColor(
+			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
+			fillColor,
+			vStrokeColor,
+            vec4(0.0),
+			vHalfStrokeWidth);
+
+	} else if (d - vHalfStrokeWidth <= 0.0) {
+        fragColor = vPickingColor;
+
+	} else {
+		discard;
+    }
+}
+
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    // Selection parameter
+    uniform highp float[2] uParam_brush_x;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp float attr_x;
+in highp float attr_y;
+
+bool checkSelection_brush(bool empty) {
+    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1]));
+}
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+float accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_y_0() {
+    return attr_y;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(0.0, 1.0);
+
+float scale_y(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+float accessor_size_0() {
+    // Constant value
+    return float(100.0);
+}
+
+float getScaled_size() {
+return accessor_size_0();
+}
+
+#define size_DEFINED
+
+
+float accessor_semanticScore_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_semanticScore() {
+return accessor_semanticScore_0();
+}
+
+#define semanticScore_DEFINED
+
+
+float accessor_shape_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_shape() {
+return accessor_shape_0();
+}
+
+#define shape_DEFINED
+
+
+float accessor_strokeWidth_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_strokeWidth() {
+return accessor_strokeWidth_0();
+}
+
+#define strokeWidth_DEFINED
+
+
+float accessor_dx_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dx() {
+return accessor_dx_0();
+}
+
+#define dx_DEFINED
+
+
+float accessor_dy_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dy() {
+return accessor_dy_0();
+}
+
+#define dy_DEFINED
+
+
+float accessor_angle_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_angle() {
+return accessor_angle_0();
+}
+
+#define angle_DEFINED
+
+
+vec3 accessor_stroke_0() {
+    // Constant value
+    return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 getScaled_stroke() {
+return accessor_stroke_0();
+}
+
+#define stroke_DEFINED
+
+
+float accessor_strokeOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_strokeOpacity() {
+return accessor_strokeOpacity_0();
+}
+
+#define strokeOpacity_DEFINED
+
+
+vec3 accessor_fill_0() {
+    // Constant value
+    return vec3(0.2, 0.5333333333333333, 0.8);
+}
+
+
+vec3 accessor_fill_1() {
+    // Constant value
+    return vec3(0.8666666666666667, 0.8666666666666667, 0.8666666666666667);
+}
+
+vec3 getScaled_fill() {
+    if (checkSelection_brush(true)) {
+        return accessor_fill_0();
+    }
+    else {
+        return accessor_fill_1();
+    }
+}
+
+#define fill_DEFINED
+
+
+float accessor_fillOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_fillOpacity() {
+return accessor_fillOpacity_0();
+}
+
+#define fillOpacity_DEFINED
+
+bool isPointSelected() {
+    return checkSelection_brush(false);
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out float vRadius;
+flat out float vRadiusWithPadding;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out lowp float vShape;
+flat out lowp float vHalfStrokeWidth;
+flat out mat2 vRotationMatrix;
+
+// Copypaste from fragment shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TRIANGLE_RIGHT = 5.0;
+const float TRIANGLE_DOWN = 6.0;
+const float TRIANGLE_LEFT = 7.0;
+const float TICK_UP = 8.0;
+const float TICK_RIGHT = 9.0;
+const float TICK_DOWN = 10.0;
+const float TICK_LEFT = 11.0;
+
+float computeSemanticThresholdFactor() {
+    // TODO: add smooth transition
+    return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
+}
+
+// TODO: Move this into common.glsl or something
+vec2 getDxDy() {
+#if defined(dx_DEFINED) || defined(dy_DEFINED)
+    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+#else
+    return vec2(0.0, 0.0);
+#endif
+}
+
+void main(void) {
+    float shapeAngle = 0.0;
+
+    // Selected points should always be visible
+    float semanticThresholdFactor = isPointSelected()
+        ? 1.0
+        : computeSemanticThresholdFactor();
+
+    if (semanticThresholdFactor <= 0.0) {
+        gl_PointSize = 0.0;
+        // Place the vertex outside the viewport. The default (0, 0) makes this super-slow
+        // on Apple Silicon. Probably related to the tile-based GPU architecture.
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        // Exit early. MAY prevent some unnecessary calculations.
+        return;
+    }
+
+    float size = getScaled_size();
+    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
+
+    gl_Position = unitToNdc(applySampleFacet(pos));
+
+    float strokeWidth = getScaled_strokeWidth();
+
+    float diameter = sqrt(size) *
+        uScaleFactor *
+        semanticThresholdFactor;
+
+    // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
+    // no flickering etc.
+    float opacity = uViewOpacity;
+	if (strokeWidth <= 0.0 || uInwardStroke) {
+		float minDiameter = 1.0 / uDevicePixelRatio;
+		if (diameter < minDiameter) {
+			// We do some "cheap" gamma correction here. It breaks on dark background, though.
+			// First we take a square of the size and then apply "gamma" of 1.5.
+			opacity *= pow(diameter / minDiameter, 2.5);
+			diameter = minDiameter;
+		}
+	}
+
+	float fillOpa = getScaled_fillOpacity() * opacity;
+	float strokeOpa = getScaled_strokeOpacity() * opacity;
+
+    vShape = getScaled_shape();
+
+	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
+	bool circle = vShape == 0.0;
+
+    if (vShape > TICK_UP && vShape <= TICK_LEFT) {
+        shapeAngle = (vShape - TICK_UP) * 90.0;
+        vShape = TICK_UP;
+    } else if (vShape > TRIANGLE_UP && vShape <= TRIANGLE_LEFT) {
+        shapeAngle = (vShape - TRIANGLE_UP) * 90.0;
+        vShape = TRIANGLE_UP;
+    }
+
+	float angleInDegrees = getScaled_angle();
+	float angle = -(shapeAngle + angleInDegrees) * PI / 180.0;
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    // Not needed if we would draw rotated quads instead of gl.POINTS
+	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
+
+	float aaPadding = 1.0 / uDevicePixelRatio;
+	float rotationPadding = (diameter * roomForRotation) - diameter;
+	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
+	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
+	float padding = rotationPadding + strokePadding + aaPadding;
+
+    gl_PointSize = max(
+        (diameter + padding),
+        uPickingEnabled ? uMinPickingSize : 0.0
+    ) * uDevicePixelRatio;
+
+	vRadius = diameter / 2.0;
+	vRadiusWithPadding = vRadius + padding / 2.0;
+
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
+    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+
+    setupPicking();
+}
+",
+}
+`;
+
+exports[`generated shader snapshots > penguins scatter plot example 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot/scatterPlot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    // Selection parameter
+    uniform highp float[2] uParam_brush_x;
+    // Selection parameter
+    uniform highp float[2] uParam_brush_y;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+const lowp vec4 white = vec4(1.0);
+const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+
+flat in float vRadius;
+flat in float vRadiusWithPadding;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in lowp float vShape;
+flat in lowp float vHalfStrokeWidth;
+
+flat in mat2 vRotationMatrix;
+
+out lowp vec4 fragColor;
+
+// Copypaste from vertex shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TICK_UP = 8.0;
+
+// The distance functions are inspired by:
+// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// However, these are not true distance functions, because the corners need to be sharp.
+
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float square(vec2 p, float r) {
+    p = abs(p);
+    return max(p.x, p.y) - r;
+}
+
+float tickUp(vec2 p, float r) {
+    float halfR = r * 0.5;
+    p.y += halfR;
+    p = abs(p);
+    return max(p.x - r * 0.15, p.y - halfR);
+}
+
+float equilateralTriangle(vec2 p, float r) {
+    p.y = -p.y;
+    float k = sqrt(3.0);
+    float kr = k * r;
+    p.y -= kr / 2.0;
+    return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
+}
+
+float crossShape(vec2 p, float r) {
+    p = abs(p);
+
+	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 v = abs(p) - b.xy;
+    vec2 h = abs(p) - b.yx;
+    return min(max(v.x, v.y), max(h.x, h.y));
+}
+
+float diamond(vec2 p, float r) {
+    p = abs(p);
+    return (max(abs(p.x - p.y), abs(p.x + p.y)) - r) / sqrt(2.0);
+}
+
+void main() {
+    float d;
+
+	/** Normalized point coord */
+    vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
+	float r = vRadius;
+
+    // We could also use textures here. Could even be faster, because we have plenty of branching here.
+    if (vShape == CIRCLE) {
+        d = circle(p, r);
+
+    } else if (vShape == SQUARE) {
+        d = square(p, r);
+
+    } else if (vShape == CROSS) {
+        d = crossShape(p, r);
+
+    } else if (vShape == DIAMOND) {
+        d = diamond(p, r);
+
+    } else if (vShape == TRIANGLE_UP) {
+        d = equilateralTriangle(p, r);
+
+    } else if (vShape == TICK_UP) {
+        d = tickUp(p, r);
+
+    } else {
+        d = 0.0;
+    }
+
+	if (!uPickingEnabled) {
+		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
+
+		fragColor = distanceToColor(
+			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
+			fillColor,
+			vStrokeColor,
+            vec4(0.0),
+			vHalfStrokeWidth);
+
+	} else if (d - vHalfStrokeWidth <= 0.0) {
+        fragColor = vPickingColor;
+
+	} else {
+		discard;
+    }
+}
+
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot/scatterPlot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    // Selection parameter
+    uniform highp float[2] uParam_brush_x;
+    // Selection parameter
+    uniform highp float[2] uParam_brush_y;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp float attr_x;
+in highp float attr_y;
+in highp uint attr_stroke;
+in highp uint attr_fill;
+
+bool checkSelection_brush(bool empty) {
+    return (uParam_brush_x[0] <= attr_x && attr_x <= uParam_brush_x[1]) && (uParam_brush_y[0] <= attr_y && attr_y <= uParam_brush_y[1]) || (empty && (uParam_brush_x[0] > uParam_brush_x[1] || uParam_brush_y[0] > uParam_brush_y[1]));
+}
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+float accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_y_0() {
+    return attr_y;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(0.0, 1.0);
+
+float scale_y(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+float accessor_size_0() {
+    // Constant value
+    return float(40.0);
+}
+
+float getScaled_size() {
+return accessor_size_0();
+}
+
+#define size_DEFINED
+
+
+float accessor_semanticScore_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_semanticScore() {
+return accessor_semanticScore_0();
+}
+
+#define semanticScore_DEFINED
+
+
+float accessor_shape_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_shape() {
+return accessor_shape_0();
+}
+
+#define shape_DEFINED
+
+
+float accessor_strokeWidth_0() {
+    // Constant value
+    return float(2.0);
+}
+
+float getScaled_strokeWidth() {
+return accessor_strokeWidth_0();
+}
+
+#define strokeWidth_DEFINED
+
+
+float accessor_dx_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dx() {
+return accessor_dx_0();
+}
+
+#define dx_DEFINED
+
+
+float accessor_dy_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dy() {
+return accessor_dy_0();
+}
+
+#define dy_DEFINED
+
+
+float accessor_angle_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_angle() {
+return accessor_angle_0();
+}
+
+#define angle_DEFINED
+
+
+uint accessor_stroke_0() {
+    return attr_stroke;
+}
+
+
+vec3 accessor_stroke_1() {
+    // Constant value
+    return vec3(0.8274509803921568, 0.8274509803921568, 0.8274509803921568);
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: stroke
+
+uniform sampler2D uRangeTexture_stroke;
+
+vec3 scale_stroke(uint value) {
+    int slot = 0;
+    float transformed = scaleIdentity(value);
+    return getDiscreteColor(uRangeTexture_stroke, int(transformed));
+
+}
+
+vec3 getScaled_stroke() {
+    if (checkSelection_brush(true)) {
+        return scale_stroke(accessor_stroke_0());
+    }
+    else {
+        return accessor_stroke_1();
+    }
+}
+
+#define stroke_DEFINED
+
+
+float accessor_strokeOpacity_0() {
+    // Constant value
+    return float(0.7);
+}
+
+float getScaled_strokeOpacity() {
+return accessor_strokeOpacity_0();
+}
+
+#define strokeOpacity_DEFINED
+
+
+uint accessor_fill_0() {
+    return attr_fill;
+}
+
+
+vec3 accessor_fill_1() {
+    // Constant value
+    return vec3(0.8274509803921568, 0.8274509803921568, 0.8274509803921568);
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: fill
+
+uniform sampler2D uRangeTexture_fill;
+
+vec3 scale_fill(uint value) {
+    int slot = 0;
+    float transformed = scaleIdentity(value);
+    return getDiscreteColor(uRangeTexture_fill, int(transformed));
+
+}
+
+vec3 getScaled_fill() {
+    if (checkSelection_brush(true)) {
+        return scale_fill(accessor_fill_0());
+    }
+    else {
+        return accessor_fill_1();
+    }
+}
+
+#define fill_DEFINED
+
+
+float accessor_fillOpacity_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_fillOpacity() {
+return accessor_fillOpacity_0();
+}
+
+#define fillOpacity_DEFINED
+
+bool isPointSelected() {
+    return checkSelection_brush(false);
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out float vRadius;
+flat out float vRadiusWithPadding;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out lowp float vShape;
+flat out lowp float vHalfStrokeWidth;
+flat out mat2 vRotationMatrix;
+
+// Copypaste from fragment shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TRIANGLE_RIGHT = 5.0;
+const float TRIANGLE_DOWN = 6.0;
+const float TRIANGLE_LEFT = 7.0;
+const float TICK_UP = 8.0;
+const float TICK_RIGHT = 9.0;
+const float TICK_DOWN = 10.0;
+const float TICK_LEFT = 11.0;
+
+float computeSemanticThresholdFactor() {
+    // TODO: add smooth transition
+    return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
+}
+
+// TODO: Move this into common.glsl or something
+vec2 getDxDy() {
+#if defined(dx_DEFINED) || defined(dy_DEFINED)
+    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+#else
+    return vec2(0.0, 0.0);
+#endif
+}
+
+void main(void) {
+    float shapeAngle = 0.0;
+
+    // Selected points should always be visible
+    float semanticThresholdFactor = isPointSelected()
+        ? 1.0
+        : computeSemanticThresholdFactor();
+
+    if (semanticThresholdFactor <= 0.0) {
+        gl_PointSize = 0.0;
+        // Place the vertex outside the viewport. The default (0, 0) makes this super-slow
+        // on Apple Silicon. Probably related to the tile-based GPU architecture.
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        // Exit early. MAY prevent some unnecessary calculations.
+        return;
+    }
+
+    float size = getScaled_size();
+    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
+
+    gl_Position = unitToNdc(applySampleFacet(pos));
+
+    float strokeWidth = getScaled_strokeWidth();
+
+    float diameter = sqrt(size) *
+        uScaleFactor *
+        semanticThresholdFactor;
+
+    // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
+    // no flickering etc.
+    float opacity = uViewOpacity;
+	if (strokeWidth <= 0.0 || uInwardStroke) {
+		float minDiameter = 1.0 / uDevicePixelRatio;
+		if (diameter < minDiameter) {
+			// We do some "cheap" gamma correction here. It breaks on dark background, though.
+			// First we take a square of the size and then apply "gamma" of 1.5.
+			opacity *= pow(diameter / minDiameter, 2.5);
+			diameter = minDiameter;
+		}
+	}
+
+	float fillOpa = getScaled_fillOpacity() * opacity;
+	float strokeOpa = getScaled_strokeOpacity() * opacity;
+
+    vShape = getScaled_shape();
+
+	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
+	bool circle = vShape == 0.0;
+
+    if (vShape > TICK_UP && vShape <= TICK_LEFT) {
+        shapeAngle = (vShape - TICK_UP) * 90.0;
+        vShape = TICK_UP;
+    } else if (vShape > TRIANGLE_UP && vShape <= TRIANGLE_LEFT) {
+        shapeAngle = (vShape - TRIANGLE_UP) * 90.0;
+        vShape = TRIANGLE_UP;
+    }
+
+	float angleInDegrees = getScaled_angle();
+	float angle = -(shapeAngle + angleInDegrees) * PI / 180.0;
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    // Not needed if we would draw rotated quads instead of gl.POINTS
+	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
+
+	float aaPadding = 1.0 / uDevicePixelRatio;
+	float rotationPadding = (diameter * roomForRotation) - diameter;
+	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
+	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
+	float padding = rotationPadding + strokePadding + aaPadding;
+
+    gl_PointSize = max(
+        (diameter + padding),
+        uPickingEnabled ? uMinPickingSize : 0.0
+    ) * uDevicePixelRatio;
+
+	vRadius = diameter / 2.0;
+	vRadiusWithPadding = vRadius + padding / 2.0;
+
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
+    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+
+    setupPicking();
+}
+",
+}
+`;
+
+exports[`generated shader snapshots > point mark control spec 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+const lowp vec4 white = vec4(1.0);
+const lowp vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+
+flat in float vRadius;
+flat in float vRadiusWithPadding;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in lowp float vShape;
+flat in lowp float vHalfStrokeWidth;
+
+flat in mat2 vRotationMatrix;
+
+out lowp vec4 fragColor;
+
+// Copypaste from vertex shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TICK_UP = 8.0;
+
+// The distance functions are inspired by:
+// http://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+// However, these are not true distance functions, because the corners need to be sharp.
+
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float square(vec2 p, float r) {
+    p = abs(p);
+    return max(p.x, p.y) - r;
+}
+
+float tickUp(vec2 p, float r) {
+    float halfR = r * 0.5;
+    p.y += halfR;
+    p = abs(p);
+    return max(p.x - r * 0.15, p.y - halfR);
+}
+
+float equilateralTriangle(vec2 p, float r) {
+    p.y = -p.y;
+    float k = sqrt(3.0);
+    float kr = k * r;
+    p.y -= kr / 2.0;
+    return max((abs(p.x) * k + p.y) / 2.0, -p.y - kr);
+}
+
+float crossShape(vec2 p, float r) {
+    p = abs(p);
+
+	vec2 b = vec2(0.4, 1.0) * r;
+    vec2 v = abs(p) - b.xy;
+    vec2 h = abs(p) - b.yx;
+    return min(max(v.x, v.y), max(h.x, h.y));
+}
+
+float diamond(vec2 p, float r) {
+    p = abs(p);
+    return (max(abs(p.x - p.y), abs(p.x + p.y)) - r) / sqrt(2.0);
+}
+
+void main() {
+    float d;
+
+	/** Normalized point coord */
+    vec2 p = vRotationMatrix * (2.0 * gl_PointCoord - 1.0) * vRadiusWithPadding;
+	float r = vRadius;
+
+    // We could also use textures here. Could even be faster, because we have plenty of branching here.
+    if (vShape == CIRCLE) {
+        d = circle(p, r);
+
+    } else if (vShape == SQUARE) {
+        d = square(p, r);
+
+    } else if (vShape == CROSS) {
+        d = crossShape(p, r);
+
+    } else if (vShape == DIAMOND) {
+        d = diamond(p, r);
+
+    } else if (vShape == TRIANGLE_UP) {
+        d = equilateralTriangle(p, r);
+
+    } else if (vShape == TICK_UP) {
+        d = tickUp(p, r);
+
+    } else {
+        d = 0.0;
+    }
+
+	if (!uPickingEnabled) {
+		lowp vec4 fillColor = mix(vFillColor, white, -d * uGradientStrength / vRadius);
+
+		fragColor = distanceToColor(
+			d + (uInwardStroke ? vHalfStrokeWidth : 0.0),
+			fillColor,
+			vStrokeColor,
+            vec4(0.0),
+			vHalfStrokeWidth);
+
+	} else if (d - vHalfStrokeWidth <= 0.0) {
+        fragColor = vPickingColor;
+
+	} else {
+		discard;
+    }
+}
+
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /**
+    * The stroke should only grow inwards, e.g, the diameter/outline is not affected by the stroke width.
+    * Thus, a point that has a zero size has no visible stroke. This allows strokes to be used with
+    * geometric zoom, etc.
+    */
+    uniform bool uInwardStroke;
+
+    /** The minimum point size in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    /** Scale factor for geometric zoom */
+    uniform mediump float uScaleFactor;
+
+    uniform mediump float uZoomLevel;
+    uniform highp float uSemanticThreshold;
+
+    uniform mediump float uGradientStrength;
+
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp float attr_x;
+in highp float attr_y;
+in highp uint attr_fill;
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+float accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_y_0() {
+    return attr_y;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(0.0, 1.0);
+
+float scale_y(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+float accessor_size_0() {
+    // Constant value
+    return float(100.0);
+}
+
+float getScaled_size() {
+return accessor_size_0();
+}
+
+#define size_DEFINED
+
+
+float accessor_semanticScore_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_semanticScore() {
+return accessor_semanticScore_0();
+}
+
+#define semanticScore_DEFINED
+
+
+float accessor_shape_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_shape() {
+return accessor_shape_0();
+}
+
+#define shape_DEFINED
+
+
+float accessor_strokeWidth_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_strokeWidth() {
+return accessor_strokeWidth_0();
+}
+
+#define strokeWidth_DEFINED
+
+
+float accessor_dx_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dx() {
+return accessor_dx_0();
+}
+
+#define dx_DEFINED
+
+
+float accessor_dy_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_dy() {
+return accessor_dy_0();
+}
+
+#define dy_DEFINED
+
+
+float accessor_angle_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_angle() {
+return accessor_angle_0();
+}
+
+#define angle_DEFINED
+
+
+vec3 accessor_stroke_0() {
+    // Constant value
+    return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 getScaled_stroke() {
+return accessor_stroke_0();
+}
+
+#define stroke_DEFINED
+
+
+float accessor_strokeOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_strokeOpacity() {
+return accessor_strokeOpacity_0();
+}
+
+#define strokeOpacity_DEFINED
+
+
+uint accessor_fill_0() {
+    return attr_fill;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: fill
+
+uniform sampler2D uRangeTexture_fill;
+
+vec3 scale_fill(uint value) {
+    int slot = 0;
+    float transformed = scaleIdentity(value);
+    return getDiscreteColor(uRangeTexture_fill, int(transformed));
+
+}
+
+vec3 getScaled_fill() {
+return scale_fill(accessor_fill_0());
+}
+
+#define fill_DEFINED
+
+
+float accessor_fillOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_fillOpacity() {
+return accessor_fillOpacity_0();
+}
+
+#define fillOpacity_DEFINED
+
+bool isPointSelected() {
+    return false;
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out float vRadius;
+flat out float vRadiusWithPadding;
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out lowp float vShape;
+flat out lowp float vHalfStrokeWidth;
+flat out mat2 vRotationMatrix;
+
+// Copypaste from fragment shader
+const float CIRCLE = 0.0;
+const float SQUARE = 1.0;
+const float CROSS = 2.0;
+const float DIAMOND = 3.0;
+const float TRIANGLE_UP = 4.0;
+const float TRIANGLE_RIGHT = 5.0;
+const float TRIANGLE_DOWN = 6.0;
+const float TRIANGLE_LEFT = 7.0;
+const float TICK_UP = 8.0;
+const float TICK_RIGHT = 9.0;
+const float TICK_DOWN = 10.0;
+const float TICK_LEFT = 11.0;
+
+float computeSemanticThresholdFactor() {
+    // TODO: add smooth transition
+    return getScaled_semanticScore() >= uSemanticThreshold ? 1.0 : 0.0;
+}
+
+// TODO: Move this into common.glsl or something
+vec2 getDxDy() {
+#if defined(dx_DEFINED) || defined(dy_DEFINED)
+    return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;
+#else
+    return vec2(0.0, 0.0);
+#endif
+}
+
+void main(void) {
+    float shapeAngle = 0.0;
+
+    // Selected points should always be visible
+    float semanticThresholdFactor = isPointSelected()
+        ? 1.0
+        : computeSemanticThresholdFactor();
+
+    if (semanticThresholdFactor <= 0.0) {
+        gl_PointSize = 0.0;
+        // Place the vertex outside the viewport. The default (0, 0) makes this super-slow
+        // on Apple Silicon. Probably related to the tile-based GPU architecture.
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        // Exit early. MAY prevent some unnecessary calculations.
+        return;
+    }
+
+    float size = getScaled_size();
+    vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
+
+    gl_Position = unitToNdc(applySampleFacet(pos));
+
+    float strokeWidth = getScaled_strokeWidth();
+
+    float diameter = sqrt(size) *
+        uScaleFactor *
+        semanticThresholdFactor;
+
+    // Clamp minimum size and adjust opacity instead. Yields more pleasing result,
+    // no flickering etc.
+    float opacity = uViewOpacity;
+	if (strokeWidth <= 0.0 || uInwardStroke) {
+		float minDiameter = 1.0 / uDevicePixelRatio;
+		if (diameter < minDiameter) {
+			// We do some "cheap" gamma correction here. It breaks on dark background, though.
+			// First we take a square of the size and then apply "gamma" of 1.5.
+			opacity *= pow(diameter / minDiameter, 2.5);
+			diameter = minDiameter;
+		}
+	}
+
+	float fillOpa = getScaled_fillOpacity() * opacity;
+	float strokeOpa = getScaled_strokeOpacity() * opacity;
+
+    vShape = getScaled_shape();
+
+	// Circle doesn't have sharp corners. Do some special optimizations to minimize the point size.
+	bool circle = vShape == 0.0;
+
+    if (vShape > TICK_UP && vShape <= TICK_LEFT) {
+        shapeAngle = (vShape - TICK_UP) * 90.0;
+        vShape = TICK_UP;
+    } else if (vShape > TRIANGLE_UP && vShape <= TRIANGLE_LEFT) {
+        shapeAngle = (vShape - TRIANGLE_UP) * 90.0;
+        vShape = TRIANGLE_UP;
+    }
+
+	float angleInDegrees = getScaled_angle();
+	float angle = -(shapeAngle + angleInDegrees) * PI / 180.0;
+    float sinTheta = sin(angle);
+    float cosTheta = cos(angle);
+    vRotationMatrix = mat2(cosTheta, sinTheta, -sinTheta, cosTheta);
+
+    // Not needed if we would draw rotated quads instead of gl.POINTS
+	float roomForRotation = circle ? 1.0 : sin(mod(angle, PI / 2.0) + PI / 4.0) / sin(PI / 4.0);
+
+	float aaPadding = 1.0 / uDevicePixelRatio;
+	float rotationPadding = (diameter * roomForRotation) - diameter;
+	// sqrt(3.0) ensures that the angles of equilateral triangles have enough room
+	float strokePadding = uInwardStroke ? 0.0 : strokeWidth * (circle ? 1.0 : sqrt(3.0));
+	float padding = rotationPadding + strokePadding + aaPadding;
+
+    gl_PointSize = max(
+        (diameter + padding),
+        uPickingEnabled ? uMinPickingSize : 0.0
+    ) * uDevicePixelRatio;
+
+	vRadius = diameter / 2.0;
+	vRadiusWithPadding = vRadius + padding / 2.0;
+
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
+    vFillColor = vec4(getScaled_fill() * fillOpa, fillOpa);
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpa, strokeOpa);
+
+    setupPicking();
+}
+",
+}
+`;
+
+exports[`generated shader snapshots > point selection example 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /** Minimum size (width, height) of the displayed rectangle in pixels */
+    uniform float uMinWidth;
+    uniform float uMinHeight;
+
+    /** Minimum opacity for the size clamping */
+    uniform float uMinOpacity;
+
+    uniform float uCornerRadiusTopRight;
+    uniform float uCornerRadiusBottomRight;
+    uniform float uCornerRadiusTopLeft;
+    uniform float uCornerRadiusBottomLeft;
+
+    uniform int uHatchPattern;
+
+    uniform vec3 uShadowColor;
+    uniform float uShadowOpacity;
+    uniform float uShadowBlur;
+    uniform float uShadowOffsetX;
+    uniform float uShadowOffsetY;
+
+    // Selection parameter
+    uniform highp uint uParam_highlight;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+    uniform highp float attr_y2;
+
+
+};
+
+
+#define STROKED
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
+in vec2 vPosInPixels;
+#endif
+
+flat in vec2 vHalfSizeInPixels;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in float vHalfStrokeWidth;
+flat in vec4 vCornerRadii;
+
+out lowp vec4 fragColor;
+
+// ----------------------------------------------------------------------------
+// Shadow source: https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
+// License: CC0 (http://creativecommons.org/publicdomain/zero/1.0/)
+
+#ifdef SHADOW
+
+// A standard gaussian function, used for weighting samples
+float gaussian(float x, float sigma) {
+  const float pi = 3.141592653589793;
+  return exp(-(x * x) / (2.0 * sigma * sigma)) / (sqrt(2.0 * pi) * sigma);
+}
+
+// This approximates the error function, needed for the gaussian integral
+vec2 erf(vec2 x) {
+  vec2 s = sign(x), a = abs(x);
+  x = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
+  x *= x;
+  return s - s / (x * x);
+}
+
+// Return the blurred mask along the x dimension
+float roundedBoxShadowX(float x, float y, float sigma, float corner, vec2 halfSize) {
+  float delta = min(halfSize.y - corner - abs(y), 0.0);
+  float curved = halfSize.x - corner + sqrt(max(0.0, corner * corner - delta * delta));
+  vec2 integral = 0.5 + 0.5 * erf((x + vec2(-curved, curved)) * (sqrt(0.5) / sigma));
+  return integral.y - integral.x;
+}
+
+// Return the mask for the shadow of a box from lower to upper
+float roundedBoxShadow(vec2 lower, vec2 upper, vec2 point, float sigma, float corner) {
+  // Center everything to make the math easier
+  vec2 center = (lower + upper) * 0.5;
+  vec2 halfSize = (upper - lower) * 0.5;
+  point -= center;
+
+  // The signal is only non-zero in a limited range, so don't waste samples
+  float low = point.y - halfSize.y;
+  float high = point.y + halfSize.y;
+  float start = clamp(-3.0 * sigma, low, high);
+  float end = clamp(3.0 * sigma, low, high);
+
+  // Accumulate samples (we can get away with surprisingly few samples)
+  float step = (end - start) / 4.0;
+  float y = start + step * 0.5;
+  float value = 0.0;
+  for (int i = 0; i < 4; i++) {
+    value += roundedBoxShadowX(point.x, point.y - y, sigma, corner, halfSize) * gaussian(y, sigma) * step;
+    y += step;
+  }
+
+  return value;
+}
+
+// ----------------------------------------------------------------------------
+
+#endif
+
+// Source: https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+float sdRoundedBox(vec2 p, vec2 b, vec4 r) {
+    r.xy = p.x > 0.0 ? r.xy : r.zw;
+    r.x  = p.y > 0.0 ? r.x  : r.y;
+    vec2 q = abs(p) - b + r.x;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r.x;
+}
+
+// Not a true SDF. Makes the corners of strokes sharp and is faster.
+float sdSharpBox(vec2 p, vec2 b) {
+    vec2 q = abs(p) - b;
+    return max(q.x, q.y);
+}
+
+float diagonalPattern(vec2 uv, float spacing) {
+    // Using 1.5 to approximate sqrt(2.0) to reduce aliasing artifacts.
+    float divisor = spacing * vHalfStrokeWidth * 2.0 * 1.5;
+    return abs(mod(uv.x - uv.y, divisor) - 0.5 * divisor) / 1.5;
+}
+
+float verticalPattern(float x, float spacing) {
+    float divisor = spacing * vHalfStrokeWidth * 2.0;
+    return abs(mod(x, divisor)) / 2.0;
+}
+
+float circle(vec2 p, float r) {
+    return length(p) - r;
+}
+
+float masonryCirclePattern(vec2 uv, float spacing, float radius) {
+    float halfSpacing = 0.5 * spacing;
+
+    float row = floor(uv.y / spacing);
+    float shift = mod(row, 2.0) * halfSpacing;
+
+    vec2 shifted = vec2(uv.x + shift, uv.y + halfSpacing);
+    vec2 cell = mod(shifted + 0.5 * spacing, spacing) - halfSpacing;
+
+    return abs(circle(cell, radius));
+}
+
+/**
+ * Patterns:
+ * 0  none
+ * 1  diagonal (/)
+ * 2  antiDiagonal (\\)
+ * 3  cross (X)
+ * 4  vertical (|)
+ * 5  horizontal (-)
+ * 6  grid (+)
+ * 7  dots (.)
+ * 8  rings (o)
+ * 9  ringsLarge (O)
+ */
+float pattern() {
+#ifdef STROKED
+    int patternType = uHatchPattern;
+    vec2 uv = vPosInPixels;
+    float spacing = 4.0;
+
+    switch (patternType) {
+        case 1:
+            return diagonalPattern(vec2(uv.x, -uv.y), spacing);
+        case 2:
+            return diagonalPattern(uv, spacing);
+        case 3:
+            return min(
+                diagonalPattern(uv, spacing),
+                diagonalPattern(vec2(uv.x, -uv.y), spacing)
+            );
+        case 4:
+            return verticalPattern(uv.x, spacing);
+        case 5:
+            return verticalPattern(uv.y, spacing);
+        case 6:
+            return min(
+                verticalPattern(uv.x, spacing),
+                verticalPattern(uv.y, spacing)
+            );
+        case 7:
+        case 8:
+        case 9: {
+            float spacing = vHalfStrokeWidth * 14.0;
+            float radius = spacing * (
+                patternType == 8 ? 0.2 :
+                patternType == 9 ? 0.35 :
+                0.07
+            );
+            return masonryCirclePattern(uv, spacing, radius);
+        }
+        default:
+            break;
+    }
+#endif
+    return 1.0 / 0.0; // Infinity
+}
+
+void main(void) {
+
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
+#ifdef ROUNDED_CORNERS
+    // Distance from rectangle's edge in pixels. Negative inside the rectangle.
+    float d = sdRoundedBox(vPosInPixels, vHalfSizeInPixels, vCornerRadii);
+#else
+    float d = sdSharpBox(vPosInPixels, vHalfSizeInPixels);
+#endif
+
+    vec4 backgroundColor = vec4(0.0, 0.0, 0.0, 0.0);
+
+#ifdef SHADOW
+    float maxCornerRadius = max(vCornerRadii.x, max(vCornerRadii.y, max(vCornerRadii.z, vCornerRadii.w)));
+
+    float shadow = 0.0;
+    // Only calculate shadow for the region outside the stroke.
+    if (d >= vHalfStrokeWidth - 1.0 && uShadowOpacity > 0.0) {
+        shadow = roundedBoxShadow(
+            -vHalfSizeInPixels - vHalfStrokeWidth,
+            vHalfSizeInPixels + vHalfStrokeWidth,
+            vPosInPixels - vec2(uShadowOffsetX, -uShadowOffsetY),
+            max(uShadowBlur / 2.5, 0.25),
+            maxCornerRadius + vHalfStrokeWidth
+        ) * uShadowOpacity * uViewOpacity;
+    }
+    backgroundColor = vec4(uShadowColor * shadow, shadow);
+#endif
+
+    if (vHalfStrokeWidth > 0.0 && uHatchPattern > 0) {
+        d = max(d, -pattern());
+    }
+
+    fragColor = distanceToColor(
+        d,
+        vFillColor,
+        vStrokeColor,
+        backgroundColor,
+        vHalfStrokeWidth
+    );
+
+    if (uPickingEnabled) {
+        if (d < vHalfStrokeWidth) {
+            fragColor = vPickingColor;
+        }
+    } else if (fragColor.a == 0.0) {
+        discard;
+    }
+#else
+    // The trivial, non-decorated case
+    fragColor = vFillColor;
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
+#endif
+}
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    /** Minimum size (width, height) of the displayed rectangle in pixels */
+    uniform float uMinWidth;
+    uniform float uMinHeight;
+
+    /** Minimum opacity for the size clamping */
+    uniform float uMinOpacity;
+
+    uniform float uCornerRadiusTopRight;
+    uniform float uCornerRadiusBottomRight;
+    uniform float uCornerRadiusTopLeft;
+    uniform float uCornerRadiusBottomLeft;
+
+    uniform int uHatchPattern;
+
+    uniform vec3 uShadowColor;
+    uniform float uShadowOpacity;
+    uniform float uShadowBlur;
+    uniform float uShadowOffsetX;
+    uniform float uShadowOffsetY;
+
+    // Selection parameter
+    uniform highp uint uParam_highlight;
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+    uniform highp float attr_y2;
+
+
+};
+
+
+#define STROKED
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp uint attr_x;
+in highp float attr_y;
+in highp uint attr_x2;
+
+// Selection texture
+uniform highp usampler2D uSelectionTexture_select;
+
+bool checkSelection_select(bool empty) {
+   return hashContainsTexture(uSelectionTexture_select, attr_uniqueId) || (empty && isEmptyHashTexture(uSelectionTexture_select));
+}
+
+bool checkSelection_highlight(bool empty) {
+    return uParam_highlight == attr_uniqueId || (empty && uParam_highlight == 0u);
+}
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+vec3 accessor_fill_0() {
+    // Constant value
+    return vec3(0.2980392156862745, 0.47058823529411764, 0.6588235294117647);
+}
+
+vec3 getScaled_fill() {
+return accessor_fill_0();
+}
+
+#define fill_DEFINED
+
+
+vec3 accessor_stroke_0() {
+    // Constant value
+    return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 getScaled_stroke() {
+return accessor_stroke_0();
+}
+
+#define stroke_DEFINED
+
+
+float accessor_strokeWidth_0() {
+    // Constant value
+    return float(2.0);
+}
+
+
+float accessor_strokeWidth_1() {
+    // Constant value
+    return float(1.0);
+}
+
+
+float accessor_strokeWidth_2() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_strokeWidth() {
+    if (checkSelection_select(false)) {
+        return accessor_strokeWidth_0();
+    }
+    else if (checkSelection_highlight(false)) {
+        return accessor_strokeWidth_1();
+    }
+    else {
+        return accessor_strokeWidth_2();
+    }
+}
+
+#define strokeWidth_DEFINED
+
+
+uint accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(uint value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 0.0);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_y_0() {
+    return attr_y;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(0.0, 1.0);
+
+float scale_y(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+float accessor_fillOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+
+float accessor_fillOpacity_1() {
+    // Constant value
+    return float(0.3);
+}
+
+float getScaled_fillOpacity() {
+    if (checkSelection_select(true)) {
+        return accessor_fillOpacity_0();
+    }
+    else {
+        return accessor_fillOpacity_1();
+    }
+}
+
+#define fillOpacity_DEFINED
+
+
+uint accessor_x2_0() {
+    return attr_x2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x2
+
+
+float scale_x2(uint value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleBand(value, domain, range_x, 0.2, 0.2, 0.5, 1.0);
+    return transformed;
+
+}
+
+float getScaled_x2() {
+return scale_x2(accessor_x2_0());
+}
+
+#define x2_DEFINED
+
+
+float accessor_y2_0() {
+    return attr_y2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y2
+
+
+float scale_y2(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y2() {
+return scale_y2(accessor_y2_0());
+}
+
+#define y2_DEFINED
+
+
+float accessor_strokeOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_strokeOpacity() {
+return accessor_strokeOpacity_0();
+}
+
+#define strokeOpacity_DEFINED
+
+bool isPointSelected() {
+    return checkSelection_select(false) || checkSelection_highlight(false);
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out float vHalfStrokeWidth;
+flat out vec4 vCornerRadii;
+
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
+/** Position for SDF-strokes */
+out vec2 vPosInPixels;
+#endif
+
+/** Size of the rect in pixels */
+flat out vec2 vHalfSizeInPixels;
+
+/**
+ * Adjusts the vertex position to ensure that the rectangle is at least \`minSpan\`
+ * wide or high. Returns a value that reflects the amount of clamping and can be
+ * used to adjust the opacity of the rectangle.
+ *
+ * pos: vertex position
+ * frac: vertex position within the rectangle, [0, 1]
+ * size: width or height of the rectangle
+ * minSize: minimum width or height of the rectangle
+ */
+float clampMinSize(inout float pos, float frac, float size, float minSize) {
+    if (minSize > 0.0 && size < minSize) {
+        pos += (frac - 0.5) * (minSize - size);
+        return size / minSize;
+    }
+
+    return 1.0;
+}
+
+void sort(inout float a, inout float b) {
+    if (a > b) {
+        float tmp = b;
+        b = a;
+        a = tmp;
+    }
+}
+
+/**
+ * The vertex position wrt the rectangle specified by (x, x2, y, y2).
+ * [0, 0] = [x, y], [1, 1] = [x2, y2]. 
+ * The x or y component may contain fractional values if the rectangle 
+ * have been tessellated.
+ */
+vec2 getVertexPos() {
+    int index = gl_VertexID % 6;
+    return vec2(
+        index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
+        index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
+    );
+    
+}
+
+void main(void) {
+    vec2 frac = getVertexPos();
+
+    vec2 normalizedMinSize = vec2(uMinWidth, uMinHeight) / uViewportSize;
+    vec4 cornerRadii = vec4(
+        uCornerRadiusTopRight,
+        uCornerRadiusBottomRight,
+        uCornerRadiusTopLeft,
+        uCornerRadiusBottomLeft
+    );
+
+    float x = getScaled_x();
+    float x2 = getScaled_x2();
+    float y = getScaled_y();
+    float y2 = getScaled_y2();
+
+    sort(x, x2);
+    sort(y, y2);
+
+    // Clamp x to prevent precision artifacts when the scale is zoomed very close.
+	// TODO: clamp y as well
+	float clampMargin = 1.0;
+    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
+    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+
+    vec2 size = pos2 - pos1;
+
+    if (size.x <= 0.0 || size.y <= 0.0) {
+        // Early exit. May increase performance or not...
+        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    vec2 pos = pos1 + frac * size;
+
+    size.y *= getSampleFacetHeight(pos);
+
+    // Clamp to minimum size, optionally compensate with opacity
+    float opaFactor = uViewOpacity * max(uMinOpacity,
+        clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
+        clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
+
+    size = max(size, normalizedMinSize);
+
+    pos = applySampleFacet(pos);
+
+#if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
+    // Add an extra pixel to the stroke width to accommodate edge antialiasing
+    float aaPadding = 1.0 / uDevicePixelRatio;
+
+    // TODO: Only expand to the offset direction. Now high offsets result in
+    // a large expansion in all directions.
+    float shadowPadding = uShadowBlur + max(abs(uShadowOffsetX), abs(uShadowOffsetY));
+
+    float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity() * opaFactor;
+
+    vec2 centeredFrac = frac - 0.5;
+    vec2 expand = centeredFrac * (strokeWidth + aaPadding + shadowPadding * 2.0) / uViewportSize;
+    pos += expand;
+
+    vec2 sizeInPixels = size * uViewportSize;
+    vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
+
+    vHalfSizeInPixels = sizeInPixels / 2.0;
+
+    vCornerRadii = min(cornerRadii, min(vHalfSizeInPixels.x, vHalfSizeInPixels.y));
+    vHalfStrokeWidth = strokeWidth / 2.0;
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+#endif
+
+    gl_Position = unitToNdc(pos);
+
+    float fillOpacity = getScaled_fillOpacity() * opaFactor;
+    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+
+    setupPicking();
+}
+",
+}
+`;

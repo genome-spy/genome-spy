@@ -100,6 +100,28 @@ Initial `accessor` / `encoder` findings:
 - Shader generation already treats branch ordering as a first-class concern,
   which argues for a more explicit branch model on the JavaScript side as well.
 
+## Step 2 Notes
+
+Shader snapshot harness status:
+
+- A focused snapshot suite exists at
+  `packages/core/src/marks/shaderSnapshot.test.js`.
+- It snapshots the fully assembled shader source passed into shader compilation,
+  not just raw mark template files.
+- Current first-pass coverage includes:
+  - a minimal point-mark control spec
+  - `examples/docs/grammar/parameters/interval-selection.json`
+  - `examples/docs/grammar/parameters/point-selection.json`
+  - the `scatterPlot` unit from
+    `examples/docs/grammar/parameters/penguins.json`
+
+Current assessment:
+
+- The harness is sufficient for protecting early `accessor` / `encoder`
+  refactoring from accidental GLSL drift.
+- The chosen documented examples are good canonical fixtures for now.
+- No extra test-only shader fixtures are needed yet.
+
 ## Step 1: Lock Down Expected Behavior And Current Responsibilities
 
 Write down the exact behavior the repaired JavaScript encoder must have.
