@@ -144,7 +144,7 @@ Current implementation status after the refactor/repair pass:
 
 - `Accessor` no longer owns conditional predicate state.
 - `Encoder` now carries explicit ordered `branches`, while still exposing
-  `accessors` for compatibility with existing scale/domain plumbing.
+  branch-derived helper views where needed.
 - JavaScript-side selection predicates are now built in the encoder layer,
   where full encoding context is available.
 - Selection predicates are resolved lazily so encoder construction no longer
@@ -154,19 +154,63 @@ Current implementation status after the refactor/repair pass:
   conditionals again.
 - The tooltip-specific point-mark workaround is no longer needed and has been
   removed.
+- The compatibility `accessors` / `dataAccessor` properties have been removed
+  from `Encoder`, and the remaining consumers now derive what they need from
+  `branches`.
+- Conditional branch construction now happens in one place:
+  `createConditionalBranches(...)` expands conditions, creates accessors,
+  assigns predicates, and enforces the single non-constant-accessor rule.
+- `Predicate` is now a narrow internal contract:
+  callable plus `param` / `empty` metadata. It no longer pretends to be a full
+  `ExprRefFunction`.
 
 Verification status:
 
 - Focused suites covering accessor behavior, encoder behavior, tooltip
   regression, shader snapshots, view domain handling, and scale-domain
   extraction all pass together.
+- Workspace TypeScript checks for `app`, `core`, and `playground` pass together.
 
 Remaining work:
 
-- Reassess whether any further cleanup of the compatibility `accessors`
-  property is worth doing in this branch.
-- Decide whether additional higher-level regression cases are still needed or
-  whether the current snapshot + behavior coverage is sufficient.
+- No known correctness issues remain in the repaired selection-conditional
+  encoder path.
+- The main remaining technical smell is small: `getEncoderAccessors()` allocates
+  a derived accessor array from `branches` on demand. That is acceptable for
+  current call sites but should not be pushed into hot paths without either
+  iteration over `branches` directly or caching.
+
+Commits completed in this phase:
+
+- `59b79cad` `refactor(core): make conditional encoder branches explicit`
+- `73eea889` `refactor(core): tighten encoder host-side contracts`
+- `01829c9a` `refactor(core): remove encoder accessor compatibility layer`
+- `7172227f` `refactor(core): build conditional branches in one place`
+- `92c03baa` `refactor(core): narrow encoder predicate contract`
+
+## Step 9-10 Notes
+
+Current regression and cleanup status:
+
+- Focused regression coverage is in place for:
+  - accessor/branch behavior
+  - encoder branch selection
+  - tooltip behavior, including the penguins-style conditional color case
+  - shader snapshots for documented parameter examples
+  - domain/scale interaction through view and scale-resolution suites
+- Comments and JSDoc in `accessor.js` and `encoder.js` have been updated to
+  match the new contracts.
+- The branch is currently clean after each checkpoint and the verified command
+  set remains:
+  - `npx vitest run packages/core/src/encoder/accessor.test.js packages/core/src/encoder/encoder.test.js packages/core/src/tooltip/dataTooltipHandler.test.js packages/core/src/marks/shaderSnapshot.test.js packages/core/src/view/view.test.js packages/core/src/scales/scaleResolution.domain.test.js`
+  - `npm --workspaces run test:tsc --if-present`
+
+Current assessment:
+
+- The originally planned repair work is effectively complete for the agreed
+  scope of selection-driven conditionals.
+- Additional work from here would be follow-up optimization or broader test
+  expansion, not core correctness repair.
 
 ## Step 1: Lock Down Expected Behavior And Current Responsibilities
 
