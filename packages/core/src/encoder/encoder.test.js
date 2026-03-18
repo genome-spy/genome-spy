@@ -1,14 +1,18 @@
 import { describe, expect, test } from "vitest";
 
-import { createAccessor, createConditionalAccessors } from "./accessor.js";
+import { createAccessor } from "./accessor.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import {
     createEncoder,
+    createConditionalBranches,
     createSimpleOrConditionalEncoder,
     isNonMarkPropertyChannel,
 } from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { createSinglePointSelection } from "../selection/selection.js";
+import {
+    createIntervalSelection,
+    createSinglePointSelection,
+} from "../selection/selection.js";
 import { scaleLinear } from "d3-scale";
 
 /** @type {import("../spec/channel.js").Encoding} */
@@ -93,13 +97,12 @@ describe("isNonMarkPropertyChannel", () => {
     });
 });
 
-// TODO: Refactor and fix conditional encoders
-describe.skip("Conditional encoder with a field and a conditional value", () => {
+describe("Conditional encoder with a field and a conditional value", () => {
     const pm = new ViewParamRuntime();
     const setter = pm.allocateSetter("p", createSinglePointSelection(null));
 
     const e = createSimpleOrConditionalEncoder(
-        createConditionalAccessors("size", encoding.size, pm),
+        createConditionalBranches("size", encoding.size, encoding, pm),
         scaleSource
     );
 
@@ -118,5 +121,48 @@ describe.skip("Conditional encoder with a field and a conditional value", () => 
     test("encodes the conditional value when a predicate is true", () => {
         setter(createSinglePointSelection(datum));
         expect(e(datum)).toBe(5000);
+    });
+});
+
+describe("Conditional encoder with interval selection", () => {
+    const pm = new ViewParamRuntime();
+    const setBrush = pm.allocateSetter("brush", createIntervalSelection(["x"]));
+
+    const encoder = createSimpleOrConditionalEncoder(
+        createConditionalBranches(
+            "opacity",
+            {
+                value: 0.1,
+                condition: {
+                    param: "brush",
+                    empty: false,
+                    value: 1,
+                },
+            },
+            {
+                x: {
+                    field: "a",
+                    type: "quantitative",
+                },
+                opacity: {
+                    value: 0.1,
+                    condition: {
+                        param: "brush",
+                        empty: false,
+                        value: 1,
+                    },
+                },
+            },
+            pm
+        ),
+        () =>
+            Object.assign(scaleLinear().domain([0, 1]).range([0, 1]), {
+                type: "linear",
+            })
+    );
+
+    test("uses the fallback when interval selection is empty and empty is false", () => {
+        setBrush(createIntervalSelection(["x"]));
+        expect(encoder(datum)).toBe(0.1);
     });
 });

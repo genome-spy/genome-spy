@@ -4,12 +4,15 @@ import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import {
     buildDomainKey,
     createAccessor,
-    createConditionalAccessors,
     getAccessorDomainKey,
     isScaleAccessor,
 } from "./accessor.js";
+import { createConditionalBranches } from "./encoder.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { createSinglePointSelection } from "../selection/selection.js";
+import {
+    createIntervalSelection,
+    createSinglePointSelection,
+} from "../selection/selection.js";
 
 const datum = {
     a: 1,
@@ -129,8 +132,7 @@ test("Throws on incomplete encoding spec", () => {
     ).toThrow();
 });
 
-// TODO: Refactor and fix conditional accessors
-describe.skip("createConditionalAccessors", () => {
+describe("createConditionalBranches", () => {
     const data = [
         { a: 1, b: 2, [UNIQUE_ID_KEY]: 0 },
         { a: 3, b: 4, [UNIQUE_ID_KEY]: 1 },
@@ -139,19 +141,18 @@ describe.skip("createConditionalAccessors", () => {
     const paramRuntime = new ViewParamRuntime(() => undefined);
     paramRuntime.allocateSetter("p", createSinglePointSelection(data[0]));
 
-    const a = createConditionalAccessors(
-        "x",
-        {
+    const encodingA = {
+        x: {
             field: "a",
             type: "quantitative",
             condition: { param: "p", value: 123 },
         },
-        paramRuntime
-    );
+    };
 
-    const b = createConditionalAccessors(
-        "x",
-        {
+    const a = createConditionalBranches("x", encodingA.x, encodingA, paramRuntime);
+
+    const encodingB = {
+        x: {
             field: "a",
             type: "quantitative",
             condition: [
@@ -159,12 +160,12 @@ describe.skip("createConditionalAccessors", () => {
                 { param: "p", value: 234 },
             ],
         },
-        paramRuntime
-    );
+    };
 
-    const c = createConditionalAccessors(
-        "x",
-        {
+    const b = createConditionalBranches("x", encodingB.x, encodingB, paramRuntime);
+
+    const encodingC = {
+        x: {
             value: 123,
             condition: {
                 param: "p",
@@ -172,8 +173,9 @@ describe.skip("createConditionalAccessors", () => {
                 type: "quantitative",
             },
         },
-        paramRuntime
-    );
+    };
+
+    const c = createConditionalBranches("x", encodingC.x, encodingC, paramRuntime);
 
     // TODO: Add more combinations of datum, field, expr, etc
 
@@ -185,7 +187,7 @@ describe.skip("createConditionalAccessors", () => {
 
     // Conditional accessor
     test("Conditional accessor accesses the correct field", () => {
-        expect(a[0](data[0])).toEqual(123);
+        expect(a[0].accessor(data[0])).toEqual(123);
         expect(a[0].predicate.param).toEqual("p");
     });
 
@@ -196,7 +198,7 @@ describe.skip("createConditionalAccessors", () => {
 
     // Default accessor
     test("Default accessor accesses the correct field", () => {
-        expect(a[1](data[0])).toEqual(1);
+        expect(a[1].accessor(data[0])).toEqual(1);
         expect(a[1].predicate.param).toBeFalsy();
     });
 
@@ -207,9 +209,7 @@ describe.skip("createConditionalAccessors", () => {
 
     test("Throws if multiple non-constant accessors are used", () => {
         expect(() =>
-            createConditionalAccessors(
-                "x",
-                {
+            createConditionalBranches("x", {
                     field: "a",
                     type: "quantitative",
                     condition: {
@@ -218,14 +218,23 @@ describe.skip("createConditionalAccessors", () => {
                         type: "quantitative",
                     },
                 },
+                {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        condition: {
+                            param: "p",
+                            field: "b",
+                            type: "quantitative",
+                        },
+                    },
+                },
                 paramRuntime
             )
         ).toThrow();
 
         expect(() =>
-            createConditionalAccessors(
-                "x",
-                {
+            createConditionalBranches("x", {
                     field: "a",
                     type: "quantitative",
                     condition: {
@@ -235,9 +244,61 @@ describe.skip("createConditionalAccessors", () => {
                         type: "quantitative",
                     },
                 },
+                {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        condition: {
+                            param: "p",
+                            // @ts-expect-error
+                            expr: "datum.b",
+                            type: "quantitative",
+                        },
+                    },
+                },
                 paramRuntime
             )
         ).toThrow();
+    });
+
+    test("Interval selection predicate respects empty: false", () => {
+        const intervalRuntime = new ViewParamRuntime(() => undefined);
+        const setBrush = intervalRuntime.allocateSetter(
+            "brush",
+            createIntervalSelection(["x"])
+        );
+        setBrush({
+            type: "interval",
+            intervals: {
+                x: [2, 4],
+            },
+        });
+
+        const encoding = {
+            x: {
+                field: "x",
+                type: "quantitative",
+            },
+            color: {
+                value: "#ddd",
+                condition: {
+                    param: "brush",
+                    empty: false,
+                    value: "#38c",
+                },
+            },
+        };
+
+        const branches = createConditionalBranches(
+            "color",
+            encoding.color,
+            encoding,
+            intervalRuntime
+        );
+
+        expect(branches).toHaveLength(2);
+        expect(branches[0].predicate.param).toBe("brush");
+        expect(branches[0].predicate.empty).toBe(false);
     });
 });
 

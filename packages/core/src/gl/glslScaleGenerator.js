@@ -506,9 +506,9 @@ ${scaleBody.map((x) => `    ${x}\n`).join("")}
 /**
  *
  * @param {Channel} channel
- * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {import("../types/encoder.js").EncodingBranch[]} branches
  */
-export function generateConditionalEncoderGlsl(channel, accessors) {
+export function generateConditionalEncoderGlsl(channel, branches) {
     const type = getScaledDataTypeForChannel(channel);
 
     /** @type {string[]}  */
@@ -516,10 +516,10 @@ export function generateConditionalEncoderGlsl(channel, accessors) {
     /** @type {string[]}  */
     const statements = [];
 
-    for (let i = 0; i < accessors.length; i++) {
-        const accessor = accessors[i];
+    for (let i = 0; i < branches.length; i++) {
+        const { accessor, predicate } = branches[i];
         const accessorFunctionName = makeAccessorFunctionName(channel, i);
-        const { param, empty } = accessor.predicate;
+        const { param, empty } = predicate;
 
         conditions.push(
             param ? `${SELECTION_CHECKER_PREFIX}${param}(${!!empty})` : null

@@ -3,6 +3,7 @@ import {
     makeSelectionTestExpression,
 } from "../selection/selection.js";
 import { createConditionalAccessors } from "./accessor.js";
+import { makeConstantExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * TODO: Complete this. Not tested yet.
@@ -15,42 +16,112 @@ import { createConditionalAccessors } from "./accessor.js";
  * @param {boolean} empty
  */
 export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
-    const selection =
-        /** @type {import("../types/selectionTypes.js").Selection} */ (
-            paramRuntime.findValue(param)
-        );
-    if (!selection) {
-        throw new Error(`No selection parameter found: ${param}`);
-    }
+    /** @type {import("../paramRuntime/types.js").ExprRefFunction | undefined} */
+    let compiled;
 
-    /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
-    const fields = {};
-    if (isIntervalSelection(selection)) {
-        const channels = Object.keys(selection.intervals);
-        for (const channel of channels) {
-            const channelDef = encoding[channel];
-            if (isFieldDef(channelDef)) {
-                fields[channel] = channelDef.field;
-                continue;
-            } else if ("condition" in channelDef) {
-                const condition = channelDef.condition;
-                if (isFieldDef(condition)) {
-                    fields[channel] = condition.field;
-                    continue;
+    const predicate = Object.assign(
+        (datum) => {
+            if (!compiled) {
+                const selection =
+                    /** @type {import("../types/selectionTypes.js").Selection} */ (
+                        paramRuntime.findValue(param)
+                    );
+                if (!selection) {
+                    return false;
                 }
-            }
-            throw new Error(
-                `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
-            );
-        }
-    }
 
-    const expr = makeSelectionTestExpression(
-        { type: "filter", param, fields, empty },
-        selection
+                /** @type {Partial<Record<import("../spec/channel.js").PositionalChannel, import("../spec/channel.js").Field>>} */
+                const fields = {};
+                if (isIntervalSelection(selection)) {
+                    const channels = Object.keys(selection.intervals);
+                    for (const channel of channels) {
+                        const channelDef = encoding[channel];
+                        if (isFieldDef(channelDef)) {
+                            fields[channel] = channelDef.field;
+                            continue;
+                        } else if (channelDef && "condition" in channelDef) {
+                            const condition = channelDef.condition;
+                            if (isFieldDef(condition)) {
+                                fields[channel] = condition.field;
+                                continue;
+                            }
+                        }
+                        throw new Error(
+                            `Selection "${param}" has an interval for "${channel}" channel, but could not find a fieldDef: ${JSON.stringify(encoding[channel])}`
+                        );
+                    }
+                }
+
+                const expr = makeSelectionTestExpression(
+                    { type: "filter", param, fields, empty },
+                    selection
+                );
+
+                compiled = paramRuntime.createExpression(expr);
+            }
+
+            return compiled(datum);
+        },
+        {
+            param,
+            empty: empty ?? true,
+        }
     );
 
-    return paramRuntime.createExpression(expr);
+    predicate.param = param;
+    predicate.empty = empty ?? true;
+    return predicate;
+}
+
+/**
+ * @param {import("../spec/channel.js").Channel} channel
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @param {{ createExpression: (expr: string) => import("../paramRuntime/types.js").ExprRefFunction, findValue: (param: string) => any }} paramRuntime
+ * @returns {import("../types/encoder.js").EncodingBranch[]}
+ */
+export function createConditionalBranches(
+    channel,
+    channelDef,
+    encoding,
+    paramRuntime
+) {
+    const accessors = createConditionalAccessors(channel, channelDef, paramRuntime);
+
+    /** @type {import("../types/encoder.js").EncodingBranch[]} */
+    const branches = [];
+
+    const conditions =
+        isFieldOrDatumDefWithCondition(channelDef) ||
+        isValueDefWithCondition(channelDef)
+            ? Array.isArray(channelDef.condition)
+                ? channelDef.condition
+                : [channelDef.condition]
+            : [];
+
+    for (let i = 0; i < accessors.length; i++) {
+        const accessor = accessors[i];
+        const condition = conditions[i];
+        const predicate = condition?.param
+            ? createSelectionPredicate(
+                  condition.param,
+                  encoding,
+                  paramRuntime,
+                  condition.empty
+              )
+            : makeConstantExprRef(i === accessors.length - 1);
+
+        if (!condition?.param) {
+            predicate.empty = false;
+        }
+
+        branches.push({
+            accessor,
+            predicate,
+        });
+    }
+
+    return branches;
 }
 
 /**
@@ -90,9 +161,10 @@ export default function createEncoders(unitView, encoding) {
         const typedChannelDef =
             /** @type {import("../spec/channel.js").ChannelDef} */ (channelDef);
         encoders[typedChannel] = createSimpleOrConditionalEncoder(
-            createConditionalAccessors(
+            createConditionalBranches(
                 typedChannel,
                 typedChannelDef,
+                encoding,
                 unitView.paramRuntime
             ),
             scaleSource
@@ -115,23 +187,27 @@ export function isNonMarkPropertyChannel(channel) {
 }
 
 /**
- * @param {import("../types/encoder.js").Accessor[]} accessors
+ * @param {import("../types/encoder.js").EncodingBranch[]} branches
  * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../types/encoder.js").VegaScale} scaleSource
  * @returns {Encoder}
  */
-export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
+export function createSimpleOrConditionalEncoder(branches, scaleSource) {
     /**
      * @typedef {import("../types/encoder.js").Encoder} Encoder
-     * @typedef {import("../types/encoder.js").Accessor} Accessor
      * @typedef {import("../data/flowNode.js").Datum} Datum
      */
-    if (accessors.length === 1) {
-        return createEncoder(accessors[0], scaleSource);
+    if (branches.length === 1) {
+        const encoder = createEncoder(branches[0].accessor, scaleSource);
+        return Object.assign(encoder, {
+            branches,
+        });
     }
 
-    const predicates = accessors.map((a) => a.predicate);
+    const predicates = branches.map((branch) => branch.predicate);
 
-    const encoders = accessors.map((a) => createEncoder(a, scaleSource));
+    const encoders = branches.map((branch) =>
+        createEncoder(branch.accessor, scaleSource)
+    );
 
     const encoder = Object.assign(
         (/** @type {Datum} */ datum) => {
@@ -143,12 +219,11 @@ export function createSimpleOrConditionalEncoder(accessors, scaleSource) {
         },
         {
             constant: false,
-            accessors: /** @type {Accessor[]} */ (
-                encoders.map((e) => e.accessors[0])
-            ),
+            branches,
+            accessors: branches.map((branch) => branch.accessor),
             dataAccessor: encoders.map((e) => e.dataAccessor).find((a) => a),
             scale: encoders.map((e) => e.scale).find((s) => s),
-            channelDef: accessors.at(-1).channelDef,
+            channelDef: branches.at(-1).accessor.channelDef,
         }
     );
 
@@ -188,6 +263,12 @@ export function createEncoder(accessor, scaleSource) {
         {
             scale,
             constant: accessor.constant,
+            branches: [
+                {
+                    accessor,
+                    predicate: makeConstantExprRef(true),
+                },
+            ],
             accessors: [accessor],
             dataAccessor: accessor.constant ? undefined : accessor,
             // TODO: Accessor already has the channelDef

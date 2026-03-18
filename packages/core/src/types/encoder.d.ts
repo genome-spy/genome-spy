@@ -87,10 +87,6 @@ export interface Accessor<T = Scalar> {
      */
     domainKey?: string;
 
-    /**
-     * This accessor should be used when the predicate is true
-     */
-    predicate: Predicate;
 }
 
 export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
@@ -111,6 +107,18 @@ export interface Predicate extends ExprRefFunction {
      * **Default:** `true`
      */
     empty?: boolean;
+}
+
+export interface EncodingBranch {
+    /**
+     * The accessor used by this branch.
+     */
+    accessor: Accessor;
+
+    /**
+     * Predicate controlling whether this branch is active.
+     */
+    predicate: Predicate;
 }
 
 /**
@@ -134,7 +142,13 @@ export interface Encoder {
     scale?: VegaScale;
 
     /**
-     * An accessor, or if the ChannelDef has conditions, all the accessors.
+     * Ordered branches of this encoder. The last branch is the fallback branch.
+     */
+    branches: EncodingBranch[];
+
+    /**
+     * Accessors for compatibility with existing scale/domain code. Derived from
+     * `branches` in the same order.
      */
     accessors: Accessor[];
 

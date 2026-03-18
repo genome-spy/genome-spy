@@ -489,8 +489,8 @@ export default class Mark {
         const dynamicMarkUniforms = [];
 
         const paramPredicates = Object.values(encoders)
-            .flatMap((e) => e.accessors)
-            .map((a) => a.predicate)
+            .flatMap((e) => e.branches ?? [])
+            .map((branch) => branch.predicate)
             .filter((p) => p.param);
 
         /**
@@ -803,12 +803,12 @@ export default class Mark {
                 continue;
             }
 
-            const { channelDef, accessors, scale } = encoder;
+            const { branches, channelDef, scale } = encoder;
 
             // Generate accessors, one for each condition -------------
 
-            for (let i = 0; i < accessors.length; i++) {
-                addAccessor(channel, accessors[i], i, scale);
+            for (let i = 0; i < branches.length; i++) {
+                addAccessor(channel, branches[i].accessor, i, scale);
             }
 
             // Generate scale if needed -------------------------------
@@ -879,7 +879,7 @@ export default class Mark {
 
             // Generate conditional encoder -------------------------------
 
-            scaleCode.push(generateConditionalEncoderGlsl(channel, accessors));
+            scaleCode.push(generateConditionalEncoderGlsl(channel, branches));
         }
 
         // Generate a function that checks if the datum is subject to any point selection

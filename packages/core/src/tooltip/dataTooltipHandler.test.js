@@ -2,8 +2,10 @@
 import { scaleOrdinal } from "d3-scale";
 import { render } from "lit";
 import { expect, test } from "vitest";
-import { createConditionalAccessors } from "../encoder/accessor.js";
-import { createSimpleOrConditionalEncoder } from "../encoder/encoder.js";
+import {
+    createConditionalBranches,
+    createSimpleOrConditionalEncoder,
+} from "../encoder/encoder.js";
 import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import { createIntervalSelection } from "../selection/selection.js";
 import dataTooltipHandler from "./dataTooltipHandler.js";
@@ -211,7 +213,22 @@ test("Uses the active conditional color branch for point tooltip legends", async
     );
 
     const colorEncoder = createSimpleOrConditionalEncoder(
-        createConditionalAccessors("color", colorEncoding, paramRuntime),
+        createConditionalBranches(
+            "color",
+            colorEncoding,
+            {
+                x: {
+                    field: "Beak Length (mm)",
+                    type: "quantitative",
+                },
+                y: {
+                    field: "Beak Depth (mm)",
+                    type: "quantitative",
+                },
+                color: colorEncoding,
+            },
+            paramRuntime
+        ),
         () => colorScale
     );
 

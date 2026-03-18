@@ -122,6 +122,52 @@ Current assessment:
 - The chosen documented examples are good canonical fixtures for now.
 - No extra test-only shader fixtures are needed yet.
 
+## Step 3 Notes
+
+Current red-test status:
+
+- Unskipped conditional accessor tests now fail where expected:
+  - selection-driven conditional predicates still evaluate to `false`
+- Unskipped conditional encoder tests now fail where expected:
+  - host-side encoders still fall through to the default branch even when the
+    selection should activate the conditional branch
+
+Current failing expectations confirm the main repair target:
+
+- JavaScript-side selection predicate construction is still stubbed
+- `encoder(datum)` is still not authoritative for selection-driven conditional
+  encodings
+
+## Step 4-8 Notes
+
+Current implementation status after the refactor/repair pass:
+
+- `Accessor` no longer owns conditional predicate state.
+- `Encoder` now carries explicit ordered `branches`, while still exposing
+  `accessors` for compatibility with existing scale/domain plumbing.
+- JavaScript-side selection predicates are now built in the encoder layer,
+  where full encoding context is available.
+- Selection predicates are resolved lazily so encoder construction no longer
+  fails when a conditional parameter is declared but not yet initialized as a
+  selection object.
+- `encoder(datum)` is now the normal host-side path for selection-driven
+  conditionals again.
+- The tooltip-specific point-mark workaround is no longer needed and has been
+  removed.
+
+Verification status:
+
+- Focused suites covering accessor behavior, encoder behavior, tooltip
+  regression, shader snapshots, view domain handling, and scale-domain
+  extraction all pass together.
+
+Remaining work:
+
+- Reassess whether any further cleanup of the compatibility `accessors`
+  property is worth doing in this branch.
+- Decide whether additional higher-level regression cases are still needed or
+  whether the current snapshot + behavior coverage is sufficient.
+
 ## Step 1: Lock Down Expected Behavior And Current Responsibilities
 
 Write down the exact behavior the repaired JavaScript encoder must have.

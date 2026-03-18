@@ -1,11 +1,8 @@
 import { html } from "lit";
 import { splitAccessPath } from "vega-util";
-import { createSelectionPredicate } from "../encoder/encoder.js";
 import formatObject from "../utils/formatObject.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
 import createTooltipContext from "./tooltipContext.js";
-
-const tooltipSelectionPredicateCache = new WeakMap();
 
 /**
  * @type {import("./tooltipHandler.js").TooltipHandler}
@@ -32,50 +29,6 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
         !(typeof value === "number" && Number.isNaN(value));
 
     /**
-     * Point marks render conditional encodings in shaders, so tooltips must
-     * evaluate selection predicates explicitly instead of using the JS encoder.
-     *
-     * @param {import("../types/encoder.js").Accessor} accessor
-     */
-    const getSelectionPredicate = (accessor) => {
-        if (!accessor.predicate.param) {
-            return accessor.predicate;
-        }
-
-        let predicate = tooltipSelectionPredicateCache.get(accessor);
-        if (!predicate) {
-            predicate = createSelectionPredicate(
-                accessor.predicate.param,
-                mark.encoding,
-                mark.unitView.paramRuntime,
-                accessor.predicate.empty
-            );
-            tooltipSelectionPredicateCache.set(accessor, predicate);
-        }
-
-        return predicate;
-    };
-
-    /**
-     * @param {import("../types/encoder.js").Encoder} encoder
-     * @param {object} datum
-     */
-    const getEncodedValue = (encoder, datum) => {
-        if (mark.getType?.() !== "point" || encoder.accessors.length <= 1) {
-            return encoder(datum);
-        }
-
-        for (const accessor of encoder.accessors) {
-            if (getSelectionPredicate(accessor)(datum)) {
-                const value = accessor(datum);
-                return accessor.scaleChannel ? encoder.scale(value) : value;
-            }
-        }
-
-        return encoder(datum);
-    };
-
-    /**
      * @param {string} key
      * @param {any} value
      * @param {object} datum
@@ -95,7 +48,7 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
                     case "color":
                     case "fill":
                     case "stroke": {
-                        const encodedColor = getEncodedValue(encoder, datum);
+                        const encodedColor = encoder(datum);
                         if (
                             encodedColor !== null &&
                             encodedColor !== undefined

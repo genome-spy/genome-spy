@@ -9,7 +9,7 @@ import {
     isValueDefWithCondition,
 } from "./encoder.js";
 import { field } from "../utils/field.js";
-import { isExprRef, makeConstantExprRef } from "../paramRuntime/paramUtils.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /**
  * @param {import("../spec/channel.js").Channel} channel
@@ -51,23 +51,6 @@ export function createAccessor(channel, channelDef, paramRuntime) {
                 scaleChannel: a.scaleChannel,
                 source: getDomainKeySource(channelDef),
             }).domainKeyBase;
-        }
-
-        if ("param" in channelDef) {
-            // TODO: Figure out how to fix it. Interval selection depends on FIELDS!
-            /*
-            a.predicate = paramRuntime.createExpression(
-                makeSelectionTestExpression(channelDef)
-            );
-            a.predicate.param = channelDef.param;
-            a.predicate.empty = channelDef.empty ?? true;
-            */
-            a.predicate = makeConstantExprRef(false);
-            a.predicate.param = channelDef.param;
-            a.predicate.empty = channelDef.empty ?? true;
-        } else {
-            a.predicate = makeConstantExprRef(true); // Always true (default accessor)
-            a.predicate.empty = false;
         }
 
         a.equals = (other) => {
