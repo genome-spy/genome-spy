@@ -38,6 +38,7 @@ import {
     requireIntervalSelection,
     requireParamRuntime,
 } from "./selectionDomainUtils.js";
+import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
 // Register scaleLocus to Vega-Scale.
 // Loci are discrete but the scale's domain can be adjusted in a continuous manner.
@@ -955,7 +956,10 @@ export default class ScaleResolution {
      */
     getComplexDomain() {
         return /** @type {NumericDomain | ComplexDomain} */ (
-            toComplexInterval(this.#getGenomeSource(), this.getDomain())
+            toComplexInterval(
+                this.#getGenomeSource(),
+                toExternalIndexLikeInterval(this.type, this.getDomain())
+            )
         );
     }
 

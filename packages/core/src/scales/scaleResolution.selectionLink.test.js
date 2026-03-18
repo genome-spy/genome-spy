@@ -120,6 +120,59 @@ describe("Scale resolution selection-linked domains", () => {
         expect(resolution.scale.domain()).toEqual([6, 8]);
     });
 
+    test("selection-linked index domains use internal half-open intervals as-is", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "brush", value: null }],
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                            },
+                        ],
+                        data: { values: [0, 5, 10] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "data", type: "index" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [0, 5, 10] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "data",
+                                type: "index",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                    zoom: true,
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const resolution = getRequiredScaleResolution(view.children[1], "x");
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [2, 5] },
+        });
+
+        expect(resolution.scale.domain()).toEqual([2, 5]);
+    });
+
     test("selection-linked domains skip zoomTo animation during continuous updates", async () => {
         const { view, linked, resolution } = await createLinkedHarness(
             { param: "brush", encoding: "x" },

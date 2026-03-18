@@ -73,6 +73,10 @@ example, one-based indexing.
 
 The index scale is used by default when the _field_ type is `"index"`.
 
+User-facing two-point domains on index scales are inclusive. For example,
+`"domain": [2, 4]` covers the indices 2, 3, and 4. Domains inferred from
+observed data also include the last observed index.
+
 #### Point indices
 
 When only the primary positional channel is defined, marks such as `"rect"` fill
@@ -85,13 +89,16 @@ centered.
 
 EXAMPLE examples/docs/grammar/scale/point-indices-centers.json height=100 spechidden
 
-#### Range indices
+#### Segment indices
 
-When the index scale is used with ranges, e.g., a `"rect"` mark that has both
+When the index scale is used with segments, e.g., a `"rect"` mark that has both
 the `x` and `x2` channels defined, the ranges must be [half
 open](http://genome.ucsc.edu/blog/the-ucsc-genome-browser-coordinate-counting-systems/).
 For example, if a segment should cover the indices 2, 3, and 4, a half-open
 range would be defined as: x = 2 (inclusive), x2 = 5 (exclusive).
+
+Thus, `scale.domain` uses inclusive bounds, whereas ranged mark encodings such
+as `x`/`x2` use half-open interval edges directly.
 
 EXAMPLE examples/docs/grammar/scale/range-indices.json height=100 spechidden
 
@@ -130,6 +137,8 @@ A genomic coordinate consists of a chromosome (`chrom`) and an optional position
 (`pos`). The left bound's position defaults to zero, whereas the right bound's
 position defaults to the size of the chromosome. Thus, the chromosomes are
 inclusive.
+
+Two-point locus domains are inclusive and cover both endpoint positions.
 
 For example, chromosomes 3, 4, and 5:
 
@@ -211,6 +220,8 @@ Both `"index"` and `"locus"` scales are zoomable by default.
 The zoom `extent` allows you to control how far the scale can be zoomed out or
 panned (translated). Zoom extent equals the scale domain by default, except for
 the `"locus"` scale, where it includes the whole genome. Example:
+
+For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
 
 ```json
 {

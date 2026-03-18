@@ -407,6 +407,20 @@ export function isChromosomalLocusInterval(value) {
 }
 
 /**
+ * Returns true when the right bound is an explicit locus position rather than a
+ * chromosome shortcut such as `{ chrom: "chr2" }`.
+ *
+ * @param {any} value
+ * @returns {value is ChromosomalLocus[]}
+ */
+export function hasExplicitLocusUpperBound(value) {
+    return (
+        isChromosomalLocusInterval(value) &&
+        (value[1] ?? value[0]).pos !== undefined
+    );
+}
+
+/**
  * @param {any} value
  * @returns {value is GenomeConfig}
  */

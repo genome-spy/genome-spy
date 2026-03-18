@@ -10,6 +10,7 @@ import {
     getScaleDomain,
     initView,
 } from "./scaleResolutionTestUtils.js";
+import { createTestViewContext } from "../view/testUtils.js";
 
 describe("Scale resolution domain handling", () => {
     test("Scales are shared and explicit domains merged properly", async () => {
@@ -83,6 +84,68 @@ describe("Scale resolution domain handling", () => {
         expect(r(d(view))).toEqual([1, 5]);
         expect(r(d(view.children[0]))).toEqual([1, 5]);
         expect(r(d(view.children[1]))).toEqual([1, 5]);
+    });
+
+    test("index scales inferred from data include the last observed index", async () => {
+        const view = await initView(
+            {
+                data: { values: [3, 4, 8, 9] },
+                mark: "point",
+                encoding: {
+                    x: { field: "data", type: "index" },
+                },
+            },
+            UnitView
+        );
+
+        expect(r(getScaleDomain(view, "x"))).toEqual([3, 10]);
+        expect(
+            r(getRequiredScaleResolution(view, "x").getComplexDomain())
+        ).toEqual([3, 9]);
+
+        await getRequiredScaleResolution(view, "x").zoomTo([4, 8]);
+
+        expect(r(getScaleDomain(view, "x"))).toEqual([4, 9]);
+        expect(
+            r(getRequiredScaleResolution(view, "x").getComplexDomain())
+        ).toEqual([4, 8]);
+    });
+
+    test("explicit locus domains use inclusive end positions and keep the genome extent intact", async () => {
+        const context = createTestViewContext();
+        const view = await context.createOrImportView(
+            {
+                data: {
+                    values: [{ chrom: "chr1", pos: 5 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            domain: [
+                                { chrom: "chr1", pos: 3 },
+                                { chrom: "chr1", pos: 9 },
+                            ],
+                        },
+                    },
+                },
+            },
+            null,
+            null,
+            "root"
+        );
+
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(r(resolution.getDomain())).toEqual([3, 10]);
+        expect(resolution.getComplexDomain()).toEqual([
+            { chrom: "chr1", pos: 3 },
+            { chrom: "chr1", pos: 9 },
+        ]);
+        expect(resolution.getScale().genome().getExtent()).toEqual([0, 50]);
     });
 
     test("shared collectors de-duplicate domain extraction for conditional encodings", async () => {

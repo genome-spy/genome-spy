@@ -1,11 +1,19 @@
 import { span } from "vega-util";
 import { isContinuous } from "vega-scale";
 
-import { LOCUS } from "./scaleResolutionConstants.js";
+import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
+import {
+    toInternalIndexLikeDataDomain,
+    toInternalIndexLikeInterval,
+} from "./indexLikeDomainUtils.js";
 import { requireIntervalSelection } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getPrimaryChannel } from "../encoder/encoder.js";
+import {
+    hasExplicitLocusUpperBound,
+    isChromosomalLocusInterval,
+} from "../genome/genome.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -307,9 +315,20 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
         }
 
         hasLiteralDomain = true;
-        domains.push(
-            createDomain(member.channelDef.type, fromComplexInterval(domainDef))
-        );
+        const numericDomain = fromComplexInterval(domainDef);
+        const internalDomain =
+            // Whole-chromosome locus domains such as [{ chrom: "chr1" }, { chrom: "chr2" }]
+            // already resolve to chromosome extents.
+            member.channelDef.type === LOCUS &&
+            isChromosomalLocusInterval(domainDef) &&
+            !hasExplicitLocusUpperBound(domainDef)
+                ? numericDomain
+                : // Literal configured domains are user-facing intervals.
+                  toInternalIndexLikeInterval(
+                      member.channelDef.type,
+                      numericDomain
+                  );
+        domains.push(createDomain(member.channelDef.type, internalDomain));
     }
 
     if (domains.length > 0) {
@@ -379,6 +398,7 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
     }
 
     return {
+        // Selection intervals already use internal scale-domain coordinates.
         domain: createDomain(
             member.channelDef.type,
             fromComplexInterval(interval)
@@ -501,6 +521,9 @@ function resolveDataDomain(members, getType, getAccessorsForMember) {
 function resolveDefaultDomain(type, getLocusExtent, dataDomain, locusAssembly) {
     if (type == LOCUS) {
         return getLocusExtent(locusAssembly);
+    }
+    if (type == INDEX) {
+        return toInternalIndexLikeDataDomain(type, dataDomain) ?? [];
     }
     return dataDomain ?? [];
 }

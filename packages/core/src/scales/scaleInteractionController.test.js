@@ -86,7 +86,7 @@ describe("ScaleInteractionController", () => {
             getGenomeExtent: () => [0, 10],
         });
 
-        expect(controller.getZoomExtent()).toEqual([1, 4]);
+        expect(controller.getZoomExtent()).toEqual([1, 5]);
     });
 
     test("zoom extent falls back to genome extent for locus scales", () => {

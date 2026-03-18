@@ -15,6 +15,11 @@ import eerp from "../utils/eerp.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { createCancelToken } from "../utils/transition.js";
 import { zoomDomainByScaleType } from "./zoomDomainUtils.js";
+import { toInternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
+import {
+    hasExplicitLocusUpperBound,
+    isChromosomalLocusInterval,
+} from "../genome/genome.js";
 
 /**
  * @typedef {import("../spec/scale.js").NumericDomain} NumericDomain
@@ -177,13 +182,16 @@ export default class ScaleInteractionController {
             throw new Error("Not a zoomable scale!");
         }
 
-        const to = this.#fromComplexInterval(domain);
+        const scale = this.#getScale();
+        const to = normalizeInteractionInterval(
+            /** @type {import("../spec/scale.js").ScaleType} */ (scale.type),
+            domain,
+            this.#fromComplexInterval
+        );
 
         // TODO: Intersect the domain with zoom extent
 
         const animator = this.#getAnimator();
-
-        const scale = this.#getScale();
         const from = /** @type {number[]} */ (scale.domain());
 
         if (duration > 0 && from.length == 2) {
@@ -288,7 +296,11 @@ function resolveZoomExtent(
 ) {
     if (isZoomParams(zoom)) {
         if (isArray(zoom.extent)) {
-            return fromComplexInterval(zoom.extent);
+            return normalizeInteractionInterval(
+                scale.props.type,
+                zoom.extent,
+                fromComplexInterval
+            );
         }
     }
 
@@ -360,6 +372,33 @@ function applyZoomTransform(scale, domain, scaleFactor, scaleAnchor, pan) {
         anchor,
         scaleFactor
     );
+}
+
+/**
+ * Converts a user-facing interaction interval into the internal numeric domain
+ * representation used by index-like scales.
+ *
+ * @param {import("../spec/scale.js").ScaleType} type
+ * @param {ScalarDomain | ComplexDomain} interval
+ * @param {(domain: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @returns {number[]}
+ */
+function normalizeInteractionInterval(type, interval, fromComplexInterval) {
+    const numericInterval =
+        type === "locus"
+            ? fromComplexInterval(interval)
+            : /** @type {number[]} */ (interval);
+
+    // Whole-chromosome locus intervals already resolve to the intended extent.
+    if (
+        type === "locus" &&
+        isChromosomalLocusInterval(interval) &&
+        !hasExplicitLocusUpperBound(interval)
+    ) {
+        return numericInterval;
+    }
+
+    return toInternalIndexLikeInterval(type, numericInterval);
 }
 
 /**

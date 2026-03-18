@@ -150,50 +150,59 @@ describe("DomainPlanner", () => {
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
     });
 
-    test("configured domains use complex conversion", () => {
-        const fromComplexInterval = vi.fn(
-            (interval) => /** @type {number[]} */ (interval)
-        );
+    test("configured locus domains use complex conversion", () => {
+        const fromComplexInterval = vi.fn(() => [10, 20]);
         const planner = new DomainPlanner({
             getMembers: () =>
                 new Set(
                     /** @type {any} */ ([
                         {
                             channelDef: {
-                                type: "quantitative",
-                                scale: { domain: [0, 5] },
+                                type: "locus",
+                                scale: {
+                                    domain: [
+                                        { chrom: "chr1", pos: 0 },
+                                        { chrom: "chr1", pos: 9 },
+                                    ],
+                                },
                             },
                             contributesToDomain: true,
                         },
                     ])
                 ),
-            getType: () => "quantitative",
+            getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
         });
 
-        planner.getConfiguredDomain();
-        expect(fromComplexInterval).toHaveBeenCalledWith([0, 5]);
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 21]);
+        expect(fromComplexInterval).toHaveBeenCalledWith([
+            { chrom: "chr1", pos: 0 },
+            { chrom: "chr1", pos: 9 },
+        ]);
     });
 
-    test("configured domains are cached between calls", () => {
-        const fromComplexInterval = vi.fn(
-            (interval) => /** @type {number[]} */ (interval)
-        );
+    test("configured locus domains are cached between calls", () => {
+        const fromComplexInterval = vi.fn(() => [10, 20]);
         const planner = new DomainPlanner({
             getMembers: () =>
                 new Set(
                     /** @type {any} */ ([
                         {
                             channelDef: {
-                                type: "quantitative",
-                                scale: { domain: [0, 5] },
+                                type: "locus",
+                                scale: {
+                                    domain: [
+                                        { chrom: "chr1", pos: 0 },
+                                        { chrom: "chr1", pos: 9 },
+                                    ],
+                                },
                             },
                             contributesToDomain: true,
                         },
                     ])
                 ),
-            getType: () => "quantitative",
+            getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
         });
@@ -204,17 +213,22 @@ describe("DomainPlanner", () => {
         expect(fromComplexInterval).toHaveBeenCalledTimes(1);
     });
 
-    test("configured domain cache can be invalidated", () => {
-        const fromComplexInterval = vi.fn(
-            (interval) => /** @type {number[]} */ (interval)
+    test("configured locus domain cache can be invalidated", () => {
+        const fromComplexInterval = vi.fn((interval) =>
+            interval[0].chrom === "chr1" ? [10, 20] : [12, 30]
         );
 
         /** @type {Set<any>} */
         const members = new Set([
             {
                 channelDef: {
-                    type: "quantitative",
-                    scale: { domain: [0, 5] },
+                    type: "locus",
+                    scale: {
+                        domain: [
+                            { chrom: "chr1", pos: 0 },
+                            { chrom: "chr1", pos: 9 },
+                        ],
+                    },
                 },
                 contributesToDomain: true,
             },
@@ -222,24 +236,29 @@ describe("DomainPlanner", () => {
 
         const planner = new DomainPlanner({
             getMembers: () => members,
-            getType: () => "quantitative",
+            getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,
         });
 
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([0, 5]);
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 21]);
 
         members.add({
             channelDef: {
-                type: "quantitative",
-                scale: { domain: [2, 7] },
+                type: "locus",
+                scale: {
+                    domain: [
+                        { chrom: "chr2", pos: 0 },
+                        { chrom: "chr2", pos: 17 },
+                    ],
+                },
             },
             contributesToDomain: true,
         });
 
         planner.invalidateConfiguredDomain();
 
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([0, 7]);
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([10, 31]);
         expect(fromComplexInterval).toHaveBeenCalledTimes(3);
     });
 
