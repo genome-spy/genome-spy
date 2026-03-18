@@ -25,7 +25,6 @@ import { ScaleLocus } from "../genome/scaleLocus.js";
 import { ScaleIndex } from "../genome/scaleIndex.js";
 import { Scalar } from "../spec/channel.js";
 import { Datum } from "../data/flowNode.js";
-import { ExprRefFunction } from "../paramRuntime/types.js";
 
 export interface Accessor<T = Scalar> {
     (datum: Datum): T;
@@ -94,7 +93,9 @@ export interface ScaleAccessor<T = Scalar> extends Accessor<T> {
     domainKeyBase: string;
 }
 
-export interface Predicate extends ExprRefFunction {
+export interface Predicate {
+    (datum: Datum): boolean;
+
     /**
      * The parameter the predicate is based on
      */

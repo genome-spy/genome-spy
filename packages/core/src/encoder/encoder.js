@@ -69,22 +69,13 @@ export function createSelectionPredicate(param, encoding, paramRuntime, empty) {
         );
 
         compiled = paramRuntime.createExpression(expr);
-        predicate.fields = compiled.fields;
-        predicate.globals = compiled.globals;
-        predicate.code = compiled.code;
         return compiled;
     };
 
     /** @type {Predicate} */
     const predicate = Object.assign(
         /** @param {Datum} datum */ (datum) => ensureCompiled()(datum),
-        fallback,
         {
-            /** @param {() => void} listener */
-            subscribe: (listener) => ensureCompiled().subscribe(listener),
-            invalidate: () => compiled?.invalidate(),
-            identifier: () =>
-                compiled ? compiled.identifier() : `selection:${param}`,
             param,
             empty: empty ?? true,
         }
