@@ -15,6 +15,7 @@ const genome = new Genome({
  */
 function makeAccessor(field) {
     const accessor = (/** @type {Record<string, any>} */ datum) => datum[field];
+    accessor.constant = false;
     accessor.fields = [field];
     return accessor;
 }
@@ -23,12 +24,18 @@ function makeAccessor(field) {
  * @param {string} field
  */
 function makeLocusEncoder(field) {
+    const accessor = makeAccessor(field);
     return {
         scale: {
             type: "locus",
             genome: () => genome,
         },
-        dataAccessor: makeAccessor(field),
+        branches: [
+            {
+                accessor,
+                predicate: () => true,
+            },
+        ],
     };
 }
 
