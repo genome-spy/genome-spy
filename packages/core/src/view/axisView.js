@@ -10,7 +10,7 @@ const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
 const AXIS_EXTENT_PARAM = "axisExtent";
 const LABEL_WIDTH_FIELD = "_labelWidth";
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
-const AUTO_EXTENT_GROW_THRESHOLD_PX = 10;
+const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
 /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../spec/view.js").GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
@@ -208,6 +208,16 @@ export default class AxisView extends LayerView {
     }
 
     #updateAutoExtent() {
+        const channel = orient2channel(this.axisProps.orient);
+        const scaleResolution = this.dataParent.getScaleResolution(channel);
+        if (
+            scaleResolution &&
+            !scaleResolution.isDomainDefinedExplicitly() &&
+            !scaleResolution.isDomainInitialized()
+        ) {
+            return;
+        }
+
         const measuredLabelExtent = getMeasuredLabelExtent(
             this.axisProps,
             this.context,
@@ -218,10 +228,10 @@ export default class AxisView extends LayerView {
         }
 
         const nextExtent = getExtent(this.axisProps, measuredLabelExtent);
-        if (
-            nextExtent <
-            this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX
-        ) {
+        const willGrow =
+            nextExtent >= this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX;
+
+        if (!willGrow) {
             return;
         }
 
@@ -292,15 +302,15 @@ function clampAxisExtent(axisProps, extent) {
  * @param {UnitView | undefined} labelsView
  */
 function getMeasuredLabelExtent(axisProps, context, labelsView) {
-    const collector = labelsView?.getCollector();
-    if (!collector?.completed) {
+    const labels = getMeasuredLabels(labelsView);
+    if (!labels) {
         return undefined;
     }
 
-    let maxWidth = 0;
-    collector.visitData((datum) => {
-        maxWidth = Math.max(maxWidth, Number(datum[LABEL_WIDTH_FIELD]) || 0);
-    });
+    const maxWidth = labels.reduce(
+        (max, label) => Math.max(max, label.width),
+        0
+    );
 
     const font = axisProps.labelFont
         ? context.fontManager.getFont(
@@ -332,6 +342,28 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
             : maxWidth * absCos + labelHeight * absSin;
 
     return Math.ceil(perpendicularExtent);
+}
+
+/**
+ * @param {UnitView | undefined} labelsView
+ */
+function getMeasuredLabels(labelsView) {
+    const collector = labelsView?.getCollector();
+    if (!collector?.completed) {
+        return undefined;
+    }
+
+    /** @type {{ value: any, label: any, width: number }[]} */
+    const labels = [];
+    collector.visitData((datum) => {
+        labels.push({
+            value: datum.value,
+            label: datum.label,
+            width: Number(datum[LABEL_WIDTH_FIELD]) || 0,
+        });
+    });
+
+    return labels;
 }
 
 /**

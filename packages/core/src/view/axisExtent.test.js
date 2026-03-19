@@ -202,15 +202,32 @@ async function settleLayout(root, context) {
  * @param {import("../spec/root.js").RootSpec} spec
  * @param {import("../spec/axis.js").AxisOrient} orient
  */
-async function getSettledAxisExtent(spec, orient) {
+async function getSettledAxisSnapshot(spec, orient) {
     const context = createBroadcastingContext();
     const root = await createAndInitializeRoot(spec, context);
-
     const axis = findAxisView(root, orient);
 
     await settleLayout(root, context);
 
-    return axis.getPerpendicularSize();
+    const labelsView = findLabelsView(axis);
+    /** @type {{ value: any, label: any, width: any }[]} */
+    const rows = [];
+    labelsView.getCollector().visitData((datum) => {
+        rows.push({
+            value: datum.value,
+            label: datum.label,
+            width: datum._labelWidth,
+        });
+    });
+
+    const channel = orient === "left" || orient === "right" ? "y" : "x";
+
+    return {
+        extent: axis.getPerpendicularSize(),
+        heuristicExtent: getHeuristicExtent(axis),
+        domain: axis.dataParent.getScaleResolution(channel).getDomain(),
+        rows,
+    };
 }
 
 /**
@@ -270,7 +287,9 @@ describe("Axis extent measurement", () => {
             /** @type {import("../spec/transform.js").MeasureTextParams[]} */ (
                 labelsView.spec.transform
             ).find((transform) => transform.type === "measureText");
-        const textMark = /** @type {TextMark} */ (labelsView.mark);
+        const textMark = /** @type {import("../marks/text.js").default} */ (
+            labelsView.mark
+        );
 
         expect(textMark.properties.font).toBe("Lato");
         expect(textMark.properties.fontStyle).toBe("italic");
@@ -360,7 +379,9 @@ describe("Axis extent measurement", () => {
         await settleLayout(root, context);
 
         const afterInitialLayout = axis.getPerpendicularSize();
-        const rootContainer = /** @type {ConcatView} */ (root);
+        const rootContainer = /** @type {import("./concatView.js").default} */ (
+            root
+        );
         const firstChild = /** @type {import("./view.js").default} */ (
             rootContainer.children[0]
         );
@@ -394,8 +415,8 @@ describe("Axis extent measurement", () => {
             view: { stroke: "lightgray" },
         };
 
-        const implicitExtent = await getSettledAxisExtent(baseSpec, "left");
-        const explicitExtent = await getSettledAxisExtent(
+        const implicitSnapshot = await getSettledAxisSnapshot(baseSpec, "left");
+        const explicitSnapshot = await getSettledAxisSnapshot(
             {
                 ...baseSpec,
                 encoding: {
@@ -412,6 +433,6 @@ describe("Axis extent measurement", () => {
             "left"
         );
 
-        expect(implicitExtent).toBe(explicitExtent);
+        expect(implicitSnapshot.extent).toBe(explicitSnapshot.extent);
     });
 });

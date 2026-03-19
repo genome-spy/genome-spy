@@ -545,11 +545,11 @@ export default class ScaleResolution {
     /**
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
-    #isExplicitDomain() {
+    isDomainDefinedExplicitly() {
         return this.#domainAggregator.hasConfiguredDomain();
     }
 
-    #isDomainInitialized() {
+    isDomainInitialized() {
         const s = this.#scaleManager.scale;
         if (!s) {
             return false;
@@ -580,7 +580,7 @@ export default class ScaleResolution {
                 channel: this.channel,
                 dataType: this.type,
                 members: this.#members,
-                isExplicitDomain: this.#isExplicitDomain(),
+                isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#firstMemberView.getConfigScopes(),
             })
         );
@@ -662,7 +662,7 @@ export default class ScaleResolution {
         );
 
         if (isDiscrete(resolvedProps.type)) {
-            const isExplicit = this.#isExplicitDomain();
+            const isExplicit = this.isDomainDefinedExplicitly();
             const indexer = this.#getCategoricalIndexer(isExplicit);
             if (domain != null) {
                 if (
@@ -803,7 +803,7 @@ export default class ScaleResolution {
             scale,
             props: this.#getScaleProps(extractDataDomain),
             previousDomain: scale.domain(),
-            domainWasInitialized: this.#isDomainInitialized(),
+            domainWasInitialized: this.isDomainInitialized(),
             hasSelectionConfiguredDomain:
                 this.#domainAggregator.hasSelectionConfiguredDomain(),
         };
