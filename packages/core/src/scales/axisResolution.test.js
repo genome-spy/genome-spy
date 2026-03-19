@@ -196,6 +196,30 @@ describe("Axes resolve properly", () => {
         expect(view.getAxisResolution("y").getTitle()).toEqual("z");
     });
 
+    test("Conditional positional field branches contribute axis titles", async () => {
+        /** @type {any} */
+        const spec = {
+            params: [{ name: "p" }],
+            data: { values: [{ a: 1 }, { a: 2 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    value: 0,
+                    condition: {
+                        param: "p",
+                        field: "a",
+                        type: "quantitative",
+                    },
+                },
+                y: { value: 1 },
+            },
+        };
+
+        const view = await createAndInitialize(spec, UnitView);
+
+        expect(view.getAxisResolution("x").getTitle()).toEqual("a");
+    });
+
     test("Primary and secondary channels are included in the title", async () => {
         let view = await createAndInitialize(
             {

@@ -376,11 +376,16 @@ export function findChannelDefWithScale(channelDef) {
  */
 export function getChannelDefWithScale(view, channel) {
     const channelDef = view.mark.encoding[channel];
-    if (!Array.isArray(channelDef) && isChannelDefWithScale(channelDef)) {
-        return channelDef;
+    if (!Array.isArray(channelDef)) {
+        const channelDefWithScale = findChannelDefWithScale(channelDef);
+        if (channelDefWithScale) {
+            return channelDefWithScale;
+        }
     } else {
         throw new Error("Not a channel def with scale!");
     }
+
+    throw new Error("Not a channel def with scale!");
 }
 
 /**
