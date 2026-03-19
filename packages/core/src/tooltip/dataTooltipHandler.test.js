@@ -190,16 +190,23 @@ test("Uses the active conditional color branch for point tooltip legends", async
         "Beak Depth (mm)": 17,
     };
 
-    const colorEncoding = {
-        condition: {
-            param: "brush",
-            field: "Species",
-            type: "nominal",
-            scale: {
-                domain: ["Chinstrap", "Adelie", "Gentoo"],
-                range: ["#BF5CCA", "#FF6C02", "#0F7574"],
-            },
+    const colorDomain = ["Chinstrap", "Adelie", "Gentoo"];
+    const colorRange = ["#BF5CCA", "#FF6C02", "#0F7574"];
+
+    /** @type {any} */
+    const activeColorCondition = {
+        param: "brush",
+        field: "Species",
+        type: "nominal",
+        scale: {
+            domain: colorDomain,
+            range: colorRange,
         },
+    };
+
+    /** @type {import("../spec/channel.js").ColorDef} */
+    const colorEncoding = {
+        condition: activeColorCondition,
         value: "lightgrey",
     };
 
@@ -217,9 +224,7 @@ test("Uses the active conditional color branch for point tooltip legends", async
     });
 
     const colorScale = Object.assign(
-        scaleOrdinal()
-            .domain(colorEncoding.condition.scale.domain)
-            .range(colorEncoding.condition.scale.range),
+        scaleOrdinal().domain(colorDomain).range(colorRange),
         {
             type: "ordinal",
         }

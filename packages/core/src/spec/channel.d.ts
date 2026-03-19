@@ -268,15 +268,17 @@ export type FieldOrDatumDefWithCondition<
 /**
  * @minProperties 1
  */
-export type ValueDefWithCondition<V extends Value = Value> = Partial<
-    ValueDef<V | ExprRef>
-> & {
+export type ValueDefWithCondition<
+    V extends Value = Value,
+    T extends Type = Type,
+> = Partial<ValueDef<V | ExprRef>> & {
     /**
      * A field definition or one or more value definition(s) with a parameter predicate.
      */
     condition?:
-        | Conditional<FieldDef>
-        | Conditional<DatumDef>
+        | Conditional<MarkPropFieldDef<T>>
+        | Conditional<ScaleDatumDef>
+        | Conditional<MarkPropExprDef<T>>
         | Conditional<ValueDef<V | ExprRef>>
         | Conditional<ValueDef<V | ExprRef>>[];
 };
@@ -289,7 +291,7 @@ export type MarkPropFieldOrDatumOrExprDef<T extends Type = Type> =
 export type MarkPropDef<V extends Value, T extends Type = Type> =
     | FieldOrDatumDefWithCondition<MarkPropFieldDef<T>, V>
     | FieldOrDatumDefWithCondition<ScaleDatumDef, V>
-    | ValueDefWithCondition<V>;
+    | ValueDefWithCondition<V, T>;
 
 export type ColorDef = MarkPropDef<string | null>;
 
