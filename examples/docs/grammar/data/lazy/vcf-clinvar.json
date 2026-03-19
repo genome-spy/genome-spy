@@ -112,7 +112,6 @@
             ]
           },
           "axis": {
-            "minExtent": 120,
             "title": "Classification"
           }
         },
