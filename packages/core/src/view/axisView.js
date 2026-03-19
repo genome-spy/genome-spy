@@ -12,12 +12,6 @@ const LABEL_WIDTH_FIELD = "_labelWidth";
 const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
-/** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../spec/view.js").GeometricDimension>} */
-const CHANNEL_DIMENSIONS = {
-    x: "width",
-    y: "height",
-};
-
 /**
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  * @returns {import("../spec/channel.js").PrimaryPositionalChannel}
@@ -64,6 +58,9 @@ export default class AxisView extends LayerView {
     /** @type {UnitView | undefined} */
     #labelsView;
 
+    // This assumes the labels collector identity stays stable for the lifetime
+    // of the AxisView. If flow reinitialization starts replacing collectors for
+    // existing axis views, track the collector instance instead of a boolean.
     #labelsObserverAttached = false;
 
     #measurementScheduled = false;
@@ -76,8 +73,6 @@ export default class AxisView extends LayerView {
      * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
      * @typedef {import("../spec/axis.js").AxisOrient} AxisOrient
      * @typedef {import("./layout/flexLayout.js").SizeDef} SizeDef
-     *
-     * @typedef {Axis & { extent: number }} AugmentedAxis
      */
 
     /**
@@ -409,7 +404,7 @@ function getDefaultAngleAndAlign(type, axisProps) {
 function createAxis(axisProps, type) {
     // TODO: Ensure that no channels except the positional ones are shared
 
-    const ap = { ...axisProps, extent: getExtent(axisProps) };
+    const ap = axisProps;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
@@ -567,7 +562,6 @@ function createAxis(axisProps, type) {
         // Force the resolution towards the parent view even if it has "independent" behavior
         resolve: { scale: { [main]: "forced" } },
         domainInert: true,
-        [CHANNEL_DIMENSIONS[getPerpendicularChannel(main)]]: ap.extent,
         data: {
             lazy: {
                 type: "axisTicks",
@@ -599,7 +593,7 @@ function createAxis(axisProps, type) {
  * @returns {LayerSpec}
  */
 export function createGenomeAxis(axisProps, type) {
-    const ap = { ...axisProps, extent: getExtent(axisProps) };
+    const ap = axisProps;
 
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
