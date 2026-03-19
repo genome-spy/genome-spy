@@ -55,9 +55,6 @@ Out of scope for the first pass:
   to reserve axis space.
 - `AxisTickSource` already computes the visible ticks and formatted `label`
   strings for the current scale, domain, and axis length.
-- `SingleAxisLazySource` already listens to both domain changes and
-  `layoutComputed`, which is useful because tick generation depends on the
-  current pixel length of the axis.
 - `measureText.js` already uses the same BM font metrics that text marks use,
   so its core width calculation should be reused instead of introducing a
   separate measuring path.
@@ -71,9 +68,9 @@ Out of scope for the first pass:
 
 Important constraint:
 
-- The internal axis spec currently bakes `extent` into both the axis container
-  size and tick geometry. Updating only `getPerpendicularSize()` would not be
-  enough; the rendered axis internals must see the same effective extent.
+- The rendered axis internals must see the same effective extent that layout
+  uses. Extent-dependent geometry must react through the live `axisExtent`
+  parameter instead of stale spec-time snapshots.
 - Rebuilding the `AxisView` subtree during zooming or ordinary extent updates is
   not allowed. The axis subtree must stay alive and react to extent changes.
 
@@ -175,10 +172,9 @@ Rules:
 
 - do not shrink automatically
 - require a minimum increase before triggering layout, for example `>= 4px`
-- optionally debounce the relayout request to the next animation frame or a
-  short timeout if repeated domain events arrive during interaction
 
-This should reduce layout churn when domains change smoothly.
+This should reduce layout churn when domains change smoothly without adding
+extra delay to axis updates.
 
 ### 7. Keep layout and rendered geometry in sync
 
@@ -211,131 +207,37 @@ Subtree rebuilding is explicitly out of bounds for this feature.
 This is required, not optional. Without it, measurements can disagree with
 actual rendering whenever a theme or axis config sets a non-default font.
 
-## Detailed Implementation Steps
+## Implemented First Pass
 
-### Step 1. Clean up the current axis extent code
+The branch now implements the first-pass design:
 
-- Refactor `getExtent(axisProps)` into smaller helpers:
-  - `getFixedAxisExtent(axisProps)`
-  - `getHeuristicLabelExtent(axisProps, channel)`
-  - `clampAxisExtent(axisProps, extent)`
-- Make the current heuristic explicit and testable before changing behavior.
+- axis labels flow through `AxisTickSource -> measureText -> collector`
+- `AxisView` reads the labels collector and derives the maximum `_labelWidth`
+- label font properties are propagated consistently to both rendering and
+  `measureText`
+- `AxisView` owns a live `effectiveExtent` and an internal `axisExtent`
+  parameter
+- extent-dependent tick geometry reacts through `ExprRef`s without subtree
+  rebuilding
+- automatic updates are grow-only and thresholded
+- placeholder implicit continuous startup domains such as `[0, 0]` are ignored
+  until the scale domain is initialized
+- extent updates are triggered from the labels collector, bootstrapped by
+  `subtreeDataReady`
+- focused tests cover font propagation, categorical growth, subtree stability
+  during zoom, and implicit vs explicit quantitative domain parity
 
-### Step 2. Add measurement to the axis label dataflow
+The implementation intentionally does not add debounce.
 
-- Update the axis labels unit spec so it pipes the tick rows through a
-  `measureText` transform.
-- Measure the `label` field into an internal field such as `_labelWidth`.
-- Use the same label font settings that the text mark uses:
-  - `labelFont`
-  - `labelFontStyle`
-  - `labelFontWeight`
-  - `labelFontSize`
+## Remaining Work
 
-This makes the collector hold both the rendered label strings and their
-measured widths.
-
-### Step 3. Fix axis label font propagation first
-
-- Update the axis labels text mark in `AxisView` to pass through:
-  - `labelFont`
-  - `labelFontStyle`
-  - `labelFontWeight`
-- Ensure the `measureText` transform on the same labels unit uses the exact same
-  font inputs.
-- Treat mismatched font inputs as a correctness bug, not a polish issue.
-
-### Step 4. Introduce an internal extent parameter for `AxisView`
-
-- Allocate an internal parameter in `AxisView`, for example `axisExtent`.
-- Keep it synchronized with the JS-side numeric `effectiveExtent`.
-- Use this parameter only for internal axis specs; do not expose it as a
-  user-facing axis feature.
-
-### Step 5. Make axis internals extent-reactive with `ExprRef`
-
-- Replace internal uses of the static `ap.extent` value where runtime updates
-  are needed.
-- Use `ExprRef`s against the internal `axisExtent` parameter for:
-  - tick endpoint positioning
-  - any offsets or placements that must stay consistent with the current extent
-- Keep the subtree stable across zoom and extent changes.
-
-### Step 6. Read measured rows from the labels collector
-
-- Identify the labels unit inside `AxisView`.
-- Access its collector through `UnitView.getCollector()`.
-- After collector completion, read the collected rows and compute the maximum
-  `_labelWidth`.
-- Use that maximum width as the measurement input for the perpendicular extent
-  calculation.
-
-### Step 7. Add auto-measurement state and lifecycle to `AxisView`
-
-- Add private fields for measured/effective extent and the last applied
-  measurement signature.
-- After `AxisView.initializeChildren()`, schedule an initial measurement.
-- Listen for the same events that can change labels:
-  - scale domain changes
-  - `layoutComputed`
-- Recompute by inspecting the labels collector after the axis dataflow has
-  updated.
-
-### Step 8. Compute the measured perpendicular label extent
-
-- Read the maximum `_labelWidth` from the labels collector.
-- Estimate the text height from font metrics and font size.
-- Convert width/height/angle into perpendicular footprint.
-- Add padding and clamp against axis min/max constraints.
-
-### Step 9. Update axis rendering to consume dynamic extent
-
-- Ensure `AxisView.getPerpendicularSize()` returns the effective extent.
-- Update the internal extent parameter whenever the effective extent changes.
-- Keep all axis graphics synchronized through the live subtree instead of
-  subtree reconstruction.
-
-### Step 10. Add conservative reflow policy
-
-- Only increase the effective extent automatically.
-- Ignore changes below the configured threshold.
-- Coalesce multiple updates before requesting layout reflow.
-- Document the policy in code comments because this is intentionally not a
-  “true bounds” system.
-
-### Step 11. Preserve explicit user control
-
-- If the user sets an explicit extent knob, define the behavior clearly:
-  - `minExtent` remains a floor
-  - `maxExtent` remains a ceiling
-  - if a future explicit `extent` property is introduced, it should disable auto
-    measurement entirely
-
-For the current schema, auto measurement should simply feed into the existing
-`minExtent` / `maxExtent` clamp.
-
-### Step 12. Tests
-
-Add focused tests near the affected modules:
-
-- axis extent tests for:
-  - quantitative axis with short vs long formatted labels
-  - categorical axis with long labels
-  - rotated bottom axis labels
-  - grow-only updates after domain change
-  - thresholded updates that avoid tiny relayouts
-  - shared axes using the same measured extent across children
-- regression test for `measureText` using the axis label font settings
-- regression test for `labelFont` / `labelFontWeight` / `labelFontStyle`
-  reaching both the text mark and the `measureText` transform
-- regression test that extent changes do not rebuild or recreate the axis
-  subtree during zoom-driven updates
-
-### Step 13. Documentation
-
-- No user-facing docs are required if behavior only improves defaults.
-- If a new config knob is added for auto extent policy, document it in the axis
-  schema and user docs.
+- decide whether the current growth threshold is the right default long-term
+- consider whether a more explicit collector-tracking field would be cleaner
+  than the current one-shot observer latch inside `AxisView`
+- optionally add broader regression coverage for complex composed layouts if
+  future issues appear
+- keep chromosome label bounds, title bounds, and shrinking behavior out of
+  scope unless a separate follow-up is started
 
 ## Suggested First Iteration
 
@@ -387,14 +289,13 @@ without turning the layout system into a continuously recomputed bounds engine.
 
 8. Do we want an internal-only config constant for:
    - minimum growth delta
-   - debounce interval
    - grow-only vs allow-shrink behavior
-     Answer: Yes. But leave debounce out for now. There's a risk that it adds
-     unnecessary delay to updates.
+     Answer: Yes.
 
 9. Should the labels collector itself be observed for measurement updates, or is
    it sufficient to re-read it on `layoutComputed` and domain events?
-   Answer: Re-reading on `layoutComputed` and domain events is sufficient for now.
+   Answer: Observe the labels collector directly, bootstrapped by
+   `subtreeDataReady`.
 
 10. Should a measured extent be remembered per axis instance across visibility
     toggles, or is recomputing after recreation acceptable?
