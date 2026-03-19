@@ -126,15 +126,50 @@ export function findEncodedFields(view) {
     view.visit((view) => {
         if (view instanceof UnitView) {
             const encoding = view.getEncoding();
-            for (const [channel, def] of Object.entries(encoding)) {
-                if (!Array.isArray(def) && isFieldDef(def) && "type" in def) {
+
+            /**
+             * @param {import("../spec/channel.js").Channel} channel
+             * @param {unknown} definition
+             */
+            const collect = (channel, definition) => {
+                if (
+                    !definition ||
+                    typeof definition !== "object" ||
+                    Array.isArray(definition)
+                ) {
+                    return;
+                }
+
+                if (isFieldDef(definition) && "type" in definition) {
                     fieldInfos.push({
                         view,
                         channel,
-                        field: def.field,
-                        type: def.type,
+                        field: definition.field,
+                        type: /** @type {import("../spec/channel.js").Type} */ (
+                            definition.type
+                        ),
                     });
                 }
+
+                if ("condition" in definition) {
+                    const { condition } = definition;
+                    if (Array.isArray(condition)) {
+                        for (const subCondition of condition) {
+                            collect(channel, subCondition);
+                        }
+                    } else {
+                        collect(channel, condition);
+                    }
+                }
+            };
+
+            for (const [channel, def] of Object.entries(encoding)) {
+                collect(
+                    /** @type {import("../spec/channel.js").Channel} */ (
+                        channel
+                    ),
+                    def
+                );
             }
             return VISIT_SKIP; // Skip sample summaries
         }

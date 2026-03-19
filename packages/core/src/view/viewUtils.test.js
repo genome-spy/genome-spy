@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { createTestViewContext } from "./testUtils.js";
-import { finalizeSubtreeGraphics } from "./viewUtils.js";
+import { createAndInitialize, createTestViewContext } from "./testUtils.js";
+import UnitView from "./unitView.js";
+import { finalizeSubtreeGraphics, findEncodedFields } from "./viewUtils.js";
 import { initializeViewSubtree } from "../data/flowInit.js";
 
 describe("initializeViewSubtree", () => {
@@ -83,5 +84,36 @@ describe("finalizeSubtreeGraphics", () => {
         await finalizeSubtreeGraphics([Promise.resolve(mark)], () => false);
 
         expect(mark.finalizeGraphicsInitialization).not.toHaveBeenCalled();
+    });
+});
+
+describe("findEncodedFields", () => {
+    test("includes conditional field branches", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "p" }],
+            data: {
+                values: [{ a: 1, group: "x" }],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "a", type: "quantitative" },
+                color: {
+                    value: "lightgray",
+                    condition: {
+                        param: "p",
+                        field: "group",
+                        type: "nominal",
+                    },
+                },
+            },
+        };
+
+        const view = await createAndInitialize(spec, UnitView);
+
+        expect(findEncodedFields(view).map((info) => info.field)).toEqual([
+            "a",
+            "group",
+        ]);
     });
 });
