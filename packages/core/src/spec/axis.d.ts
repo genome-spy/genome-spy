@@ -139,66 +139,59 @@ export interface Axis extends BaseAxis {
     values?: any[];
 }
 
-export interface BaseAxis<
-    N = number,
-    B = boolean,
-    S = string,
-    C = string,
-    FW = string,
-    FS = string,
-> {
+export interface BaseAxis {
     /**
      * The minimum extent in pixels that axis ticks and labels should use. This determines a minimum offset value for axis titles.
      *
      * __Default value:__ `30` for y-axis; `undefined` for x-axis.
      */
-    minExtent?: N;
+    minExtent?: number;
 
     /**
      * The maximum extent in pixels that axis ticks and labels should use. This determines a maximum offset value for axis titles.
      *
      * __Default value:__ `undefined`.
      */
-    maxExtent?: N;
+    maxExtent?: number;
 
     // ---------- Title ----------
     /**
      * The padding, in pixels, between title and axis.
      */
-    titlePadding?: N;
+    titlePadding?: number;
 
     /**
      * Color of the title, can be in hex color code or regular color name.
      */
-    titleColor?: C;
+    titleColor?: string;
 
     /**
      * Font of the title. (e.g., `"Helvetica Neue"`).
      */
-    titleFont?: S;
+    titleFont?: string;
 
     /**
      * Font size of the title.
      *
      * @minimum 0
      */
-    titleFontSize?: N;
+    titleFontSize?: number;
 
     /**
      * Font style of the title.
      */
-    titleFontStyle?: FS;
+    titleFontStyle?: FontStyle;
 
     /**
      * Font weight of the title.
      * This can be either a string (e.g `"bold"`, `"normal"`) or a number (`100`, `200`, `300`, ..., `900` where `"normal"` = `400` and `"bold"` = `700`).
      */
-    titleFontWeight?: FW;
+    titleFontWeight?: FontWeight;
 
     /**
      * Opacity of the axis title.
      */
-    titleOpacity?: N;
+    titleOpacity?: number;
 
     // ---------- Domain ----------
     /**
@@ -230,14 +223,14 @@ export interface BaseAxis<
      *
      * __Default value:__ `"gray"`.
      */
-    domainColor?: C;
+    domainColor?: string;
 
     /**
      * Stroke width of axis domain line
      *
      * __Default value:__ `1`
      */
-    domainWidth?: N;
+    domainWidth?: number;
 
     // ---------- Ticks ----------
     /**
@@ -245,7 +238,7 @@ export interface BaseAxis<
      *
      * __Default value:__ `true`
      */
-    ticks?: B;
+    ticks?: boolean;
 
     /**
      * The stroke cap for the tick lines' ending style. One of `"butt"`, `"round"` or `"square"`.
@@ -259,7 +252,7 @@ export interface BaseAxis<
      *
      * __Default value:__ `"gray"`
      */
-    tickColor?: C;
+    tickColor?: string;
 
     /**
      * An array of alternating [stroke, space] lengths for dashed tick mark lines.
@@ -277,7 +270,7 @@ export interface BaseAxis<
      * __Default value:__ `5`
      * @minimum 0
      */
-    tickSize?: N;
+    tickSize?: number;
 
     /**
      * The width, in pixels, of ticks.
@@ -285,7 +278,7 @@ export interface BaseAxis<
      * __Default value:__ `1`
      * @minimum 0
      */
-    tickWidth?: N;
+    tickWidth?: number;
 
     // ---------- Labels ----------
     /**
@@ -319,36 +312,36 @@ export interface BaseAxis<
     /**
      * The color of the tick label, can be in hex color code or regular color name.
      */
-    labelColor?: C;
+    labelColor?: string;
 
     /**
      * The font of the tick label.
      */
-    labelFont?: S;
+    labelFont?: string;
 
     /**
      * The font size of the label, in pixels.
      *
      * @minimum 0
      */
-    labelFontSize?: N;
+    labelFontSize?: number;
 
     /**
      * Font style of the title.
      */
-    labelFontStyle?: FS;
+    labelFontStyle?: FontStyle;
 
     /**
      * Font weight of axis tick labels.
      */
-    labelFontWeight?: FW;
+    labelFontWeight?: FontWeight;
 
     /**
      * Maximum allowed pixel width of axis tick labels.
      *
      * __Default value:__ `180`
      */
-    labelLimit?: N;
+    labelLimit?: number;
 
     /**
      * The padding, in pixels, between axis and text labels.

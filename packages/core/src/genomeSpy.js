@@ -672,6 +672,7 @@ export default class GenomeSpy {
 
     computeLayout() {
         this.#renderCoordinator.computeLayout();
+        this.#glHelper.invalidateSize();
     }
 
     renderAll() {

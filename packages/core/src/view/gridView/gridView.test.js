@@ -251,14 +251,14 @@ describe("GridView separators", () => {
         const [firstChild, secondChild] = /** @type {UnitView[]} */ (
             view.children
         );
-        const firstDatum = firstChild.getCollector().getData()[0];
-        const secondDatum = secondChild.getCollector().getData()[0];
+        const firstDatum = Array.from(firstChild.getCollector().getData())[0];
+        const secondDatum = Array.from(secondChild.getCollector().getData())[0];
 
         Object.defineProperty(firstChild.mark, "updateGraphicsData", {
-            value: () => undefined,
+            value: /** @returns {void} */ () => undefined,
         });
         Object.defineProperty(secondChild.mark, "updateGraphicsData", {
-            value: () => undefined,
+            value: /** @returns {void} */ () => undefined,
         });
 
         view.paramRuntime.setValue("width", 999);

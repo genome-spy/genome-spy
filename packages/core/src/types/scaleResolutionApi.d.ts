@@ -30,6 +30,16 @@ export interface ScaleResolutionApi {
     getDomain(): any[];
 
     /**
+     * Returns true if the domain has been provided explicitly in the spec.
+     */
+    isDomainDefinedExplicitly(): boolean;
+
+    /**
+     * Returns true when the scale domain has moved beyond the placeholder startup state.
+     */
+    isDomainInitialized(): boolean;
+
+    /**
      * Returns the current, possible zoomed domain converted into complex objects
      * such as genomic coordinates.
      */
