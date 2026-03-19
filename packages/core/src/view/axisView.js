@@ -64,6 +64,8 @@ export default class AxisView extends LayerView {
     /** @type {UnitView | undefined} */
     #labelsView;
 
+    #labelsObserverAttached = false;
+
     #measurementScheduled = false;
 
     /**
@@ -155,20 +157,9 @@ export default class AxisView extends LayerView {
             return;
         }
 
-        const scaleResolution = this.dataParent.getScaleResolution(
-            orient2channel(this.axisProps.orient)
-        );
-        if (scaleResolution) {
-            const listener = () => this.#scheduleAutoExtentMeasurement();
-            scaleResolution.addEventListener("domain", listener);
-            this.registerDisposer(() =>
-                scaleResolution.removeEventListener("domain", listener)
-            );
-        }
-
         this.registerDisposer(
-            this._addBroadcastHandler("layoutComputed", () =>
-                this.#scheduleAutoExtentMeasurement()
+            this._addBroadcastHandler("subtreeDataReady", () =>
+                this.#ensureLabelsObserver()
             )
         );
     }
@@ -205,6 +196,26 @@ export default class AxisView extends LayerView {
             this.#measurementScheduled = false;
             this.#updateAutoExtent();
         });
+    }
+
+    #ensureLabelsObserver() {
+        if (this.#labelsObserverAttached) {
+            return;
+        }
+
+        const collector = this.#labelsView?.getCollector();
+        if (!collector) {
+            return;
+        }
+
+        this.#labelsObserverAttached = true;
+        this.registerDisposer(
+            collector.observe(() => this.#scheduleAutoExtentMeasurement())
+        );
+
+        if (collector.completed) {
+            this.#scheduleAutoExtentMeasurement();
+        }
     }
 
     #updateAutoExtent() {
@@ -302,15 +313,15 @@ function clampAxisExtent(axisProps, extent) {
  * @param {UnitView | undefined} labelsView
  */
 function getMeasuredLabelExtent(axisProps, context, labelsView) {
-    const labels = getMeasuredLabels(labelsView);
-    if (!labels) {
+    const collector = labelsView?.getCollector();
+    if (!collector?.completed) {
         return undefined;
     }
 
-    const maxWidth = labels.reduce(
-        (max, label) => Math.max(max, label.width),
-        0
-    );
+    let maxWidth = 0;
+    collector.visitData((datum) => {
+        maxWidth = Math.max(maxWidth, Number(datum[LABEL_WIDTH_FIELD]) || 0);
+    });
 
     const font = axisProps.labelFont
         ? context.fontManager.getFont(
@@ -342,28 +353,6 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
             : maxWidth * absCos + labelHeight * absSin;
 
     return Math.ceil(perpendicularExtent);
-}
-
-/**
- * @param {UnitView | undefined} labelsView
- */
-function getMeasuredLabels(labelsView) {
-    const collector = labelsView?.getCollector();
-    if (!collector?.completed) {
-        return undefined;
-    }
-
-    /** @type {{ value: any, label: any, width: number }[]} */
-    const labels = [];
-    collector.visitData((datum) => {
-        labels.push({
-            value: datum.value,
-            label: datum.label,
-            width: Number(datum[LABEL_WIDTH_FIELD]) || 0,
-        });
-    });
-
-    return labels;
 }
 
 /**
