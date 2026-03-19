@@ -1,9 +1,16 @@
 import LayerView from "./layerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
+import UnitView from "./unitView.js";
 import { markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
+const LABELS_LAYER_NAME = "labels_main";
+const TICKS_AND_LABELS_LAYER_NAME = "ticks_and_labels";
+const AXIS_EXTENT_PARAM = "axisExtent";
+const LABEL_WIDTH_FIELD = "_labelWidth";
+const Y_AXIS_LABEL_HEURISTIC_PX = 10;
+const AUTO_EXTENT_GROW_THRESHOLD_PX = 10;
 
 /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../spec/view.js").GeometricDimension>} */
 const CHANNEL_DIMENSIONS = {
@@ -50,6 +57,15 @@ export function orient2channel(slot) {
  *
  */
 export default class AxisView extends LayerView {
+    #effectiveExtent;
+
+    #axisExtentSetter;
+
+    /** @type {UnitView | undefined} */
+    #labelsView;
+
+    #measurementScheduled = false;
+
     /**
      *
      * @typedef {import("../spec/view.js").LayerSpec} LayerSpec
@@ -115,8 +131,46 @@ export default class AxisView extends LayerView {
         );
 
         this.axisProps = fullAxisProps;
+        this.#effectiveExtent = getExtent(fullAxisProps);
+        this.#axisExtentSetter = this.paramRuntime.allocateSetter(
+            AXIS_EXTENT_PARAM,
+            this.#effectiveExtent
+        );
 
         markViewAsNonAddressable(this, { skipSubtree: true });
+    }
+
+    async initializeChildren() {
+        await super.initializeChildren();
+
+        const labelsView = this.getDescendants().find(
+            (view) =>
+                view instanceof UnitView && view.name === LABELS_LAYER_NAME
+        );
+        if (labelsView instanceof UnitView) {
+            this.#labelsView = labelsView;
+        }
+
+        if (!this.axisProps.labels || !this.#labelsView) {
+            return;
+        }
+
+        const scaleResolution = this.dataParent.getScaleResolution(
+            orient2channel(this.axisProps.orient)
+        );
+        if (scaleResolution) {
+            const listener = () => this.#scheduleAutoExtentMeasurement();
+            scaleResolution.addEventListener("domain", listener);
+            this.registerDisposer(() =>
+                scaleResolution.removeEventListener("domain", listener)
+            );
+        }
+
+        this.registerDisposer(
+            this._addBroadcastHandler("layoutComputed", () =>
+                this.#scheduleAutoExtentMeasurement()
+            )
+        );
     }
 
     getSize() {
@@ -134,43 +188,150 @@ export default class AxisView extends LayerView {
     }
 
     getPerpendicularSize() {
-        return getExtent(this.axisProps);
+        return this.#effectiveExtent;
     }
 
     isPickingSupported() {
         return false;
     }
+
+    #scheduleAutoExtentMeasurement() {
+        if (this.#measurementScheduled) {
+            return;
+        }
+
+        this.#measurementScheduled = true;
+        queueMicrotask(() => {
+            this.#measurementScheduled = false;
+            this.#updateAutoExtent();
+        });
+    }
+
+    #updateAutoExtent() {
+        const measuredLabelExtent = getMeasuredLabelExtent(
+            this.axisProps,
+            this.context,
+            this.#labelsView
+        );
+        if (measuredLabelExtent === undefined) {
+            return;
+        }
+
+        const nextExtent = getExtent(this.axisProps, measuredLabelExtent);
+        if (
+            nextExtent <
+            this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX
+        ) {
+            return;
+        }
+
+        this.#effectiveExtent = nextExtent;
+        this.#axisExtentSetter(nextExtent);
+        this.invalidateSizeCache();
+        this.context.requestLayoutReflow();
+    }
+}
+
+/**
+ * @param {Axis} axisProps
+ * @param {number} [measuredLabelExtent]
+ */
+function getExtent(axisProps, measuredLabelExtent) {
+    /** @type {number} */
+    let extent = getFixedAxisExtent(axisProps);
+
+    if (axisProps.labels) {
+        extent += measuredLabelExtent ?? getHeuristicLabelExtent(axisProps);
+    }
+
+    // TODO: Include chrom ticks and labels!
+
+    return clampAxisExtent(axisProps, extent);
 }
 
 /**
  * @param {Axis} axisProps
  */
-function getExtent(axisProps) {
-    const mainChannel = orient2channel(axisProps.orient);
-
-    /** @type {number} */
+function getFixedAxisExtent(axisProps) {
     let extent = (axisProps.ticks && axisProps.tickSize) || 0;
 
     if (axisProps.labels) {
         extent += axisProps.labelPadding;
-        if (mainChannel == "x") {
-            extent += axisProps.labelFontSize;
-        } else {
-            extent += 30; // TODO: Measure label lengths!
-        }
     }
+
     if (axisProps.title) {
         extent += axisProps.titlePadding + axisProps.titleFontSize;
     }
 
-    // TODO: Include chrom ticks and labels!
+    return extent;
+}
 
-    extent = Math.min(
+/**
+ * @param {Axis} axisProps
+ */
+function getHeuristicLabelExtent(axisProps) {
+    return orient2channel(axisProps.orient) == "x"
+        ? axisProps.labelFontSize
+        : Y_AXIS_LABEL_HEURISTIC_PX;
+}
+
+/**
+ * @param {Axis} axisProps
+ * @param {number} extent
+ */
+function clampAxisExtent(axisProps, extent) {
+    return Math.min(
         axisProps.maxExtent || Infinity,
         Math.max(axisProps.minExtent || 0, extent)
     );
+}
 
-    return extent;
+/**
+ * @param {Axis} axisProps
+ * @param {import("../types/viewContext.js").default} context
+ * @param {UnitView | undefined} labelsView
+ */
+function getMeasuredLabelExtent(axisProps, context, labelsView) {
+    const collector = labelsView?.getCollector();
+    if (!collector?.completed) {
+        return undefined;
+    }
+
+    let maxWidth = 0;
+    collector.visitData((datum) => {
+        maxWidth = Math.max(maxWidth, Number(datum[LABEL_WIDTH_FIELD]) || 0);
+    });
+
+    const font = axisProps.labelFont
+        ? context.fontManager.getFont(
+              axisProps.labelFont,
+              /** @type {import("../spec/font.js").FontStyle | undefined} */ (
+                  axisProps.labelFontStyle
+              ),
+              /** @type {import("../spec/font.js").FontWeight | undefined} */ (
+                  axisProps.labelFontWeight
+              )
+          )
+        : context.fontManager.getDefaultFont();
+    const metrics = font.metrics;
+    if (!metrics) {
+        return undefined;
+    }
+
+    const labelHeight =
+        ((metrics.capHeight + metrics.descent) / metrics.common.base) *
+        axisProps.labelFontSize;
+
+    const radians = (axisProps.labelAngle * Math.PI) / 180;
+    const absSin = Math.abs(Math.sin(radians));
+    const absCos = Math.abs(Math.cos(radians));
+
+    const perpendicularExtent =
+        orient2channel(axisProps.orient) == "x"
+            ? maxWidth * absSin + labelHeight * absCos
+            : maxWidth * absCos + labelHeight * absSin;
+
+    return Math.ceil(perpendicularExtent);
 }
 
 /**
@@ -263,13 +424,39 @@ function createAxis(axisProps, type) {
      * @return {import("../spec/view.js").UnitSpec}
      */
     const createLabels = () => ({
-        name: "labels",
+        name: LABELS_LAYER_NAME,
+        transform: [
+            {
+                type: "measureText",
+                field: "label",
+                as: LABEL_WIDTH_FIELD,
+                fontSize: ap.labelFontSize,
+                font: ap.labelFont,
+                fontStyle:
+                    /** @type {import("../spec/font.js").FontStyle | undefined} */ (
+                        ap.labelFontStyle
+                    ),
+                fontWeight:
+                    /** @type {import("../spec/font.js").FontWeight | undefined} */ (
+                        ap.labelFontWeight
+                    ),
+            },
+        ],
         mark: {
             type: "text",
             clip: false,
             align: ap.labelAlign,
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,
+            font: ap.labelFont,
+            fontStyle:
+                /** @type {import("../spec/font.js").FontStyle | undefined} */ (
+                    ap.labelFontStyle
+                ),
+            fontWeight:
+                /** @type {import("../spec/font.js").FontWeight | undefined} */ (
+                    ap.labelFontWeight
+                ),
             [secondary + "Offset"]:
                 (ap.tickSize + ap.labelPadding) * offsetDirection,
             [secondary]: anchor,
@@ -300,7 +487,11 @@ function createAxis(axisProps, type) {
         encoding: {
             [secondary]: { value: anchor },
             [secondary + "2"]: {
-                value: anchor - (ap.tickSize / ap.extent) * (anchor ? 1 : -1),
+                value: {
+                    expr: `${anchor} - ${ap.tickSize} / ${AXIS_EXTENT_PARAM} * ${
+                        anchor ? 1 : -1
+                    }`,
+                },
             },
         },
     });
@@ -332,7 +523,7 @@ function createAxis(axisProps, type) {
     const createTicksAndLabels = () => {
         /** @type {LayerSpec} */
         const spec = {
-            name: "ticks_and_labels",
+            name: TICKS_AND_LABELS_LAYER_NAME,
             encoding: {
                 [main]: makeMainDomainDef(),
             },
@@ -404,8 +595,13 @@ export function createGenomeAxis(axisProps, type) {
             strokeDash: axisProps.chromTickDash,
             strokeDashOffset: axisProps.chromTickDashOffset,
             [secondary]: anchor,
-            [secondary + "2"]:
-                anchor - (ap.chromTickSize / ap.extent) * (anchor ? 1 : -1),
+            [secondary + "2"]: {
+                value: {
+                    expr: `${anchor} - ${ap.chromTickSize} / ${AXIS_EXTENT_PARAM} * ${
+                        anchor ? 1 : -1
+                    }`,
+                },
+            },
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
         },
@@ -562,10 +758,10 @@ export function createGenomeAxis(axisProps, type) {
 
             // TODO: Simplify the following mess
             axisSpec.layer
-                .filter((view) => view.name == "ticks_and_labels")
+                .filter((view) => view.name == TICKS_AND_LABELS_LAYER_NAME)
                 .forEach((/** @type {LayerSpec} */ view) =>
                     view.layer
-                        .filter((view) => view.name == "labels")
+                        .filter((view) => view.name == LABELS_LAYER_NAME)
                         .forEach(
                             (
                                 /** @type {import("../spec/view.js").UnitSpec} */ view

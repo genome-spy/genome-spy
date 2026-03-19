@@ -354,37 +354,48 @@ without turning the layout system into a continuously recomputed bounds engine.
 
 1. Should `minExtent` continue to default to `20` globally, or should the
    default become smaller once auto label measurement is in place?
+   Answer: 20 is fine for now.
 
 2. Should measurement use the currently visible ticks only, or should
    quantitative axes use a more conservative synthetic sample of possible labels
    so zooming does not repeatedly grow the axis?
+   Answer: the visible ticks only, to keep measurement aligned with actual labels.
 
 3. For categorical scales with very large domains, should all labels be measured
    or only the labels returned by the current tick-generation path?
+   Answer: all.
 
 4. What is the best font-height approximation for rotated labels in GenomeSpy’s
    BM font metrics:
    - `capHeight + descent`
    - `common.lineHeight`
    - another existing text-box estimate from the text vertex builder
+     Answer: `capHeight + descent`
 
 5. Should automatic extent updates happen immediately after the first axis
    layout, or should they wait until the first stable `layoutComputed` event to
    avoid a guaranteed second layout pass during initialization?
+   Answer: I don't know. Figure it out.
 
 6. Which internal axis mark props need to become `ExprRef`-driven against the
    live extent parameter, and which can remain static?
+   Answer: Those that you need to make the layout reactive.
 
 7. Should locus chromosome labels stay out of scope entirely for the first pass,
    or should the implementation leave an obvious hook for adding them next?
+   Answer: Out of scope for now.
 
 8. Do we want an internal-only config constant for:
    - minimum growth delta
    - debounce interval
    - grow-only vs allow-shrink behavior
+     Answer: Yes. But leave debounce out for now. There's a risk that it adds
+     unnecessary delay to updates.
 
 9. Should the labels collector itself be observed for measurement updates, or is
    it sufficient to re-read it on `layoutComputed` and domain events?
+   Answer: Re-reading on `layoutComputed` and domain events is sufficient for now.
 
 10. Should a measured extent be remembered per axis instance across visibility
-   toggles, or is recomputing after recreation acceptable?
+    toggles, or is recomputing after recreation acceptable?
+    Answer: Recomputing is acceptable if it's really needed.
