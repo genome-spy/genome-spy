@@ -628,11 +628,9 @@ export function createGenomeAxis(axisProps, type) {
             strokeDashOffset: axisProps.chromTickDashOffset,
             [secondary]: anchor,
             [secondary + "2"]: {
-                value: {
-                    expr: `${anchor} - ${ap.chromTickSize} / ${AXIS_EXTENT_PARAM} * ${
-                        anchor ? 1 : -1
-                    }`,
-                },
+                expr: `${anchor} - ${ap.chromTickSize} / ${AXIS_EXTENT_PARAM} * ${
+                    anchor ? 1 : -1
+                }`,
             },
             color: axisProps.chromTickColor,
             size: ap.chromTickWidth,
