@@ -448,14 +448,8 @@ function createAxis(axisProps, type) {
                 as: LABEL_WIDTH_FIELD,
                 fontSize: ap.labelFontSize,
                 font: ap.labelFont,
-                fontStyle:
-                    /** @type {import("../spec/font.js").FontStyle | undefined} */ (
-                        ap.labelFontStyle
-                    ),
-                fontWeight:
-                    /** @type {import("../spec/font.js").FontWeight | undefined} */ (
-                        ap.labelFontWeight
-                    ),
+                fontStyle: ap.labelFontStyle,
+                fontWeight: ap.labelFontWeight,
             },
         ],
         mark: {
@@ -465,14 +459,8 @@ function createAxis(axisProps, type) {
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,
             font: ap.labelFont,
-            fontStyle:
-                /** @type {import("../spec/font.js").FontStyle | undefined} */ (
-                    ap.labelFontStyle
-                ),
-            fontWeight:
-                /** @type {import("../spec/font.js").FontWeight | undefined} */ (
-                    ap.labelFontWeight
-                ),
+            fontStyle: ap.labelFontStyle,
+            fontWeight: ap.labelFontWeight,
             [secondary + "Offset"]:
                 (ap.tickSize + ap.labelPadding) * offsetDirection,
             [secondary]: anchor,
