@@ -18,6 +18,10 @@ export interface Hover {
 
 export type DataLoadingStatus = "loading" | "complete" | "error";
 
+export interface CreateViewOptions {
+    layoutSizeParams?: "own" | "inherit";
+}
+
 /**
  * ViewContext provides essential data and interfaces to View classes.
  */
@@ -105,6 +109,7 @@ export default interface ViewContext {
          * Validates whether the imported spec is acceptable for the importer.
          * The function should throw an Error if the view is not acceptable.
          */
-        validator?: (spec: ViewSpec) => void
+        validator?: (spec: ViewSpec) => void,
+        options?: CreateViewOptions
     ) => Promise<View>;
 }

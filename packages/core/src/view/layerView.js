@@ -26,10 +26,7 @@ export default class LayerView extends ContainerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(spec, context, layoutParent, dataParent, name, options) {
-        super(spec, context, layoutParent, dataParent, name, {
-            layersChildren: true,
-            ...options,
-        });
+        super(spec, context, layoutParent, dataParent, name, options);
 
         this.spec = spec;
 
@@ -61,6 +58,9 @@ export default class LayerView extends ContainerView {
                                     );
                                     // TODO: Add view to exception
                                 }
+                            },
+                            {
+                                layoutSizeParams: "inherit",
                             }
                         )
                     )
@@ -130,6 +130,9 @@ export default class LayerView extends ContainerView {
                 this.#children.splice(index, 1);
             },
             defaultName: () => this.getNextAutoName("layer"),
+            createViewOptions: {
+                layoutSizeParams: "inherit",
+            },
         });
     }
 

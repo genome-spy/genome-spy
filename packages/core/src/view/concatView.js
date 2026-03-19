@@ -20,8 +20,9 @@ export default class ConcatView extends GridView {
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
      * @param {string} name
+     * @param {import("./view.js").ViewOptions} [options]
      */
-    constructor(spec, context, layoutParent, dataParent, name) {
+    constructor(spec, context, layoutParent, dataParent, name, options) {
         super(
             spec,
             context,
@@ -32,7 +33,8 @@ export default class ConcatView extends GridView {
                 ? spec.columns
                 : isVConcatSpec(spec)
                   ? 1
-                  : Infinity
+                  : Infinity,
+            options
         );
 
         this.spec = spec;

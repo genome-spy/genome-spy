@@ -190,6 +190,104 @@ describe("GridView separators", () => {
         expect(verticalCount).toBe(0);
     });
 
+    test("child width params shadow the parent width in hconcat layouts", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        width: { grow: 1 },
+                        ...makeUnitSpec(),
+                    },
+                    {
+                        width: { grow: 2 },
+                        ...makeUnitSpec(),
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const rootWidth = view.paramRuntime.findValue("width");
+        const [firstChild, secondChild] = view.children;
+
+        expect(firstChild.coords.width).not.toBe(rootWidth);
+        expect(secondChild.coords.width).not.toBe(rootWidth);
+
+        expect(firstChild.paramRuntime.createExpression("width")()).toBe(
+            firstChild.coords.width
+        );
+        expect(secondChild.paramRuntime.createExpression("width")()).toBe(
+            secondChild.coords.width
+        );
+    });
+
+    test("text expressions see child size on the first render pass", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        width: { grow: 1 },
+                        data: { values: [{}] },
+                        mark: {
+                            type: "text",
+                            text: { expr: "'' + width + ' x ' + height" },
+                        },
+                    },
+                    {
+                        width: { grow: 2 },
+                        data: { values: [{}] },
+                        mark: {
+                            type: "text",
+                            text: { expr: "'' + width + ' x ' + height" },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const [firstChild, secondChild] = /** @type {UnitView[]} */ (
+            view.children
+        );
+        const firstDatum = firstChild.getCollector().getData()[0];
+        const secondDatum = secondChild.getCollector().getData()[0];
+
+        Object.defineProperty(firstChild.mark, "updateGraphicsData", {
+            value: () => undefined,
+        });
+        Object.defineProperty(secondChild.mark, "updateGraphicsData", {
+            value: () => undefined,
+        });
+
+        view.paramRuntime.setValue("width", 999);
+        view.paramRuntime.setValue("height", 888);
+        firstChild.paramRuntime.setValue("width", 111);
+        firstChild.paramRuntime.setValue("height", 222);
+        secondChild.paramRuntime.setValue("width", 333);
+        secondChild.paramRuntime.setValue("height", 444);
+
+        expect(firstChild.mark.encoders.text(firstDatum)).toBe("111 x 222");
+        expect(secondChild.mark.encoders.text(secondDatum)).toBe("333 x 444");
+    });
+
+    test("configured height params shadow descendant auto-size params", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [{ name: "height", value: 123 }],
+                hconcat: [makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(child.coords.height).not.toBe(123);
+        expect(child.paramRuntime.createExpression("height")()).toBe(123);
+    });
+
     test("concat grid draws both horizontal and vertical separators", async () => {
         const view = await createAndInitialize(
             {

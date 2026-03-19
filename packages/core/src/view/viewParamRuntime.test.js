@@ -341,6 +341,26 @@ describe("Nested ViewParamRuntimes", () => {
         expect(child.findValue("foo")).toBe(2);
     });
 
+    test("Configured params are found through the scope chain", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.registerParam({ name: "foo", value: 1 });
+
+        expect(parent.hasConfiguredParamInScopeChain("foo")).toBe(true);
+        expect(child.hasConfiguredParamInScopeChain("foo")).toBe(true);
+    });
+
+    test("Auto-allocated setters do not count as configured params in ancestors", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.allocateSetter("foo", 1);
+
+        expect(parent.hasConfiguredParamInScopeChain("foo")).toBe(false);
+        expect(child.hasConfiguredParamInScopeChain("foo")).toBe(false);
+    });
+
     test("Expression", () => {
         const parent = new ViewParamRuntime();
         const child = new ViewParamRuntime(() => parent);

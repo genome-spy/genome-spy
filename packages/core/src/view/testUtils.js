@@ -51,14 +51,18 @@ export function createTestViewContext(viewFactoryOptions = {}) {
             spec,
             parent,
             dataParent,
-            defaultName
+            defaultName,
+            validator,
+            options
         ) {
             return viewFactory.createOrImportView(
                 spec,
                 this,
                 parent,
                 dataParent,
-                defaultName
+                defaultName,
+                validator,
+                options
             );
         },
 

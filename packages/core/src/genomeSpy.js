@@ -376,7 +376,8 @@ export default class GenomeSpy {
                 layoutParent,
                 dataParent,
                 defaultName,
-                validator
+                validator,
+                options
             ) =>
                 this.viewFactory.createOrImportView(
                     spec,
@@ -384,7 +385,8 @@ export default class GenomeSpy {
                     layoutParent,
                     dataParent,
                     defaultName,
-                    validator
+                    validator,
+                    options
                 ),
             highlightView: createViewHighlighter(this.container),
         });
@@ -600,8 +602,7 @@ export default class GenomeSpy {
             undefined,
             signal,
             (view) =>
-                view.isConfiguredVisible() &&
-                hasWindowedLazyDataSource(view)
+                view.isConfiguredVisible() && hasWindowedLazyDataSource(view)
         );
     }
 

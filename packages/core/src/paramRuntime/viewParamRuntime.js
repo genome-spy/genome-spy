@@ -296,6 +296,41 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Returns true if this runtime scope owns a local binding for the parameter.
+     *
+     * @param {string} paramName
+     * @returns {boolean}
+     */
+    hasLocalParam(paramName) {
+        validateParameterName(paramName);
+        return this.#localRefs.has(paramName);
+    }
+
+    /**
+     * Returns true if this runtime scope or any ancestor scope contains a
+     * parameter registered through `registerParam`.
+     *
+     * Auto-allocated setters such as layout width/height are intentionally
+     * ignored so that only explicit parameter configs shadow descendant
+     * auto-size params.
+     *
+     * @param {string} paramName
+     * @returns {boolean}
+     */
+    hasConfiguredParamInScopeChain(paramName) {
+        validateParameterName(paramName);
+
+        if (this.#paramConfigs.has(paramName)) {
+            return true;
+        }
+
+        return (
+            this.#parentFinder()?.hasConfiguredParamInScopeChain(paramName) ??
+            false
+        );
+    }
+
+    /**
      *
      * @param {string} paramName
      * @returns {ViewParamRuntime}

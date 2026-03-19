@@ -60,9 +60,9 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
- * @prop {boolean} [layersChildren]
- *      View's children are layered on top of each other and they have the same
- *      coordinates as their parent.
+ * @prop {"own" | "inherit"} [layoutSizeParams]
+ *      Whether the view should introduce local layout-driven width/height params.
+ *      Default: "own".
  */
 /**
  * @template {import("../spec/view.js").ViewSpec} [TSpec=import("../spec/view.js").ViewSpec]
@@ -91,6 +91,8 @@ export default class View {
 
     /** @type {(value: number) => void} */
     #heightSetter;
+    // TODO: Consider replacing param-backed layout size with built-in layout
+    // signals. That would avoid width/height shadowing rules altogether.
 
     /** @type {boolean} */
     #hasRendered = false;
@@ -171,6 +173,7 @@ export default class View {
 
         this.options = {
             blockEncodingInheritance: false,
+            layoutSizeParams: "own",
             ...options,
         };
 
@@ -198,18 +201,27 @@ export default class View {
             }
         }
 
-        // All descendants of a layer view have the same coordinates - no need to redefine.
-        if (!this.layoutParent?.options.layeredChildren) {
-            // Width and height can be overriden by the view spec. Typically it
-            // doesn't make much sense, but it's used in the App's SampleView
-            // to set the height to sample facets' height.
-            const allocateIfFree = (/** @type {string} */ name) =>
-                this.paramRuntime.findRuntimeForParam(name)
-                    ? undefined
-                    : this.paramRuntime.allocateSetter(name, 0);
-            this.#heightSetter = allocateIfFree("height");
-            this.#widthSetter = allocateIfFree("width");
+        if (this.options.layoutSizeParams !== "inherit") {
+            // Layout-driven size params must exist before marks and child views
+            // bind expressions in subclass constructors.
+            this.#widthSetter = this.#createLayoutSizeSetter("width");
+            this.#heightSetter = this.#createLayoutSizeSetter("height");
         }
+    }
+
+    /**
+     * @param {"width" | "height"} name
+     * @returns {(value: number) => void}
+     */
+    #createLayoutSizeSetter(name) {
+        if (
+            this.paramRuntime.hasLocalParam(name) ||
+            this.paramRuntime.hasConfiguredParamInScopeChain(name)
+        ) {
+            return undefined;
+        }
+
+        return this.paramRuntime.allocateSetter(name, 0);
     }
 
     /**

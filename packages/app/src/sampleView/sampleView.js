@@ -564,13 +564,15 @@ export default class SampleView extends ContainerView {
             )
         );
 
+        const sampleFacetsView = await this.context.createOrImportView(
+            childSpec,
+            this,
+            this,
+            "sample-facets"
+        );
+
         this.#gridChild = new SampleGridChild(
-            await this.context.createOrImportView(
-                childSpec,
-                this,
-                this,
-                "sample-facets"
-            ),
+            sampleFacetsView,
             this,
             0,
             summaryViews,

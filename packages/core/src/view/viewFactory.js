@@ -31,6 +31,9 @@ export const VIEW_ROOT_NAME = "viewRoot";
  * @typedef {object} ViewFactoryOptions
  * @property {boolean} [allowImport] allows imports from urls
  * @property {boolean} [wrapRoot]
+ *
+ * @typedef {object} CreateViewOptions
+ * @property {"own" | "inherit"} [layoutSizeParams]
  */
 
 /**
@@ -47,7 +50,7 @@ export class ViewFactory {
      * @typedef {import("../spec/view.js").ConcatSpec} ConcatSpec
      *
      * @typedef {(spec: ViewSpec) => boolean} SpecGuard
-     * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string) => View} Factory
+     * @typedef {(spec: ViewSpec, context: ViewContext, layoutParent?: import("./containerView.js").default, dataParent?: import("./view.js").default, defaultName?: string, options?: CreateViewOptions) => View} Factory
      */
 
     /** @type {Map<SpecGuard, Factory>} */
@@ -71,19 +74,21 @@ export class ViewFactory {
                  *   context: ViewContext,
                  *   layoutParent?: import("./containerView.js").default,
                  *   dataParent?: import("./view.js").default,
-                 *   defaultName?: string
+                 *   defaultName?: string,
+                 *   options?: CreateViewOptions
                  * ) => View} */
                 ViewClass
             ) =>
             /** @type {Factory} */
-            (spec, context, layoutParent, dataParent, defaultName) =>
+            (spec, context, layoutParent, dataParent, defaultName, options) =>
                 /** @type {View} */ (
                     new ViewClass(
                         spec,
                         context,
                         layoutParent,
                         dataParent,
-                        defaultName
+                        defaultName,
+                        options
                     )
                 );
 
@@ -91,7 +96,14 @@ export class ViewFactory {
         this.addViewType(
             isMultiscaleSpec,
             /** @type {Factory} */ (
-                (spec, context, layoutParent, dataParent, defaultName) =>
+                (
+                    spec,
+                    context,
+                    layoutParent,
+                    dataParent,
+                    defaultName,
+                    options
+                ) =>
                     /** @type {View} */ (
                         new LayerView(
                             normalizeMultiscaleSpec(
@@ -102,7 +114,8 @@ export class ViewFactory {
                             context,
                             layoutParent,
                             dataParent,
-                            defaultName
+                            defaultName,
+                            options
                         )
                     )
             )
@@ -128,8 +141,9 @@ export class ViewFactory {
      * @param {import("./containerView.js").default} [layoutParent]
      * @param {import("./view.js").default} [dataParent]
      * @param {string} [defaultName]
+     * @param {CreateViewOptions} [options]
      */
-    createView(spec, context, layoutParent, dataParent, defaultName) {
+    createView(spec, context, layoutParent, dataParent, defaultName, options) {
         for (const [guard, factory] of this.#types) {
             if (guard(spec)) {
                 return factory(
@@ -137,7 +151,8 @@ export class ViewFactory {
                     context,
                     layoutParent,
                     dataParent,
-                    defaultName
+                    defaultName,
+                    options
                 );
             }
         }
@@ -179,6 +194,7 @@ export class ViewFactory {
      * @param {import("./view.js").default} [dataParent]
      * @param {string} [defaultName]
      * @param {(spec: ViewSpec) => void} [validator]
+     * @param {CreateViewOptions} [options]
      */
     async createOrImportView(
         spec,
@@ -186,7 +202,8 @@ export class ViewFactory {
         layoutParent,
         dataParent,
         defaultName,
-        validator
+        validator,
+        options
     ) {
         /** @type {ViewSpec} */
         let viewSpec;
@@ -259,7 +276,8 @@ export class ViewFactory {
             context,
             layoutParent,
             dataParent,
-            defaultName
+            defaultName,
+            options
         );
 
         if (importScopeName !== undefined) {

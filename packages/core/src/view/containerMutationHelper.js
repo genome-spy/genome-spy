@@ -31,6 +31,7 @@ export default class ContainerMutationHelper {
      *   prepareView?: (view: View, index: number, insertionResult: any) => Promise<void>,
      *   afterRemove?: (index: number) => Promise<void>,
      *   defaultName?: (index: number, spec: ViewSpec | ImportSpec) => string,
+     *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
      *   requestLayout?: boolean
      * }} MutationOptions
      */
@@ -62,7 +63,9 @@ export default class ContainerMutationHelper {
             childSpec,
             this.container,
             this.container,
-            name
+            name,
+            undefined,
+            this.options.createViewOptions
         );
 
         // Reminder: ensure assemblies from the real child hierarchy before any

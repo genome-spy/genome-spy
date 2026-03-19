@@ -1,7 +1,31 @@
 import { describe, expect, test, vi } from "vitest";
 
+import LayerView from "./layerView.js";
 import UnitView from "./unitView.js";
-import { createTestViewContext } from "./testUtils.js";
+import Rectangle from "./layout/rectangle.js";
+import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
+import { createAndInitialize, createTestViewContext } from "./testUtils.js";
+
+class NoOpRenderingContext extends ViewRenderingContext {
+    /**
+     * @param {import("../types/rendering.js").GlobalRenderingOptions} options
+     */
+    constructor(options) {
+        super(options);
+    }
+
+    pushView() {
+        //
+    }
+
+    popView() {
+        //
+    }
+
+    renderMark() {
+        //
+    }
+}
 
 /**
  * @returns {import("../spec/view.js").UnitSpec}
@@ -23,6 +47,27 @@ const makeUnitSpec = () => ({
 });
 
 describe("LayerView dynamic children", () => {
+    test("children inherit the layer view's layout size params", async () => {
+        const view = await createAndInitialize(
+            {
+                layer: [makeUnitSpec()],
+            },
+            LayerView
+        );
+
+        view.render(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(0, 0, 200, 100),
+            {
+                firstFacet: true,
+            }
+        );
+
+        const child = [...view][0];
+        expect(child.paramRuntime.createExpression("width")()).toBe(200);
+        expect(child.paramRuntime.createExpression("height")()).toBe(100);
+    });
+
     test("addChildSpec inserts at index and updates spec order", async () => {
         const context = createTestViewContext();
         context.requestLayoutReflow = vi.fn();
