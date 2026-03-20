@@ -24,7 +24,7 @@ export function setupSelectionExpansionContextMenu({
     let selectionExpansionMultiParamWarningShown = false;
 
     const listener = (
-        /** @type {import("@genome-spy/core/utils/interactionEvent.js").default} */ event
+        /** @type {import("@genome-spy/core/utils/interaction.js").default} */ event
     ) => {
         if (event.stopped || isInsideSampleView(event.target)) {
             return;

@@ -2,7 +2,7 @@
  * Runs the shared capture/body/bubble interaction frame for a container view.
  *
  * @param {import("./view.js").default} view
- * @param {import("../utils/interactionEvent.js").default} event
+ * @param {import("../utils/interaction.js").default} event
  * @param {() => void} handler
  */
 export function propagateInteraction(view, event, handler) {
@@ -25,7 +25,7 @@ export function propagateInteraction(view, event, handler) {
  * Propagates an interaction to a single hit-tested surface and optionally runs
  * a follow-up action such as zoom handling.
  *
- * @param {import("../utils/interactionEvent.js").default} event
+ * @param {import("../utils/interaction.js").default} event
  * @param {() => boolean} hitTest
  * @param {() => void} propagate
  * @param {() => void} [afterPropagate]

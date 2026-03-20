@@ -181,8 +181,7 @@ export default class UnitView extends View {
                     : () => true;
 
                 const listener = (
-                    /** @type {any} */ _,
-                    /** @type {import("../utils/interactionEvent.js").default} */ event
+                    /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
                     if (!eventPredicate(event.proxiedMouseEvent)) {
                         return;
@@ -237,8 +236,7 @@ export default class UnitView extends View {
                         : () => true;
 
                     const clearListener = (
-                        /** @type {any} */ _,
-                        /** @type {import("../utils/interactionEvent.js").default} */ event
+                        /** @type {import("../utils/interaction.js").default} */ event
                     ) => {
                         if (!clearPredicate(event.proxiedMouseEvent)) {
                             return;
@@ -613,7 +611,7 @@ export default class UnitView extends View {
     }
 
     /**
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(event, true);

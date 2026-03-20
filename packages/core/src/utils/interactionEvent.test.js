@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import InteractionEvent, {
-    createPrimitiveEventProxy,
-} from "./interactionEvent.js";
+import { createPrimitiveEventProxy } from "./interactionEvent.js";
 import Interaction from "./interaction.js";
 import Point from "../view/layout/point.js";
 
@@ -38,9 +36,9 @@ describe("createPrimitiveEventProxy", () => {
     });
 });
 
-describe("InteractionEvent wheel claiming", () => {
+describe("Interaction wheel claiming", () => {
     it("allows claiming wheel for wheel probe events", () => {
-        const event = new InteractionEvent(new Point(0, 0), {
+        const event = new Interaction(new Point(0, 0), {
             type: "wheelclaimprobe",
         });
 
@@ -50,7 +48,7 @@ describe("InteractionEvent wheel claiming", () => {
     });
 
     it("rejects claiming wheel for non-wheel events", () => {
-        const event = new InteractionEvent(
+        const event = new Interaction(
             new Point(0, 0),
             /** @type {any} */ ({ type: "click" })
         );
@@ -61,17 +59,16 @@ describe("InteractionEvent wheel claiming", () => {
     });
 });
 
-describe("InteractionEvent adapter", () => {
-    it("proxies state changes to the wrapped Interaction", () => {
+describe("Interaction", () => {
+    it("mutates interaction state directly", () => {
         const interaction = new Interaction(new Point(0, 0), {
             type: "wheelclaimprobe",
         });
-        const event = new InteractionEvent(interaction);
 
-        event.stopPropagation();
-        event.claimWheel();
-        event.target = /** @type {any} */ ({ name: "unit" });
-        event.uiEvent = /** @type {any} */ ({ type: "click" });
+        interaction.stopPropagation();
+        interaction.claimWheel();
+        interaction.target = /** @type {any} */ ({ name: "unit" });
+        interaction.uiEvent = /** @type {any} */ ({ type: "click" });
 
         expect(interaction.stopped).toBe(true);
         expect(interaction.wheelClaimed).toBe(true);
@@ -89,14 +86,11 @@ describe("InteractionEvent adapter", () => {
             preventDefault() {},
         };
         const interaction = new Interaction(new Point(0, 0), wheelEvent);
-        const event = new InteractionEvent(interaction);
 
-        event.setWheelDeltas(wheelEvent.deltaX, 0);
+        interaction.setWheelDeltas(wheelEvent.deltaX, 0);
 
-        expect(event.uiEvent).toBe(wheelEvent);
         expect(interaction.uiEvent).toBe(wheelEvent);
-        expect(event.wheelEvent.deltaX).toBe(12);
-        expect(event.wheelEvent.deltaY).toBe(0);
+        expect(interaction.wheelEvent.deltaX).toBe(12);
         expect(interaction.wheelEvent.deltaY).toBe(0);
     });
 });

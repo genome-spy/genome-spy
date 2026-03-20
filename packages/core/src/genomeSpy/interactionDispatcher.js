@@ -1,9 +1,8 @@
 import Interaction from "../utils/interaction.js";
-import InteractionEvent from "../utils/interactionEvent.js";
 
 /**
- * Bridges the new internal Interaction model to the legacy InteractionEvent
- * listener/propegation API that the current view hierarchy still consumes.
+ * Dispatches internal Interaction objects through the view hierarchy and
+ * synthesizes pointer enter/leave transitions from target-path changes.
  */
 export default class InteractionDispatcher {
     /** @type {import("../view/view.js").default} */
@@ -31,8 +30,7 @@ export default class InteractionDispatcher {
     dispatch(point, uiEvent) {
         this.#lastPoint = point;
         const interaction = new Interaction(point, uiEvent);
-        const legacyEvent = new InteractionEvent(interaction);
-        this.#viewRoot.propagateInteractionEvent(legacyEvent);
+        this.#viewRoot.propagateInteractionEvent(interaction);
         this.#lastTarget = interaction.target;
 
         if (interaction.type === "mousemove") {
@@ -163,13 +161,12 @@ export default class InteractionDispatcher {
      * @param {Interaction} interaction
      */
     #dispatchDirect(view, interaction) {
-        const legacyEvent = new InteractionEvent(interaction);
-        view.handleInteractionEvent(legacyEvent, true);
+        view.handleInteractionEvent(interaction, true);
 
-        if (legacyEvent.stopped) {
+        if (interaction.stopped) {
             return;
         }
 
-        view.handleInteractionEvent(legacyEvent, false);
+        view.handleInteractionEvent(interaction, false);
     }
 }

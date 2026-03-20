@@ -12,7 +12,7 @@ import PointMark from "../marks/point.js";
 import View from "./view.js";
 import LayerView from "./layerView.js";
 import Point from "./layout/point.js";
-import InteractionEvent from "../utils/interactionEvent.js";
+import Interaction from "../utils/interaction.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -253,7 +253,7 @@ describe("Trivial creations and initializations", () => {
         view.addInteractionListener("mousemove", secondListener);
 
         view.handleInteractionEvent(
-            new InteractionEvent(
+            new Interaction(
                 new Point(1, 2),
                 /** @type {any} */ ({ type: "mousemove" })
             ),
@@ -266,7 +266,7 @@ describe("Trivial creations and initializations", () => {
         view.removeInteractionListener("mousemove", firstListener);
 
         view.handleInteractionEvent(
-            new InteractionEvent(
+            new Interaction(
                 new Point(3, 4),
                 /** @type {any} */ ({ type: "mousemove" })
             ),

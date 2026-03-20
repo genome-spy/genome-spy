@@ -171,7 +171,7 @@ export default class LayerView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
     propagateInteractionEvent(event) {
         this.handleInteractionEvent(event, true);

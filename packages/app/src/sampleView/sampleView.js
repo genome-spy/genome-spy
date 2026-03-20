@@ -1033,7 +1033,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
     findSampleForMouseEvent(event) {
         return this.getSampleAt(event.point.y - this.childCoords.y);
@@ -1082,7 +1082,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {import("@genome-spy/core/view/view.js").default} view
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      * @returns {Partial<Record<"x" | "y", number>>}
      */
     #getSelectionPoint(view, event) {
@@ -1122,7 +1122,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
     #handleContextMenu(event) {
         // TODO: Allow for registering listeners
@@ -1316,7 +1316,7 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
     propagateInteractionEvent(event) {
         propagateInteraction(this, event, () => {

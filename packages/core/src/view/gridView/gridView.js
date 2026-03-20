@@ -987,7 +987,7 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../../utils/interactionEvent.js").default} event
+     * @param {import("../../utils/interaction.js").default} event
      */
     propagateInteractionEvent(event) {
         propagateInteraction(this, event, () => {

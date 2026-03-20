@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import InteractionEvent from "../utils/interactionEvent.js";
+import Interaction from "../utils/interaction.js";
 import Point from "./layout/point.js";
 import { interactionToZoom, isStillZooming, markZoomActivity } from "./zoom.js";
 
@@ -26,7 +26,7 @@ describe("zoom activity tracking", () => {
 describe("touch gesture zoom conversion", () => {
     test("forwards touchgesture deltas to zoom handler", () => {
         const handleZoom = vi.fn();
-        const event = new InteractionEvent(new Point(10, 20), {
+        const event = new Interaction(new Point(10, 20), {
             type: "touchgesture",
             phase: "move",
             pointerCount: 1,
@@ -48,7 +48,7 @@ describe("touch gesture zoom conversion", () => {
 
     test("ignores touchgesture with non-finite deltas", () => {
         const handleZoom = vi.fn();
-        const event = new InteractionEvent(new Point(10, 20), {
+        const event = new Interaction(new Point(10, 20), {
             type: "touchgesture",
             phase: "move",
             pointerCount: 1,
@@ -78,7 +78,7 @@ describe("wheel zoom snapping", () => {
 
     test("snaps wheel zoom to the closest hovered link endpoint", () => {
         const handleZoom = vi.fn();
-        const event = new InteractionEvent(
+        const event = new Interaction(
             new Point(89, 109),
             createWheelEvent(120)
         );
@@ -116,10 +116,7 @@ describe("wheel zoom snapping", () => {
 
     test("does not snap link wheel zoom when cursor is away from endpoints", () => {
         const handleZoom = vi.fn();
-        const event = new InteractionEvent(
-            new Point(50, 70),
-            createWheelEvent(120)
-        );
+        const event = new Interaction(new Point(50, 70), createWheelEvent(120));
 
         const hover = {
             mark: {
@@ -153,7 +150,7 @@ describe("wheel zoom snapping", () => {
 
     test("snaps by x only when y channels are constant", () => {
         const handleZoom = vi.fn();
-        const event = new InteractionEvent(
+        const event = new Interaction(
             new Point(30.5, 200),
             createWheelEvent(120)
         );
@@ -230,7 +227,7 @@ describe("wheel zoom snapping", () => {
         // Without band correction, endpoint 1 would be at x=35. With band=0.0,
         // rendered endpoint 1 is at x=30.
         interactionToZoom(
-            new InteractionEvent(new Point(30, 30), createWheelEvent(120)),
+            new Interaction(new Point(30, 30), createWheelEvent(120)),
             /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
             handleZoom,
             /** @type {any} */ (hover)
@@ -282,7 +279,7 @@ describe("wheel zoom snapping", () => {
 
         // With implicit band=0.5, endpoint 1 maps to x=40 (not x=35).
         interactionToZoom(
-            new InteractionEvent(new Point(40, 30), createWheelEvent(120)),
+            new Interaction(new Point(40, 30), createWheelEvent(120)),
             /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
             handleZoom,
             /** @type {any} */ (hover)
@@ -301,7 +298,7 @@ describe("wheel zoom snapping", () => {
         const preventDefault = vi.fn();
         const wheelEvent = createWheelEvent(120);
         wheelEvent.preventDefault = preventDefault;
-        const event = new InteractionEvent(new Point(20, 30), wheelEvent);
+        const event = new Interaction(new Point(20, 30), wheelEvent);
 
         interactionToZoom(
             event,
@@ -316,7 +313,7 @@ describe("wheel zoom snapping", () => {
         const preventDefault = vi.fn();
         const wheelEvent = createWheelEvent(120);
         wheelEvent.preventDefault = preventDefault;
-        const event = new InteractionEvent(new Point(20, 30), wheelEvent);
+        const event = new Interaction(new Point(20, 30), wheelEvent);
 
         interactionToZoom(
             event,
@@ -359,7 +356,7 @@ describe("wheel zoom snapping", () => {
             const suspendHoverTracking = vi.fn();
             const resumeHoverTracking = vi.fn();
 
-            const event = new InteractionEvent(
+            const event = new Interaction(
                 new Point(20, 30),
                 new FakeMouseEvent("mousedown", {
                     button: 0,

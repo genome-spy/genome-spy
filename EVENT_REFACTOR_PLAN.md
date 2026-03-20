@@ -399,8 +399,23 @@ Observation from removing the legacy view listener API:
   embed surface
 - internal interaction dispatch is now event-only end to end; the awkward
   `coords` argument no longer shapes internal APIs
-- the main remaining legacy piece is therefore `InteractionEvent` itself as the
-  compatibility object passed through view propagation
+
+Observation from removing `InteractionEvent` from the runtime path:
+
+- view propagation and synthesized enter/leave dispatch can now run directly on
+  `Interaction` objects; the wrapper class is no longer needed in production
+- this means the architectural migration is effectively complete: controller,
+  dispatcher, propagation, and listeners all use the same internal interaction
+  object
+
+Observation from removing the wrapper class:
+
+- `InteractionEvent` no longer exists as a separate execution path; tests and
+  runtime now both exercise `Interaction` directly
+- `packages/core/src/utils/interactionEvent.js` is now just a home for shared
+  interaction-related utility functions and type guards
+- at this point, the remaining work is no longer architectural refactoring but
+  ordinary cleanup and follow-on feature work
 
 ## Migration Plan
 

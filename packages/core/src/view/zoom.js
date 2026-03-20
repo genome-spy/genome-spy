@@ -54,7 +54,7 @@ function recordTimeStamp(fn) {
 }
 
 /**
- * @param {import("../utils/interactionEvent.js").default} event
+ * @param {import("../utils/interaction.js").default} event
  * @param {import("./layout/rectangle.js").default} coords
  * @param {(zoomEvent: ZoomEvent) => boolean | void} handleZoom
  * @param {import("../types/viewContext.js").Hover} [hover]

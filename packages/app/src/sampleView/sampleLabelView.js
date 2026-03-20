@@ -96,7 +96,7 @@ export class SampleLabelView extends UnitView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
     handleContextMenu(event) {
         const sample = this.#sampleView.findSampleForMouseEvent(event);

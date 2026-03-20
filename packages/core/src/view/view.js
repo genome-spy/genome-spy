@@ -53,7 +53,7 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {any} [payload] Anything
  *
  * @callback InteractionListener
- * @param {import("../utils/interactionEvent.js").default} event
+ * @param {import("../utils/interaction.js").default} event
  *
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
@@ -608,7 +608,7 @@ export default class View {
     /**
      * Handles an interactionEvent
      *
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      * @param {boolean} capturing
      * @protected
      */
@@ -1005,7 +1005,7 @@ export default class View {
      * Broadcasts a message to views that include the given (x, y) point.
      * This is mainly intended for mouse events.
      *
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
     propagateInteractionEvent(event) {
         // Subclasses must implement proper handling
