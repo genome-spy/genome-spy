@@ -594,6 +594,38 @@ describe("MetadataView", () => {
         metadataView.dispose();
     });
 
+    it("keeps the current highlight when the pointer moves over gaps between attributes", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        metadataView.handleInteractionEvent(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        transition.mockClear();
+        requestRender.mockClear();
+
+        metadataView.handleInteractionEvent(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: metadataView,
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "foo"
+        );
+        expect(transition).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+
+        metadataView.dispose();
+    });
+
     it("clears attribute highlight on mouseleave without an exit delay", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();

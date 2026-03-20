@@ -147,7 +147,9 @@ export class MetadataView extends ConcatView {
                 });
             }
 
-            this.#handleAttributeHighlight(attributeName);
+            if (attributeName) {
+                this.#handleAttributeHighlight(attributeName);
+            }
         };
 
         this.addInteractionListener("mousemove", mouseMoveListener);
