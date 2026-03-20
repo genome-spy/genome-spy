@@ -558,6 +558,12 @@ export default class InteractionController {
                 return;
             }
 
+            if (this.#hoverTrackingSuspensionCount > 0) {
+                this.#tooltip.clear();
+                this.#tooltipUpdateRequested = false;
+                return;
+            }
+
             this.#interactionDispatcher.handlePointerLeave(
                 /** @type {MouseEvent} */ (event)
             );

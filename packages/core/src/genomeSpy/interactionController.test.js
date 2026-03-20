@@ -351,4 +351,154 @@ describe("InteractionController", () => {
         );
         expect(canvas.style.cursor).toBe("move");
     });
+
+    it("preserves the active cursor when hover tracking is suspended", () => {
+        vi.spyOn(performance, "now")
+            .mockReturnValueOnce(0)
+            .mockReturnValue(1_000);
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
+
+        class CanvasStub extends EventTarget {
+            constructor() {
+                super();
+                this.style = { cursor: "" };
+                this.clientLeft = 0;
+                this.clientTop = 0;
+                this.clientWidth = 100;
+                this.clientHeight = 100;
+            }
+
+            getBoundingClientRect() {
+                return {
+                    left: 0,
+                    top: 0,
+                };
+            }
+        }
+
+        const canvas = new CanvasStub();
+
+        const mark = /** @type {{
+            isPickingParticipant: () => boolean,
+            properties: { tooltip: null },
+            getCursorSpec: () => string,
+            getCursor: () => string,
+            watchCursor: () => void,
+        }} */ ({
+            isPickingParticipant: () => true,
+            properties: { tooltip: null },
+            getCursorSpec: () => "grabbing",
+            getCursor: () => "grabbing",
+            watchCursor: () => undefined,
+        });
+
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            [
+                "facet",
+                /** @type {{ containsPoint: () => boolean }} */ ({
+                    containsPoint: () => true,
+                }),
+            ],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId === 1 ? { id: "datum-1" } : undefined,
+        });
+        pickerUnitView.getLayoutAncestors = () => [pickerUnitView];
+        pickerUnitView.getCursorSpec = /** @returns {undefined} */ () =>
+            undefined;
+
+        const targetView = /** @type {{
+            getLayoutAncestors: () => any[],
+            handleInteraction: () => void,
+            getCursorSpec: () => undefined,
+        }} */ ({
+            getLayoutAncestors: () => [targetView],
+            handleInteraction: () => undefined,
+            getCursorSpec: () => undefined,
+        });
+
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    event.target = /** @type {any} */ (targetView);
+                },
+                visit(/** @type {(view: UnitView) => any} */ visitor) {
+                    return visitor(pickerUnitView);
+                },
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas,
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ ({
+                clear: /** @returns {void} */ () => undefined,
+                handleMouseMove: /** @returns {void} */ () => undefined,
+                pushEnabledState: /** @returns {void} */ () => undefined,
+                popEnabledState: /** @returns {void} */ () => undefined,
+                updateWithDatum: /** @returns {void} */ () => undefined,
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        });
+
+        controller.registerInteractionEvents();
+        readPickingPixel.mockImplementation(() => [1, 0, 0, 0]);
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+        );
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        controller.suspendHoverTracking();
+
+        canvas.dispatchEvent(
+            new MouseEvent("mouseout", { clientX: 20, clientY: 30 })
+        );
+        expect(canvas.style.cursor).toBe("grabbing");
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", {
+                clientX: 21,
+                clientY: 31,
+                buttons: 1,
+            })
+        );
+        expect(canvas.style.cursor).toBe("grabbing");
+    });
 });
