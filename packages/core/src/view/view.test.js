@@ -254,7 +254,7 @@ describe("Trivial creations and initializations", () => {
         view.addInteractionListener("mousemove", firstListener);
         view.addInteractionListener("mousemove", secondListener);
 
-        view.handleInteractionEvent(
+        view.handleInteraction(
             new Interaction(
                 new Point(1, 2),
                 /** @type {any} */ ({ type: "mousemove" })
@@ -267,7 +267,7 @@ describe("Trivial creations and initializations", () => {
         view.removeInteractionListener("mousemove", secondListener);
         view.removeInteractionListener("mousemove", firstListener);
 
-        view.handleInteractionEvent(
+        view.handleInteraction(
             new Interaction(
                 new Point(3, 4),
                 /** @type {any} */ ({ type: "mousemove" })

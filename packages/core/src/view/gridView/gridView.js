@@ -989,7 +989,7 @@ export default class GridView extends ContainerView {
     /**
      * @param {import("../../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
+    propagateInteraction(event) {
         propagateInteraction(this, event, () => {
             const pointedChild = this.#visibleChildren.find((gridChild) =>
                 gridChild.coords.containsPoint(event.point.x, event.point.y)
@@ -1009,7 +1009,7 @@ export default class GridView extends ContainerView {
                         event.claimWheel();
                     }
                 } else {
-                    pointedView.propagateInteractionEvent(event);
+                    pointedView.propagateInteraction(event);
                 }
                 return;
             }
@@ -1029,7 +1029,7 @@ export default class GridView extends ContainerView {
                             event.point.x,
                             event.point.y
                         ),
-                    () => scrollbar.propagateInteractionEvent(event)
+                    () => scrollbar.propagateInteraction(event)
                 );
 
                 if (event.stopped) {
@@ -1044,7 +1044,7 @@ export default class GridView extends ContainerView {
             propagateInteractionSurface(
                 event,
                 () => true,
-                () => pointedView.propagateInteractionEvent(event),
+                () => pointedView.propagateInteraction(event),
                 isZoomInteractionView(pointedView)
                     ? () =>
                           interactionToZoom(

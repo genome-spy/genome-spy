@@ -215,13 +215,13 @@ describe("SampleView", () => {
             .spyOn(view.locationManager, "togglePeek")
             .mockImplementation(() => undefined);
 
-        view.propagateInteractionEvent(
+        view.propagateInteraction(
             new Interaction(point, /** @type {any} */ ({ type: "mousemove" }))
         );
 
         const menuItem = view.makePeekMenuItem();
 
-        view.propagateInteractionEvent(
+        view.propagateInteraction(
             new Interaction(point, /** @type {any} */ ({ type: "mouseleave" }))
         );
 

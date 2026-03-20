@@ -167,8 +167,8 @@ export default class InteractionController {
          * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
          * @returns {import("../utils/interaction.js").default}
          */
-        const dispatchInteractionEvent = (point, uiEvent) => {
-            const interactionEvent = this.#interactionDispatcher.dispatch(
+        const dispatchInteraction = (point, uiEvent) => {
+            const interaction = this.#interactionDispatcher.dispatch(
                 point,
                 uiEvent
             );
@@ -179,12 +179,12 @@ export default class InteractionController {
 
             if (uiEvent instanceof MouseEvent && uiEvent.type !== "mouseout") {
                 this.#cursorManager.update({
-                    target: interactionEvent.target,
+                    target: interaction.target,
                     hover: this.#currentHover,
                 });
             }
 
-            return interactionEvent;
+            return interaction;
         };
 
         /** @param {Event} event */
@@ -224,7 +224,7 @@ export default class InteractionController {
                  * @param {MouseEvent} dispatchedEvent
                  */
                 const dispatchEvent = (dispatchedEvent) => {
-                    dispatchInteractionEvent(point, dispatchedEvent);
+                    dispatchInteraction(point, dispatchedEvent);
                 };
 
                 if (event.type != "wheel") {
@@ -263,7 +263,7 @@ export default class InteractionController {
                         // wheel ownership without running real wheel side
                         // effects first. Inertia is layered on top of that
                         // decision and is not the reason for the probe.
-                        const probeEvent = dispatchInteractionEvent(point, {
+                        const probeEvent = dispatchInteraction(point, {
                             type: "wheelclaimprobe",
                         });
 
@@ -328,10 +328,7 @@ export default class InteractionController {
                     this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
                         .length < 3
                 ) {
-                    const interactionEvent = dispatchInteractionEvent(
-                        point,
-                        event
-                    );
+                    const interaction = dispatchInteraction(point, event);
 
                     if (
                         event.type == "dblclick" &&
@@ -341,7 +338,7 @@ export default class InteractionController {
                         this.#scheduleHoverRefreshAfterRender();
                     }
 
-                    return interactionEvent;
+                    return interaction;
                 }
             }
         };
@@ -415,7 +412,7 @@ export default class InteractionController {
             zDelta
         ) => {
             const point = toCanvasPoint(x, y);
-            dispatchInteractionEvent(point, {
+            dispatchInteraction(point, {
                 type: "touchgesture",
                 phase,
                 pointerCount,

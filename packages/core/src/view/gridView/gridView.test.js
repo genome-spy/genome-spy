@@ -761,7 +761,7 @@ describe("GridView wheel zoom", () => {
         const yZoomSpy = vi.spyOn(yResolution, "zoom");
         const preventDefault = /** @type {() => void} */ (() => undefined);
 
-        concatView.propagateInteractionEvent(
+        concatView.propagateInteraction(
             new Interaction(
                 point,
                 /** @type {any} */ ({

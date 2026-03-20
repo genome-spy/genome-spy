@@ -1347,7 +1347,7 @@ export default class SampleView extends ContainerView {
     /**
      * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
+    propagateInteraction(event) {
         propagateInteraction(this, event, () => {
             if (event.type === "wheelclaimprobe") {
                 if (
@@ -1370,7 +1370,7 @@ export default class SampleView extends ContainerView {
                             event.point.x,
                             event.point.y
                         ),
-                    () => scrollbar.propagateInteractionEvent(event)
+                    () => scrollbar.propagateInteraction(event)
                 );
 
                 if (event.stopped) {
@@ -1385,7 +1385,7 @@ export default class SampleView extends ContainerView {
                         event.point.x,
                         event.point.y
                     ),
-                () => this.#gridChild.view.propagateInteractionEvent(event),
+                () => this.#gridChild.view.propagateInteraction(event),
                 () =>
                     interactionToZoom(
                         event,
@@ -1412,7 +1412,7 @@ export default class SampleView extends ContainerView {
                         event.point.x,
                         event.point.y
                     ),
-                () => this.#sidebarView.propagateInteractionEvent(event)
+                () => this.#sidebarView.propagateInteraction(event)
             );
         });
     }

@@ -4,7 +4,7 @@ import InteractionDispatcher from "./interactionDispatcher.js";
 
 describe("InteractionDispatcher", () => {
     it("dispatches interactions through the view root", () => {
-        const propagateInteractionEvent = vi.fn(
+        const propagateInteraction = vi.fn(
             /** @param {import("../utils/interaction.js").default} event */ (
                 event
             ) => {
@@ -15,14 +15,14 @@ describe("InteractionDispatcher", () => {
         );
 
         const dispatcher = new InteractionDispatcher({
-            viewRoot: /** @type {any} */ ({ propagateInteractionEvent }),
+            viewRoot: /** @type {any} */ ({ propagateInteraction }),
         });
 
         const interaction = dispatcher.dispatch(new Point(1, 2), {
             type: "wheelclaimprobe",
         });
 
-        expect(propagateInteractionEvent).toHaveBeenCalledTimes(1);
+        expect(propagateInteraction).toHaveBeenCalledTimes(1);
         expect(interaction.stopped).toBe(true);
         expect(interaction.wheelClaimed).toBe(true);
         expect(interaction.target).toEqual({ name: "unit" });
@@ -39,7 +39,7 @@ describe("InteractionDispatcher", () => {
         const targets = [a, b];
         const dispatcher = new InteractionDispatcher({
             viewRoot: /** @type {any} */ ({
-                propagateInteractionEvent(
+                propagateInteraction(
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
                     event.target = /** @type {any} */ (targets.shift());
@@ -117,7 +117,7 @@ describe("InteractionDispatcher", () => {
 
         const dispatcher = new InteractionDispatcher({
             viewRoot: /** @type {any} */ ({
-                propagateInteractionEvent(
+                propagateInteraction(
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
                     event.target = /** @type {any} */ (child);
@@ -182,7 +182,7 @@ function createMockView(name, layoutParent, calls) {
             }
             return ancestors;
         },
-        handleInteractionEvent(
+        handleInteraction(
             /** @type {import("../utils/interaction.js").default} */ event,
             /** @type {boolean} */ capturing
         ) {

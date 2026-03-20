@@ -134,16 +134,16 @@ describe("InteractionController", () => {
 
         const targetView = /** @type {{
             getLayoutAncestors: () => any[],
-            handleInteractionEvent: () => void,
+            handleInteraction: () => void,
             getCursorSpec: () => undefined,
         }} */ ({
             getLayoutAncestors: () => [targetView],
-            handleInteractionEvent: () => undefined,
+            handleInteraction: () => undefined,
             getCursorSpec: () => undefined,
         });
 
         const viewRoot = {
-            propagateInteractionEvent(
+            propagateInteraction(
                 /** @type {import("../utils/interaction.js").default} */ event
             ) {
                 event.target = /** @type {any} */ (targetView);
@@ -283,14 +283,14 @@ describe("InteractionController", () => {
 
         const firstTarget = /** @type {any} */ ({
             getLayoutAncestors: /** @returns {any[]} */ () => [firstTarget],
-            handleInteractionEvent: /** @returns {void} */ () => undefined,
+            handleInteraction: /** @returns {void} */ () => undefined,
             getCursorSpec: /** @returns {string} */ () => "move",
             getCursor: /** @returns {string} */ () => "move",
             watchCursor: /** @returns {void} */ () => undefined,
         });
         const secondTarget = /** @type {any} */ ({
             getLayoutAncestors: /** @returns {any[]} */ () => [secondTarget],
-            handleInteractionEvent: /** @returns {void} */ () => undefined,
+            handleInteraction: /** @returns {void} */ () => undefined,
             getCursorSpec: /** @returns {string} */ () => "crosshair",
             getCursor: /** @returns {string} */ () => "crosshair",
             watchCursor: /** @returns {void} */ () => undefined,
@@ -301,7 +301,7 @@ describe("InteractionController", () => {
 
         const controller = new InteractionController({
             viewRoot: /** @type {any} */ ({
-                propagateInteractionEvent(
+                propagateInteraction(
                     /** @type {import("../utils/interaction.js").default} */ event
                 ) {
                     event.target = currentTarget;

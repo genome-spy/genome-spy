@@ -51,7 +51,7 @@ export default class InteractionDispatcher {
     dispatch(point, uiEvent) {
         this.#lastPoint = point;
         const interaction = new Interaction(point, uiEvent);
-        this.#viewRoot.propagateInteractionEvent(interaction);
+        this.#viewRoot.propagateInteraction(interaction);
         this.#lastTarget = interaction.target;
 
         if (interaction.type === "mousemove") {
@@ -192,12 +192,12 @@ export default class InteractionDispatcher {
      * @param {Interaction} interaction
      */
     #dispatchDirect(view, interaction) {
-        view.handleInteractionEvent(interaction, true);
+        view.handleInteraction(interaction, true);
 
         if (interaction.stopped) {
             return;
         }
 
-        view.handleInteractionEvent(interaction, false);
+        view.handleInteraction(interaction, false);
     }
 }

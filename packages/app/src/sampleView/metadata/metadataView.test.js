@@ -571,7 +571,7 @@ describe("MetadataView", () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: attributeViews.foo,
@@ -594,7 +594,7 @@ describe("MetadataView", () => {
         });
         expect(requestRender).toHaveBeenCalledTimes(1);
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: attributeViews.bar,
@@ -615,7 +615,7 @@ describe("MetadataView", () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: attributeViews.foo,
@@ -626,7 +626,7 @@ describe("MetadataView", () => {
         transition.mockClear();
         requestRender.mockClear();
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: metadataView,
@@ -653,7 +653,7 @@ describe("MetadataView", () => {
             },
         });
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: attributeViews.foo,
@@ -664,7 +664,7 @@ describe("MetadataView", () => {
         transition.mockClear();
         requestRender.mockClear();
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mouseleave",
                 point: { x: 1, y: 1 },
@@ -686,7 +686,7 @@ describe("MetadataView", () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 target: attributeViews.foo,
@@ -698,7 +698,7 @@ describe("MetadataView", () => {
         requestRender.mockClear();
         metadataView._attributeHighlighState.backgroundOpacity = 0.1;
 
-        metadataView.handleInteractionEvent(
+        metadataView.handleInteraction(
             /** @type {any} */ ({
                 type: "mouseleave",
                 uiEvent: { type: "mouseout" },

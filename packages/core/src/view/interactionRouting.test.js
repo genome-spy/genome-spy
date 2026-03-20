@@ -9,7 +9,7 @@ describe("propagateInteraction", () => {
         /** @type {string[]} */
         const calls = [];
         const view = /** @type {any} */ ({
-            handleInteractionEvent(
+            handleInteraction(
                 /** @type {{ type: string }} */ event,
                 /** @type {boolean} */ capturing
             ) {
@@ -32,7 +32,7 @@ describe("propagateInteraction", () => {
     test("skips the handler and bubble phase when capture stops propagation", () => {
         const handler = vi.fn();
         const view = /** @type {any} */ ({
-            handleInteractionEvent(
+            handleInteraction(
                 /** @type {{ stopped: boolean }} */ event,
                 /** @type {boolean} */ capturing
             ) {

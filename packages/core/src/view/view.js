@@ -99,10 +99,10 @@ export default class View {
     #broadcastHandlers = {};
 
     /** @type {Record<string, InteractionListener[]>} */
-    #capturingInteractionEventListeners = {};
+    #capturingInteractionListeners = {};
 
     /** @type {Record<string, InteractionListener[]>} */
-    #nonCapturingInteractionEventListeners = {};
+    #bubblingInteractionListeners = {};
 
     /** @type {(value: number) => void} */
     #widthSetter;
@@ -629,17 +629,17 @@ export default class View {
      * Invokes this view's listeners for the current interaction phase.
      *
      * This method does not route the event to children or parents. Container
-     * subclasses implement that routing in `propagateInteractionEvent(...)`
-     * and call `handleInteractionEvent(...)` when the current phase reaches
+     * subclasses implement that routing in `propagateInteraction(...)`
+     * and call `handleInteraction(...)` when the current phase reaches
      * this view.
      *
      * @param {import("../utils/interaction.js").default} event
      * @param {boolean} capturing
      */
-    handleInteractionEvent(event, capturing) {
+    handleInteraction(event, capturing) {
         const listenersByType = capturing
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         for (const listener of listenersByType[event.type] || []) {
             listener(event);
         }
@@ -658,8 +658,8 @@ export default class View {
      */
     addInteractionListener(type, listener, useCapture) {
         const listenersByType = useCapture
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         let listeners = listenersByType[type];
         if (!listeners) {
             listeners = [];
@@ -678,8 +678,8 @@ export default class View {
      */
     removeInteractionListener(type, listener, useCapture) {
         const listenersByType = useCapture
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         let listeners = listenersByType?.[type];
         if (listeners) {
             const index = listeners.indexOf(listener);
@@ -1036,7 +1036,7 @@ export default class View {
      *
      * @param {import("../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
+    propagateInteraction(event) {
         // Subclasses must implement proper handling
     }
 }
