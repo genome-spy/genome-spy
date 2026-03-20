@@ -354,6 +354,14 @@ Observation from the drag-suspension implementation:
   writes; a mark-level cursor `ExprRef` plus an internal drag-state param is
   sufficient
 
+Observation from the typed-surface alignment:
+
+- once synthetic interaction events exist at runtime, the authored spec surface
+  must admit them too; otherwise schema validation and selection configuration
+  drift apart
+- `mouseenter` / `mouseleave` should therefore be part of the declared
+  `DomEventType` vocabulary even though they are synthesized by GenomeSpy
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

@@ -181,6 +181,8 @@ export type SelectionInitInterval =
 export type InteractionEventType =
     | "click"
     | "dblclick"
+    | "mouseenter"
+    | "mouseleave"
     | "mouseover"
     | "mousedown"
     | "wheel";
@@ -189,6 +191,8 @@ export type InteractionEventType =
 export type DomEventType =
     | "click"
     | "dblclick"
+    | "mouseenter"
+    | "mouseleave"
     | "mouseover"
     | "pointerover"
     | "mousedown"
@@ -196,7 +200,7 @@ export type DomEventType =
 
 export interface EventConfig {
     /**
-     * The type of event to listen to. For example, `"click"` or `"mouseover"`.
+     * The type of event to listen to. For example, `"click"` or `"mouseenter"`.
      */
     type: DomEventType;
 
