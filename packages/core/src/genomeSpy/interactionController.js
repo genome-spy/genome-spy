@@ -43,6 +43,8 @@ export default class InteractionController {
     #tooltipUpdateRequested;
     /** @type {number} */
     #hoverTrackingSuspensionCount;
+    /** @type {boolean} */
+    #postRenderHoverRefreshRequested;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -89,6 +91,7 @@ export default class InteractionController {
 
         this.#tooltipUpdateRequested = false;
         this.#hoverTrackingSuspensionCount = 0;
+        this.#postRenderHoverRefreshRequested = false;
     }
 
     getCurrentHover() {
@@ -323,11 +326,7 @@ export default class InteractionController {
                         this.#hoverTrackingSuspensionCount === 0 &&
                         this.#isInsideCanvas(point)
                     ) {
-                        this.#refreshHover(point);
-                        this.#cursorManager.update({
-                            target: this.#interactionDispatcher.getCurrentTarget(),
-                            hover: this.#currentHover,
-                        });
+                        this.#scheduleHoverRefreshAfterRender();
                     }
 
                     return interactionEvent;
@@ -588,6 +587,37 @@ export default class InteractionController {
             this.#renderPickingFramebuffer();
             this.#handlePicking(point.x, point.y);
         }
+    }
+
+    #scheduleHoverRefreshAfterRender() {
+        if (this.#postRenderHoverRefreshRequested) {
+            return;
+        }
+
+        this.#postRenderHoverRefreshRequested = true;
+        this.#animator.requestRender();
+        window.requestAnimationFrame(() => {
+            this.#postRenderHoverRefreshRequested = false;
+
+            if (this.#hoverTrackingSuspensionCount > 0) {
+                return;
+            }
+
+            const point = this.#lastPointerPoint;
+            if (!point || !this.#isInsideCanvas(point)) {
+                this.#currentHover = null;
+                this.#cursorManager.clear();
+                return;
+            }
+
+            this.#tooltip.clear();
+            this.#tooltipUpdateRequested = false;
+            this.#refreshHover(point);
+            this.#cursorManager.update({
+                target: this.#interactionDispatcher.getCurrentTarget(),
+                hover: this.#currentHover,
+            });
+        });
     }
 
     /**

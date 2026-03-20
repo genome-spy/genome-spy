@@ -5,6 +5,7 @@ import InteractionController from "./interactionController.js";
 
 const readPickingPixel = vi.fn();
 const OriginalMouseEvent = globalThis.MouseEvent;
+const OriginalWindow = globalThis.window;
 
 vi.mock("../gl/webGLHelper.js", () => ({
     readPickingPixel: (...args) => readPickingPixel(...args),
@@ -22,12 +23,27 @@ describe("InteractionController", () => {
         } else {
             globalThis.MouseEvent = OriginalMouseEvent;
         }
+
+        if (OriginalWindow === undefined) {
+            delete globalThis.window;
+        } else {
+            globalThis.window = OriginalWindow;
+        }
     });
 
     it("refreshes the cursor after dblclick changes the hovered mark", () => {
         vi.spyOn(performance, "now")
             .mockReturnValueOnce(0)
             .mockReturnValue(1_000);
+
+        /** @type {FrameRequestCallback[]} */
+        const animationFrameQueue = [];
+        globalThis.window = /** @type {Window & typeof globalThis} */ ({
+            requestAnimationFrame: (callback) => {
+                animationFrameQueue.push(callback);
+                return animationFrameQueue.length;
+            },
+        });
 
         globalThis.MouseEvent = class MouseEvent extends Event {
             constructor(type, init = {}) {
@@ -120,7 +136,11 @@ describe("InteractionController", () => {
                 updateWithDatum: () => undefined,
             }),
             animator: /** @type {any} */ ({
-                requestRender: () => undefined,
+                requestRender: () => {
+                    window.requestAnimationFrame(() => {
+                        pickingUniqueId = 0;
+                    });
+                },
             }),
             emitEvent: () => undefined,
             tooltipHandlers: {},
@@ -130,9 +150,8 @@ describe("InteractionController", () => {
 
         controller.registerInteractionEvents();
 
-        readPickingPixel
-            .mockReturnValueOnce([1, 0, 0, 0])
-            .mockReturnValueOnce([0, 0, 0, 0]);
+        let pickingUniqueId = 1;
+        readPickingPixel.mockImplementation(() => [pickingUniqueId, 0, 0, 0]);
 
         canvas.dispatchEvent(
             new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
@@ -142,6 +161,13 @@ describe("InteractionController", () => {
         canvas.dispatchEvent(
             new MouseEvent("dblclick", { clientX: 20, clientY: 30 })
         );
+        expect(canvas.style.cursor).toBe("move");
+
+        while (animationFrameQueue.length) {
+            const callback = animationFrameQueue.shift();
+            callback(0);
+        }
+
         expect(canvas.style.cursor).toBe("");
     });
 });
