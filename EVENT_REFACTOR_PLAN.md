@@ -307,6 +307,16 @@ Observation from Phase 1:
   existing `InteractionEvent`-based propagation path while migration is still
   in progress
 
+Observation from Phase 2:
+
+- `mouseenter` / `mouseleave` can be synthesized from the resolved target path
+  produced by the existing propagation pipeline
+- this keeps the change set small, but the events are derived after the normal
+  `mousemove` dispatch rather than from a separate target-resolution probe
+- if any consumer later requires strict pre-move transition ordering, add a
+  dedicated path-resolution pass instead of baking more policy into controller
+  event handlers
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

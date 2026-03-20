@@ -12,12 +12,14 @@ export default class Interaction {
     /**
      * @param {import("../view/layout/point.js").default} point
      * @param {import("./interactionEvent.js").InteractionUiEvent} uiEvent
+     * @param {string} [type]
      */
-    constructor(point, uiEvent) {
+    constructor(point, uiEvent, type) {
         this.point = point;
         this.#uiEvent = uiEvent;
         this.stopped = false;
         this.wheelClaimed = false;
+        this.#typeOverride = type;
 
         /**
          * The target is known only after the interaction has been resolved
@@ -44,6 +46,8 @@ export default class Interaction {
 
     /** @type {import("./interactionEvent.js").InteractionUiEvent} */
     #uiEvent;
+    /** @type {string | undefined} */
+    #typeOverride;
 
     get uiEvent() {
         return this.#uiEvent;
@@ -67,7 +71,11 @@ export default class Interaction {
     }
 
     get type() {
-        return this.uiEvent.type;
+        return this.#typeOverride ?? this.uiEvent.type;
+    }
+
+    set type(value) {
+        this.#typeOverride = value;
     }
 
     get proxiedMouseEvent() {

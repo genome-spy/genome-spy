@@ -459,7 +459,10 @@ export default class InteractionController {
             event.stopPropagation()
         );
 
-        canvas.addEventListener("mouseout", () => {
+        canvas.addEventListener("mouseout", (event) => {
+            this.#interactionDispatcher.handlePointerLeave(
+                /** @type {MouseEvent} */ (event)
+            );
             this.#tooltip.clear();
             this.#currentHover = null;
         });

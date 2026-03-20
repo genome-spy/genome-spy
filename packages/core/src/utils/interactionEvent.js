@@ -56,6 +56,7 @@ export default class InteractionEvent {
      * @type {{
      *      point: import("../view/layout/point.js").default,
      *      uiEvent: InteractionUiEvent,
+     *      type?: string,
      *      stopped: boolean,
      *      wheelClaimed: boolean,
      *      target: import("../view/view.js").default | undefined,
@@ -75,6 +76,7 @@ export default class InteractionEvent {
      * @param {import("../view/layout/point.js").default | {
      *      point: import("../view/layout/point.js").default,
      *      uiEvent: InteractionUiEvent,
+     *      type?: string,
      *      stopped: boolean,
      *      wheelClaimed: boolean,
      *      target: import("../view/view.js").default | undefined,
@@ -129,6 +131,14 @@ export default class InteractionEvent {
     set uiEvent(value) {
         this.#interaction.uiEvent = value;
         this.#primitiveMouseEventProxy = undefined;
+    }
+
+    get interactionType() {
+        return this.#interaction.type;
+    }
+
+    set interactionType(value) {
+        this.#interaction.type = value;
     }
 
     get stopped() {
@@ -203,7 +213,7 @@ export default class InteractionEvent {
      * @returns {string} The UI event type.
      */
     get type() {
-        return this.#interaction.uiEvent.type;
+        return this.#interaction.type ?? this.#interaction.uiEvent.type;
     }
 
     get proxiedMouseEvent() {
