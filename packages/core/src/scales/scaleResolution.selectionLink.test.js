@@ -15,6 +15,9 @@ import {
 function createLinkedDomainSpec(domain, linkZoom = true) {
     return {
         params: [{ name: "brush", value: null }],
+        resolve: {
+            scale: { x: "independent" },
+        },
         vconcat: [
             {
                 params: [
@@ -55,6 +58,16 @@ function createLinkedDomainSpec(domain, linkZoom = true) {
 
 /**
  * @param {import("../spec/scale.js").Scale["domain"]} domain
+ */
+function createSharedLinkedDomainSpec(domain) {
+    return {
+        params: [{ name: "brush", value: null }],
+        vconcat: createLinkedDomainSpec(domain).vconcat,
+    };
+}
+
+/**
+ * @param {import("../spec/scale.js").Scale["domain"]} domain
  * @param {boolean} [linkZoom]
  */
 async function createLinkedHarness(domain, linkZoom = true) {
@@ -72,6 +85,90 @@ async function createLinkedHarness(domain, linkZoom = true) {
 }
 
 describe("Scale resolution selection-linked domains", () => {
+    test("selection-linked domains fail fast when the linked positional scale is shared", async () => {
+        await expect(
+            initView(
+                createSharedLinkedDomainSpec({
+                    param: "brush",
+                    encoding: "x",
+                    sync: "twoWay",
+                }),
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Selection domain reference "brush.x" cannot use a shared x scale'
+        );
+
+        await expect(
+            initView(
+                createSharedLinkedDomainSpec({
+                    param: "brush",
+                    encoding: "x",
+                }),
+                ConcatView
+            )
+        ).rejects.toThrow('"x": "independent"');
+    });
+
+    test("selection-linked domains fail fast when the interval selection is declared on an ancestor view", async () => {
+        await expect(
+            initView(
+                {
+                    params: [{ name: "brush", value: null }],
+                    vconcat: [
+                        {
+                            params: [
+                                {
+                                    name: "brush",
+                                    select: {
+                                        type: "interval",
+                                        encodings: ["x"],
+                                    },
+                                    push: "outer",
+                                },
+                            ],
+                            layer: [
+                                {
+                                    data: {
+                                        values: [{ x: 0 }, { x: 5 }, { x: 10 }],
+                                    },
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: { value: 0 },
+                                    },
+                                },
+                            ],
+                        },
+                        {
+                            data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "x",
+                                    type: "quantitative",
+                                    scale: {
+                                        domain: {
+                                            param: "brush",
+                                            encoding: "x",
+                                        },
+                                    },
+                                },
+                                y: { value: 0 },
+                            },
+                        },
+                    ],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Selection domain reference "brush.x" cannot use a shared x scale'
+        );
+    });
+
     test("selection-linked domains react to pushed outer interval params", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
@@ -124,6 +221,9 @@ describe("Scale resolution selection-linked domains", () => {
         const view = await initView(
             {
                 params: [{ name: "brush", value: null }],
+                resolve: {
+                    scale: { x: "independent" },
+                },
                 vconcat: [
                     {
                         params: [
@@ -254,6 +354,9 @@ describe("Scale resolution selection-linked domains", () => {
         const view = await initView(
             {
                 params: [{ name: "brush", value: null }],
+                resolve: {
+                    scale: { x: "independent" },
+                },
                 vconcat: [
                     {
                         params: [

@@ -10,10 +10,15 @@ import { requireIntervalSelection } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
+import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import {
     hasExplicitLocusUpperBound,
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
+import {
+    asSelectionConfig,
+    isIntervalSelectionConfig,
+} from "../selection/selection.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -31,6 +36,9 @@ import {
 export default class DomainPlanner {
     /** @type {() => Set<ScaleResolutionMember>} */
     #getMembers;
+
+    /** @type {() => Set<ScaleResolutionMember>} */
+    #getAllMembers;
 
     /** @type {() => Set<ScaleResolutionMember>} */
     #getDataMembers;
@@ -61,6 +69,7 @@ export default class DomainPlanner {
     /**
      * @param {object} options
      * @param {() => Set<ScaleResolutionMember>} options.getMembers
+     * @param {() => Set<ScaleResolutionMember>} [options.getAllMembers]
      * @param {() => Set<ScaleResolutionMember>} [options.getDataMembers]
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} options.getLocusExtent
@@ -68,12 +77,14 @@ export default class DomainPlanner {
      */
     constructor({
         getMembers,
+        getAllMembers,
         getDataMembers,
         getType,
         getLocusExtent,
         fromComplexInterval,
     }) {
         this.#getMembers = getMembers;
+        this.#getAllMembers = getAllMembers ?? getMembers;
         this.#getDataMembers = getDataMembers ?? getMembers;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
@@ -152,6 +163,10 @@ export default class DomainPlanner {
         const configuredDomain = resolveConfiguredDomain(
             this.#getMembers(),
             this.#fromComplexInterval
+        );
+        validateSharedSelectionDomain(
+            this.#getAllMembers(),
+            configuredDomain.selectionRef
         );
         this.#configuredDomain = configuredDomain.domain;
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
@@ -409,6 +424,90 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
         encoding: resolvedChannel,
         sync: syncMode,
     };
+}
+
+/**
+ * Fails fast when a selection-driven scale domain ends up sharing the same
+ * scale resolution as the interval selection that drives it. This typically
+ * happens when an overview/detail spec forgets to make the linked positional
+ * scale independent.
+ *
+ * @param {Set<ScaleResolutionMember>} members
+ * @param {SelectionDomainLinkInfo | undefined} selectionRef
+ */
+function validateSharedSelectionDomain(members, selectionRef) {
+    if (
+        !selectionRef ||
+        members.size < 2 ||
+        !Array.from(members).some((member) =>
+            hasMatchingIntervalSelectionParam(
+                member.view,
+                selectionRef.param,
+                selectionRef.encoding
+            )
+        )
+    ) {
+        return;
+    }
+
+    const viewPaths = Array.from(
+        new Set(
+            Array.from(members)
+                .filter((member) => member.contributesToDomain)
+                .map(
+                    (member) =>
+                        member.view.getPathString?.() ??
+                        member.view.name ??
+                        "(unknown)"
+                )
+        )
+    );
+
+    throw new Error(
+        `Selection domain reference "${selectionRef.param}.${selectionRef.encoding}" cannot use a shared ${selectionRef.encoding} scale when the same interval selection is defined in that shared view group (${viewPaths.join(", ")}). ` +
+            `This creates a feedback loop between brushing and the scale domain. ` +
+            `Make the linked ${selectionRef.encoding} scale independent, for example with ` +
+            `"resolve": { "scale": { "${selectionRef.encoding}": "independent" } } on the common ancestor.`
+    );
+}
+
+/**
+ * @param {import("../view/view.js").default | any} view
+ * @param {string} paramName
+ * @param {"x" | "y"} encoding
+ * @returns {boolean}
+ */
+function hasMatchingIntervalSelectionParam(view, paramName, encoding) {
+    const seen = new Set();
+    const candidateGroups = [
+        view.getLayoutAncestors?.(),
+        view.getDataAncestors?.(),
+        [view],
+    ];
+
+    for (const views of candidateGroups) {
+        for (const candidate of views ?? []) {
+            if (!candidate || seen.has(candidate)) {
+                continue;
+            }
+
+            seen.add(candidate);
+            const param = candidate.paramRuntime?.paramConfigs?.get(paramName);
+            if (!param || !isSelectionParameter(param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (
+                isIntervalSelectionConfig(select) &&
+                select.encodings?.includes(encoding)
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**
