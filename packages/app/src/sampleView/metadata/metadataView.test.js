@@ -1,5 +1,5 @@
 // @ts-check
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -8,7 +8,18 @@ import {
     createStoreStub,
 } from "../../testUtils/appTestUtils.js";
 
+const contextMenuMocks = vi.hoisted(() => ({
+    contextMenu: vi.fn(),
+}));
+
 vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
+vi.mock("../../utils/ui/contextMenu.js", async (importOriginal) => {
+    const actual = /** @type {any} */ (await importOriginal());
+    return {
+        ...actual,
+        contextMenu: contextMenuMocks.contextMenu,
+    };
+});
 
 /**
  * @typedef {object} SampleHierarchyStub
@@ -157,6 +168,8 @@ async function createInteractiveMetadataViewTestHarness() {
     );
 
     return {
+        context,
+        sampleView,
         metadataView,
         requestRender,
         transition,
@@ -165,6 +178,10 @@ async function createInteractiveMetadataViewTestHarness() {
 }
 
 describe("MetadataView", () => {
+    beforeEach(() => {
+        contextMenuMocks.contextMenu.mockReset();
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();
@@ -626,6 +643,45 @@ describe("MetadataView", () => {
         metadataView.dispose();
     });
 
+    it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        Object.defineProperty(metadataView, "coords", {
+            value: {
+                containsPoint: () => true,
+            },
+        });
+
+        metadataView.handleInteractionEvent(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        transition.mockClear();
+        requestRender.mockClear();
+
+        metadataView.handleInteractionEvent(
+            /** @type {any} */ ({
+                type: "mouseleave",
+                point: { x: 1, y: 1 },
+                uiEvent: { type: "mousemove" },
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "foo"
+        );
+        expect(transition).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+
+        metadataView.dispose();
+    });
+
     it("clears attribute highlight on mouseleave without an exit delay", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();
@@ -643,7 +699,10 @@ describe("MetadataView", () => {
         metadataView._attributeHighlighState.backgroundOpacity = 0.1;
 
         metadataView.handleInteractionEvent(
-            /** @type {any} */ ({ type: "mouseleave" }),
+            /** @type {any} */ ({
+                type: "mouseleave",
+                uiEvent: { type: "mouseout" },
+            }),
             false
         );
 

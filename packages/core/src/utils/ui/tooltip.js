@@ -3,6 +3,7 @@ import { html, render } from "lit";
 import { peek } from "../arrayUtils.js";
 
 export const SUPPRESS_TOOLTIP_CLASS_NAME = "gs-suppress-tooltip";
+export const FREEZE_INTERACTION_CLASS_NAME = "gs-freeze-interaction";
 
 export default class Tooltip {
     #sticky = false;

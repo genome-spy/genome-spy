@@ -5,6 +5,7 @@ import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
+import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 import CursorManager from "./cursorManager.js";
 
@@ -120,6 +121,10 @@ export default class InteractionController {
         this.#tooltip.clear();
         this.#tooltipUpdateRequested = false;
 
+        if (this.#isInteractionFrozen()) {
+            return;
+        }
+
         if (mouseEvent) {
             const point = this.#toCanvasPoint(mouseEvent);
             this.#lastPointerPoint = point;
@@ -188,6 +193,13 @@ export default class InteractionController {
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
+                if (
+                    event.type !== "contextmenu" &&
+                    this.#isInteractionFrozen()
+                ) {
+                    return;
+                }
+
                 const point = this.#toCanvasPoint(event);
                 this.#lastPointerPoint = point;
 
@@ -545,6 +557,10 @@ export default class InteractionController {
         );
 
         canvas.addEventListener("mouseout", (event) => {
+            if (this.#isInteractionFrozen()) {
+                return;
+            }
+
             this.#interactionDispatcher.handlePointerLeave(
                 /** @type {MouseEvent} */ (event)
             );
@@ -599,7 +615,10 @@ export default class InteractionController {
         window.requestAnimationFrame(() => {
             this.#postRenderHoverRefreshRequested = false;
 
-            if (this.#hoverTrackingSuspensionCount > 0) {
+            if (
+                this.#hoverTrackingSuspensionCount > 0 ||
+                this.#isInteractionFrozen()
+            ) {
                 return;
             }
 
@@ -618,6 +637,14 @@ export default class InteractionController {
                 hover: this.#currentHover,
             });
         });
+    }
+
+    #isInteractionFrozen() {
+        return (
+            typeof document !== "undefined" &&
+            !!document.body &&
+            document.body.classList.contains(FREEZE_INTERACTION_CLASS_NAME)
+        );
     }
 
     /**

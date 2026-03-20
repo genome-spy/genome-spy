@@ -153,8 +153,15 @@ export class MetadataView extends ConcatView {
         };
 
         this.addInteractionListener("mousemove", mouseMoveListener);
-        this.addInteractionListener("mouseleave", () => {
+        this.addInteractionListener("mouseleave", (event) => {
             if (!this._attributeHighlighState.currentAttribute) {
+                return;
+            }
+
+            if (
+                event.uiEvent.type !== "mouseout" &&
+                this.coords.containsPoint(event.point.x, event.point.y)
+            ) {
                 return;
             }
 

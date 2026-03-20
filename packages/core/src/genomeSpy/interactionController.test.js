@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
 import UnitView from "../view/unitView.js";
 import InteractionController from "./interactionController.js";
 
 const readPickingPixel = vi.fn();
+const OriginalDocument = globalThis.document;
 const OriginalMouseEvent = globalThis.MouseEvent;
 const OriginalWindow = globalThis.window;
 
@@ -29,6 +31,12 @@ describe("InteractionController", () => {
             delete globalThis.window;
         } else {
             globalThis.window = OriginalWindow;
+        }
+
+        if (OriginalDocument === undefined) {
+            delete globalThis.document;
+        } else {
+            globalThis.document = OriginalDocument;
         }
     });
 
@@ -207,5 +215,140 @@ describe("InteractionController", () => {
         }
 
         expect(canvas.style.cursor).toBe("");
+    });
+
+    it("freezes hover-derived cursor state while interactions are frozen", () => {
+        const frozenInteractionClasses = new Set();
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                body: {
+                    classList: {
+                        add(/** @type {string} */ className) {
+                            frozenInteractionClasses.add(className);
+                        },
+                        remove(/** @type {string} */ className) {
+                            frozenInteractionClasses.delete(className);
+                        },
+                        contains(/** @type {string} */ className) {
+                            return frozenInteractionClasses.has(className);
+                        },
+                    },
+                },
+            })
+        );
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
+
+        class CanvasStub extends EventTarget {
+            constructor() {
+                super();
+                this.style = { cursor: "" };
+                this.clientLeft = 0;
+                this.clientTop = 0;
+                this.clientWidth = 100;
+                this.clientHeight = 100;
+            }
+
+            getBoundingClientRect() {
+                return {
+                    left: 0,
+                    top: 0,
+                };
+            }
+        }
+
+        const canvas = new CanvasStub();
+
+        const firstTarget = /** @type {any} */ ({
+            getLayoutAncestors: /** @returns {any[]} */ () => [firstTarget],
+            handleInteractionEvent: /** @returns {void} */ () => undefined,
+            getCursorSpec: /** @returns {string} */ () => "move",
+            getCursor: /** @returns {string} */ () => "move",
+            watchCursor: /** @returns {void} */ () => undefined,
+        });
+        const secondTarget = /** @type {any} */ ({
+            getLayoutAncestors: /** @returns {any[]} */ () => [secondTarget],
+            handleInteractionEvent: /** @returns {void} */ () => undefined,
+            getCursorSpec: /** @returns {string} */ () => "crosshair",
+            getCursor: /** @returns {string} */ () => "crosshair",
+            watchCursor: /** @returns {void} */ () => undefined,
+        });
+
+        /** @type {any} */
+        let currentTarget = firstTarget;
+
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteractionEvent(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    event.target = currentTarget;
+                },
+                visit: /** @returns {void} */ () => undefined,
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas,
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ ({
+                clear: /** @returns {void} */ () => undefined,
+                handleMouseMove: /** @returns {void} */ () => undefined,
+                pushEnabledState: /** @returns {void} */ () => undefined,
+                popEnabledState: /** @returns {void} */ () => undefined,
+                updateWithDatum: /** @returns {void} */ () => undefined,
+                visible: false,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        });
+
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+        );
+        expect(canvas.style.cursor).toBe("move");
+
+        document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
+        currentTarget = secondTarget;
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 25, clientY: 35 })
+        );
+        expect(canvas.style.cursor).toBe("move");
+
+        canvas.dispatchEvent(
+            new MouseEvent("mouseout", { clientX: 25, clientY: 35 })
+        );
+        expect(canvas.style.cursor).toBe("move");
     });
 });
