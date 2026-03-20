@@ -1015,15 +1015,20 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {number} [mouseY]
+     * @param {string} [sampleId]
      *
      * @returns {import("../utils/ui/contextMenu.js").MenuItem}
      */
-    makePeekMenuItem() {
+    makePeekMenuItem(
+        mouseY = this.#lastMouseY,
+        sampleId = this.#getPeekFocusSampleAt(mouseY)?.id
+    ) {
         return {
             ...(!this.locationManager.isCloseup()
                 ? {
                       label: "Open closeup",
-                      callback: () => this.#openCloseup(),
+                      callback: () => this.#openCloseup(mouseY, sampleId),
                       icon: faArrowsAltV,
                   }
                 : {
@@ -1059,9 +1064,10 @@ export default class SampleView extends ContainerView {
             : undefined;
     }
 
-    #openCloseup() {
-        const mouseY = this.#lastMouseY;
-        const sampleId = this.#getPeekFocusSampleAt(mouseY)?.id;
+    #openCloseup(
+        mouseY = this.#lastMouseY,
+        sampleId = this.#getPeekFocusSampleAt(mouseY)?.id
+    ) {
         this.locationManager.togglePeek(undefined, mouseY, sampleId);
     }
 
@@ -1195,7 +1201,10 @@ export default class SampleView extends ContainerView {
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
-            this.makePeekMenuItem(),
+            this.makePeekMenuItem(
+                event.point.y - this.childCoords.y,
+                sample?.id
+            ),
             DIVIDER,
             {
                 label: selectionIntervalLabel

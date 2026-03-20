@@ -163,7 +163,7 @@ describe("SampleView", () => {
         expect(state?.sampleData?.entities.A.displayName).toBe("Sample A");
     });
 
-    test("opens closeup around the nearest sample to the pointer", async () => {
+    test("keeps context-menu peek focus at the pointer after mouseleave", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             data: {
@@ -219,7 +219,13 @@ describe("SampleView", () => {
             new Interaction(point, /** @type {any} */ ({ type: "mousemove" }))
         );
 
-        view.makePeekMenuItem().callback();
+        const menuItem = view.makePeekMenuItem();
+
+        view.propagateInteractionEvent(
+            new Interaction(point, /** @type {any} */ ({ type: "mouseleave" }))
+        );
+
+        menuItem.callback();
 
         expect(togglePeekSpy).toHaveBeenCalledWith(
             undefined,

@@ -107,7 +107,13 @@ export class SampleLabelView extends UnitView {
         }
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-        const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
+        const items = [
+            this.#sampleView.makePeekMenuItem(
+                event.point.y - this.#sampleView.childCoords.y,
+                sample.id
+            ),
+            DIVIDER,
+        ];
 
         items.push(
             ...generateAttributeContextMenu(
