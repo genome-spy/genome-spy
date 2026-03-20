@@ -67,6 +67,8 @@
 
           "view": { "stroke": "#d0d0d0", "strokeZindex": 10 },
 
+          "cursor": "text",
+
           "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
 
           "encoding": {
