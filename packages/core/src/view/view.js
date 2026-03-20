@@ -52,17 +52,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {import("../genomeSpy.js").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
  *
- * @callback InteractionEventListener
- * @param {import("./layout/rectangle.js").default} coords
- *      Coordinates of the view
- * @param {import("../utils/interactionEvent.js").default} event
- *
  * @callback InteractionListener
  * @param {import("../utils/interactionEvent.js").default} event
- *
- * @typedef {object} InteractionListenerEntry
- * @prop {InteractionEventListener | InteractionListener} listener
- * @prop {boolean} legacy
  *
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
@@ -87,10 +78,10 @@ export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
     #broadcastHandlers = {};
 
-    /** @type {Record<string, InteractionListenerEntry[]>} */
+    /** @type {Record<string, InteractionListener[]>} */
     #capturingInteractionEventListeners = {};
 
-    /** @type {Record<string, InteractionListenerEntry[]>} */
+    /** @type {Record<string, InteractionListener[]>} */
     #nonCapturingInteractionEventListeners = {};
 
     /** @type {(value: number) => void} */
@@ -617,63 +608,28 @@ export default class View {
     /**
      * Handles an interactionEvent
      *
-     * @param {import("./layout/rectangle.js").default} coords
-     *      Coordinates of the view
      * @param {import("../utils/interactionEvent.js").default} event
      * @param {boolean} capturing
      * @protected
      */
-    handleInteractionEvent(coords, event, capturing) {
+    handleInteractionEvent(event, capturing) {
         const listenersByType = capturing
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
-        for (const entry of listenersByType[event.type] || []) {
-            if (entry.legacy) {
-                /** @type {InteractionEventListener} */ (entry.listener)(
-                    coords,
-                    event
-                );
-            } else {
-                /** @type {InteractionListener} */ (entry.listener)(event);
-            }
+        for (const listener of listenersByType[event.type] || []) {
+            listener(event);
         }
     }
 
     /**
-     * Add an "interaction" event listener that mimics DOM's event model inside
-     * the view hierarchy.
-     *
-     * This is intended for GenomeSpy's internal use. It allows the views to handle
-     * low level interactions such as dragging, wheeling, etc.
-     *
-     * @param {string} type
-     * @param {InteractionEventListener} listener
-     * @param {boolean} [useCapture]
-     */
-    addInteractionEventListener(type, listener, useCapture) {
-        this.#addInteractionListener(type, listener, true, useCapture);
-    }
-
-    /**
      * Add an internal interaction listener that receives only the interaction
-     * event. New internal code should prefer this over the legacy
-     * `addInteractionEventListener(...)` method.
+     * event.
      *
      * @param {string} type
      * @param {InteractionListener} listener
      * @param {boolean} [useCapture]
      */
     addInteractionListener(type, listener, useCapture) {
-        this.#addInteractionListener(type, listener, false, useCapture);
-    }
-
-    /**
-     * @param {string} type
-     * @param {InteractionEventListener | InteractionListener} listener
-     * @param {boolean} legacy
-     * @param {boolean} [useCapture]
-     */
-    #addInteractionListener(type, listener, legacy, useCapture) {
         const listenersByType = useCapture
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
@@ -683,16 +639,7 @@ export default class View {
             listenersByType[type] = listeners;
         }
 
-        listeners.push({ listener, legacy });
-    }
-
-    /**
-     * @param {string} type
-     * @param {InteractionEventListener} listener
-     * @param {boolean} [useCapture]
-     */
-    removeInteractionEventListener(type, listener, useCapture) {
-        this.#removeInteractionListener(type, listener, true, useCapture);
+        listeners.push(listener);
     }
 
     /**
@@ -701,25 +648,12 @@ export default class View {
      * @param {boolean} [useCapture]
      */
     removeInteractionListener(type, listener, useCapture) {
-        this.#removeInteractionListener(type, listener, false, useCapture);
-    }
-
-    /**
-     * @param {string} type
-     * @param {InteractionEventListener | InteractionListener} listener
-     * @param {boolean} legacy
-     * @param {boolean} [useCapture]
-     */
-    #removeInteractionListener(type, listener, legacy, useCapture) {
         const listenersByType = useCapture
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
         let listeners = listenersByType?.[type];
         if (listeners) {
-            const index = listeners.findIndex(
-                (entry) =>
-                    entry.legacy === legacy && entry.listener === listener
-            );
+            const index = listeners.indexOf(listener);
             if (index >= 0) {
                 listeners.splice(index, 1);
             }

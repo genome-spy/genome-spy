@@ -6,7 +6,7 @@
  * @param {() => void} handler
  */
 export function propagateInteraction(view, event, handler) {
-    view.handleInteractionEvent(undefined, event, true);
+    view.handleInteractionEvent(event, true);
 
     if (event.stopped) {
         return;
@@ -18,7 +18,7 @@ export function propagateInteraction(view, event, handler) {
         return;
     }
 
-    view.handleInteractionEvent(undefined, event, false);
+    view.handleInteractionEvent(event, false);
 }
 
 /**

@@ -234,28 +234,25 @@ describe("Trivial creations and initializations", () => {
         expect(calls).toBe(1);
     });
 
-    test("dispatches legacy and internal interaction listeners in registration order", async () => {
+    test("dispatches and unregisters internal interaction listeners", async () => {
         const view = await create({ mark: "point" }, View);
 
         /** @type {string[]} */
         const calls = [];
 
-        const legacyListener = (coords, event) => {
-            expect(coords).toBeUndefined();
+        const firstListener = (event) => {
             expect(event.type).toBe("mousemove");
-            calls.push("legacy");
+            calls.push("first");
+        };
+        const secondListener = (event) => {
+            expect(event.type).toBe("mousemove");
+            calls.push("second");
         };
 
-        const interactionListener = (event) => {
-            expect(event.type).toBe("mousemove");
-            calls.push("internal");
-        };
-
-        view.addInteractionEventListener("mousemove", legacyListener);
-        view.addInteractionListener("mousemove", interactionListener);
+        view.addInteractionListener("mousemove", firstListener);
+        view.addInteractionListener("mousemove", secondListener);
 
         view.handleInteractionEvent(
-            undefined,
             new InteractionEvent(
                 new Point(1, 2),
                 /** @type {any} */ ({ type: "mousemove" })
@@ -263,13 +260,12 @@ describe("Trivial creations and initializations", () => {
             false
         );
 
-        expect(calls).toEqual(["legacy", "internal"]);
+        expect(calls).toEqual(["first", "second"]);
 
-        view.removeInteractionListener("mousemove", interactionListener);
-        view.removeInteractionEventListener("mousemove", legacyListener);
+        view.removeInteractionListener("mousemove", secondListener);
+        view.removeInteractionListener("mousemove", firstListener);
 
         view.handleInteractionEvent(
-            undefined,
             new InteractionEvent(
                 new Point(3, 4),
                 /** @type {any} */ ({ type: "mousemove" })
@@ -277,7 +273,7 @@ describe("Trivial creations and initializations", () => {
             false
         );
 
-        expect(calls).toEqual(["legacy", "internal"]);
+        expect(calls).toEqual(["first", "second"]);
     });
 
     test("Preserves inherited key channel in unit views", async () => {

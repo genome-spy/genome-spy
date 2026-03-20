@@ -392,6 +392,16 @@ Observation from the partial propagation unification:
 - the remaining duplication is now mostly honest policy: wheel-claim behavior,
   content-specific zoom rules, and `SampleView`'s sidebar-versus-main-grid split
 
+Observation from removing the legacy view listener API:
+
+- once production code stopped using `(coords, event)` listeners, the
+  compatibility layer could be removed cleanly without affecting the supported
+  embed surface
+- internal interaction dispatch is now event-only end to end; the awkward
+  `coords` argument no longer shapes internal APIs
+- the main remaining legacy piece is therefore `InteractionEvent` itself as the
+  compatibility object passed through view propagation
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

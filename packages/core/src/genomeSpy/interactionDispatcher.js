@@ -164,12 +164,12 @@ export default class InteractionDispatcher {
      */
     #dispatchDirect(view, interaction) {
         const legacyEvent = new InteractionEvent(interaction);
-        view.handleInteractionEvent(undefined, legacyEvent, true);
+        view.handleInteractionEvent(legacyEvent, true);
 
         if (legacyEvent.stopped) {
             return;
         }
 
-        view.handleInteractionEvent(undefined, legacyEvent, false);
+        view.handleInteractionEvent(legacyEvent, false);
     }
 }

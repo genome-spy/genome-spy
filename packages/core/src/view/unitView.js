@@ -616,14 +616,14 @@ export default class UnitView extends View {
      * @param {import("../utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
+        this.handleInteractionEvent(event, true);
         event.target = this;
 
         if (event.stopped) {
             return;
         }
 
-        this.handleInteractionEvent(undefined, event, false);
+        this.handleInteractionEvent(event, false);
     }
 
     /**

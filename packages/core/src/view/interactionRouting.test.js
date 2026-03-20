@@ -9,8 +9,7 @@ describe("propagateInteraction", () => {
         /** @type {string[]} */
         const calls = [];
         const view = /** @type {any} */ ({
-            handleInteractionEvent(coords, event, capturing) {
-                expect(coords).toBeUndefined();
+            handleInteractionEvent(event, capturing) {
                 expect(event.type).toBe("mousemove");
                 calls.push(capturing ? "capture" : "bubble");
             },
@@ -30,7 +29,7 @@ describe("propagateInteraction", () => {
     test("skips the handler and bubble phase when capture stops propagation", () => {
         const handler = vi.fn();
         const view = /** @type {any} */ ({
-            handleInteractionEvent(coords, event, capturing) {
+            handleInteractionEvent(event, capturing) {
                 if (capturing) {
                     event.stopped = true;
                 }

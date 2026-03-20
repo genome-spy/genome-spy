@@ -501,7 +501,6 @@ describe("MetadataView", () => {
         metadataView._attributeHighlighState.currentAttribute = "foo";
 
         metadataView.handleInteractionEvent(
-            undefined,
             /** @type {any} */ ({ type: "mouseleave" }),
             false
         );

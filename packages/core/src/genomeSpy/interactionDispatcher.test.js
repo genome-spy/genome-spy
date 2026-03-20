@@ -174,7 +174,7 @@ function createMockView(name, layoutParent, calls) {
             }
             return ancestors;
         },
-        handleInteractionEvent(_coords, event, capturing) {
+        handleInteractionEvent(event, capturing) {
             calls.push({
                 view: name,
                 type: event.type,
