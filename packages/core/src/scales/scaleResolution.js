@@ -33,15 +33,10 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
-import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import {
-    asSelectionConfig,
-    isIntervalSelectionConfig,
-} from "../selection/selection.js";
-import {
+    findIntervalSelectionBindingOwners,
     normalizeIntervalForSelection,
     requireIntervalSelection,
-    requireParamRuntime,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
@@ -300,7 +295,7 @@ export default class ScaleResolution {
 
     syncLinkedSelectionFromDomain() {
         const linkInfo =
-            this.#domainAggregator.getSelectionConfiguredDomainInfo();
+            this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
         if (!linkInfo) {
             return;
         }
@@ -312,13 +307,8 @@ export default class ScaleResolution {
             return;
         }
 
-        const runtime = requireParamRuntime(
-            this.#firstMemberView.paramRuntime,
-            linkInfo.param
-        );
-
         const selection = requireIntervalSelection(
-            runtime.getValue(linkInfo.param),
+            linkInfo.runtime.getValue(linkInfo.param),
             linkInfo.param
         );
 
@@ -344,7 +334,7 @@ export default class ScaleResolution {
             return;
         }
 
-        runtime.setValue(linkInfo.param, {
+        linkInfo.runtime.setValue(linkInfo.param, {
             ...selection,
             type: "interval",
             intervals: {
@@ -363,7 +353,7 @@ export default class ScaleResolution {
     }
 
     #getLinkedSelectionInfo() {
-        return this.#domainAggregator.getSelectionConfiguredDomainInfo();
+        return this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
     }
 
     #shouldIncludeSelectionInitial() {
@@ -399,12 +389,8 @@ export default class ScaleResolution {
      * @returns {[number, number] | null}
      */
     #getCurrentLinkedSelectionInterval(linkInfo) {
-        const runtime = requireParamRuntime(
-            this.#firstMemberView.paramRuntime,
-            linkInfo.param
-        );
         const selection = requireIntervalSelection(
-            runtime.getValue(linkInfo.param),
+            linkInfo.runtime.getValue(linkInfo.param),
             linkInfo.param
         );
         const interval = selection.intervals[linkInfo.encoding];
@@ -423,56 +409,6 @@ export default class ScaleResolution {
         } else if (previousInterval) {
             this.#ignoreSelectionInitial = true;
         }
-    }
-
-    /**
-     * @param {{ param: string, encoding: "x" | "y", sync: "auto" | "oneWay" | "twoWay" }} linkInfo
-     * @returns {boolean}
-     */
-    #isLinkedSelectionPersisted(linkInfo) {
-        const linkedRuntime = this.#firstMemberView.paramRuntime.findRuntimeForParam(
-            linkInfo.param
-        );
-        if (!linkedRuntime) {
-            return false;
-        }
-
-        const root = this.#firstMemberView.getLayoutAncestors().at(-1);
-        if (!root) {
-            return false;
-        }
-
-        let persisted = false;
-        root.visit((view) => {
-            for (const [name, param] of view.paramRuntime.paramConfigs) {
-                if (persisted || name !== linkInfo.param) {
-                    continue;
-                }
-
-                if (!isSelectionParameter(param)) {
-                    continue;
-                }
-
-                const select = asSelectionConfig(param.select);
-                if (
-                    !isIntervalSelectionConfig(select) ||
-                    !select.encodings?.includes(linkInfo.encoding)
-                ) {
-                    continue;
-                }
-
-                if (
-                    view.paramRuntime.findRuntimeForParam(name) === linkedRuntime
-                ) {
-                    persisted = param.persist !== false;
-                    if (persisted) {
-                        return;
-                    }
-                }
-            }
-        });
-
-        return persisted;
     }
 
     /**
@@ -604,15 +540,11 @@ export default class ScaleResolution {
             return;
         }
 
-        const runtime = requireParamRuntime(
-            this.#firstMemberView.paramRuntime,
-            linkInfo.param
-        );
         this.#lastLinkedSelectionInterval =
             this.#getCurrentLinkedSelectionInterval(linkInfo);
 
         this.#selectionDomainParamUnsubscribers.push(
-            runtime.subscribe(linkInfo.param, () => {
+            linkInfo.runtime.subscribe(linkInfo.param, () => {
                 const previousInterval = this.#lastLinkedSelectionInterval;
                 const currentInterval =
                     this.#getCurrentLinkedSelectionInterval(linkInfo);
@@ -1133,9 +1065,21 @@ export default class ScaleResolution {
             return;
         }
 
+        const root = this.#firstMemberView.getLayoutAncestors().at(-1);
+        const persist = root
+            ? findIntervalSelectionBindingOwners(
+                  root,
+                  linkInfo.runtime,
+                  linkInfo.param,
+                  linkInfo.encoding
+              ).some((owner) => owner.param.persist !== false)
+            : false;
+
         return {
-            ...linkInfo,
-            persist: this.#isLinkedSelectionPersisted(linkInfo),
+            param: linkInfo.param,
+            encoding: linkInfo.encoding,
+            sync: linkInfo.sync,
+            persist,
         };
     }
 

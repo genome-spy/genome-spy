@@ -1,4 +1,9 @@
-import { isIntervalSelection } from "../selection/selection.js";
+import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
+import {
+    asSelectionConfig,
+    isIntervalSelection,
+    isIntervalSelectionConfig,
+} from "../selection/selection.js";
 
 /**
  * @param {{ findRuntimeForParam: (name: string) => any }} paramRuntime
@@ -32,6 +37,116 @@ export function requireIntervalSelection(selection, paramName) {
     }
 
     return selection;
+}
+
+/**
+ * Resolves the runtime-backed interval selection binding used by a linked
+ * domain. Matching is based on the actual resolved runtime slot instead of
+ * parameter name alone, so scoped params with the same name remain distinct.
+ *
+ * @param {import("../view/view.js").default} view
+ * @param {string} paramName
+ * @param {"x" | "y"} encoding
+ */
+export function resolveIntervalSelectionBinding(view, paramName, encoding) {
+    const runtime = view.paramRuntime.findRuntimeForParam
+        ? requireParamRuntime(view.paramRuntime, paramName)
+        : view.paramRuntime;
+    const selection = requireIntervalSelection(
+        runtime.getValue
+            ? runtime.getValue(paramName)
+            : view.paramRuntime.findValue(paramName),
+        paramName
+    );
+
+    return {
+        runtime,
+        selection,
+    };
+}
+
+/**
+ * @param {import("../view/view.js").default} root
+ * @param {any} runtime
+ * @param {string} paramName
+ * @param {"x" | "y"} encoding
+ */
+export function findIntervalSelectionBindingOwners(root, runtime, paramName, encoding) {
+    /** @type {{ view: import("../view/view.js").default, param: import("../spec/parameter.js").SelectionParameter }[]} */
+    const owners = [];
+
+    root.visit((view) => {
+        const param = view.paramRuntime?.paramConfigs?.get(paramName);
+        if (!param || !isSelectionParameter(param)) {
+            return;
+        }
+
+        const select = asSelectionConfig(param.select);
+        if (
+            !isIntervalSelectionConfig(select) ||
+            !select.encodings?.includes(encoding)
+        ) {
+            return;
+        }
+
+        if (view.paramRuntime.findRuntimeForParam(paramName) === runtime) {
+            owners.push({ view, param });
+        }
+    });
+
+    return owners;
+}
+
+/**
+ * @param {import("../view/view.js").default} view
+ * @param {any} runtime
+ * @param {string} paramName
+ * @param {"x" | "y"} encoding
+ */
+export function hasIntervalSelectionBindingInScope(
+    view,
+    runtime,
+    paramName,
+    encoding
+) {
+    const seen = new Set();
+    const ancestorGroups = [
+        view.getLayoutAncestors?.(),
+        view.getDataAncestors?.(),
+        [view],
+    ];
+
+    for (const views of ancestorGroups) {
+        for (const candidateView of views ?? []) {
+            if (!candidateView || seen.has(candidateView)) {
+                continue;
+            }
+
+            seen.add(candidateView);
+
+            const param = candidateView.paramRuntime?.paramConfigs?.get(paramName);
+            if (!param || !isSelectionParameter(param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (
+                !isIntervalSelectionConfig(select) ||
+                !select.encodings?.includes(encoding)
+            ) {
+                continue;
+            }
+
+            if (
+                candidateView.paramRuntime.findRuntimeForParam?.(paramName) ===
+                runtime
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**

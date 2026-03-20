@@ -3,6 +3,9 @@ import { describe, expect, test, vi } from "vitest";
 import DomainPlanner from "./domainPlanner.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
+/** @type {WeakMap<object, any>} */
+const selectionRuntimeByValue = new WeakMap();
+
 /**
  * @param {string} field
  * @returns {import("../types/encoder.js").Accessor}
@@ -72,6 +75,24 @@ function createSelectionDomainMember({
     type = "quantitative",
     domain,
 }) {
+    /** @type {{ findValue: () => any, findRuntimeForParam: () => any }} */
+    let paramRuntime;
+    if (selectionValue && typeof selectionValue === "object") {
+        paramRuntime = selectionRuntimeByValue.get(selectionValue);
+        if (!paramRuntime) {
+            paramRuntime = {
+                findValue: () => selectionValue,
+                findRuntimeForParam: () => paramRuntime,
+            };
+            selectionRuntimeByValue.set(selectionValue, paramRuntime);
+        }
+    } else {
+        paramRuntime = {
+            findValue: () => selectionValue,
+            findRuntimeForParam: () => paramRuntime,
+        };
+    }
+
     return {
         channel,
         channelDef: {
@@ -80,10 +101,7 @@ function createSelectionDomainMember({
         },
         contributesToDomain: true,
         view: {
-            paramRuntime: {
-                findValue: () => selectionValue,
-                paramConfigs: new Map(),
-            },
+            paramRuntime,
         },
     };
 }
