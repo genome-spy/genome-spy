@@ -33,6 +33,7 @@ behavior, while preserving the supported public API surface in
 - Synthesize basic pointer transition events such as `mouseenter` and
   `mouseleave`.
 - Centralize mouse cursor resolution so views and marks can define cursors.
+- Make cursor selection declarative in specs, not only imperative in code.
 - Decouple internal interaction dispatch from the legacy listener contract.
 - Reduce ad hoc behavior in container-specific `propagateInteractionEvent(...)`
   implementations.
@@ -171,25 +172,44 @@ in every container view.
 Cursor handling should become a first-class responsibility of the interaction
 layer, not a side effect hidden in listeners.
 
+### Spec surface
+
+Add a new `cursor` property to both:
+
+- `ViewSpecBase`
+- `MarkPropsBase`
+
+The property should support:
+
+- a static cursor string such as `"pointer"`, `"move"`, or `"grab"`
+- an `ExprRef`
+
+This makes cursor behavior declarative and allows it to participate in the same
+reactive parameter machinery as other spec properties.
+
+Example use case:
+
+- the interval selection rectangle can declare its cursor in the spec
+- by default the cursor expression resolves to `"move"`
+- while the mouse button is down, a reactive param can flip the cursor to
+  `"grab"` or `"grabbing"`
+
+This should remove the need to encode cursor state transitions as imperative
+listener side effects spread across interaction handlers.
+
 ### Cursor sources
 
 Allow cursor definition at multiple levels:
 
-- mark hit
-- unit view
-- container view
+- mark hit from `MarkPropsBase.cursor`
+- view from `ViewSpecBase.cursor`
+- container view behavior derived from the same view-level spec property
 
 Each may provide either:
 
-- a static cursor value such as `"pointer"` or `"move"`
-- a function that resolves a cursor from interaction context
-
-Example conceptual API:
-
-```js
-view.getCursor(interactionContext)
-mark.getCursor(hit, interactionContext)
-```
+- a static cursor value
+- an evaluated `ExprRef`
+- an internal override for special transient cases when needed
 
 ### Cursor resolution
 
@@ -197,8 +217,28 @@ After the current interaction path has been resolved, the controller should pick
 the effective cursor from the deepest applicable source upward. If no source
 provides a cursor, restore the canvas default.
 
+Expected precedence:
+
+1. deepest hit mark cursor
+2. deepest hit view cursor
+3. ancestor view cursors outward toward the root
+4. canvas default
+
+The dispatcher / controller should evaluate any `ExprRef`-backed cursor against
+the current reactive state before applying the resolved CSS cursor value.
+
 This avoids the current problem where listeners can set a cursor but clearing it
 requires fragile paired logic and pseudo-`mouseleave` workarounds.
+
+### Schema and docs work
+
+Because `cursor` would become part of user-visible spec surface, the refactor
+should include:
+
+- adding the property to `packages/core/src/spec/view.d.ts`
+- adding the property to `packages/core/src/spec/mark.d.ts`
+- generating updated schema / docs artifacts as needed
+- documenting precedence and `ExprRef` support in user-facing terms
 
 ## Event Types
 
@@ -339,6 +379,8 @@ Add focused tests around:
 - moving between sibling views
 - moving between nested views
 - cursor resolution precedence: mark over view over ancestor over default
+- `ExprRef`-backed cursor evaluation on views and marks
+- cursor updates driven by reactive params without pointer re-entry
 - compatibility behavior for legacy listeners
 - wheel claim probing with the new dispatcher in place
 
