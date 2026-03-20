@@ -18,6 +18,7 @@ export default class SelectionRect extends LayerView {
             selectionExpr()
         );
         const channels = Object.keys(initialSelection.intervals);
+        const { zindex = 1, ...brushMarkProps } = brushConfig;
 
         if (primaryPositionalChannels.every((c) => !channels.includes(c))) {
             throw new Error(
@@ -72,7 +73,7 @@ export default class SelectionRect extends LayerView {
                     stroke: "black",
                     strokeWidth: 1,
                     strokeOpacity: 0.2,
-                    ...brushConfig,
+                    ...brushMarkProps,
                 },
             },
         });
@@ -147,6 +148,9 @@ export default class SelectionRect extends LayerView {
             }
         );
 
+        /** @type {number} */
+        this._zindex = zindex;
+
         markViewAsNonAddressable(this, { skipSubtree: true });
 
         const selectionListener = () => {
@@ -170,6 +174,10 @@ export default class SelectionRect extends LayerView {
         };
 
         this.registerDisposer(selectionExpr.subscribe(selectionListener));
+    }
+
+    getZindex() {
+        return this._zindex;
     }
 }
 

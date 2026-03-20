@@ -1,4 +1,5 @@
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
+import { ZIndexProps } from "./decoration.js";
 
 export interface GenomeAxis extends Axis {
     chromTicks?: boolean;
@@ -91,7 +92,7 @@ export interface GenomeAxis extends Axis {
 
 export type AxisOrient = "top" | "bottom" | "left" | "right";
 
-export interface Axis extends BaseAxis {
+export interface Axis extends BaseAxis, ZIndexProps {
     /**
      * Named style reference(s) resolved from `config.style`.
      * If an array is provided, later styles override earlier ones.
@@ -137,6 +138,17 @@ export interface Axis extends BaseAxis {
      * Explicitly set the visible axis tick and label values.
      */
     values?: any[];
+
+    /**
+     * Z-order of the axis relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `0`, or `10` when the view content is clipped or
+     * scrollable.
+     */
+    zindex?: number;
 }
 
 export interface BaseAxis {

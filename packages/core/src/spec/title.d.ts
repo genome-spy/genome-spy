@@ -10,12 +10,13 @@
 
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
+import { ZIndexProps } from "./decoration.js";
 
 export type TitleOrient = "none" | "left" | "right" | "top" | "bottom";
 export type TitleAnchor = null | "start" | "middle" | "end";
 export type TitleFrame = "bounds" | "group";
 
-export interface Title {
+export interface Title extends ZIndexProps {
     /**
      * The title text.
      */
@@ -40,6 +41,16 @@ export interface Title {
      * The orthogonal offset in pixels by which to displace the title group from its position along the edge of the chart.
      */
     offset?: number;
+
+    /**
+     * Z-order of the title relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `1`
+     */
+    zindex?: number;
 
     /**
      * Default title orientation (`"none"`, `"top"`, `"bottom"`, `"left"`, or `"right"`)

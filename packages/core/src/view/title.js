@@ -21,11 +21,44 @@ const ANCHOR_TO_ALIGN = {
 const DEFAULT_TITLE_STYLE = "group-title";
 
 /**
+ * @param {import("../spec/title.js").Title} spec
+ */
+function getTitleOrientMetadata(spec) {
+    /** @type {Partial<import("../spec/title.js").Title>} */
+    let orientConfig = {};
+    let xy = { x: 0, y: 0 };
+
+    const anchorPos = ANCHORS[spec.anchor ?? "middle"];
+
+    switch (spec.orient) {
+        case "top":
+            xy = { x: anchorPos, y: 1 };
+            orientConfig = { baseline: "alphabetic", angle: 0 };
+            break;
+        case "right":
+            xy = { x: 1, y: 1 - anchorPos };
+            orientConfig = { baseline: "alphabetic", angle: 90 };
+            break;
+        case "bottom":
+            xy = { x: anchorPos, y: 0 };
+            orientConfig = { baseline: "top", angle: 0 };
+            break;
+        case "left":
+            xy = { x: 0, y: anchorPos };
+            orientConfig = { baseline: "alphabetic", angle: -90 };
+            break;
+        default:
+    }
+
+    return { orientConfig, xy };
+}
+
+/**
  * @param {string | import("../spec/title.js").Title} title
  * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
- * @returns {import("../spec/view.js").UnitSpec}
+ * @returns {import("../spec/title.js").Title}
  */
-export default function createTitle(title, configScopes = []) {
+export function resolveTitleSpec(title, configScopes = []) {
     if (!title) {
         return;
     }
@@ -54,42 +87,31 @@ export default function createTitle(title, configScopes = []) {
         ...titleSpec,
     };
 
-    /** @type {Partial<import("../spec/title.js").Title>} */
-    let orientConfig = {};
-    let xy = { x: 0, y: 0 };
+    const { orientConfig } = getTitleOrientMetadata(preliminarySpec);
 
-    const anchorPos = ANCHORS[preliminarySpec.anchor ?? "middle"];
-
-    switch (preliminarySpec.orient) {
-        case "top":
-            xy = { x: anchorPos, y: 1 };
-            orientConfig = { baseline: "alphabetic", angle: 0 };
-            break;
-        case "right":
-            xy = { x: 1, y: 1 - anchorPos };
-            orientConfig = { baseline: "alphabetic", angle: 90 };
-            break;
-        case "bottom":
-            xy = { x: anchorPos, y: 0 };
-            orientConfig = { baseline: "top", angle: 0 };
-            break;
-        case "left":
-            xy = { x: 0, y: anchorPos };
-            orientConfig = { baseline: "alphabetic", angle: -90 };
-            break;
-        default:
-    }
-
-    /** @type {import("../spec/title.js").Title} */
-    const spec = {
+    return {
         ...titleConfig,
         ...orientConfig,
         ...styleConfig,
         ...titleSpec,
     };
+}
+
+/**
+ * @param {string | import("../spec/title.js").Title} title
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+export default function createTitle(title, configScopes = []) {
+    const spec = resolveTitleSpec(title, configScopes);
+    if (!spec) {
+        return;
+    }
+
+    const { xy } = getTitleOrientMetadata(spec);
 
     const offsets = { xOffset: 0, yOffset: 0 };
-    switch (preliminarySpec.orient) {
+    switch (spec.orient) {
         case "top":
             offsets.yOffset = -spec.offset;
             break;

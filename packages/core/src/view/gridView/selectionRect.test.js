@@ -138,4 +138,57 @@ describe("SelectionRect", () => {
         const selectionRect = new SelectionRect(gridChild, selectionExpr);
         expect(selectionRect.isDomainInert()).toBe(true);
     });
+
+    it("exposes brush zindex for GridView ordering", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "p"
+        );
+
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const unitSpec = {
+            data: { values: [{ x: 0, y: 0 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const unitView = new UnitView(unitSpec, context, parent, parent, "u");
+
+        /** @type {(listener: () => void) => () => void} */
+        const subscribe = () => () => undefined;
+        /** @type {() => void} */
+        const invalidate = () => undefined;
+
+        const selectionExpr = Object.assign(
+            () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
+            {
+                subscribe,
+                invalidate,
+                identifier: () => "selection",
+                fields: [],
+                globals: [],
+                code: "selection",
+            }
+        );
+
+        const gridChild = /** @type {import("./gridChild.js").default} */ (
+            /** @type {unknown} */ ({
+                layoutParent: parent,
+                view: unitView,
+            })
+        );
+
+        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
+            zindex: 7,
+        });
+
+        expect(selectionRect.getZindex()).toBe(7);
+    });
 });

@@ -49,6 +49,51 @@ const makeUnitSpec = () => ({
     },
 });
 
+/**
+ * @param {import("../../spec/view.js").AnyConcatSpec} spec
+ * @param {string[]} labels
+ * @returns {Promise<string[]>}
+ */
+const recordRenderOrder = (spec, labels) => {
+    /** @type {string[]} */
+    const order = [];
+    /**
+     * @param {import("../concatView.js").default} view
+     */
+    const renderForLayout = (view) => {
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+    };
+
+    return createAndInitialize(spec, ConcatView).then((view) => {
+        for (const label of labels) {
+            const target = view.getDescendants().find((descendant) => {
+                const viewName = descendant.name ?? "";
+                return (
+                    viewName === label ||
+                    (label.endsWith("*") &&
+                        viewName.startsWith(label.slice(0, -1)))
+                );
+            });
+
+            if (!target) {
+                throw new Error(`Missing view "${label}" in test hierarchy.`);
+            }
+
+            const original = target.render.bind(target);
+            target.render = (context, coords, options = {}) => {
+                order.push(target.name);
+                return original(context, coords, options);
+            };
+        }
+
+        renderForLayout(view);
+        return order;
+    });
+};
+
 describe("GridView incremental child management", () => {
     test("dynamic add/remove keeps shared axes in sync", async () => {
         const context = createTestViewContext();
@@ -345,6 +390,316 @@ describe("GridView separators", () => {
 
         expect(horizontalCount).toBe(1);
         expect(verticalCount).toBe(0);
+    });
+});
+
+describe("GridView decoration zindex", () => {
+    test("renders default decorations around unclipped content", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        title: "Track title",
+                        view: {
+                            fill: "#f4f4f4",
+                            stroke: "#999",
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                        },
+                    },
+                ],
+            },
+            [
+                "background0",
+                "backgroundStroke0",
+                "axis_bottom",
+                "axis_left",
+                "child",
+                "title0",
+            ]
+        );
+
+        expect(order).toEqual([
+            "background0",
+            "backgroundStroke0",
+            "axis_bottom",
+            "axis_left",
+            "child",
+            "title0",
+        ]);
+    });
+
+    test("renders axes after marks when axis zindex is positive", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false, zindex: 1 },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false, zindex: 1 },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
+    });
+
+    test("defaults clipped axes and view stroke above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        viewportWidth: 50,
+                        width: 200,
+                        view: {
+                            stroke: "#999",
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: {
+                            type: "point",
+                            clip: true,
+                        },
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "backgroundStroke0", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual([
+            "child",
+            "backgroundStroke0",
+            "axis_bottom",
+            "axis_left",
+        ]);
+    });
+
+    test("explicit axis and view stroke zindex override the clipped default", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        viewportWidth: 50,
+                        width: 200,
+                        view: {
+                            stroke: "#999",
+                            strokeZindex: 0,
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: {
+                            type: "point",
+                            clip: true,
+                        },
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false, zindex: 0 },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false, zindex: 0 },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["backgroundStroke0", "axis_bottom", "axis_left", "child"]
+        );
+
+        expect(order).toEqual([
+            "backgroundStroke0",
+            "axis_bottom",
+            "axis_left",
+            "child",
+        ]);
+    });
+
+    test("renders title before marks and background fill/stroke after marks when configured", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        title: {
+                            text: "Track title",
+                            zindex: 0,
+                        },
+                        view: {
+                            fill: "#f4f4f4",
+                            zindex: 1,
+                            stroke: "#999",
+                            strokeZindex: 2,
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            ["title0", "child", "background0", "backgroundStroke0"]
+        );
+
+        expect(order).toEqual([
+            "title0",
+            "child",
+            "background0",
+            "backgroundStroke0",
+        ]);
+    });
+
+    test("renders separators after child views when separator zindex is positive", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "first",
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                    {
+                        name: "second",
+                        data: { values: [{ x: 3, y: 4 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+                separator: { zindex: 1 },
+            },
+            ["first", "second", "separatorHorizontal0"]
+        );
+
+        expect(order).toEqual(["first", "second", "separatorHorizontal0"]);
+    });
+
+    test("renders brush selections before marks when brush zindex is zero", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        params: [
+                            {
+                                name: "brush",
+                                // Non-obvious: seed the selection so the brush view has active interval data.
+                                value: { x: [1, 2] },
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                    mark: {
+                                        zindex: 0,
+                                    },
+                                },
+                            },
+                        ],
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            ["selectionRect", "child"]
+        );
+
+        expect(order).toEqual(["selectionRect", "child"]);
     });
 });
 

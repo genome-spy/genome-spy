@@ -1,5 +1,6 @@
 import { PrimaryPositionalChannel, Scalar } from "./channel.js";
 import { ShadowProps } from "./mark.js";
+import { ZIndexProps } from "./decoration.js";
 
 export interface ExprRef {
     /**
@@ -286,7 +287,7 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     zoom?: DomEventType | EventConfig | string | boolean;
 }
 
-export interface BrushConfig extends ShadowProps {
+export interface BrushConfig extends ShadowProps, ZIndexProps {
     /**
      * The fill color of the interval mark.
      *
@@ -322,6 +323,16 @@ export interface BrushConfig extends ShadowProps {
      * __Default value:__ `1`
      */
     strokeWidth?: number;
+
+    /**
+     * Z-order of the interval mark relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `1`
+     */
+    zindex?: number;
 
     /**
      * Where to display the measurement text (e.g., number of base pairs) for the interval selection.

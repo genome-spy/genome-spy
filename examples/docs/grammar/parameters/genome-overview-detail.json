@@ -65,7 +65,7 @@
 
           "height": 20,
 
-          "view": { "stroke": "#d0d0d0" },
+          "view": { "stroke": "#d0d0d0", "strokeZindex": 10 },
 
           "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
 
@@ -117,9 +117,10 @@
                 "encodings": ["x"],
                 "mark": {
                   "clip": false,
+                  "zindex": 11,
                   "stroke": "#048",
                   "strokeOpacity": 0.6,
-                  "fillOpacity": 0.01,
+                  "fillOpacity": 0.02,
                   "fill": "#08F",
                   "shadowBlur": 5,
                   "shadowColor": "#08F",

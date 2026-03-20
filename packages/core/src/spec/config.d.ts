@@ -5,12 +5,12 @@ import {
     PointProps,
     RectProps,
     RuleProps,
-    ShadowProps,
     TickProps,
     TextProps,
 } from "./mark.js";
 import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
+import { ViewBackgroundProps } from "./decoration.js";
 
 export type BuiltInThemeName =
     | "genomespy"
@@ -20,32 +20,7 @@ export type BuiltInThemeName =
     | "fivethirtyeight"
     | "urbaninstitute";
 
-export interface ViewConfig extends ShadowProps {
-    /**
-     * Fill color of the view background.
-     */
-    fill?: string;
-
-    /**
-     * Opacity of the view background fill.
-     */
-    fillOpacity?: number;
-
-    /**
-     * Stroke color of the view background.
-     */
-    stroke?: string;
-
-    /**
-     * Stroke width of the view background border.
-     */
-    strokeWidth?: number;
-
-    /**
-     * Opacity of the view background stroke.
-     */
-    strokeOpacity?: number;
-}
+export type ViewConfig = ViewBackgroundProps;
 
 export type MarkConfig = Partial<Omit<MarkPropsBase, "type">>;
 
@@ -166,8 +141,8 @@ export type StyleConfig = Partial<CombinedStyleConfig>;
 
 export interface GenomeSpyConfig {
     /**
-     * Defaults for view background styling, including fill, stroke, and
-     * shadow-related properties.
+     * Defaults for view background styling, including fill, stroke, shadow,
+     * and z-order properties.
      */
     view?: ViewConfig;
 

@@ -6,18 +6,12 @@ import {
     FacetFieldDef,
     PrimaryPositionalChannel,
 } from "./channel.js";
-import {
-    FillAndStrokeProps,
-    MarkProps,
-    MarkType,
-    RectProps,
-    RuleProps,
-    ShadowProps,
-} from "./mark.js";
+import { MarkProps, MarkType, RuleProps } from "./mark.js";
 import { ExprRef } from "./parameter.js";
 import { Title } from "./title.js";
 import { Parameter } from "./parameter.js";
 import { GenomeSpyConfig } from "./config.js";
+import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
 
 export interface SizeDef {
     /**
@@ -85,7 +79,7 @@ export type Paddings = Partial<Record<Side, number>>;
 
 export type PaddingConfig = Paddings | number;
 
-interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
+export interface ViewBackground extends ViewBackgroundProps {
     /**
      * Named style reference(s) resolved from `config.style`.
      * If an array is provided, later styles override earlier ones.
@@ -94,23 +88,40 @@ interface CompleteViewBackground extends RectProps, FillAndStrokeProps {
      */
     style?: string | string[];
 
-    // TODO: Move to FillAndStrokeProps or something
-    strokeWidth?: number;
+    /**
+     * Z-order of the background fill relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `0`
+     */
+    zindex?: number;
+
+    /**
+     * Z-order of the background stroke relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `0`, or `10` when the view content is clipped or
+     * scrollable.
+     */
+    strokeZindex?: number;
 }
 
-export type ViewBackground = Pick<
-    CompleteViewBackground,
-    | "style"
-    | "fill"
-    | "fillOpacity"
-    | "stroke"
-    | "strokeWidth"
-    | "strokeOpacity"
-> &
-    ShadowProps;
-
-export interface SeparatorProps extends Omit<RuleProps, "type"> {
+export interface SeparatorProps extends Omit<RuleProps, "type">, ZIndexProps {
     type?: "rule";
+
+    /**
+     * Z-order of the separator relative to the view content.
+     *
+     * Values greater than `0` render after the view marks. Values less than or
+     * equal to `0` render before the marks.
+     *
+     * __Default value:__ `0`
+     */
+    zindex?: number;
 
     /**
      * Whether separators extend into the plot margin (axes/padding) around

@@ -26,6 +26,9 @@ export default class SeparatorView {
     /** @type {UnitView} */
     #view;
 
+    /** @type {number} */
+    #zindex;
+
     /** @type {import("../../data/flowNode.js").Datum[]} */
     #data = [];
 
@@ -58,8 +61,10 @@ export default class SeparatorView {
     }) {
         this.#direction = direction;
         this.#includePlotMargin = props.includePlotMargin ?? true;
+        this.#zindex = props.zindex ?? 0;
         const markProps = { ...props };
         delete markProps.includePlotMargin;
+        delete markProps.zindex;
         this.#view = this.#createView(
             markProps,
             context,
@@ -74,6 +79,10 @@ export default class SeparatorView {
      */
     get view() {
         return this.#view;
+    }
+
+    getZindex() {
+        return this.#zindex;
     }
 
     /**

@@ -14,7 +14,7 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import createTitle from "../title.js";
+import createTitle, { resolveTitleSpec } from "../title.js";
 import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
@@ -65,6 +65,15 @@ export default class GridChild {
         /** @type {UnitView} */
         this.title = undefined;
 
+        /** @type {number} */
+        this.backgroundZindex = 0;
+
+        /** @type {number | undefined} */
+        this.backgroundStrokeZindex = undefined;
+
+        /** @type {number} */
+        this.titleZindex = 1;
+
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
 
@@ -74,6 +83,8 @@ export default class GridChild {
                 view.getConfigScopes(),
                 "view" in spec ? spec.view : undefined
             );
+            this.backgroundZindex = viewBackground?.zindex ?? 0;
+            this.backgroundStrokeZindex = viewBackground?.strokeZindex;
 
             const backgroundSpec = createBackground(viewBackground);
             if (backgroundSpec) {
@@ -109,7 +120,12 @@ export default class GridChild {
                 });
             }
 
-            const title = createTitle(view.spec.title, view.getConfigScopes());
+            const titleSpec = resolveTitleSpec(
+                view.spec.title,
+                view.getConfigScopes()
+            );
+            this.titleZindex = titleSpec?.zindex ?? 1;
+            const title = createTitle(titleSpec);
             if (title) {
                 const unitView = new UnitView(
                     title,

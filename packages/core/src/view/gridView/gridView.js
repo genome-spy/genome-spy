@@ -19,6 +19,26 @@ import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 
+// Secondary ordering within a z-index bucket for GridView-owned decorations.
+// These are not z-indices themselves: actual layering is decided first by the
+// decoration's zindex (underlay vs overlay relative to content), and these
+// values are only used as tie-break phases among decorations in the same batch.
+const DECORATION_ORDER = Object.freeze({
+    background: 0,
+    separator: 10,
+    grid: 20,
+    backgroundStroke: 30,
+    axis: 40,
+    selectionRect: 80,
+    scrollbar: 90,
+    title: 100,
+});
+
+// Default z-index for axes and view strokes when the content is clipped or
+// scrollable. This keeps guides above content-edge artifacts while still
+// letting an explicit user zindex override the default.
+const CLIPPED_DECORATION_ZINDEX = 10;
+
 /**
  * Modeled after: https://vega.github.io/vega/docs/layout/
  *
@@ -583,8 +603,8 @@ export default class GridView extends ContainerView {
         const round = (x) =>
             Math.round(x * devicePixelRatio) / devicePixelRatio;
 
-        // Two-phase render: compute layout once, then render backgrounds/separators
-        // before gridlines/axes/marks without recomputing per-child coords.
+        // Compute layout once and then dispatch decorations around the content
+        // render pass without recomputing per-child coordinates.
         const renderItems = [];
 
         for (const [i, gridChild] of this.#visibleChildren.entries()) {
@@ -683,14 +703,62 @@ export default class GridView extends ContainerView {
             });
         }
 
-        for (const item of renderItems) {
-            item.background?.render(context, item.clippedChildCoords, {
-                ...options,
-                clipRect: undefined,
-            });
-        }
-
         const gridOverhang = this.#getGridOverhang();
+
+        /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
+        const underlays = [];
+        /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
+        const overlays = [];
+        /** @type {(() => void)[]} */
+        const contents = [];
+        let sequence = 0;
+
+        const queueDecoration = (
+            /** @type {number} */ zindex,
+            /** @type {number} */ order,
+            /** @type {() => void} */ render
+        ) => {
+            const target = zindex > 0 ? overlays : underlays;
+            target.push({
+                zindex,
+                order,
+                sequence: sequence++,
+                render,
+            });
+        };
+
+        const renderDecorations = (
+            /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */ items
+        ) => {
+            items.sort(
+                (a, b) =>
+                    a.zindex - b.zindex ||
+                    a.order - b.order ||
+                    a.sequence - b.sequence
+            );
+
+            for (const item of items) {
+                item.render();
+            }
+        };
+
+        for (const item of renderItems) {
+            if (item.background) {
+                queueDecoration(
+                    item.gridChild.backgroundZindex,
+                    DECORATION_ORDER.background,
+                    () =>
+                        item.background?.render(
+                            context,
+                            item.clippedChildCoords,
+                            {
+                                ...options,
+                                clipRect: undefined,
+                            }
+                        )
+                );
+            }
+        }
 
         const verticalSeparator = this.#separatorViews.vertical;
         if (verticalSeparator) {
@@ -702,7 +770,11 @@ export default class GridView extends ContainerView {
                 this.wrappingFacet,
                 gridOverhang
             );
-            verticalSeparator.render(context, coords, options);
+            queueDecoration(
+                verticalSeparator.getZindex(),
+                DECORATION_ORDER.separator,
+                () => verticalSeparator.render(context, coords, options)
+            );
         }
 
         const horizontalSeparator = this.#separatorViews.horizontal;
@@ -715,7 +787,11 @@ export default class GridView extends ContainerView {
                 this.wrappingFacet,
                 gridOverhang
             );
-            horizontalSeparator.render(context, coords, options);
+            queueDecoration(
+                horizontalSeparator.getZindex(),
+                DECORATION_ORDER.separator,
+                () => horizontalSeparator.render(context, coords, options)
+            );
         }
 
         for (const item of renderItems) {
@@ -737,24 +813,44 @@ export default class GridView extends ContainerView {
                 row,
             } = item;
 
-            for (const gridLineView of Object.values(gridLines)) {
-                gridLineView.render(context, viewportCoords, options);
-            }
-
             const clipped = isClippedChildren(view) || scrollable;
 
-            // If clipped, the axes should be drawn on top of the marks (because clipping may not be pixel-perfect)
-            if (clipped) {
-                view.render(context, viewCoords, {
-                    ...options,
-                    clipRect: clippedChildCoords,
-                });
+            for (const gridLineView of Object.values(gridLines)) {
+                queueDecoration(
+                    gridLineView.axisProps.zindex ?? 0,
+                    DECORATION_ORDER.grid,
+                    () => gridLineView.render(context, viewportCoords, options)
+                );
             }
 
-            backgroundStroke?.render(context, clippedChildCoords, {
-                ...options,
-                clipRect: undefined,
-            });
+            const renderContent = () =>
+                view.render(
+                    context,
+                    viewCoords,
+                    clipped
+                        ? {
+                              ...options,
+                              clipRect: clippedChildCoords,
+                          }
+                        : options
+                );
+
+            contents.push(renderContent);
+
+            if (backgroundStroke) {
+                queueDecoration(
+                    defaultBackgroundStrokeZindex(
+                        gridChild.backgroundStrokeZindex,
+                        clipped
+                    ),
+                    DECORATION_ORDER.backgroundStroke,
+                    () =>
+                        backgroundStroke?.render(context, clippedChildCoords, {
+                            ...options,
+                            clipRect: undefined,
+                        })
+                );
+            }
 
             // Independent axes
             for (const [orient, axisView] of Object.entries(axes)) {
@@ -809,10 +905,15 @@ export default class GridView extends ContainerView {
                     );
                 }
 
-                axisView.render(context, translatedCoords, {
-                    ...options,
-                    clipRect,
-                });
+                queueDecoration(
+                    defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                    DECORATION_ORDER.axis,
+                    () =>
+                        axisView.render(context, translatedCoords, {
+                            ...options,
+                            clipRect,
+                        })
+                );
             }
 
             // Axes shared between children
@@ -827,31 +928,56 @@ export default class GridView extends ContainerView {
                     (orient == "top" && row == 0) ||
                     (orient == "bottom" && row == grid.nRows - 1)
                 ) {
-                    axisView.render(
-                        context,
-                        translateAxisCoords(
-                            viewportCoords.shrink(gridChild.view.getOverhang()),
-                            orient,
-                            axisView
-                        ),
-                        options
+                    queueDecoration(
+                        defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                        DECORATION_ORDER.axis,
+                        () =>
+                            axisView.render(
+                                context,
+                                translateAxisCoords(
+                                    viewportCoords.shrink(
+                                        gridChild.view.getOverhang()
+                                    ),
+                                    orient,
+                                    axisView
+                                ),
+                                options
+                            )
                     );
                 }
             }
 
-            if (!clipped) {
-                view.render(context, viewCoords, options);
+            if (selectionRect) {
+                queueDecoration(
+                    selectionRect.getZindex(),
+                    DECORATION_ORDER.selectionRect,
+                    () => selectionRect?.render(context, viewCoords, options)
+                );
             }
-
-            selectionRect?.render(context, viewCoords, options);
 
             for (const scrollbar of Object.values(gridChild.scrollbars)) {
-                scrollbar.updateScrollbar(viewportCoords, viewCoords);
-                scrollbar.render(context, coords, options);
+                queueDecoration(1, DECORATION_ORDER.scrollbar, () => {
+                    scrollbar.updateScrollbar(viewportCoords, viewCoords);
+                    scrollbar.render(context, coords, options);
+                });
             }
 
-            title?.render(context, viewportCoords, options);
+            if (title) {
+                queueDecoration(
+                    gridChild.titleZindex,
+                    DECORATION_ORDER.title,
+                    () => title?.render(context, viewportCoords, options)
+                );
+            }
         }
+
+        renderDecorations(underlays);
+
+        for (const renderContent of contents) {
+            renderContent();
+        }
+
+        renderDecorations(overlays);
 
         context.popView(this);
     }
@@ -1036,6 +1162,30 @@ function getSeparatorDirections(spec) {
     }
 
     return ["horizontal", "vertical"];
+}
+
+/**
+ * Default z-index for axes. Clipped or scrollable content gets a higher
+ * default to keep guides above visible edge artifacts.
+ *
+ * @param {number | undefined} zindex
+ * @param {boolean} clipped
+ * @returns {number}
+ */
+function defaultAxisZindex(zindex, clipped) {
+    return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
+}
+
+/**
+ * Default z-index for view strokes. Clipped or scrollable content gets a
+ * higher default to keep the stroke above visible edge artifacts.
+ *
+ * @param {number | undefined} zindex
+ * @param {boolean} clipped
+ * @returns {number}
+ */
+function defaultBackgroundStrokeZindex(zindex, clipped) {
+    return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
 }
 
 /**
