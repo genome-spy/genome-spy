@@ -21,6 +21,7 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
+import { collectScaleDomains } from "./bookmark/scaleDomainUtils.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
     buildViewSettingsPayload,
@@ -514,15 +515,10 @@ export default class App {
             hashData.actions = history;
         }
 
-        // This is copypaste from bookmarks. TODO: consolidate
-        for (const [name, scaleResolution] of this.genomeSpy
-            .getNamedScaleResolutions()
-            .entries()) {
-            if (scaleResolution.isZoomed()) {
-                hashData.scaleDomains[name] =
-                    scaleResolution.getComplexDomain();
-            }
-        }
+        hashData.scaleDomains = collectScaleDomains(
+            this.genomeSpy,
+            (scaleResolution) => scaleResolution.isZoomed()
+        );
 
         const viewSettings = this.store.getState().viewSettings;
         const viewRoot = this.genomeSpy.viewRoot;

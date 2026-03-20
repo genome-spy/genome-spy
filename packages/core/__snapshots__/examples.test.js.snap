@@ -7952,7 +7952,7 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/genome-o
           {
             "baseUrl": "examples/",
             "children": [],
-            "name": "decoration",
+            "name": "link-decoration",
             "type": "UnitView",
           },
         ],

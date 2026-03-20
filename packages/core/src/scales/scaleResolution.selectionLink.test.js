@@ -1,12 +1,29 @@
 // @ts-nocheck
 
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { describe, expect, test, vi } from "vitest";
 
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
+import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
+import { resolveRootGenomeConfig } from "../genome/rootGenomeConfig.js";
 import ConcatView from "../view/concatView.js";
+import { createTestViewContext } from "../view/testUtils.js";
+import { VIEW_ROOT_NAME } from "../view/viewFactory.js";
+import { checkForDuplicateScaleNames } from "../view/viewUtils.js";
 import {
     getRequiredScaleResolution,
     initView,
 } from "./scaleResolutionTestUtils.js";
+
+const packageDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../../.."
+);
 
 /**
  * @param {import("../spec/scale.js").Scale["domain"]} domain
@@ -91,7 +108,6 @@ describe("Scale resolution selection-linked domains", () => {
                 createSharedLinkedDomainSpec({
                     param: "brush",
                     encoding: "x",
-                    sync: "twoWay",
                 }),
                 ConcatView
             )
@@ -192,6 +208,142 @@ describe("Scale resolution selection-linked domains", () => {
         });
 
         expect(resolution.scale.domain()).toEqual([0, 10]);
+    });
+
+    test("selection-linked domains expose persistence metadata from sibling selections", async () => {
+        const { resolution } = await createLinkedHarness({
+            param: "brush",
+            encoding: "x",
+        });
+
+        expect(resolution.getLinkedSelectionDomainInfo()).toEqual({
+            param: "brush",
+            encoding: "x",
+            persist: true,
+        });
+    });
+
+    test("selection-linked domains mark ephemeral sibling selections as non-persistent", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "brush", value: null }],
+                resolve: {
+                    scale: { x: "independent" },
+                },
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                                persist: false,
+                            },
+                        ],
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                    zoom: true,
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        expect(
+            getRequiredScaleResolution(
+                view.children[1],
+                "x"
+            ).getLinkedSelectionDomainInfo().persist
+        ).toBe(false);
+    });
+
+    test("selection-linked domains use configured initial when selection is empty", async () => {
+        const { view, resolution } = await createLinkedHarness({
+            param: "brush",
+            encoding: "x",
+            initial: [3, 7],
+        });
+
+        expect(resolution.scale.domain()).toEqual([3, 7]);
+        expect(view.paramRuntime.getValue("brush").intervals.x).toEqual([3, 7]);
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+
+        expect(resolution.scale.domain()).toEqual([0, 10]);
+        expect(view.paramRuntime.getValue("brush").intervals.x).toBeNull();
+    });
+
+    test("docs genome overview example applies linked initial domain on load", async () => {
+        const spec = JSON.parse(
+            fs.readFileSync(
+                path.join(
+                    packageDir,
+                    "examples/docs/grammar/parameters/genome-overview-detail.json"
+                ),
+                "utf8"
+            )
+        );
+        spec.baseUrl = "examples/";
+
+        const context = createTestViewContext({
+            wrapRoot: true,
+            allowImport: false,
+        });
+
+        const { genomesByName, defaultAssembly } =
+            resolveRootGenomeConfig(spec);
+        context.genomeStore.configureGenomes(genomesByName, defaultAssembly);
+        await context.genomeStore.ensureAssemblies(
+            Array.from(genomesByName.keys())
+        );
+
+        const view = await context.createOrImportView(
+            spec,
+            null,
+            null,
+            VIEW_ROOT_NAME
+        );
+
+        checkForDuplicateScaleNames(view);
+        await ensureAssembliesForView(view, context.genomeStore);
+
+        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
+        await loadViewSubtreeData(view, dataSources);
+
+        const detail = view.getDescendants().find((descendant) => {
+            return descendant.name === "detail";
+        });
+        const resolution = detail && detail.getScaleResolution("x");
+
+        expect(resolution?.getComplexDomain()).toEqual([
+            { chrom: "chr6", pos: 20000000 },
+            { chrom: "chr11", pos: 40000000 },
+        ]);
+        expect(view.paramRuntime.getValue("brush").intervals.x).not.toBeNull();
     });
 
     test("selection-linked domains are not restored to previous zoom domains", async () => {
@@ -301,27 +453,15 @@ describe("Scale resolution selection-linked domains", () => {
 
     test.each([
         {
-            name: "two-way linked domains write domain updates back to interval params",
-            domain: { param: "brush", encoding: "x", sync: "twoWay" },
-            linkZoom: true,
-            expected: [2, 4],
-        },
-        {
-            name: "auto sync writes domain updates back when linked scale is zoomable",
+            name: "zoomable linked domains write domain updates back to interval params",
             domain: { param: "brush", encoding: "x" },
             linkZoom: true,
             expected: [2, 4],
         },
         {
-            name: "auto sync does not write domain updates back when linked scale is not zoomable",
+            name: "non-zoomable linked domains do not write domain updates back to params",
             domain: { param: "brush", encoding: "x" },
             linkZoom: false,
-            expected: null,
-        },
-        {
-            name: "one-way linked domains do not write domain updates back to params",
-            domain: { param: "brush", encoding: "x", sync: "oneWay" },
-            linkZoom: true,
             expected: null,
         },
     ])("$name", async ({ domain, linkZoom, expected }) => {
@@ -336,11 +476,10 @@ describe("Scale resolution selection-linked domains", () => {
         );
     });
 
-    test("two-way linked domains clear interval when domain returns to fallback", async () => {
+    test("zoomable linked domains clear interval when domain returns to fallback", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",
-            sync: "twoWay",
         });
 
         resolution.getScale().domain([2, 4]);
@@ -350,7 +489,7 @@ describe("Scale resolution selection-linked domains", () => {
         expect(view.paramRuntime.getValue("brush").intervals.x).toBeNull();
     });
 
-    test("two-way linked domains preserve non-target interval channels", async () => {
+    test("zoomable linked domains preserve non-target interval channels", async () => {
         const view = await initView(
             {
                 params: [{ name: "brush", value: null }],
@@ -393,7 +532,6 @@ describe("Scale resolution selection-linked domains", () => {
                                     domain: {
                                         param: "brush",
                                         encoding: "x",
-                                        sync: "twoWay",
                                     },
                                     zoom: true,
                                 },
@@ -421,11 +559,10 @@ describe("Scale resolution selection-linked domains", () => {
         });
     });
 
-    test("two-way linked domains skip redundant param updates for equal intervals", async () => {
+    test("zoomable linked domains skip redundant param updates for equal intervals", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",
-            sync: "twoWay",
         });
 
         view.paramRuntime.setValue("brush", {
@@ -442,5 +579,18 @@ describe("Scale resolution selection-linked domains", () => {
 
         expect(listener).not.toHaveBeenCalled();
         unsubscribe();
+    });
+
+    test("selection-linked domains reject initial on non-zoomable scales", async () => {
+        await expect(
+            createLinkedHarness(
+                {
+                    param: "brush",
+                    encoding: "x",
+                    initial: [2, 4],
+                },
+                false
+            )
+        ).rejects.toThrow('cannot use "initial" with a non-zoomable x scale');
     });
 });

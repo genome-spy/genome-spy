@@ -45,6 +45,16 @@ export interface ScaleResolutionApi {
      */
     getComplexDomain(): NumericDomain | ComplexDomain;
 
+    getLinkedSelectionDomainInfo():
+        | {
+              param: string;
+              encoding: "x" | "y";
+              persist: boolean;
+          }
+        | undefined;
+
+    isZoomed(): boolean;
+
     isZoomable(): boolean;
 
     zoomTo(

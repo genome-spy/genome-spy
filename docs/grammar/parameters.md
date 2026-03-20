@@ -97,7 +97,8 @@ EXAMPLE examples/docs/grammar/parameters/penguins.json height=380 spechidden
 
 #### Linking Scale Domains Across Views
 
-An interval selection can drive scale domains in sibling views. To make this
+An interval selection can drive [scale](./scale.md#domain-from-selection-parameters)
+domains in sibling views. To make this
 work with GenomeSpy's hierarchical parameter scopes:
 
 1. Define an empty parameter in a common ancestor.
@@ -107,11 +108,42 @@ work with GenomeSpy's hierarchical parameter scopes:
 4. Reference the parameter in a linked view via `scale.domain`, for example:
    `{ "param": "brush" }`.
 
-Two-way behavior is automatic when the linked scale is zoomable. You can still
-override with `sync: "oneWay"` or `sync: "twoWay"` in the scale-domain
-reference.
+If the linked scale is zoomable, GenomeSpy automatically keeps the domain and
+selection synchronized in both directions. For non-zoomable linked scales, the
+selection only drives the domain.
 
-##### Two-Way Linking Example
+Use `initial` on the linked `scale.domain` object to provide the configured
+starting domain while the selection is empty. `initial` is only supported on
+zoomable linked scales:
+
+```json
+{
+  "scale": {
+    "zoom": true,
+    "domain": {
+      "param": "brush",
+      "initial": [10, 20]
+    }
+  }
+}
+```
+
+`initial` participates in the configured domain of the linked scale. If the
+linked interval selection is later cleared, the scale returns to its
+normal default or data-derived domain instead of restoring `initial`.
+
+!!! note "GenomeSpy App persistence"
+
+    In the GenomeSpy App, selection parameters are persisted in bookmarks,
+    URL hash state, and provenance history by default. In overview+detail
+    setups, this means the linked domain is restored through the selection
+    state. Use `persist: false` when the brush is only auxiliary UI and should
+    not affect saved state.
+
+    For app-specific state sharing and persistence, see
+    [Visualizing Sample Collections](../sample-collections/visualizing.md).
+
+##### Zoomable Linking Example
 
 EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250
 

@@ -18,6 +18,7 @@ import { restoreBookmarkAndShowInfoBox } from "../../bookmark/bookmark.js";
 import { showEnterBookmarkInfoDialog } from "../dialogs/enterBookmarkDialog.js";
 import { showShareBookmarkDialog } from "../dialogs/shareBookmarkDialog.js";
 import { buildViewSettingsPayload } from "../../viewSettingsUtils.js";
+import { collectScaleDomains } from "../../bookmark/scaleDomainUtils.js";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -65,16 +66,10 @@ class BookmarkButton extends LitElement {
             }
         }
 
-        for (const [scaleName, scaleResolution] of this.app.genomeSpy
-            .getNamedScaleResolutions()
-            .entries()) {
-            if (scaleResolution.isZoomable()) {
-                // TODO: Check if it's the initial zoom level
-                // Could be optimized in the bookmark entry
-                bookmark.scaleDomains[scaleName] =
-                    scaleResolution.getComplexDomain();
-            }
-        }
+        bookmark.scaleDomains = collectScaleDomains(
+            this.app.genomeSpy,
+            (scaleResolution) => scaleResolution.isZoomable()
+        );
 
         return bookmark;
     }

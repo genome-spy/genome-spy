@@ -34,9 +34,9 @@ import createIndexer from "../utils/indexer.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
 import {
+    findIntervalSelectionBindingOwners,
     normalizeIntervalForSelection,
     requireIntervalSelection,
-    requireParamRuntime,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
@@ -127,6 +127,11 @@ export default class ScaleResolution {
 
     #selectionReverseSyncSuppressionDepth = 0;
 
+    #ignoreSelectionInitial = false;
+
+    /** @type {[number, number] | null | undefined} */
+    #lastLinkedSelectionInterval = undefined;
+
     /**
      * @param {Channel} channel
      */
@@ -160,8 +165,7 @@ export default class ScaleResolution {
             getAnimator: () => this.#viewContext.animator,
             getInitialDomainSnapshot: () =>
                 this.#domainAggregator.initialDomainSnapshot,
-            getResetDomain: () =>
-                this.#domainAggregator.getConfiguredOrDefaultDomain(),
+            getResetDomain: () => this.#getConfiguredOrDefaultDomain(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
             getGenomeExtent: () => this.#getLocusExtent(),
         });
@@ -266,7 +270,7 @@ export default class ScaleResolution {
             type === "domain" &&
             this.#selectionReverseSyncSuppressionDepth === 0
         ) {
-            this.#syncLinkedSelectionFromDomain();
+            this.syncLinkedSelectionFromDomain();
         }
 
         for (const listener of this.#listeners[type].values()) {
@@ -289,27 +293,15 @@ export default class ScaleResolution {
         }
     }
 
-    #syncLinkedSelectionFromDomain() {
+    syncLinkedSelectionFromDomain() {
         const linkInfo =
-            this.#domainAggregator.getSelectionConfiguredDomainInfo();
-        if (!linkInfo) {
+            this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
+        if (!linkInfo || !this.isZoomable()) {
             return;
         }
-
-        const shouldReverseSync =
-            linkInfo.sync === "twoWay" ||
-            (linkInfo.sync === "auto" && this.isZoomable());
-        if (!shouldReverseSync) {
-            return;
-        }
-
-        const runtime = requireParamRuntime(
-            this.#firstMemberView.paramRuntime,
-            linkInfo.param
-        );
 
         const selection = requireIntervalSelection(
-            runtime.getValue(linkInfo.param),
+            linkInfo.runtime.getValue(linkInfo.param),
             linkInfo.param
         );
 
@@ -335,7 +327,7 @@ export default class ScaleResolution {
             return;
         }
 
-        runtime.setValue(linkInfo.param, {
+        linkInfo.runtime.setValue(linkInfo.param, {
             ...selection,
             type: "interval",
             intervals: {
@@ -351,6 +343,65 @@ export default class ScaleResolution {
      */
     #normalizeDomainIntervalForLinkedSelection(domain) {
         return normalizeIntervalForSelection(domain, this.zoomExtent);
+    }
+
+    #getLinkedSelectionInfo() {
+        return this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
+    }
+
+    #shouldIncludeSelectionInitial() {
+        return !this.#ignoreSelectionInitial;
+    }
+
+    /**
+     * @param {boolean} [extractDataDomain]
+     * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
+     * @returns {any[]}
+     */
+    #getConfiguredOrDefaultDomain(extractDataDomain = false, locusAssembly) {
+        return this.#domainAggregator.getConfiguredOrDefaultDomain(
+            extractDataDomain,
+            locusAssembly,
+            {
+                includeSelectionInitial: this.#shouldIncludeSelectionInitial(),
+            }
+        );
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    #hasConfiguredDomain() {
+        return this.#domainAggregator.hasConfiguredDomain({
+            includeSelectionInitial: this.#shouldIncludeSelectionInitial(),
+        });
+    }
+
+    /**
+     * @param {import("./domainPlanner.js").SelectionDomainLinkInfo} linkInfo
+     * @returns {[number, number] | null}
+     */
+    #getCurrentLinkedSelectionInterval(linkInfo) {
+        const selection = requireIntervalSelection(
+            linkInfo.runtime.getValue(linkInfo.param),
+            linkInfo.param
+        );
+        const interval = selection.intervals[linkInfo.encoding];
+        return interval && interval.length === 2
+            ? /** @type {[number, number]} */ (interval)
+            : null;
+    }
+
+    /**
+     * @param {[number, number] | null} previousInterval
+     * @param {[number, number] | null} nextInterval
+     */
+    #updateSelectionInitialBypass(previousInterval, nextInterval) {
+        if (nextInterval) {
+            this.#ignoreSelectionInitial = false;
+        } else if (previousInterval) {
+            this.#ignoreSelectionInitial = true;
+        }
     }
 
     /**
@@ -467,6 +518,7 @@ export default class ScaleResolution {
             unsubscribe();
         }
         this.#selectionDomainParamUnsubscribers = [];
+        this.#lastLinkedSelectionInterval = undefined;
     }
 
     #refreshSelectionDomainParamSubscriptions() {
@@ -476,19 +528,24 @@ export default class ScaleResolution {
             return;
         }
 
-        const linkInfo =
-            this.#domainAggregator.getSelectionConfiguredDomainInfo();
+        const linkInfo = this.#getLinkedSelectionInfo();
         if (!linkInfo) {
             return;
         }
 
-        const runtime = requireParamRuntime(
-            this.#firstMemberView.paramRuntime,
-            linkInfo.param
-        );
+        this.#lastLinkedSelectionInterval =
+            this.#getCurrentLinkedSelectionInterval(linkInfo);
 
         this.#selectionDomainParamUnsubscribers.push(
-            runtime.subscribe(linkInfo.param, () => {
+            linkInfo.runtime.subscribe(linkInfo.param, () => {
+                const previousInterval = this.#lastLinkedSelectionInterval;
+                const currentInterval =
+                    this.#getCurrentLinkedSelectionInterval(linkInfo);
+                this.#updateSelectionInitialBypass(
+                    previousInterval,
+                    currentInterval
+                );
+                this.#lastLinkedSelectionInterval = currentInterval;
                 this.#invalidateConfiguredDomain();
                 this.reconfigureDomain();
             })
@@ -547,7 +604,7 @@ export default class ScaleResolution {
      * Returns true if the domain has been defined explicitly, i.e. not extracted from the data.
      */
     isDomainDefinedExplicitly() {
-        return this.#domainAggregator.hasConfiguredDomain();
+        return this.#hasConfiguredDomain();
     }
 
     isDomainInitialized() {
@@ -576,15 +633,17 @@ export default class ScaleResolution {
      * @returns {import("../spec/scale.js").Scale}
      */
     #getMergedScaleProps() {
-        return getCachedOrCall(this, "mergedScaleProps", () =>
-            resolveScalePropsBase({
+        return getCachedOrCall(this, "mergedScaleProps", () => {
+            const props = resolveScalePropsBase({
                 channel: this.channel,
                 dataType: this.type,
                 members: this.#members,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#firstMemberView.getConfigScopes(),
-            })
-        );
+            });
+            this.#validateLinkedSelectionConfiguration(props);
+            return props;
+        });
     }
 
     #invalidateMergedScaleProps() {
@@ -594,6 +653,26 @@ export default class ScaleResolution {
     #invalidateConfiguredDomain() {
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#invalidateMergedScaleProps();
+    }
+
+    /**
+     * @param {import("../spec/scale.js").Scale} props
+     */
+    #validateLinkedSelectionConfiguration(props) {
+        const linkInfo = this.#getLinkedSelectionInfo();
+        if (!linkInfo || props === null || props.type === "null") {
+            return;
+        }
+
+        const isZoomable =
+            isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom;
+
+        if (linkInfo.hasInitial && !isZoomable) {
+            throw new Error(
+                `Selection domain reference "${linkInfo.param}.${linkInfo.encoding}" cannot use "initial" with a non-zoomable ${this.channel} scale. ` +
+                    `Enable zoom on the linked scale or remove "initial".`
+            );
+        }
     }
 
     /**
@@ -657,7 +736,7 @@ export default class ScaleResolution {
 
         const resolvedProps = { ...props };
 
-        const domain = this.#domainAggregator.getConfiguredOrDefaultDomain(
+        const domain = this.#getConfiguredOrDefaultDomain(
             extractDataDomain,
             resolvedProps.type === LOCUS ? resolvedProps.assembly : undefined
         );
@@ -777,6 +856,7 @@ export default class ScaleResolution {
                 });
             }
             this.#finalizeReconfigure(state);
+            this.syncLinkedSelectionFromDomain();
         });
     }
 
@@ -850,10 +930,15 @@ export default class ScaleResolution {
             hasSelectionConfiguredDomain,
         } = inputs;
 
+        const initialDomainSnapshot = hasSelectionConfiguredDomain
+            ? this.#domainAggregator.getDefaultDomain(true)
+            : undefined;
+
         if (
             this.#domainAggregator.captureInitialDomain(
                 scale,
-                domainWasInitialized
+                domainWasInitialized,
+                initialDomainSnapshot
             )
         ) {
             // Domain changes were suppressed during reconfigure; notify explicitly.
@@ -962,6 +1047,32 @@ export default class ScaleResolution {
                 toExternalIndexLikeInterval(this.type, this.getDomain())
             )
         );
+    }
+
+    /**
+     * Returns metadata about a selection-linked domain, if present.
+     */
+    getLinkedSelectionDomainInfo() {
+        const linkInfo = this.#getLinkedSelectionInfo();
+        if (!linkInfo) {
+            return;
+        }
+
+        const root = this.#firstMemberView.getLayoutAncestors().at(-1);
+        const persist = root
+            ? findIntervalSelectionBindingOwners(
+                  root,
+                  linkInfo.runtime,
+                  linkInfo.param,
+                  linkInfo.encoding
+              ).some((owner) => owner.param.persist !== false)
+            : false;
+
+        return {
+            param: linkInfo.param,
+            encoding: linkInfo.encoding,
+            persist,
+        };
     }
 
     /**

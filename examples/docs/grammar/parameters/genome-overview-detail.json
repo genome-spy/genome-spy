@@ -32,7 +32,13 @@
           "pos": "start",
           "type": "locus",
           "scale": {
-            "domain": { "param": "brush" }
+            "domain": {
+              "param": "brush",
+              "initial": [
+                { "chrom": "chr6", "pos": 20000000 },
+                { "chrom": "chr11", "pos": 40000000 }
+              ]
+            }
           },
           "axis": {
             "chromGrid": true
@@ -105,6 +111,7 @@
           "params": [
             {
               "name": "brush",
+              "persist": false,
               "select": {
                 "type": "interval",
                 "encodings": ["x"],
@@ -124,7 +131,7 @@
           ]
         },
         {
-          "name": "decoration",
+          "name": "link-decoration",
           "height": 30,
           "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
           "transform": [

@@ -6,19 +6,17 @@ import {
     toInternalIndexLikeDataDomain,
     toInternalIndexLikeInterval,
 } from "./indexLikeDomainUtils.js";
-import { requireIntervalSelection } from "./selectionDomainUtils.js";
+import {
+    hasIntervalSelectionBindingInScope,
+    resolveIntervalSelectionBinding,
+} from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
-import { isSelectionParameter } from "../paramRuntime/paramUtils.js";
 import {
     hasExplicitLocusUpperBound,
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
-import {
-    asSelectionConfig,
-    isIntervalSelectionConfig,
-} from "../selection/selection.js";
 
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
@@ -29,7 +27,8 @@ import {
  * @typedef {{
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "auto" | "oneWay" | "twoWay",
+ *   hasInitial: boolean,
+ *   runtime: any,
  * }} SelectionDomainLinkInfo
  */
 
@@ -55,13 +54,13 @@ export default class DomainPlanner {
     /** @type {any[]} */
     #initialDomain;
 
-    /** @type {DomainArray | undefined} */
-    #configuredDomain;
-
     /** @type {SelectionDomainLinkInfo | undefined} */
     #selectionDomainLinkInfo = undefined;
 
     #configuredDomainDirty = true;
+
+    /** @type {Map<boolean, DomainArray | undefined>} */
+    #configuredDomainsByInitialMode = new Map();
 
     /** @type {WeakMap<ScaleResolutionMember, import("../types/encoder.js").ScaleAccessor[]>} */
     #accessorsByMember = new WeakMap();
@@ -98,25 +97,46 @@ export default class DomainPlanner {
         return this.#initialDomain;
     }
 
-    hasConfiguredDomain() {
-        return !!this.getConfiguredDomain();
+    /**
+     * @param {{ includeSelectionInitial?: boolean }} [options]
+     */
+    hasConfiguredDomain(options = {}) {
+        return !!this.getConfiguredDomain(options);
     }
 
     hasSelectionConfiguredDomain() {
-        this.getConfiguredDomain();
+        this.getSelectionConfiguredDomainBindingInfo();
         return !!this.#selectionDomainLinkInfo;
     }
 
     /**
      * @returns {SelectionDomainLinkInfo | undefined}
      */
-    getSelectionConfiguredDomainInfo() {
+    getSelectionConfiguredDomainBindingInfo() {
+        if (this.#selectionDomainLinkInfo || !this.#configuredDomainDirty) {
+            return this.#selectionDomainLinkInfo;
+        }
+
         this.getConfiguredDomain();
         return this.#selectionDomainLinkInfo;
     }
 
+    getSelectionConfiguredDomainInfo() {
+        const bindingInfo = this.getSelectionConfiguredDomainBindingInfo();
+        if (!bindingInfo) {
+            return;
+        }
+
+        return {
+            param: bindingInfo.param,
+            encoding: bindingInfo.encoding,
+        };
+    }
+
     invalidateConfiguredDomain() {
         this.#configuredDomainDirty = true;
+        this.#selectionDomainLinkInfo = undefined;
+        this.#configuredDomainsByInitialMode.clear();
     }
 
     /**
@@ -140,12 +160,17 @@ export default class DomainPlanner {
      *
      * @param {boolean} [extractDataDomain]
      * @param {import("../spec/scale.js").Scale["assembly"]} [locusAssembly]
+     * @param {{ includeSelectionInitial?: boolean }} [options]
      * @returns {any[]}
      */
-    getConfiguredOrDefaultDomain(extractDataDomain = false, locusAssembly) {
+    getConfiguredOrDefaultDomain(
+        extractDataDomain = false,
+        locusAssembly,
+        options = {}
+    ) {
         // TODO: intersect the domain with zoom extent (if it's defined)
         return (
-            this.getConfiguredDomain() ??
+            this.getConfiguredDomain(options) ??
             this.getDefaultDomain(extractDataDomain, locusAssembly)
         );
     }
@@ -153,23 +178,35 @@ export default class DomainPlanner {
     /**
      * Unions the configured domains of all participating views.
      *
+     * @param {{ includeSelectionInitial?: boolean }} [options]
      * @return {DomainArray}
      */
-    getConfiguredDomain() {
-        if (!this.#configuredDomainDirty) {
-            return this.#configuredDomain;
+    getConfiguredDomain(options = {}) {
+        const includeSelectionInitial = options.includeSelectionInitial ?? true;
+
+        if (
+            !this.#configuredDomainDirty &&
+            this.#configuredDomainsByInitialMode.has(includeSelectionInitial)
+        ) {
+            return this.#configuredDomainsByInitialMode.get(
+                includeSelectionInitial
+            );
         }
 
         const configuredDomain = resolveConfiguredDomain(
             this.#getMembers(),
-            this.#fromComplexInterval
+            this.#fromComplexInterval,
+            includeSelectionInitial
         );
         validateSharedSelectionDomain(
             this.#getAllMembers(),
             configuredDomain.selectionRef
         );
-        this.#configuredDomain = configuredDomain.domain;
         this.#selectionDomainLinkInfo = configuredDomain.selectionRef;
+        this.#configuredDomainsByInitialMode.set(
+            includeSelectionInitial,
+            configuredDomain.domain
+        );
         this.#configuredDomainDirty = false;
         return configuredDomain.domain;
     }
@@ -190,18 +227,19 @@ export default class DomainPlanner {
     /**
      * @param {import("../types/encoder.js").VegaScale} scale
      * @param {boolean} domainWasInitialized
+     * @param {any[]} [snapshotDomain]
      * @returns {boolean} true if listeners should be notified immediately
      */
-    captureInitialDomain(scale, domainWasInitialized) {
+    captureInitialDomain(scale, domainWasInitialized, snapshotDomain) {
         if (!this.#initialDomain && isContinuous(scale.type)) {
-            const domain = scale.domain();
+            const domain = snapshotDomain ?? scale.domain();
             if (span(domain) > 0) {
                 this.#initialDomain = domain;
             }
         }
 
         if (!domainWasInitialized) {
-            this.#initialDomain = scale.domain();
+            this.#initialDomain = snapshotDomain ?? scale.domain();
             return true;
         }
 
@@ -245,12 +283,17 @@ export default class DomainPlanner {
 /**
  * @param {Set<ScaleResolutionMember>} members
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @param {boolean} includeSelectionInitial
  * @returns {{
  *   domain: DomainArray | undefined,
  *   selectionRef: SelectionDomainLinkInfo | undefined,
  * }}
  */
-function resolveConfiguredDomain(members, fromComplexInterval) {
+function resolveConfiguredDomain(
+    members,
+    fromComplexInterval,
+    includeSelectionInitial
+) {
     const domainMembers = Array.from(members)
         .filter((member) => member.contributesToDomain)
         .filter((member) => member.channelDef.scale?.domain);
@@ -258,12 +301,10 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
     /** @type {DomainArray[]} */
     const domains = [];
 
-    /** @type {string | undefined} */
-    let selectionRefKey = undefined;
+    /** @type {any} */
+    let selectionRefRuntime = undefined;
     /** @type {string | undefined} */
     let selectionRefDescription = undefined;
-    /** @type {"auto" | "oneWay" | "twoWay" | undefined} */
-    let selectionRefSync = undefined;
     /** @type {SelectionDomainLinkInfo | undefined} */
     let selectionRef = undefined;
     let hasLiteralDomain = false;
@@ -280,10 +321,16 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
             const resolved = resolveSelectionDomain(
                 member,
                 domainDef,
-                fromComplexInterval
+                fromComplexInterval,
+                includeSelectionInitial
             );
 
-            if (selectionRefKey && selectionRefKey !== resolved.key) {
+            if (
+                selectionRef &&
+                (selectionRef.runtime !== resolved.runtime ||
+                    selectionRef.param !== resolved.param ||
+                    selectionRef.encoding !== resolved.encoding)
+            ) {
                 throw new Error(
                     "Conflicting selection domain references on a shared scale: " +
                         selectionRefDescription +
@@ -293,28 +340,14 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
                 );
             }
 
-            if (!selectionRefSync) {
-                selectionRefSync = resolved.sync;
-            } else if (selectionRefSync === "auto") {
-                selectionRefSync = resolved.sync;
-            } else if (resolved.sync !== "auto") {
-                if (selectionRefSync !== resolved.sync) {
-                    throw new Error(
-                        "Conflicting selection domain sync modes on a shared scale: " +
-                            selectionRefSync +
-                            " vs " +
-                            resolved.sync +
-                            "."
-                    );
-                }
-            }
-
-            selectionRefKey = resolved.key;
+            selectionRefRuntime = resolved.runtime;
             selectionRefDescription = resolved.description;
             selectionRef = {
                 param: resolved.param,
                 encoding: resolved.encoding,
-                sync: selectionRefSync,
+                hasInitial:
+                    (selectionRef?.hasInitial ?? false) || resolved.hasInitial,
+                runtime: resolved.runtime,
             };
 
             if (resolved.domain) {
@@ -323,27 +356,20 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
             continue;
         }
 
-        if (selectionRefKey) {
+        if (selectionRefRuntime) {
             throw new Error(
                 "Cannot mix literal configured domains with selection-driven domains on a shared scale."
             );
         }
 
         hasLiteralDomain = true;
-        const numericDomain = fromComplexInterval(domainDef);
-        const internalDomain =
-            // Whole-chromosome locus domains such as [{ chrom: "chr1" }, { chrom: "chr2" }]
-            // already resolve to chromosome extents.
-            member.channelDef.type === LOCUS &&
-            isChromosomalLocusInterval(domainDef) &&
-            !hasExplicitLocusUpperBound(domainDef)
-                ? numericDomain
-                : // Literal configured domains are user-facing intervals.
-                  toInternalIndexLikeInterval(
-                      member.channelDef.type,
-                      numericDomain
-                  );
-        domains.push(createDomain(member.channelDef.type, internalDomain));
+        domains.push(
+            resolveConfiguredIntervalDomain(
+                member.channelDef.type,
+                domainDef,
+                fromComplexInterval
+            )
+        );
     }
 
     if (domains.length > 0) {
@@ -353,7 +379,7 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
         };
     }
 
-    if (selectionRefKey) {
+    if (selectionRefRuntime) {
         // Selection refs are still the source of truth even when the
         // selection interval currently resolves to no domain.
         return { domain: undefined, selectionRef };
@@ -366,24 +392,23 @@ function resolveConfiguredDomain(members, fromComplexInterval) {
  * @param {ScaleResolutionMember} member
  * @param {SelectionDomainRef} domainRef
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @param {boolean} includeSelectionInitial
  * @returns {{
  *   domain: DomainArray | undefined,
- *   key: string,
  *   description: string,
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "auto" | "oneWay" | "twoWay",
+ *   hasInitial: boolean,
+ *   runtime: any,
  * }}
  */
-function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
+function resolveSelectionDomain(
+    member,
+    domainRef,
+    fromComplexInterval,
+    includeSelectionInitial
+) {
     const paramName = domainRef.param;
-    const syncMode = domainRef.sync ?? "auto";
-
-    if (syncMode !== "auto" && syncMode !== "oneWay" && syncMode !== "twoWay") {
-        throw new Error(
-            `Invalid selection domain sync mode "${syncMode}" for parameter "${paramName}".`
-        );
-    }
 
     const resolvedChannel = resolveSelectionDomainChannel(
         member.channel,
@@ -391,24 +416,31 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
         paramName
     );
 
-    const paramRuntime = member.view.paramRuntime;
-    const selection = requireIntervalSelection(
-        paramRuntime?.findValue(paramName),
-        paramName
+    const binding = resolveIntervalSelectionBinding(
+        member.view,
+        paramName,
+        resolvedChannel
     );
-
-    const interval = selection.intervals[resolvedChannel];
-    const key = [paramName, resolvedChannel].join("|");
+    const hasInitial = domainRef.initial !== undefined;
+    const interval = binding.selection.intervals[resolvedChannel];
     const description = paramName + "." + resolvedChannel;
-
     if (!interval || interval.length !== 2) {
+        const initialDomain = includeSelectionInitial
+            ? domainRef.initial
+                ? resolveConfiguredIntervalDomain(
+                      member.channelDef.type,
+                      domainRef.initial,
+                      fromComplexInterval
+                  )
+                : undefined
+            : undefined;
         return {
-            domain: undefined,
-            key,
+            domain: initialDomain,
             description,
             param: paramName,
             encoding: resolvedChannel,
-            sync: syncMode,
+            hasInitial,
+            runtime: binding.runtime,
         };
     }
 
@@ -418,12 +450,30 @@ function resolveSelectionDomain(member, domainRef, fromComplexInterval) {
             member.channelDef.type,
             fromComplexInterval(interval)
         ),
-        key,
         description,
         param: paramName,
         encoding: resolvedChannel,
-        sync: syncMode,
+        hasInitial,
+        runtime: binding.runtime,
     };
+}
+
+/**
+ * @param {import("../spec/channel.js").Type} type
+ * @param {ScalarDomain | ComplexDomain} interval
+ * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @returns {DomainArray}
+ */
+function resolveConfiguredIntervalDomain(type, interval, fromComplexInterval) {
+    const numericDomain = fromComplexInterval(interval);
+    const internalDomain =
+        type === LOCUS &&
+        isChromosomalLocusInterval(interval) &&
+        !hasExplicitLocusUpperBound(interval)
+            ? numericDomain
+            : toInternalIndexLikeInterval(type, numericDomain);
+
+    return createDomain(type, internalDomain);
 }
 
 /**
@@ -440,8 +490,9 @@ function validateSharedSelectionDomain(members, selectionRef) {
         !selectionRef ||
         members.size < 2 ||
         !Array.from(members).some((member) =>
-            hasMatchingIntervalSelectionParam(
+            hasIntervalSelectionBindingInScope(
                 member.view,
+                selectionRef.runtime,
                 selectionRef.param,
                 selectionRef.encoding
             )
@@ -469,45 +520,6 @@ function validateSharedSelectionDomain(members, selectionRef) {
             `Make the linked ${selectionRef.encoding} scale independent, for example with ` +
             `"resolve": { "scale": { "${selectionRef.encoding}": "independent" } } on the common ancestor.`
     );
-}
-
-/**
- * @param {import("../view/view.js").default | any} view
- * @param {string} paramName
- * @param {"x" | "y"} encoding
- * @returns {boolean}
- */
-function hasMatchingIntervalSelectionParam(view, paramName, encoding) {
-    const seen = new Set();
-    const candidateGroups = [
-        view.getLayoutAncestors?.(),
-        view.getDataAncestors?.(),
-        [view],
-    ];
-
-    for (const views of candidateGroups) {
-        for (const candidate of views ?? []) {
-            if (!candidate || seen.has(candidate)) {
-                continue;
-            }
-
-            seen.add(candidate);
-            const param = candidate.paramRuntime?.paramConfigs?.get(paramName);
-            if (!param || !isSelectionParameter(param)) {
-                continue;
-            }
-
-            const select = asSelectionConfig(param.select);
-            if (
-                isIntervalSelectionConfig(select) &&
-                select.encodings?.includes(encoding)
-            ) {
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 /**

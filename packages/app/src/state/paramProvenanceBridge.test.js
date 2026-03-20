@@ -252,6 +252,26 @@ describe("ParamProvenanceBridge", () => {
         expect(view.paramRuntime.getValue("alpha")).toBe(0.75);
     });
 
+    it("preserves live interval selections when provenance is empty at startup", () => {
+        const view = new FakeView();
+        const setter = view.paramRuntime.registerParam({
+            name: "brush",
+            select: { type: "interval", encodings: ["x"] },
+        });
+
+        const selection = createIntervalSelection(["x"]);
+        selection.intervals.x = [10, 20];
+        setter(selection);
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        expect(view.paramRuntime.getValue("brush").intervals.x).toEqual([
+            10, 20,
+        ]);
+    });
+
     it("whenApplied waits for queued provenance apply and propagation", async () => {
         const view = new FakeView();
         view.paramRuntime.registerParam({

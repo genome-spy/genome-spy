@@ -125,6 +125,14 @@ export default class UnitView extends View {
             }
         }
 
+        this.registerDisposer(
+            this._addBroadcastHandler("subtreeDataReady", () => {
+                for (const channel of primaryPositionalChannels) {
+                    this.getScaleResolution(channel)?.syncLinkedSelectionFromDomain();
+                }
+            })
+        );
+
         this.needsAxes = { x: true, y: true };
 
         this.#setupPointSelection();

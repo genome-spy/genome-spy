@@ -245,25 +245,23 @@ export interface SelectionDomainRef {
     param: string;
 
     /**
+     * Initial configured domain for the linked scale when the linked interval
+     * selection is empty.
+     *
+     * Only supported when the linked scale is zoomable.
+     *
+     * Clearing the linked interval selection resets the domain to the normal
+     * default/data-derived domain instead of restoring `initial`.
+     */
+    initial?: ScalarDomain | ComplexDomain;
+
+    /**
      * Selection interval channel to use.
      *
      * If omitted, GenomeSpy infers the channel from the scale channel when
      * possible (e.g., `x` -> `x`, `x2` -> `x`, `y` -> `y`, `y2` -> `y`).
      */
     encoding?: "x" | "y";
-
-    /**
-     * Domain synchronization mode.
-     *
-     * - `"oneWay"`: selection drives the domain.
-     * - `"twoWay"`: selection drives the domain and zoom/pan updates selection.
-     *
-     * __Default value:__ implicit auto mode:
-     *
-     * - `"twoWay"` when the linked scale is zoomable
-     * - `"oneWay"` otherwise
-     */
-    sync?: "oneWay" | "twoWay";
 }
 
 export interface SchemeParams {

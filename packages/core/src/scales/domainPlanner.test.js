@@ -3,6 +3,9 @@ import { describe, expect, test, vi } from "vitest";
 import DomainPlanner from "./domainPlanner.js";
 import createDomain, { toRegularArray } from "../utils/domainArray.js";
 
+/** @type {WeakMap<object, any>} */
+const selectionRuntimeByValue = new WeakMap();
+
 /**
  * @param {string} field
  * @returns {import("../types/encoder.js").Accessor}
@@ -72,6 +75,24 @@ function createSelectionDomainMember({
     type = "quantitative",
     domain,
 }) {
+    /** @type {{ findValue: () => any, findRuntimeForParam: () => any }} */
+    let paramRuntime;
+    if (selectionValue && typeof selectionValue === "object") {
+        paramRuntime = selectionRuntimeByValue.get(selectionValue);
+        if (!paramRuntime) {
+            paramRuntime = {
+                findValue: () => selectionValue,
+                findRuntimeForParam: () => paramRuntime,
+            };
+            selectionRuntimeByValue.set(selectionValue, paramRuntime);
+        }
+    } else {
+        paramRuntime = {
+            findValue: () => selectionValue,
+            findRuntimeForParam: () => paramRuntime,
+        };
+    }
+
     return {
         channel,
         channelDef: {
@@ -80,9 +101,7 @@ function createSelectionDomainMember({
         },
         contributesToDomain: true,
         view: {
-            paramRuntime: {
-                findValue: () => selectionValue,
-            },
+            paramRuntime,
         },
     };
 }
@@ -292,31 +311,6 @@ describe("DomainPlanner", () => {
         expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
             param: "brush",
             encoding: "x",
-            sync: "auto",
-        });
-    });
-
-    test("selection-linked domain can expose two-way sync metadata", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        planner.getConfiguredDomain();
-        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
-            param: "brush",
-            encoding: "x",
-            sync: "twoWay",
         });
     });
 
@@ -342,6 +336,34 @@ describe("DomainPlanner", () => {
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
     });
 
+    test("selection-linked configured domain uses initial when selection is empty", () => {
+        /** @type {any} */
+        const selection = {
+            type: "interval",
+            intervals: { x: null },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", initial: [3, 7] },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([3, 7]);
+        expect(
+            planner.getConfiguredDomain({ includeSelectionInitial: false })
+        ).toBeUndefined();
+        expect(
+            planner.getConfiguredOrDefaultDomain(false, undefined, {
+                includeSelectionInitial: false,
+            })
+        ).toEqual([]);
+    });
+
     test("throws on conflicting selection domain refs", () => {
         const selection = {
             type: "interval",
@@ -365,59 +387,6 @@ describe("DomainPlanner", () => {
         expect(() => planner.getConfiguredDomain()).toThrow(
             "Conflicting selection domain references"
         );
-    });
-
-    test("throws on conflicting selection sync modes on shared scales", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "oneWay" },
-                }),
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            "Conflicting selection domain sync modes"
-        );
-    });
-
-    test("selection-linked domain allows mixing implicit and explicit sync", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush" },
-                }),
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
-        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
-            param: "brush",
-            encoding: "x",
-            sync: "twoWay",
-        });
     });
 
     test("throws when encoding cannot be inferred on non-positional channels", () => {
