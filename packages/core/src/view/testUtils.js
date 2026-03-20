@@ -86,6 +86,8 @@ export function createTestViewContext(viewFactoryOptions = {}) {
         ),
 
         requestLayoutReflow: () => undefined,
+        suspendHoverTracking: () => undefined,
+        resumeHoverTracking: () => undefined,
 
         isViewConfiguredVisible: () => true,
         getBaseConfig: () => baseConfig,

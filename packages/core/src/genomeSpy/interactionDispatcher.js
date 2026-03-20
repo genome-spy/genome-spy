@@ -10,6 +10,8 @@ export default class InteractionDispatcher {
     #viewRoot;
     /** @type {import("../view/layout/point.js").default | undefined} */
     #lastPoint;
+    /** @type {import("../view/view.js").default | undefined} */
+    #lastTarget;
     /** @type {import("../view/view.js").default[]} */
     #previousPath = [];
 
@@ -31,6 +33,7 @@ export default class InteractionDispatcher {
         const interaction = new Interaction(point, uiEvent);
         const legacyEvent = new InteractionEvent(interaction);
         this.#viewRoot.propagateInteractionEvent(legacyEvent);
+        this.#lastTarget = interaction.target;
 
         if (interaction.type === "mousemove") {
             this.#dispatchPointerTransitions(interaction);
@@ -47,6 +50,7 @@ export default class InteractionDispatcher {
     handlePointerLeave(uiEvent) {
         if (!this.#lastPoint || this.#previousPath.length === 0) {
             this.#previousPath = [];
+            this.#lastTarget = undefined;
             return;
         }
 
@@ -57,6 +61,11 @@ export default class InteractionDispatcher {
         );
         this.#dispatchLeaveEvents(interaction, this.#previousPath, undefined);
         this.#previousPath = [];
+        this.#lastTarget = undefined;
+    }
+
+    getCurrentTarget() {
+        return this.#lastTarget;
     }
 
     /**

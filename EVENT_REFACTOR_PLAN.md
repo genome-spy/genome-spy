@@ -346,6 +346,14 @@ Observation after the interval-cursor design review:
 - the same hover-suspension rule should apply consistently to interval dragging,
   viewport/scale panning, and scrollbar dragging
 
+Observation from the drag-suspension implementation:
+
+- drag-time hover suspension can be handled centrally through internal
+  `ViewContext` hooks backed by the interaction controller
+- the selection-rectangle cursor no longer needs imperative `canvas.style.cursor`
+  writes; a mark-level cursor `ExprRef` plus an internal drag-state param is
+  sufficient
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

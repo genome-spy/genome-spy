@@ -146,6 +146,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
 
         const mouseEvent = event.mouseEvent;
         mouseEvent.preventDefault();
+        event.target?.context.suspendHoverTracking();
 
         let prevPoint = Point.fromMouseEvent(mouseEvent);
 
@@ -168,9 +169,10 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
             prevPoint = point;
         };
 
-        const onMouseup = () => {
+        const onMouseup = (/** @type {MouseEvent} */ upEvent) => {
             document.removeEventListener("mousemove", onMousemove);
             document.removeEventListener("mouseup", onMouseup);
+            event.target?.context.resumeHoverTracking(upEvent);
             startPanInertia(
                 interactionState,
                 eventBuffer,

@@ -60,6 +60,8 @@ export function createViewContext(options) {
         "updateTooltip",
         "getNamedDataFromProvider",
         "getCurrentHover",
+        "suspendHoverTracking",
+        "resumeHoverTracking",
         "addKeyboardListener",
         "addBroadcastListener",
         "removeBroadcastListener",

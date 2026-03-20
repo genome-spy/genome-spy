@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
 import UnitView from "../unitView.js";
-import SelectionRect from "./selectionRect.js";
+import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { createTestViewContext } from "../testUtils.js";
 import { buildDataFlow } from "../flowBuilder.js";
 import { optimizeDataFlow } from "../../data/flowOptimizer.js";
@@ -190,5 +190,106 @@ describe("SelectionRect", () => {
         });
 
         expect(selectionRect.getZindex()).toBe(7);
+    });
+
+    it("declares a default cursor ExprRef backed by the drag param", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "p"
+        );
+
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const unitSpec = {
+            data: { values: [{ x: 0, y: 0 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const unitView = new UnitView(unitSpec, context, parent, parent, "u");
+
+        const selectionExpr = Object.assign(
+            () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
+            {
+                subscribe: () => () => undefined,
+                invalidate: () => undefined,
+                identifier: () => "selection",
+                fields: [],
+                globals: [],
+                code: "selection",
+            }
+        );
+
+        const gridChild = /** @type {import("./gridChild.js").default} */ (
+            /** @type {unknown} */ ({
+                layoutParent: parent,
+                view: unitView,
+            })
+        );
+
+        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
+
+        expect(selectionRect.spec.params).toEqual([
+            { name: INTERVAL_DRAG_ACTIVE_PARAM, value: false },
+        ]);
+        expect(rectLayer.mark.cursor).toEqual({
+            expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
+        });
+    });
+
+    it("preserves a custom brush cursor when provided", () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            { hconcat: [] },
+            context,
+            null,
+            null,
+            "p"
+        );
+
+        /** @type {import("../../spec/view.js").UnitSpec} */
+        const unitSpec = {
+            data: { values: [{ x: 0, y: 0 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const unitView = new UnitView(unitSpec, context, parent, parent, "u");
+
+        const selectionExpr = Object.assign(
+            () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
+            {
+                subscribe: () => () => undefined,
+                invalidate: () => undefined,
+                identifier: () => "selection",
+                fields: [],
+                globals: [],
+                code: "selection",
+            }
+        );
+
+        const gridChild = /** @type {import("./gridChild.js").default} */ (
+            /** @type {unknown} */ ({
+                layoutParent: parent,
+                view: unitView,
+            })
+        );
+
+        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
+            cursor: { expr: "'copy'" },
+        });
+        const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
+
+        expect(rectLayer.mark.cursor).toEqual({ expr: "'copy'" });
     });
 });

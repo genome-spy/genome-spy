@@ -37,8 +37,12 @@ export default class InteractionController {
     #wheelInertia;
     /** @type {Point} */
     #mouseDownCoords;
+    /** @type {Point | undefined} */
+    #lastPointerPoint;
     /** @type {boolean} */
     #tooltipUpdateRequested;
+    /** @type {number} */
+    #hoverTrackingSuspensionCount;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -81,12 +85,65 @@ export default class InteractionController {
 
         /** @type {Point} */
         this.#mouseDownCoords = undefined;
+        this.#lastPointerPoint = undefined;
 
         this.#tooltipUpdateRequested = false;
+        this.#hoverTrackingSuspensionCount = 0;
     }
 
     getCurrentHover() {
         return this.#currentHover;
+    }
+
+    suspendHoverTracking() {
+        this.#hoverTrackingSuspensionCount++;
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
+    }
+
+    /**
+     * @param {MouseEvent} [mouseEvent]
+     */
+    resumeHoverTracking(mouseEvent) {
+        if (this.#hoverTrackingSuspensionCount <= 0) {
+            return;
+        }
+
+        this.#hoverTrackingSuspensionCount--;
+        if (this.#hoverTrackingSuspensionCount > 0) {
+            return;
+        }
+
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
+
+        if (mouseEvent) {
+            const point = this.#toCanvasPoint(mouseEvent);
+            this.#lastPointerPoint = point;
+            if (this.#isInsideCanvas(point)) {
+                this.#refreshHover(point);
+                this.#cursorManager.update({
+                    target: this.#interactionDispatcher.getCurrentTarget(),
+                    hover: this.#currentHover,
+                });
+                return;
+            }
+
+            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
+        } else if (
+            this.#lastPointerPoint &&
+            this.#isInsideCanvas(this.#lastPointerPoint)
+        ) {
+            this.#refreshHover(this.#lastPointerPoint);
+            this.#cursorManager.update({
+                target: this.#interactionDispatcher.getCurrentTarget(),
+                hover: this.#currentHover,
+            });
+            return;
+        }
+
+        this.#currentHover = null;
+        this.#cursorManager.clear();
     }
 
     registerInteractionEvents() {
@@ -128,13 +185,14 @@ export default class InteractionController {
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
-                const rect = canvas.getBoundingClientRect();
-                const point = new Point(
-                    event.clientX - rect.left - canvas.clientLeft,
-                    event.clientY - rect.top - canvas.clientTop
-                );
+                const point = this.#toCanvasPoint(event);
+                this.#lastPointerPoint = point;
 
-                if (event.type == "mousemove" && !wheeling) {
+                if (
+                    event.type == "mousemove" &&
+                    !wheeling &&
+                    this.#hoverTrackingSuspensionCount === 0
+                ) {
                     this.#tooltip.handleMouseMove(event);
                     this.#tooltipUpdateRequested = false;
 
@@ -478,6 +536,41 @@ export default class InteractionController {
             this.#tooltip.clear();
             this.#currentHover = null;
         });
+    }
+
+    /**
+     * @param {MouseEvent} event
+     */
+    #toCanvasPoint(event) {
+        const canvas = this.#glHelper.canvas;
+        const rect = canvas.getBoundingClientRect();
+        return new Point(
+            event.clientX - rect.left - canvas.clientLeft,
+            event.clientY - rect.top - canvas.clientTop
+        );
+    }
+
+    /**
+     * @param {Point} point
+     */
+    #isInsideCanvas(point) {
+        const canvas = this.#glHelper.canvas;
+        return (
+            point.x >= 0 &&
+            point.y >= 0 &&
+            point.x <= canvas.clientWidth &&
+            point.y <= canvas.clientHeight
+        );
+    }
+
+    /**
+     * @param {Point} point
+     */
+    #refreshHover(point) {
+        if (!isStillZooming()) {
+            this.#renderPickingFramebuffer();
+            this.#handlePicking(point.x, point.y);
+        }
     }
 
     /**

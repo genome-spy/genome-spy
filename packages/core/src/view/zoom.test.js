@@ -326,4 +326,76 @@ describe("wheel zoom snapping", () => {
 
         expect(preventDefault).not.toHaveBeenCalled();
     });
+
+    test("suspends and resumes hover tracking during drag panning", () => {
+        /** @type {Record<string, EventListener>} */
+        const listeners = {};
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+        try {
+            class FakeMouseEvent {
+                constructor(type, init = {}) {
+                    this.type = type;
+                    Object.assign(this, init);
+                }
+            }
+
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+            globalThis.document = /** @type {Document} */ (
+                /** @type {any} */ ({
+                    addEventListener(type, listener) {
+                        listeners[type] = /** @type {EventListener} */ (
+                            listener
+                        );
+                    },
+                    removeEventListener() {
+                        return undefined;
+                    },
+                })
+            );
+
+            const suspendHoverTracking = vi.fn();
+            const resumeHoverTracking = vi.fn();
+
+            const event = new InteractionEvent(
+                new Point(20, 30),
+                new FakeMouseEvent("mousedown", {
+                    button: 0,
+                    clientX: 20,
+                    clientY: 30,
+                    preventDefault: () => undefined,
+                })
+            );
+            event.target = /** @type {any} */ ({
+                context: {
+                    suspendHoverTracking,
+                    resumeHoverTracking,
+                },
+            });
+
+            interactionToZoom(
+                event,
+                /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
+                () => undefined
+            );
+
+            expect(suspendHoverTracking).toHaveBeenCalledTimes(1);
+
+            listeners.mouseup?.(
+                /** @type {MouseEvent} */ (
+                    /** @type {any} */ ({ type: "mouseup" })
+                )
+            );
+
+            expect(resumeHoverTracking).toHaveBeenCalledTimes(1);
+            expect(resumeHoverTracking).toHaveBeenCalledWith(
+                expect.objectContaining({ type: "mouseup" })
+            );
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
 });

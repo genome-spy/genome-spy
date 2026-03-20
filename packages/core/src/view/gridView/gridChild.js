@@ -18,7 +18,7 @@ import createTitle, { resolveTitleSpec } from "../title.js";
 import UnitView from "../unitView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
-import SelectionRect from "./selectionRect.js";
+import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
@@ -157,11 +157,6 @@ export default class GridChild {
     #setupIntervalSelection() {
         const view = this.view;
 
-        // TODO: Move to context
-        const setCursor = (/** @type {string} */ cursor) => {
-            this.view.context.glHelper.canvas.style.cursor = cursor;
-        };
-
         // TODO: If the child is a LayerView, selection params should be pulled from its children as well
         for (const [name, param] of view.paramRuntime.paramConfigs) {
             if (!("select" in param)) {
@@ -275,7 +270,6 @@ export default class GridChild {
 
             const clearSelection = () => {
                 setter(createIntervalSelection(channels));
-                setCursor(null);
             };
 
             this.selectionRect = new SelectionRect(
@@ -283,6 +277,12 @@ export default class GridChild {
                 selectionExpr,
                 select.mark
             );
+            const setIntervalDragActive = (active) => {
+                this.selectionRect.paramRuntime.setValue(
+                    INTERVAL_DRAG_ACTIVE_PARAM,
+                    active
+                );
+            };
 
             // WARNING! The following is an async method! Seems to work (by chance).
             // TODO: Should be called and awaited in a sensible place. Maybe provide some
@@ -353,7 +353,7 @@ export default class GridChild {
 
                 if (translatedRectangle) {
                     // Started dragging an existing selection
-                    setCursor("grabbing");
+                    setIntervalDragActive(true);
                     // Start of dragging should prevent click propagation so that
                     // no other selections or events are triggered.
                     preventNextClickPropagation = true;
@@ -402,6 +402,7 @@ export default class GridChild {
 
                 // Prevent panning interaction
                 event.stopPropagation();
+                view.context.suspendHoverTracking();
 
                 const start = event.point;
                 const viewOffset = Point.fromMouseEvent(
@@ -475,18 +476,19 @@ export default class GridChild {
                     setter({ type: "interval", intervals });
                 };
 
-                const mouseUpListener = () => {
+                const mouseUpListener = (/** @type {MouseEvent} */ upEvent) => {
                     document.removeEventListener(
                         "mousemove",
                         mouseMoveListener
                     );
                     document.removeEventListener("mouseup", mouseUpListener);
 
+                    setIntervalDragActive(false);
                     nowBrushing = false;
                     if (translatedRectangle) {
-                        setCursor("move");
                         translatedRectangle = null;
                     }
+                    view.context.resumeHoverTracking(upEvent);
                 };
                 document.addEventListener("mousemove", mouseMoveListener);
 
@@ -607,16 +609,9 @@ export default class GridChild {
                     // Brushing and translating the existing brush are different actions.
                     if (!nowBrushing) {
                         mouseOver = true;
-                        // When translation is active, the cursor shows a grabbing hand.
-                        if (!translatedRectangle) {
-                            setCursor("move");
-                        }
                     }
                 } else {
                     mouseOver = false;
-                    if (!translatedRectangle) {
-                        setCursor(null);
-                    }
                 }
             });
         }
