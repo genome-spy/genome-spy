@@ -442,4 +442,75 @@ describe("MetadataView", () => {
 
         metadataView.dispose();
     });
+
+    it("clears attribute highlight on mouseleave", async () => {
+        const { MetadataView } = await import("./metadataView.js");
+        const requestRender = vi.fn();
+        const context = createTestViewContext();
+        context.animator =
+            /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+                /** @type {any} */ ({
+                    transition: () => Promise.resolve(),
+                    requestRender,
+                })
+            );
+        context.requestLayoutReflow = () => undefined;
+        context.updateTooltip = () => undefined;
+        context.getCurrentHover = () => undefined;
+        context.addKeyboardListener = () => undefined;
+        context.addBroadcastListener = () => undefined;
+        context.removeBroadcastListener = () => undefined;
+        context.getNamedDataFromProvider = () => [];
+
+        const store = createStoreStub({
+            provenance: {
+                present: {
+                    sampleView: {
+                        sampleMetadata: {
+                            attributeNames: [],
+                            attributeDefs: {},
+                            entities: {},
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {SampleHierarchyStub} */
+        const sampleHierarchy = {
+            sampleMetadata: {
+                attributeNames: [],
+                attributeDefs: {},
+                entities: {},
+            },
+            sampleData: {
+                entities: {},
+            },
+        };
+
+        const sampleView = createSampleViewStub({
+            context,
+            store,
+            sampleHierarchy,
+        });
+        const metadataView = new MetadataView(
+            /** @type {any} */ (sampleView),
+            /** @type {any} */ (sampleView)
+        );
+
+        metadataView._attributeHighlighState.currentAttribute = "foo";
+
+        metadataView.handleInteractionEvent(
+            undefined,
+            /** @type {any} */ ({ type: "mouseleave" }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            undefined
+        );
+        expect(requestRender).toHaveBeenCalledTimes(1);
+
+        metadataView.dispose();
+    });
 });

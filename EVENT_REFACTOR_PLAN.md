@@ -326,6 +326,15 @@ Observation from Phase 3:
 - existing imperative cursor call sites can be migrated incrementally on top of
   this infrastructure rather than being rewritten in the same phase
 
+Observation from Phase 4:
+
+- consumer migrations can now remove event-system hacks directly; for example,
+  metadata hover teardown can use `mouseleave` instead of an ancestor-level
+  `mousemove` workaround
+- interval-selection cursor migration needs one more design decision because it
+  sits between user-declared cursor specs and internal transient interaction
+  state
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

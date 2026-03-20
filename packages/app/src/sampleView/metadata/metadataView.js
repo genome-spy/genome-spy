@@ -7,7 +7,6 @@ import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { NOMINAL, ORDINAL } from "@genome-spy/core/scales/scaleResolution.js";
 import { easeQuadInOut } from "d3-ease";
-import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import { appendPlotMenuItems } from "../plotMenuItems.js";
@@ -68,11 +67,6 @@ export class MetadataView extends ConcatView {
      * @type {(identifier: import("../types.js").AttributeIdentifier) => import("../types.js").AttributeInfo}
      */
     #attributeInfoSource;
-
-    /**
-     * @type {import("@genome-spy/core/view/view.js").default}
-     */
-    #highlightTarget;
 
     /**
      * @param {import("../sampleView.js").default} sampleView
@@ -160,35 +154,12 @@ export class MetadataView extends ConcatView {
         };
 
         this.addInteractionEventListener("mousemove", mouseMoveListener);
-
-        // TODO: Implement "mouseleave" event. Let's hack for now...
-        this.#highlightTarget = peek([
-            ...this.#sampleView.getLayoutAncestors(),
-        ]);
-        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
-        const highlightTargetListener = (coords, event) => {
+        this.addInteractionEventListener("mouseleave", () => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
-            if (event.target) {
-                for (const view of event.target.getLayoutAncestors()) {
-                    if (view == this) {
-                        return;
-                    }
-                }
-            }
 
             this.#handleAttributeHighlight(undefined);
-        };
-        this.#highlightTarget.addInteractionEventListener(
-            "mousemove",
-            highlightTargetListener
-        );
-        this.registerDisposer(() => {
-            this.#highlightTarget.removeInteractionEventListener(
-                "mousemove",
-                highlightTargetListener
-            );
         });
     }
 
