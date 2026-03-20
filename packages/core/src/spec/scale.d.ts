@@ -245,6 +245,16 @@ export interface SelectionDomainRef {
     param: string;
 
     /**
+     * Initial configured domain for the linked scale when the linked interval
+     * selection is empty.
+     *
+     * Persisted state may override this initial domain during restore.
+     * Clearing the linked interval selection resets the domain to the normal
+     * default/data-derived domain instead of restoring `initial`.
+     */
+    initial?: ScalarDomain | ComplexDomain;
+
+    /**
      * Selection interval channel to use.
      *
      * If omitted, GenomeSpy infers the channel from the scale channel when

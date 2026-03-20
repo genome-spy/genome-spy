@@ -127,7 +127,11 @@ export default class ParamProvenanceBridge {
         this.#initEntries();
         this.#registerParamListeners();
         this.#subscribeToProvenance();
-        this.#applyProvenanceEntries(this.#getPresentEntries());
+
+        const presentEntries = this.#getPresentEntries();
+        if (Object.keys(presentEntries).length > 0) {
+            this.#applyProvenanceEntries(presentEntries);
+        }
     }
 
     dispose() {

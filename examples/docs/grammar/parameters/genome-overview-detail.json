@@ -32,7 +32,13 @@
           "pos": "start",
           "type": "locus",
           "scale": {
-            "domain": { "param": "brush" }
+            "domain": {
+              "param": "brush",
+              "initial": [
+                { "chrom": "chr5", "pos": 20000000 },
+                { "chrom": "chr12", "pos": 40000000 }
+              ]
+            }
           },
           "axis": {
             "chromGrid": true

@@ -82,6 +82,7 @@ function createSelectionDomainMember({
         view: {
             paramRuntime: {
                 findValue: () => selectionValue,
+                paramConfigs: new Map(),
             },
         },
     };
@@ -340,6 +341,34 @@ describe("DomainPlanner", () => {
         expect(planner.getConfiguredDomain()).toBeUndefined();
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+    });
+
+    test("selection-linked configured domain uses initial when selection is empty", () => {
+        /** @type {any} */
+        const selection = {
+            type: "interval",
+            intervals: { x: null },
+        };
+
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: selection,
+                    domain: { param: "brush", initial: [3, 7] },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([3, 7]);
+        expect(
+            planner.getConfiguredDomain({ includeSelectionInitial: false })
+        ).toBeUndefined();
+        expect(
+            planner.getConfiguredOrDefaultDomain(false, undefined, {
+                includeSelectionInitial: false,
+            })
+        ).toEqual([]);
     });
 
     test("throws on conflicting selection domain refs", () => {

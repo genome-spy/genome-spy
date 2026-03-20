@@ -328,9 +328,21 @@ Tasks:
 - determine whether the linked selection param is bookmarkable / persistent
 - skip `hashData.scaleDomains[name]` when the linked selection itself is the
   persisted representation
+- ensure App startup does not overwrite already-initialized linked selections
+  with empty provenance defaults when there is no bookmark/hash/provenance
+  state to apply
 
 This likely requires a small API extension from Core, for example exposing link
 metadata through `ScaleResolution`.
+
+Additional startup note:
+
+- Core may initialize a linked domain from `initial` and reverse-sync the brush
+  before App provenance wiring is created.
+- App must preserve that live state on clean startup.
+- Therefore, `ParamProvenanceBridge` should skip its initial apply pass when the
+  provenance entry set is empty, while still applying non-empty restored
+  provenance normally.
 
 ### Step 8. Preserve support for ephemeral interval selections
 
@@ -450,6 +462,8 @@ Add the following coverage:
 
 - persisted linked-domain state restores consistently through param provenance
 - ephemeral interval selection does not get captured
+- empty provenance at startup does not clear a live linked interval that was
+  populated from `initial`
 
 3. Overview+detail semantics
 
@@ -467,8 +481,10 @@ Add the following coverage:
 7. Add zoomable + one-way validation.
 8. Expose enough link metadata for App to avoid double persistence.
 9. Update App hash/bookmark serialization.
-10. Update docs and examples.
-11. Run focused and broader tests.
+10. Ensure empty startup provenance does not override live linked-selection
+    state initialized by Core.
+11. Update docs and examples.
+12. Run focused and broader tests.
 
 ## Open Design Checks During Implementation
 
@@ -561,6 +577,14 @@ Mitigation:
 - reuse the existing reverse-sync suppression mechanics
 - add tests specifically for startup-from-`initial`
 
+5. App startup can accidentally clear live linked-selection state even when
+   Core initialized it correctly.
+
+Mitigation:
+
+- skip the initial provenance apply when there are no stored provenance entries
+- add an App test that reproduces the clean-startup interval-selection case
+
 ## Verification Checklist
 
 Before considering the work complete:
@@ -571,6 +595,8 @@ Before considering the work complete:
 - zoomable + `sync: "oneWay"` is rejected, including locus/index defaults
 - linked domains with persisted selections are not duplicated in App
   hash/bookmark state
+- clean startup with empty provenance preserves a linked interval populated from
+  `initial`
 - interval selections still support `persist: false`
 - docs and examples are updated
 - focused Core and App tests pass
