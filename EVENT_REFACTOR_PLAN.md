@@ -189,7 +189,7 @@ reactive parameter machinery as other spec properties.
 
 Example use case:
 
-- the interval selection rectangle can declare its cursor in the spec
+- the interval selection rectangle mark can declare its cursor in the spec
 - by default the cursor expression resolves to `"move"`
 - while the mouse button is down, a reactive param can flip the cursor to
   `"grab"` or `"grabbing"`
@@ -334,6 +334,17 @@ Observation from Phase 4:
 - interval-selection cursor migration needs one more design decision because it
   sits between user-declared cursor specs and internal transient interaction
   state
+
+Observation after the interval-cursor design review:
+
+- the interval-selection cursor should be declared on the selection-rectangle
+  mark rather than on the surrounding view
+- transient interaction state such as interval dragging should be exposed as an
+  internal reactive param that cursor `ExprRef`s can read
+- hover tracking should be suspended during active drag interactions and
+  restored on release
+- the same hover-suspension rule should apply consistently to interval dragging,
+  viewport/scale panning, and scrollbar dragging
 
 ## Migration Plan
 
