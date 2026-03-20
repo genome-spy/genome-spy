@@ -27,6 +27,26 @@ coherent hierarchical interaction system for pointer tracking and view-local
 behavior, while preserving the supported public API surface in
 `packages/core/src/types/embedApi.d.ts`.
 
+## Status
+
+The architectural refactor is effectively complete on this branch.
+
+Completed:
+
+- internal interactions now run on `Interaction`, not on a separate
+  `InteractionEvent` wrapper
+- `mouseenter` / `mouseleave` are synthesized from pointed-path changes
+- cursor resolution is centralized and supports declarative view / mark cursors
+- drag interactions can suspend hover tracking centrally
+- the legacy internal `(coords, event)` listener shape is gone
+- shared routing mechanics have been extracted from `GridView` and `SampleView`
+- context menus and dropdowns freeze pointer-derived interaction state globally
+- internal runtime naming now uses `propagateInteraction(...)` and
+  `handleInteraction(...)`
+
+Remaining follow-up work is now ordinary cleanup and documentation rather than
+foundational event-system redesign.
+
 ## Goals
 
 - Support hierarchical pointer tracking across the view tree.
@@ -34,8 +54,8 @@ behavior, while preserving the supported public API surface in
   `mouseleave`.
 - Centralize mouse cursor resolution so views and marks can define cursors.
 - Make cursor selection declarative in specs, not only imperative in code.
-- Decouple internal interaction dispatch from the legacy listener contract.
-- Reduce ad hoc behavior in container-specific `propagateInteractionEvent(...)`
+- Decouple internal interaction dispatch from legacy listener assumptions.
+- Reduce ad hoc behavior in container-specific `propagateInteraction(...)`
   implementations.
 
 ## Non-goals
@@ -110,14 +130,9 @@ Behavior outline:
 This should remove the need for hacks that approximate leave behavior by
 watching ancestor-level `mousemove`.
 
-### 3. Dispatch and legacy adaptation
+### 3. Dispatch and listener model
 
-Split the event model in two:
-
-- `Interaction`
-- `LegacyInteractionEventAdapter`
-
-The internal event should carry the state needed by the new dispatcher, such as:
+The internal event should carry the state needed by the dispatcher, such as:
 
 - `type`
 - `point`
@@ -129,18 +144,9 @@ The internal event should carry the state needed by the new dispatcher, such as:
 - wheel-claim state
 - optional mark hit / datum hit information if available
 
-The legacy adapter may temporarily preserve the current internal listener
-contract during migration:
-
-- `view.addInteractionEventListener(type, listener, useCapture)`
-- listener signature `(coords, event)`
-
-The adapter can continue passing `undefined` for `coords` initially, or compute
-it later if that becomes useful. The important change is that internal code no
-longer depends on this signature.
-
-These methods are not part of the supported embed API and should be treated as
-internal migration surface only. They do not need to constrain the final design.
+The runtime on this branch now dispatches `Interaction` directly end to end.
+There is no separate wrapper class in production anymore, and the internal view
+listener contract is event-only.
 
 ## Hierarchy Model
 
@@ -279,35 +285,26 @@ That means the refactor must preserve supported APIs such as:
 
 By contrast, methods such as:
 
-- `View.addInteractionEventListener(...)`
-- `View.removeInteractionEventListener(...)`
+- `View.addInteractionListener(...)`
+- `View.removeInteractionListener(...)`
 
 are internal APIs. They are widely used inside the monorepo, including by App,
 but they are not considered stable external surface.
 
-Migration strategy:
+Current state:
 
-- preserve view-level listener compatibility only as needed to migrate internal
-  code incrementally
-- do not treat the current `View` listener methods as long-term design
-  constraints
-- allow the final architecture to remove or replace them once internal call
-  sites have been migrated
+- view-level listeners are still available internally as `Interaction`-only
+  hooks
+- the legacy `(coords, event)` compatibility layer has been removed
+- supported embed APIs remain unchanged
 
-This allows a gradual migration:
-
-- old code keeps working
-- new internal code no longer needs to depend on `coords`
-- internal event shape can be improved without exposing it externally
-
-Observation from Phase 1:
+Observation from the dispatcher introduction:
 
 - the internal type should use the concise name `Interaction`
-- the compatibility layer can be a thin adapter from `Interaction` to the
-  existing `InteractionEvent`-based propagation path while migration is still
-  in progress
+- the temporary migration path did not need to survive the full refactor; once
+  internal consumers moved, the wrapper layer could be removed entirely
 
-Observation from Phase 2:
+Observation from pointer transition synthesis:
 
 - `mouseenter` / `mouseleave` can be synthesized from the resolved target path
   produced by the existing propagation pipeline
@@ -317,7 +314,7 @@ Observation from Phase 2:
   dedicated path-resolution pass instead of baking more policy into controller
   event handlers
 
-Observation from Phase 3:
+Observation from cursor centralization:
 
 - cursor ownership can be centralized in a controller-owned cursor manager
   without changing the supported embed API
@@ -326,7 +323,7 @@ Observation from Phase 3:
 - existing imperative cursor call sites can be migrated incrementally on top of
   this infrastructure rather than being rewritten in the same phase
 
-Observation from Phase 4:
+Observation from consumer migration:
 
 - consumer migrations can now remove event-system hacks directly; for example,
   metadata hover teardown can use `mouseleave` instead of an ancestor-level
@@ -354,7 +351,7 @@ Observation from the drag-suspension implementation:
   writes; a mark-level cursor `ExprRef` plus an internal drag-state param is
   sufficient
 
-Observation from the typed-surface alignment:
+Observation from typed-surface alignment:
 
 - once synthetic interaction events exist at runtime, the authored spec surface
   must admit them too; otherwise schema validation and selection configuration
@@ -362,7 +359,7 @@ Observation from the typed-surface alignment:
 - `mouseenter` / `mouseleave` should therefore be part of the declared
   `DomEventType` vocabulary even though they are synthesized by GenomeSpy
 
-Observation from the listener-API migration:
+Observation from listener API migration:
 
 - an event-only internal listener API can coexist with the legacy
   `(coords, event)` surface as a thin compatibility layer while preserving
@@ -417,64 +414,36 @@ Observation from removing the wrapper class:
 - at this point, the remaining work is no longer architectural refactoring but
   ordinary cleanup and follow-on feature work
 
-## Migration Plan
+Observation from the menu-freeze fix:
 
-### Phase 1: Introduce internal dispatcher
+- context menus and dropdowns behave more coherently when they freeze
+  pointer-derived interaction state globally instead of letting individual
+  views guess at modal behavior
+- the interaction controller is the right place for that freeze, because it
+  already owns hover, cursor, and tooltip update timing
 
-- Add internal interaction dispatcher and pointer state tracking.
-- Keep existing `InteractionEvent` and view-level listener methods only as
-  temporary internal compatibility layer.
-- Route current native event entry points through the dispatcher.
+Observation from the naming cleanup:
 
-Exit criteria:
+- once `Interaction` became the actual runtime object, method names such as
+  `propagateInteractionEvent(...)` and `handleInteractionEvent(...)` only added
+  noise
+- `propagateInteraction(...)` and `handleInteraction(...)` better match the
+  current model and make the internal API read less like a half-retired DOM
+  wrapper
 
-- Existing supported APIs still work, and internal interactions keep working
-  through the compatibility layer.
+## Remaining Follow-ups
 
-### Phase 2: Add pointer path diffing
+The remaining items are smaller follow-on tasks rather than blockers for the
+architecture:
 
-- Track previous and current interaction paths.
-- Synthesize `mouseenter` / `mouseleave`.
-- Dispatch leave events on canvas exit and equivalent touch termination.
-
-Exit criteria:
-
-- Existing hacks that emulate leave behavior can be replaced.
-
-### Phase 3: Centralize cursor resolution
-
-- Add cursor providers for views and marks.
-- Apply cursor changes centrally from the controller.
-- Remove listener-based cursor reset logic where present.
-
-Exit criteria:
-
-- Cursor changes and resets work without ad hoc `mousemove` bookkeeping.
-
-### Phase 4: Migrate internal consumers
-
-Migrate internal subsystems away from the legacy listener assumptions:
-
-- metadata hover/highlight handling
-- selection expansion context menu
-- brushing and interval selection
-- scrollbar interactions
-- zoom and wheel ownership logic where practical
-
-Exit criteria:
-
-- New internal production code no longer relies on `(coords, event)`.
-
-### Phase 5: Simplify container propagation
-
-- Replace duplicated `propagateInteractionEvent(...)` logic with shared
-  traversal contracts.
-- Minimize container-specific dispatch code to hit resolution only.
-
-Exit criteria:
-
-- event routing policy is mostly centralized
-- view/container code is simpler and more declarative
+- decide whether `packages/core/src/utils/interactionEvent.js` and
+  `InteractionUiEvent` should be renamed to match the now-dominant
+  `Interaction` terminology
+- add or refine user-facing documentation for declarative cursors and the
+  synthesized `mouseenter` / `mouseleave` semantics where that affects authored
+  specs
+- continue opportunistic cleanup when touching interaction-heavy code, but do
+  not reopen the architecture unless a new capability truly requires it
 
 ## Risks
 
@@ -498,7 +467,6 @@ Add focused tests around:
 - cursor resolution precedence: mark over view over ancestor over default
 - `ExprRef`-backed cursor evaluation on views and marks
 - cursor updates driven by reactive params without pointer re-entry
-- compatibility behavior for legacy listeners
 - wheel claim probing with the new dispatcher in place
 
 Regression coverage should include:
@@ -510,12 +478,12 @@ Regression coverage should include:
 - sample view context menus
 - metadata hover highlighting
 
-Each refactor phase should add or update the tests needed to lock down the
-behavior being changed before broader migration continues.
+Each follow-on change should add or update the tests needed to lock down the
+behavior being changed before additional cleanup continues.
 
 ## Execution Discipline
 
-Each phase in the migration plan should be executed as a small closed loop:
+Each follow-on slice should still be executed as a small closed loop:
 
 1. implement the planned change for that phase
 2. add or update tests for the changed behavior
@@ -525,26 +493,12 @@ Each phase in the migration plan should be executed as a small closed loop:
 5. commit the phase before starting the next one
 
 This is intentionally stricter than a one-pass implementation plan. The event
-system has grown incrementally and contains hidden assumptions, so the plan
-should be treated as a living document that is updated as each phase exposes
-new constraints.
-
-## Recommended First Implementation Slice
-
-The lowest-risk first slice is:
-
-1. introduce an internal dispatcher and path tracking
-2. synthesize `mouseenter` / `mouseleave`
-3. keep all old listeners working through an adapter
-4. migrate the existing metadata highlight hack to the new events
-5. add centralized cursor resolution after the transition events are proven
-
-This gives immediate value by eliminating the worst hover hacks without forcing
-a full rewrite of zoom, selection, or the supported embed API.
+system grew incrementally and exposed hidden assumptions during the refactor,
+so the document should remain a living status note for the remaining cleanup.
 
 ## Phase Exit Checklist
 
-Before moving from one phase to the next:
+Before moving from one follow-up slice to the next:
 
 - the phase-specific code changes are in place
 - the relevant tests have been added or updated
