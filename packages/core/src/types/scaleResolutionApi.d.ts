@@ -54,6 +54,8 @@ export interface ScaleResolutionApi {
           }
         | undefined;
 
+    isZoomed(): boolean;
+
     isZoomable(): boolean;
 
     zoomTo(

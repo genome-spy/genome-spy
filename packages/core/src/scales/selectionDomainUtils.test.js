@@ -7,6 +7,18 @@ import {
 } from "./selectionDomainUtils.js";
 
 class FakeView {
+    /** @type {FakeView | undefined} */
+    parent;
+
+    /** @type {string} */
+    name;
+
+    /** @type {FakeView[]} */
+    children;
+
+    /** @type {ViewParamRuntime} */
+    paramRuntime;
+
     /**
      * @param {FakeView | undefined} parent
      * @param {string} name
@@ -25,6 +37,7 @@ class FakeView {
     getLayoutAncestors() {
         /** @type {FakeView[]} */
         const ancestors = [];
+        /** @type {FakeView | undefined} */
         let current = this;
         while (current) {
             ancestors.push(current);
@@ -33,6 +46,9 @@ class FakeView {
         return ancestors;
     }
 
+    /**
+     * @param {(view: FakeView) => void} visitor
+     */
     visit(visitor) {
         visitor(this);
         for (const child of this.children) {
@@ -72,20 +88,24 @@ describe("selectionDomainUtils", () => {
 
         // Non-obvious: the overview brush pushes into the root runtime, while the
         // other panel owns a distinct local runtime with the same param name.
-        const rootBinding = resolveIntervalSelectionBinding(detail, "brush", "x");
+        const rootBinding = resolveIntervalSelectionBinding(
+            /** @type {any} */ (detail),
+            "brush",
+            "x"
+        );
         const localBinding = resolveIntervalSelectionBinding(
-            nestedDetail,
+            /** @type {any} */ (nestedDetail),
             "brush",
             "x"
         );
         const rootOwners = findIntervalSelectionBindingOwners(
-            root,
+            /** @type {any} */ (root),
             rootBinding.runtime,
             "brush",
             "x"
         );
         const localOwners = findIntervalSelectionBindingOwners(
-            root,
+            /** @type {any} */ (root),
             localBinding.runtime,
             "brush",
             "x"
