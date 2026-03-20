@@ -7877,6 +7877,101 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/expressi
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/parameters/genome-overview-detail.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer0",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer1",
+                "type": "UnitView",
+              },
+            ],
+            "name": "chromosomes",
+            "type": "LayerView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "decoration",
+            "type": "UnitView",
+          },
+        ],
+        "name": "grid0",
+        "type": "ConcatView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "detail",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/parameters/input-bindings.json 1`] = `
 {
   "assemblies": [],

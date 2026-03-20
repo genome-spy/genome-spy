@@ -1,0 +1,166 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Genome overview + detail example.",
+    "The top view provides an overview of the genome, and the bottom view shows details for the brushed region in the overview.",
+    "The overview is implemented as a template that can be reused across different specs."
+  ],
+
+  "assembly": "hg38",
+
+  "params": [{ "name": "brush" }],
+
+  "spacing": 0,
+
+  "vconcat": [
+    { "import": { "template": "overview" } },
+    {
+      "name": "detail",
+
+      "data": {
+        "values": [
+          { "chrom": "chr1", "start": 10000000, "end": 50000000 },
+          { "chrom": "chr7", "start": 20000000, "end": 60000000 },
+          { "chrom": "chr17", "start": 30000000, "end": 70000000 }
+        ]
+      },
+
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "scale": {
+            "domain": { "param": "brush" }
+          },
+          "axis": {
+            "chromGrid": true
+          }
+        },
+        "x2": { "chrom": "chrom", "pos": "end" }
+      },
+
+      "mark": "rect",
+
+      "view": { "stroke": "lightgray" }
+    }
+  ],
+
+  "templates": {
+    "overview": {
+      "resolve": { "scale": { "x": "excluded" } },
+
+      "spacing": 0,
+
+      "vconcat": [
+        {
+          "name": "chromosomes",
+
+          "height": 20,
+
+          "view": { "stroke": "#d0d0d0" },
+
+          "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
+
+          "encoding": {
+            "x": {
+              "field": "continuousStart",
+              "type": "locus",
+              "axis": null,
+              "scale": { "zoom": false }
+            },
+            "x2": { "field": "continuousEnd" },
+            "text": { "field": "name" }
+          },
+
+          "layer": [
+            {
+              "encoding": {
+                "fill": {
+                  "field": "odd",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": [true, false],
+                    "range": ["#e8e8e8", "white"]
+                  }
+                }
+              },
+
+              "mark": {
+                "type": "rect",
+                "tooltip": null
+              }
+            },
+            {
+              "mark": {
+                "type": "text",
+                "paddingX": 3,
+                "paddingY": 5,
+                "tooltip": null
+              }
+            }
+          ],
+
+          "params": [
+            {
+              "name": "brush",
+              "select": {
+                "type": "interval",
+                "encodings": ["x"],
+                "mark": {
+                  "clip": false,
+                  "stroke": "#048",
+                  "strokeOpacity": 0.6,
+                  "fillOpacity": 0.01,
+                  "fill": "#08F",
+                  "shadowBlur": 5,
+                  "shadowColor": "#08F",
+                  "shadowOpacity": 0.8
+                }
+              },
+              "push": "outer"
+            }
+          ]
+        },
+        {
+          "name": "decoration",
+          "height": 30,
+          "data": { "lazy": { "type": "axisGenome", "channel": "x" } },
+          "transform": [
+            {
+              "type": "aggregate",
+              "fields": ["continuousEnd"],
+              "ops": ["max"],
+              "as": ["genomeEnd"]
+            },
+            { "type": "formula", "expr": "[0, datum.genomeEnd]", "as": "x2" },
+            { "type": "flatten", "fields": ["x2"], "index": "side" },
+            { "type": "collect" },
+            {
+              "type": "formula",
+              "expr": "brush.intervals.x ? brush.intervals.x[datum.side] : datum.x2",
+              "as": "x"
+            }
+          ],
+          "encoding": {
+            "x": {
+              "field": "x",
+              "type": "locus",
+              "scale": { "zoom": false },
+              "axis": null
+            },
+            "x2": { "field": "x2" }
+          },
+          "mark": {
+            "type": "link",
+            "linkShape": "diagonal",
+            "y": 1,
+            "y2": 0,
+            "color": "#8CF"
+          }
+        }
+      ]
+    }
+  }
+}

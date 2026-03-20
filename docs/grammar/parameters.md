@@ -114,3 +114,12 @@ reference.
 ##### Two-Way Linking Example
 
 EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250
+
+##### Overview+detail Example
+
+The example below shows an overview+detail view of a genome. The top view shows
+the whole genome, while the bottom view shows a zoomed-in region.
+[`"link"`](./mark/link.md) mark with a `"diagonal"` shape visually connects the
+selected region in the overview to the detail view.
+
+EXAMPLE examples/docs/grammar/parameters/genome-overview-detail.json height=150 spechidden
