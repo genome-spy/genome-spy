@@ -1,4 +1,8 @@
-import { createPrimitiveEventProxy } from "./interactionEvent.js";
+import {
+    createPrimitiveEventProxy,
+    isWheelEvent,
+    overrideWheelEventDeltas,
+} from "./interactionEvent.js";
 
 /**
  * Internal interaction object used by the refactored interaction pipeline.
@@ -8,6 +12,9 @@ import { createPrimitiveEventProxy } from "./interactionEvent.js";
 export default class Interaction {
     /** @type {MouseEvent} */
     #primitiveMouseEventProxy;
+
+    /** @type {import("./interactionEvent.js").WheelLikeEvent | undefined} */
+    #wheelEventProxy;
 
     /**
      * @param {import("../view/layout/point.js").default} point
@@ -48,6 +55,8 @@ export default class Interaction {
     #uiEvent;
     /** @type {string | undefined} */
     #typeOverride;
+    /** @type {{ deltaX: number, deltaY: number } | undefined} */
+    #wheelDeltaOverride;
 
     get uiEvent() {
         return this.#uiEvent;
@@ -56,6 +65,8 @@ export default class Interaction {
     set uiEvent(value) {
         this.#uiEvent = value;
         this.#primitiveMouseEventProxy = undefined;
+        this.#wheelEventProxy = undefined;
+        this.#wheelDeltaOverride = undefined;
     }
 
     stopPropagation() {
@@ -68,6 +79,19 @@ export default class Interaction {
         }
 
         this.wheelClaimed = true;
+    }
+
+    /**
+     * @param {number} deltaX
+     * @param {number} deltaY
+     */
+    setWheelDeltas(deltaX, deltaY) {
+        if (!isWheelEvent(this.uiEvent)) {
+            throw new Error("Not a WheelEvent!");
+        }
+
+        this.#wheelDeltaOverride = { deltaX, deltaY };
+        this.#wheelEventProxy = undefined;
     }
 
     get type() {
@@ -94,5 +118,25 @@ export default class Interaction {
         } else {
             throw new Error("Not a MouseEvent!");
         }
+    }
+
+    get wheelEvent() {
+        if (!isWheelEvent(this.uiEvent)) {
+            throw new Error("Not a WheelEvent!");
+        }
+
+        if (!this.#wheelDeltaOverride) {
+            return this.uiEvent;
+        }
+
+        if (!this.#wheelEventProxy) {
+            this.#wheelEventProxy = overrideWheelEventDeltas(
+                this.uiEvent,
+                this.#wheelDeltaOverride.deltaX,
+                this.#wheelDeltaOverride.deltaY
+            );
+        }
+
+        return this.#wheelEventProxy;
     }
 }

@@ -23,6 +23,13 @@
  */
 
 /**
+ * @typedef {Pick<
+ *      WheelEvent,
+ *      "type" | "deltaX" | "deltaY" | "deltaMode" | "preventDefault" | "ctrlKey"
+ * >} WheelLikeEvent
+ */
+
+/**
  * @param {unknown} eventLike
  * @returns {eventLike is TouchGestureEvent}
  */
@@ -47,6 +54,49 @@ export function isTouchGestureEvent(eventLike) {
 }
 
 /**
+ * @param {unknown} eventLike
+ * @returns {eventLike is WheelLikeEvent}
+ */
+export function isWheelEvent(eventLike) {
+    if (!eventLike || typeof eventLike !== "object") {
+        return false;
+    }
+
+    const candidate =
+        /** @type {{type?: unknown, deltaX?: unknown, deltaY?: unknown, deltaMode?: unknown, preventDefault?: unknown}} */ (
+            eventLike
+        );
+
+    return (
+        candidate.type === "wheel" &&
+        Number.isFinite(candidate.deltaX) &&
+        Number.isFinite(candidate.deltaY) &&
+        Number.isFinite(candidate.deltaMode) &&
+        typeof candidate.preventDefault === "function"
+    );
+}
+
+/**
+ * @param {WheelLikeEvent} wheelEvent
+ * @param {number} deltaX
+ * @param {number} deltaY
+ * @returns {WheelLikeEvent}
+ */
+export function overrideWheelEventDeltas(wheelEvent, deltaX, deltaY) {
+    return new Proxy(wheelEvent, {
+        get(target, prop, receiver) {
+            if (prop === "deltaX") {
+                return deltaX;
+            } else if (prop === "deltaY") {
+                return deltaY;
+            }
+
+            return Reflect.get(target, prop, receiver);
+        },
+    });
+}
+
+/**
  * This class wraps a MouseEvent (or similar) and allows for
  * its propagation through the view hierarchy in a similar manner
  * as in the DOM.
@@ -64,7 +114,9 @@ export default class InteractionEvent {
      *      relatedTarget: import("../view/view.js").default | undefined,
      *      stopPropagation?: () => void,
      *      claimWheel?: () => void,
+     *      setWheelDeltas?: (deltaX: number, deltaY: number) => void,
      *      mouseEvent?: MouseEvent,
+     *      wheelEvent?: WheelLikeEvent,
      *      proxiedMouseEvent?: MouseEvent,
      * }} */
     #interaction;
@@ -84,7 +136,9 @@ export default class InteractionEvent {
      *      relatedTarget: import("../view/view.js").default | undefined,
      *      stopPropagation?: () => void,
      *      claimWheel?: () => void,
+     *      setWheelDeltas?: (deltaX: number, deltaY: number) => void,
      *      mouseEvent?: MouseEvent,
+     *      wheelEvent?: WheelLikeEvent,
      *      proxiedMouseEvent?: MouseEvent,
      * }} pointOrInteraction Event coordinates inside the visualization canvas,
      *      or an internal Interaction-like object.
@@ -206,6 +260,28 @@ export default class InteractionEvent {
     }
 
     /**
+     * Overrides wheel deltas without replacing the underlying UI event object.
+     *
+     * @param {number} deltaX
+     * @param {number} deltaY
+     */
+    setWheelDeltas(deltaX, deltaY) {
+        if (this.#interaction.setWheelDeltas) {
+            this.#interaction.setWheelDeltas(deltaX, deltaY);
+        } else {
+            if (!isWheelEvent(this.uiEvent)) {
+                throw new Error("Not a WheelEvent!");
+            }
+
+            this.uiEvent = overrideWheelEventDeltas(
+                this.uiEvent,
+                deltaX,
+                deltaY
+            );
+        }
+    }
+
+    /**
      * The event type string of the underlying UI event (e.g. "click", "keydown").
      *
      * This getter proxies and returns the `type` property from the internal `UIEvent` instance (`this.uiEvent`).
@@ -239,6 +315,18 @@ export default class InteractionEvent {
             return this.uiEvent;
         } else {
             throw new Error("Not a MouseEvent!");
+        }
+    }
+
+    get wheelEvent() {
+        if (this.#interaction.wheelEvent) {
+            return this.#interaction.wheelEvent;
+        }
+
+        if (isWheelEvent(this.uiEvent)) {
+            return this.uiEvent;
+        } else {
+            throw new Error("Not a WheelEvent!");
         }
     }
 }

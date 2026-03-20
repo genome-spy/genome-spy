@@ -78,4 +78,25 @@ describe("InteractionEvent adapter", () => {
         expect(interaction.target).toEqual({ name: "unit" });
         expect(interaction.type).toBe("click");
     });
+
+    it("overrides wheel deltas without replacing the wrapped uiEvent", () => {
+        const wheelEvent = {
+            type: "wheel",
+            deltaX: 12,
+            deltaY: -8,
+            deltaMode: 0,
+            ctrlKey: false,
+            preventDefault() {},
+        };
+        const interaction = new Interaction(new Point(0, 0), wheelEvent);
+        const event = new InteractionEvent(interaction);
+
+        event.setWheelDeltas(wheelEvent.deltaX, 0);
+
+        expect(event.uiEvent).toBe(wheelEvent);
+        expect(interaction.uiEvent).toBe(wheelEvent);
+        expect(event.wheelEvent.deltaX).toBe(12);
+        expect(event.wheelEvent.deltaY).toBe(0);
+        expect(interaction.wheelEvent.deltaY).toBe(0);
+    });
 });

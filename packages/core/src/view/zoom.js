@@ -68,7 +68,7 @@ export function interactionToZoom(event, coords, handleZoom, hover, animator) {
         // TODO: Wheel-zoom inertia should probably be moved here and the faked wheel
         // events in genomeSpy.js and inertia.js should be retired.
 
-        const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
+        const wheelEvent = event.wheelEvent;
         const wheelMultiplier = wheelEvent.deltaMode ? 120 : 1;
 
         if (!wheelEvent.deltaX && !wheelEvent.deltaY) {

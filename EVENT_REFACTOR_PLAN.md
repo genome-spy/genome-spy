@@ -373,6 +373,14 @@ Observation from the listener-API migration:
 - the remaining migration work is therefore less about callback shape and more
   about simplifying container propagation and wheel-specific interaction policy
 
+Observation from the wheel-override cleanup:
+
+- downstream interaction code should not depend on ad hoc replacement of
+  `uiEvent` with lookalike objects
+- wheel-specific behavior can be expressed as explicit interaction state
+  instead, for example by overriding effective wheel deltas while retaining the
+  original wheel event object
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

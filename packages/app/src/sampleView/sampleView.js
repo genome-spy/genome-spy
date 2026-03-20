@@ -430,7 +430,7 @@ export default class SampleView extends ContainerView {
         this.addInteractionListener(
             "wheel",
             (event) => {
-                const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
+                const wheelEvent = event.wheelEvent;
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
                     this.locationManager.handleWheelEvent(wheelEvent);
 
@@ -445,15 +445,9 @@ export default class SampleView extends ContainerView {
                     this.sampleGroupView.updateRange();
                     this.context.animator.requestRender();
 
-                    // Replace the uiEvent to prevent decoratorView from zooming.
-                    // Only allow horizontal panning.
-                    event.uiEvent = {
-                        type: wheelEvent.type,
-                        // @ts-ignore
-                        deltaX: wheelEvent.deltaX,
-                        preventDefault:
-                            wheelEvent.preventDefault.bind(wheelEvent),
-                    };
+                    // Keep downstream zoom handling on the same wheel event, but
+                    // suppress vertical zooming once closeup scrolling consumes it.
+                    event.setWheelDeltas(wheelEvent.deltaX, 0);
                 }
             },
             true

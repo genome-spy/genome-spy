@@ -521,10 +521,7 @@ export default class GridChild {
             );
 
             view.addInteractionListener("wheel", (event) => {
-                const wheelEvent = event.uiEvent;
-                if (!(wheelEvent instanceof WheelEvent)) {
-                    return;
-                }
+                const wheelEvent = event.wheelEvent;
 
                 if (
                     !zoomEventConfig ||
