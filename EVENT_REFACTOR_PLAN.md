@@ -362,6 +362,17 @@ Observation from the typed-surface alignment:
 - `mouseenter` / `mouseleave` should therefore be part of the declared
   `DomEventType` vocabulary even though they are synthesized by GenomeSpy
 
+Observation from the listener-API migration:
+
+- an event-only internal listener API can coexist with the legacy
+  `(coords, event)` surface as a thin compatibility layer while preserving
+  listener registration order
+- most internal consumers did not need `coords` at all; once the artificial
+  App-side sample lookup dependency was removed, the legacy view listener API
+  was no longer needed by production interaction code
+- the remaining migration work is therefore less about callback shape and more
+  about simplifying container propagation and wheel-specific interaction policy
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher
@@ -408,7 +419,7 @@ Migrate internal subsystems away from the legacy listener assumptions:
 
 Exit criteria:
 
-- New internal code no longer relies on `(coords, event)`.
+- New internal production code no longer relies on `(coords, event)`.
 
 ### Phase 5: Simplify container propagation
 

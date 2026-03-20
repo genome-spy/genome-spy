@@ -112,7 +112,7 @@ export default class Scrollbar extends UnitView {
         // Smooth viewport offset updates
         this.#initViewportOffsetSmoother(this.viewportOffset);
 
-        this.addInteractionEventListener("mousedown", (coords, event) => {
+        this.addInteractionListener("mousedown", (event) => {
             event.stopPropagation();
 
             if (this.#getMaxScrollOffset() <= 0) {

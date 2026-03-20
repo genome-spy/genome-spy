@@ -128,7 +128,9 @@ export default class UnitView extends View {
         this.registerDisposer(
             this._addBroadcastHandler("subtreeDataReady", () => {
                 for (const channel of primaryPositionalChannels) {
-                    this.getScaleResolution(channel)?.syncLinkedSelectionFromDomain();
+                    this.getScaleResolution(
+                        channel
+                    )?.syncLinkedSelectionFromDomain();
                 }
             })
         );
@@ -222,7 +224,7 @@ export default class UnitView extends View {
                     }
                 };
 
-                this.addInteractionEventListener(
+                this.addInteractionListener(
                     ["mouseover", "pointerover"].includes(eventConfig.type)
                         ? "mousemove"
                         : eventConfig.type,
@@ -248,7 +250,7 @@ export default class UnitView extends View {
                         setter(selection);
                     };
 
-                    this.addInteractionEventListener(
+                    this.addInteractionListener(
                         clearEventConfig.type,
                         clearListener
                     );

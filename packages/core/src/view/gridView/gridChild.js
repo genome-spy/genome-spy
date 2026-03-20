@@ -339,7 +339,7 @@ export default class GridChild {
                 return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
             };
 
-            view.addInteractionEventListener("mousedown", (coords, event) => {
+            view.addInteractionListener("mousedown", (event) => {
                 if (event.mouseEvent.button != 0) {
                     return;
                 }
@@ -376,12 +376,9 @@ export default class GridChild {
                     } else if (isActiveIntervalSelection(selectionExpr())) {
                         // If mouse button is released and there was a selection,
                         // it should be cleared unless the viewport was panned by dragging.
-                        /** @type {import("../view.js").InteractionEventListener} */
-                        const listener = (coords, event) => {
-                            view.removeInteractionEventListener(
-                                "mouseup",
-                                listener
-                            );
+                        /** @type {import("../view.js").InteractionListener} */
+                        const listener = (event) => {
+                            view.removeInteractionListener("mouseup", listener);
                             const mouseUpPoint = event.point;
 
                             // Retain selection if the viewport is panned by dragging
@@ -393,7 +390,7 @@ export default class GridChild {
                                 clearSelection();
                             }
                         };
-                        view.addInteractionEventListener("mouseup", listener);
+                        view.addInteractionListener("mouseup", listener);
                         return;
                     } else {
                         return;
@@ -495,9 +492,9 @@ export default class GridChild {
                 document.addEventListener("mouseup", mouseUpListener);
             });
 
-            view.addInteractionEventListener(
+            view.addInteractionListener(
                 "click",
-                (coords, event) => {
+                (event) => {
                     if (event.mouseEvent.button == 0) {
                         if (preventNextClickPropagation) {
                             event.stopPropagation();
@@ -512,9 +509,9 @@ export default class GridChild {
                 selectionContainsPoint(selectionExpr(), invertPoint(point));
 
             // TODO: Make behavior configurable
-            view.addInteractionEventListener(
+            view.addInteractionListener(
                 "dblclick",
-                (coords, event) => {
+                (event) => {
                     if (isPointInsideSelection(event.point)) {
                         clearSelection();
                         event.stopPropagation();
@@ -523,7 +520,7 @@ export default class GridChild {
                 true
             );
 
-            view.addInteractionEventListener("wheel", (coords, event) => {
+            view.addInteractionListener("wheel", (event) => {
                 const wheelEvent = event.uiEvent;
                 if (!(wheelEvent instanceof WheelEvent)) {
                     return;
@@ -604,7 +601,7 @@ export default class GridChild {
             });
 
             // Handle mouse cursor changes
-            view.addInteractionEventListener("mousemove", (coords, event) => {
+            view.addInteractionListener("mousemove", (event) => {
                 if (isPointInsideSelection(event.point)) {
                     // Brushing and translating the existing brush are different actions.
                     if (!nowBrushing) {

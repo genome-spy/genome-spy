@@ -124,18 +124,15 @@ export class MetadataView extends ConcatView {
             )
         );
 
-        this.addInteractionEventListener(
+        this.addInteractionListener(
             "contextmenu",
             this.handleContextMenu.bind(this)
         );
 
-        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
-        const mouseMoveListener = (coords, event) => {
+        /** @type {import("@genome-spy/core/view/view.js").InteractionListener} */
+        const mouseMoveListener = (event) => {
             const view = event.target;
-            const sample = this.#sampleView.findSampleForMouseEvent(
-                coords,
-                event
-            );
+            const sample = this.#sampleView.findSampleForMouseEvent(event);
             const attributeName = /** @type {string} */ (
                 this.#getAttributeInfoForView(view)?.attribute.specifier
             );
@@ -153,8 +150,8 @@ export class MetadataView extends ConcatView {
             this.#handleAttributeHighlight(attributeName);
         };
 
-        this.addInteractionEventListener("mousemove", mouseMoveListener);
-        this.addInteractionEventListener("mouseleave", () => {
+        this.addInteractionListener("mousemove", mouseMoveListener);
+        this.addInteractionListener("mouseleave", () => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
@@ -239,12 +236,10 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
-    handleContextMenu(coords, event) {
-        const sample = this.#sampleView.findSampleForMouseEvent(coords, event);
+    handleContextMenu(event) {
+        const sample = this.#sampleView.findSampleForMouseEvent(event);
 
         if (!sample) {
             event.mouseEvent.preventDefault();

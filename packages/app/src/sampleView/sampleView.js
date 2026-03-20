@@ -419,14 +419,17 @@ export default class SampleView extends ContainerView {
      */
     #setupInteractionHandlers() {
         const context = this.context;
-        this.addInteractionEventListener("mousemove", (coords, event) => {
-            // TODO: Should be reset to undefined on mouseout
+        this.addInteractionListener("mousemove", (event) => {
             this.#lastMouseY = event.point.y - this.childCoords.y;
         });
 
-        this.addInteractionEventListener(
+        this.addInteractionListener("mouseleave", () => {
+            this.#lastMouseY = -1;
+        });
+
+        this.addInteractionListener(
             "wheel",
-            (coords, event) => {
+            (event) => {
                 const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
                     this.locationManager.handleWheelEvent(wheelEvent);
@@ -647,7 +650,7 @@ export default class SampleView extends ContainerView {
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
 
-        this.#gridChild.view.addInteractionEventListener(
+        this.#gridChild.view.addInteractionListener(
             "contextmenu",
             this.#handleContextMenu.bind(this)
         );
@@ -1032,11 +1035,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
-    findSampleForMouseEvent(coords, event) {
+    findSampleForMouseEvent(event) {
         return this.getSampleAt(event.point.y - this.childCoords.y);
     }
 
@@ -1123,11 +1124,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
-    #handleContextMenu(coords, event) {
+    #handleContextMenu(event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
@@ -1136,7 +1135,7 @@ export default class SampleView extends ContainerView {
             event.point.y
         ).x;
 
-        const sample = this.findSampleForMouseEvent(coords, event);
+        const sample = this.findSampleForMouseEvent(event);
 
         const view = this.#gridChild.view;
 

@@ -136,7 +136,7 @@ export default class SampleGroupView extends LayerView {
             this.updateRange();
         });
 
-        this.addInteractionEventListener("contextmenu", (coords, event) => {
+        this.addInteractionListener("contextmenu", (event) => {
             const hover = this.context.getCurrentHover();
 
             if (!hover) {

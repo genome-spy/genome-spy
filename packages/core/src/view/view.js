@@ -57,6 +57,13 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  *      Coordinates of the view
  * @param {import("../utils/interactionEvent.js").default} event
  *
+ * @callback InteractionListener
+ * @param {import("../utils/interactionEvent.js").default} event
+ *
+ * @typedef {object} InteractionListenerEntry
+ * @prop {InteractionEventListener | InteractionListener} listener
+ * @prop {boolean} legacy
+ *
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
@@ -80,10 +87,10 @@ export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
     #broadcastHandlers = {};
 
-    /** @type {Record<string, InteractionEventListener[]>} */
+    /** @type {Record<string, InteractionListenerEntry[]>} */
     #capturingInteractionEventListeners = {};
 
-    /** @type {Record<string, InteractionEventListener[]>} */
+    /** @type {Record<string, InteractionListenerEntry[]>} */
     #nonCapturingInteractionEventListeners = {};
 
     /** @type {(value: number) => void} */
@@ -620,8 +627,15 @@ export default class View {
         const listenersByType = capturing
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
-        for (const listener of listenersByType[event.type] || []) {
-            listener(coords, event);
+        for (const entry of listenersByType[event.type] || []) {
+            if (entry.legacy) {
+                /** @type {InteractionEventListener} */ (entry.listener)(
+                    coords,
+                    event
+                );
+            } else {
+                /** @type {InteractionListener} */ (entry.listener)(event);
+            }
         }
     }
 
@@ -637,6 +651,29 @@ export default class View {
      * @param {boolean} [useCapture]
      */
     addInteractionEventListener(type, listener, useCapture) {
+        this.#addInteractionListener(type, listener, true, useCapture);
+    }
+
+    /**
+     * Add an internal interaction listener that receives only the interaction
+     * event. New internal code should prefer this over the legacy
+     * `addInteractionEventListener(...)` method.
+     *
+     * @param {string} type
+     * @param {InteractionListener} listener
+     * @param {boolean} [useCapture]
+     */
+    addInteractionListener(type, listener, useCapture) {
+        this.#addInteractionListener(type, listener, false, useCapture);
+    }
+
+    /**
+     * @param {string} type
+     * @param {InteractionEventListener | InteractionListener} listener
+     * @param {boolean} legacy
+     * @param {boolean} [useCapture]
+     */
+    #addInteractionListener(type, listener, legacy, useCapture) {
         const listenersByType = useCapture
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
@@ -646,7 +683,7 @@ export default class View {
             listenersByType[type] = listeners;
         }
 
-        listeners.push(listener);
+        listeners.push({ listener, legacy });
     }
 
     /**
@@ -655,12 +692,34 @@ export default class View {
      * @param {boolean} [useCapture]
      */
     removeInteractionEventListener(type, listener, useCapture) {
+        this.#removeInteractionListener(type, listener, true, useCapture);
+    }
+
+    /**
+     * @param {string} type
+     * @param {InteractionListener} listener
+     * @param {boolean} [useCapture]
+     */
+    removeInteractionListener(type, listener, useCapture) {
+        this.#removeInteractionListener(type, listener, false, useCapture);
+    }
+
+    /**
+     * @param {string} type
+     * @param {InteractionEventListener | InteractionListener} listener
+     * @param {boolean} legacy
+     * @param {boolean} [useCapture]
+     */
+    #removeInteractionListener(type, listener, legacy, useCapture) {
         const listenersByType = useCapture
             ? this.#capturingInteractionEventListeners
             : this.#nonCapturingInteractionEventListeners;
         let listeners = listenersByType?.[type];
         if (listeners) {
-            const index = listeners.indexOf(listener);
+            const index = listeners.findIndex(
+                (entry) =>
+                    entry.legacy === legacy && entry.listener === listener
+            );
             if (index >= 0) {
                 listeners.splice(index, 1);
             }

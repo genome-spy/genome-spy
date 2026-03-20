@@ -11,6 +11,8 @@ import ConcatView from "./concatView.js";
 import PointMark from "../marks/point.js";
 import View from "./view.js";
 import LayerView from "./layerView.js";
+import Point from "./layout/point.js";
+import InteractionEvent from "../utils/interactionEvent.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -230,6 +232,52 @@ describe("Trivial creations and initializations", () => {
         disposer();
         view.handleBroadcast({ type: "layoutComputed" });
         expect(calls).toBe(1);
+    });
+
+    test("dispatches legacy and internal interaction listeners in registration order", async () => {
+        const view = await create({ mark: "point" }, View);
+
+        /** @type {string[]} */
+        const calls = [];
+
+        const legacyListener = (coords, event) => {
+            expect(coords).toBeUndefined();
+            expect(event.type).toBe("mousemove");
+            calls.push("legacy");
+        };
+
+        const interactionListener = (event) => {
+            expect(event.type).toBe("mousemove");
+            calls.push("internal");
+        };
+
+        view.addInteractionEventListener("mousemove", legacyListener);
+        view.addInteractionListener("mousemove", interactionListener);
+
+        view.handleInteractionEvent(
+            undefined,
+            new InteractionEvent(
+                new Point(1, 2),
+                /** @type {any} */ ({ type: "mousemove" })
+            ),
+            false
+        );
+
+        expect(calls).toEqual(["legacy", "internal"]);
+
+        view.removeInteractionListener("mousemove", interactionListener);
+        view.removeInteractionEventListener("mousemove", legacyListener);
+
+        view.handleInteractionEvent(
+            undefined,
+            new InteractionEvent(
+                new Point(3, 4),
+                /** @type {any} */ ({ type: "mousemove" })
+            ),
+            false
+        );
+
+        expect(calls).toEqual(["legacy", "internal"]);
     });
 
     test("Preserves inherited key channel in unit views", async () => {
