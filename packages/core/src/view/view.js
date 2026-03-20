@@ -51,10 +51,30 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @typedef {object} BroadcastMessage
  * @prop {import("../genomeSpy.js").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
+ */
+
+/**
+ * Internal listener contract for view interactions.
+ *
+ * Listeners receive a single `Interaction` object. They are attached per
+ * event type and may run either in the capture phase or in the bubbling
+ * phase, depending on how the containing view routes the interaction.
+ *
+ * Ordinary pointer events are routed by container views, which may do hit
+ * testing, scrollbar dispatch, zoom policy, or other view-specific work
+ * before or after child propagation. In addition, `mouseenter` and
+ * `mouseleave` are synthesized by `InteractionDispatcher` from changes in the
+ * pointed view path.
+ *
+ * `stopPropagation()` prevents further routing to later views, but it does
+ * not provide DOM-style stop-immediate semantics for sibling listeners on the
+ * same view.
  *
  * @callback InteractionListener
  * @param {import("../utils/interaction.js").default} event
- *
+ */
+
+/**
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
@@ -606,7 +626,12 @@ export default class View {
     }
 
     /**
-     * Handles an interactionEvent
+     * Invokes this view's listeners for the current interaction phase.
+     *
+     * This method does not route the event to children or parents. Container
+     * subclasses implement that routing in `propagateInteractionEvent(...)`
+     * and call `handleInteractionEvent(...)` when the current phase reaches
+     * this view.
      *
      * @param {import("../utils/interaction.js").default} event
      * @param {boolean} capturing
@@ -621,8 +646,11 @@ export default class View {
     }
 
     /**
-     * Add an internal interaction listener that receives only the interaction
-     * event.
+     * Registers an internal interaction listener.
+     *
+     * Interaction listeners are internal view-hierarchy hooks, not part of
+     * the supported embed API. They receive the refactored `Interaction`
+     * object directly, without the removed legacy `coords` argument.
      *
      * @param {string} type
      * @param {InteractionListener} listener
@@ -642,6 +670,8 @@ export default class View {
     }
 
     /**
+     * Removes a previously registered interaction listener.
+     *
      * @param {string} type
      * @param {InteractionListener} listener
      * @param {boolean} [useCapture]

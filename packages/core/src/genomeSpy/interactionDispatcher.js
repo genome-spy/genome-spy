@@ -1,8 +1,26 @@
 import Interaction from "../utils/interaction.js";
 
 /**
- * Dispatches internal Interaction objects through the view hierarchy and
- * synthesizes pointer enter/leave transitions from target-path changes.
+ * Dispatches `Interaction` objects through the view hierarchy and synthesizes
+ * subtree-level pointer transition events.
+ *
+ * The dispatcher keeps track of the previously hovered target path and
+ * compares it with the current one on every `mousemove`. From that diff it
+ * emits:
+ * - `mouseleave` for views that are no longer in the pointed subtree
+ * - `mouseenter` for views that have newly entered the pointed subtree
+ *
+ * This is intentionally closer to `mouseenter` / `mouseleave` semantics than
+ * DOM `mouseover` / `mouseout`. Moving between descendants inside the same
+ * subtree does not cause the ancestor to leave and re-enter.
+ *
+ * `dispatch()` handles ordinary event propagation and updates the current
+ * pointed target. `handlePointerLeave()` is used when the pointer leaves the
+ * canvas entirely, in which case the dispatcher emits `mouseleave` for the
+ * whole previously hovered path and clears its tracked state.
+ *
+ * The dispatcher does not do hit testing itself. It relies on views to route
+ * the incoming interaction and set `interaction.target` during propagation.
  */
 export default class InteractionDispatcher {
     /** @type {import("../view/view.js").default} */
@@ -23,6 +41,9 @@ export default class InteractionDispatcher {
     }
 
     /**
+     * Dispatches an interaction through the view tree and updates the tracked
+     * hover path for transition synthesis.
+     *
      * @param {import("../view/layout/point.js").default} point
      * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
      * @returns {Interaction}
@@ -67,6 +88,9 @@ export default class InteractionDispatcher {
     }
 
     /**
+     * Diffs the old and new pointed paths and emits synthetic subtree
+     * transitions.
+     *
      * @param {Interaction} interaction
      */
     #dispatchPointerTransitions(interaction) {
@@ -157,6 +181,13 @@ export default class InteractionDispatcher {
     }
 
     /**
+     * Dispatches a synthetic transition directly on a single view.
+     *
+     * Unlike ordinary routed propagation, enter/leave transitions are already
+     * resolved to a specific view. Therefore the dispatcher invokes that
+     * view's capture listeners first and bubble listeners second without
+     * re-entering container routing.
+     *
      * @param {import("../view/view.js").default} view
      * @param {Interaction} interaction
      */

@@ -5,8 +5,44 @@ import {
 } from "./interactionEvent.js";
 
 /**
- * Internal interaction object used by the refactored interaction pipeline.
- * This is intentionally smaller and less DOM-like than a DOM Event object.
+ * Internal event object used by GenomeSpy's canvas interaction pipeline.
+ *
+ * Interaction is deliberately smaller than DOM Event. It models the pieces
+ * that GenomeSpy needs for hierarchical pointer handling:
+ * - `point` is always in canvas coordinates
+ * - `uiEvent` is the original native or synthesized low-level event
+ * - `target` is the resolved deepest view target after propagation
+ * - `currentTarget` and `relatedTarget` are used by synthesized
+ *   `mouseenter` / `mouseleave` delivery
+ *
+ * Runtime flow:
+ * 1. `InteractionController` converts native canvas events into Interaction
+ *    instances and asks `InteractionDispatcher` to route them.
+ * 2. Container views route the interaction through the view hierarchy and may
+ *    add policy on top, such as wheel claiming, zoom handling, or scrollbar
+ *    dispatch.
+ * 3. `InteractionDispatcher` compares successive hover paths and synthesizes
+ *    subtree-level `mouseenter` / `mouseleave` transitions.
+ *
+ * Differences from the DOM model:
+ * - propagation is view-driven rather than browser-driven
+ * - only the event types used by GenomeSpy are represented
+ * - there is only `stopPropagation()`, not stop-immediate semantics
+ * - mark picking is not encoded into `target`; mark hover lives separately in
+ *   `InteractionController`
+ *
+ * Mouse and wheel helpers:
+ * - `mouseEvent` exposes the underlying MouseEvent for imperative handlers
+ * - `proxiedMouseEvent` exposes only primitive properties for places that
+ *   must not retain live DOM objects
+ * - `wheelEvent` exposes the underlying wheel-like event, optionally with
+ *   temporary delta overrides applied by `setWheelDeltas()`
+ *
+ * Special event types:
+ * - `wheelclaimprobe` asks pointed views whether they would consume wheel,
+ *   without running the actual wheel side effects yet
+ * - `touchgesture` is a synthesized high-level gesture event derived from
+ *   touch input
  */
 export default class Interaction {
     /** @type {MouseEvent} */
@@ -72,6 +108,14 @@ export default class Interaction {
         this.stopped = true;
     }
 
+    /**
+     * Marks the current wheel interaction as claimed by the pointed view
+     * hierarchy.
+     *
+     * This is used both for real wheel events and for the synthetic
+     * `wheelclaimprobe` preflight. Controllers use the claimed state to decide
+     * whether the native wheel event should call `preventDefault()`.
+     */
     claimWheel() {
         if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
             throw new Error("Can claim wheel only for wheel events!");
@@ -101,6 +145,13 @@ export default class Interaction {
         this.#typeOverride = value;
     }
 
+    /**
+     * Returns a primitive-only proxy of the underlying MouseEvent.
+     *
+     * This is intended for places such as expression evaluation, where the
+     * caller needs scalar event fields but should not receive a live DOM event
+     * object with methods, nested objects, or browser-specific prototypes.
+     */
     get proxiedMouseEvent() {
         if (!this.#primitiveMouseEventProxy) {
             this.#primitiveMouseEventProxy = createPrimitiveEventProxy(
@@ -119,6 +170,14 @@ export default class Interaction {
         }
     }
 
+    /**
+     * Returns a wheel-like event with any temporary delta overrides applied.
+     *
+     * The wrapped event keeps the original event identity for all properties
+     * except `deltaX` and `deltaY`, which allows intermediate handlers to
+     * consume part of the wheel interaction while keeping downstream wheel
+     * handling on the same event instance.
+     */
     get wheelEvent() {
         if (!isWheelEvent(this.uiEvent)) {
             throw new Error("Not a WheelEvent!");
