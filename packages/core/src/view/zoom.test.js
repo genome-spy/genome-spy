@@ -66,9 +66,10 @@ describe("touch gesture zoom conversion", () => {
 describe("wheel zoom snapping", () => {
     /**
      * @param {number} deltaY
+     * @returns {import("../utils/interactionEvent.js").WheelLikeEvent}
      */
     const createWheelEvent = (deltaY) =>
-        /** @type {WheelEvent} */ ({
+        /** @type {import("../utils/interactionEvent.js").WheelLikeEvent} */ ({
             type: "wheel",
             deltaX: 0,
             deltaY,
@@ -331,7 +332,10 @@ describe("wheel zoom snapping", () => {
         const originalMouseEvent = globalThis.MouseEvent;
         try {
             class FakeMouseEvent {
-                constructor(type, init = {}) {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
                     this.type = type;
                     Object.assign(this, init);
                 }
@@ -342,12 +346,19 @@ describe("wheel zoom snapping", () => {
             );
             globalThis.document = /** @type {Document} */ (
                 /** @type {any} */ ({
-                    addEventListener(type, listener) {
+                    addEventListener(
+                        /** @type {string} */ type,
+                        /** @type {EventListener} */ listener
+                    ) {
                         listeners[type] = /** @type {EventListener} */ (
                             listener
                         );
                     },
-                    removeEventListener() {
+                    /** @returns {void} */
+                    removeEventListener(
+                        /** @type {string} */ _type,
+                        /** @type {EventListener} */ _listener
+                    ) {
                         return undefined;
                     },
                 })
@@ -358,12 +369,14 @@ describe("wheel zoom snapping", () => {
 
             const event = new Interaction(
                 new Point(20, 30),
-                new FakeMouseEvent("mousedown", {
-                    button: 0,
-                    clientX: 20,
-                    clientY: 30,
-                    preventDefault: () => undefined,
-                })
+                /** @type {any} */ (
+                    new FakeMouseEvent("mousedown", {
+                        button: 0,
+                        clientX: 20,
+                        clientY: 30,
+                        preventDefault: /** @returns {void} */ () => undefined,
+                    })
+                )
             );
             event.target = /** @type {any} */ ({
                 context: {
@@ -375,7 +388,7 @@ describe("wheel zoom snapping", () => {
             interactionToZoom(
                 event,
                 /** @type {any} */ ({ x: 10, y: 20, width: 100, height: 100 }),
-                () => undefined
+                /** @returns {void} */ () => undefined
             );
 
             expect(suspendHoverTracking).toHaveBeenCalledTimes(1);

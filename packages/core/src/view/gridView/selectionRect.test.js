@@ -214,11 +214,12 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         const selectionExpr = Object.assign(
             () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
             {
-                subscribe: () => () => undefined,
-                invalidate: () => undefined,
+                subscribe: () => /** @returns {void} */ () => undefined,
+                invalidate: /** @returns {void} */ () => undefined,
                 identifier: () => "selection",
                 fields: [],
                 globals: [],
@@ -266,11 +267,12 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
+        /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         const selectionExpr = Object.assign(
             () => ({ intervals: { x: [0, 1], y: [2, 3] } }),
             {
-                subscribe: () => () => undefined,
-                invalidate: () => undefined,
+                subscribe: () => /** @returns {void} */ () => undefined,
+                invalidate: /** @returns {void} */ () => undefined,
                 identifier: () => "selection",
                 fields: [],
                 globals: [],

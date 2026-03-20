@@ -284,6 +284,13 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
 
 export interface BrushConfig extends ShadowProps, ZIndexProps {
     /**
+     * Mouse cursor shown while the pointer is over the interval mark.
+     *
+     * __Default value:__ `"move"` when idle and `"grabbing"` while dragging
+     */
+    cursor?: string | ExprRef;
+
+    /**
      * The fill color of the interval mark.
      *
      * __Default value:__ `"#808080"`

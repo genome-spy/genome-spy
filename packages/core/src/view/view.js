@@ -610,7 +610,6 @@ export default class View {
      *
      * @param {import("../utils/interaction.js").default} event
      * @param {boolean} capturing
-     * @protected
      */
     handleInteractionEvent(event, capturing) {
         const listenersByType = capturing

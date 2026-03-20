@@ -277,7 +277,7 @@ export default class GridChild {
                 selectionExpr,
                 select.mark
             );
-            const setIntervalDragActive = (active) => {
+            const setIntervalDragActive = (/** @type {boolean} */ active) => {
                 this.selectionRect.paramRuntime.setValue(
                     INTERVAL_DRAG_ACTIVE_PARAM,
                     active

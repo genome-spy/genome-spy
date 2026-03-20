@@ -2,6 +2,21 @@
  * Resolves and applies the active canvas cursor based on the current mark hover
  * and interaction target path.
  */
+
+/**
+ * @typedef {{
+ *   getCursorSpec?: () => unknown,
+ *   getCursor: () => string | undefined,
+ *   watchCursor?: (listener: () => void, registerDisposer: (dispose: () => void) => void) => void,
+ * }} CursorOwner
+ */
+
+/**
+ * @typedef {CursorOwner & {
+ *   getLayoutAncestors: () => CursorView[],
+ * }} CursorView
+ */
+
 export default class CursorManager {
     /** @type {HTMLCanvasElement} */
     #canvas;
@@ -22,8 +37,8 @@ export default class CursorManager {
 
     /**
      * @param {object} options
-     * @param {import("../view/view.js").default | undefined} options.target
-     * @param {import("../types/viewContext.js").Hover | undefined} options.hover
+     * @param {CursorView | undefined} options.target
+     * @param {{ mark?: CursorOwner } | undefined} options.hover
      */
     update({ target, hover }) {
         this.#setActiveSource(resolveCursorSource(target, hover));
@@ -72,8 +87,8 @@ export default class CursorManager {
  */
 
 /**
- * @param {import("../view/view.js").default | undefined} target
- * @param {import("../types/viewContext.js").Hover | undefined} hover
+ * @param {CursorView | undefined} target
+ * @param {{ mark?: CursorOwner } | undefined} hover
  * @returns {CursorSource | undefined}
  */
 export function resolveCursorSource(target, hover) {

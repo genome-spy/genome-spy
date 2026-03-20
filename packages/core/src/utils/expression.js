@@ -119,7 +119,7 @@ const eventFilterCg = codegenExpression({
 
 /**
  * @param {string} expr
- * @returns {(event: UIEvent) => boolean}
+ * @returns {(event: UIEvent | import("./interactionEvent.js").WheelLikeEvent) => boolean}
  */
 export function createEventFilterFunction(expr) {
     try {
@@ -139,7 +139,7 @@ export function createEventFilterFunction(expr) {
             }`
         );
 
-        return /** @type {(event: UIEvent) => boolean} */ (
+        return /** @type {(event: UIEvent | import("./interactionEvent.js").WheelLikeEvent) => boolean} */ (
             /** @type {any} */ (fn)
         );
     } catch (e) {

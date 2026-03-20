@@ -163,7 +163,7 @@ export class LocationManager {
 
     /**
      *
-     * @param {WheelEvent} wheelEvent
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").WheelLikeEvent} wheelEvent
      */
     handleWheelEvent(wheelEvent) {
         this.setScrollOffset(this.#scrollOffset + wheelEvent.deltaY);

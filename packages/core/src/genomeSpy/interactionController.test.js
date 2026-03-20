@@ -8,7 +8,8 @@ const OriginalMouseEvent = globalThis.MouseEvent;
 const OriginalWindow = globalThis.window;
 
 vi.mock("../gl/webGLHelper.js", () => ({
-    readPickingPixel: (...args) => readPickingPixel(...args),
+    readPickingPixel: (/** @type {any[]} */ ...args) =>
+        readPickingPixel(...args),
 }));
 
 describe("InteractionController", () => {
@@ -38,29 +39,38 @@ describe("InteractionController", () => {
 
         /** @type {FrameRequestCallback[]} */
         const animationFrameQueue = [];
-        globalThis.window = /** @type {Window & typeof globalThis} */ ({
-            requestAnimationFrame: (callback) => {
+        globalThis.window = /** @type {any} */ ({
+            requestAnimationFrame: (
+                /** @type {FrameRequestCallback} */ callback
+            ) => {
                 animationFrameQueue.push(callback);
                 return animationFrameQueue.length;
             },
         });
 
-        globalThis.MouseEvent = class MouseEvent extends Event {
-            constructor(type, init = {}) {
-                super(type);
-                Object.assign(
-                    this,
-                    {
-                        button: 0,
-                        buttons: 0,
-                        clientX: 0,
-                        clientY: 0,
-                        ctrlKey: false,
-                    },
-                    init
-                );
-            }
-        };
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
 
         class CanvasStub extends EventTarget {
             constructor() {
@@ -82,42 +92,55 @@ describe("InteractionController", () => {
 
         const canvas = new CanvasStub();
 
-        const mark = {
+        const mark = /** @type {{
+            isPickingParticipant: () => boolean,
+            properties: { tooltip: null },
+            getCursorSpec: () => string,
+            getCursor: () => string,
+            watchCursor: () => void,
+        }} */ ({
             isPickingParticipant: () => true,
             properties: { tooltip: null },
             getCursorSpec: () => "move",
             getCursor: () => "move",
             watchCursor: () => undefined,
-        };
+        });
 
         const pickerUnitView = Object.create(UnitView.prototype);
         pickerUnitView.mark = mark;
         pickerUnitView.facetCoords = new Map([
             [
                 "facet",
-                {
+                /** @type {{ containsPoint: () => boolean }} */ ({
                     containsPoint: () => true,
-                },
+                }),
             ],
         ]);
         pickerUnitView.getCollector = () => ({
-            findDatumByUniqueId: (uniqueId) =>
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
                 uniqueId === 1 ? { id: "datum-1" } : undefined,
         });
         pickerUnitView.getLayoutAncestors = () => [pickerUnitView];
-        pickerUnitView.getCursorSpec = () => undefined;
+        pickerUnitView.getCursorSpec = /** @returns {undefined} */ () =>
+            undefined;
 
-        const targetView = {
+        const targetView = /** @type {{
+            getLayoutAncestors: () => any[],
+            handleInteractionEvent: () => void,
+            getCursorSpec: () => undefined,
+        }} */ ({
             getLayoutAncestors: () => [targetView],
             handleInteractionEvent: () => undefined,
             getCursorSpec: () => undefined,
-        };
+        });
 
         const viewRoot = {
-            propagateInteractionEvent(event) {
-                event.target = targetView;
+            propagateInteractionEvent(
+                /** @type {import("../utils/interaction.js").default} */ event
+            ) {
+                event.target = /** @type {any} */ (targetView);
             },
-            visit(visitor) {
+            visit(/** @type {(view: UnitView) => any} */ visitor) {
                 return visitor(pickerUnitView);
             },
         };
@@ -130,10 +153,22 @@ describe("InteractionController", () => {
                 _pickingBufferInfo: {},
             }),
             tooltip: /** @type {any} */ ({
-                clear: () => undefined,
-                handleMouseMove: () => undefined,
-                push: () => undefined,
-                updateWithDatum: () => undefined,
+                /** @returns {void} */
+                clear() {
+                    return undefined;
+                },
+                /** @returns {void} */
+                handleMouseMove() {
+                    return undefined;
+                },
+                /** @returns {void} */
+                push() {
+                    return undefined;
+                },
+                /** @returns {void} */
+                updateWithDatum() {
+                    return undefined;
+                },
             }),
             animator: /** @type {any} */ ({
                 requestRender: () => {
@@ -142,9 +177,9 @@ describe("InteractionController", () => {
                     });
                 },
             }),
-            emitEvent: () => undefined,
-            tooltipHandlers: {},
-            renderPickingFramebuffer: () => undefined,
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
             getDevicePixelRatio: () => 1,
         });
 
@@ -165,6 +200,9 @@ describe("InteractionController", () => {
 
         while (animationFrameQueue.length) {
             const callback = animationFrameQueue.shift();
+            if (!callback) {
+                throw new Error("Missing animation frame callback!");
+            }
             callback(0);
         }
 

@@ -64,6 +64,9 @@ describe("CursorManager", () => {
     });
 });
 
+/**
+ * @returns {HTMLCanvasElement}
+ */
 function createCanvas() {
     return /** @type {HTMLCanvasElement} */ ({
         style: {
@@ -96,7 +99,10 @@ function createView(name, layoutParent, cursor) {
         getCursor() {
             return cursor;
         },
-        watchCursor() {},
+        /** @returns {void} */
+        watchCursor() {
+            return undefined;
+        },
     };
 }
 
@@ -129,11 +135,14 @@ function createReactiveView(name, layoutParent, initialCursor) {
         getCursor() {
             return cursor;
         },
-        watchCursor(callback, registerDisposer) {
+        watchCursor(
+            /** @type {() => void} */ callback,
+            /** @type {(dispose: () => void) => void} */ registerDisposer
+        ) {
             listener = callback;
             registerDisposer(dispose);
         },
-        setCursorValue(value) {
+        setCursorValue(/** @type {string} */ value) {
             cursor = value;
             listener?.();
         },
@@ -152,6 +161,9 @@ function createMark(cursor) {
         getCursor() {
             return cursor;
         },
-        watchCursor() {},
+        /** @returns {void} */
+        watchCursor() {
+            return undefined;
+        },
     };
 }

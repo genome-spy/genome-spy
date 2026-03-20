@@ -77,6 +77,7 @@ describe("Interaction", () => {
     });
 
     it("overrides wheel deltas without replacing the wrapped uiEvent", () => {
+        /** @type {import("./interactionEvent.js").WheelLikeEvent} */
         const wheelEvent = {
             type: "wheel",
             deltaX: 12,

@@ -19,14 +19,14 @@
  */
 
 /**
- * @typedef {UIEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
- */
-
-/**
  * @typedef {Pick<
  *      WheelEvent,
  *      "type" | "deltaX" | "deltaY" | "deltaMode" | "preventDefault" | "ctrlKey"
  * >} WheelLikeEvent
+ */
+
+/**
+ * @typedef {UIEvent | WheelLikeEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
  */
 
 /**

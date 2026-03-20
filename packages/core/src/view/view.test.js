@@ -240,10 +240,12 @@ describe("Trivial creations and initializations", () => {
         /** @type {string[]} */
         const calls = [];
 
+        /** @type {import("./view.js").InteractionListener} */
         const firstListener = (event) => {
             expect(event.type).toBe("mousemove");
             calls.push("first");
         };
+        /** @type {import("./view.js").InteractionListener} */
         const secondListener = (event) => {
             expect(event.type).toBe("mousemove");
             calls.push("second");
