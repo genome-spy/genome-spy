@@ -381,6 +381,17 @@ Observation from the wheel-override cleanup:
   instead, for example by overriding effective wheel deltas while retaining the
   original wheel event object
 
+Observation from the partial propagation unification:
+
+- the shared part of `GridView` and `SampleView` routing is smaller than a full
+  target-resolution abstraction: capture/bubble framing, hit-tested surface
+  dispatch, and optional post-dispatch hooks
+- extracting just those mechanics removes the duplicated control flow without
+  pretending that `SampleView` and `GridView` have the same interaction
+  topology
+- the remaining duplication is now mostly honest policy: wheel-claim behavior,
+  content-specific zoom rules, and `SampleView`'s sidebar-versus-main-grid split
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

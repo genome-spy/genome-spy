@@ -25,6 +25,10 @@ import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { LocationManager, getSampleLocationAt } from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
+import {
+    propagateInteraction,
+    propagateInteractionSurface,
+} from "@genome-spy/core/view/interactionRouting.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import GridChild, {
@@ -1315,62 +1319,73 @@ export default class SampleView extends ContainerView {
      * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
      */
     propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
-
-        if (event.stopped) {
-            return;
-        }
-
-        if (event.type === "wheelclaimprobe") {
-            if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-                const resolution = this.#gridChild.view.getScaleResolution("x");
-                if (resolution?.isZoomable()) {
-                    event.claimWheel();
+        propagateInteraction(this, event, () => {
+            if (event.type === "wheelclaimprobe") {
+                if (
+                    this.childCoords.containsPoint(event.point.x, event.point.y)
+                ) {
+                    const resolution =
+                        this.#gridChild.view.getScaleResolution("x");
+                    if (resolution?.isZoomable()) {
+                        event.claimWheel();
+                    }
                 }
+                return;
             }
-            return;
-        }
 
-        for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
-            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
-                scrollbar.propagateInteractionEvent(event);
+            for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
+                propagateInteractionSurface(
+                    event,
+                    () =>
+                        scrollbar.coords.containsPoint(
+                            event.point.x,
+                            event.point.y
+                        ),
+                    () => scrollbar.propagateInteractionEvent(event)
+                );
+
                 if (event.stopped) {
                     return;
                 }
             }
-        }
 
-        if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            this.#gridChild.view.propagateInteractionEvent(event);
+            propagateInteractionSurface(
+                event,
+                () =>
+                    this.childCoords.containsPoint(
+                        event.point.x,
+                        event.point.y
+                    ),
+                () => this.#gridChild.view.propagateInteractionEvent(event),
+                () =>
+                    interactionToZoom(
+                        event,
+                        this.childCoords,
+                        (zoomEvent) =>
+                            this.#handleZoom(
+                                this.childCoords,
+                                this.#gridChild.view,
+                                zoomEvent
+                            ),
+                        this.context.getCurrentHover(),
+                        this.context.animator
+                    )
+            );
 
             if (event.stopped) {
                 return;
             }
 
-            // Hmm. Perhaps this could be attached to the child
-            interactionToZoom(
+            propagateInteractionSurface(
                 event,
-                this.childCoords,
-                (zoomEvent) =>
-                    this.#handleZoom(
-                        this.childCoords,
-                        this.#gridChild.view,
-                        zoomEvent
+                () =>
+                    this.sidebarCoords.containsPoint(
+                        event.point.x,
+                        event.point.y
                     ),
-                this.context.getCurrentHover(),
-                this.context.animator
+                () => this.#sidebarView.propagateInteractionEvent(event)
             );
-        }
-
-        if (this.sidebarCoords.containsPoint(event.point.x, event.point.y)) {
-            this.#sidebarView.propagateInteractionEvent(event);
-        }
-
-        if (event.stopped) {
-            return;
-        }
-
-        this.handleInteractionEvent(undefined, event, false);
+        });
     }
 
     /**
