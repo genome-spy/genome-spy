@@ -1,11 +1,13 @@
 import UnitView from "../view/unitView.js";
 import { VISIT_STOP } from "../view/view.js";
 import { readPickingPixel } from "../gl/webGLHelper.js";
-import InteractionEvent from "../utils/interactionEvent.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
+import { FREEZE_INTERACTION_CLASS_NAME } from "../utils/ui/tooltip.js";
+import InteractionDispatcher from "./interactionDispatcher.js";
+import CursorManager from "./cursorManager.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -24,6 +26,10 @@ export default class InteractionController {
     #renderPickingFramebuffer;
     /** @type {() => number} */
     #getDevicePixelRatio;
+    /** @type {InteractionDispatcher} */
+    #interactionDispatcher;
+    /** @type {CursorManager} */
+    #cursorManager;
     /**
      * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
      */
@@ -32,8 +38,14 @@ export default class InteractionController {
     #wheelInertia;
     /** @type {Point} */
     #mouseDownCoords;
+    /** @type {Point | undefined} */
+    #lastPointerPoint;
     /** @type {boolean} */
     #tooltipUpdateRequested;
+    /** @type {number} */
+    #hoverTrackingSuspensionCount;
+    /** @type {boolean} */
+    #postRenderHoverRefreshRequested;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -63,6 +75,8 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer;
         this.#getDevicePixelRatio = getDevicePixelRatio;
+        this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
+        this.#cursorManager = new CursorManager({ canvas: glHelper.canvas });
 
         /**
          * Currently hovered mark and datum
@@ -74,12 +88,70 @@ export default class InteractionController {
 
         /** @type {Point} */
         this.#mouseDownCoords = undefined;
+        this.#lastPointerPoint = undefined;
 
         this.#tooltipUpdateRequested = false;
+        this.#hoverTrackingSuspensionCount = 0;
+        this.#postRenderHoverRefreshRequested = false;
     }
 
     getCurrentHover() {
         return this.#currentHover;
+    }
+
+    suspendHoverTracking() {
+        this.#hoverTrackingSuspensionCount++;
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
+    }
+
+    /**
+     * @param {MouseEvent} [mouseEvent]
+     */
+    resumeHoverTracking(mouseEvent) {
+        if (this.#hoverTrackingSuspensionCount <= 0) {
+            return;
+        }
+
+        this.#hoverTrackingSuspensionCount--;
+        if (this.#hoverTrackingSuspensionCount > 0) {
+            return;
+        }
+
+        this.#tooltip.clear();
+        this.#tooltipUpdateRequested = false;
+
+        if (this.#isInteractionFrozen()) {
+            return;
+        }
+
+        if (mouseEvent) {
+            const point = this.#toCanvasPoint(mouseEvent);
+            this.#lastPointerPoint = point;
+            if (this.#isInsideCanvas(point)) {
+                this.#refreshHover(point);
+                this.#cursorManager.update({
+                    target: this.#interactionDispatcher.getCurrentTarget(),
+                    hover: this.#currentHover,
+                });
+                return;
+            }
+
+            this.#interactionDispatcher.handlePointerLeave(mouseEvent);
+        } else if (
+            this.#lastPointerPoint &&
+            this.#isInsideCanvas(this.#lastPointerPoint)
+        ) {
+            this.#refreshHover(this.#lastPointerPoint);
+            this.#cursorManager.update({
+                target: this.#interactionDispatcher.getCurrentTarget(),
+                hover: this.#currentHover,
+            });
+            return;
+        }
+
+        this.#currentHover = null;
+        this.#cursorManager.clear();
     }
 
     registerInteractionEvents() {
@@ -93,17 +165,26 @@ export default class InteractionController {
         /**
          * @param {Point} point
          * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
-         * @returns {InteractionEvent}
+         * @returns {import("../utils/interaction.js").default}
          */
-        const dispatchInteractionEvent = (point, uiEvent) => {
-            const interactionEvent = new InteractionEvent(point, uiEvent);
-            this.#viewRoot.propagateInteractionEvent(interactionEvent);
+        const dispatchInteraction = (point, uiEvent) => {
+            const interaction = this.#interactionDispatcher.dispatch(
+                point,
+                uiEvent
+            );
 
             if (!this.#tooltipUpdateRequested) {
                 this.#tooltip.clear();
             }
 
-            return interactionEvent;
+            if (uiEvent instanceof MouseEvent && uiEvent.type !== "mouseout") {
+                this.#cursorManager.update({
+                    target: interaction.target,
+                    hover: this.#currentHover,
+                });
+            }
+
+            return interaction;
         };
 
         /** @param {Event} event */
@@ -112,13 +193,21 @@ export default class InteractionController {
             const wheeling = now - lastWheelEvent < 200;
 
             if (event instanceof MouseEvent) {
-                const rect = canvas.getBoundingClientRect();
-                const point = new Point(
-                    event.clientX - rect.left - canvas.clientLeft,
-                    event.clientY - rect.top - canvas.clientTop
-                );
+                if (
+                    event.type !== "contextmenu" &&
+                    this.#isInteractionFrozen()
+                ) {
+                    return;
+                }
 
-                if (event.type == "mousemove" && !wheeling) {
+                const point = this.#toCanvasPoint(event);
+                this.#lastPointerPoint = point;
+
+                if (
+                    event.type == "mousemove" &&
+                    !wheeling &&
+                    this.#hoverTrackingSuspensionCount === 0
+                ) {
                     this.#tooltip.handleMouseMove(event);
                     this.#tooltipUpdateRequested = false;
 
@@ -135,7 +224,7 @@ export default class InteractionController {
                  * @param {MouseEvent} dispatchedEvent
                  */
                 const dispatchEvent = (dispatchedEvent) => {
-                    dispatchInteractionEvent(point, dispatchedEvent);
+                    dispatchInteraction(point, dispatchedEvent);
                 };
 
                 if (event.type != "wheel") {
@@ -174,7 +263,7 @@ export default class InteractionController {
                         // wheel ownership without running real wheel side
                         // effects first. Inertia is layered on top of that
                         // decision and is not the reason for the probe.
-                        const probeEvent = dispatchInteractionEvent(point, {
+                        const probeEvent = dispatchInteraction(point, {
                             type: "wheelclaimprobe",
                         });
 
@@ -239,7 +328,17 @@ export default class InteractionController {
                     this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
                         .length < 3
                 ) {
-                    dispatchEvent(event);
+                    const interaction = dispatchInteraction(point, event);
+
+                    if (
+                        event.type == "dblclick" &&
+                        this.#hoverTrackingSuspensionCount === 0 &&
+                        this.#isInsideCanvas(point)
+                    ) {
+                        this.#scheduleHoverRefreshAfterRender();
+                    }
+
+                    return interaction;
                 }
             }
         };
@@ -313,7 +412,7 @@ export default class InteractionController {
             zDelta
         ) => {
             const point = toCanvasPoint(x, y);
-            dispatchInteractionEvent(point, {
+            dispatchInteraction(point, {
                 type: "touchgesture",
                 phase,
                 pointerCount,
@@ -454,10 +553,101 @@ export default class InteractionController {
             event.stopPropagation()
         );
 
-        canvas.addEventListener("mouseout", () => {
+        canvas.addEventListener("mouseout", (event) => {
+            if (this.#isInteractionFrozen()) {
+                return;
+            }
+
+            if (this.#hoverTrackingSuspensionCount > 0) {
+                this.#tooltip.clear();
+                this.#tooltipUpdateRequested = false;
+                return;
+            }
+
+            this.#interactionDispatcher.handlePointerLeave(
+                /** @type {MouseEvent} */ (event)
+            );
+            this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#currentHover = null;
         });
+    }
+
+    /**
+     * @param {MouseEvent} event
+     */
+    #toCanvasPoint(event) {
+        const canvas = this.#glHelper.canvas;
+        const rect = canvas.getBoundingClientRect();
+        return new Point(
+            event.clientX - rect.left - canvas.clientLeft,
+            event.clientY - rect.top - canvas.clientTop
+        );
+    }
+
+    /**
+     * @param {Point} point
+     */
+    #isInsideCanvas(point) {
+        const canvas = this.#glHelper.canvas;
+        return (
+            point.x >= 0 &&
+            point.y >= 0 &&
+            point.x <= canvas.clientWidth &&
+            point.y <= canvas.clientHeight
+        );
+    }
+
+    /**
+     * @param {Point} point
+     */
+    #refreshHover(point) {
+        if (!isStillZooming()) {
+            this.#renderPickingFramebuffer();
+            this.#handlePicking(point.x, point.y);
+        }
+    }
+
+    #scheduleHoverRefreshAfterRender() {
+        if (this.#postRenderHoverRefreshRequested) {
+            return;
+        }
+
+        this.#postRenderHoverRefreshRequested = true;
+        this.#animator.requestRender();
+        window.requestAnimationFrame(() => {
+            this.#postRenderHoverRefreshRequested = false;
+
+            if (
+                this.#hoverTrackingSuspensionCount > 0 ||
+                this.#isInteractionFrozen()
+            ) {
+                return;
+            }
+
+            const point = this.#lastPointerPoint;
+            if (!point || !this.#isInsideCanvas(point)) {
+                this.#currentHover = null;
+                this.#cursorManager.clear();
+                return;
+            }
+
+            this.#tooltip.clear();
+            this.#tooltipUpdateRequested = false;
+            this.#refreshHover(point);
+            this.#cursorManager.update({
+                target: this.#interactionDispatcher.getCurrentTarget(),
+                hover: this.#currentHover,
+            });
+        });
+    }
+
+    #isInteractionFrozen() {
+        return (
+            typeof document !== "undefined" &&
+            !!document.body &&
+            document.body.classList.contains(FREEZE_INTERACTION_CLASS_NAME)
+        );
     }
 
     /**

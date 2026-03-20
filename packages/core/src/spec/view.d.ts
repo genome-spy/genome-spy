@@ -142,6 +142,15 @@ export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
     /**
+     * Mouse cursor shown while the pointer is inside the view.
+     * The deepest matching cursor wins: mark cursor first, then the pointed
+     * view, then ancestor views outward toward the root.
+     *
+     * __Default value:__ browser default
+     */
+    cursor?: string | ExprRef;
+
+    /**
      * Height of the view. If a number, it is interpreted as pixels.
      * Check [child sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
      * for details.

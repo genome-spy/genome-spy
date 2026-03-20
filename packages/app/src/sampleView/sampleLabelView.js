@@ -54,7 +54,7 @@ export class SampleLabelView extends UnitView {
             this.#attributeInfoSource
         );
 
-        this.addInteractionEventListener(
+        this.addInteractionListener(
             "contextmenu",
             this.handleContextMenu.bind(this)
         );
@@ -96,11 +96,10 @@ export class SampleLabelView extends UnitView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    handleContextMenu(coords, event) {
-        const sample = this.#sampleView.findSampleForMouseEvent(coords, event);
+    handleContextMenu(event) {
+        const sample = this.#sampleView.findSampleForMouseEvent(event);
 
         if (!sample) {
             event.mouseEvent.preventDefault();
@@ -108,7 +107,13 @@ export class SampleLabelView extends UnitView {
         }
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-        const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
+        const items = [
+            this.#sampleView.makePeekMenuItem(
+                event.point.y - this.#sampleView.childCoords.y,
+                sample.id
+            ),
+            DIVIDER,
+        ];
 
         items.push(
             ...generateAttributeContextMenu(

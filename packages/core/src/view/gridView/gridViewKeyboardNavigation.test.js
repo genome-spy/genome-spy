@@ -167,7 +167,7 @@ describe("GridView keyboard navigation", () => {
             isConfiguredVisible: () => true,
             getKeyboardZoomAnchorX,
             getScaleResolution: /** @returns {undefined} */ () => undefined,
-            propagateInteractionEvent: /** @returns {void} */ () => undefined,
+            propagateInteraction: /** @returns {void} */ () => undefined,
             visit: /** @param {(view: any) => void} visitor */ (visitor) =>
                 visitor(childView),
         });
@@ -177,7 +177,7 @@ describe("GridView keyboard navigation", () => {
         const gridChild = harness.view.appendChildView(childView);
         gridChild.coords = Rectangle.create(0, 0, 200, 100);
 
-        harness.view.propagateInteractionEvent(
+        harness.view.propagateInteraction(
             /** @type {any} */ ({
                 type: "mousemove",
                 point: { x: 150, y: 50 },

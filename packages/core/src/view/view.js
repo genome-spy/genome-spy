@@ -51,12 +51,30 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @typedef {object} BroadcastMessage
  * @prop {import("../genomeSpy.js").BroadcastEventType} type Broadcast type
  * @prop {any} [payload] Anything
+ */
+
+/**
+ * Internal listener contract for view interactions.
  *
- * @callback InteractionEventListener
- * @param {import("./layout/rectangle.js").default} coords
- *      Coordinates of the view
- * @param {import("../utils/interactionEvent.js").default} event
+ * Listeners receive a single `Interaction` object. They are attached per
+ * event type and may run either in the capture phase or in the bubbling
+ * phase, depending on how the containing view routes the interaction.
  *
+ * Ordinary pointer events are routed by container views, which may do hit
+ * testing, scrollbar dispatch, zoom policy, or other view-specific work
+ * before or after child propagation. In addition, `mouseenter` and
+ * `mouseleave` are synthesized by `InteractionDispatcher` from changes in the
+ * pointed view path.
+ *
+ * `stopPropagation()` prevents further routing to later views, but it does
+ * not provide DOM-style stop-immediate semantics for sibling listeners on the
+ * same view.
+ *
+ * @callback InteractionListener
+ * @param {import("../utils/interaction.js").default} event
+ */
+
+/**
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
@@ -80,11 +98,11 @@ export default class View {
     /** @type {Record<string, (function(BroadcastMessage):void)[]>} */
     #broadcastHandlers = {};
 
-    /** @type {Record<string, InteractionEventListener[]>} */
-    #capturingInteractionEventListeners = {};
+    /** @type {Record<string, InteractionListener[]>} */
+    #capturingInteractionListeners = {};
 
-    /** @type {Record<string, InteractionEventListener[]>} */
-    #nonCapturingInteractionEventListeners = {};
+    /** @type {Record<string, InteractionListener[]>} */
+    #bubblingInteractionListeners = {};
 
     /** @type {(value: number) => void} */
     #widthSetter;
@@ -251,6 +269,33 @@ export default class View {
         return /** @type {import("../spec/config.js").GenomeSpyConfig} */ (
             mergeConfigScopes(this.#configScopes)
         );
+    }
+
+    getCursorSpec() {
+        return this.spec.cursor;
+    }
+
+    getCursor() {
+        const cursor = this.getCursorSpec();
+        return isExprRef(cursor)
+            ? this.paramRuntime.evaluateAndGet(cursor.expr)
+            : cursor;
+    }
+
+    /**
+     * @param {() => void} listener
+     * @param {(disposer: () => void) => void} [registerDisposer]
+     */
+    watchCursor(listener, registerDisposer) {
+        const cursor = this.getCursorSpec();
+        if (!isExprRef(cursor)) {
+            return;
+        }
+
+        this.paramRuntime.watchExpression(cursor.expr, listener, {
+            scopeOwned: false,
+            registerDisposer,
+        });
     }
 
     getConfigScopes() {
@@ -581,38 +626,40 @@ export default class View {
     }
 
     /**
-     * Handles an interactionEvent
+     * Invokes this view's listeners for the current interaction phase.
      *
-     * @param {import("./layout/rectangle.js").default} coords
-     *      Coordinates of the view
-     * @param {import("../utils/interactionEvent.js").default} event
+     * This method does not route the event to children or parents. Container
+     * subclasses implement that routing in `propagateInteraction(...)`
+     * and call `handleInteraction(...)` when the current phase reaches
+     * this view.
+     *
+     * @param {import("../utils/interaction.js").default} event
      * @param {boolean} capturing
-     * @protected
      */
-    handleInteractionEvent(coords, event, capturing) {
+    handleInteraction(event, capturing) {
         const listenersByType = capturing
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         for (const listener of listenersByType[event.type] || []) {
-            listener(coords, event);
+            listener(event);
         }
     }
 
     /**
-     * Add an "interaction" event listener that mimics DOM's event model inside
-     * the view hierarchy.
+     * Registers an internal interaction listener.
      *
-     * This is intended for GenomeSpy's internal use. It allows the views to handle
-     * low level interactions such as dragging, wheeling, etc.
+     * Interaction listeners are internal view-hierarchy hooks, not part of
+     * the supported embed API. They receive the refactored `Interaction`
+     * object directly, without the removed legacy `coords` argument.
      *
      * @param {string} type
-     * @param {InteractionEventListener} listener
+     * @param {InteractionListener} listener
      * @param {boolean} [useCapture]
      */
-    addInteractionEventListener(type, listener, useCapture) {
+    addInteractionListener(type, listener, useCapture) {
         const listenersByType = useCapture
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         let listeners = listenersByType[type];
         if (!listeners) {
             listeners = [];
@@ -623,14 +670,16 @@ export default class View {
     }
 
     /**
+     * Removes a previously registered interaction listener.
+     *
      * @param {string} type
-     * @param {InteractionEventListener} listener
+     * @param {InteractionListener} listener
      * @param {boolean} [useCapture]
      */
-    removeInteractionEventListener(type, listener, useCapture) {
+    removeInteractionListener(type, listener, useCapture) {
         const listenersByType = useCapture
-            ? this.#capturingInteractionEventListeners
-            : this.#nonCapturingInteractionEventListeners;
+            ? this.#capturingInteractionListeners
+            : this.#bubblingInteractionListeners;
         let listeners = listenersByType?.[type];
         if (listeners) {
             const index = listeners.indexOf(listener);
@@ -985,9 +1034,9 @@ export default class View {
      * Broadcasts a message to views that include the given (x, y) point.
      * This is mainly intended for mouse events.
      *
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
+    propagateInteraction(event) {
         // Subclasses must implement proper handling
     }
 }

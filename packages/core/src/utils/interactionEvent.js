@@ -19,7 +19,14 @@
  */
 
 /**
- * @typedef {UIEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
+ * @typedef {Pick<
+ *      WheelEvent,
+ *      "type" | "deltaX" | "deltaY" | "deltaMode" | "preventDefault" | "ctrlKey"
+ * >} WheelLikeEvent
+ */
+
+/**
+ * @typedef {UIEvent | WheelLikeEvent | TouchGestureEvent | WheelClaimProbeEvent} InteractionUiEvent
  */
 
 /**
@@ -47,77 +54,47 @@ export function isTouchGestureEvent(eventLike) {
 }
 
 /**
- * This class wraps a MouseEvent (or similar) and allows for
- * its propagation through the view hierarchy in a similar manner
- * as in the DOM.
+ * @param {unknown} eventLike
+ * @returns {eventLike is WheelLikeEvent}
  */
-export default class InteractionEvent {
-    /** @type {MouseEvent} */
-    #primitiveMouseEventProxy;
-
-    /**
-     * @param {import("../view/layout/point.js").default} point Event coordinates
-     *      inside the visualization canvas.
-     * @param {InteractionUiEvent} uiEvent The event to be wrapped
-     */
-    constructor(point, uiEvent) {
-        this.point = point;
-        this.uiEvent = uiEvent;
-        this.stopped = false;
-        this.wheelClaimed = false;
-
-        /**
-         * The target is known only in the bubbling phase
-         *
-         * @type {import("../view/view.js").default}
-         */
-        this.target = undefined;
+export function isWheelEvent(eventLike) {
+    if (!eventLike || typeof eventLike !== "object") {
+        return false;
     }
 
-    stopPropagation() {
-        this.stopped = true;
-    }
+    const candidate =
+        /** @type {{type?: unknown, deltaX?: unknown, deltaY?: unknown, deltaMode?: unknown, preventDefault?: unknown}} */ (
+            eventLike
+        );
 
-    /**
-     * Marks the event as wheel-owned by the current interaction path.
-     * This is used by native wheel probes to decide preventDefault timing.
-     */
-    claimWheel() {
-        if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
-            throw new Error("Can claim wheel only for wheel events!");
-        }
+    return (
+        candidate.type === "wheel" &&
+        Number.isFinite(candidate.deltaX) &&
+        Number.isFinite(candidate.deltaY) &&
+        Number.isFinite(candidate.deltaMode) &&
+        typeof candidate.preventDefault === "function"
+    );
+}
 
-        this.wheelClaimed = true;
-    }
+/**
+ * @param {WheelLikeEvent} wheelEvent
+ * @param {number} deltaX
+ * @param {number} deltaY
+ * @returns {WheelLikeEvent}
+ */
+export function overrideWheelEventDeltas(wheelEvent, deltaX, deltaY) {
+    return new Proxy(wheelEvent, {
+        get(target, prop) {
+            if (prop === "deltaX") {
+                return deltaX;
+            } else if (prop === "deltaY") {
+                return deltaY;
+            }
 
-    /**
-     * The event type string of the underlying UI event (e.g. "click", "keydown").
-     *
-     * This getter proxies and returns the `type` property from the internal `UIEvent` instance (`this.uiEvent`).
-     *
-     * @returns {string} The UI event type.
-     */
-    get type() {
-        return this.uiEvent.type;
-    }
-
-    get proxiedMouseEvent() {
-        if (!this.#primitiveMouseEventProxy) {
-            this.#primitiveMouseEventProxy = createPrimitiveEventProxy(
-                this.mouseEvent
-            );
-        }
-
-        return this.#primitiveMouseEventProxy;
-    }
-
-    get mouseEvent() {
-        if (this.uiEvent instanceof MouseEvent) {
-            return this.uiEvent;
-        } else {
-            throw new Error("Not a MouseEvent!");
-        }
-    }
+            const value = Reflect.get(target, prop, target);
+            return typeof value === "function" ? value.bind(target) : value;
+        },
+    });
 }
 
 /**

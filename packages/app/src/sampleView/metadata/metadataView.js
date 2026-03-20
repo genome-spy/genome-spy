@@ -7,7 +7,6 @@ import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
 import { NOMINAL, ORDINAL } from "@genome-spy/core/scales/scaleResolution.js";
 import { easeQuadInOut } from "d3-ease";
-import { peek } from "@genome-spy/core/utils/arrayUtils.js";
 import { ActionCreators } from "redux-undo";
 import { contextMenu, DIVIDER } from "../../utils/ui/contextMenu.js";
 import { appendPlotMenuItems } from "../plotMenuItems.js";
@@ -70,11 +69,6 @@ export class MetadataView extends ConcatView {
     #attributeInfoSource;
 
     /**
-     * @type {import("@genome-spy/core/view/view.js").default}
-     */
-    #highlightTarget;
-
-    /**
      * @param {import("../sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
@@ -130,18 +124,15 @@ export class MetadataView extends ConcatView {
             )
         );
 
-        this.addInteractionEventListener(
+        this.addInteractionListener(
             "contextmenu",
             this.handleContextMenu.bind(this)
         );
 
-        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
-        const mouseMoveListener = (coords, event) => {
+        /** @type {import("@genome-spy/core/view/view.js").InteractionListener} */
+        const mouseMoveListener = (event) => {
             const view = event.target;
-            const sample = this.#sampleView.findSampleForMouseEvent(
-                coords,
-                event
-            );
+            const sample = this.#sampleView.findSampleForMouseEvent(event);
             const attributeName = /** @type {string} */ (
                 this.#getAttributeInfoForView(view)?.attribute.specifier
             );
@@ -156,39 +147,25 @@ export class MetadataView extends ConcatView {
                 });
             }
 
-            this.#handleAttributeHighlight(attributeName);
+            if (attributeName) {
+                this.#handleAttributeHighlight(attributeName);
+            }
         };
 
-        this.addInteractionEventListener("mousemove", mouseMoveListener);
-
-        // TODO: Implement "mouseleave" event. Let's hack for now...
-        this.#highlightTarget = peek([
-            ...this.#sampleView.getLayoutAncestors(),
-        ]);
-        /** @type {import("@genome-spy/core/view/view.js").InteractionEventListener} */
-        const highlightTargetListener = (coords, event) => {
+        this.addInteractionListener("mousemove", mouseMoveListener);
+        this.addInteractionListener("mouseleave", (event) => {
             if (!this._attributeHighlighState.currentAttribute) {
                 return;
             }
-            if (event.target) {
-                for (const view of event.target.getLayoutAncestors()) {
-                    if (view == this) {
-                        return;
-                    }
-                }
+
+            if (
+                event.uiEvent.type !== "mouseout" &&
+                this.coords.containsPoint(event.point.x, event.point.y)
+            ) {
+                return;
             }
 
             this.#handleAttributeHighlight(undefined);
-        };
-        this.#highlightTarget.addInteractionEventListener(
-            "mousemove",
-            highlightTargetListener
-        );
-        this.registerDisposer(() => {
-            this.#highlightTarget.removeInteractionEventListener(
-                "mousemove",
-                highlightTargetListener
-            );
         });
     }
 
@@ -222,39 +199,61 @@ export class MetadataView extends ConcatView {
     #handleAttributeHighlight(attribute) {
         const state = this._attributeHighlighState;
 
-        if (attribute != state.currentAttribute) {
-            // Cancel the previous transition
-            state.abortController.abort();
-            state.abortController = new AbortController();
-            this.context.animator
-                .transition({
-                    from: state.backgroundOpacity,
-                    onUpdate: (value) => {
-                        state.backgroundOpacity = value;
-                    },
-                    easingFunction: easeQuadInOut,
-                    signal: state.abortController.signal,
-                    ...(attribute
-                        ? {
-                              to: 0.1,
-                              duration: 1000,
-                              delay: state.backgroundOpacity < 1.0 ? 0 : 500,
-                          }
-                        : {
-                              to: 1.0,
-                              duration: 200,
-                              delay: 150,
-                          }),
-                })
-                .catch((e) => {
-                    // nop
-                });
-
-            // Ensure that the view is rendered, regardless of the transition.
-            this.context.animator.requestRender();
+        if (attribute == state.currentAttribute) {
+            return;
         }
 
-        state.currentAttribute = attribute;
+        if (attribute) {
+            const enteringHighlightState = !state.currentAttribute;
+            state.currentAttribute = attribute;
+
+            if (enteringHighlightState) {
+                this.#transitionAttributeHighlight(0.1, {
+                    duration: 1000,
+                    delay: state.backgroundOpacity < 1.0 ? 0 : 500,
+                });
+            }
+
+            this.context.animator.requestRender();
+            return;
+        }
+
+        if (!state.currentAttribute) {
+            return;
+        }
+
+        state.currentAttribute = undefined;
+        this.#transitionAttributeHighlight(1.0, {
+            duration: 200,
+            delay: 0,
+        });
+        this.context.animator.requestRender();
+    }
+
+    /**
+     * @param {number} to
+     * @param {{ duration: number, delay: number }} options
+     */
+    #transitionAttributeHighlight(to, options) {
+        const state = this._attributeHighlighState;
+
+        state.abortController.abort();
+        state.abortController = new AbortController();
+
+        this.context.animator
+            .transition({
+                from: state.backgroundOpacity,
+                to,
+                ...options,
+                onUpdate: (value) => {
+                    state.backgroundOpacity = value;
+                },
+                easingFunction: easeQuadInOut,
+                signal: state.abortController.signal,
+            })
+            .catch((e) => {
+                // nop
+            });
     }
 
     /**
@@ -268,12 +267,10 @@ export class MetadataView extends ConcatView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    handleContextMenu(coords, event) {
-        const sample = this.#sampleView.findSampleForMouseEvent(coords, event);
+    handleContextMenu(event) {
+        const sample = this.#sampleView.findSampleForMouseEvent(event);
 
         if (!sample) {
             event.mouseEvent.preventDefault();
@@ -284,7 +281,13 @@ export class MetadataView extends ConcatView {
             this.#sampleView.sampleHierarchy.sampleMetadata.entities[sample.id];
 
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
-        const items = [this.#sampleView.makePeekMenuItem(), DIVIDER];
+        const items = [
+            this.#sampleView.makePeekMenuItem(
+                event.point.y - this.#sampleView.childCoords.y,
+                sample.id
+            ),
+            DIVIDER,
+        ];
 
         const attributeInfo = this.#getAttributeInfoForView(event.target);
         if (attributeInfo) {

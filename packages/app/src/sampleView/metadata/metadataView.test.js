@@ -1,5 +1,5 @@
 // @ts-check
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UnitView from "@genome-spy/core/view/unitView.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -8,7 +8,18 @@ import {
     createStoreStub,
 } from "../../testUtils/appTestUtils.js";
 
+const contextMenuMocks = vi.hoisted(() => ({
+    contextMenu: vi.fn(),
+}));
+
 vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
+vi.mock("../../utils/ui/contextMenu.js", async (importOriginal) => {
+    const actual = /** @type {any} */ (await importOriginal());
+    return {
+        ...actual,
+        contextMenu: contextMenuMocks.contextMenu,
+    };
+});
 
 /**
  * @typedef {object} SampleHierarchyStub
@@ -57,7 +68,120 @@ async function waitForCondition(condition) {
     throw new Error("Condition was not met in time.");
 }
 
+async function createInteractiveMetadataViewTestHarness() {
+    const { MetadataView } = await import("./metadataView.js");
+    const transition = vi.fn(() => Promise.resolve());
+    const requestRender = vi.fn();
+    const context = createTestViewContext();
+    context.animator =
+        /** @type {import("@genome-spy/core/utils/animator.js").default} */ (
+            /** @type {any} */ ({
+                transition,
+                requestRender,
+            })
+        );
+    context.requestLayoutReflow = () => undefined;
+    context.updateTooltip = () => undefined;
+    context.getCurrentHover = () => undefined;
+    context.addKeyboardListener = () => undefined;
+    context.addBroadcastListener = () => undefined;
+    context.removeBroadcastListener = () => undefined;
+    context.getNamedDataFromProvider = () => [];
+
+    const store = createStoreStub({
+        provenance: {
+            present: {
+                sampleView: {
+                    sampleMetadata: {
+                        attributeNames: [],
+                        attributeDefs: {},
+                        entities: {},
+                    },
+                },
+            },
+        },
+    });
+
+    /** @type {SampleHierarchyStub} */
+    const sampleHierarchy = {
+        sampleMetadata: {
+            attributeNames: [],
+            attributeDefs: {},
+            entities: {},
+        },
+        sampleData: {
+            entities: {
+                s1: { indexNumber: 0 },
+            },
+        },
+    };
+
+    const sampleView = createSampleViewStub({
+        context,
+        store,
+        sampleHierarchy,
+    });
+    sampleView.findSampleForMouseEvent = () => undefined;
+
+    const metadataView = new MetadataView(
+        /** @type {any} */ (sampleView),
+        /** @type {any} */ (sampleView)
+    );
+
+    const sampleMetadata = {
+        attributeNames: ["foo", "bar"],
+        attributeDefs: {
+            foo: { type: "nominal" },
+            bar: { type: "nominal" },
+        },
+        entities: {
+            s1: { foo: "A", bar: "B" },
+        },
+    };
+
+    sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
+    await store.setState({
+        provenance: {
+            present: {
+                sampleView: {
+                    sampleMetadata,
+                },
+            },
+        },
+    });
+
+    await waitForCondition(() =>
+        ["foo", "bar"].every((attribute) =>
+            metadataView
+                .getDescendants()
+                .some((view) => view.name === `attribute-${attribute}`)
+        )
+    );
+
+    const attributeViews = Object.fromEntries(
+        ["foo", "bar"].map((attribute) => [
+            attribute,
+            metadataView
+                .getDescendants()
+                .find((view) => view.name === `attribute-${attribute}`),
+        ])
+    );
+
+    return {
+        context,
+        sampleView,
+        metadataView,
+        requestRender,
+        transition,
+        attributeViews,
+    };
+}
+
 describe("MetadataView", () => {
+    beforeEach(() => {
+        contextMenuMocks.contextMenu.mockReset();
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();
@@ -439,6 +563,163 @@ describe("MetadataView", () => {
             .find((view) => view.name === "attributeGroup-clinical");
         expect(clinicalGroupView).toBeDefined();
         expect(clinicalGroupView?.explicitName).toBe("attributeGroup-clinical");
+
+        metadataView.dispose();
+    });
+
+    it("switches highlighted attributes without restarting the dimming transition", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "foo"
+        );
+        expect(transition).toHaveBeenCalledTimes(1);
+        const enterTransition = /** @type {any[][]} */ (
+            transition.mock.calls
+        )[0];
+        expect(enterTransition).toBeDefined();
+        expect(enterTransition[0]).toMatchObject({
+            to: 0.1,
+            duration: 1000,
+            delay: 500,
+        });
+        expect(requestRender).toHaveBeenCalledTimes(1);
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.bar,
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "bar"
+        );
+        expect(transition).toHaveBeenCalledTimes(1);
+        expect(requestRender).toHaveBeenCalledTimes(2);
+
+        metadataView.dispose();
+    });
+
+    it("keeps the current highlight when the pointer moves over gaps between attributes", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        transition.mockClear();
+        requestRender.mockClear();
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: metadataView,
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "foo"
+        );
+        expect(transition).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+
+        metadataView.dispose();
+    });
+
+    it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        Object.defineProperty(metadataView, "coords", {
+            value: {
+                containsPoint: () => true,
+            },
+        });
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        transition.mockClear();
+        requestRender.mockClear();
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mouseleave",
+                point: { x: 1, y: 1 },
+                uiEvent: { type: "mousemove" },
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            "foo"
+        );
+        expect(transition).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+
+        metadataView.dispose();
+    });
+
+    it("clears attribute highlight on mouseleave without an exit delay", async () => {
+        const { metadataView, requestRender, transition, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+            }),
+            false
+        );
+
+        transition.mockClear();
+        requestRender.mockClear();
+        metadataView._attributeHighlighState.backgroundOpacity = 0.1;
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mouseleave",
+                uiEvent: { type: "mouseout" },
+            }),
+            false
+        );
+
+        expect(metadataView._attributeHighlighState.currentAttribute).toBe(
+            undefined
+        );
+        expect(transition).toHaveBeenCalledTimes(1);
+        const leaveTransition = /** @type {any[][]} */ (
+            transition.mock.calls
+        )[0];
+        expect(leaveTransition).toBeDefined();
+        expect(leaveTransition[0]).toMatchObject({
+            to: 1.0,
+            duration: 200,
+            delay: 0,
+        });
+        expect(requestRender).toHaveBeenCalledTimes(1);
 
         metadataView.dispose();
     });

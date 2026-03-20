@@ -171,16 +171,16 @@ export default class LayerView extends ContainerView {
     }
 
     /**
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
+    propagateInteraction(event) {
+        this.handleInteraction(event, true);
         for (let i = this.#children.length - 1; i >= 0; i--) {
-            this.#children[i].propagateInteractionEvent(event);
+            this.#children[i].propagateInteraction(event);
             if (event.stopped) {
                 return;
             }
         }
-        this.handleInteractionEvent(undefined, event, false);
+        this.handleInteraction(event, false);
     }
 }

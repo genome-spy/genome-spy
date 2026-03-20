@@ -2,6 +2,8 @@ import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import LayerView from "../layerView.js";
 import { markViewAsNonAddressable } from "../viewSelectors.js";
 
+export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
+
 export default class SelectionRect extends LayerView {
     /**
      * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
@@ -30,6 +32,12 @@ export default class SelectionRect extends LayerView {
         const layerSpec = {
             name: "selectionRect",
             domainInert: true,
+            params: [
+                {
+                    name: INTERVAL_DRAG_ACTIVE_PARAM,
+                    value: false,
+                },
+            ],
             resolve: {
                 scale: {
                     x: "forced",
@@ -73,6 +81,9 @@ export default class SelectionRect extends LayerView {
                     stroke: "black",
                     strokeWidth: 1,
                     strokeOpacity: 0.2,
+                    cursor: brushMarkProps.cursor ?? {
+                        expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
+                    },
                     ...brushMarkProps,
                 },
             },

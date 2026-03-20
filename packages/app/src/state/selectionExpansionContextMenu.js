@@ -24,8 +24,7 @@ export function setupSelectionExpansionContextMenu({
     let selectionExpansionMultiParamWarningShown = false;
 
     const listener = (
-        /** @type {import("@genome-spy/core/view/layout/rectangle.js").default | undefined} */ _coords,
-        /** @type {import("@genome-spy/core/utils/interactionEvent.js").default} */ event
+        /** @type {import("@genome-spy/core/utils/interaction.js").default} */ event
     ) => {
         if (event.stopped || isInsideSampleView(event.target)) {
             return;
@@ -67,9 +66,8 @@ export function setupSelectionExpansionContextMenu({
         event.stopPropagation();
     };
 
-    viewRoot.addInteractionEventListener("contextmenu", listener);
-    return () =>
-        viewRoot.removeInteractionEventListener("contextmenu", listener);
+    viewRoot.addInteractionListener("contextmenu", listener);
+    return () => viewRoot.removeInteractionListener("contextmenu", listener);
 }
 
 /**

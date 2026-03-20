@@ -11,6 +11,8 @@ import ConcatView from "./concatView.js";
 import PointMark from "../marks/point.js";
 import View from "./view.js";
 import LayerView from "./layerView.js";
+import Point from "./layout/point.js";
+import Interaction from "../utils/interaction.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -104,6 +106,52 @@ describe("Trivial creations and initializations", () => {
             )
         ).resolves.toBeInstanceOf(UnitView));
 
+    test("evaluates ExprRef-backed view cursor", async () => {
+        const view = await create(
+            {
+                params: [
+                    {
+                        name: "cursorMode",
+                        value: "move",
+                    },
+                ],
+                cursor: { expr: "cursorMode" },
+                mark: "point",
+            },
+            UnitView
+        );
+
+        expect(view.getCursor()).toBe("move");
+
+        view.paramRuntime.setValue("cursorMode", "grabbing");
+
+        expect(view.getCursor()).toBe("grabbing");
+    });
+
+    test("evaluates ExprRef-backed mark cursor", async () => {
+        const view = await create(
+            {
+                params: [
+                    {
+                        name: "cursorMode",
+                        value: "pointer",
+                    },
+                ],
+                mark: {
+                    type: "point",
+                    cursor: { expr: "cursorMode" },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.getCursor()).toBe("pointer");
+
+        view.paramRuntime.setValue("cursorMode", "crosshair");
+
+        expect(view.mark.getCursor()).toBe("crosshair");
+    });
+
     test("Normalizes tick mark encoding from center position and properties", async () => {
         const view = await create(
             {
@@ -184,6 +232,50 @@ describe("Trivial creations and initializations", () => {
         disposer();
         view.handleBroadcast({ type: "layoutComputed" });
         expect(calls).toBe(1);
+    });
+
+    test("dispatches and unregisters internal interaction listeners", async () => {
+        const view = await create({ mark: "point" }, View);
+
+        /** @type {string[]} */
+        const calls = [];
+
+        /** @type {import("./view.js").InteractionListener} */
+        const firstListener = (event) => {
+            expect(event.type).toBe("mousemove");
+            calls.push("first");
+        };
+        /** @type {import("./view.js").InteractionListener} */
+        const secondListener = (event) => {
+            expect(event.type).toBe("mousemove");
+            calls.push("second");
+        };
+
+        view.addInteractionListener("mousemove", firstListener);
+        view.addInteractionListener("mousemove", secondListener);
+
+        view.handleInteraction(
+            new Interaction(
+                new Point(1, 2),
+                /** @type {any} */ ({ type: "mousemove" })
+            ),
+            false
+        );
+
+        expect(calls).toEqual(["first", "second"]);
+
+        view.removeInteractionListener("mousemove", secondListener);
+        view.removeInteractionListener("mousemove", firstListener);
+
+        view.handleInteraction(
+            new Interaction(
+                new Point(3, 4),
+                /** @type {any} */ ({ type: "mousemove" })
+            ),
+            false
+        );
+
+        expect(calls).toEqual(["first", "second"]);
     });
 
     test("Preserves inherited key channel in unit views", async () => {

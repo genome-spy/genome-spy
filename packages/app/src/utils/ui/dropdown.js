@@ -1,4 +1,7 @@
-import { SUPPRESS_TOOLTIP_CLASS_NAME } from "@genome-spy/core/utils/ui/tooltip.js";
+import {
+    FREEZE_INTERACTION_CLASS_NAME,
+    SUPPRESS_TOOLTIP_CLASS_NAME,
+} from "@genome-spy/core/utils/ui/tooltip.js";
 
 /** @type {Set<HTMLElement>} */
 const visibleDropdowns = new Set();
@@ -15,6 +18,7 @@ export function toggleDropdown(event) {
     for (const dropdown of visibleDropdowns) {
         dropdown.classList.remove("show");
         document.body.classList.remove(SUPPRESS_TOOLTIP_CLASS_NAME);
+        document.body.classList.remove(FREEZE_INTERACTION_CLASS_NAME);
     }
     visibleDropdowns.clear();
 
@@ -24,12 +28,16 @@ export function toggleDropdown(event) {
         visibleDropdowns.add(dropdown);
         dropdown.classList.add("show");
         document.body.classList.add(SUPPRESS_TOOLTIP_CLASS_NAME);
+        document.body.classList.add(FREEZE_INTERACTION_CLASS_NAME);
         window.addEventListener(
             "click",
             (e) => {
                 if (dropdown.classList.contains("show")) {
                     dropdown.classList.remove("show");
                     document.body.classList.remove(SUPPRESS_TOOLTIP_CLASS_NAME);
+                    document.body.classList.remove(
+                        FREEZE_INTERACTION_CLASS_NAME
+                    );
                     e.preventDefault();
                 }
             },

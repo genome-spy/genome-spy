@@ -356,6 +356,10 @@ export default class GenomeSpy {
             getNamedDataFromProvider: this.getNamedDataFromProvider.bind(this),
             getCurrentHover: () =>
                 this.#interactionController.getCurrentHover(),
+            suspendHoverTracking: () =>
+                this.#interactionController?.suspendHoverTracking(),
+            resumeHoverTracking: (event) =>
+                this.#interactionController?.resumeHoverTracking(event),
             addKeyboardListener: (type, listener) => {
                 this.#keyboardListenerManager.add(type, (event) => {
                     if (this.#shouldDispatchKeyboardEvent(type, event)) {

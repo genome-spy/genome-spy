@@ -128,7 +128,9 @@ export default class UnitView extends View {
         this.registerDisposer(
             this._addBroadcastHandler("subtreeDataReady", () => {
                 for (const channel of primaryPositionalChannels) {
-                    this.getScaleResolution(channel)?.syncLinkedSelectionFromDomain();
+                    this.getScaleResolution(
+                        channel
+                    )?.syncLinkedSelectionFromDomain();
                 }
             })
         );
@@ -179,8 +181,7 @@ export default class UnitView extends View {
                     : () => true;
 
                 const listener = (
-                    /** @type {any} */ _,
-                    /** @type {import("../utils/interactionEvent.js").default} */ event
+                    /** @type {import("../utils/interaction.js").default} */ event
                 ) => {
                     if (!eventPredicate(event.proxiedMouseEvent)) {
                         return;
@@ -222,7 +223,7 @@ export default class UnitView extends View {
                     }
                 };
 
-                this.addInteractionEventListener(
+                this.addInteractionListener(
                     ["mouseover", "pointerover"].includes(eventConfig.type)
                         ? "mousemove"
                         : eventConfig.type,
@@ -235,8 +236,7 @@ export default class UnitView extends View {
                         : () => true;
 
                     const clearListener = (
-                        /** @type {any} */ _,
-                        /** @type {import("../utils/interactionEvent.js").default} */ event
+                        /** @type {import("../utils/interaction.js").default} */ event
                     ) => {
                         if (!clearPredicate(event.proxiedMouseEvent)) {
                             return;
@@ -248,7 +248,7 @@ export default class UnitView extends View {
                         setter(selection);
                     };
 
-                    this.addInteractionEventListener(
+                    this.addInteractionListener(
                         clearEventConfig.type,
                         clearListener
                     );
@@ -611,17 +611,17 @@ export default class UnitView extends View {
     }
 
     /**
-     * @param {import("../utils/interactionEvent.js").default} event
+     * @param {import("../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
+    propagateInteraction(event) {
+        this.handleInteraction(event, true);
         event.target = this;
 
         if (event.stopped) {
             return;
         }
 
-        this.handleInteractionEvent(undefined, event, false);
+        this.handleInteraction(event, false);
     }
 
     /**

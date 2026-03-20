@@ -181,22 +181,17 @@ export type SelectionInitInterval =
 export type InteractionEventType =
     | "click"
     | "dblclick"
+    | "mouseenter"
+    | "mouseleave"
     | "mouseover"
     | "mousedown"
     | "wheel";
 
-// TODO: merge with InteractionEventType
-export type DomEventType =
-    | "click"
-    | "dblclick"
-    | "mouseover"
-    | "pointerover"
-    | "mousedown"
-    | "wheel";
+export type DomEventType = InteractionEventType | "pointerover";
 
 export interface EventConfig {
     /**
-     * The type of event to listen to. For example, `"click"` or `"mouseover"`.
+     * The type of event to listen to. For example, `"click"` or `"mouseenter"`.
      */
     type: DomEventType;
 
@@ -288,6 +283,13 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
 }
 
 export interface BrushConfig extends ShadowProps, ZIndexProps {
+    /**
+     * Mouse cursor shown while the pointer is over the interval mark.
+     *
+     * __Default value:__ `{ expr: "intervalDragActive ? 'grabbing' : 'move'" }`
+     */
+    cursor?: string | ExprRef;
+
     /**
      * The fill color of the interval mark.
      *

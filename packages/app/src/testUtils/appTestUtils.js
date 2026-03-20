@@ -26,7 +26,7 @@ import CompositeAttributeInfoSource from "../sampleView/compositeAttributeInfoSo
  *   compositeAttributeInfoSource: { addAttributeInfoSource: (name: string, resolver: (attribute: any) => any) => void, removeAttributeInfoSource: (name: string, resolver?: (attribute: any) => any) => void, attributeInfoSourcesByType: Record<string, any> },
  *   provenance: { store: StoreStub, getPresentState: () => any },
  *   locationManager: { clipBySummary: (coords: import("@genome-spy/core/view/layout/rectangle.js").default) => import("@genome-spy/core/view/layout/rectangle.js").default },
- *   findSampleForMouseEvent: (coords: import("@genome-spy/core/view/layout/rectangle.js").default, event: any) => any,
+ *   findSampleForMouseEvent: (event: any) => any,
  *   makePeekMenuItem: () => any,
  *   actions: { filterByNominal: any },
  *   dispatchAttributeAction: (action: any) => void,

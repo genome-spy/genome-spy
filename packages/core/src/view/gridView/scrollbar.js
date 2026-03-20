@@ -112,7 +112,7 @@ export default class Scrollbar extends UnitView {
         // Smooth viewport offset updates
         this.#initViewportOffsetSmoother(this.viewportOffset);
 
-        this.addInteractionEventListener("mousedown", (coords, event) => {
+        this.addInteractionListener("mousedown", (event) => {
             event.stopPropagation();
 
             if (this.#getMaxScrollOffset() <= 0) {
@@ -125,6 +125,7 @@ export default class Scrollbar extends UnitView {
                     : mouseEvent.clientX;
 
             event.mouseEvent.preventDefault();
+            this.context.suspendHoverTracking();
 
             const initialScrollOffset = this.scrollOffset;
             const initialOffset = getMouseOffset(event.mouseEvent);
@@ -150,9 +151,10 @@ export default class Scrollbar extends UnitView {
                 });
             };
 
-            const onMouseup = () => {
+            const onMouseup = (/** @type {MouseEvent} */ upEvent) => {
                 document.removeEventListener("mousemove", onMousemove);
                 document.removeEventListener("mouseup", onMouseup);
+                this.context.resumeHoverTracking(upEvent);
             };
 
             document.addEventListener("mouseup", onMouseup, false);

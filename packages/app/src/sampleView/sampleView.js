@@ -22,9 +22,17 @@ import {
 import { getActionInfo } from "./state/actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
-import { LocationManager, getSampleLocationAt } from "./locationManager.js";
+import {
+    LocationManager,
+    getClosestSampleLocationAt,
+    getSampleLocationAt,
+} from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
+import {
+    propagateInteraction,
+    propagateInteractionSurface,
+} from "@genome-spy/core/view/interactionRouting.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import { faArrowsAltV, faXmark } from "@fortawesome/free-solid-svg-icons";
 import GridChild, {
@@ -419,15 +427,18 @@ export default class SampleView extends ContainerView {
      */
     #setupInteractionHandlers() {
         const context = this.context;
-        this.addInteractionEventListener("mousemove", (coords, event) => {
-            // TODO: Should be reset to undefined on mouseout
+        this.addInteractionListener("mousemove", (event) => {
             this.#lastMouseY = event.point.y - this.childCoords.y;
         });
 
-        this.addInteractionEventListener(
+        this.addInteractionListener("mouseleave", () => {
+            this.#lastMouseY = -1;
+        });
+
+        this.addInteractionListener(
             "wheel",
-            (coords, event) => {
-                const wheelEvent = /** @type {WheelEvent} */ (event.uiEvent);
+            (event) => {
+                const wheelEvent = event.wheelEvent;
                 if (this.locationManager.isCloseup() && !wheelEvent.ctrlKey) {
                     this.locationManager.handleWheelEvent(wheelEvent);
 
@@ -442,15 +453,9 @@ export default class SampleView extends ContainerView {
                     this.sampleGroupView.updateRange();
                     this.context.animator.requestRender();
 
-                    // Replace the uiEvent to prevent decoratorView from zooming.
-                    // Only allow horizontal panning.
-                    event.uiEvent = {
-                        type: wheelEvent.type,
-                        // @ts-ignore
-                        deltaX: wheelEvent.deltaX,
-                        preventDefault:
-                            wheelEvent.preventDefault.bind(wheelEvent),
-                    };
+                    // Keep downstream zoom handling on the same wheel event, but
+                    // suppress vertical zooming once closeup scrolling consumes it.
+                    event.setWheelDeltas(wheelEvent.deltaX, 0);
                 }
             },
             true
@@ -647,7 +652,7 @@ export default class SampleView extends ContainerView {
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
 
-        this.#gridChild.view.addInteractionEventListener(
+        this.#gridChild.view.addInteractionListener(
             "contextmenu",
             this.#handleContextMenu.bind(this)
         );
@@ -1010,15 +1015,20 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @param {number} [mouseY]
+     * @param {string} [sampleId]
      *
      * @returns {import("../utils/ui/contextMenu.js").MenuItem}
      */
-    makePeekMenuItem() {
+    makePeekMenuItem(
+        mouseY = this.#lastMouseY,
+        sampleId = this.#getPeekFocusSampleAt(mouseY)?.id
+    ) {
         return {
             ...(!this.locationManager.isCloseup()
                 ? {
                       label: "Open closeup",
-                      callback: () => this.#openCloseup(),
+                      callback: () => this.#openCloseup(mouseY, sampleId),
                       icon: faArrowsAltV,
                   }
                 : {
@@ -1032,17 +1042,32 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    findSampleForMouseEvent(coords, event) {
+    findSampleForMouseEvent(event) {
         return this.getSampleAt(event.point.y - this.childCoords.y);
     }
 
-    #openCloseup() {
-        const mouseY = this.#lastMouseY;
-        const sampleId = this.getSampleAt(mouseY)?.id;
+    /**
+     * @param {number} pos
+     */
+    #getPeekFocusSampleAt(pos) {
+        if (!Number.isFinite(pos) || pos < 0 || pos > this.childCoords.height) {
+            return undefined;
+        }
+
+        const sampleLocations = this.locationManager.getLocations().samples;
+        const match = getClosestSampleLocationAt(pos, sampleLocations);
+
+        return match
+            ? this.sampleHierarchy.sampleData.entities[match.key]
+            : undefined;
+    }
+
+    #openCloseup(
+        mouseY = this.#lastMouseY,
+        sampleId = this.#getPeekFocusSampleAt(mouseY)?.id
+    ) {
         this.locationManager.togglePeek(undefined, mouseY, sampleId);
     }
 
@@ -1083,7 +1108,7 @@ export default class SampleView extends ContainerView {
 
     /**
      * @param {import("@genome-spy/core/view/view.js").default} view
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      * @returns {Partial<Record<"x" | "y", number>>}
      */
     #getSelectionPoint(view, event) {
@@ -1123,11 +1148,9 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
-     *      Coordinates of the view
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    #handleContextMenu(coords, event) {
+    #handleContextMenu(event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
 
@@ -1136,7 +1159,7 @@ export default class SampleView extends ContainerView {
             event.point.y
         ).x;
 
-        const sample = this.findSampleForMouseEvent(coords, event);
+        const sample = this.findSampleForMouseEvent(event);
 
         const view = this.#gridChild.view;
 
@@ -1178,7 +1201,10 @@ export default class SampleView extends ContainerView {
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
-            this.makePeekMenuItem(),
+            this.makePeekMenuItem(
+                event.point.y - this.childCoords.y,
+                sample?.id
+            ),
             DIVIDER,
             {
                 label: selectionIntervalLabel
@@ -1319,65 +1345,76 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * @param {import("@genome-spy/core/utils/interactionEvent.js").default} event
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
-
-        if (event.stopped) {
-            return;
-        }
-
-        if (event.type === "wheelclaimprobe") {
-            if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-                const resolution = this.#gridChild.view.getScaleResolution("x");
-                if (resolution?.isZoomable()) {
-                    event.claimWheel();
+    propagateInteraction(event) {
+        propagateInteraction(this, event, () => {
+            if (event.type === "wheelclaimprobe") {
+                if (
+                    this.childCoords.containsPoint(event.point.x, event.point.y)
+                ) {
+                    const resolution =
+                        this.#gridChild.view.getScaleResolution("x");
+                    if (resolution?.isZoomable()) {
+                        event.claimWheel();
+                    }
                 }
+                return;
             }
-            return;
-        }
 
-        for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
-            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
-                scrollbar.propagateInteractionEvent(event);
+            for (const scrollbar of Object.values(this.#gridChild.scrollbars)) {
+                propagateInteractionSurface(
+                    event,
+                    () =>
+                        scrollbar.coords.containsPoint(
+                            event.point.x,
+                            event.point.y
+                        ),
+                    () => scrollbar.propagateInteraction(event)
+                );
+
                 if (event.stopped) {
                     return;
                 }
             }
-        }
 
-        if (this.childCoords.containsPoint(event.point.x, event.point.y)) {
-            this.#gridChild.view.propagateInteractionEvent(event);
+            propagateInteractionSurface(
+                event,
+                () =>
+                    this.childCoords.containsPoint(
+                        event.point.x,
+                        event.point.y
+                    ),
+                () => this.#gridChild.view.propagateInteraction(event),
+                () =>
+                    interactionToZoom(
+                        event,
+                        this.childCoords,
+                        (zoomEvent) =>
+                            this.#handleZoom(
+                                this.childCoords,
+                                this.#gridChild.view,
+                                zoomEvent
+                            ),
+                        this.context.getCurrentHover(),
+                        this.context.animator
+                    )
+            );
 
             if (event.stopped) {
                 return;
             }
 
-            // Hmm. Perhaps this could be attached to the child
-            interactionToZoom(
+            propagateInteractionSurface(
                 event,
-                this.childCoords,
-                (zoomEvent) =>
-                    this.#handleZoom(
-                        this.childCoords,
-                        this.#gridChild.view,
-                        zoomEvent
+                () =>
+                    this.sidebarCoords.containsPoint(
+                        event.point.x,
+                        event.point.y
                     ),
-                this.context.getCurrentHover(),
-                this.context.animator
+                () => this.#sidebarView.propagateInteraction(event)
             );
-        }
-
-        if (this.sidebarCoords.containsPoint(event.point.x, event.point.y)) {
-            this.#sidebarView.propagateInteractionEvent(event);
-        }
-
-        if (event.stopped) {
-            return;
-        }
-
-        this.handleInteractionEvent(undefined, event, false);
+        });
     }
 
     /**

@@ -14,6 +14,14 @@ export interface MarkPropsBase {
      */
     style?: string | string[];
 
+    /**
+     * Mouse cursor shown while the pointer is over the mark.
+     * Mark cursor takes precedence over enclosing view cursors.
+     *
+     * __Default value:__ browser default
+     */
+    cursor?: string | ExprRef;
+
     // Channels.
 
     /**

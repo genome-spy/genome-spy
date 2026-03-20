@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
-import InteractionEvent from "../../utils/interactionEvent.js";
+import Interaction from "../../utils/interaction.js";
 import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
@@ -761,8 +761,8 @@ describe("GridView wheel zoom", () => {
         const yZoomSpy = vi.spyOn(yResolution, "zoom");
         const preventDefault = /** @type {() => void} */ (() => undefined);
 
-        concatView.propagateInteractionEvent(
-            new InteractionEvent(
+        concatView.propagateInteraction(
+            new Interaction(
                 point,
                 /** @type {any} */ ({
                     type: "wheel",

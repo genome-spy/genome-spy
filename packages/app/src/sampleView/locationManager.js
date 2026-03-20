@@ -163,7 +163,7 @@ export class LocationManager {
 
     /**
      *
-     * @param {WheelEvent} wheelEvent
+     * @param {import("@genome-spy/core/utils/interactionEvent.js").WheelLikeEvent} wheelEvent
      */
     handleWheelEvent(wheelEvent) {
         this.setScrollOffset(this.#scrollOffset + wheelEvent.deltaY);
@@ -819,6 +819,41 @@ export function getSampleLocationAt(pos, sampleLocations) {
 }
 
 /**
+ * Returns the closest sample location to the given vertical position.
+ *
+ * This is useful when the pointer falls into padding between fitted sample
+ * rows but the nearest sample should still be considered the interaction focus.
+ *
+ * @param {number} pos Coordinate on unit scale
+ * @param {import("./sampleViewTypes.js").SampleLocation[]} [sampleLocations]
+ */
+export function getClosestSampleLocationAt(pos, sampleLocations) {
+    if (!sampleLocations?.length || !Number.isFinite(pos)) {
+        return undefined;
+    }
+
+    const exactMatch = getSampleLocationAt(pos, sampleLocations);
+    if (exactMatch) {
+        return exactMatch;
+    }
+
+    let closestSample = sampleLocations[0];
+    let closestDistance = distanceToLocSize(pos, closestSample.locSize);
+
+    for (let i = 1; i < sampleLocations.length; i++) {
+        const sampleLocation = sampleLocations[i];
+        const distance = distanceToLocSize(pos, sampleLocation.locSize);
+
+        if (distance < closestDistance) {
+            closestSample = sampleLocation;
+            closestDistance = distance;
+        }
+    }
+
+    return closestSample;
+}
+
+/**
  * @param {object} metrics
  * @param {number} metrics.viewportHeight
  * @param {number} metrics.scrollableHeight
@@ -856,4 +891,18 @@ export function computeScrollMetrics({
  */
 export function locSizeEncloses(locSize, value) {
     return value >= locSize.location && value < locSize.location + locSize.size;
+}
+
+/**
+ * @param {number} value
+ * @param {LocSize} locSize
+ */
+function distanceToLocSize(value, locSize) {
+    if (locSizeEncloses(locSize, value)) {
+        return 0;
+    } else if (value < locSize.location) {
+        return locSize.location - value;
+    } else {
+        return value - (locSize.location + locSize.size);
+    }
 }

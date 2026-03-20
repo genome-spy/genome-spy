@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
     calculateLocations,
     computeScrollMetrics,
+    getClosestSampleLocationAt,
     getSampleLocationAt,
 } from "./locationManager.js";
 
@@ -388,5 +389,41 @@ describe("LocationManager layout helpers", () => {
         expect(
             getSampleLocationAt(locSize.location + locSize.size, samples)
         ).toBe(undefined);
+    });
+
+    test("getClosestSampleLocationAt falls back to the nearest sample row", () => {
+        /** @type {import("./state/sampleState.js").GroupGroup} */
+        const root = {
+            name: "Root",
+            title: "Root",
+            groups: [],
+        };
+
+        /** @type {import("./state/sampleState.js").SampleGroup} */
+        const groupA = {
+            name: "A",
+            title: "Group A",
+            samples: ["s1", "s2"],
+        };
+
+        root.groups = [groupA];
+
+        const { samples } = calculateLocations([[root, groupA]], {
+            viewHeight: 100,
+            summaryHeight: 0,
+            groupSpacing: 0,
+        });
+
+        const first = samples[0].locSize;
+        const second = samples[1].locSize;
+        const nearFirstGapPos = first.location + first.size + 1;
+
+        expect(getSampleLocationAt(nearFirstGapPos, samples)).toBeUndefined();
+        expect(getClosestSampleLocationAt(nearFirstGapPos, samples)?.key).toBe(
+            "s1"
+        );
+        expect(
+            getClosestSampleLocationAt(second.location - 1, samples)?.key
+        ).toBe("s2");
     });
 });

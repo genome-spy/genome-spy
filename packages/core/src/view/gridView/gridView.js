@@ -11,6 +11,10 @@ import Padding from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
 import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "../axisView.js";
 import ContainerView from "../containerView.js";
+import {
+    propagateInteraction,
+    propagateInteractionSurface,
+} from "../interactionRouting.js";
 import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
@@ -983,79 +987,81 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @param {import("../../utils/interactionEvent.js").default} event
+     * @param {import("../../utils/interaction.js").default} event
      */
-    propagateInteractionEvent(event) {
-        this.handleInteractionEvent(undefined, event, true);
+    propagateInteraction(event) {
+        propagateInteraction(this, event, () => {
+            const pointedChild = this.#visibleChildren.find((gridChild) =>
+                gridChild.coords.containsPoint(event.point.x, event.point.y)
+            );
+            const pointedView = pointedChild?.view;
 
-        if (event.stopped) {
-            return;
-        }
+            if (event.type === "wheelclaimprobe") {
+                // Probe path: claim wheel ownership without executing regular wheel
+                // behavior. InteractionController uses this to decide whether native
+                // wheel should be preventDefault()'ed before inertia kicks in.
+                if (!pointedView) {
+                    return;
+                }
 
-        const pointedChild = this.#visibleChildren.find((gridChild) =>
-            gridChild.coords.containsPoint(event.point.x, event.point.y)
-        );
-        const pointedView = pointedChild?.view;
-
-        if (event.type === "wheelclaimprobe") {
-            // Probe path: claim wheel ownership without executing regular wheel
-            // behavior. InteractionController uses this to decide whether native
-            // wheel should be preventDefault()'ed before inertia kicks in.
-            if (!pointedView) {
+                if (isZoomInteractionView(pointedView)) {
+                    if (hasZoomableResolutions(pointedView)) {
+                        event.claimWheel();
+                    }
+                } else {
+                    pointedView.propagateInteraction(event);
+                }
                 return;
             }
 
-            if (isZoomInteractionView(pointedView)) {
-                if (hasZoomableResolutions(pointedView)) {
-                    event.claimWheel();
-                }
-            } else {
-                pointedView.propagateInteractionEvent(event);
-            }
-            return;
-        }
+            this.#keyboardZoomController?.handlePointerEvent(
+                pointedChild,
+                event
+            );
 
-        this.#keyboardZoomController?.handlePointerEvent(pointedChild, event);
+            for (const scrollbar of Object.values(
+                pointedChild?.scrollbars ?? {}
+            )) {
+                propagateInteractionSurface(
+                    event,
+                    () =>
+                        scrollbar.coords.containsPoint(
+                            event.point.x,
+                            event.point.y
+                        ),
+                    () => scrollbar.propagateInteraction(event)
+                );
 
-        for (const scrollbar of Object.values(pointedChild?.scrollbars ?? {})) {
-            if (scrollbar.coords.containsPoint(event.point.x, event.point.y)) {
-                scrollbar.propagateInteractionEvent(event);
                 if (event.stopped) {
                     return;
                 }
             }
-        }
 
-        if (pointedView) {
-            pointedView.propagateInteractionEvent(event);
-
-            if (event.stopped) {
+            if (!pointedView) {
                 return;
             }
 
-            // Hmm, maybe this should be registered when needed and not include
-            // as a hardcoded interaction?
-            if (isZoomInteractionView(pointedView)) {
-                interactionToZoom(
-                    event,
-                    pointedChild.coords,
-                    (zoomEvent) =>
-                        this.#handleZoom(
-                            pointedChild.coords,
-                            pointedChild.view,
-                            zoomEvent
-                        ),
-                    this.context.getCurrentHover(),
-                    this.context.animator
-                );
-            }
-        }
-
-        if (event.stopped) {
-            return;
-        }
-
-        this.handleInteractionEvent(undefined, event, false);
+            propagateInteractionSurface(
+                event,
+                () => true,
+                () => pointedView.propagateInteraction(event),
+                isZoomInteractionView(pointedView)
+                    ? () =>
+                          interactionToZoom(
+                              event,
+                              pointedChild.coords,
+                              (zoomEvent) =>
+                                  this.#handleZoom(
+                                      pointedChild.coords,
+                                      pointedChild.view,
+                                      zoomEvent
+                                  ),
+                              this.context.getCurrentHover(),
+                              this.context.animator
+                          )
+                    : undefined
+            );
+        });
     }
 
     /**

@@ -42,6 +42,18 @@ export default interface ViewContext {
     getCurrentHover: () => Hover;
 
     /**
+     * Internal interaction hook: suspends hover recomputation during active
+     * drag interactions.
+     */
+    suspendHoverTracking: () => void;
+
+    /**
+     * Internal interaction hook: resumes hover recomputation after an active
+     * drag interaction.
+     */
+    resumeHoverTracking: (event?: MouseEvent) => void;
+
+    /**
      * Adds a keyboard event listener to the document. Cleanup is performed automatically
      * when GenomeSpy is finalized.
      *
