@@ -10,7 +10,6 @@ describe("scaleDomainUtils", () => {
             getLinkedSelectionDomainInfo: () => ({
                 param: "brush",
                 encoding: "x",
-                sync: "twoWay",
                 persist: true,
             }),
         };
@@ -23,7 +22,6 @@ describe("scaleDomainUtils", () => {
             getLinkedSelectionDomainInfo: () => ({
                 param: "brush",
                 encoding: "x",
-                sync: "twoWay",
                 persist: false,
             }),
         };
@@ -43,7 +41,6 @@ describe("scaleDomainUtils", () => {
                             getLinkedSelectionDomainInfo: () => ({
                                 param: "brush",
                                 encoding: "x",
-                                sync: "twoWay",
                                 persist: true,
                             }),
                         },
@@ -56,7 +53,6 @@ describe("scaleDomainUtils", () => {
                             getLinkedSelectionDomainInfo: () => ({
                                 param: "brush",
                                 encoding: "x",
-                                sync: "twoWay",
                                 persist: false,
                             }),
                         },

@@ -311,31 +311,6 @@ describe("DomainPlanner", () => {
         expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
             param: "brush",
             encoding: "x",
-            sync: "auto",
-        });
-    });
-
-    test("selection-linked domain can expose two-way sync metadata", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        planner.getConfiguredDomain();
-        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
-            param: "brush",
-            encoding: "x",
-            sync: "twoWay",
         });
     });
 
@@ -412,59 +387,6 @@ describe("DomainPlanner", () => {
         expect(() => planner.getConfiguredDomain()).toThrow(
             "Conflicting selection domain references"
         );
-    });
-
-    test("throws on conflicting selection sync modes on shared scales", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "oneWay" },
-                }),
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(() => planner.getConfiguredDomain()).toThrow(
-            "Conflicting selection domain sync modes"
-        );
-    });
-
-    test("selection-linked domain allows mixing implicit and explicit sync", () => {
-        const selection = {
-            type: "interval",
-            intervals: { x: [2, 5] },
-        };
-
-        const planner = createPlanner(
-            [
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush" },
-                }),
-                createSelectionDomainMember({
-                    selectionValue: selection,
-                    domain: { param: "brush", sync: "twoWay" },
-                }),
-            ],
-            "quantitative"
-        );
-
-        expect(toRegularArray(planner.getConfiguredDomain())).toEqual([2, 5]);
-        expect(planner.getSelectionConfiguredDomainInfo()).toEqual({
-            param: "brush",
-            encoding: "x",
-            sync: "twoWay",
-        });
     });
 
     test("throws when encoding cannot be inferred on non-positional channels", () => {

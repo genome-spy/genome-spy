@@ -296,14 +296,7 @@ export default class ScaleResolution {
     syncLinkedSelectionFromDomain() {
         const linkInfo =
             this.#domainAggregator.getSelectionConfiguredDomainBindingInfo();
-        if (!linkInfo) {
-            return;
-        }
-
-        const shouldReverseSync =
-            linkInfo.sync === "twoWay" ||
-            (linkInfo.sync === "auto" && this.isZoomable());
-        if (!shouldReverseSync) {
+        if (!linkInfo || !this.isZoomable()) {
             return;
         }
 
@@ -648,7 +641,7 @@ export default class ScaleResolution {
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#firstMemberView.getConfigScopes(),
             });
-            this.#validateSelectionDomainSyncMode(props);
+            this.#validateLinkedSelectionConfiguration(props);
             return props;
         });
     }
@@ -665,7 +658,7 @@ export default class ScaleResolution {
     /**
      * @param {import("../spec/scale.js").Scale} props
      */
-    #validateSelectionDomainSyncMode(props) {
+    #validateLinkedSelectionConfiguration(props) {
         const linkInfo = this.#getLinkedSelectionInfo();
         if (!linkInfo || props === null || props.type === "null") {
             return;
@@ -674,10 +667,10 @@ export default class ScaleResolution {
         const isZoomable =
             isContinuous(props.type) && !isDiscrete(props.type) && !!props.zoom;
 
-        if (linkInfo.sync === "oneWay" && isZoomable) {
+        if (linkInfo.hasInitial && !isZoomable) {
             throw new Error(
-                `Selection domain reference "${linkInfo.param}.${linkInfo.encoding}" cannot use sync: "oneWay" with a zoomable ${this.channel} scale. ` +
-                    `Use sync: "twoWay" (or omit sync for auto mode), or disable zoom on the linked scale.`
+                `Selection domain reference "${linkInfo.param}.${linkInfo.encoding}" cannot use "initial" with a non-zoomable ${this.channel} scale. ` +
+                    `Enable zoom on the linked scale or remove "initial".`
             );
         }
     }
@@ -1078,7 +1071,6 @@ export default class ScaleResolution {
         return {
             param: linkInfo.param,
             encoding: linkInfo.encoding,
-            sync: linkInfo.sync,
             persist,
         };
     }

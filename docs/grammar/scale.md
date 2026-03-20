@@ -180,6 +180,7 @@ Use an object-valued `domain`:
 ```json
 {
   "scale": {
+    "zoom": true,
     "domain": {
       "param": "brush",
       "initial": [10, 20]
@@ -195,8 +196,9 @@ SCHEMA SelectionDomainRef
 Clearing the linked interval selection returns the scale to its normal default
 or data-derived domain instead of restoring `initial`.
 
-Zoomable linked scales use two-way syncing and do not allow `sync: "oneWay"`.
-This affects `"index"` and `"locus"` scales as they are zoomable by default.
+Zoomable linked scales automatically synchronize the domain back to the
+selection. Non-zoomable linked scales only read the selection. This affects
+`"index"` and `"locus"` scales as they are zoomable by default.
 
 For detailed brushing-and-linking guidance and interactive examples, see
 [Parameters: Interval selection](./parameters.md#interval-selection).

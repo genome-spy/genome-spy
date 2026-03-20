@@ -108,18 +108,18 @@ work with GenomeSpy's hierarchical parameter scopes:
 4. Reference the parameter in a linked view via `scale.domain`, for example:
    `{ "param": "brush" }`.
 
-If the linked scale is zoomable, GenomeSpy automatically uses two-way syncing:
-the selection drives the domain, and zooming or panning updates the selection.
-For non-zoomable linked scales, you can still override the default with
-`sync: "oneWay"` or `sync: "twoWay"`. Zoomable linked scales do not allow
-`sync: "oneWay"`.
+If the linked scale is zoomable, GenomeSpy automatically keeps the domain and
+selection synchronized in both directions. For non-zoomable linked scales, the
+selection only drives the domain.
 
 Use `initial` on the linked `scale.domain` object to provide the configured
-starting domain while the selection is empty:
+starting domain while the selection is empty. `initial` is only supported on
+zoomable linked scales:
 
 ```json
 {
   "scale": {
+    "zoom": true,
     "domain": {
       "param": "brush",
       "initial": [10, 20]
@@ -143,7 +143,7 @@ normal default or data-derived domain instead of restoring `initial`.
     For app-specific state sharing and persistence, see
     [Visualizing Sample Collections](../sample-collections/visualizing.md).
 
-##### Two-Way Linking Example
+##### Zoomable Linking Example
 
 EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250
 

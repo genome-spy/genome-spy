@@ -5,7 +5,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, test, vi } from "vitest";
 
-import { initializeViewSubtree, loadViewSubtreeData } from "../data/flowInit.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "../genome/rootGenomeConfig.js";
 import ConcatView from "../view/concatView.js";
@@ -105,7 +108,6 @@ describe("Scale resolution selection-linked domains", () => {
                 createSharedLinkedDomainSpec({
                     param: "brush",
                     encoding: "x",
-                    sync: "twoWay",
                 }),
                 ConcatView
             )
@@ -217,7 +219,6 @@ describe("Scale resolution selection-linked domains", () => {
         expect(resolution.getLinkedSelectionDomainInfo()).toEqual({
             param: "brush",
             encoding: "x",
-            sync: "auto",
             persist: true,
         });
     });
@@ -270,9 +271,10 @@ describe("Scale resolution selection-linked domains", () => {
         );
 
         expect(
-            getRequiredScaleResolution(view.children[1], "x")
-                .getLinkedSelectionDomainInfo()
-                .persist
+            getRequiredScaleResolution(
+                view.children[1],
+                "x"
+            ).getLinkedSelectionDomainInfo().persist
         ).toBe(false);
     });
 
@@ -312,9 +314,12 @@ describe("Scale resolution selection-linked domains", () => {
             allowImport: false,
         });
 
-        const { genomesByName, defaultAssembly } = resolveRootGenomeConfig(spec);
+        const { genomesByName, defaultAssembly } =
+            resolveRootGenomeConfig(spec);
         context.genomeStore.configureGenomes(genomesByName, defaultAssembly);
-        await context.genomeStore.ensureAssemblies(Array.from(genomesByName.keys()));
+        await context.genomeStore.ensureAssemblies(
+            Array.from(genomesByName.keys())
+        );
 
         const view = await context.createOrImportView(
             spec,
@@ -335,8 +340,8 @@ describe("Scale resolution selection-linked domains", () => {
         const resolution = detail && detail.getScaleResolution("x");
 
         expect(resolution?.getComplexDomain()).toEqual([
-            { chrom: "chr5", pos: 20000000 },
-            { chrom: "chr12", pos: 40000000 },
+            { chrom: "chr6", pos: 20000000 },
+            { chrom: "chr11", pos: 40000000 },
         ]);
         expect(view.paramRuntime.getValue("brush").intervals.x).not.toBeNull();
     });
@@ -448,26 +453,14 @@ describe("Scale resolution selection-linked domains", () => {
 
     test.each([
         {
-            name: "two-way linked domains write domain updates back to interval params",
-            domain: { param: "brush", encoding: "x", sync: "twoWay" },
-            linkZoom: true,
-            expected: [2, 4],
-        },
-        {
-            name: "auto sync writes domain updates back when linked scale is zoomable",
+            name: "zoomable linked domains write domain updates back to interval params",
             domain: { param: "brush", encoding: "x" },
             linkZoom: true,
             expected: [2, 4],
         },
         {
-            name: "auto sync does not write domain updates back when linked scale is not zoomable",
+            name: "non-zoomable linked domains do not write domain updates back to params",
             domain: { param: "brush", encoding: "x" },
-            linkZoom: false,
-            expected: null,
-        },
-        {
-            name: "one-way linked domains do not write domain updates back to params",
-            domain: { param: "brush", encoding: "x", sync: "oneWay" },
             linkZoom: false,
             expected: null,
         },
@@ -483,11 +476,10 @@ describe("Scale resolution selection-linked domains", () => {
         );
     });
 
-    test("two-way linked domains clear interval when domain returns to fallback", async () => {
+    test("zoomable linked domains clear interval when domain returns to fallback", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",
-            sync: "twoWay",
         });
 
         resolution.getScale().domain([2, 4]);
@@ -497,7 +489,7 @@ describe("Scale resolution selection-linked domains", () => {
         expect(view.paramRuntime.getValue("brush").intervals.x).toBeNull();
     });
 
-    test("two-way linked domains preserve non-target interval channels", async () => {
+    test("zoomable linked domains preserve non-target interval channels", async () => {
         const view = await initView(
             {
                 params: [{ name: "brush", value: null }],
@@ -540,7 +532,6 @@ describe("Scale resolution selection-linked domains", () => {
                                     domain: {
                                         param: "brush",
                                         encoding: "x",
-                                        sync: "twoWay",
                                     },
                                     zoom: true,
                                 },
@@ -568,11 +559,10 @@ describe("Scale resolution selection-linked domains", () => {
         });
     });
 
-    test("two-way linked domains skip redundant param updates for equal intervals", async () => {
+    test("zoomable linked domains skip redundant param updates for equal intervals", async () => {
         const { view, resolution } = await createLinkedHarness({
             param: "brush",
             encoding: "x",
-            sync: "twoWay",
         });
 
         view.paramRuntime.setValue("brush", {
@@ -591,68 +581,16 @@ describe("Scale resolution selection-linked domains", () => {
         unsubscribe();
     });
 
-    test("selection-linked domains reject one-way sync on zoomable scales", async () => {
+    test("selection-linked domains reject initial on non-zoomable scales", async () => {
         await expect(
             createLinkedHarness(
                 {
                     param: "brush",
                     encoding: "x",
-                    sync: "oneWay",
+                    initial: [2, 4],
                 },
-                true
+                false
             )
-        ).rejects.toThrow('cannot use sync: "oneWay" with a zoomable x scale');
-    });
-
-    test("selection-linked domains reject one-way sync on default-zoomable index scales", async () => {
-        await expect(
-            initView(
-                {
-                    params: [{ name: "brush", value: null }],
-                    resolve: {
-                        scale: { x: "independent" },
-                    },
-                    vconcat: [
-                        {
-                            params: [
-                                {
-                                    name: "brush",
-                                    select: {
-                                        type: "interval",
-                                        encodings: ["x"],
-                                    },
-                                    push: "outer",
-                                },
-                            ],
-                            data: { values: [0, 5, 10] },
-                            mark: "point",
-                            encoding: {
-                                x: { field: "data", type: "index" },
-                                y: { value: 0 },
-                            },
-                        },
-                        {
-                            data: { values: [0, 5, 10] },
-                            mark: "point",
-                            encoding: {
-                                x: {
-                                    field: "data",
-                                    type: "index",
-                                    scale: {
-                                        domain: {
-                                            param: "brush",
-                                            encoding: "x",
-                                            sync: "oneWay",
-                                        },
-                                    },
-                                },
-                                y: { value: 0 },
-                            },
-                        },
-                    ],
-                },
-                ConcatView
-            )
-        ).rejects.toThrow('cannot use sync: "oneWay" with a zoomable x scale');
+        ).rejects.toThrow('cannot use "initial" with a non-zoomable x scale');
     });
 });

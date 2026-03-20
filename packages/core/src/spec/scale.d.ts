@@ -248,6 +248,8 @@ export interface SelectionDomainRef {
      * Initial configured domain for the linked scale when the linked interval
      * selection is empty.
      *
+     * Only supported when the linked scale is zoomable.
+     *
      * Clearing the linked interval selection resets the domain to the normal
      * default/data-derived domain instead of restoring `initial`.
      */
@@ -260,21 +262,6 @@ export interface SelectionDomainRef {
      * possible (e.g., `x` -> `x`, `x2` -> `x`, `y` -> `y`, `y2` -> `y`).
      */
     encoding?: "x" | "y";
-
-    /**
-     * Domain synchronization mode.
-     *
-     * - `"oneWay"`: selection drives the domain.
-     * - `"twoWay"`: selection drives the domain and zoom/pan updates selection.
-     *
-     * Zoomable linked scales do not allow `"oneWay"`.
-     *
-     * __Default value:__ implicit auto mode:
-     *
-     * - `"twoWay"` when the linked scale is zoomable
-     * - `"oneWay"` otherwise
-     */
-    sync?: "oneWay" | "twoWay";
 }
 
 export interface SchemeParams {

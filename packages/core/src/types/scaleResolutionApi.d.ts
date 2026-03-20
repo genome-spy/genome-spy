@@ -49,7 +49,6 @@ export interface ScaleResolutionApi {
         | {
               param: string;
               encoding: "x" | "y";
-              sync: "auto" | "oneWay" | "twoWay";
               persist: boolean;
           }
         | undefined;

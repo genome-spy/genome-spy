@@ -27,7 +27,7 @@ import {
  * @typedef {{
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "auto" | "oneWay" | "twoWay",
+ *   hasInitial: boolean,
  *   runtime: any,
  * }} SelectionDomainLinkInfo
  */
@@ -130,7 +130,6 @@ export default class DomainPlanner {
         return {
             param: bindingInfo.param,
             encoding: bindingInfo.encoding,
-            sync: bindingInfo.sync,
         };
     }
 
@@ -183,8 +182,7 @@ export default class DomainPlanner {
      * @return {DomainArray}
      */
     getConfiguredDomain(options = {}) {
-        const includeSelectionInitial =
-            options.includeSelectionInitial ?? true;
+        const includeSelectionInitial = options.includeSelectionInitial ?? true;
 
         if (
             !this.#configuredDomainDirty &&
@@ -307,8 +305,6 @@ function resolveConfiguredDomain(
     let selectionRefRuntime = undefined;
     /** @type {string | undefined} */
     let selectionRefDescription = undefined;
-    /** @type {"auto" | "oneWay" | "twoWay" | undefined} */
-    let selectionRefSync = undefined;
     /** @type {SelectionDomainLinkInfo | undefined} */
     let selectionRef = undefined;
     let hasLiteralDomain = false;
@@ -344,28 +340,13 @@ function resolveConfiguredDomain(
                 );
             }
 
-            if (!selectionRefSync) {
-                selectionRefSync = resolved.sync;
-            } else if (selectionRefSync === "auto") {
-                selectionRefSync = resolved.sync;
-            } else if (resolved.sync !== "auto") {
-                if (selectionRefSync !== resolved.sync) {
-                    throw new Error(
-                        "Conflicting selection domain sync modes on a shared scale: " +
-                            selectionRefSync +
-                            " vs " +
-                            resolved.sync +
-                            "."
-                    );
-                }
-            }
-
             selectionRefRuntime = resolved.runtime;
             selectionRefDescription = resolved.description;
             selectionRef = {
                 param: resolved.param,
                 encoding: resolved.encoding,
-                sync: selectionRefSync,
+                hasInitial:
+                    (selectionRef?.hasInitial ?? false) || resolved.hasInitial,
                 runtime: resolved.runtime,
             };
 
@@ -417,7 +398,7 @@ function resolveConfiguredDomain(
  *   description: string,
  *   param: string,
  *   encoding: "x" | "y",
- *   sync: "auto" | "oneWay" | "twoWay",
+ *   hasInitial: boolean,
  *   runtime: any,
  * }}
  */
@@ -428,13 +409,6 @@ function resolveSelectionDomain(
     includeSelectionInitial
 ) {
     const paramName = domainRef.param;
-    const syncMode = domainRef.sync ?? "auto";
-
-    if (syncMode !== "auto" && syncMode !== "oneWay" && syncMode !== "twoWay") {
-        throw new Error(
-            `Invalid selection domain sync mode "${syncMode}" for parameter "${paramName}".`
-        );
-    }
 
     const resolvedChannel = resolveSelectionDomainChannel(
         member.channel,
@@ -447,6 +421,7 @@ function resolveSelectionDomain(
         paramName,
         resolvedChannel
     );
+    const hasInitial = domainRef.initial !== undefined;
     const interval = binding.selection.intervals[resolvedChannel];
     const description = paramName + "." + resolvedChannel;
     if (!interval || interval.length !== 2) {
@@ -464,7 +439,7 @@ function resolveSelectionDomain(
             description,
             param: paramName,
             encoding: resolvedChannel,
-            sync: syncMode,
+            hasInitial,
             runtime: binding.runtime,
         };
     }
@@ -478,7 +453,7 @@ function resolveSelectionDomain(
         description,
         param: paramName,
         encoding: resolvedChannel,
-        sync: syncMode,
+        hasInitial,
         runtime: binding.runtime,
     };
 }
