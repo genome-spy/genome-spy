@@ -22,7 +22,11 @@ import {
 import { getActionInfo } from "./state/actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
-import { LocationManager, getSampleLocationAt } from "./locationManager.js";
+import {
+    LocationManager,
+    getClosestSampleLocationAt,
+    getSampleLocationAt,
+} from "./locationManager.js";
 import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { interactionToZoom } from "@genome-spy/core/view/zoom.js";
 import {
@@ -1039,9 +1043,25 @@ export default class SampleView extends ContainerView {
         return this.getSampleAt(event.point.y - this.childCoords.y);
     }
 
+    /**
+     * @param {number} pos
+     */
+    #getPeekFocusSampleAt(pos) {
+        if (!Number.isFinite(pos) || pos < 0 || pos > this.childCoords.height) {
+            return undefined;
+        }
+
+        const sampleLocations = this.locationManager.getLocations().samples;
+        const match = getClosestSampleLocationAt(pos, sampleLocations);
+
+        return match
+            ? this.sampleHierarchy.sampleData.entities[match.key]
+            : undefined;
+    }
+
     #openCloseup() {
         const mouseY = this.#lastMouseY;
-        const sampleId = this.getSampleAt(mouseY)?.id;
+        const sampleId = this.#getPeekFocusSampleAt(mouseY)?.id;
         this.locationManager.togglePeek(undefined, mouseY, sampleId);
     }
 
