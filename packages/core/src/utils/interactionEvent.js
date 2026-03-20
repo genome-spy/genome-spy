@@ -52,30 +52,131 @@ export function isTouchGestureEvent(eventLike) {
  * as in the DOM.
  */
 export default class InteractionEvent {
+    /**
+     * @type {{
+     *      point: import("../view/layout/point.js").default,
+     *      uiEvent: InteractionUiEvent,
+     *      stopped: boolean,
+     *      wheelClaimed: boolean,
+     *      target: import("../view/view.js").default | undefined,
+     *      currentTarget: import("../view/view.js").default | undefined,
+     *      relatedTarget: import("../view/view.js").default | undefined,
+     *      stopPropagation?: () => void,
+     *      claimWheel?: () => void,
+     *      mouseEvent?: MouseEvent,
+     *      proxiedMouseEvent?: MouseEvent,
+     * }} */
+    #interaction;
+
     /** @type {MouseEvent} */
     #primitiveMouseEventProxy;
 
     /**
-     * @param {import("../view/layout/point.js").default} point Event coordinates
-     *      inside the visualization canvas.
-     * @param {InteractionUiEvent} uiEvent The event to be wrapped
+     * @param {import("../view/layout/point.js").default | {
+     *      point: import("../view/layout/point.js").default,
+     *      uiEvent: InteractionUiEvent,
+     *      stopped: boolean,
+     *      wheelClaimed: boolean,
+     *      target: import("../view/view.js").default | undefined,
+     *      currentTarget: import("../view/view.js").default | undefined,
+     *      relatedTarget: import("../view/view.js").default | undefined,
+     *      stopPropagation?: () => void,
+     *      claimWheel?: () => void,
+     *      mouseEvent?: MouseEvent,
+     *      proxiedMouseEvent?: MouseEvent,
+     * }} pointOrInteraction Event coordinates inside the visualization canvas,
+     *      or an internal Interaction-like object.
+     * @param {InteractionUiEvent} [uiEvent] The event to be wrapped
      */
-    constructor(point, uiEvent) {
-        this.point = point;
-        this.uiEvent = uiEvent;
-        this.stopped = false;
-        this.wheelClaimed = false;
+    constructor(pointOrInteraction, uiEvent) {
+        if (
+            pointOrInteraction &&
+            typeof pointOrInteraction === "object" &&
+            "point" in pointOrInteraction &&
+            "uiEvent" in pointOrInteraction &&
+            uiEvent === undefined
+        ) {
+            this.#interaction = /** @type {typeof this.#interaction} */ (
+                pointOrInteraction
+            );
+        } else {
+            this.#interaction = {
+                point: /** @type {import("../view/layout/point.js").default} */ (
+                    pointOrInteraction
+                ),
+                uiEvent,
+                stopped: false,
+                wheelClaimed: false,
+                target: undefined,
+                currentTarget: undefined,
+                relatedTarget: undefined,
+            };
+        }
+    }
 
-        /**
-         * The target is known only in the bubbling phase
-         *
-         * @type {import("../view/view.js").default}
-         */
-        this.target = undefined;
+    get point() {
+        return this.#interaction.point;
+    }
+
+    set point(value) {
+        this.#interaction.point = value;
+    }
+
+    get uiEvent() {
+        return this.#interaction.uiEvent;
+    }
+
+    set uiEvent(value) {
+        this.#interaction.uiEvent = value;
+        this.#primitiveMouseEventProxy = undefined;
+    }
+
+    get stopped() {
+        return this.#interaction.stopped;
+    }
+
+    set stopped(value) {
+        this.#interaction.stopped = value;
+    }
+
+    get wheelClaimed() {
+        return this.#interaction.wheelClaimed;
+    }
+
+    set wheelClaimed(value) {
+        this.#interaction.wheelClaimed = value;
+    }
+
+    get target() {
+        return this.#interaction.target;
+    }
+
+    set target(value) {
+        this.#interaction.target = value;
+    }
+
+    get currentTarget() {
+        return this.#interaction.currentTarget;
+    }
+
+    set currentTarget(value) {
+        this.#interaction.currentTarget = value;
+    }
+
+    get relatedTarget() {
+        return this.#interaction.relatedTarget;
+    }
+
+    set relatedTarget(value) {
+        this.#interaction.relatedTarget = value;
     }
 
     stopPropagation() {
-        this.stopped = true;
+        if (this.#interaction.stopPropagation) {
+            this.#interaction.stopPropagation();
+        } else {
+            this.stopped = true;
+        }
     }
 
     /**
@@ -83,11 +184,15 @@ export default class InteractionEvent {
      * This is used by native wheel probes to decide preventDefault timing.
      */
     claimWheel() {
-        if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
-            throw new Error("Can claim wheel only for wheel events!");
-        }
+        if (this.#interaction.claimWheel) {
+            this.#interaction.claimWheel();
+        } else {
+            if (this.type !== "wheel" && this.type !== "wheelclaimprobe") {
+                throw new Error("Can claim wheel only for wheel events!");
+            }
 
-        this.wheelClaimed = true;
+            this.wheelClaimed = true;
+        }
     }
 
     /**
@@ -98,10 +203,14 @@ export default class InteractionEvent {
      * @returns {string} The UI event type.
      */
     get type() {
-        return this.uiEvent.type;
+        return this.#interaction.uiEvent.type;
     }
 
     get proxiedMouseEvent() {
+        if (this.#interaction.proxiedMouseEvent) {
+            return this.#interaction.proxiedMouseEvent;
+        }
+
         if (!this.#primitiveMouseEventProxy) {
             this.#primitiveMouseEventProxy = createPrimitiveEventProxy(
                 this.mouseEvent
@@ -112,6 +221,10 @@ export default class InteractionEvent {
     }
 
     get mouseEvent() {
+        if (this.#interaction.mouseEvent) {
+            return this.#interaction.mouseEvent;
+        }
+
         if (this.uiEvent instanceof MouseEvent) {
             return this.uiEvent;
         } else {

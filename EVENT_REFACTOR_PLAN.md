@@ -114,7 +114,7 @@ watching ancestor-level `mousemove`.
 
 Split the event model in two:
 
-- `InternalInteractionEvent`
+- `Interaction`
 - `LegacyInteractionEventAdapter`
 
 The internal event should carry the state needed by the new dispatcher, such as:
@@ -299,6 +299,13 @@ This allows a gradual migration:
 - old code keeps working
 - new internal code no longer needs to depend on `coords`
 - internal event shape can be improved without exposing it externally
+
+Observation from Phase 1:
+
+- the internal type should use the concise name `Interaction`
+- the compatibility layer can be a thin adapter from `Interaction` to the
+  existing `InteractionEvent`-based propagation path while migration is still
+  in progress
 
 ## Migration Plan
 

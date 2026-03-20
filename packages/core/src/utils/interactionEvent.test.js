@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import InteractionEvent, {
     createPrimitiveEventProxy,
 } from "./interactionEvent.js";
+import Interaction from "./interaction.js";
 import Point from "../view/layout/point.js";
 
 describe("createPrimitiveEventProxy", () => {
@@ -57,5 +58,24 @@ describe("InteractionEvent wheel claiming", () => {
         expect(() => event.claimWheel()).toThrow(
             "Can claim wheel only for wheel events!"
         );
+    });
+});
+
+describe("InteractionEvent adapter", () => {
+    it("proxies state changes to the wrapped Interaction", () => {
+        const interaction = new Interaction(new Point(0, 0), {
+            type: "wheelclaimprobe",
+        });
+        const event = new InteractionEvent(interaction);
+
+        event.stopPropagation();
+        event.claimWheel();
+        event.target = /** @type {any} */ ({ name: "unit" });
+        event.uiEvent = /** @type {any} */ ({ type: "click" });
+
+        expect(interaction.stopped).toBe(true);
+        expect(interaction.wheelClaimed).toBe(true);
+        expect(interaction.target).toEqual({ name: "unit" });
+        expect(interaction.type).toBe("click");
     });
 });

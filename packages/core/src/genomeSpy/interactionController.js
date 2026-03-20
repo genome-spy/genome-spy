@@ -1,11 +1,11 @@
 import UnitView from "../view/unitView.js";
 import { VISIT_STOP } from "../view/view.js";
 import { readPickingPixel } from "../gl/webGLHelper.js";
-import InteractionEvent from "../utils/interactionEvent.js";
 import Inertia, { makeEventTemplate } from "../utils/inertia.js";
 import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
+import InteractionDispatcher from "./interactionDispatcher.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -24,6 +24,8 @@ export default class InteractionController {
     #renderPickingFramebuffer;
     /** @type {() => number} */
     #getDevicePixelRatio;
+    /** @type {InteractionDispatcher} */
+    #interactionDispatcher;
     /**
      * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
      */
@@ -63,6 +65,7 @@ export default class InteractionController {
         this.#tooltipHandlers = tooltipHandlers;
         this.#renderPickingFramebuffer = renderPickingFramebuffer;
         this.#getDevicePixelRatio = getDevicePixelRatio;
+        this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
 
         /**
          * Currently hovered mark and datum
@@ -93,11 +96,13 @@ export default class InteractionController {
         /**
          * @param {Point} point
          * @param {import("../utils/interactionEvent.js").InteractionUiEvent} uiEvent
-         * @returns {InteractionEvent}
+         * @returns {import("../utils/interaction.js").default}
          */
         const dispatchInteractionEvent = (point, uiEvent) => {
-            const interactionEvent = new InteractionEvent(point, uiEvent);
-            this.#viewRoot.propagateInteractionEvent(interactionEvent);
+            const interactionEvent = this.#interactionDispatcher.dispatch(
+                point,
+                uiEvent
+            );
 
             if (!this.#tooltipUpdateRequested) {
                 this.#tooltip.clear();
