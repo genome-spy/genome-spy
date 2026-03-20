@@ -143,6 +143,8 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * Mouse cursor shown while the pointer is inside the view.
+     * The deepest matching cursor wins: mark cursor first, then the pointed
+     * view, then ancestor views outward toward the root.
      *
      * __Default value:__ browser default
      */

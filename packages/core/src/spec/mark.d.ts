@@ -16,6 +16,7 @@ export interface MarkPropsBase {
 
     /**
      * Mouse cursor shown while the pointer is over the mark.
+     * Mark cursor takes precedence over enclosing view cursors.
      *
      * __Default value:__ browser default
      */

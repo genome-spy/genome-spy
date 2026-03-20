@@ -286,7 +286,7 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     /**
      * Mouse cursor shown while the pointer is over the interval mark.
      *
-     * __Default value:__ `"move"` when idle and `"grabbing"` while dragging
+     * __Default value:__ `{ expr: "intervalDragActive ? 'grabbing' : 'move'" }`
      */
     cursor?: string | ExprRef;
 
