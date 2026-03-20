@@ -313,7 +313,24 @@ export default class InteractionController {
                     this.#mouseDownCoords?.subtract(Point.fromMouseEvent(event))
                         .length < 3
                 ) {
-                    dispatchEvent(event);
+                    const interactionEvent = dispatchInteractionEvent(
+                        point,
+                        event
+                    );
+
+                    if (
+                        event.type == "dblclick" &&
+                        this.#hoverTrackingSuspensionCount === 0 &&
+                        this.#isInsideCanvas(point)
+                    ) {
+                        this.#refreshHover(point);
+                        this.#cursorManager.update({
+                            target: this.#interactionDispatcher.getCurrentTarget(),
+                            hover: this.#currentHover,
+                        });
+                    }
+
+                    return interactionEvent;
                 }
             }
         };
