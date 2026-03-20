@@ -237,6 +237,33 @@ export default class Mark {
         );
     }
 
+    getCursorSpec() {
+        return this.properties.cursor;
+    }
+
+    getCursor() {
+        const cursor = this.getCursorSpec();
+        return isExprRef(cursor)
+            ? this.unitView.paramRuntime.evaluateAndGet(cursor.expr)
+            : cursor;
+    }
+
+    /**
+     * @param {() => void} listener
+     * @param {(disposer: () => void) => void} [registerDisposer]
+     */
+    watchCursor(listener, registerDisposer) {
+        const cursor = this.getCursorSpec();
+        if (!isExprRef(cursor)) {
+            return;
+        }
+
+        this.unitView.paramRuntime.watchExpression(cursor.expr, listener, {
+            scopeOwned: false,
+            registerDisposer,
+        });
+    }
+
     get opaque() {
         return false;
     }

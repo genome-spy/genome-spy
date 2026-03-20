@@ -317,6 +317,15 @@ Observation from Phase 2:
   dedicated path-resolution pass instead of baking more policy into controller
   event handlers
 
+Observation from Phase 3:
+
+- cursor ownership can be centralized in a controller-owned cursor manager
+  without changing the supported embed API
+- mark-over-view precedence and `ExprRef`-backed cursor updates work with a
+  single active subscription to the currently resolved cursor source
+- existing imperative cursor call sites can be migrated incrementally on top of
+  this infrastructure rather than being rewritten in the same phase
+
 ## Migration Plan
 
 ### Phase 1: Introduce internal dispatcher

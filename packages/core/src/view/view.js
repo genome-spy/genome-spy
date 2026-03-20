@@ -253,6 +253,33 @@ export default class View {
         );
     }
 
+    getCursorSpec() {
+        return this.spec.cursor;
+    }
+
+    getCursor() {
+        const cursor = this.getCursorSpec();
+        return isExprRef(cursor)
+            ? this.paramRuntime.evaluateAndGet(cursor.expr)
+            : cursor;
+    }
+
+    /**
+     * @param {() => void} listener
+     * @param {(disposer: () => void) => void} [registerDisposer]
+     */
+    watchCursor(listener, registerDisposer) {
+        const cursor = this.getCursorSpec();
+        if (!isExprRef(cursor)) {
+            return;
+        }
+
+        this.paramRuntime.watchExpression(cursor.expr, listener, {
+            scopeOwned: false,
+            registerDisposer,
+        });
+    }
+
     getConfigScopes() {
         return this.#configScopes.slice();
     }

@@ -14,6 +14,13 @@ export interface MarkPropsBase {
      */
     style?: string | string[];
 
+    /**
+     * Mouse cursor shown while the pointer is over the mark.
+     *
+     * __Default value:__ browser default
+     */
+    cursor?: string | ExprRef;
+
     // Channels.
 
     /**

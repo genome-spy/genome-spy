@@ -6,6 +6,7 @@ import Point from "../view/layout/point.js";
 import { isStillZooming } from "../view/zoom.js";
 import createTooltipContext from "../tooltip/tooltipContext.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
+import CursorManager from "./cursorManager.js";
 
 export default class InteractionController {
     /** @type {import("../view/view.js").default} */
@@ -26,6 +27,8 @@ export default class InteractionController {
     #getDevicePixelRatio;
     /** @type {InteractionDispatcher} */
     #interactionDispatcher;
+    /** @type {CursorManager} */
+    #cursorManager;
     /**
      * @type {{ mark: import("../marks/mark.js").default, datum: import("../data/flowNode.js").Datum, uniqueId: number }}
      */
@@ -66,6 +69,7 @@ export default class InteractionController {
         this.#renderPickingFramebuffer = renderPickingFramebuffer;
         this.#getDevicePixelRatio = getDevicePixelRatio;
         this.#interactionDispatcher = new InteractionDispatcher({ viewRoot });
+        this.#cursorManager = new CursorManager({ canvas: glHelper.canvas });
 
         /**
          * Currently hovered mark and datum
@@ -106,6 +110,13 @@ export default class InteractionController {
 
             if (!this.#tooltipUpdateRequested) {
                 this.#tooltip.clear();
+            }
+
+            if (uiEvent instanceof MouseEvent && uiEvent.type !== "mouseout") {
+                this.#cursorManager.update({
+                    target: interactionEvent.target,
+                    hover: this.#currentHover,
+                });
             }
 
             return interactionEvent;
@@ -463,6 +474,7 @@ export default class InteractionController {
             this.#interactionDispatcher.handlePointerLeave(
                 /** @type {MouseEvent} */ (event)
             );
+            this.#cursorManager.clear();
             this.#tooltip.clear();
             this.#currentHover = null;
         });

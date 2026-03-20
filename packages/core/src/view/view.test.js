@@ -104,6 +104,52 @@ describe("Trivial creations and initializations", () => {
             )
         ).resolves.toBeInstanceOf(UnitView));
 
+    test("evaluates ExprRef-backed view cursor", async () => {
+        const view = await create(
+            {
+                params: [
+                    {
+                        name: "cursorMode",
+                        value: "move",
+                    },
+                ],
+                cursor: { expr: "cursorMode" },
+                mark: "point",
+            },
+            UnitView
+        );
+
+        expect(view.getCursor()).toBe("move");
+
+        view.paramRuntime.setValue("cursorMode", "grabbing");
+
+        expect(view.getCursor()).toBe("grabbing");
+    });
+
+    test("evaluates ExprRef-backed mark cursor", async () => {
+        const view = await create(
+            {
+                params: [
+                    {
+                        name: "cursorMode",
+                        value: "pointer",
+                    },
+                ],
+                mark: {
+                    type: "point",
+                    cursor: { expr: "cursorMode" },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.getCursor()).toBe("pointer");
+
+        view.paramRuntime.setValue("cursorMode", "crosshair");
+
+        expect(view.mark.getCursor()).toBe("crosshair");
+    });
+
     test("Normalizes tick mark encoding from center position and properties", async () => {
         const view = await create(
             {
