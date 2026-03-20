@@ -187,16 +187,7 @@ export type InteractionEventType =
     | "mousedown"
     | "wheel";
 
-// TODO: merge with InteractionEventType
-export type DomEventType =
-    | "click"
-    | "dblclick"
-    | "mouseenter"
-    | "mouseleave"
-    | "mouseover"
-    | "pointerover"
-    | "mousedown"
-    | "wheel";
+export type DomEventType = InteractionEventType | "pointerover";
 
 export interface EventConfig {
     /**

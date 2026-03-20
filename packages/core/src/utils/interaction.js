@@ -6,8 +6,7 @@ import {
 
 /**
  * Internal interaction object used by the refactored interaction pipeline.
- * This is intentionally smaller and less DOM-like than the legacy
- * InteractionEvent wrapper.
+ * This is intentionally smaller and less DOM-like than a DOM Event object.
  */
 export default class Interaction {
     /** @type {MouseEvent} */

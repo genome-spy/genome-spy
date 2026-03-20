@@ -3,7 +3,7 @@ import Point from "../view/layout/point.js";
 import InteractionDispatcher from "./interactionDispatcher.js";
 
 describe("InteractionDispatcher", () => {
-    it("dispatches legacy interaction events through the view root", () => {
+    it("dispatches interactions through the view root", () => {
         const propagateInteractionEvent = vi.fn((event) => {
             event.target = /** @type {any} */ ({ name: "unit" });
             event.stopPropagation();
