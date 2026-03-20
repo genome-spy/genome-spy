@@ -190,39 +190,61 @@ export class MetadataView extends ConcatView {
     #handleAttributeHighlight(attribute) {
         const state = this._attributeHighlighState;
 
-        if (attribute != state.currentAttribute) {
-            // Cancel the previous transition
-            state.abortController.abort();
-            state.abortController = new AbortController();
-            this.context.animator
-                .transition({
-                    from: state.backgroundOpacity,
-                    onUpdate: (value) => {
-                        state.backgroundOpacity = value;
-                    },
-                    easingFunction: easeQuadInOut,
-                    signal: state.abortController.signal,
-                    ...(attribute
-                        ? {
-                              to: 0.1,
-                              duration: 1000,
-                              delay: state.backgroundOpacity < 1.0 ? 0 : 500,
-                          }
-                        : {
-                              to: 1.0,
-                              duration: 200,
-                              delay: 150,
-                          }),
-                })
-                .catch((e) => {
-                    // nop
-                });
-
-            // Ensure that the view is rendered, regardless of the transition.
-            this.context.animator.requestRender();
+        if (attribute == state.currentAttribute) {
+            return;
         }
 
-        state.currentAttribute = attribute;
+        if (attribute) {
+            const enteringHighlightState = !state.currentAttribute;
+            state.currentAttribute = attribute;
+
+            if (enteringHighlightState) {
+                this.#transitionAttributeHighlight(0.1, {
+                    duration: 1000,
+                    delay: state.backgroundOpacity < 1.0 ? 0 : 500,
+                });
+            }
+
+            this.context.animator.requestRender();
+            return;
+        }
+
+        if (!state.currentAttribute) {
+            return;
+        }
+
+        state.currentAttribute = undefined;
+        this.#transitionAttributeHighlight(1.0, {
+            duration: 200,
+            delay: 0,
+        });
+        this.context.animator.requestRender();
+    }
+
+    /**
+     * @param {number} to
+     * @param {{ duration: number, delay: number }} options
+     */
+    #transitionAttributeHighlight(to, options) {
+        const state = this._attributeHighlighState;
+
+        state.abortController.abort();
+        state.abortController = new AbortController();
+
+        this.context.animator
+            .transition({
+                from: state.backgroundOpacity,
+                to,
+                ...options,
+                onUpdate: (value) => {
+                    state.backgroundOpacity = value;
+                },
+                easingFunction: easeQuadInOut,
+                signal: state.abortController.signal,
+            })
+            .catch((e) => {
+                // nop
+            });
     }
 
     /**
