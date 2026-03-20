@@ -84,14 +84,15 @@ export function isWheelEvent(eventLike) {
  */
 export function overrideWheelEventDeltas(wheelEvent, deltaX, deltaY) {
     return new Proxy(wheelEvent, {
-        get(target, prop, receiver) {
+        get(target, prop) {
             if (prop === "deltaX") {
                 return deltaX;
             } else if (prop === "deltaY") {
                 return deltaY;
             }
 
-            return Reflect.get(target, prop, receiver);
+            const value = Reflect.get(target, prop, target);
+            return typeof value === "function" ? value.bind(target) : value;
         },
     });
 }

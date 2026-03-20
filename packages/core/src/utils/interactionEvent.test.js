@@ -94,4 +94,42 @@ describe("Interaction", () => {
         expect(interaction.wheelEvent.deltaX).toBe(12);
         expect(interaction.wheelEvent.deltaY).toBe(0);
     });
+
+    it("preserves native-style accessor and method receivers in overridden wheel events", () => {
+        let preventDefaultCalled = false;
+
+        const wheelEvent = {
+            type: "wheel",
+            deltaX: 12,
+            deltaY: -8,
+            ctrlKey: false,
+            get deltaMode() {
+                if (this !== wheelEvent) {
+                    throw new TypeError("Illegal invocation");
+                }
+
+                return 1;
+            },
+            preventDefault() {
+                if (this !== wheelEvent) {
+                    throw new TypeError("Illegal invocation");
+                }
+
+                preventDefaultCalled = true;
+            },
+        };
+
+        const interaction = new Interaction(
+            new Point(0, 0),
+            /** @type {import("./interactionEvent.js").WheelLikeEvent} */ (
+                wheelEvent
+            )
+        );
+
+        interaction.setWheelDeltas(4, 0);
+
+        expect(interaction.wheelEvent.deltaMode).toBe(1);
+        interaction.wheelEvent.preventDefault();
+        expect(preventDefaultCalled).toBe(true);
+    });
 });
