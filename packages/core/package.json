@@ -61,7 +61,7 @@
     "events": "^3.3.0",
     "flatqueue": "^3.0.0",
     "generic-filehandle2": "^2.0.18",
-    "gff-nostream": "^2.0.1",
+    "gff-nostream": "^3.0.2",
     "hyparquet": "^1.25.0",
     "internmap": "^2.0.3",
     "lit": "^3.3.0",

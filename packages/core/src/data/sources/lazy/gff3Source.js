@@ -22,7 +22,7 @@ export default class Gff3Source extends TabixSource {
      * @param {string[]} lines
      */
     _parseFeatures(lines) {
-        const features = this.#gff?.parseArraySync(lines);
+        const features = this.#gff?.parseStringSync(lines.join("\n"));
 
         return features;
     }
