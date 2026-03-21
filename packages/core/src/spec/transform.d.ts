@@ -178,7 +178,7 @@ export interface StackParams extends TransformParamsBase {
      *
      * **Default:** `["y0", "y1"]`
      */
-    as: string[];
+    as?: string[];
 
     /**
      * Cardinality, e.g., the number if distinct bases or amino acids. Used for

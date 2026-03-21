@@ -2,14 +2,14 @@
 
 import { describe, expect, test } from "vitest";
 
+import GenomeStore from "../genome/genomeStore.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { createTestViewContext } from "../view/testUtils.js";
-import UnitView from "../view/unitView.js";
 import { getRequiredScaleResolution } from "./scaleResolutionTestUtils.js";
 
 describe("Scale resolution genome assembly", () => {
     test("locus scales can use explicit built-in assemblies without root genome config", async () => {
-        const context = createTestViewContext();
-        context.genomeStore.genomes.clear();
+        const genomeStore = new GenomeStore(".");
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -40,22 +40,23 @@ describe("Scale resolution genome assembly", () => {
             },
         };
 
-        const view = await context.createOrImportView(spec, null, null, "root");
-        if (!(view instanceof UnitView)) {
-            throw new Error("Expected a unit view!");
-        }
-
-        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual(
-            context.genomeStore.getGenome("hg19").getExtent()
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
+        const unitView = /** @type {import("../view/view.js").default} */ (
+            view
         );
-        expect(getRequiredScaleResolution(view, "y").getDomain()).toEqual(
-            context.genomeStore.getGenome("hg38").getExtent()
+
+        expect(getRequiredScaleResolution(unitView, "x").getDomain()).toEqual(
+            genomeStore.getGenome("hg19").getExtent()
+        );
+        expect(getRequiredScaleResolution(unitView, "y").getDomain()).toEqual(
+            genomeStore.getGenome("hg38").getExtent()
         );
     });
 
     test("locus scales can use inline contigs in assembly definitions", async () => {
-        const context = createTestViewContext();
-        context.genomeStore.genomes.clear();
+        const genomeStore = new GenomeStore(".");
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -86,12 +87,14 @@ describe("Scale resolution genome assembly", () => {
             },
         };
 
-        const view = await context.createOrImportView(spec, null, null, "root");
-        if (!(view instanceof UnitView)) {
-            throw new Error("Expected a unit view!");
-        }
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
+        const unitView = /** @type {import("../view/view.js").default} */ (
+            view
+        );
 
-        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
+        expect(getRequiredScaleResolution(unitView, "x").getDomain()).toEqual([
             0, 12,
         ]);
     });

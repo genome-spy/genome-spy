@@ -16,8 +16,6 @@ describe("viewDataInit", () => {
     test("skips hidden subtrees during initial data initialization", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -69,8 +67,6 @@ describe("viewDataInit", () => {
     test("initializes newly visible views without rebuilding existing collectors", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").VConcatSpec} */
         const spec = {
@@ -135,8 +131,6 @@ describe("viewDataInit", () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
@@ -193,8 +187,6 @@ describe("viewDataInit", () => {
 
     test("waits for measureText custom fonts before loading data", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         const fontEntry = /** @type {any} */ ({
             metrics: undefined,
@@ -288,8 +280,6 @@ describe("viewDataInit", () => {
     test("completed collectors repropagate to newly attached views", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         // Build a minimal concat tree so we can dynamically append a view.
         /** @type {import("../spec/view.js").VConcatSpec} */
@@ -387,8 +377,6 @@ describe("viewDataInit", () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }, { x: 2 }];
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         let initCalls = 0;
 
@@ -483,8 +471,6 @@ describe("viewDataInit", () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [];
         context.isViewConfiguredVisible = () => true;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {

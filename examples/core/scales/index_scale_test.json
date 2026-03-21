@@ -58,7 +58,7 @@
         {
           "mark": "text",
           "encoding": {
-            "text": { "field": "data", "type": "quantitative" }
+            "text": { "field": "data" }
           }
         }
       ]

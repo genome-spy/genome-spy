@@ -28,6 +28,7 @@ const baselines = {
     middle: 0,
     bottom: 1,
     alphabetic: 1,
+    baseline: 1,
 };
 
 /**

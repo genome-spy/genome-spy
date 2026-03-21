@@ -77,6 +77,14 @@ export interface MarkPropsBase {
     minBufferSize?: number;
 
     /**
+     * Whether the x channel should build an index for efficient subset rendering.
+     * If omitted, GenomeSpy enables indexing automatically for positional x encodings.
+     *
+     * @internal
+     */
+    buildIndex?: boolean;
+
+    /**
      * Tooltip handler. If `null`, no tooltip is shown. If string, specifies
      * the [tooltip handler](https://genomespy.app/docs/api/#custom-tooltip-handlers)
      * to use.

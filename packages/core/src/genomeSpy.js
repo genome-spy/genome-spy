@@ -31,10 +31,7 @@ import { VIEW_ROOT_NAME, ViewFactory } from "./view/viewFactory.js";
 import InteractionController from "./genomeSpy/interactionController.js";
 import RenderCoordinator from "./genomeSpy/renderCoordinator.js";
 import { createViewContext } from "./genomeSpy/viewContextFactory.js";
-import {
-    configureViewHierarchy,
-    configureViewOpacity,
-} from "./genomeSpy/viewHierarchyConfig.js";
+import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import parquet from "./data/formats/parquet.js";
@@ -448,8 +445,7 @@ export default class GenomeSpy {
 
         this.#initializeParameterBindings();
 
-        configureViewHierarchy(this.viewRoot);
-        configureViewOpacity(this.viewRoot);
+        prepareViewHierarchy(this.viewRoot);
         this.#logSelectorConstraintWarnings();
 
         // We should now have a complete view hierarchy. Let's update the canvas size

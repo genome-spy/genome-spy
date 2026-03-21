@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { createTestViewContext } from "./testUtils.js";
-import { VIEW_ROOT_NAME } from "./viewFactory.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import {
     getBookmarkableParams,
     getParamSelector,
@@ -52,8 +51,6 @@ const makeUnitSpecWithParams = (name, params) => ({
 
 describe("view selectors", () => {
     test("resolveViewSelector separates named import scopes", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -70,12 +67,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const viewA = resolveViewSelector(root, {
             scope: ["panelA"],
@@ -100,8 +92,6 @@ describe("view selectors", () => {
     });
 
     test("unnamed import scopes do not appear in selector chains", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -113,12 +103,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const view = resolveViewSelector(root, {
             scope: [],
@@ -130,8 +115,6 @@ describe("view selectors", () => {
     });
 
     test("resolveParamSelector respects import scopes", async () => {
-        const context = createTestViewContext();
-
         const rangeBind =
             /** @type {import("../spec/parameter.js").BindRange} */ ({
                 input: "range",
@@ -165,12 +148,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const rootParam = resolveParamSelector(root, {
             scope: [],
@@ -188,8 +166,6 @@ describe("view selectors", () => {
     });
 
     test("visitBookmarkableParams yields scoped selectors", async () => {
-        const context = createTestViewContext();
-
         const rangeBind =
             /** @type {import("../spec/parameter.js").BindRange} */ ({
                 input: "range",
@@ -223,12 +199,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const entries = getBookmarkableParams(root);
         const selectors = entries.map((entry) => entry.selector);
@@ -255,8 +226,6 @@ describe("view selectors", () => {
     });
 
     test("resolveViewSelector handles nested import scopes", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 inner: makeTemplate(),
@@ -281,12 +250,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const viewA = resolveViewSelector(root, {
             scope: ["panelA", "innerA"],
@@ -316,8 +280,6 @@ describe("view selectors", () => {
     });
 
     test("resolveViewSelector resolves lifted views by data import scope", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: {
@@ -336,12 +298,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root, context } = await createHeadlessEngine(spec);
 
         const panelATrack = resolveViewSelector(root, {
             scope: ["panelA"],
@@ -390,8 +347,6 @@ describe("view selectors", () => {
     });
 
     test("resolveParamSelector resolves lifted params by data import scope", async () => {
-        const context = createTestViewContext();
-
         const rangeBind =
             /** @type {import("../spec/parameter.js").BindRange} */ ({
                 input: "range",
@@ -415,12 +370,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root, context } = await createHeadlessEngine(spec);
 
         const panelATrack = resolveViewSelector(root, {
             scope: ["panelA"],
@@ -479,8 +429,6 @@ describe("view selectors", () => {
     });
 
     test("validateSelectorConstraints flags duplicate bookmarkable params", async () => {
-        const context = createTestViewContext();
-
         const rangeBind =
             /** @type {import("../spec/parameter.js").BindRange} */ ({
                 input: "range",
@@ -505,12 +453,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(
@@ -519,8 +462,6 @@ describe("view selectors", () => {
     });
 
     test("validateSelectorConstraints ignores non-persisted params", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             vconcat: [
                 makeUnitSpecWithParams("coverage", [
@@ -540,12 +481,7 @@ describe("view selectors", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(

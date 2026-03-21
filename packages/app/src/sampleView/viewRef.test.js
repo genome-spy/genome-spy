@@ -1,7 +1,6 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
-import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
-import { VIEW_ROOT_NAME } from "@genome-spy/core/view/viewFactory.js";
+import { createHeadlessEngine } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { createViewRef, resolveViewRef } from "./viewRef.js";
 
@@ -35,7 +34,6 @@ const makeTemplate = () => ({
 
 describe("view refs", () => {
     test("selector view refs resolve to the intended view", async () => {
-        const context = createTestViewContext();
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -52,12 +50,7 @@ describe("view refs", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const target = resolveViewSelector(root, {
             scope: ["panelA"],
@@ -71,7 +64,6 @@ describe("view refs", () => {
     });
 
     test("legacy view names error on ambiguity", async () => {
-        const context = createTestViewContext();
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -88,12 +80,7 @@ describe("view refs", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         expect(() => resolveViewRef(root, "coverage")).toThrow(
             /Multiple views named "coverage"/u
@@ -101,17 +88,11 @@ describe("view refs", () => {
     });
 
     test("legacy view names resolve when unique", async () => {
-        const context = createTestViewContext();
         const spec = {
             vconcat: [makeUnitSpec("coverage")],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const { view: root } = await createHeadlessEngine(spec);
 
         const resolved = resolveViewRef(root, "coverage");
         expect(resolved).toBeDefined();

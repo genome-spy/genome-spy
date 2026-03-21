@@ -4,16 +4,6 @@ import Interaction from "@genome-spy/core/utils/interaction.js";
 import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
-
-vi.mock("@fortawesome/fontawesome-svg-core", () => ({
-    icon: () => ({ node: [""] }),
-    dom: { css: () => "" },
-}));
-
-vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
-    __esModule: true,
-    ...(await importOriginal()),
-}));
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 
@@ -69,7 +59,6 @@ describe("SampleView", () => {
 
         await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -97,7 +86,6 @@ describe("SampleView", () => {
 
         const { view, store } = await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         // Ensure sample extraction relies on a predictable domain for the test.
@@ -148,7 +136,6 @@ describe("SampleView", () => {
 
         const { context, store } = await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         await Promise.all(
@@ -185,7 +172,6 @@ describe("SampleView", () => {
 
         const { view } = await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         view.getScaleResolution = () =>

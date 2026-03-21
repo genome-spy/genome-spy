@@ -327,6 +327,13 @@ export interface BrushConfig extends ShadowProps, ZIndexProps {
     strokeWidth?: number;
 
     /**
+     * Whether the brush rectangle should be clipped to the viewport.
+     *
+     * __Default value:__ `true`
+     */
+    clip?: boolean | "never";
+
+    /**
      * Z-order of the interval mark relative to the view content.
      *
      * Values greater than `0` render after the view marks. Values less than or

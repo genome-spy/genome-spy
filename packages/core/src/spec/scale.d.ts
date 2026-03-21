@@ -234,6 +234,13 @@ export interface Scale {
      * If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively.
      */
     zoom?: boolean | ZoomParams;
+
+    /**
+     * The numbering offset used when formatting tick labels on index and locus scales.
+     *
+     * __Default value:__ `0`
+     */
+    numberingOffset?: number;
 }
 
 export type InlineLocusAssembly = GenomeDefinition;

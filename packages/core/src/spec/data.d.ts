@@ -251,6 +251,13 @@ export interface DebouncedData {
     debounce?: number | ExprRef;
 
     /**
+     * Debounce time for scale-domain driven data updates, in milliseconds.
+     *
+     * __Default value:__ `200`
+     */
+    debounceDomainChange?: number | ExprRef;
+
+    /**
      * The debounce mode for data updates. If set to `"domain"`, domain change
      * events (panning and zooming) will be debounced. If set to `"window"`,
      * the data fetches initiated by the changes to the visible window (or tile)

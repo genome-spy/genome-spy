@@ -2,10 +2,11 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
   "description": "Configuration overview example.",
 
+  "view": {
+    "style": "cell"
+  },
+
   "config": {
-    "view": {
-      "style": "cell"
-    },
     "point": {
       "filled": false,
       "size": 50

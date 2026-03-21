@@ -4,6 +4,9 @@ import replace from "@rollup/plugin-replace";
 
 export default defineConfig({
     root: "src",
+    test: {
+        setupFiles: ["src/testSetup.js"],
+    },
     plugins: [
         // Don't minify
         {

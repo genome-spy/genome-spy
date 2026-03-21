@@ -710,7 +710,7 @@ export default class InteractionController {
 
                 const tooltipProps = mark.properties.tooltip;
 
-                if (tooltipProps !== null) {
+                if (tooltipProps !== null && tooltipProps !== false) {
                     const handlerName = tooltipProps?.handler ?? "default";
                     const handler = this.#tooltipHandlers[handlerName];
                     if (!handler) {

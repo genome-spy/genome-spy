@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import AxisView from "./axisView.js";
-import { createTestViewContext } from "./testUtils.js";
-import { VIEW_ROOT_NAME } from "./viewFactory.js";
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {import("./view.js").default} root
@@ -24,29 +23,34 @@ function findAxisView(root, orient) {
     return axisView;
 }
 
+/**
+ * @param {import("../spec/view.js").ViewSpec} spec
+ */
+async function createRoot(spec) {
+    const { view } = await createHeadlessViewHierarchy(spec, {
+        viewFactoryOptions: {
+            wrapRoot: true,
+        },
+    });
+    return view;
+}
+
 describe("axis config precedence", () => {
     test("axis config buckets are applied", async () => {
-        const context = createTestViewContext({ wrapRoot: true });
-
-        const root = await context.createOrImportView(
-            {
-                data: { values: [{ x: 1, y: 2 }] },
-                config: {
-                    axis: { tickColor: "blue" },
-                    axisX: { tickSize: 11 },
-                    axisBottom: { labelColor: "orange" },
-                    axisQuantitative: { domainColor: "pink" },
-                },
-                mark: "point",
-                encoding: {
-                    x: { field: "x", type: "quantitative" },
-                    y: { field: "y", type: "quantitative" },
-                },
+        const root = await createRoot({
+            data: { values: [{ x: 1, y: 2 }] },
+            config: {
+                axis: { tickColor: "blue" },
+                axisX: { tickSize: 11 },
+                axisBottom: { labelColor: "orange" },
+                axisQuantitative: { domainColor: "pink" },
             },
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
 
         const axis = findAxisView(root, "bottom");
 
@@ -57,28 +61,21 @@ describe("axis config precedence", () => {
     });
 
     test("explicit axis properties override config", async () => {
-        const context = createTestViewContext({ wrapRoot: true });
-
-        const root = await context.createOrImportView(
-            {
-                data: { values: [{ x: 1, y: 2 }] },
-                config: {
-                    axis: { tickColor: "blue" },
-                },
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        axis: { tickColor: "red" },
-                    },
-                    y: { field: "y", type: "quantitative" },
-                },
+        const root = await createRoot({
+            data: { values: [{ x: 1, y: 2 }] },
+            config: {
+                axis: { tickColor: "blue" },
             },
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: { tickColor: "red" },
+                },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
 
         const axis = findAxisView(root, "bottom");
 
@@ -86,42 +83,35 @@ describe("axis config precedence", () => {
     });
 
     test("axis style applies after axis buckets and before explicit props", async () => {
-        const context = createTestViewContext({ wrapRoot: true });
-
-        const root = await context.createOrImportView(
-            {
-                data: { values: [{ x: 1, y: 2 }] },
-                config: {
-                    axis: { tickColor: "blue" },
-                    axisX: { tickSize: 11 },
-                    axisBottom: { labelColor: "orange" },
-                    style: {
-                        emphasis: {
-                            tickColor: "seagreen",
-                            labelColor: "purple",
-                        },
-                        override: {
-                            tickColor: "firebrick",
-                            domainColor: "pink",
-                        },
+        const root = await createRoot({
+            data: { values: [{ x: 1, y: 2 }] },
+            config: {
+                axis: { tickColor: "blue" },
+                axisX: { tickSize: 11 },
+                axisBottom: { labelColor: "orange" },
+                style: {
+                    emphasis: {
+                        tickColor: "seagreen",
+                        labelColor: "purple",
                     },
-                },
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        axis: {
-                            style: ["emphasis", "override"],
-                        },
+                    override: {
+                        tickColor: "firebrick",
+                        domainColor: "pink",
                     },
-                    y: { field: "y", type: "quantitative" },
                 },
             },
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: {
+                        style: ["emphasis", "override"],
+                    },
+                },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
 
         const axis = findAxisView(root, "bottom");
 
@@ -130,70 +120,58 @@ describe("axis config precedence", () => {
         expect(axis.axisProps.labelColor).toBe("purple");
         expect(axis.axisProps.domainColor).toBe("pink");
 
-        const explicitRoot = await context.createOrImportView(
-            {
-                data: { values: [{ x: 1, y: 2 }] },
-                config: {
-                    style: {
-                        emphasis: {
-                            tickColor: "seagreen",
-                        },
+        const explicitRoot = await createRoot({
+            data: { values: [{ x: 1, y: 2 }] },
+            config: {
+                style: {
+                    emphasis: {
+                        tickColor: "seagreen",
                     },
-                },
-                mark: "point",
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        axis: {
-                            style: "emphasis",
-                            tickColor: "black",
-                        },
-                    },
-                    y: { field: "y", type: "quantitative" },
                 },
             },
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: {
+                        style: "emphasis",
+                        tickColor: "black",
+                    },
+                },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
 
         const explicitAxis = findAxisView(explicitRoot, "bottom");
         expect(explicitAxis.axisProps.tickColor).toBe("black");
     });
 
     test("axis config buckets can enable grid lines without explicit axis.grid", async () => {
-        const context = createTestViewContext({ wrapRoot: true });
-
-        const root = await context.createOrImportView(
-            {
-                data: {
-                    values: [
-                        { category: "A", value: 1 },
-                        { category: "B", value: 2 },
-                    ],
-                },
-                config: {
-                    axis: { grid: false },
-                    axisY: { grid: true },
-                },
-                mark: "rect",
-                encoding: {
-                    x: {
-                        field: "category",
-                        type: "nominal",
-                    },
-                    y: {
-                        field: "value",
-                        type: "quantitative",
-                    },
-                    y2: { value: 0 },
-                },
+        const root = await createRoot({
+            data: {
+                values: [
+                    { category: "A", value: 1 },
+                    { category: "B", value: 2 },
+                ],
             },
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+            config: {
+                axis: { grid: false },
+                axisY: { grid: true },
+            },
+            mark: "rect",
+            encoding: {
+                x: {
+                    field: "category",
+                    type: "nominal",
+                },
+                y: {
+                    field: "value",
+                    type: "quantitative",
+                },
+                y2: { value: 0 },
+            },
+        });
 
         const axis = findAxisView(root, "left");
         expect(axis.axisProps.grid).toBe(true);

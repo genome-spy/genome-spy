@@ -6,4 +6,4 @@ export interface HandledTooltip {
 
 // TODO: Encoding / data: https://vega.github.io/vega-lite/docs/tooltip.html#encoding
 
-export type Tooltip = HandledTooltip | null;
+export type Tooltip = HandledTooltip | null | false;

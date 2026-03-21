@@ -3,14 +3,15 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { toRegularArray as r } from "../utils/domainArray.js";
+import GenomeStore from "../genome/genomeStore.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import {
     getRequiredScaleResolution,
     getScaleDomain,
     initView,
 } from "./scaleResolutionTestUtils.js";
-import { createTestViewContext } from "../view/testUtils.js";
 
 describe("Scale resolution domain handling", () => {
     test("Scales are shared and explicit domains merged properly", async () => {
@@ -112,8 +113,13 @@ describe("Scale resolution domain handling", () => {
     });
 
     test("explicit locus domains use inclusive end positions and keep the genome extent intact", async () => {
-        const context = createTestViewContext();
-        const view = await context.createOrImportView(
+        const genomeStore = new GenomeStore(".");
+        await genomeStore.initialize({
+            name: "test",
+            contigs: [{ name: "chr1", size: 50 }],
+        });
+
+        const { view } = await createHeadlessEngine(
             {
                 data: {
                     values: [{ chrom: "chr1", pos: 5 }],
@@ -133,9 +139,11 @@ describe("Scale resolution domain handling", () => {
                     },
                 },
             },
-            null,
-            null,
-            "root"
+            {
+                contextOptions: {
+                    genomeStore,
+                },
+            }
         );
 
         const resolution = getRequiredScaleResolution(view, "x");

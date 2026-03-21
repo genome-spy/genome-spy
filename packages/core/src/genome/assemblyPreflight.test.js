@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import GenomeStore from "../genome/genomeStore.js";
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 import { createTestViewContext } from "../view/testUtils.js";
-import { VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { markViewAsNonAddressable } from "../view/viewSelectors.js";
 import {
     collectAssembliesFromViewHierarchy,
@@ -13,8 +14,8 @@ describe("assembly preflight", () => {
     });
 
     test("collects assembly references from a resolved view hierarchy", async () => {
-        const context = createTestViewContext();
-        const view = await context.createOrImportView(
+        const genomeStore = new GenomeStore(".");
+        const { view } = await createHeadlessViewHierarchy(
             /** @type {any} */ ({
                 data: {
                     values: [{ chrom: "chr1", pos: 1 }],
@@ -49,9 +50,14 @@ describe("assembly preflight", () => {
                     },
                 ],
             }),
-            null,
-            null,
-            "root"
+            {
+                contextOptions: {
+                    genomeStore,
+                },
+                viewFactoryOptions: {
+                    wrapRoot: true,
+                },
+            }
         );
         const { assemblies, needsDefaultAssembly } =
             collectAssembliesFromViewHierarchy(view);
@@ -64,8 +70,8 @@ describe("assembly preflight", () => {
     });
 
     test("collects assemblies from implicit non-addressable root resolutions", async () => {
-        const context = createTestViewContext({ wrapRoot: true });
-        const view = await context.createOrImportView(
+        const genomeStore = new GenomeStore(".");
+        const { view } = await createHeadlessViewHierarchy(
             /** @type {any} */ ({
                 data: {
                     values: [{ chrom: "chr1", pos: 1 }],
@@ -80,9 +86,14 @@ describe("assembly preflight", () => {
                     },
                 },
             }),
-            null,
-            null,
-            VIEW_ROOT_NAME
+            {
+                contextOptions: {
+                    genomeStore,
+                },
+                viewFactoryOptions: {
+                    wrapRoot: true,
+                },
+            }
         );
 
         const { assemblies, needsDefaultAssembly } =

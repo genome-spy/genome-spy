@@ -383,9 +383,13 @@ export type NumericMarkPropDef = MarkPropDef<number>;
 
 export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
-export interface StringFieldDef extends FieldDefWithoutScale, FormatMixins {}
+export type StringFieldDef = FieldDef<Type> & FormatMixins;
 
-export type TextDef = StringFieldDef | StringDatumDef | ExprDef; // TODO: Conditions
+export type TextDef =
+    | StringFieldDef
+    | StringDatumDef
+    | ExprDef
+    | ValueDef<string>; // TODO: Conditions
 
 export type ChannelDef = Exclude<
     Encoding[keyof Encoding],
@@ -551,5 +555,5 @@ export interface Encoding {
     // TODO: proper type
     facetIndex?: FieldDefWithoutScale;
 
-    semanticScore?: FieldDefWithoutScale;
+    semanticScore?: FieldDefWithoutScale & Partial<TypeMixins<Type>>;
 }

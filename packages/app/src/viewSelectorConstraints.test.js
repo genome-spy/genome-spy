@@ -1,7 +1,6 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
-import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
-import { VIEW_ROOT_NAME } from "@genome-spy/core/view/viewFactory.js";
+import { createHeadlessViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 
 /**
@@ -33,19 +32,20 @@ const makeTemplate = () => ({
 });
 
 describe("app selector constraints", () => {
-    test("reports duplicate configurable view names", async () => {
-        const context = createTestViewContext();
+    /**
+     * @param {import("@genome-spy/core/spec/view.js").ViewSpec} spec
+     */
+    async function createRoot(spec) {
+        const { view } = await createHeadlessViewHierarchy(spec);
+        return view;
+    }
 
+    test("reports duplicate configurable view names", async () => {
         const spec = {
             vconcat: [makeUnitSpec("coverage"), makeUnitSpec("coverage")],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(
@@ -54,8 +54,6 @@ describe("app selector constraints", () => {
     });
 
     test("ignores duplicate view names across named import scopes", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -72,20 +70,13 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(issues.length).toBe(0);
     });
 
     test("flags duplicate view names in root scope", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -100,12 +91,7 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(
@@ -114,8 +100,6 @@ describe("app selector constraints", () => {
     });
 
     test("allows unnamed imports with unique view names", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panelA: {
@@ -135,20 +119,13 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(issues.length).toBe(0);
     });
 
     test("flags explicitly configurable views without an explicit name", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             vconcat: [
                 {
@@ -159,12 +136,7 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(
@@ -177,8 +149,6 @@ describe("app selector constraints", () => {
     });
 
     test("flags invalid configurable visibility group definitions", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             vconcat: [
                 {
@@ -190,12 +160,7 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(
@@ -208,8 +173,6 @@ describe("app selector constraints", () => {
     });
 
     test("accepts configurable visibility group definitions", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             vconcat: [
                 {
@@ -221,20 +184,13 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(issues.length).toBe(0);
     });
 
     test("flags duplicate import instance names for configurable views", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panelA: {
@@ -256,12 +212,7 @@ describe("app selector constraints", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const issues = validateSelectorConstraints(root);
         expect(

@@ -31,7 +31,7 @@
       "type": "quantitative",
       "scale": { "range": [0.1, 1] }
     },
-    "semanticScore": { "field": "score", "type": "quantitative" },
+    "semanticScore": { "field": "score" },
     "size": { "value": 100 }
   }
 }

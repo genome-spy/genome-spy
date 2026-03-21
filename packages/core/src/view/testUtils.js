@@ -4,6 +4,13 @@
  *
  * @typedef {import("../spec/root.js").RootSpec} RootSpec
  * @typedef {import("../types/viewContext.js").default} ViewContext
+ * @typedef {ViewContext & {
+ *   emitBroadcast: (
+ *     root: import("./view.js").default,
+ *     type: import("../genomeSpy.js").BroadcastEventType,
+ *     payload?: any
+ *   ) => void
+ * }} BroadcastingViewContext
  */
 
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
@@ -11,94 +18,61 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import DataFlow from "../data/dataFlow.js";
-import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
-import GenomeStore from "../genome/genomeStore.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
-import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import { resolveBaseConfig } from "../config/resolveConfig.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
  * @returns
  */
 export function createTestViewContext(viewFactoryOptions = {}) {
-    const viewFactory = new ViewFactory({
-        allowImport: false,
-        wrapRoot: false,
-        ...viewFactoryOptions,
+    return createHeadlessViewContext({
+        viewFactoryOptions,
     });
+}
 
-    const genomeStore = new GenomeStore(".");
-    genomeStore.initialize({
-        name: "test",
-        contigs: [
-            { name: "chr1", size: 20 },
-            { name: "chr2", size: 30 },
-        ],
-    });
+/**
+ * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
+ * @returns {BroadcastingViewContext}
+ */
+export function createBroadcastingTestViewContext(viewFactoryOptions = {}) {
+    const context = /** @type {BroadcastingViewContext} */ (
+        createTestViewContext({
+            wrapRoot: true,
+            ...viewFactoryOptions,
+        })
+    );
 
-    const dataFlow = new DataFlow();
-    const baseConfig = resolveBaseConfig({
-        defaultConfig: INTERNAL_DEFAULT_CONFIG,
-    });
+    /** @type {Map<string, Set<(message: any) => void>>} */
+    const listeners = new Map();
 
-    // @ts-expect-error
-    const c = /** @type {ViewContext} */ ({
-        createOrImportView: async function (
-            spec,
-            parent,
-            dataParent,
-            defaultName,
-            validator,
-            options
-        ) {
-            return viewFactory.createOrImportView(
-                spec,
-                this,
-                parent,
-                dataParent,
-                defaultName,
-                validator,
-                options
-            );
-        },
+    context.addBroadcastListener = (type, listener) => {
+        const typedListeners = listeners.get(type) ?? new Set();
+        typedListeners.add(listener);
+        listeners.set(type, typedListeners);
+    };
 
-        dataFlow,
-        genomeStore,
+    context.removeBroadcastListener = (type, listener) => {
+        listeners.get(type)?.delete(listener);
+    };
 
-        fontManager: new BmFontManager(),
-        animator: /** @type {import("../utils/animator.js").default} */ (
-            /** @type {any} */ ({
-                requestRender: /** @type {() => void} */ (() => undefined),
-                requestTransition:
-                    /** @type {(callback: () => void) => void} */ (
-                        (callback) => callback()
-                    ),
-                transition: (/** @type {any} */ options) => {
-                    const to = typeof options.to === "number" ? options.to : 1;
-                    options.onUpdate(to);
-                    return Promise.resolve();
-                },
-            })
-        ),
+    context.emitBroadcast = (root, type, payload) => {
+        const message = /** @type {import("./view.js").BroadcastMessage} */ ({
+            type,
+            payload,
+        });
+        root.visit((view) => view.handleBroadcast(message));
+        for (const listener of listeners.get(type) ?? []) {
+            listener(message);
+        }
+    };
 
-        requestLayoutReflow: () => undefined,
-        suspendHoverTracking: () => undefined,
-        resumeHoverTracking: () => undefined,
-
-        isViewConfiguredVisible: () => true,
-        getBaseConfig: () => baseConfig,
-
-        addBroadcastListener: () => undefined,
-        removeBroadcastListener: () => undefined,
-
-        //...partialContext,
-    });
-
-    return c;
+    return context;
 }
 
 /**
@@ -143,3 +117,5 @@ export async function createAndInitialize(spec, viewClass) {
     await loadViewSubtreeData(view, dataSources);
     return view;
 }
+
+export { createHeadlessEngine };
