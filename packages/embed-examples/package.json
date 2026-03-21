@@ -5,7 +5,8 @@
   "description": "Examples",
   "type": "module",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build:smoke": "vite build"
   },
   "author": "Kari Lavikka",
   "license": "MIT",

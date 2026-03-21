@@ -22,5 +22,6 @@ jobs:
             - run: npm ci
             - run: npm run lint
             - run: npm --workspaces run test:tsc --if-present
+            - run: npm -w @genome-spy/embed-examples run build:smoke
             - run: npm --workspaces run build --if-present
             - run: npm run test
