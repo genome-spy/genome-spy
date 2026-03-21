@@ -208,3 +208,39 @@ export async function createHeadlessEngine(spec, options = {}) {
 
     return { view, context };
 }
+
+/**
+ * Creates a resolved view hierarchy without initializing dataflow or loading
+ * assemblies ahead of time.
+ *
+ * @param {RootSpec} spec
+ * @param {{
+ *   context?: ViewContext,
+ *   contextOptions?: Parameters<typeof createHeadlessViewContext>[0],
+ *   viewFactoryOptions?: import("../view/viewFactory.js").ViewFactoryOptions,
+ * }} [options]
+ * @returns {Promise<{ view: import("../view/view.js").default, context: ViewContext }>}
+ */
+export async function createHeadlessViewHierarchy(spec, options = {}) {
+    const context =
+        options.context ??
+        createHeadlessViewContext({
+            ...options.contextOptions,
+            viewFactoryOptions: options.viewFactoryOptions,
+        });
+
+    if (spec.datasets) {
+        const getNamedDataFromProvider = context.getNamedDataFromProvider;
+        context.getNamedDataFromProvider = (name) =>
+            spec.datasets[name] ?? getNamedDataFromProvider(name);
+    }
+
+    const view = await context.createOrImportView(
+        /** @type {import("../spec/view.js").ViewSpec} */ (spec),
+        null,
+        null,
+        VIEW_ROOT_NAME
+    );
+
+    return { view, context };
+}
