@@ -15,8 +15,6 @@ describe("flowInit", () => {
     test("syncs handles to canonical data sources after merge", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [];
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
@@ -63,8 +61,6 @@ describe("flowInit", () => {
     test("initializeViewSubtree wires collector updates for subtree loads", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [];
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -96,8 +92,6 @@ describe("flowInit", () => {
     test("disposeSubtree removes observers before rebuilding subtree", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }];
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -163,8 +157,6 @@ describe("flowInit", () => {
     test("disposeSubtree prunes named source branches", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }];
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -195,8 +187,6 @@ describe("flowInit", () => {
 
     test("collectNearestViewSubtreeDataSources stops at nested sources", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
@@ -236,8 +226,6 @@ describe("flowInit", () => {
 
     test("loadViewSubtreeData only loads nearest sources", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
@@ -276,8 +264,6 @@ describe("flowInit", () => {
 
     test("collectViewSubtreeDataSources includes nested sources", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
@@ -303,8 +289,6 @@ describe("flowInit", () => {
 
     test("collectNearestViewSubtreeDataSources returns child sources when root has none", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {
@@ -344,8 +328,6 @@ describe("flowInit", () => {
 
     test("loadViewSubtreeData emits subtree data ready broadcast", async () => {
         const context = createTestViewContext();
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -373,8 +355,6 @@ describe("flowInit", () => {
     test("loadViewSubtreeData deduplicates concurrent loads", async () => {
         const context = createTestViewContext();
         context.getNamedDataFromProvider = () => [{ x: 1 }];
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
 
         /** @type {import("../spec/view.js").HConcatSpec} */
         const spec = {

@@ -4,6 +4,13 @@
  *
  * @typedef {import("../spec/root.js").RootSpec} RootSpec
  * @typedef {import("../types/viewContext.js").default} ViewContext
+ * @typedef {ViewContext & {
+ *   emitBroadcast: (
+ *     root: import("./view.js").default,
+ *     type: import("../genomeSpy.js").BroadcastEventType,
+ *     payload?: any
+ *   ) => void
+ * }} BroadcastingViewContext
  */
 
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
@@ -27,6 +34,45 @@ export function createTestViewContext(viewFactoryOptions = {}) {
     return createHeadlessViewContext({
         viewFactoryOptions,
     });
+}
+
+/**
+ * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
+ * @returns {BroadcastingViewContext}
+ */
+export function createBroadcastingTestViewContext(viewFactoryOptions = {}) {
+    const context = /** @type {BroadcastingViewContext} */ (
+        createTestViewContext({
+            wrapRoot: true,
+            ...viewFactoryOptions,
+        })
+    );
+
+    /** @type {Map<string, Set<(message: any) => void>>} */
+    const listeners = new Map();
+
+    context.addBroadcastListener = (type, listener) => {
+        const typedListeners = listeners.get(type) ?? new Set();
+        typedListeners.add(listener);
+        listeners.set(type, typedListeners);
+    };
+
+    context.removeBroadcastListener = (type, listener) => {
+        listeners.get(type)?.delete(listener);
+    };
+
+    context.emitBroadcast = (root, type, payload) => {
+        const message = /** @type {import("./view.js").BroadcastMessage} */ ({
+            type,
+            payload,
+        });
+        root.visit((view) => view.handleBroadcast(message));
+        for (const listener of listeners.get(type) ?? []) {
+            listener(message);
+        }
+    };
+
+    return context;
 }
 
 /**

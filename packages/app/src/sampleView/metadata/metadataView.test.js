@@ -84,8 +84,6 @@ async function createInteractiveMetadataViewTestHarness() {
     context.updateTooltip = () => undefined;
     context.getCurrentHover = () => undefined;
     context.addKeyboardListener = () => undefined;
-    context.addBroadcastListener = () => undefined;
-    context.removeBroadcastListener = () => undefined;
     context.getNamedDataFromProvider = () => [];
 
     const store = createStoreStub({
@@ -196,8 +194,6 @@ describe("MetadataView", () => {
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
         context.addKeyboardListener = () => undefined;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const dataFlow = context.dataFlow;
@@ -373,8 +369,6 @@ describe("MetadataView", () => {
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
         context.addKeyboardListener = () => undefined;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({
@@ -484,8 +478,6 @@ describe("MetadataView", () => {
         context.updateTooltip = () => undefined;
         context.getCurrentHover = () => undefined;
         context.addKeyboardListener = () => undefined;
-        context.addBroadcastListener = () => undefined;
-        context.removeBroadcastListener = () => undefined;
         context.getNamedDataFromProvider = () => [];
 
         const store = createStoreStub({

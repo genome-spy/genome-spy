@@ -4,10 +4,14 @@ import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import UnitView from "./unitView.js";
 import AxisView from "./axisView.js";
-import { createTestViewContext } from "./testUtils.js";
+import { createBroadcastingTestViewContext } from "./testUtils.js";
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
+
+/**
+ * @typedef {import("./testUtils.js").BroadcastingViewContext} BroadcastingViewContext
+ */
 
 class NoOpRenderingContext extends ViewRenderingContext {
     /**
@@ -69,72 +73,8 @@ function findLabelsView(axisView) {
 }
 
 /**
- * @typedef {import("../types/viewContext.js").default & {
- *   emitBroadcast: (
- *     root: import("./view.js").default,
- *     type: import("../genomeSpy.js").BroadcastEventType,
- *     payload?: any
- *   ) => void,
- * }} TestViewContext
- */
-
-/**
- * @returns {TestViewContext}
- */
-function createBroadcastingContext() {
-    const context = /** @type {TestViewContext} */ (
-        createTestViewContext({ wrapRoot: true })
-    );
-
-    /** @type {Map<string, Set<(message: any) => void>>} */
-    const listeners = new Map();
-
-    context.addBroadcastListener = (type, listener) => {
-        const typedListeners = listeners.get(type) ?? new Set();
-        typedListeners.add(listener);
-        listeners.set(type, typedListeners);
-    };
-
-    context.removeBroadcastListener = (type, listener) => {
-        listeners.get(type)?.delete(listener);
-    };
-
-    /**
-     * @param {import("./view.js").default} root
-     * @param {import("../genomeSpy.js").BroadcastEventType} type
-     * @param {any} [payload]
-     */
-    context.emitBroadcast = (root, type, payload) => {
-        const message = /** @type {import("./view.js").BroadcastMessage} */ ({
-            type,
-            payload,
-        });
-        root.visit((view) => view.handleBroadcast(message));
-        for (const listener of listeners.get(type) ?? []) {
-            listener(message);
-        }
-    };
-
-    return context;
-}
-
-/**
- * @param {ReturnType<typeof createBroadcastingContext>} context
- * @param {import("./view.js").default} root
- * @param {import("../genomeSpy.js").BroadcastEventType} type
- * @param {any} [payload]
- */
-function emitBroadcast(context, root, type, payload) {
-    const message = /** @type {import("./view.js").BroadcastMessage} */ ({
-        type,
-        payload,
-    });
-    root.visit((view) => view.handleBroadcast(message));
-}
-
-/**
  * @param {import("../spec/root.js").RootSpec} spec
- * @param {ReturnType<typeof createBroadcastingContext>} context
+ * @param {ReturnType<typeof createBroadcastingTestViewContext>} context
  */
 async function createAndInitializeRoot(spec, context) {
     const root = await context.createOrImportView(
@@ -157,7 +97,7 @@ async function createAndInitializeRoot(spec, context) {
 
 /**
  * @param {import("./view.js").default} root
- * @param {ReturnType<typeof createBroadcastingContext>} context
+ * @param {BroadcastingViewContext} context
  */
 function reflow(root, context) {
     root.render(
@@ -167,7 +107,7 @@ function reflow(root, context) {
             firstFacet: true,
         }
     );
-    emitBroadcast(context, root, "layoutComputed");
+    context.emitBroadcast(root, "layoutComputed");
 }
 
 async function flushMicrotasks() {
@@ -178,7 +118,7 @@ async function flushMicrotasks() {
 
 /**
  * @param {import("./view.js").default} root
- * @param {ReturnType<typeof createBroadcastingContext>} context
+ * @param {BroadcastingViewContext} context
  */
 async function settleLayout(root, context) {
     let needsReflow = true;
@@ -203,7 +143,7 @@ async function settleLayout(root, context) {
  * @param {import("../spec/axis.js").AxisOrient} orient
  */
 async function getSettledAxisSnapshot(spec, orient) {
-    const context = createBroadcastingContext();
+    const context = createBroadcastingTestViewContext();
     const root = await createAndInitializeRoot(spec, context);
     const axis = findAxisView(root, orient);
 
@@ -258,7 +198,7 @@ function getHeuristicExtent(axis) {
 
 describe("Axis extent measurement", () => {
     test("axis labels propagate font props to text mark and measureText", async () => {
-        const context = createBroadcastingContext();
+        const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
             {
                 data: {
@@ -307,7 +247,7 @@ describe("Axis extent measurement", () => {
     });
 
     test("long categorical labels increase bottom axis extent after layout", async () => {
-        const context = createBroadcastingContext();
+        const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
             {
                 data: {
@@ -342,7 +282,7 @@ describe("Axis extent measurement", () => {
     });
 
     test("zoom-driven extent updates keep the existing axis subtree alive", async () => {
-        const context = createBroadcastingContext();
+        const context = createBroadcastingTestViewContext();
         const root = await createAndInitializeRoot(
             {
                 data: {
