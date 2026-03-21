@@ -5,6 +5,7 @@ import UnitView from "./unitView.js";
 import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import { createAndInitialize, createTestViewContext } from "./testUtils.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 class NoOpRenderingContext extends ViewRenderingContext {
     /**
@@ -109,10 +110,8 @@ describe("LayerView dynamic children", () => {
     });
 
     test("removeChildAt throws for invalid index", async () => {
-        const context = createTestViewContext();
-        const parent = /** @type {import("./layerView.js").default} */ (
-            await context.createOrImportView({ layer: [] }, null, null, "layer")
-        );
+        const { view } = await createHeadlessEngine({ layer: [] });
+        const parent = /** @type {import("./layerView.js").default} */ (view);
 
         await expect(parent.removeChildAt(0)).rejects.toThrow(
             "Child index out of range!"
@@ -120,13 +119,13 @@ describe("LayerView dynamic children", () => {
     });
 
     test("addChildSpec returns a unit view for unit specs", async () => {
-        const context = createTestViewContext();
+        const { view: rootView } = await createHeadlessEngine({ layer: [] });
         const parent = /** @type {import("./layerView.js").default} */ (
-            await context.createOrImportView({ layer: [] }, null, null, "layer")
+            rootView
         );
 
-        const view = await parent.addChildSpec(makeUnitSpec());
+        const childView = await parent.addChildSpec(makeUnitSpec());
 
-        expect(view).toBeInstanceOf(UnitView);
+        expect(childView).toBeInstanceOf(UnitView);
     });
 });
