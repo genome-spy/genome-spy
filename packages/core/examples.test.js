@@ -3,20 +3,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, test } from "vitest";
 
-import { createTestViewContext } from "./src/view/testUtils.js";
-import { VIEW_ROOT_NAME } from "./src/view/viewFactory.js";
-import { checkForDuplicateScaleNames } from "./src/view/viewUtils.js";
-import { initializeViewSubtree } from "./src/data/flowInit.js";
-import { ensureAssembliesForView } from "./src/genome/assemblyPreflight.js";
+import GenomeStore from "./src/genome/genomeStore.js";
 import { resolveRootGenomeConfig } from "./src/genome/rootGenomeConfig.js";
+import { createHeadlessEngine } from "./src/genomeSpy/headlessBootstrap.js";
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(packageDir, "..", "..");
 const curatedBaseUrl = "examples/";
-
-// App-only sample specs are not supported by the core test harness yet and
-// should move under examples/app once that tree is introduced.
-const excludedExamples = new Set(["examples/core/app/samples.json"]);
 
 const examplePaths = collectExamplePaths();
 
@@ -36,10 +29,7 @@ function collectExamplePaths() {
             const normalizedPath = relativePath.split(path.sep).join("/");
             const spec = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
 
-            if (
-                !excludedExamples.has(normalizedPath) &&
-                !hasExternalDataUrl(spec)
-            ) {
+            if (!hasExternalDataUrl(spec)) {
                 paths.push(normalizedPath);
             }
         });
@@ -72,32 +62,28 @@ async function initializeExample(examplePath) {
     );
     spec.baseUrl ??= curatedBaseUrl;
 
-    const context = createTestViewContext({
-        wrapRoot: true,
-        allowImport: false,
-    });
+    const genomeStore = new GenomeStore(".");
     const { genomesByName, defaultAssembly } = resolveRootGenomeConfig(spec);
-    context.genomeStore.configureGenomes(genomesByName, defaultAssembly);
-    await ensureAssembliesForSpec(spec, context);
+    genomeStore.configureGenomes(genomesByName, defaultAssembly);
+    await ensureAssembliesForSpec(spec, genomeStore);
 
-    const view = await context.createOrImportView(
-        spec,
-        null,
-        null,
-        VIEW_ROOT_NAME
-    );
-
-    checkForDuplicateScaleNames(view);
-    await ensureAssembliesForView(view, context.genomeStore);
-
-    const { dataSources } = initializeViewSubtree(view, context.dataFlow);
+    const { view, context } = await createHeadlessEngine(spec, {
+        contextOptions: {
+            genomeStore,
+            viewFactoryOptions: {
+                wrapRoot: true,
+                allowImport: false,
+            },
+        },
+    });
 
     return {
         assemblies: Array.from(context.genomeStore.genomes.keys()).sort(),
         hierarchy: summarizeView(view),
-        dataSources: Array.from(dataSources, summarizeDataSource).sort(
-            compareDataSources
-        ),
+        dataSources: Array.from(
+            context.dataFlow.dataSources,
+            summarizeDataSource
+        ).sort(compareDataSources),
     };
 }
 
@@ -136,9 +122,9 @@ function compareDataSources(a, b) {
 
 /**
  * @param {any} spec
- * @param {ReturnType<typeof createTestViewContext>} context
+ * @param {GenomeStore} genomeStore
  */
-async function ensureAssembliesForSpec(spec, context) {
+async function ensureAssembliesForSpec(spec, genomeStore) {
     const assemblies = new Map();
 
     const addAssembly = (assembly) => {
@@ -163,7 +149,7 @@ async function ensureAssembliesForSpec(spec, context) {
         }
     });
 
-    await context.genomeStore.ensureAssemblies(Array.from(assemblies.values()));
+    await genomeStore.ensureAssemblies(Array.from(assemblies.values()));
 }
 
 /**
