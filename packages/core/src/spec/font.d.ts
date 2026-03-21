@@ -12,4 +12,4 @@ export type FontWeight =
 
 export type Align = "left" | "center" | "right";
 
-export type Baseline = "top" | "middle" | "bottom" | "alphabetic";
+export type Baseline = "top" | "middle" | "bottom" | "alphabetic" | "baseline";
