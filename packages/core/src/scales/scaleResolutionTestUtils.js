@@ -1,4 +1,4 @@
-import { createAndInitialize } from "../view/testUtils.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import UnitView from "../view/unitView.js";
 
 /**
@@ -7,7 +7,11 @@ import UnitView from "../view/unitView.js";
  * @returns {Promise<import("../view/view.js").default>}
  */
 export async function initView(spec, viewType = UnitView) {
-    return createAndInitialize(spec, viewType);
+    const { view } = await createHeadlessEngine(spec);
+    if (!(view instanceof viewType)) {
+        throw new Error("ViewClass and the spec do not match!");
+    }
+    return view;
 }
 
 /**

@@ -11,94 +11,22 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import DataFlow from "../data/dataFlow.js";
-import { VIEW_ROOT_NAME, ViewFactory } from "./viewFactory.js";
-import GenomeStore from "../genome/genomeStore.js";
-import BmFontManager from "../fonts/bmFontManager.js";
+import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
-import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import { resolveBaseConfig } from "../config/resolveConfig.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewContext,
+} from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
  * @returns
  */
 export function createTestViewContext(viewFactoryOptions = {}) {
-    const viewFactory = new ViewFactory({
-        allowImport: false,
-        wrapRoot: false,
-        ...viewFactoryOptions,
+    return createHeadlessViewContext({
+        viewFactoryOptions,
     });
-
-    const genomeStore = new GenomeStore(".");
-    genomeStore.initialize({
-        name: "test",
-        contigs: [
-            { name: "chr1", size: 20 },
-            { name: "chr2", size: 30 },
-        ],
-    });
-
-    const dataFlow = new DataFlow();
-    const baseConfig = resolveBaseConfig({
-        defaultConfig: INTERNAL_DEFAULT_CONFIG,
-    });
-
-    // @ts-expect-error
-    const c = /** @type {ViewContext} */ ({
-        createOrImportView: async function (
-            spec,
-            parent,
-            dataParent,
-            defaultName,
-            validator,
-            options
-        ) {
-            return viewFactory.createOrImportView(
-                spec,
-                this,
-                parent,
-                dataParent,
-                defaultName,
-                validator,
-                options
-            );
-        },
-
-        dataFlow,
-        genomeStore,
-
-        fontManager: new BmFontManager(),
-        animator: /** @type {import("../utils/animator.js").default} */ (
-            /** @type {any} */ ({
-                requestRender: /** @type {() => void} */ (() => undefined),
-                requestTransition:
-                    /** @type {(callback: () => void) => void} */ (
-                        (callback) => callback()
-                    ),
-                transition: (/** @type {any} */ options) => {
-                    const to = typeof options.to === "number" ? options.to : 1;
-                    options.onUpdate(to);
-                    return Promise.resolve();
-                },
-            })
-        ),
-
-        requestLayoutReflow: () => undefined,
-        suspendHoverTracking: () => undefined,
-        resumeHoverTracking: () => undefined,
-
-        isViewConfiguredVisible: () => true,
-        getBaseConfig: () => baseConfig,
-
-        addBroadcastListener: () => undefined,
-        removeBroadcastListener: () => undefined,
-
-        //...partialContext,
-    });
-
-    return c;
 }
 
 /**
@@ -143,3 +71,5 @@ export async function createAndInitialize(spec, viewClass) {
     await loadViewSubtreeData(view, dataSources);
     return view;
 }
+
+export { createHeadlessEngine };

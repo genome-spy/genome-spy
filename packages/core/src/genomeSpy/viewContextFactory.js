@@ -9,6 +9,7 @@
  *
  * @param {Partial<ViewContext> & {
  *   createOrImportViewWithContext?: (context: ViewContext, spec: import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec, layoutParent?: import("../view/containerView.js").default, dataParent?: import("../view/view.js").default, defaultName?: string, validator?: (spec: import("../spec/view.js").ViewSpec) => void, options?: import("../types/viewContext.js").CreateViewOptions) => Promise<import("../view/view.js").default>
+ *   allowMissingGlHelper?: boolean
  * }} options
  * @returns {ViewContext}
  */
@@ -20,7 +21,9 @@ export function createViewContext(options) {
     /** @type {Partial<ViewContext>} */
     const context = {
         dataFlow: options.dataFlow ?? missing("dataFlow"),
-        glHelper: options.glHelper ?? missing("glHelper"),
+        glHelper: options.allowMissingGlHelper
+            ? options.glHelper
+            : (options.glHelper ?? missing("glHelper")),
         animator: options.animator ?? missing("animator"),
         genomeStore: options.genomeStore,
         fontManager: options.fontManager ?? missing("fontManager"),

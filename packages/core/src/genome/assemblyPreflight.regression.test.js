@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { initializeViewSubtree } from "../data/flowInit.js";
-import { createTestViewContext } from "../view/testUtils.js";
+import { createHeadlessViewContext } from "../genomeSpy/headlessBootstrap.js";
 import { VIEW_ROOT_NAME, ViewFactory } from "../view/viewFactory.js";
 import { ensureAssembliesForView } from "./assemblyPreflight.js";
 
@@ -65,9 +65,11 @@ describe("assembly preflight import regression", () => {
                 throw new Error(`Unexpected URL: ${url}`);
             });
 
-        const context = createTestViewContext({
-            allowImport: true,
-            wrapRoot: false,
+        const context = createHeadlessViewContext({
+            viewFactoryOptions: {
+                allowImport: true,
+                wrapRoot: false,
+            },
         });
         context.isViewSpec = (spec) =>
             new ViewFactory().isViewSpec(
@@ -111,8 +113,10 @@ describe("assembly preflight import regression", () => {
     });
 
     test("implicit root interval selections do not access default locus assemblies before preflight", async () => {
-        const context = createTestViewContext({
-            wrapRoot: true,
+        const context = createHeadlessViewContext({
+            viewFactoryOptions: {
+                wrapRoot: true,
+            },
         });
         context.genomeStore.baseUrl = "https://example.org/";
         context.genomeStore.configureGenomes(

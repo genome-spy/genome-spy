@@ -1,11 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 import UnitView from "./unitView.js";
 
-import {
-    create,
-    createAndInitialize,
-    createTestViewContext,
-} from "./testUtils.js";
+import { create, createAndInitialize } from "./testUtils.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { toRegularArray as r } from "../utils/domainArray.js";
 import ConcatView from "./concatView.js";
 import PointMark from "../marks/point.js";
@@ -13,10 +10,6 @@ import View from "./view.js";
 import LayerView from "./layerView.js";
 import Point from "./layout/point.js";
 import Interaction from "../utils/interaction.js";
-import {
-    initializeViewSubtree,
-    loadViewSubtreeData,
-} from "../data/flowInit.js";
 import Collector from "../data/collector.js";
 import FlowNode from "../data/flowNode.js";
 
@@ -786,9 +779,6 @@ describe("Step sizing and domain updates", () => {
     test("Layer view width updates when discrete domain grows", async () => {
         // Non-obvious: step sizing depends on the x-scale domain, which is owned
         // by a child unit view. Ensure the parent layer size updates on data changes.
-        const context = createTestViewContext();
-        context.getNamedDataFromProvider = () => [{ x: "a" }, { x: "b" }];
-
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             width: { step: 10 },
@@ -806,17 +796,12 @@ describe("Step sizing and domain updates", () => {
             ],
         };
 
-        const view = await context.createOrImportView(spec, null, null, "root");
-        expect(view).toBeInstanceOf(LayerView);
-
-        view.visit((v) => {
-            if (v instanceof UnitView) {
-                v.mark.initializeEncoders();
-            }
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => [{ x: "a" }, { x: "b" }],
+            },
         });
-
-        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
-        await loadViewSubtreeData(view, dataSources);
+        expect(view).toBeInstanceOf(LayerView);
 
         const initialWidth = view.getSize().width.px;
         const named = context.dataFlow.findNamedDataSource("data");
@@ -832,12 +817,6 @@ describe("Step sizing and domain updates", () => {
 
     test("Layer view width updates when group depth changes", async () => {
         // Non-obvious: mirrors SampleGroupView (encoding on LayerView, data via named source).
-        const context = createTestViewContext();
-        context.getNamedDataFromProvider = () => [
-            { _index: 0, _depth: 1, name: "A", title: "A" },
-            { _index: 1, _depth: 2, name: "B", title: "B" },
-        ];
-
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             width: { step: 22 },
@@ -883,17 +862,15 @@ describe("Step sizing and domain updates", () => {
             ],
         };
 
-        const view = await context.createOrImportView(spec, null, null, "root");
-        expect(view).toBeInstanceOf(LayerView);
-
-        view.visit((v) => {
-            if (v instanceof UnitView) {
-                v.mark.initializeEncoders();
-            }
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => [
+                    { _index: 0, _depth: 1, name: "A", title: "A" },
+                    { _index: 1, _depth: 2, name: "B", title: "B" },
+                ],
+            },
         });
-
-        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
-        await loadViewSubtreeData(view, dataSources);
+        expect(view).toBeInstanceOf(LayerView);
 
         const initialWidth = view.getSize().width.px;
 
