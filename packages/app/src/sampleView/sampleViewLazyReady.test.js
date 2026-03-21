@@ -1,16 +1,5 @@
 // @ts-check
 import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@fortawesome/fontawesome-svg-core", () => ({
-    icon: () => ({ node: [""] }),
-    dom: { css: () => "" },
-}));
-
-vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
-    __esModule: true,
-    ...(await importOriginal()),
-}));
-
 import {
     buildReadinessRequest,
     isSubtreeLazyReady,
@@ -70,7 +59,6 @@ describe("SampleView lazy readiness", () => {
 
             const { view } = await createSampleViewForTest({
                 spec,
-                disableGroupUpdates: true,
             });
 
             const trackView = view.findDescendantByName("beta-values");
@@ -141,7 +129,6 @@ describe("SampleView lazy readiness", () => {
 
         const { view } = await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         await expect(
@@ -187,7 +174,6 @@ describe("SampleView lazy readiness", () => {
 
         const { view } = await createSampleViewForTest({
             spec,
-            disableGroupUpdates: true,
         });
 
         await expect(

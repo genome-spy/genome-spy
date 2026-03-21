@@ -2,16 +2,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
-vi.mock("@fortawesome/fontawesome-svg-core", () => ({
-    icon: () => ({ node: [""] }),
-    dom: { css: () => "" },
-}));
-
-vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
-    __esModule: true,
-    ...(await importOriginal()),
-}));
-
 /**
  * @returns {{resolve: (value?: void) => void, promise: Promise<void>}}
  */

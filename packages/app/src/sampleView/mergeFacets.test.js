@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     initializeViewData,
     initializeVisibleViewData,
@@ -14,16 +14,6 @@ import { sampleSlice } from "./state/sampleSlice.js";
 import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
-
-vi.mock("@fortawesome/fontawesome-svg-core", () => ({
-    icon: () => ({ node: [""] }),
-    dom: { css: () => "" },
-}));
-
-vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
-    __esModule: true,
-    ...(await importOriginal()),
-}));
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -45,7 +35,6 @@ describe("MergeSampleFacets", () => {
         const intentExecutor = new IntentExecutor(store);
         const { context } = createAppTestContext();
         context.getNamedDataFromProvider = () => undefined;
-        context.animator.requestTransition = (callback) => callback();
 
         let summaryVisible = summaryInitiallyVisible;
         context.isViewConfiguredVisible = (view) => {

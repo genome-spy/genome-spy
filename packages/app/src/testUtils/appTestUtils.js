@@ -48,6 +48,10 @@ export function createAppTestContext(options = {}) {
                 transition: /** @type {() => Promise<void>} */ (
                     () => Promise.resolve()
                 ),
+                requestTransition:
+                    /** @type {(callback: () => void) => void} */ (
+                        (callback) => callback()
+                    ),
                 requestRender: /** @type {() => void} */ (() => undefined),
             })
         );
@@ -143,14 +147,20 @@ export function createSampleViewStub(options) {
  * @returns {Promise<{ view: SampleView, context: ViewContext, store: AppStore }>}
  */
 export async function createSampleViewForTest(options) {
+    const {
+        spec,
+        context: suppliedContext,
+        initializeFlow = true,
+        disableGroupUpdates = true,
+    } = options;
     const { context, store, provenance, intentExecutor } = createAppTestContext(
         {
-            context: options.context,
+            context: suppliedContext,
         }
     );
 
     const view = new SampleView(
-        options.spec,
+        spec,
         context,
         null,
         null,
@@ -161,11 +171,11 @@ export async function createSampleViewForTest(options) {
 
     await view.initializeChildren();
 
-    if (options.initializeFlow ?? true) {
+    if (initializeFlow) {
         initializeViewSubtree(view, context.dataFlow);
     }
 
-    if (options.disableGroupUpdates) {
+    if (disableGroupUpdates) {
         view.sampleGroupView.updateGroups = () => undefined;
     }
 
