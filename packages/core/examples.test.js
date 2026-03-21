@@ -1,17 +1,19 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { describe, expect, test } from "vitest";
 
 import GenomeStore from "./src/genome/genomeStore.js";
 import { resolveRootGenomeConfig } from "./src/genome/rootGenomeConfig.js";
 import { createHeadlessEngine } from "./src/genomeSpy/headlessBootstrap.js";
+import {
+    collectSharedExamplePaths,
+    loadSharedExampleSpec,
+} from "./src/spec/exampleFiles.js";
 
-const packageDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(packageDir, "..", "..");
 const curatedBaseUrl = "examples/";
 
-const examplePaths = collectExamplePaths();
+const examplePaths = collectSharedExamplePaths().filter((examplePath) => {
+    const spec = loadSharedExampleSpec(examplePath);
+    return !hasExternalDataUrl(spec);
+});
 
 describe("shared examples", () => {
     test.each(examplePaths)("initializes %s", async (examplePath) => {
@@ -19,47 +21,11 @@ describe("shared examples", () => {
     });
 });
 
-function collectExamplePaths() {
-    /** @type {string[]} */
-    const paths = [];
-
-    for (const dir of ["examples/core", "examples/docs"]) {
-        visit(path.join(repoRoot, dir), (absolutePath) => {
-            const relativePath = path.relative(repoRoot, absolutePath);
-            const normalizedPath = relativePath.split(path.sep).join("/");
-            const spec = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
-
-            if (!hasExternalDataUrl(spec)) {
-                paths.push(normalizedPath);
-            }
-        });
-    }
-
-    return paths.sort();
-}
-
-/**
- * @param {string} dir
- * @param {(absolutePath: string) => void} visitor
- */
-function visit(dir, visitor) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        const absolutePath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            visit(absolutePath, visitor);
-        } else if (entry.isFile() && entry.name.endsWith(".json")) {
-            visitor(absolutePath);
-        }
-    }
-}
-
 /**
  * @param {string} examplePath
  */
 async function initializeExample(examplePath) {
-    const spec = JSON.parse(
-        fs.readFileSync(path.join(repoRoot, examplePath), "utf8")
-    );
+    const spec = loadSharedExampleSpec(examplePath);
     spec.baseUrl ??= curatedBaseUrl;
 
     const genomeStore = new GenomeStore(".");
