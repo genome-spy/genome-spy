@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createTestViewContext } from "../view/testUtils.js";
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @param {import("../view/view.js").default} root
@@ -15,8 +15,7 @@ function findByName(root, name) {
 
 describe("hierarchical config resolution", () => {
     test("closest config scope dominates", async () => {
-        const context = createTestViewContext({ wrapRoot: false });
-        const root = await context.createOrImportView(
+        const { view: root } = await createHeadlessViewHierarchy(
             {
                 config: {
                     mark: { color: "red" },
@@ -43,9 +42,11 @@ describe("hierarchical config resolution", () => {
                     },
                 ],
             },
-            null,
-            null,
-            "root"
+            {
+                viewFactoryOptions: {
+                    wrapRoot: false,
+                },
+            }
         );
 
         expect(findByName(root, "childInherit").getConfig().mark.color).toBe(

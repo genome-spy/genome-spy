@@ -28,7 +28,18 @@ vi.mock("@fortawesome/free-solid-svg-icons", async (importOriginal) => ({
 transforms.mergeFacets = MergeSampleFacets;
 
 describe("MergeSampleFacets", () => {
-    async function createHiddenSummaryScenario() {
+    /**
+     * @param {import("@genome-spy/app/spec/sampleView.js").SampleSpec} spec
+     * @param {{
+     *   visibilityMode?: "manual" | "store",
+     *   summaryInitiallyVisible?: boolean,
+     * }} [options]
+     */
+    async function createMergeFacetsScenario(spec, options = {}) {
+        const { visibilityMode = "manual", summaryInitiallyVisible = false } =
+            options;
+        const assertHiddenInitially =
+            visibilityMode != "store" || !summaryInitiallyVisible;
         const store = setupStore();
         const provenance = new Provenance(store);
         const intentExecutor = new IntentExecutor(store);
@@ -36,17 +47,68 @@ describe("MergeSampleFacets", () => {
         context.getNamedDataFromProvider = () => undefined;
         context.animator.requestTransition = (callback) => callback();
 
-        let summaryVisible = false;
+        let summaryVisible = summaryInitiallyVisible;
         context.isViewConfiguredVisible = (view) => {
             if (view.name == "summary") {
-                return summaryVisible;
+                if (visibilityMode == "store") {
+                    return (
+                        store.getState().viewSettings.visibilities.summary ??
+                        summaryInitiallyVisible
+                    );
+                } else {
+                    return summaryVisible;
+                }
             }
 
             return view.spec.visible ?? true;
         };
 
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
+        const view = new SampleView(
+            spec,
+            context,
+            null,
+            null,
+            "samples",
+            provenance,
+            intentExecutor
+        );
+
+        await view.initializeChildren();
+        view.sampleGroupView.updateGroups = () => undefined;
+        await initializeViewData(
+            view,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        const summaryView = view.findDescendantByName("summary");
+        if (assertHiddenInitially) {
+            expect(summaryView?.flowHandle).toBeUndefined();
+        }
+
+        return {
+            store,
+            context,
+            view,
+            summaryView,
+            showSummary: async () => {
+                summaryVisible = true;
+
+                await initializeVisibleViewData(
+                    view,
+                    context.dataFlow,
+                    context.fontManager
+                );
+            },
+        };
+    }
+
+    /**
+     * @returns {import("@genome-spy/app/spec/sampleView.js").SampleSpec}
+     */
+    function createIdentitySummarySpec() {
+        return {
             samples: {
                 identity: {
                     data: {
@@ -81,49 +143,114 @@ describe("MergeSampleFacets", () => {
                 ],
             },
         };
+    }
 
-        const view = new SampleView(
-            spec,
-            context,
-            null,
-            null,
-            "samples",
-            provenance,
-            intentExecutor
-        );
-
-        await view.initializeChildren();
-        view.sampleGroupView.updateGroups = () => undefined;
-        await initializeViewData(
-            view,
-            context.dataFlow,
-            context.fontManager,
-            () => undefined
-        );
-
-        const summaryView = view.findDescendantByName("summary");
-        expect(summaryView?.flowHandle).toBeUndefined();
-
+    /**
+     * @returns {import("@genome-spy/app/spec/sampleView.js").SampleSpec}
+     */
+    function createCoverageSummarySpec() {
         return {
-            store,
-            context,
-            view,
-            summaryView,
-            showSummary: async () => {
-                summaryVisible = true;
-
-                await initializeVisibleViewData(
-                    view,
-                    context.dataFlow,
-                    context.fontManager
-                );
+            samples: {
+                identity: {
+                    data: {
+                        values: [{ sample: "A" }, { sample: "B" }],
+                    },
+                    idField: "sample",
+                },
+            },
+            spec: {
+                data: {
+                    values: [
+                        { sample: "A", x: 1, x2: 4, value: 1 },
+                        { sample: "B", x: 2, x2: 5, value: 2 },
+                    ],
+                },
+                mark: "rect",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    x2: { field: "x2" },
+                    color: { field: "value", type: "quantitative" },
+                },
+                aggregateSamples: [
+                    {
+                        name: "summary",
+                        visible: false,
+                        encoding: {
+                            y: { field: "coverage", type: "quantitative" },
+                            color: null,
+                        },
+                        layer: [
+                            {
+                                data: { values: [{}] },
+                                mark: "rule",
+                                encoding: {
+                                    y: { datum: 0, type: "quantitative" },
+                                    x: null,
+                                    x2: null,
+                                },
+                            },
+                            {
+                                name: "coverage",
+                                transform: [
+                                    {
+                                        type: "project",
+                                        fields: ["sample", "x", "x2"],
+                                    },
+                                    {
+                                        type: "coverage",
+                                        start: "x",
+                                        end: "x2",
+                                    },
+                                    {
+                                        type: "formula",
+                                        expr: "datum.coverage / sampleCount",
+                                        as: "coverage",
+                                    },
+                                ],
+                                mark: "rect",
+                                encoding: {
+                                    color: null,
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
         };
     }
 
+    /**
+     * @param {ReturnType<typeof setupStore>} store
+     * @param {SampleView} view
+     * @param {ReturnType<typeof createAppTestContext>["context"]} context
+     */
+    function createVisibilityUpdateTracker(store, view, context) {
+        const visibilityUpdates = [];
+        const unsubscribe = subscribeTo(
+            store,
+            (state) => state.viewSettings?.visibilities,
+            withMicrotask(() => {
+                visibilityUpdates.push(
+                    initializeVisibleViewData(
+                        view,
+                        context.dataFlow,
+                        context.fontManager
+                    )
+                );
+            })
+        );
+
+        return {
+            visibilityUpdates,
+            unsubscribe,
+        };
+    }
+
     it("materializes hidden aggregate summaries when they become visible", async () => {
-        const { summaryView, showSummary } =
-            await createHiddenSummaryScenario();
+        const { summaryView, showSummary } = await createMergeFacetsScenario(
+            createIdentitySummarySpec()
+        );
 
         await showSummary();
 
@@ -135,7 +262,7 @@ describe("MergeSampleFacets", () => {
 
     it("materializes summaries after sample state changed while the summary was hidden", async () => {
         const { store, summaryView, showSummary } =
-            await createHiddenSummaryScenario();
+            await createMergeFacetsScenario(createIdentitySummarySpec());
 
         store.dispatch(
             sampleSlice.actions.sortBy({
@@ -161,110 +288,8 @@ describe("MergeSampleFacets", () => {
     });
 
     it("materializes layered coverage summaries after sample state changed while hidden", async () => {
-        const store = setupStore();
-        const provenance = new Provenance(store);
-        const intentExecutor = new IntentExecutor(store);
-        const { context } = createAppTestContext();
-        context.getNamedDataFromProvider = () => undefined;
-
-        let summaryVisible = false;
-        context.isViewConfiguredVisible = (view) => {
-            if (view.name == "summary") {
-                return summaryVisible;
-            }
-
-            return view.spec.visible ?? true;
-        };
-
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            samples: {
-                identity: {
-                    data: {
-                        values: [{ sample: "A" }, { sample: "B" }],
-                    },
-                    idField: "sample",
-                },
-            },
-            spec: {
-                data: {
-                    values: [
-                        { sample: "A", x: 1, x2: 4, value: 1 },
-                        { sample: "B", x: 2, x2: 5, value: 2 },
-                    ],
-                },
-                mark: "rect",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    x2: { field: "x2" },
-                    color: { field: "value", type: "quantitative" },
-                },
-                aggregateSamples: [
-                    {
-                        name: "summary",
-                        visible: false,
-                        encoding: {
-                            y: { field: "coverage", type: "quantitative" },
-                            color: null,
-                        },
-                        layer: [
-                            {
-                                data: { values: [{}] },
-                                mark: "rule",
-                                encoding: {
-                                    y: { datum: 0, type: "quantitative" },
-                                    x: null,
-                                    x2: null,
-                                },
-                            },
-                            {
-                                name: "coverage",
-                                transform: [
-                                    {
-                                        type: "project",
-                                        fields: ["sample", "x", "x2"],
-                                    },
-                                    {
-                                        type: "coverage",
-                                        start: "x",
-                                        end: "x2",
-                                    },
-                                    {
-                                        type: "formula",
-                                        expr: "datum.coverage / sampleCount",
-                                        as: "coverage",
-                                    },
-                                ],
-                                mark: "rect",
-                                encoding: {
-                                    color: null,
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-        };
-
-        const view = new SampleView(
-            spec,
-            context,
-            null,
-            null,
-            "samples",
-            provenance,
-            intentExecutor
-        );
-
-        await view.initializeChildren();
-        view.sampleGroupView.updateGroups = () => undefined;
-
-        await initializeViewData(
-            view,
-            context.dataFlow,
-            context.fontManager,
-            () => undefined
+        const { store, view, showSummary } = await createMergeFacetsScenario(
+            createCoverageSummarySpec()
         );
 
         store.dispatch(
@@ -282,13 +307,7 @@ describe("MergeSampleFacets", () => {
             })
         );
 
-        summaryVisible = true;
-
-        await initializeVisibleViewData(
-            view,
-            context.dataFlow,
-            context.fontManager
-        );
+        await showSummary();
 
         const coverageView = view.findDescendantByName("coverage");
         const collector = coverageView?.getCollector?.();
@@ -298,130 +317,17 @@ describe("MergeSampleFacets", () => {
     });
 
     it("materializes layered coverage summaries when visibility is restored via store subscription", async () => {
-        const store = setupStore();
-        const provenance = new Provenance(store);
-        const intentExecutor = new IntentExecutor(store);
-        const { context } = createAppTestContext();
-        context.getNamedDataFromProvider = () => undefined;
-
-        const getSummaryVisible = () =>
-            !!store.getState().viewSettings.visibilities.summary;
-
-        context.isViewConfiguredVisible = (view) => {
-            if (view.name == "summary") {
-                return getSummaryVisible();
+        const { store, context, view } = await createMergeFacetsScenario(
+            createCoverageSummarySpec(),
+            {
+                visibilityMode: "store",
             }
-
-            return view.spec.visible ?? true;
-        };
-
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            samples: {
-                identity: {
-                    data: {
-                        values: [{ sample: "A" }, { sample: "B" }],
-                    },
-                    idField: "sample",
-                },
-            },
-            spec: {
-                data: {
-                    values: [
-                        { sample: "A", x: 1, x2: 4, value: 1 },
-                        { sample: "B", x: 2, x2: 5, value: 2 },
-                    ],
-                },
-                mark: "rect",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    x2: { field: "x2" },
-                    color: { field: "value", type: "quantitative" },
-                },
-                aggregateSamples: [
-                    {
-                        name: "summary",
-                        visible: false,
-                        encoding: {
-                            y: { field: "coverage", type: "quantitative" },
-                            color: null,
-                        },
-                        layer: [
-                            {
-                                data: { values: [{}] },
-                                mark: "rule",
-                                encoding: {
-                                    y: { datum: 0, type: "quantitative" },
-                                    x: null,
-                                    x2: null,
-                                },
-                            },
-                            {
-                                name: "coverage",
-                                transform: [
-                                    {
-                                        type: "project",
-                                        fields: ["sample", "x", "x2"],
-                                    },
-                                    {
-                                        type: "coverage",
-                                        start: "x",
-                                        end: "x2",
-                                    },
-                                    {
-                                        type: "formula",
-                                        expr: "datum.coverage / sampleCount",
-                                        as: "coverage",
-                                    },
-                                ],
-                                mark: "rect",
-                                encoding: {
-                                    color: null,
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-        };
-
-        const view = new SampleView(
-            spec,
-            context,
-            null,
-            null,
-            "samples",
-            provenance,
-            intentExecutor
         );
 
-        await view.initializeChildren();
-        view.sampleGroupView.updateGroups = () => undefined;
-
-        const visibilityUpdates = [];
-        const unsubscribe = subscribeTo(
-            store,
-            (state) => state.viewSettings?.visibilities,
-            withMicrotask(() => {
-                visibilityUpdates.push(
-                    initializeVisibleViewData(
-                        view,
-                        context.dataFlow,
-                        context.fontManager
-                    )
-                );
-            })
-        );
+        const { visibilityUpdates, unsubscribe } =
+            createVisibilityUpdateTracker(store, view, context);
 
         try {
-            await initializeViewData(
-                view,
-                context.dataFlow,
-                context.fontManager,
-                () => undefined
-            );
-
             store.dispatch(
                 sampleSlice.actions.sortBy({
                     attribute: {
@@ -459,128 +365,18 @@ describe("MergeSampleFacets", () => {
     });
 
     it("recomputes an initialized summary when it is shown after hidden sample-state changes", async () => {
-        const store = setupStore();
-        const provenance = new Provenance(store);
-        const intentExecutor = new IntentExecutor(store);
-        const { context } = createAppTestContext();
-        context.getNamedDataFromProvider = () => undefined;
-        context.animator.requestTransition = (callback) => callback();
-
-        const getSummaryVisible = () =>
-            store.getState().viewSettings.visibilities.summary ?? true;
-
-        context.isViewConfiguredVisible = (view) =>
-            view.name == "summary"
-                ? getSummaryVisible()
-                : (view.spec.visible ?? true);
-
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            samples: {
-                identity: {
-                    data: {
-                        values: [{ sample: "A" }, { sample: "B" }],
-                    },
-                    idField: "sample",
-                },
-            },
-            spec: {
-                data: {
-                    values: [
-                        { sample: "A", x: 1, x2: 4, value: 1 },
-                        { sample: "B", x: 2, x2: 5, value: 2 },
-                    ],
-                },
-                mark: "rect",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    x2: { field: "x2" },
-                    color: { field: "value", type: "quantitative" },
-                },
-                aggregateSamples: [
-                    {
-                        name: "summary",
-                        visible: false,
-                        encoding: {
-                            y: { field: "coverage", type: "quantitative" },
-                            color: null,
-                        },
-                        layer: [
-                            {
-                                data: { values: [{}] },
-                                mark: "rule",
-                                encoding: {
-                                    y: { datum: 0, type: "quantitative" },
-                                    x: null,
-                                    x2: null,
-                                },
-                            },
-                            {
-                                name: "coverage",
-                                transform: [
-                                    {
-                                        type: "project",
-                                        fields: ["sample", "x", "x2"],
-                                    },
-                                    {
-                                        type: "coverage",
-                                        start: "x",
-                                        end: "x2",
-                                    },
-                                    {
-                                        type: "formula",
-                                        expr: "datum.coverage / sampleCount",
-                                        as: "coverage",
-                                    },
-                                ],
-                                mark: "rect",
-                                encoding: {
-                                    color: null,
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-        };
-
-        const view = new SampleView(
-            spec,
-            context,
-            null,
-            null,
-            "samples",
-            provenance,
-            intentExecutor
+        const { store, context, view } = await createMergeFacetsScenario(
+            createCoverageSummarySpec(),
+            {
+                visibilityMode: "store",
+                summaryInitiallyVisible: true,
+            }
         );
 
-        await view.initializeChildren();
-        view.sampleGroupView.updateGroups = () => undefined;
-
-        const visibilityUpdates = [];
-        const unsubscribe = subscribeTo(
-            store,
-            (state) => state.viewSettings?.visibilities,
-            withMicrotask(() => {
-                visibilityUpdates.push(
-                    initializeVisibleViewData(
-                        view,
-                        context.dataFlow,
-                        context.fontManager
-                    )
-                );
-            })
-        );
+        const { visibilityUpdates, unsubscribe } =
+            createVisibilityUpdateTracker(store, view, context);
 
         try {
-            await initializeViewData(
-                view,
-                context.dataFlow,
-                context.fontManager,
-                () => undefined
-            );
-
             const coverageView = view.findDescendantByName("coverage");
             const collector = coverageView?.getCollector?.();
             expect(collector?.getItemCount()).toBeGreaterThan(0);

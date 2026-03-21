@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { initializeViewSubtree } from "../data/flowInit.js";
-import { createHeadlessViewContext } from "../genomeSpy/headlessBootstrap.js";
-import { VIEW_ROOT_NAME, ViewFactory } from "../view/viewFactory.js";
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 import { ensureAssembliesForView } from "./assemblyPreflight.js";
 
 describe("assembly preflight import regression", () => {
@@ -65,16 +64,24 @@ describe("assembly preflight import regression", () => {
                 throw new Error(`Unexpected URL: ${url}`);
             });
 
-        const context = createHeadlessViewContext({
-            viewFactoryOptions: {
-                allowImport: true,
-                wrapRoot: false,
-            },
-        });
-        context.isViewSpec = (spec) =>
-            new ViewFactory().isViewSpec(
-                /** @type {import("../spec/view.js").ViewSpec} */ (spec)
-            );
+        const { view, context } = await createHeadlessViewHierarchy(
+            /** @type {any} */ ({
+                baseUrl: "https://example.org/",
+                vconcat: [
+                    {
+                        import: {
+                            url: "specs/child.json",
+                        },
+                    },
+                ],
+            }),
+            {
+                viewFactoryOptions: {
+                    allowImport: true,
+                    wrapRoot: false,
+                },
+            }
+        );
         context.genomeStore.baseUrl = "https://example.org/";
         context.genomeStore.configureGenomes(
             new Map([
@@ -86,22 +93,6 @@ describe("assembly preflight import regression", () => {
                 ],
             ]),
             "custom"
-        );
-
-        const view = await context.createOrImportView(
-            /** @type {any} */ ({
-                baseUrl: "https://example.org/",
-                vconcat: [
-                    {
-                        import: {
-                            url: "specs/child.json",
-                        },
-                    },
-                ],
-            }),
-            null,
-            null,
-            "root"
         );
 
         await ensureAssembliesForView(view, context.genomeStore);
@@ -113,24 +104,6 @@ describe("assembly preflight import regression", () => {
     });
 
     test("implicit root interval selections do not access default locus assemblies before preflight", async () => {
-        const context = createHeadlessViewContext({
-            viewFactoryOptions: {
-                wrapRoot: true,
-            },
-        });
-        context.genomeStore.baseUrl = "https://example.org/";
-        context.genomeStore.configureGenomes(
-            new Map([
-                [
-                    "custom",
-                    {
-                        url: "custom.chrom.sizes",
-                    },
-                ],
-            ]),
-            "custom"
-        );
-
         const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
             /** @type {any} */ ({
                 ok: true,
@@ -138,7 +111,7 @@ describe("assembly preflight import regression", () => {
             })
         );
 
-        const view = await context.createOrImportView(
+        const { view, context } = await createHeadlessViewHierarchy(
             /** @type {any} */ ({
                 params: [
                     {
@@ -166,9 +139,23 @@ describe("assembly preflight import regression", () => {
                     },
                 },
             }),
-            null,
-            null,
-            VIEW_ROOT_NAME
+            {
+                viewFactoryOptions: {
+                    wrapRoot: true,
+                },
+            }
+        );
+        context.genomeStore.baseUrl = "https://example.org/";
+        context.genomeStore.configureGenomes(
+            new Map([
+                [
+                    "custom",
+                    {
+                        url: "custom.chrom.sizes",
+                    },
+                ],
+            ]),
+            "custom"
         );
 
         expect(() => view.getScaleResolution("x").isZoomable()).not.toThrow();

@@ -1,7 +1,6 @@
 // @ts-check
 import { describe, expect, test, vi } from "vitest";
-import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
-import { VIEW_ROOT_NAME } from "@genome-spy/core/view/viewFactory.js";
+import { createHeadlessViewHierarchy } from "@genome-spy/core/genomeSpy/headlessBootstrap.js";
 import {
     buildViewVisibilityEntries,
     getRadioVisibilityGroupsBySelector,
@@ -37,9 +36,15 @@ const makeTemplate = () => ({
 });
 
 describe("view visibility entries", () => {
-    test("legacy keys apply to all matching views", async () => {
-        const context = createTestViewContext();
+    /**
+     * @param {import("@genome-spy/core/spec/view.js").ViewSpec} spec
+     */
+    async function createRoot(spec) {
+        const { view } = await createHeadlessViewHierarchy(spec);
+        return view;
+    }
 
+    test("legacy keys apply to all matching views", async () => {
         const spec = {
             templates: {
                 panel: makeTemplate(),
@@ -56,12 +61,7 @@ describe("view visibility entries", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -82,8 +82,6 @@ describe("view visibility entries", () => {
     });
 
     test("resolves conflicting radio-group visibilities deterministically", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             vconcat: [
                 {
@@ -97,12 +95,7 @@ describe("view visibility entries", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const bySelector = getRadioVisibilityGroupsBySelector(root);
         const [{ memberKeys }] = Array.from(bySelector.values());
@@ -114,8 +107,6 @@ describe("view visibility entries", () => {
     });
 
     test("keeps radio groups scoped to import instances", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: {
@@ -143,12 +134,7 @@ describe("view visibility entries", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const bySelector = getRadioVisibilityGroupsBySelector(root);
         const groupKeys = new Set(
@@ -162,8 +148,6 @@ describe("view visibility entries", () => {
     });
 
     test("groups named imported root views within their parent scope", async () => {
-        const context = createTestViewContext();
-
         const spec = {
             templates: {
                 panel: {
@@ -183,12 +167,7 @@ describe("view visibility entries", () => {
             ],
         };
 
-        const root = await context.createOrImportView(
-            spec,
-            null,
-            null,
-            VIEW_ROOT_NAME
-        );
+        const root = await createRoot(spec);
 
         const bySelector = getRadioVisibilityGroupsBySelector(root);
         expect(bySelector.size).toBe(2);
