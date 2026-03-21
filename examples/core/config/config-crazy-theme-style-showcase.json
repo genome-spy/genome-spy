@@ -14,9 +14,6 @@
     }
   },
   "config": {
-    "view": {
-      "style": "cell"
-    },
     "style": {
       "cell": {
         "fill": "#252525",
@@ -144,7 +141,7 @@
               "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
                 "y": { "field": "y", "type": "quantitative" },
-                "text": { "field": "cat", "type": "nominal" }
+                "text": { "field": "cat" }
               }
             }
           ]
@@ -193,10 +190,10 @@
           "title": "Scoped Light Config",
           "width": 260,
           "height": 180,
+          "view": {
+            "style": ["cell", "panelBright"]
+          },
           "config": {
-            "view": {
-              "style": ["cell", "panelBright"]
-            },
             "axis": {
               "style": "axisLight"
             },
@@ -223,9 +220,6 @@
           "name": "nested-config-stack",
           "width": 260,
           "config": {
-            "view": {
-              "style": ["cell", "panelBright"]
-            },
             "axis": {
               "style": "axisLight"
             },
@@ -237,6 +231,9 @@
             {
               "title": "Parent Scoped Config",
               "height": 85,
+              "view": {
+                "style": ["cell", "panelBright"]
+              },
               "mark": "point",
               "encoding": {
                 "x": { "field": "x", "type": "quantitative" },
@@ -247,10 +244,10 @@
             {
               "title": "Child Config Override",
               "height": 85,
+              "view": {
+                "style": ["cell", "panelSoft"]
+              },
               "config": {
-                "view": {
-                  "style": ["cell", "panelSoft"]
-                },
                 "axis": {
                   "style": "axisMuted"
                 },

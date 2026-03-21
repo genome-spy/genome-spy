@@ -39,7 +39,7 @@
       "title": "Information"
     },
     "y2": { "field": "_y1" },
-    "text": { "field": "base", "type": "nominal" },
+    "text": { "field": "base" },
     "color": {
       "field": "base",
       "type": "nominal",
