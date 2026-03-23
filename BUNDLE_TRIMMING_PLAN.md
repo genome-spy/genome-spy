@@ -373,8 +373,8 @@ Done:
 
 Next:
 
-- Migrate most `packages/embed-examples/` examples to `@genome-spy/core/minimal`
-  where they do not need optional loaders.
+- Keep `packages/embed-examples/` on `@genome-spy/core/minimal` for the
+  examples that only need the basic embed/runtime APIs.
 - Add bundle-level verification for `@genome-spy/core/minimal`.
 - Tighten tests around minimal usage and custom registration if needed.
 
@@ -397,7 +397,8 @@ Next:
   internals.
 - `packages/app/`, `packages/playground/`, `packages/embed-examples/`, and
   `packages/react-component/` continue to build and run.
-- `packages/embed-examples/` includes at least one minimal entry example.
+- `packages/embed-examples/` uses the minimal entrypoint for examples that do
+  not need optional loaders.
 - The core package still supports the existing GenomeSpy behavior for users who
   import the default runtime or the necessary optional modules.
 
