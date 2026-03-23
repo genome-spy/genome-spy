@@ -1,3 +1,5 @@
+import { formats as vegaFormats } from "vega-loader";
+
 /*
  * Adapted from: https://github.com/vega/vega-loader-parquet/blob/main/src/index.js
  */
@@ -27,3 +29,5 @@ export default async function parquet(data) {
 }
 
 parquet.responseType = "arrayBuffer";
+
+vegaFormats("parquet", parquet);

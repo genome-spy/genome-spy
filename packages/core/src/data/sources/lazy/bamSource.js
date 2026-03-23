@@ -1,4 +1,5 @@
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class BamSource extends SingleAxisWindowedSource {
@@ -108,3 +109,13 @@ export default class BamSource extends SingleAxisWindowedSource {
         }
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").BamData}
+ */
+function isBamSource(params) {
+    return params?.type == "bam";
+}
+
+registerBuiltInLazyDataSource(isBamSource, BamSource);

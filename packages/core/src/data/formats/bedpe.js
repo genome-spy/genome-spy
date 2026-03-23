@@ -1,3 +1,5 @@
+import { formats as vegaFormats } from "vega-loader";
+
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
 
@@ -158,3 +160,5 @@ export default function bedpe(data, format = {}) {
 
     return rows;
 }
+
+vegaFormats("bedpe", bedpe);

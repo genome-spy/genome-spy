@@ -1,4 +1,9 @@
 import { vi } from "vitest";
+import "@genome-spy/core/data/formats/parquet.js";
+import "@genome-spy/core/data/formats/bed.js";
+import "@genome-spy/core/data/formats/bedpe.js";
+import "@genome-spy/core/data/formats/fasta.js";
+import "@genome-spy/core/data/sources/lazy/registerBuiltInLazySources.js";
 
 function createFontAwesomeSvgCoreMock() {
     return {

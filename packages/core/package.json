@@ -14,10 +14,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.js",
+    "./minimal": "./src/minimal.js",
+    "./full": "./src/full.js",
     "./browser": {
       "import": "./dist/bundle/index.es.js",
       "default": "./dist/bundle/index.js"
     },
+    "./data/*": "./src/data/*",
     "./*": "./src/*",
     "./schema.json": "./dist/schema.json"
   },
@@ -32,6 +35,7 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "capture:screenshots": "node scripts/captureScreenshots.mjs",
+    "verify:bundle:minimal": "node scripts/verifyMinimalBundle.mjs",
     "build": "rm -rf dist && mkdir -p dist && node scripts/build.mjs && vite build && npm run build:schema && npm run build:typings",
     "prepublishOnly": "npm run build",
     "test:tsc": "tsc -p tsconfig.json --noEmit",

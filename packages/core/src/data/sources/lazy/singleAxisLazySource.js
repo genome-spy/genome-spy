@@ -1,4 +1,3 @@
-import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
 
 /**
@@ -53,7 +52,7 @@ export default class SingleAxisLazySource extends DataSource {
             const sentences = [
                 `The lazy data source cannot find a resolved scale for channel "${channel}".`,
             ];
-            if (!(this.view instanceof UnitView)) {
+            if (!isUnitViewLike(this.view)) {
                 sentences.push(
                     `Make sure the view has a "shared" scale resolution as it is not a unit view.`
                 );
@@ -164,4 +163,14 @@ export default class SingleAxisLazySource extends DataSource {
                 : [this._lastLoadedDomain[1], this._lastLoadedDomain[0]];
         return min >= loadedMin && max <= loadedMax;
     }
+}
+
+/**
+ * Unit views expose `getMarkType()`, while container and helper views do not.
+ *
+ * @param {import("../../../view/view.js").default} view
+ * @returns {view is import("../../../view/unitView.js").default}
+ */
+function isUnitViewLike(view) {
+    return typeof (/** @type {any} */ (view).getMarkType) == "function";
 }

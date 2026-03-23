@@ -1,4 +1,4 @@
-import { embed } from "@genome-spy/core";
+import { embed } from "@genome-spy/core/minimal";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {

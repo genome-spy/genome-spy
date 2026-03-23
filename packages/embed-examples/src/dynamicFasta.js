@@ -1,4 +1,4 @@
-import { embed } from "@genome-spy/core";
+import { embed } from "@genome-spy/core/minimal";
 
 import { IndexedFasta } from "@gmod/indexedfasta";
 import { RemoteFile } from "generic-filehandle";

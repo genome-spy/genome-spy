@@ -3,6 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 /**
@@ -164,6 +165,16 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         }
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").BigWigData}
+ */
+function isBigWigSource(params) {
+    return params?.type == "bigwig";
+}
+
+registerBuiltInLazyDataSource(isBigWigSource, BigWigSource);
 
 /**
  * @param {number[]} domain

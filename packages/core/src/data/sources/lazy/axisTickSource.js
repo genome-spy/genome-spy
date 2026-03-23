@@ -8,6 +8,7 @@ import {
     tickFormat,
     tickCount,
 } from "../../../scale/ticks.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
@@ -82,3 +83,13 @@ export default class AxisTickSource extends SingleAxisLazySource {
         }
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").AxisTicksData}
+ */
+function isAxisTickSource(params) {
+    return params?.type == "axisTicks";
+}
+
+registerBuiltInLazyDataSource(isAxisTickSource, AxisTickSource);

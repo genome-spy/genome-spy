@@ -4,6 +4,9 @@ import glsl from "rollup-plugin-glsl";
 
 export default defineConfig({
     root: "src",
+    test: {
+        setupFiles: ["src/testSetup.js"],
+    },
     plugins: [
         // Don't minify
         {
