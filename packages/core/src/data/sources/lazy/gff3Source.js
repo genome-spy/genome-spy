@@ -1,4 +1,4 @@
-import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import TabixSource from "./tabixSource.js";
 
 /**

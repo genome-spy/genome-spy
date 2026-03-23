@@ -16,7 +16,6 @@
     ".": "./src/index.js",
     "./minimal": "./src/minimal.js",
     "./full": "./src/full.js",
-    "./extensions": "./src/extensions.js",
     "./browser": {
       "import": "./dist/bundle/index.es.js",
       "default": "./dist/bundle/index.js"

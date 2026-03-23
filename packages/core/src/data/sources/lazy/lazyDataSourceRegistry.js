@@ -1,8 +1,8 @@
 /**
- * @template {import("../../spec/data.js").LazyDataParams} P
+ * @template {import("../../../spec/data.js").LazyDataParams} P
  * @typedef {{
- *   guard: (params: import("../../spec/data.js").LazyDataParams) => params is P,
- *   Source: new (params: any, view: import("../../view/view.js").default) => import("./dataSource.js").default
+ *   guard: (params: import("../../../spec/data.js").LazyDataParams) => params is P,
+ *   Source: new (params: any, view: import("../../../view/view.js").default) => import("../dataSource.js").default
  * }} LazySourceEntry
  */
 
@@ -15,7 +15,7 @@ const builtinLazySources = [];
 /**
  * Registers a lazy data source for a custom type.
  *
- * @template {import("../../spec/data.js").LazyDataParams} P
+ * @template {import("../../../spec/data.js").LazyDataParams} P
  * @param {LazySourceEntry<P>["guard"]} guard
  * @param {LazySourceEntry<P>["Source"]} Source
  * @returns {() => void}
@@ -35,7 +35,7 @@ export function registerLazyDataSource(guard, Source) {
 /**
  * Registers a built-in lazy data source.
  *
- * @template {import("../../spec/data.js").LazyDataParams} P
+ * @template {import("../../../spec/data.js").LazyDataParams} P
  * @param {LazySourceEntry<P>["guard"]} guard
  * @param {LazySourceEntry<P>["Source"]} Source
  */
@@ -44,8 +44,8 @@ export function registerBuiltInLazyDataSource(guard, Source) {
 }
 
 /**
- * @param {import("../../spec/data.js").LazyDataParams} params
- * @param {import("../../view/view.js").default} view
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @param {import("../../../view/view.js").default} view
  */
 export function createLazyDataSource(params, view) {
     for (const entry of customLazySources) {

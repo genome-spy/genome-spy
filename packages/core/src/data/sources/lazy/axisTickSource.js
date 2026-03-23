@@ -8,7 +8,7 @@ import {
     tickFormat,
     tickCount,
 } from "../../../scale/ticks.js";
-import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**

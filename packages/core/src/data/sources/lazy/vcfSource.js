@@ -1,5 +1,5 @@
 import TabixSource from "./tabixSource.js";
-import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 /**
  * @extends {TabixSource<import("./vcfTypes.js").ParsedVariant>}

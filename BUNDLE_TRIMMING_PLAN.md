@@ -22,6 +22,8 @@ sources.
 The source tree itself also exposes stable direct-import locations for
 `src/data/formats/` and `src/data/sources/lazy/`, so users can import the
 format/source modules directly without a boilerplate wrapper layer.
+The long-term extension contract should also live under those stable paths,
+not in a separate `extensions/` namespace.
 
 ## Current State
 
@@ -111,11 +113,13 @@ statically wired into the default runtime.
 
 ### Extension API
 
-`@genome-spy/core/extensions`
+`src/data/sources/lazy/lazyDataSourceRegistry.js`
 
 - Exposes a single generic registration hook for custom data sources.
-- Can later grow a format registration hook if needed.
+- Can later grow a format registration hook under `src/data/formats/` if
+  needed.
 - Remains intentionally small and stable.
+- Does not expose `vega-loader` through the public API.
 
 ## Implementation Strategy
 
@@ -184,11 +188,13 @@ The readiness code does not need to change for bundle trimming. The current
 ### Phase 5 - Define the custom extension contract
 
 Expose one generic registration API for consumers who need custom sources.
+Keep the API under the stable lazy data source path instead of a separate
+public entrypoint.
 
 Potential shape:
 
 - `registerDataSource({ guard, Source })`
-- optionally `registerFormat({ type, read })`
+- optionally `registerFormat({ type, read })` under `src/data/formats/`
 
 The API should be:
 
@@ -240,7 +246,8 @@ reliable use of time.
 - Add a minimal entry point and a full entry point.
 - Update `package.json` exports to make the stable source/formats directories
   importable.
-- Introduce the `extensions` entry point for custom sources.
+- Keep the custom source registration API in the stable lazy data source
+  registry path.
 
 ### Formats
 
@@ -310,7 +317,7 @@ lean path remains demonstrated and exercised.
 ## Progress
 
 - Phase 1 complete: the lazy source registry now lives in
-  `packages/core/src/data/sources/lazyDataSourceRegistry.js`, and the built-in
+  `packages/core/src/data/sources/lazy/lazyDataSourceRegistry.js`, and the built-in
   lazy source list was moved into
   `packages/core/src/data/sources/lazy/registerBuiltInLazySources.js`.
 - Validation passed after the refactor:
@@ -329,11 +336,10 @@ lean path remains demonstrated and exercised.
   - `npm --workspaces run test:tsc --if-present`
   - `npm run lint`
 - Phase 4 complete: `packages/core/package.json` now exposes explicit
-  `./minimal`, `./full`, `./extensions`, and `./data/*` paths while keeping
-  the broader compatibility export in place during the transition.
-- Phase 5 complete: the dedicated public extensions entrypoint exists at
-  `packages/core/src/extensions.js`, and the custom lazy-source test now uses
-  it instead of the factory module directly.
+  `./minimal`, `./full`, and `./data/*` paths while keeping the broader
+  compatibility export in place during the transition.
+- Phase 5 complete: the custom lazy-source test now uses the stable lazy data
+  source registry directly instead of the factory module.
 - Validation passed after the refactor:
   - `npm test`
   - `npm --workspaces run test:tsc --if-present`
@@ -380,6 +386,7 @@ accumulating without validation.
 ## Resolved Decisions
 
 - Built-in optional modules self-register on import.
-- The custom registration API lives under `@genome-spy/core/extensions`.
+- The custom registration API lives under the stable lazy data source
+  registry path.
 - Only the axis tick sources remain required by default among the lazy data
   loaders.

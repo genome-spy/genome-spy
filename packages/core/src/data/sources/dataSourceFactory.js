@@ -5,7 +5,7 @@ import "./lazy/registerBuiltInLazySources.js";
 import {
     createLazyDataSource,
     registerLazyDataSource,
-} from "./lazyDataSourceRegistry.js";
+} from "./lazy/lazyDataSourceRegistry.js";
 
 /**
  * @param {Partial<import("../../spec/data.js").Data>} params

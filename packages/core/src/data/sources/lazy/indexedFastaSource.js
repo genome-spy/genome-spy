@@ -1,5 +1,5 @@
 import addBaseUrl from "../../../utils/addBaseUrl.js";
-import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
+import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class IndexedFastaSource extends SingleAxisWindowedSource {
