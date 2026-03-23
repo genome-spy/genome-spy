@@ -1,10 +1,12 @@
 // @ts-check
 import { describe, expect, test, vi } from "vitest";
+import { ActionCreators } from "redux-undo";
 import Interaction from "@genome-spy/core/utils/interaction.js";
 import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
+import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
 
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -102,6 +104,49 @@ describe("SampleView", () => {
 
         const state = store.getState().provenance.present?.[SAMPLE_SLICE_NAME];
         expect(state?.sampleData?.ids).toEqual(["A", "B"]);
+
+        const provenance = new Provenance(store);
+        expect(provenance.getBookmarkableActionHistory()).toEqual([]);
+        expect(provenance.isUndoable()).toBe(false);
+    });
+
+    test("handles provenance rewind while sample labels are subscribed", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                ],
+            },
+            samples: {},
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        };
+
+        const { view, store } = await createSampleViewForTest({
+            spec,
+        });
+
+        // Non-obvious: trigger sample extraction before rewinding provenance,
+        // which matches the bookmark restore sequence that used to fail.
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getDataDomain: () => ["A", "B"],
+            });
+        view.handleBroadcast({
+            type: "subtreeDataReady",
+            payload: { subtreeRoot: view },
+        });
+
+        expect(() =>
+            store.dispatch(ActionCreators.jumpToPast(0))
+        ).not.toThrow();
     });
 
     test("loads sample ids from samples.identity when configured", async () => {

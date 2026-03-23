@@ -19,6 +19,7 @@ import {
     augmentAttributeAction,
     sampleSelector,
 } from "./state/sampleSlice.js";
+import { resetProvenanceHistory } from "../state/provenanceBaseline.js";
 import { getActionInfo } from "./state/actionInfo.js";
 import CompositeAttributeInfoSource from "./compositeAttributeInfoSource.js";
 import { subscribeTo, withMicrotask } from "../state/subscribeTo.js";
@@ -730,6 +731,7 @@ export default class SampleView extends ContainerView {
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
+            resetProvenanceHistory(this.provenance.store, SAMPLE_SLICE_NAME);
         } else {
             throw new Error(
                 "No explicit sample data nor sample channels found!"
@@ -756,6 +758,7 @@ export default class SampleView extends ContainerView {
             this.provenance.store.dispatch(
                 this.actions.setSamples({ samples })
             );
+            resetProvenanceHistory(this.provenance.store, SAMPLE_SLICE_NAME);
         });
         this.registerDisposer(stop);
 

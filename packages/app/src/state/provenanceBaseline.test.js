@@ -24,6 +24,16 @@ function createStore() {
 }
 
 describe("resetProvenanceHistory", () => {
+    it("keeps the baseline state non-undoable until a user action arrives", () => {
+        const store = createStore();
+        const provenance = new Provenance(store);
+
+        resetProvenanceHistory(store, sampleSlice.name);
+
+        expect(provenance.isUndoable()).toBe(false);
+        expect(provenance.isEmpty()).toBe(true);
+    });
+
     it("makes the next action immediately undoable", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(store);
