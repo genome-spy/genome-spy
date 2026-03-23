@@ -373,11 +373,10 @@ Done:
 
 Next:
 
-- Add a minimal example in `packages/embed-examples/`.
+- Migrate most `packages/embed-examples/` examples to `@genome-spy/core/minimal`
+  where they do not need optional loaders.
 - Add bundle-level verification for `@genome-spy/core/minimal`.
 - Tighten tests around minimal usage and custom registration if needed.
-- Decide whether the broad `./*` compatibility export should eventually be
-  removed.
 
 ## Risks
 
@@ -409,3 +408,4 @@ Next:
   registry path.
 - Only the axis tick sources remain required by default among the lazy data
   loaders.
+- The broad `./*` compatibility export remains available.
