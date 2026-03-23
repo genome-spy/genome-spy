@@ -183,7 +183,28 @@ to square the value. The technique shown here is used in the
 
 ### Aggregation
 
-TODO
+`aggregateSamples` adds one or more summary tracks to a sample view. Use it when
+you want to compare patterns across sample subgroups in addition to inspecting
+individual samples.
+
+In the GenomeSpy [paper](https://doi.org/10.1093/gigascience/giae040), the
+summary track is used as a copy-number landscape above the main heatmap. The
+summary is computed separately for each visible group, which makes recurrent
+amplification and deletion patterns easier to compare between subgroups.
+
+Each entry in `aggregateSamples` is a normal unit or layer spec. It may define
+its own `transform`, `encoding`, `params`, etc. sections. GenomeSpy prepends a
+`mergeFacets` transform automatically and removes the `sample` channel from the
+summary encoding.
+
+Use the provided `sampleCount` parameter to normalize summary values by the
+number of samples in the current group.
+
+Examples:
+
+- [`copy-numbers.json`](/docs/examples/app/copy-numbers.json)
+- [`expression-zscores.json`](/docs/examples/app/expression-zscores.json)
+- [Spec from the GenomeSpy paper](https://github.com/HautaniemiLab/genomespy-paper-2024-spec/blob/main/cnv-segments.json)
 
 ## Bookmarking
 
