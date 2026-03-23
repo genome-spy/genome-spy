@@ -360,6 +360,25 @@ After each completed phase:
 This keeps the refactor auditable and prevents several partial changes from
 accumulating without validation.
 
+## Done / Next
+
+Done:
+
+- Default `@genome-spy/core` stays fat.
+- `@genome-spy/core/minimal` provides the lean entrypoint.
+- Built-in eager and lazy loaders self-register from the stable `src/data/*`
+  paths.
+- The custom lazy registration hook lives in the stable lazy registry path.
+- The public docs now mention the minimal entrypoint.
+
+Next:
+
+- Add a minimal example in `packages/embed-examples/`.
+- Add bundle-level verification for `@genome-spy/core/minimal`.
+- Tighten tests around minimal usage and custom registration if needed.
+- Decide whether the broad `./*` compatibility export should eventually be
+  removed.
+
 ## Risks
 
 - Changing the default root export could be a compatibility break if external
