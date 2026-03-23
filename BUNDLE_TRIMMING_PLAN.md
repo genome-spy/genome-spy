@@ -308,6 +308,17 @@ that the embed workflow still behaves the same for existing examples.
 6. Add tests for minimal, full, and custom registration flows.
 7. Update docs and examples.
 
+## Progress
+
+- Phase 1 complete: the lazy source registry now lives in
+  `packages/core/src/data/sources/lazyDataSourceRegistry.js`, and the built-in
+  lazy source list was moved into
+  `packages/core/src/data/sources/lazy/registerBuiltInLazySources.js`.
+- Validation passed after the refactor:
+  - `npm test`
+  - `npm --workspaces run test:tsc --if-present`
+  - `npm run lint`
+
 ## Phase Discipline
 
 After each completed phase:
