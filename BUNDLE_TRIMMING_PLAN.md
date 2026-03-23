@@ -216,6 +216,16 @@ The goal is not to force them onto the narrow public surface immediately. The
 goal is to separate the external compatibility contract from the internal monorepo
 dependency graph.
 
+Consumer-specific expectations:
+
+- `packages/app/` should keep the fat default core behavior and does not need
+  a major runtime refactor for bundle trimming.
+- `packages/playground/` and `packages/react-component/` should continue using
+  the default fat runtime.
+- `packages/embed-examples/` should add at least one example that demonstrates
+  the minimal core entry point, or convert an existing example to the minimal
+  path where it does not rely on optional loaders.
+
 For `packages/app/`, do the import migration with a scripted codemod or
 rewrite script rather than editing files one by one. The package has too many
 deep imports for manual token-by-token migration to be an efficient or
@@ -282,6 +292,8 @@ Add or update tests for:
 
 The main objective is to confirm that repo-local deep imports still resolve and
 that the embed workflow still behaves the same for existing examples.
+For `packages/embed-examples/`, add coverage for a minimal-entry example so the
+lean path remains demonstrated and exercised.
 
 ## Migration Order
 
@@ -291,7 +303,8 @@ that the embed workflow still behaves the same for existing examples.
 4. Move the package export map from wildcard exposure to explicit subpaths.
 5. Update `packages/app/` imports with a script, then migrate the other
    workspace consumers as needed.
-6. Add tests for minimal, full, and custom registration flows.
+6. Add tests for minimal, full, custom registration flows, and at least one
+   minimal embed example in `packages/embed-examples/`.
 7. Update docs and examples.
 
 ## Progress
@@ -360,6 +373,7 @@ accumulating without validation.
   internals.
 - `packages/app/`, `packages/playground/`, `packages/embed-examples/`, and
   `packages/react-component/` continue to build and run.
+- `packages/embed-examples/` includes at least one minimal entry example.
 - The core package still supports the existing GenomeSpy behavior for users who
   import the default runtime or the necessary optional modules.
 
