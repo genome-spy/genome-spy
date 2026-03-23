@@ -318,6 +318,10 @@ that the embed workflow still behaves the same for existing examples.
   - `npm test`
   - `npm --workspaces run test:tsc --if-present`
   - `npm run lint`
+- Phase 2 complete: self-registering optional format modules now exist under
+  `packages/core/src/formats/` for eager readers and lazy data sources, and
+  the default runtime imports those modules instead of the bare implementation
+  files.
 
 ## Phase Discipline
 

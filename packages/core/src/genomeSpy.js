@@ -1,5 +1,3 @@
-import { formats as vegaFormats } from "vega-loader";
-
 import {
     createContainerUi,
     createMessageBox,
@@ -23,7 +21,6 @@ import Animator from "./utils/animator.js";
 import DataFlow from "./data/dataFlow.js";
 import GenomeStore from "./genome/genomeStore.js";
 import BmFontManager from "./fonts/bmFontManager.js";
-import fasta from "./data/formats/fasta.js";
 import refseqGeneTooltipHandler from "./tooltip/refseqGeneTooltipHandler.js";
 import dataTooltipHandler from "./tooltip/dataTooltipHandler.js";
 import { invalidatePrefix } from "./utils/propertyCacher.js";
@@ -34,9 +31,10 @@ import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
-import parquet from "./data/formats/parquet.js";
-import bed from "./data/formats/bed.js";
-import bedpe from "./data/formats/bedpe.js";
+import "./formats/eager/parquet.js";
+import "./formats/eager/bed.js";
+import "./formats/eager/bedpe.js";
+import "./formats/eager/fasta.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
@@ -54,11 +52,6 @@ import {
  * Events that are broadcasted to all views.
  * @typedef {"dataFlowBuilt" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
  */
-
-vegaFormats("fasta", fasta);
-vegaFormats("parquet", parquet);
-vegaFormats("bed", bed);
-vegaFormats("bedpe", bedpe);
 
 export default class GenomeSpy {
     /** @type {(() => void)[]} */
