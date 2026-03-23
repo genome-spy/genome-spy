@@ -1,3 +1,4 @@
+import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
 import TabixSource from "./tabixSource.js";
 
 /**
@@ -27,3 +28,13 @@ export default class Gff3Source extends TabixSource {
         return features;
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").Gff3Data}
+ */
+function isGff3Source(params) {
+    return params?.type == "gff3";
+}
+
+registerBuiltInLazyDataSource(isGff3Source, Gff3Source);

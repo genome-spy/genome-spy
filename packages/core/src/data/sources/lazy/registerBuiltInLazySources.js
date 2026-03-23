@@ -1,8 +1,8 @@
-import "../../../formats/lazy/axisTick.js";
-import "../../../formats/lazy/axisGenome.js";
-import "../../../formats/lazy/indexedFasta.js";
-import "../../../formats/lazy/bigWig.js";
-import "../../../formats/lazy/bigBed.js";
-import "../../../formats/lazy/bam.js";
-import "../../../formats/lazy/gff3.js";
-import "../../../formats/lazy/vcf.js";
+import "./axisTickSource.js";
+import "./axisGenomeSource.js";
+import "./indexedFastaSource.js";
+import "./bigWigSource.js";
+import "./bigBedSource.js";
+import "./bamSource.js";
+import "./gff3Source.js";
+import "./vcfSource.js";

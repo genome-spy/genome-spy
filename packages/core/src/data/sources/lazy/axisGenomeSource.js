@@ -1,3 +1,4 @@
+import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
@@ -21,3 +22,13 @@ export default class AxisGenomeSource extends SingleAxisLazySource {
         this.publishData([this.genome.chromosomes]);
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").AxisGenomeData}
+ */
+function isAxisGenomeSource(params) {
+    return params?.type == "axisGenome";
+}
+
+registerBuiltInLazyDataSource(isAxisGenomeSource, AxisGenomeSource);

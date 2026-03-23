@@ -3,6 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class BigBedSource extends SingleAxisWindowedSource {
@@ -298,6 +299,16 @@ function makeFastParser(bed) {
 
     return parseLine;
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").BigBedData}
+ */
+function isBigBedSource(params) {
+    return params?.type == "bigbed";
+}
+
+registerBuiltInLazyDataSource(isBigBedSource, BigBedSource);
 
 /**
  * @param {T[]} arr

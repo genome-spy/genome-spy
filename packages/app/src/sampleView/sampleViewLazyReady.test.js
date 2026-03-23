@@ -4,7 +4,7 @@ import {
     buildReadinessRequest,
     isSubtreeLazyReady,
 } from "@genome-spy/core/view/dataReadiness.js";
-import { registerLazyDataSource } from "@genome-spy/core/data/sources/dataSourceFactory.js";
+import { registerLazyDataSource } from "@genome-spy/core/extensions";
 import MockLazySource from "@genome-spy/core/data/sources/lazy/mockLazySource.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 

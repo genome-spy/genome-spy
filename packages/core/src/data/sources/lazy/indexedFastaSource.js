@@ -1,4 +1,5 @@
 import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class IndexedFastaSource extends SingleAxisWindowedSource {
@@ -80,3 +81,13 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
         this.publishData([features.filter((f) => f !== undefined)]);
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").IndexedFastaData}
+ */
+function isIndexedFastaSource(params) {
+    return params?.type == "indexedFasta";
+}
+
+registerBuiltInLazyDataSource(isIndexedFastaSource, IndexedFastaSource);

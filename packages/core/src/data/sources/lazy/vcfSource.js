@@ -1,4 +1,5 @@
 import TabixSource from "./tabixSource.js";
+import { registerBuiltInLazyDataSource } from "../lazyDataSourceRegistry.js";
 
 /**
  * @extends {TabixSource<import("./vcfTypes.js").ParsedVariant>}
@@ -36,3 +37,13 @@ export default class VcfSource extends TabixSource {
         });
     }
 }
+
+/**
+ * @param {import("../../../spec/data.js").LazyDataParams} params
+ * @returns {params is import("../../../spec/data.js").VcfData}
+ */
+function isVcfSource(params) {
+    return params?.type == "vcf";
+}
+
+registerBuiltInLazyDataSource(isVcfSource, VcfSource);

@@ -1,3 +1,5 @@
+import { formats as vegaFormats } from "vega-loader";
+
 /**
  * A bare-bones FASTA-parser
  *
@@ -30,3 +32,5 @@ export default function fasta(data, options) {
 
     return sequences;
 }
+
+vegaFormats("fasta", fasta);

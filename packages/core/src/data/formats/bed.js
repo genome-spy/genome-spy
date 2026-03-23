@@ -1,3 +1,5 @@
+import { formats as vegaFormats } from "vega-loader";
+
 const blankLinePattern = /^\s*$/;
 const controlLinePattern = /^\s*(?:browser\b|track\b|#)/;
 
@@ -52,3 +54,5 @@ export default async function bed(data) {
 
     return rows;
 }
+
+vegaFormats("bed", bed);

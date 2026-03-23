@@ -16,8 +16,12 @@ supporting:
 - internal deep imports used by first-party workspace packages
 
 This plan assumes the public entry point remains `embed` from
-`packages/core/src/index.js`, but that the package can grow internal-only
-extension points and separate optional entry paths.
+`packages/core/src/index.js`, but that the package can grow separate optional
+entry paths and stable direct-import locations for data formats and lazy data
+sources.
+The source tree itself also exposes stable direct-import locations for
+`src/data/formats/` and `src/data/sources/lazy/`, so users can import the
+format/source modules directly without a boilerplate wrapper layer.
 
 ## Current State
 
@@ -53,8 +57,8 @@ statically wired into the default runtime.
 2. Make built-in optional loaders opt-in by import.
 3. Allow users to register custom data sources without exposing every internal
    class.
-4. Preserve the first-party workspace packages as consumers of internal
-   subpaths.
+4. Preserve the first-party workspace packages as consumers of the stable
+   direct-import paths.
 5. Keep the refactor incremental so the repository remains buildable throughout.
 
 ## Non-Goals
@@ -85,22 +89,22 @@ statically wired into the default runtime.
 
 ### Optional built-in modules
 
-`@genome-spy/core/formats/eager/parquet`
+`src/data/formats/parquet.js`
 
 - Self-registers the Parquet reader with `vega-loader`.
 - Exists only for consumers who need Parquet support.
 
-`@genome-spy/core/formats/eager/bed`
-`@genome-spy/core/formats/eager/bedpe`
+`src/data/formats/bed.js`
+`src/data/formats/bedpe.js`
 
 - Self-register eager table/annotation readers in the same style.
 
-`@genome-spy/core/formats/lazy/bigbed`
-`@genome-spy/core/formats/lazy/bigwig`
-`@genome-spy/core/formats/lazy/bam`
-`@genome-spy/core/formats/lazy/vcf`
-`@genome-spy/core/formats/lazy/indexedfasta`
-`@genome-spy/core/formats/lazy/gff3`
+`src/data/sources/lazy/bigBedSource.js`
+`src/data/sources/lazy/bigWigSource.js`
+`src/data/sources/lazy/bamSource.js`
+`src/data/sources/lazy/vcfSource.js`
+`src/data/sources/lazy/indexedFastaSource.js`
+`src/data/sources/lazy/gff3Source.js`
 
 - Self-register built-in lazy data sources on import.
 - Pull in heavy dependencies only when explicitly imported.
@@ -112,14 +116,6 @@ statically wired into the default runtime.
 - Exposes a single generic registration hook for custom data sources.
 - Can later grow a format registration hook if needed.
 - Remains intentionally small and stable.
-
-### Internal subpaths
-
-`@genome-spy/core/internal/*`
-
-- Intended for `packages/app/` and `packages/playground/`.
-- Used for deep imports that are part of the monorepo workflow but not the
-  public compatibility promise.
 
 ## Implementation Strategy
 
@@ -140,27 +136,16 @@ path does not import the leaf source classes directly.
 
 ### Phase 2 - Add optional format entry points
 
-Create subpath modules under `packages/core/src/formats/`:
+Keep the format/source implementation files themselves as the stable public
+imports. Each module should self-register on import and keep its implementation
+and registration in the same file.
 
-- `eager/parquet.js`
-- `eager/bed.js`
-- `eager/bedpe.js`
-- `lazy/bigbed.js`
-- `lazy/bigwig.js`
-- `lazy/bam.js`
-- `lazy/vcf.js`
-- `lazy/indexedfasta.js`
-- `lazy/gff3.js`
-
-Each module should import the underlying implementation and register it with
-the core registry or `vega-loader`.
-
-This keeps the consumer API simple:
+This keeps the consumer API simple without extra wrapper modules:
 
 ```js
 import { embed } from "@genome-spy/core";
-import "@genome-spy/core/formats/lazy/bigbed";
-import "@genome-spy/core/formats/eager/parquet";
+import "@genome-spy/core/src/data/sources/lazy/bigBedSource.js";
+import "@genome-spy/core/src/data/formats/parquet.js";
 ```
 
 ### Phase 3 - Introduce minimal and full runtime entry points
@@ -214,7 +199,7 @@ The API should be:
 ### Phase 6 - Update first-party workspace consumers
 
 Migrate the repo-local packages to the new structure while keeping their access
-to deep internals:
+to the stable direct-import paths:
 
 - `packages/app/`
 - `packages/playground/`
@@ -224,7 +209,8 @@ to deep internals:
 These packages should continue to work with:
 
 - the public `embed` API
-- the internal `@genome-spy/core/internal/*` namespace where needed
+- the stable `src/data/formats/` and `src/data/sources/lazy/` imports where
+  needed
 
 The goal is not to force them onto the narrow public surface immediately. The
 goal is to separate the external compatibility contract from the internal monorepo
@@ -240,17 +226,17 @@ reliable use of time.
 ### Core
 
 - Refactor the source factory into a registry-driven lookup.
-- Add built-in registration modules for optional loaders.
+- Keep the optional loaders self-registering in their stable source files.
 - Add a minimal entry point and a full entry point.
-- Update `package.json` exports to remove the broad `./*` public exposure.
+- Update `package.json` exports to make the stable source/formats directories
+  importable.
 - Introduce the `extensions` entry point for custom sources.
 
 ### Formats
 
-- Move eager readers like Parquet into subpath registration modules.
-- Move lazy genomic loaders into subpath registration modules.
-- Keep implementation modules separate from registration modules so the
-  registration layer stays tiny.
+- Add self-registration to the stable eager and lazy module files.
+- Keep the implementation files themselves as the public import surface.
+- Avoid wrapper-only registration modules for the optional built-ins.
 
 ### Docs
 
@@ -318,14 +304,23 @@ that the embed workflow still behaves the same for existing examples.
   - `npm test`
   - `npm --workspaces run test:tsc --if-present`
   - `npm run lint`
-- Phase 2 complete: self-registering optional format modules now exist under
-  `packages/core/src/formats/` for eager readers and lazy data sources, and
-  the default runtime imports those modules instead of the bare implementation
-  files.
+- Phase 2 complete: self-registering optional format modules now exist in the
+  stable `src/data/formats/` and `src/data/sources/lazy/` files, and the old
+  `src/formats/` wrapper layer has been removed.
 - Phase 3 complete: the public embed logic now goes through a shared embed
   factory, `packages/core/src/genomeSpyBase.js` holds the reusable core class,
   `packages/core/src/genomeSpy.js` is the fat default wrapper, and
   `packages/core/src/minimal.js` provides the lean entry point.
+- Validation passed after the refactor:
+  - `npm test`
+  - `npm --workspaces run test:tsc --if-present`
+  - `npm run lint`
+- Phase 4 complete: `packages/core/package.json` now exposes explicit
+  `./minimal`, `./full`, `./extensions`, and `./data/*` paths while keeping
+  the broader compatibility export in place during the transition.
+- Phase 5 complete: the dedicated public extensions entrypoint exists at
+  `packages/core/src/extensions.js`, and the custom lazy-source test now uses
+  it instead of the factory module directly.
 - Validation passed after the refactor:
   - `npm test`
   - `npm --workspaces run test:tsc --if-present`
