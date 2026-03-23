@@ -322,6 +322,14 @@ that the embed workflow still behaves the same for existing examples.
   `packages/core/src/formats/` for eager readers and lazy data sources, and
   the default runtime imports those modules instead of the bare implementation
   files.
+- Phase 3 complete: the public embed logic now goes through a shared embed
+  factory, `packages/core/src/genomeSpyBase.js` holds the reusable core class,
+  `packages/core/src/genomeSpy.js` is the fat default wrapper, and
+  `packages/core/src/minimal.js` provides the lean entry point.
+- Validation passed after the refactor:
+  - `npm test`
+  - `npm --workspaces run test:tsc --if-present`
+  - `npm run lint`
 
 ## Phase Discipline
 
