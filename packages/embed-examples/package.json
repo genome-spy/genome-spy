@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:smoke": "vite build"
+    "build:smoke": "vite build",
+    "test": "vitest run"
   },
   "author": "Kari Lavikka",
   "license": "MIT",

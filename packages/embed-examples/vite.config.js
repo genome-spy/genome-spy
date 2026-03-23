@@ -3,6 +3,11 @@ import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
     root: "src",
+    resolve: {
+        // The React wrapper is imported from a linked workspace package.
+        // Dedupe keeps the example on a single React instance.
+        dedupe: ["react", "react-dom"],
+    },
     build: {
         outDir: "../dist",
         emptyOutDir: true,

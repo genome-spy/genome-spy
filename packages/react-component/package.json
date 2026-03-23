@@ -4,7 +4,9 @@
   "description": "React wrapper for GenomeSpy",
   "license": "MIT",
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "test": "vitest run"
+  },
   "main": "./src/main.js",
   "types": "./src/main.d.ts",
   "files": [
