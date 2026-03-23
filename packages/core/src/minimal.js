@@ -1,3 +1,10 @@
+/**
+ * Lean GenomeSpy core entry point.
+ *
+ * Use this entry when you want the `embed` API without the default built-in
+ * eager and lazy format registrations. Import the optional data source and
+ * format modules you need explicitly.
+ */
 import { html } from "lit";
 
 import GenomeSpy from "./genomeSpyBase.js";

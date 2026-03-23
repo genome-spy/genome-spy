@@ -6,6 +6,21 @@ The public JavaScript API is currently quite minimal.
 
 See the [getting started](./getting-started.md) page.
 
+## Entry points
+
+`@genome-spy/core` is the default entry point. It includes the standard
+GenomeSpy runtime and the built-in data source and format registrations.
+
+`@genome-spy/core/minimal` provides the same `embed` API without the built-in
+optional loaders. Import the data source and format modules you need
+explicitly:
+
+```js
+import { embed } from "@genome-spy/core/minimal";
+import "@genome-spy/core/data/formats/parquet.js";
+import "@genome-spy/core/data/sources/lazy/bigBedSource.js";
+```
+
 ## The API
 
 The `embed` function returns a promise that resolves into an object that
