@@ -1,5 +1,7 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "A trivial example showing how to display multiple samples in the App.",
 
   "data": {
     "values": [

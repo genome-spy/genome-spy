@@ -1,0 +1,152 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Aggregated copy-number-style segments with logR values across a toy genome indexed from 0 to 100.",
+
+  "data": {
+    "values": [
+      { "sample": "A", "start": 0, "end": 18, "logR": -0.3 },
+      { "sample": "A", "start": 18, "end": 42, "logR": 0.0 },
+      { "sample": "A", "start": 42, "end": 58, "logR": 0.45 },
+      { "sample": "A", "start": 58, "end": 80, "logR": -0.15 },
+      { "sample": "A", "start": 80, "end": 100, "logR": 0.25 },
+
+      { "sample": "B", "start": 0, "end": 25, "logR": 0.1 },
+      { "sample": "B", "start": 25, "end": 50, "logR": -0.4 },
+      { "sample": "B", "start": 50, "end": 67, "logR": 0.35 },
+      { "sample": "B", "start": 67, "end": 100, "logR": 0.05 },
+
+      { "sample": "C", "start": 0, "end": 30, "logR": -0.1 },
+      { "sample": "C", "start": 30, "end": 55, "logR": 0.2 },
+      { "sample": "C", "start": 55, "end": 72, "logR": 0.6 },
+      { "sample": "C", "start": 72, "end": 100, "logR": -0.25 },
+
+      { "sample": "D", "start": 0, "end": 20, "logR": 0.05 },
+      { "sample": "D", "start": 20, "end": 45, "logR": 0.4 },
+      { "sample": "D", "start": 45, "end": 70, "logR": -0.2 },
+      { "sample": "D", "start": 70, "end": 100, "logR": 0.15 },
+
+      { "sample": "E", "start": 0, "end": 15, "logR": -0.5 },
+      { "sample": "E", "start": 15, "end": 38, "logR": 0.0 },
+      { "sample": "E", "start": 38, "end": 62, "logR": 0.3 },
+      { "sample": "E", "start": 62, "end": 88, "logR": -0.1 },
+      { "sample": "E", "start": 88, "end": 100, "logR": 0.2 },
+
+      { "sample": "F", "start": 0, "end": 22, "logR": 0.2 },
+      { "sample": "F", "start": 22, "end": 48, "logR": -0.15 },
+      { "sample": "F", "start": 48, "end": 77, "logR": 0.55 },
+      { "sample": "F", "start": 77, "end": 100, "logR": -0.35 }
+    ]
+  },
+
+  "samples": {},
+
+  "spec": {
+    "view": { "fill": "#f4f4f4" },
+
+    "mark": {
+      "type": "rect",
+      "minOpacity": 1.0,
+      "minWidth": 1.0
+    },
+
+    "encoding": {
+      "sample": { "field": "sample" },
+      "x": {
+        "field": "start",
+        "type": "index",
+        "scale": {
+          "domain": [0, 100],
+          "zoom": true
+        },
+        "axis": { "grid": true }
+      },
+      "x2": { "field": "end" },
+      "fill": {
+        "field": "logR",
+        "type": "quantitative",
+        "scale": {
+          "domain": [-2.5, 0, 2.5],
+          "range": ["#0050f8", "#f6f6f6", "#ff3000"],
+          "clamp": true
+        }
+      }
+    },
+
+    "aggregateSamples": [
+      {
+        "name": "logR-summary",
+        "view": { "stroke": "lightgray" },
+
+        "title": {
+          "text": "logR summary",
+          "style": "overlay-title"
+        },
+
+        "height": 50,
+        "padding": { "bottom": 4 },
+
+        "transform": [
+          {
+            "type": "filter",
+            "expr": "abs(datum.logR) > 0.1"
+          },
+          {
+            "type": "project",
+            "fields": ["sample", "start", "end", "logR"]
+          }
+        ],
+
+        "encoding": {
+          "y": {
+            "field": "coverage",
+            "type": "quantitative",
+            "title": null,
+            "axis": { "grid": true },
+            "scale": { "nice": true }
+          }
+        },
+        "templates": {
+          "coverage": {
+            "transform": [
+              {
+                "type": "filter",
+                "expr": "logRSign * datum.logR > 0"
+              },
+              {
+                "type": "coverage",
+                "start": "start",
+                "end": "end",
+                "weight": "logR"
+              },
+              {
+                "type": "formula",
+                "expr": "datum.coverage / sampleCount",
+                "as": "coverage"
+              }
+            ],
+            "encoding": {
+              "fill": { "value": { "expr": "color" } }
+            },
+            "mark": {
+              "type": "rect",
+              "tooltip": null
+            }
+          }
+        },
+        "layer": [
+          {
+            "name": "amplification",
+            "params": { "logRSign": 1, "color": "#e45756" },
+            "import": { "template": "coverage" }
+          },
+          {
+            "name": "deletion",
+            "params": { "logRSign": -1, "color": "#4c78a8" },
+            "import": { "template": "coverage" }
+          }
+        ]
+      }
+    ]
+  }
+}

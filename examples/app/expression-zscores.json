@@ -1,0 +1,153 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Toy expression heatmap with five samples and gene-wise z-scores.",
+
+  "data": {
+    "values": [
+      {
+        "gene": "TP53",
+        "S1.z": 1.8,
+        "S2.z": 1.2,
+        "S3.z": 0.7,
+        "S4.z": -0.1,
+        "S5.z": -0.8
+      },
+      {
+        "gene": "BRCA1",
+        "S1.z": -0.6,
+        "S2.z": -0.9,
+        "S3.z": -1.3,
+        "S4.z": -1.0,
+        "S5.z": -0.5
+      },
+      {
+        "gene": "EGFR",
+        "S1.z": 0.2,
+        "S2.z": 0.6,
+        "S3.z": 1.0,
+        "S4.z": 1.5,
+        "S5.z": 2.1
+      },
+      {
+        "gene": "CDKN2A",
+        "S1.z": -1.7,
+        "S2.z": -1.3,
+        "S3.z": -0.8,
+        "S4.z": -0.2,
+        "S5.z": 0.1
+      },
+      {
+        "gene": "MYC",
+        "S1.z": 0.4,
+        "S2.z": 0.8,
+        "S3.z": 1.1,
+        "S4.z": 1.4,
+        "S5.z": 1.0
+      },
+      {
+        "gene": "PTEN",
+        "S1.z": -0.3,
+        "S2.z": -0.5,
+        "S3.z": -0.7,
+        "S4.z": -1.0,
+        "S5.z": -1.4
+      }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "regexFold",
+      "columnRegex": ["^(S[1-5])\\.z$"],
+      "asKey": "sample",
+      "asValue": ["zScore"]
+    }
+  ],
+
+  "samples": {},
+
+  "spec": {
+    "view": { "fill": "#f4f4f4" },
+    "mark": {
+      "type": "rect",
+      "stroke": "white",
+      "strokeWidth": 1
+    },
+    "encoding": {
+      "sample": { "field": "sample" },
+      "x": {
+        "field": "gene",
+        "type": "nominal",
+        "scale": {
+          "domain": ["TP53", "BRCA1", "EGFR", "CDKN2A", "MYC", "PTEN"]
+        },
+        "axis": {
+          "title": "Gene",
+          "grid": true
+        }
+      },
+      "fill": {
+        "field": "zScore",
+        "type": "quantitative",
+        "scale": {
+          "domain": [-2.5, 0, 2.5],
+          "range": ["#2166ac", "#f7f7f7", "#b2182b"],
+          "clamp": true
+        }
+      }
+    },
+
+    "aggregateSamples": [
+      {
+        "name": "mean-zscores",
+        "height": 70,
+        "view": { "stroke": "lightgray" },
+        "padding": { "bottom": 4 },
+        "transform": [
+          {
+            "type": "aggregate",
+            "groupby": ["gene"],
+            "ops": ["mean"],
+            "fields": ["zScore"],
+            "as": ["meanZScore"]
+          }
+        ],
+        "mark": {
+          "type": "rect",
+          "minWidth": 1,
+          "stroke": "white",
+          "strokeWidth": 1,
+          "tooltip": null
+        },
+        "encoding": {
+          "x": {
+            "field": "gene",
+            "type": "nominal"
+          },
+          "y": {
+            "field": "meanZScore",
+            "type": "quantitative",
+            "axis": {
+              "title": "Mean z-score",
+              "grid": true
+            },
+            "scale": {
+              "nice": true
+            }
+          },
+          "y2": { "datum": 0, "type": "quantitative" },
+          "fill": {
+            "field": "meanZScore",
+            "type": "quantitative",
+            "scale": {
+              "domain": [-2.5, 0, 2.5],
+              "range": ["#2166ac", "#f7f7f7", "#b2182b"],
+              "clamp": true
+            }
+          }
+        }
+      }
+    ]
+  }
+}
