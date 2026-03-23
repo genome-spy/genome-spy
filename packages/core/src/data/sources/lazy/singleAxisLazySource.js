@@ -1,4 +1,3 @@
-import UnitView from "../../../view/unitView.js";
 import DataSource from "../dataSource.js";
 
 /**
@@ -50,16 +49,9 @@ export default class SingleAxisLazySource extends DataSource {
 
         this.scaleResolution = this.view.getScaleResolution(channel);
         if (!this.scaleResolution) {
-            const sentences = [
-                `The lazy data source cannot find a resolved scale for channel "${channel}".`,
-            ];
-            if (!(this.view instanceof UnitView)) {
-                sentences.push(
-                    `Make sure the view has a "shared" scale resolution as it is not a unit view.`
-                );
-            }
-
-            throw new Error(sentences.join(" "));
+            throw new Error(
+                `The lazy data source cannot find a resolved scale for channel "${channel}". Make sure the view has a resolved scale for that channel.`
+            );
         }
 
         const fireDomainChanged = () => {

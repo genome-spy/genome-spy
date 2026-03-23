@@ -1,7 +1,6 @@
 import InlineSource, { isInlineData } from "./inlineSource.js";
 import UrlSource, { isUrlData } from "./urlSource.js";
 import SequenceSource, { isSequenceGenerator } from "./sequenceSource.js";
-import "./lazy/registerBuiltInLazySources.js";
 import {
     createLazyDataSource,
     registerLazyDataSource,
