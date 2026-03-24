@@ -206,6 +206,16 @@ test("Scale respects range color schemes", function () {
     expect(v(0)).toBe(u(0.9));
     expect(v(1)).toBe(u(0.2));
 
+    // Scheme-backed continuous scales need the interpolating family even if
+    // the real domain is assigned later.
+    s = scale({ type: "linear", scheme: "viridis" });
+    expect(s.type).toBe(`${vs.Sequential}-${vs.Linear}`);
+    s.domain([0, 19]);
+    v = s.interpolator();
+    expect(typeof v).toBe("function");
+    expect(v(0)).toBe(u(0));
+    expect(v(1)).toBe(u(1));
+
     // generate interpolator as needed
     s = scale({ type: "sequential", range: ["#000", "#f00"] });
     v = s.interpolator();

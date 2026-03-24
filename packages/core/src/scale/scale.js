@@ -158,7 +158,18 @@ export function configureScale(_, scale, logger) {
  * @returns {import("../encoder/encoder.js").VegaScale}
  */
 export default function createScale(_, logger) {
-    const key = scaleKey(_);
+    // Seed continuous scales with a placeholder domain before key selection so
+    // scheme-backed scales choose the interpolating family.
+    const scaleProps =
+        !_.domain && isContinuous(_.type)
+            ? {
+                  ..._,
+                  // [0, 0] indicates an uninitialized domain.
+                  domain: [0, 0],
+              }
+            : _;
+
+    const key = scaleKey(scaleProps);
     const scale = getScale(key);
 
     if (!scale) {
@@ -167,12 +178,7 @@ export default function createScale(_, logger) {
 
     const scaleInstance = scale();
 
-    if (!_.domain && isContinuous(scaleInstance.type)) {
-        // [0, 0] indicates an uninitialized domain.
-        _.domain = [0, 0];
-    }
-
-    configureScale(_, scaleInstance, logger);
+    configureScale(scaleProps, scaleInstance, logger);
 
     return scaleInstance;
 }
