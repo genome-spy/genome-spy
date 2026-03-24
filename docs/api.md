@@ -8,12 +8,14 @@ See the [getting started](./getting-started.md) page.
 
 ## Entry points
 
+When embedding GenomeSpy into a web application, you can choose between two
+entry points for importing the `embed` function:
+
 `@genome-spy/core` is the default entry point. It includes the standard
 GenomeSpy runtime and the built-in data source and format registrations.
 
 `@genome-spy/core/minimal` provides the same `embed` API without the built-in
-optional loaders. Import the data source and format modules you need
-explicitly:
+loaders. Import the data source and format modules you need explicitly:
 
 ```js
 import { embed } from "@genome-spy/core/minimal";
@@ -27,7 +29,7 @@ The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
 definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/types/embedApi.d.ts).
 
-For practical examples on using the API, check the
+For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
@@ -54,7 +56,7 @@ There are two ways to provide the data:
 
 ### `updateNamedData()`
 
-Use `updateNamedData(name, data)` when your application pushes updated data
+Use `updateNamedData(name, data)` when your application provides updated data
 explicitly.
 
 ```js
@@ -68,7 +70,7 @@ api.updateNamedData("myResults", [
 
 ### `namedDataProvider`
 
-Use the `namedDataProvider` embed option when GenomeSpy should pull named data
+Use the `namedDataProvider` embed option when GenomeSpy should load named data
 on demand.
 
 ```js
@@ -88,7 +90,7 @@ If `updateNamedData(name)` is called without the second argument, GenomeSpy
 retrieves the data from the provider instead.
 
 Named data can be updated dynamically, but it does not automatically react to
-user interactions. For practical examples, check the
+user interactions. For practical examples, see the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
@@ -128,7 +130,8 @@ GenomeSpy provides two built-in tooltip handlers.
 The
 [`default`](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/tooltip/dataTooltipHandler.js)
 handler displays the underlying datum's properties in a table. Property names
-starting with an underscore are omitted. The values are formatted nicely.
+starting with an underscore are omitted. The values are formatted for
+readability.
 
 When positional channels use a `"locus"` scale, the default handler also shows
 derived genomic rows before raw rows:
@@ -145,12 +148,12 @@ The
 [`refseqgene`](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/tooltip/refseqGeneTooltipHandler.js)
 handler fetches a summary description for a gene symbol using the
 [Entrez](https://www.ncbi.nlm.nih.gov/home/develop/api/) API. For an example,
-check the RefSeq gene track in
+see the RefSeq gene track in
 [this notebook](https://observablehq.com/@tuner/annotation-tracks).
 Custom search terms can be provided through the `params` property.
 
 Handlers are functions that receive the hovered mark's underlying datum and
-return a promise that resolves into a string, HTMLElement, or lit-html
+return a promise that resolves to a string, HTMLElement, or lit-html
 [TemplateResult](https://lit.dev/docs/libraries/standalone-templates/).
 
 The function signature:
