@@ -46,7 +46,7 @@ async function getSampleLabelWidth(spec, samples) {
 }
 
 describe("SampleView", () => {
-    test("warns once when deprecated legacy sample metadata fields are used", async () => {
+    test("loads sample metadata from metadataSources without warnings", async () => {
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
@@ -58,12 +58,19 @@ describe("SampleView", () => {
                 ],
             },
             samples: {
-                data: {
-                    values: [
-                        { sample: "A", clinical: "yes" },
-                        { sample: "B", clinical: "no" },
-                    ],
-                },
+                metadataSources: [
+                    {
+                        backend: {
+                            backend: "data",
+                            data: {
+                                values: [
+                                    { sample: "A", clinical: "yes" },
+                                    { sample: "B", clinical: "no" },
+                                ],
+                            },
+                        },
+                    },
+                ],
             },
             spec: {
                 mark: "point",
@@ -78,7 +85,7 @@ describe("SampleView", () => {
             spec,
         });
 
-        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).not.toHaveBeenCalled();
         warnSpy.mockRestore();
     });
 

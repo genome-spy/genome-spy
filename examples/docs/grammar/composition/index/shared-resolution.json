@@ -7,11 +7,13 @@
     {
       "data": { "url": "data/cnv_chr19_raw.tsv" },
       "title": "Single probe",
-      "mark": { "type": "point", "geometricZoomBound": 9.5 },
+      "mark": {
+        "type": "point",
+        "size": { "expr": "min(2 * pow(zoomLevel, 1.5), 200)" }
+      },
       "encoding": {
         "x": { "field": "Position", "type": "index" },
         "y": { "field": "logR", "type": "quantitative" },
-        "size": { "value": 225 },
         "opacity": { "value": 0.15 }
       }
     },

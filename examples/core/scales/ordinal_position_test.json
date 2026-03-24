@@ -6,6 +6,10 @@
     "This is mainly for GenomeSpy's internal use."
   ],
 
+  "resolve": {
+    "scale": { "y": "independent" }
+  },
+
   "hconcat": [
     {
       "data": {
