@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { processData } from "../flowTestUtils.js";
+import Collector from "../collector.js";
 import AggregateTransform from "./aggregate.js";
 
 /**
@@ -161,5 +162,35 @@ describe("Aggregate transform", () => {
                 input
             )
         ).toThrow();
+    });
+
+    test("Flushes each facet batch before the next one starts", () => {
+        const aggregate = new AggregateTransform({
+            type: "aggregate",
+            groupby: ["sample"],
+            fields: ["value"],
+            ops: ["sum"],
+            as: ["total"],
+        });
+        const collector = new Collector();
+        aggregate.addChild(collector);
+
+        // BeginBatch is what closes the previous facet in faceted flows.
+        aggregate.beginBatch({ type: "facet", facetId: ["A"] });
+        aggregate.handle({ sample: "A", value: 1 });
+        aggregate.handle({ sample: "A", value: 2 });
+
+        aggregate.beginBatch({ type: "facet", facetId: ["B"] });
+        aggregate.handle({ sample: "B", value: 4 });
+        aggregate.handle({ sample: "B", value: 5 });
+
+        aggregate.complete();
+
+        expect(collector.facetBatches.get(["A"])).toEqual([
+            { sample: "A", total: 3 },
+        ]);
+        expect(collector.facetBatches.get(["B"])).toEqual([
+            { sample: "B", total: 9 },
+        ]);
     });
 });

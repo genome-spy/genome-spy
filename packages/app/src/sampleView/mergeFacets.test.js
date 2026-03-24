@@ -210,6 +210,56 @@ describe("MergeSampleFacets", () => {
     }
 
     /**
+     * @returns {import("@genome-spy/app/spec/sampleView.js").SampleSpec}
+     */
+    function createAggregateSummarySpec() {
+        return {
+            samples: {
+                identity: {
+                    data: {
+                        values: [{ sample: "A" }, { sample: "B" }],
+                    },
+                    idField: "sample",
+                },
+            },
+            spec: {
+                data: {
+                    values: [
+                        { sample: "A", value: 1 },
+                        { sample: "A", value: 2 },
+                        { sample: "B", value: 3 },
+                        { sample: "B", value: 4 },
+                    ],
+                },
+                mark: "rect",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "sample", type: "nominal" },
+                },
+                aggregateSamples: [
+                    {
+                        name: "summary",
+                        mark: "rect",
+                        encoding: {
+                            x: { field: "sample", type: "nominal" },
+                            y: { field: "total", type: "quantitative" },
+                        },
+                        transform: [
+                            {
+                                type: "aggregate",
+                                groupby: ["sample"],
+                                fields: ["value"],
+                                ops: ["sum"],
+                                as: ["total"],
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+    }
+
+    /**
      * @param {ReturnType<typeof setupStore>} store
      * @param {SampleView} view
      * @param {ReturnType<typeof createAppTestContext>["context"]} context
@@ -303,6 +353,25 @@ describe("MergeSampleFacets", () => {
         expect(collector).toBeDefined();
         expect(collector?.completed).toBe(true);
         expect(collector?.getItemCount()).toBeGreaterThan(0);
+    });
+
+    it("materializes aggregated summaries for each sample group", async () => {
+        const { summaryView, showSummary } = await createMergeFacetsScenario(
+            createAggregateSummarySpec()
+        );
+
+        await showSummary();
+
+        const collector = summaryView?.getCollector?.();
+        expect(collector).toBeDefined();
+        expect(collector?.completed).toBe(true);
+        const summaryData = Array.from(collector?.getData() ?? []).map(
+            ({ _uniqueId, ...datum }) => datum
+        );
+        expect(summaryData).toEqual([
+            { sample: "A", total: 3 },
+            { sample: "B", total: 7 },
+        ]);
     });
 
     it("materializes layered coverage summaries when visibility is restored via store subscription", async () => {

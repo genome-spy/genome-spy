@@ -64,16 +64,10 @@ export default class AggregateTransform extends Transform {
     }
 
     /**
-     *
-     * @param {import("../flowNode.js").Datum} datum
+     * Propagate the current buffer as one aggregated batch.
      */
-    handle(datum) {
-        this.buffer.push(datum);
-    }
-
-    complete() {
+    #flushBuffer() {
         const params = this.params;
-
         const groupby = params?.groupby;
 
         if (groupby?.length > 0) {
@@ -106,6 +100,34 @@ export default class AggregateTransform extends Transform {
             });
 
             this._propagate(datum);
+        }
+    }
+
+    /**
+     *
+     * @param {import("../flowNode.js").Datum} datum
+     */
+    handle(datum) {
+        this.buffer.push(datum);
+    }
+
+    /**
+     * Flush the current batch before downstream nodes switch to a new facet.
+     *
+     * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
+     */
+    beginBatch(flowBatch) {
+        if (this.buffer.length > 0) {
+            this.#flushBuffer();
+            this.buffer = [];
+        }
+
+        super.beginBatch(flowBatch);
+    }
+
+    complete() {
+        if (this.buffer.length > 0) {
+            this.#flushBuffer();
         }
 
         super.complete();
