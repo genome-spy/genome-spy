@@ -6,6 +6,7 @@ import {
     isObject,
     isRegExp,
     isString,
+    ascending,
     lerp,
 } from "vega-util";
 import { format as d3format } from "d3-format";
@@ -15,11 +16,62 @@ import linearstep from "./linearstep.js";
 
 /**
  * Some bits are adapted from https://github.com/vega/vega/blob/main/packages/vega-functions/src/codegen.js
+ *
+ * @param {unknown} value
+ * @returns {any}
  */
+function array(value) {
+    return isArray(value) || ArrayBuffer.isView(value) ? value : null;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {any}
+ */
+function sequence(value) {
+    return array(value) || (isString(value) ? value : null);
+}
+
 const functionContext = {
     clamp,
     format(/** @type {number} */ value, /** @type {string} */ format) {
         return d3format(format)(value);
+    },
+    /**
+     * Vega's expression docs list these as basic sequence helpers, but the
+     * bundled `vega-expression` version does not currently include them in the
+     * codegen whitelist. Implement them here so specs can rely on them.
+     */
+    join(/** @type {any} */ seq, /** @type {string} */ separator) {
+        return array(seq).join(separator);
+    },
+
+    indexof(
+        /** @type {any} */ seq,
+        /** @type {any} */ value,
+        /** @type {number | undefined} */ start
+    ) {
+        return sequence(seq).indexOf(value, start);
+    },
+
+    lastindexof(
+        /** @type {any} */ seq,
+        /** @type {any} */ value,
+        /** @type {number | undefined} */ start
+    ) {
+        return sequence(seq).lastIndexOf(value, start);
+    },
+
+    reverse(/** @type {any} */ seq) {
+        return array(seq).slice().reverse();
+    },
+
+    slice(
+        /** @type {any} */ seq,
+        /** @type {number} */ start,
+        /** @type {number | undefined} */ end
+    ) {
+        return sequence(seq).slice(start, end);
     },
     mapHasKey(/** @type {Map<any, any>} */ map, /** @type {any} */ key) {
         return map.has(key);
@@ -44,6 +96,9 @@ const functionContext = {
         /** @type {string} */ replace
     ) {
         return String(str).replace(pattern, replace);
+    },
+    sort(/** @type {Array<any>} */ seq) {
+        return array(seq).slice().sort(ascending);
     },
     smoothstep,
 };

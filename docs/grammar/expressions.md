@@ -90,7 +90,9 @@ package.
 [`isNumber`](https://vega.github.io/vega/docs/expressions/#isNumber),
 [`isObject`](https://vega.github.io/vega/docs/expressions/#isObject),
 [`isRegExp`](https://vega.github.io/vega/docs/expressions/#isRegExp),
-[`isString`](https://vega.github.io/vega/docs/expressions/#isString)
+[`isString`](https://vega.github.io/vega/docs/expressions/#isString),
+[`isDefined`](https://vega.github.io/vega/docs/expressions/#isDefined),
+[`isValid`](https://vega.github.io/vega/docs/expressions/#isValid)
 
 #### Math Functions
 
@@ -124,7 +126,8 @@ package.
 [`indexof`](https://vega.github.io/vega/docs/expressions/#indexof),
 [`lastindexof`](https://vega.github.io/vega/docs/expressions/#lastindexof),
 [`reverse`](https://vega.github.io/vega/docs/expressions/#reverse),
-[`slice`](https://vega.github.io/vega/docs/expressions/#slice)
+[`slice`](https://vega.github.io/vega/docs/expressions/#slice),
+[`sort`](https://vega.github.io/vega/docs/expressions/#sort)
 
 #### String Functions
 
@@ -135,7 +138,9 @@ package.
 [`replace`](https://vega.github.io/vega/docs/expressions/#replace),
 [`split`](https://vega.github.io/vega/docs/expressions/#split),
 [`substring`](https://vega.github.io/vega/docs/expressions/#substring),
-[`trim`](https://vega.github.io/vega/docs/expressions/#trim)
+[`trim`](https://vega.github.io/vega/docs/expressions/#trim),
+[`btoa`](https://vega.github.io/vega/docs/expressions/#btoa),
+[`atob`](https://vega.github.io/vega/docs/expressions/#atob)
 
 #### Formatting Functions
 
@@ -147,6 +152,10 @@ package.
 [`test`](https://vega.github.io/vega/docs/expressions/#test)
 
 ### Other functions
+
+<a name="mapHasKey" href="#mapHasKey">#</a>
+<b>mapHasKey</b>(<i>map</i>, <i>key</i>)<br/>
+Returns true if the map contains the given key.
 
 <a name="lerp" href="#lerp">#</a>
 <b>lerp</b>(<i>array</i>, <i>fraction</i>)<br/>
