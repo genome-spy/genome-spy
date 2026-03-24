@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+
+### Bug Fixes
+
+* **app:** baseline extracted samples in provenance ([c06bdc5](https://github.com/genome-spy/genome-spy/commit/c06bdc53723ab7432d32b0ef1d22126c66579eef)) by @tuner
+* **app:** hide sample label tooltip fields ([85f1c15](https://github.com/genome-spy/genome-spy/commit/85f1c15b58a2c701bad771fa702d8aa16ad94af7)) by @tuner
+* **core:** flush aggregate batches per facet ([e358757](https://github.com/genome-spy/genome-spy/commit/e358757aa41257d9777cbc8552c66bf9af8911bb)) by @tuner
+* **core:** preserve explicit size params in descendants ([7a01cf6](https://github.com/genome-spy/genome-spy/commit/7a01cf65f2f0743b877b6cc45f24ce6e54635f2d)) by @tuner
+* **core:** scope injected container styles ([7050a8f](https://github.com/genome-spy/genome-spy/commit/7050a8f8b4dd1dbdb433cdbb8d561fee47fa2eb8)), closes [#244](https://github.com/genome-spy/genome-spy/issues/244) by @tuner
+* **test:** silence expected warning cases ([3760587](https://github.com/genome-spy/genome-spy/commit/3760587e0911cd77b3e8478f5bd4224a1aafc1ee)) by @tuner
+
+### Features
+
+* **app:** infer sample label width from measured text ([c2ad4a1](https://github.com/genome-spy/genome-spy/commit/c2ad4a19c1c2a6d875fec4b7894dfc6094690daf)) by @tuner
+* **core:** add lean minimal entrypoint and trim optional loaders ([#365](https://github.com/genome-spy/genome-spy/issues/365)) ([90e5ccf](https://github.com/genome-spy/genome-spy/commit/90e5ccffebdded158eb976da25b654151d503d10)) by @tuner
+
 # [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 ### Bug Fixes

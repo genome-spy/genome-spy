@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+
+**Note:** Version bump only for package @genome-spy/playground
+
 # [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 ### Features

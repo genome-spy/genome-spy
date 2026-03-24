@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+
+### Bug Fixes
+
+* add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
+
+### Features
+
+* **core:** add lean minimal entrypoint and trim optional loaders ([#365](https://github.com/genome-spy/genome-spy/issues/365)) ([90e5ccf](https://github.com/genome-spy/genome-spy/commit/90e5ccffebdded158eb976da25b654151d503d10)) by @tuner
+
 # [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 **Note:** Version bump only for package @genome-spy/embed-examples

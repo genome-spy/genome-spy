@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
+
+### Bug Fixes
+
+* add react component regression coverage ([44c6602](https://github.com/genome-spy/genome-spy/commit/44c6602aed8b78c558803e2a51b1b65d8753abc2)) by @tuner
+* **react-component:** update react test setup ([4a8c425](https://github.com/genome-spy/genome-spy/commit/4a8c42589c766501a9203c5428a457b5613a76da)) by @tuner
+
 # [0.73.0](https://github.com/genome-spy/genome-spy/compare/v0.72.0...v0.73.0) (2026-03-12)
 
 **Note:** Version bump only for package @genome-spy/react-component
