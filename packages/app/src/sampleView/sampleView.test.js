@@ -30,6 +30,21 @@ class NoOpRenderingContext extends ViewRenderingContext {
     }
 }
 
+/**
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleSpec} spec
+ * @param {import("./state/sampleState.js").Sample[]} samples
+ */
+async function getSampleLabelWidth(spec, samples) {
+    const { view } = await createSampleViewForTest({
+        spec,
+    });
+
+    // Drive the same store update path that the production sample loader uses.
+    view.provenance.store.dispatch(view.actions.setSamples({ samples }));
+
+    return view.sampleLabelView.getSize().width.px;
+}
+
 describe("SampleView", () => {
     test("warns once when deprecated legacy sample metadata fields are used", async () => {
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -108,6 +123,160 @@ describe("SampleView", () => {
         const provenance = new Provenance(store);
         expect(provenance.getBookmarkableActionHistory()).toEqual([]);
         expect(provenance.isUndoable()).toBe(false);
+    });
+
+    test("infers sample label width from the longest display name", async () => {
+        const shortWidth = await getSampleLabelWidth(
+            {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+            [
+                { id: "A", displayName: "A", indexNumber: 0 },
+                { id: "B", displayName: "BB", indexNumber: 1 },
+            ]
+        );
+
+        const longWidth = await getSampleLabelWidth(
+            {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+            [
+                {
+                    id: "A",
+                    displayName: "Very long sample label",
+                    indexNumber: 0,
+                },
+                {
+                    id: "B",
+                    displayName: "Another much longer sample label",
+                    indexNumber: 1,
+                },
+            ]
+        );
+
+        expect(longWidth).toBeGreaterThan(shortWidth);
+    });
+
+    test("hides the sample label title when labelTitle is null", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {
+                    labelTitle: null,
+                },
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        expect(view.sampleLabelView.spec.title).toBeUndefined();
+    });
+
+    test("uses Sample as the default sample label title", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        expect(view.sampleLabelView.spec.title).toMatchObject({
+            text: "Sample",
+        });
+    });
+
+    test("keeps the legacy labelTitleText alias working", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {
+                    labelTitleText: "Legacy title",
+                },
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        expect(view.sampleLabelView.spec.title).toMatchObject({
+            text: "Legacy title",
+        });
+    });
+
+    test("keeps an explicit sample label width override", async () => {
+        const width = await getSampleLabelWidth(
+            {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {
+                    labelLength: 222,
+                },
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+            [
+                {
+                    id: "A",
+                    displayName: "A very long sample label",
+                    indexNumber: 0,
+                },
+                {
+                    id: "B",
+                    displayName: "Another even longer sample label",
+                    indexNumber: 1,
+                },
+            ]
+        );
+
+        expect(width).toBe(222);
     });
 
     test("handles provenance rewind while sample labels are subscribed", async () => {

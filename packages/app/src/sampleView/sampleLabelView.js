@@ -4,8 +4,11 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { html } from "lit";
 import { subscribeTo } from "../state/subscribeTo.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
+import coalesce from "@genome-spy/core/utils/coalesce.js";
 
 const SAMPLE_NAME = "SAMPLE_NAME";
+const LABEL_WIDTH_FIELD = "_labelWidth";
+const LABEL_TITLE_WIDTH_FIELD = "_labelTitleWidth";
 
 /** @type {import("./types.js").AttributeInfo} */
 const SAMPLE_NAME_ATTRIBUTE_INFO = Object.freeze({
@@ -28,6 +31,9 @@ export class SampleLabelView extends UnitView {
     /** @type {import("./sampleView.js").default} */
     #sampleView;
 
+    /** @type {boolean} */
+    #autoLabelWidth;
+
     /**
      * @type {(identifier: import("./types.js").AttributeIdentifier) => import("./types.js").AttributeInfo}
      */
@@ -47,6 +53,7 @@ export class SampleLabelView extends UnitView {
         );
 
         this.#sampleView = sampleView;
+        this.#autoLabelWidth = sampleView.spec.samples.labelLength == null;
 
         this.#attributeInfoSource = () => SAMPLE_NAME_ATTRIBUTE_INFO;
         sampleView.compositeAttributeInfoSource.addAttributeInfoSource(
@@ -89,10 +96,35 @@ export class SampleLabelView extends UnitView {
             // Make a copy because the state-derived data is immutable
             samples.map((sample) => ({
                 id: sample.id,
-                displayName: sample.displayName,
+                displayName: sample.displayName ?? sample.id,
                 indexNumber: sample.indexNumber,
+                labelTitle: getLabelTitle(this.#sampleView.spec.samples),
             }))
         );
+
+        if (this.#autoLabelWidth) {
+            this.#setAutoLabelWidth();
+        }
+    }
+
+    /**
+     * Infers the label column width from the measured sample labels and title.
+     */
+    #setAutoLabelWidth() {
+        const collector = this.getCollector();
+        if (!collector?.completed) {
+            return;
+        }
+
+        const nextWidth = getLabelWidth(collector);
+
+        if (this.spec.width === nextWidth) {
+            return;
+        }
+
+        this.spec.width = nextWidth;
+        this.invalidateSizeCache();
+        this.context.requestLayoutReflow();
     }
 
     /**
@@ -144,24 +176,34 @@ export class SampleLabelView extends UnitView {
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
  */
 function createLabelViewSpec(sampleDef) {
-    // TODO: Support styling: https://vega.github.io/vega-lite/docs/header.html#labels
+    const labelTitle = getLabelTitle(sampleDef);
 
     /** @type {import("../spec/view.js").AppUnitSpec} */
     const labelSpec = {
         name: "sample-labels",
         data: { name: null },
-        title: {
-            text: sampleDef.labelTitleText ?? "Sample name",
-            orient: "bottom",
-            anchor: "start",
-            offset: 5,
-            font: sampleDef.attributeLabelFont,
-            fontSize: sampleDef.attributeLabelFontSize ?? 11,
-            fontStyle: sampleDef.attributeLabelFontStyle,
-            fontWeight: sampleDef.attributeLabelFontWeight,
-        },
-        width: sampleDef.labelLength ?? 140,
+        width: sampleDef.labelLength ?? 0,
         configurableVisibility: true,
+        transform: [
+            {
+                type: "measureText",
+                field: "displayName",
+                as: LABEL_WIDTH_FIELD,
+                fontSize: sampleDef.labelFontSize ?? 11,
+                font: sampleDef.labelFont,
+                fontStyle: sampleDef.labelFontStyle,
+                fontWeight: sampleDef.labelFontWeight,
+            },
+            {
+                type: "measureText",
+                field: "labelTitle",
+                as: LABEL_TITLE_WIDTH_FIELD,
+                fontSize: sampleDef.attributeLabelFontSize ?? 11,
+                font: sampleDef.attributeLabelFont,
+                fontStyle: sampleDef.attributeLabelFontStyle,
+                fontWeight: sampleDef.attributeLabelFontWeight,
+            },
+        ],
         mark: {
             type: "text",
             baseline: "middle",
@@ -182,5 +224,43 @@ function createLabelViewSpec(sampleDef) {
         },
     };
 
+    if (labelTitle !== null) {
+        labelSpec.title = {
+            text: labelTitle,
+            orient: "bottom",
+            anchor: "start",
+            offset: 5,
+            font: sampleDef.attributeLabelFont,
+            fontSize: sampleDef.attributeLabelFontSize ?? 11,
+            fontStyle: sampleDef.attributeLabelFontStyle,
+            fontWeight: sampleDef.attributeLabelFontWeight,
+        };
+    }
+
     return labelSpec;
+}
+
+/**
+ * @param {import("@genome-spy/core/data/collector.js").default} collector
+ * @returns {number}
+ */
+function getLabelWidth(collector) {
+    let labelWidth = 0;
+    collector.visitData((datum) => {
+        labelWidth = Math.max(
+            labelWidth,
+            Number(datum[LABEL_WIDTH_FIELD]) || 0,
+            Number(datum[LABEL_TITLE_WIDTH_FIELD]) || 0
+        );
+    });
+
+    return Math.ceil(labelWidth);
+}
+
+/**
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
+ * @returns {string | null}
+ */
+function getLabelTitle(sampleDef) {
+    return coalesce(sampleDef.labelTitle, sampleDef.labelTitleText, "Sample");
 }

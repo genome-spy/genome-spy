@@ -367,16 +367,24 @@ export interface SampleDef {
     attributes?: Record<string, SampleAttributeDef>;
 
     /**
-     * Text in the label title
+     * Text in the label title.
+     * If omitted, the title defaults to `"Sample"`.
+     * Set to `null` to hide the title.
      *
-     * **Default:** `"Sample name"`
      */
-    labelTitleText?: string;
+    labelTitle?: string | null;
+
+    /**
+     * Legacy alias for `labelTitle`.
+     *
+     * @deprecated Use `labelTitle` instead.
+     */
+    labelTitleText?: string | null;
 
     /**
      * How much space in pixels to reserve for the labels.
+     * If omitted, the width is inferred from the sample labels.
      *
-     * **Default:** `140`
      */
     labelLength?: number;
 
