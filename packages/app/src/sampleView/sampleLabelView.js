@@ -7,7 +7,9 @@ import { createDefaultValuesProvider } from "./attributeValues.js";
 import coalesce from "@genome-spy/core/utils/coalesce.js";
 
 const SAMPLE_NAME = "SAMPLE_NAME";
+const INDEX_NUMBER_FIELD = "_indexNumber";
 const LABEL_WIDTH_FIELD = "_labelWidth";
+const LABEL_TITLE_FIELD = "_labelTitle";
 const LABEL_TITLE_WIDTH_FIELD = "_labelTitleWidth";
 
 /** @type {import("./types.js").AttributeInfo} */
@@ -92,13 +94,15 @@ export class SampleLabelView extends UnitView {
             throw new Error("Cannot find sample label data source handle!");
         }
 
+        const labelTitle = getLabelTitle(this.#sampleView.spec.samples) ?? "";
+
         dynamicSource.updateDynamicData(
             // Make a copy because the state-derived data is immutable
             samples.map((sample) => ({
                 id: sample.id,
                 displayName: sample.displayName ?? sample.id,
-                indexNumber: sample.indexNumber,
-                labelTitle: getLabelTitle(this.#sampleView.spec.samples),
+                [INDEX_NUMBER_FIELD]: sample.indexNumber,
+                [LABEL_TITLE_FIELD]: labelTitle,
             }))
         );
 
@@ -196,7 +200,7 @@ function createLabelViewSpec(sampleDef) {
             },
             {
                 type: "measureText",
-                field: "labelTitle",
+                field: LABEL_TITLE_FIELD,
                 as: LABEL_TITLE_WIDTH_FIELD,
                 fontSize: sampleDef.attributeLabelFontSize ?? 11,
                 font: sampleDef.attributeLabelFont,
@@ -215,7 +219,7 @@ function createLabelViewSpec(sampleDef) {
             flushY: false,
         },
         encoding: {
-            facetIndex: { field: "indexNumber" },
+            facetIndex: { field: INDEX_NUMBER_FIELD },
             x: { value: 0 },
             x2: { value: 1 },
             y: { value: 0 },
