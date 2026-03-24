@@ -527,7 +527,10 @@ export default class InteractionController {
                 document.addEventListener(
                     "mouseup",
                     () => this.#tooltip.popEnabledState(),
-                    { once: true }
+                    {
+                        once: true,
+                        capture: true,
+                    }
                 );
                 this.#tooltip.pushEnabledState(false);
             };
