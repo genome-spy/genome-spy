@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test, vi } from "vitest";
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 
 import GenomeSpy from "./main.js";
 
