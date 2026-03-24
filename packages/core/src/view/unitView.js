@@ -559,12 +559,6 @@ export default class UnitView extends View {
                 if (!isScaleAccessor(accessor)) {
                     continue;
                 }
-                if (accessor.channelDef.domainInert) {
-                    continue;
-                }
-                if (createsDomainFeedback(accessor, domainDependentChannels)) {
-                    continue;
-                }
                 const resolution = this.getScaleResolution(
                     accessor.scaleChannel
                 );
@@ -573,6 +567,18 @@ export default class UnitView extends View {
                         "Missing scale resolution for channel: " +
                             accessor.scaleChannel
                     );
+                }
+                if (accessor.channelDef.domainInert) {
+                    continue;
+                }
+                if (
+                    createsDomainFeedback(
+                        accessor,
+                        resolution,
+                        domainDependentChannels
+                    )
+                ) {
+                    continue;
                 }
 
                 let accessorsForResolution =
@@ -645,13 +651,17 @@ export default class UnitView extends View {
  * x-domain, so downstream label x positions must not contribute to x-domain.
  *
  * @param {import("../types/encoder.js").ScaleAccessor} accessor
+ * @param {import("../scales/scaleResolution.js").default} resolution
  * @param {Set<import("../spec/channel.js").ChannelWithScale>} domainDependentChannels
  * @returns {boolean}
  */
-function createsDomainFeedback(accessor, domainDependentChannels) {
-    return domainDependentChannels.has(
-        /** @type {import("../spec/channel.js").ChannelWithScale} */ (
-            getPrimaryChannel(accessor.scaleChannel)
+function createsDomainFeedback(accessor, resolution, domainDependentChannels) {
+    return (
+        !resolution.isDomainDefinedExplicitly() &&
+        domainDependentChannels.has(
+            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                getPrimaryChannel(accessor.scaleChannel)
+            )
         )
     );
 }

@@ -773,6 +773,43 @@ describe("Test domain handling", () => {
 
         expect(registerSpy).not.toHaveBeenCalled();
     });
+
+    test("domain-sensitive upstream flows still register when the scale domain is explicit", async () => {
+        const view = await create(
+            {
+                data: { values: [{ a: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "a",
+                        type: "quantitative",
+                        scale: { domain: [0, 10] },
+                    },
+                    y: { value: 0 },
+                },
+            },
+            UnitView
+        );
+
+        view.mark.initializeEncoders();
+
+        const collector = new Collector();
+        new DomainSensitiveNode().addChild(collector);
+        view.flowHandle = {
+            ...view.flowHandle,
+            collector,
+        };
+
+        const resolution = view.getScaleResolution("x");
+        const registerSpy = vi.spyOn(
+            resolution,
+            "registerCollectorSubscriptions"
+        );
+
+        view.registerDomainSubscriptions();
+
+        expect(registerSpy).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe("Step sizing and domain updates", () => {
