@@ -635,6 +635,28 @@ describe("MetadataView", () => {
         metadataView.dispose();
     });
 
+    it("does not update tooltip while a mouse button is pressed", async () => {
+        const { context, sampleView, metadataView, attributeViews } =
+            await createInteractiveMetadataViewTestHarness();
+
+        const updateTooltip = vi.fn();
+        context.updateTooltip = updateTooltip;
+        sampleView.findSampleForMouseEvent = () => ({ id: "s1" });
+
+        metadataView.handleInteraction(
+            /** @type {any} */ ({
+                type: "mousemove",
+                target: attributeViews.foo,
+                mouseEvent: { buttons: 1 },
+            }),
+            false
+        );
+
+        expect(updateTooltip).not.toHaveBeenCalled();
+
+        metadataView.dispose();
+    });
+
     it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
             await createInteractiveMetadataViewTestHarness();

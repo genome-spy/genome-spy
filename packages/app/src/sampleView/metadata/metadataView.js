@@ -137,7 +137,7 @@ export class MetadataView extends ConcatView {
                 this.#getAttributeInfoForView(view)?.attribute.specifier
             );
 
-            if (sample) {
+            if (sample && event.mouseEvent.buttons === 0) {
                 const id = JSON.stringify([sample.id, attributeName]);
                 this.context.updateTooltip(id, (id) => {
                     const [sampleId, attribute] = JSON.parse(id);
