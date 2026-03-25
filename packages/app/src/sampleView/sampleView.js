@@ -1168,6 +1168,7 @@ export default class SampleView extends ContainerView {
     #handleContextMenu(event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+        const layoutRoot = this.getLayoutAncestors().at(-1);
 
         const normalizedXPos = this.childCoords.normalizePoint(
             event.point.x,
@@ -1210,15 +1211,12 @@ export default class SampleView extends ContainerView {
 
         const uniqueFieldInfos = getContextMenuFieldInfos(
             view,
-            this.getLayoutAncestors().at(-1),
+            layoutRoot,
             !!selectionInterval
         );
         const unavailablePointQueryViews = selectionInterval
             ? []
-            : getUnavailablePointQueryViews(
-                  view,
-                  this.getLayoutAncestors().at(-1)
-              );
+            : getUnavailablePointQueryViews(view, layoutRoot);
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
@@ -1257,6 +1255,13 @@ export default class SampleView extends ContainerView {
             selectionExpansionContext = selectionExpansionResolution.context;
         }
 
+        const attributeMenuBase = {
+            sample,
+            sampleHierarchy: this.sampleHierarchy,
+            attributeInfoSource: this.compositeAttributeInfoSource,
+            attributeType: VALUE_AT_LOCUS,
+            sampleView: this,
+        };
         let previousContextTitle = "";
         let selectionExpansionItemInserted = false;
 
@@ -1291,11 +1296,7 @@ export default class SampleView extends ContainerView {
                         fieldInfo,
                         selectionIntervalComplex,
                         selectionIntervalSource,
-                        sample,
-                        sampleHierarchy: this.sampleHierarchy,
-                        attributeInfoSource: this.compositeAttributeInfoSource,
-                        attributeType: VALUE_AT_LOCUS,
-                        sampleView: this,
+                        ...attributeMenuBase,
                     }),
                 });
                 continue;
@@ -1306,11 +1307,7 @@ export default class SampleView extends ContainerView {
                 submenu: buildPointQueryMenu({
                     fieldInfo,
                     complexX,
-                    sample,
-                    sampleHierarchy: this.sampleHierarchy,
-                    attributeInfoSource: this.compositeAttributeInfoSource,
-                    attributeType: VALUE_AT_LOCUS,
-                    sampleView: this,
+                    ...attributeMenuBase,
                 }),
             });
 
