@@ -4,9 +4,9 @@ import {
     resolveExportSize,
 } from "./screenshotExport.js";
 
-const DEFAULT_CONTAINER_WIDTH = 600;
-const DEFAULT_CONTAINER_HEIGHT = 320;
-const DEFAULT_LAZY_READY_TIMEOUT_MS = 30_000;
+const DEFAULT_CONTAINER_WIDTH = 500;
+const DEFAULT_CONTAINER_HEIGHT = 300;
+const DEFAULT_LAZY_READY_TIMEOUT_MS = 10_000;
 const READY_DELAY_MS = 100;
 
 /**
