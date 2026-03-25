@@ -1,4 +1,8 @@
 import { embed, loadSpec } from "./index.js";
+import {
+    resolveCaptureDevicePixelRatio,
+    resolveExportSize,
+} from "./screenshotExport.js";
 
 const DEFAULT_CONTAINER_WIDTH = 600;
 const DEFAULT_CONTAINER_HEIGHT = 320;
@@ -89,29 +93,41 @@ async function initializeHarness(url) {
             api.getRenderedBounds(),
             api.getLogicalCanvasSize()
         );
+        const devicePixelRatio = resolveCaptureDevicePixelRatio(
+            logicalSize.height
+        );
 
         screenshotWindow.__genomeSpyScreenshot = {
             status: "ready",
-            detail: `Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`,
+            detail: `Ready (${logicalSize.width}x${logicalSize.height}, DPR ${formatDevicePixelRatio(
+                devicePixelRatio
+            )})`,
             error: "",
             async capture() {
                 const currentSize = resolveExportSize(
                     api.getRenderedBounds(),
                     api.getLogicalCanvasSize()
                 );
+                const currentDevicePixelRatio = resolveCaptureDevicePixelRatio(
+                    currentSize.height
+                );
                 return {
                     logicalSize: currentSize,
                     dataUrl: api.exportCanvas(
                         currentSize.width,
                         currentSize.height,
-                        1,
+                        currentDevicePixelRatio,
                         "white"
                     ),
                 };
             },
         };
 
-        setStatus(`Ready (${logicalSize.width}x${logicalSize.height}, DPR 1)`);
+        setStatus(
+            `Ready (${logicalSize.width}x${logicalSize.height}, DPR ${formatDevicePixelRatio(
+                devicePixelRatio
+            )})`
+        );
     } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
     }
@@ -184,24 +200,10 @@ function parseTimeoutMs(value, fallback) {
 }
 
 /**
- * @param {{ width: number | undefined, height: number | undefined }} renderedBounds
- * @param {{ width: number, height: number }} logicalSize
+ * @param {number} value
  */
-function resolveExportSize(renderedBounds, logicalSize) {
-    return {
-        width:
-            Number.isFinite(renderedBounds.width) && renderedBounds.width > 0
-                ? Math.ceil(renderedBounds.width)
-                : Number.isFinite(logicalSize.width) && logicalSize.width > 0
-                  ? logicalSize.width
-                  : DEFAULT_CONTAINER_WIDTH,
-        height:
-            Number.isFinite(renderedBounds.height) && renderedBounds.height > 0
-                ? Math.ceil(renderedBounds.height)
-                : Number.isFinite(logicalSize.height) && logicalSize.height > 0
-                  ? logicalSize.height
-                  : DEFAULT_CONTAINER_HEIGHT,
-    };
+function formatDevicePixelRatio(value) {
+    return value.toFixed(3).replace(/\.?0+$/, "");
 }
 
 /**
