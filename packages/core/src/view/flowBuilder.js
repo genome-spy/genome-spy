@@ -312,7 +312,7 @@ export function linearizeLocusAccess(view) {
     /** @type {FlowNode[]} */
     const transforms = [];
 
-    /** @type {Encoding} */
+    /** @type {Record<string, any>} */
     const rewrittenEncoding = {};
 
     // Use mark.encoding so we see the same channel defs that encoders consume,
@@ -374,12 +374,16 @@ export function linearizeLocusAccess(view) {
 
                 // Prefer using the spec directly because getEncoding() returns inherited props too.
                 // TODO: I think this is not robust enough. Needs more work...
-                /** @type {any} */
+                /** @type {Record<string, any>} */
+                const currentEncoding =
+                    view.spec.encoding?.[channel] ??
+                    configuredEncoding[channel] ??
+                    encoding[channel] ??
+                    {};
+
+                /** @type {Record<string, any>} */
                 const newFieldDef = {
-                    ...(view.spec.encoding?.[channel] ??
-                        configuredEncoding[channel] ??
-                        encoding[channel] ??
-                        {}),
+                    ...currentEncoding,
                     field: linearizedField,
                 };
                 delete newFieldDef.chrom;
@@ -435,7 +439,7 @@ export function linearizeLocusAccess(view) {
 
 /**
  * @param {import("./unitView.js").default} view
- * @param {import("../spec/channel.js").Encoding} [encoding]
+ * @param {Record<string, any>} [encoding]
  * @returns {import("../spec/transform.js").CompareParams}
  */
 function getCompareParamsForView(view, encoding) {
