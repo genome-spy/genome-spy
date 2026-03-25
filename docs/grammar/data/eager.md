@@ -191,6 +191,22 @@ For `"dsv"`, you must also specify the delimiter:
 }
 ```
 
+Headerless delimited files can provide field names explicitly with
+`format.columns`. When `columns` is present, GenomeSpy treats the first row as
+data instead of a header row.
+
+```json title="Example: Headerless TSV with explicit columns"
+{
+  "data": {
+    "url": "samples.tsv",
+    "format": {
+      "type": "tsv",
+      "columns": ["sample", "value"]
+    }
+  }
+}
+```
+
 For `"json"`, you can optionally use `format.property` to read a nested array
 from the loaded JSON document:
 

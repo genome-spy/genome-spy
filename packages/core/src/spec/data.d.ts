@@ -50,6 +50,12 @@ export interface DataFormatBase {
 
 export interface CsvDataFormat extends DataFormatBase {
     type?: "csv" | "tsv";
+
+    /**
+     * Optional ordered list of field names for headerless CSV or TSV input.
+     * When provided, the first row is interpreted as data rather than a header row.
+     */
+    columns?: string[];
 }
 
 export interface DsvDataFormat extends DataFormatBase {
@@ -62,6 +68,12 @@ export interface DsvDataFormat extends DataFormatBase {
      * @maxLength 1
      */
     delimiter: string;
+
+    /**
+     * Optional ordered list of field names for headerless delimiter-separated input.
+     * When provided, the first row is interpreted as data rather than a header row.
+     */
+    columns?: string[];
 }
 
 export interface JsonDataFormat extends DataFormatBase {

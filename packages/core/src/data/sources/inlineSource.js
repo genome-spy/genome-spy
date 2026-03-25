@@ -1,5 +1,5 @@
 import { read } from "vega-loader";
-import { getFormat, makeWrapper } from "./dataUtils.js";
+import { getFormat, makeWrapper, toVegaLoaderFormat } from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 
 /**
@@ -79,7 +79,7 @@ export default class InlineSource extends DataSource {
             data = [values];
         } else if (typeof values == "string") {
             // It's a string that needs to be parsed
-            data = read(values, getFormat(this.params));
+            data = read(values, toVegaLoaderFormat(getFormat(this.params)));
         } else {
             throw new Error(
                 '"values" in data configuration is not an array, object, or a string!'

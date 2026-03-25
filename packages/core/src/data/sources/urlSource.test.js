@@ -200,6 +200,34 @@ test("UrlSource reads bgzip-compressed TSV content transparently", async () => {
     ]);
 });
 
+test("UrlSource accepts explicit columns for headerless TSV", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(async () => new Response("chr1\t10\nchr2\t20\n", { status: 200 }))
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.tsv",
+            format: {
+                type: "tsv",
+                columns: ["chrom", "start"],
+            },
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        {
+            chrom: "chr1",
+            start: 10,
+        },
+        {
+            chrom: "chr2",
+            start: 20,
+        },
+    ]);
+});
+
 test("UrlSource reads gzip-compressed URL lists transparently", async () => {
     const list = await gzipText("url\npart-1.tsv\npart-2.tsv\n");
     const part1 = await gzipText("sample\tvalue\nA\t1\n");

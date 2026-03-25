@@ -3,6 +3,7 @@ import {
     getFormat,
     makeWrapper,
     responseType,
+    toVegaLoaderFormat,
 } from "@genome-spy/core/data/sources/dataUtils.js";
 import { concatUrl } from "@genome-spy/core/utils/url.js";
 import { validateMetadata } from "../metadataValidation.js";
@@ -269,7 +270,7 @@ export default class DataMetadataSourceAdapter {
         }
 
         /** @type {Record<string, any>[]} */
-        const parsed = read(content, format);
+        const parsed = read(content, toVegaLoaderFormat(format));
         return parsed;
     }
 
@@ -300,7 +301,7 @@ export default class DataMetadataSourceAdapter {
         } else if (typeof values === "string") {
             rows =
                 /** @type {Record<string, any>[]} */
-                (read(values, getFormat(data)));
+                (read(values, toVegaLoaderFormat(getFormat(data))));
         } else {
             throw new Error(
                 "Inline metadata source values must be an array, object, or a string."

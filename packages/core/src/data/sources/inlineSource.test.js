@@ -50,6 +50,26 @@ test("InlineSource parses a string", async () => {
     ).toEqual([{ a: 1 }, { a: 2 }, { a: 3 }]);
 });
 
+test("InlineSource accepts explicit columns for headerless CSV", async () => {
+    expect(
+        await collectSource(
+            new InlineSource(
+                {
+                    values: "1,2\n3,4",
+                    format: {
+                        type: "csv",
+                        columns: ["a", "b"],
+                    },
+                },
+                undefined
+            )
+        )
+    ).toEqual([
+        { a: 1, b: 2 },
+        { a: 3, b: 4 },
+    ]);
+});
+
 test("InlineSource throws on a string and a missing format specifier", () => {
     expect(
         () =>

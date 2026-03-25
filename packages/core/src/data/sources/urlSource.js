@@ -1,5 +1,10 @@
 import { read } from "vega-loader";
-import { getFormat, hasGzipExtension, responseType } from "./dataUtils.js";
+import {
+    getFormat,
+    hasGzipExtension,
+    responseType,
+    toVegaLoaderFormat,
+} from "./dataUtils.js";
 import DataSource from "./dataSource.js";
 import {
     activateExprRefProps,
@@ -63,7 +68,7 @@ export default class UrlSource extends DataSource {
         );
 
         const files = /** @type {string[] | {url: string}[]} */ (
-            read(content, format)
+            read(content, toVegaLoaderFormat(format))
         )
             .map((u) => (typeof u === "string" ? u : u.url))
             .map((u) => concatUrl(listUrl, u));
@@ -114,7 +119,7 @@ export default class UrlSource extends DataSource {
         const readAndParse = async (content, url) => {
             try {
                 /** @type {any[] | Promise<any[]>} */
-                const dataOrPromise = read(content, format);
+                const dataOrPromise = read(content, toVegaLoaderFormat(format));
                 const data =
                     dataOrPromise instanceof Promise
                         ? await dataOrPromise

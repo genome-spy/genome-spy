@@ -35,6 +35,29 @@ export function getFormat(params, urls = []) {
 }
 
 /**
+ * Vega's DSV readers support synthetic header rows via `format.header`.
+ * GenomeSpy exposes the user-facing option as `format.columns`.
+ *
+ * @param {import("../../spec/data.js").DataFormat} format
+ */
+export function toVegaLoaderFormat(format) {
+    const readFormat = { ...format };
+
+    if (
+        (isCsvDataFormat(readFormat) || isDsvDataFormat(readFormat)) &&
+        readFormat.columns &&
+        !("header" in readFormat)
+    ) {
+        // @ts-ignore Vega loader supports `header`, but the public data format
+        // type intentionally exposes the GenomeSpy-level `columns` property
+        // instead.
+        readFormat.header = readFormat.columns;
+    }
+
+    return readFormat;
+}
+
+/**
  * @param {string} type
  * @returns {string}
  */
