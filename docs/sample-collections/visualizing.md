@@ -298,10 +298,14 @@ make it available to all users. A simplified example:
 
 When working with a complex visualization that includes multiple tracks and
 extensive metadata, it may not always be necessary to display all views
-simultaneously. The GenomeSpy app offers users the ability to toggle the
-visibility of nodes within the view hierarchy. This visibility state is also
-included in shareable links and bookmarks, allowing users to easily access their
-preferred configurations.
+simultaneously. GenomeSpy App allows for interactive toggling of the visibility
+of nodes within the view hierarchy. This visibility state is also included in
+shareable links and bookmarks, allowing users to easily access their preferred
+configurations.
+
+Toggleable visibility requires each view to have an explicit unique `name`.
+GenomeSpy uses the name to address visibility state in bookmarks and shared
+state, and to keep views unambiguous within the import scope.
 
 Views have two properties for controlling the visibility:
 
@@ -318,6 +322,16 @@ radio buttons:
   ...
 }
 ```
+
+## Actions
+
+The app provides context-menu actions for sorting, filtering, grouping, and
+other sample-collection operations. For an overview, see
+[Analyzing Sample Collections](analyzing.md).
+
+Actions in sample collections also require each view to have an explicit unique
+`name`. GenomeSpy uses the name to address the view in action definitions and
+to replay those actions from bookmarks, shared state, and provenance history.
 
 ## Search
 
