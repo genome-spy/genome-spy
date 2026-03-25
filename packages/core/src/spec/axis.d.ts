@@ -113,9 +113,9 @@ export interface Axis extends BaseAxis, ZIndexProps {
     format?: string;
 
     /**
-     * A title for the axis (none by default).
+     * A title for the axis (none by default). Set to `null` to remove it.
      */
-    title?: string;
+    title?: string | null;
 
     /**
      * The orthogonal offset in pixels by which to displace the axis from its position along the edge of the chart.

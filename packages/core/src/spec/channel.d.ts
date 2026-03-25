@@ -434,17 +434,17 @@ export interface Encoding {
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    x2?: Position2Def;
+    x2?: Position2Def | null;
 
     /**
      * Y2 coordinates of the marks.
      *
      * The `value` of this channel can be a number between zero and one.
      */
-    y2?: Position2Def;
+    y2?: Position2Def | null;
 
-    dx?: NumericMarkPropDef; // TODO: Not a mark property. Fix types.
-    dy?: NumericMarkPropDef;
+    dx?: NumericMarkPropDef | MarkPropExprDef; // TODO: Not a mark property. Fix types.
+    dy?: NumericMarkPropDef | MarkPropExprDef;
 
     /**
      * Color of the marks – either fill or stroke color based on  the `filled` property of mark definition.
