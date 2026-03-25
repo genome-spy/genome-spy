@@ -95,35 +95,24 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
  */
 export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
     const uniqueViewKeys = getUniqueViewRefKeys(layoutRoot);
-
-    /** @type {import("@genome-spy/core/view/unitView.js").default[]} */
-    const unitViews = [];
-    view.visit((child) => {
-        if (child instanceof UnitView) {
-            unitViews.push(child);
-        }
-    });
-
-    let fieldInfos = findEncodedFields(view)
-        .filter((d) => !["sample", "x", "x2"].includes(d.channel))
-        // TODO: Log a warning if the view reference is not unique.
-        .filter((info) => {
-            const viewKey = getViewRefKey(info.view);
-            return viewKey && uniqueViewKeys.has(viewKey);
-        })
-        .filter((info) => info.view.isVisible());
+    let fieldInfos = getVisibleNonPositionalFieldInfos(view).filter((info) =>
+        isAddressableView(info.view, uniqueViewKeys)
+    );
 
     if (hasInterval) {
+        /** @type {import("@genome-spy/core/view/unitView.js").default[]} */
+        const unitViews = [];
+        view.visit((child) => {
+            if (
+                child instanceof UnitView &&
+                child.isVisible() &&
+                isAddressableView(child, uniqueViewKeys)
+            ) {
+                unitViews.push(child);
+            }
+        });
+
         for (const unitView of unitViews) {
-            if (!unitView.isVisible()) {
-                continue;
-            }
-
-            const viewKey = getViewRefKey(unitView);
-            if (!viewKey || !uniqueViewKeys.has(viewKey)) {
-                continue;
-            }
-
             const encoding = unitView.getEncoding();
             const hasXField = encoding?.x && "field" in encoding.x;
             const hasNonPositionalField = Object.entries(encoding).some(
@@ -145,16 +134,7 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
     }
 
     if (!hasInterval) {
-        fieldInfos = fieldInfos.filter((info) => {
-            if (info.view.getEncoding()?.x2) {
-                return true;
-            }
-
-            const scaleType = info.view
-                .getScaleResolution("x")
-                ?.getScale()?.type;
-            return scaleType ? isDiscrete(scaleType) : false;
-        });
+        fieldInfos = fieldInfos.filter(isPointQueryable);
     }
 
     // The same field may be used on multiple channels.
@@ -169,6 +149,56 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
             })
         ).values()
     );
+}
+
+/**
+ * @param {import("@genome-spy/core/view/view.js").default} view
+ * @param {import("@genome-spy/core/view/view.js").default} layoutRoot
+ * @returns {import("@genome-spy/core/view/unitView.js").default[]}
+ */
+export function getUnavailablePointQueryViews(view, layoutRoot) {
+    const uniqueViewKeys = getUniqueViewRefKeys(layoutRoot);
+    return Array.from(
+        new Set(
+            getVisibleNonPositionalFieldInfos(view)
+                .filter((info) => !isAddressableView(info.view, uniqueViewKeys))
+                .filter(isPointQueryable)
+                .map((info) => info.view)
+        )
+    );
+}
+
+/**
+ * @param {FieldInfo} info
+ * @returns {boolean}
+ */
+function isPointQueryable(info) {
+    if (info.view.getEncoding()?.x2) {
+        return true;
+    }
+
+    const scaleType = info.view.getScaleResolution("x")?.getScale()?.type;
+    return scaleType ? isDiscrete(scaleType) : false;
+}
+
+/**
+ * @param {import("@genome-spy/core/view/view.js").default} view
+ * @returns {FieldInfo[]}
+ */
+function getVisibleNonPositionalFieldInfos(view) {
+    return findEncodedFields(view)
+        .filter((info) => !["sample", "x", "x2"].includes(info.channel))
+        .filter((info) => info.view.isVisible());
+}
+
+/**
+ * @param {import("@genome-spy/core/view/unitView.js").default} view
+ * @param {Set<string>} uniqueViewKeys
+ * @returns {boolean}
+ */
+function isAddressableView(view, uniqueViewKeys) {
+    const viewKey = getViewRefKey(view);
+    return !!viewKey && uniqueViewKeys.has(viewKey);
 }
 
 /**

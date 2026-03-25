@@ -1,4 +1,5 @@
 import ContainerView from "@genome-spy/core/view/containerView.js";
+import { html } from "lit";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -67,6 +68,7 @@ import {
     buildPointQueryMenu,
     formatPointContextLabel,
     getContextMenuFieldInfos,
+    getUnavailablePointQueryViews,
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
@@ -1211,6 +1213,12 @@ export default class SampleView extends ContainerView {
             this.getLayoutAncestors().at(-1),
             !!selectionInterval
         );
+        const unavailablePointQueryViews = selectionInterval
+            ? []
+            : getUnavailablePointQueryViews(
+                  view,
+                  this.getLayoutAncestors().at(-1)
+              );
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
@@ -1340,6 +1348,21 @@ export default class SampleView extends ContainerView {
                     (action) => this.intentExecutor.dispatch(action)
                 )
             );
+        }
+
+        for (const unavailableView of unavailablePointQueryViews) {
+            if (items.at(-1)?.type !== "divider") {
+                items.push(DIVIDER);
+            }
+
+            items.push({
+                label: getUnitViewContextTitle(unavailableView),
+                type: "header",
+            });
+            items.push({
+                label: html`Actions unavailable.<br />
+                    Add a unique explicit "name" to this view.`,
+            });
         }
 
         contextMenu({ items }, mouseEvent);
