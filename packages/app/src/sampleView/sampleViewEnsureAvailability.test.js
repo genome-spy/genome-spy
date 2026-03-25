@@ -50,6 +50,7 @@ describe("SampleView ensureViewAttributeAvailability", () => {
         // Non-obvious: patch zoomTo to control the async sequence.
         target.getScaleResolution = () =>
             /** @type {any} */ ({
+                getScale: () => ({ type: "linear" }),
                 getDomain: () => [0, 10],
                 zoomTo,
             });
@@ -71,6 +72,64 @@ describe("SampleView ensureViewAttributeAvailability", () => {
 
         zoomDeferred.resolve();
         await zoomDeferred.promise;
+        await Promise.resolve();
+        expect(resolved).toBe(false);
+
+        view.handleBroadcast({
+            type: "subtreeDataReady",
+            payload: { subtreeRoot: view },
+        });
+
+        await ensurePromise;
+        expect(resolved).toBe(true);
+    });
+
+    it("skips zoom for categorical x scales and still awaits subtree readiness", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "S1", category: "A" }],
+            },
+            samples: {},
+            spec: {
+                name: "target-view",
+                mark: "rect",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "category", type: "nominal" },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({
+            spec,
+            initializeFlow: false,
+        });
+
+        // Prevent sample extraction from running during subtree readiness.
+        view.getSamples = () =>
+            /** @type {any} */ ([
+                { id: "dummy", displayName: "dummy", indexNumber: 0 },
+            ]);
+
+        const target = view.findDescendantByName("target-view");
+        target.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getScale: () => ({ type: "band" }),
+                getDomain: () => ["A", "B"],
+            });
+
+        let resolved = false;
+        const ensurePromise = view
+            .ensureViewAttributeAvailability({
+                view: "target-view",
+                field: "category",
+                locus: "A",
+            })
+            .then(() => {
+                resolved = true;
+            });
+
         await Promise.resolve();
         expect(resolved).toBe(false);
 

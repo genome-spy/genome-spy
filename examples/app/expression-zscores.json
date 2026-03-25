@@ -68,6 +68,8 @@
   "samples": {},
 
   "spec": {
+    "name": "expression-zscores",
+
     "view": { "fill": "#f4f4f4" },
     "mark": {
       "type": "rect",

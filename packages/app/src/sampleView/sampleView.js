@@ -1,4 +1,5 @@
 import ContainerView from "@genome-spy/core/view/containerView.js";
+import { html } from "lit";
 import {
     FlexDimensions,
     mapToPixelCoords,
@@ -67,6 +68,7 @@ import {
     buildPointQueryMenu,
     formatPointContextLabel,
     getContextMenuFieldInfos,
+    getUnavailablePointQueryViews,
     resolveIntervalSelection,
 } from "./contextMenuBuilder.js";
 import { ReadyWaiterSet } from "../utils/readyGate.js";
@@ -75,6 +77,7 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
     resolveSelectionExpansionContext,
@@ -410,10 +413,19 @@ export default class SampleView extends ContainerView {
      */
     async ensureViewAttributeAvailability(specifier, context = {}) {
         const view = this.#resolveViewForSpecifier(specifier);
+        const resolution = view.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error(
+                `No x scale resolution found for view: ${view.name}`
+            );
+        }
 
         this.#ensureViewVisible(view);
-        const domain = this.#resolveViewAttributeDomain(specifier);
-        await this.#zoomToDomain(view, domain);
+        const scale = resolution.getScale();
+        if (isContinuous(scale.type) && !isDiscrete(scale.type)) {
+            const domain = this.#resolveViewAttributeDomain(specifier);
+            await this.#zoomToDomain(view, domain);
+        }
         // Assumes the main sample subtree shares the x-scale resolution; if
         // that changes, switch to per-view readiness requests.
         await this.#awaitSubtreeDataReady(
@@ -1156,6 +1168,7 @@ export default class SampleView extends ContainerView {
     #handleContextMenu(event) {
         // TODO: Allow for registering listeners
         const mouseEvent = /** @type {MouseEvent} */ (event.uiEvent);
+        const layoutRoot = this.getLayoutAncestors().at(-1);
 
         const normalizedXPos = this.childCoords.normalizePoint(
             event.point.x,
@@ -1198,9 +1211,12 @@ export default class SampleView extends ContainerView {
 
         const uniqueFieldInfos = getContextMenuFieldInfos(
             view,
-            this.getLayoutAncestors().at(-1),
+            layoutRoot,
             !!selectionInterval
         );
+        const unavailablePointQueryViews = selectionInterval
+            ? []
+            : getUnavailablePointQueryViews(view, layoutRoot);
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
         let items = [
@@ -1239,6 +1255,13 @@ export default class SampleView extends ContainerView {
             selectionExpansionContext = selectionExpansionResolution.context;
         }
 
+        const attributeMenuBase = {
+            sample,
+            sampleHierarchy: this.sampleHierarchy,
+            attributeInfoSource: this.compositeAttributeInfoSource,
+            attributeType: VALUE_AT_LOCUS,
+            sampleView: this,
+        };
         let previousContextTitle = "";
         let selectionExpansionItemInserted = false;
 
@@ -1273,11 +1296,7 @@ export default class SampleView extends ContainerView {
                         fieldInfo,
                         selectionIntervalComplex,
                         selectionIntervalSource,
-                        sample,
-                        sampleHierarchy: this.sampleHierarchy,
-                        attributeInfoSource: this.compositeAttributeInfoSource,
-                        attributeType: VALUE_AT_LOCUS,
-                        sampleView: this,
+                        ...attributeMenuBase,
                     }),
                 });
                 continue;
@@ -1288,11 +1307,7 @@ export default class SampleView extends ContainerView {
                 submenu: buildPointQueryMenu({
                     fieldInfo,
                     complexX,
-                    sample,
-                    sampleHierarchy: this.sampleHierarchy,
-                    attributeInfoSource: this.compositeAttributeInfoSource,
-                    attributeType: VALUE_AT_LOCUS,
-                    sampleView: this,
+                    ...attributeMenuBase,
                 }),
             });
 
@@ -1330,6 +1345,21 @@ export default class SampleView extends ContainerView {
                     (action) => this.intentExecutor.dispatch(action)
                 )
             );
+        }
+
+        for (const unavailableView of unavailablePointQueryViews) {
+            if (items.at(-1)?.type !== "divider") {
+                items.push(DIVIDER);
+            }
+
+            items.push({
+                label: getUnitViewContextTitle(unavailableView),
+                type: "header",
+            });
+            items.push({
+                label: html`Actions unavailable.<br />
+                    Add a unique explicit "name" to this view.`,
+            });
         }
 
         contextMenu({ items }, mouseEvent);

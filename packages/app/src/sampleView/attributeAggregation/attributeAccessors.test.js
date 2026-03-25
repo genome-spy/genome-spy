@@ -14,9 +14,11 @@ const createViewAttributeAccessorAny = /** @type {any} */ (
 
 /**
  * @param {object} options
- * @param {Array<{ pos: number, value: number }>} options.data
+ * @param {Array<Record<string, import("@genome-spy/core/spec/channel.js").Scalar>>} options.data
  * @param {import("@genome-spy/core/types/encoder.js").Accessor} options.xAccessor
- * @param {import("@genome-spy/core/types/encoder.js").Accessor} options.x2Accessor
+ * @param {import("@genome-spy/core/types/encoder.js").Accessor} [options.x2Accessor]
+ * @param {import("@genome-spy/core/spec/channel.js").Type} [options.xType]
+ * @param {string} [options.scaleType]
  * @param {string} [options.hitTestMode]
  * @param {object} [options.root]
  */
@@ -24,6 +26,8 @@ function createView({
     data,
     xAccessor,
     x2Accessor,
+    xType = "quantitative",
+    scaleType = "linear",
     hitTestMode = "intersects",
     root,
 }) {
@@ -33,8 +37,8 @@ function createView({
     const collector = { facetBatches };
 
     return {
-        getEncoding: () => ({ x: { type: "quantitative" } }),
-        getScaleResolution: () => ({ getScale: () => ({ type: "linear" }) }),
+        getEncoding: () => ({ x: { type: xType } }),
+        getScaleResolution: () => ({ getScale: () => ({ type: scaleType }) }),
         getCollector: () => collector,
         getDataAccessor: (channel) => {
             if (channel === "x") {
@@ -147,5 +151,32 @@ describe("createViewAttributeAccessor", () => {
         });
 
         expect(() => accessor("sample-1")).toThrow("is empty");
+    });
+
+    test("supports categorical point queries without interval aggregation", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor(
+            "x",
+            { field: "category" },
+            paramRuntime
+        );
+        const view = createView({
+            data: [
+                { category: "A", value: 10 },
+                { category: "B", value: 20 },
+            ],
+            xAccessor,
+            x2Accessor: undefined,
+            xType: "nominal",
+            scaleType: "band",
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "value",
+            locus: "B",
+        });
+
+        expect(accessor("sample-1")).toBe(20);
     });
 });
