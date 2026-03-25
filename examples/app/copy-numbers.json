@@ -42,6 +42,8 @@
   "samples": {},
 
   "spec": {
+    "name": "copy-numbers",
+
     "view": { "fill": "#f4f4f4" },
 
     "mark": {

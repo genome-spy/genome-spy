@@ -33,6 +33,7 @@
   "samples": {},
 
   "spec": {
+    "name": "segments",
     "mark": "rect",
     "view": { "fill": "#f0f0f0" },
     "encoding": {
