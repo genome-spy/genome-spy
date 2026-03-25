@@ -75,6 +75,7 @@ import {
     getParamSelector,
     resolveParamSelector,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
     resolveSelectionExpansionContext,
@@ -410,10 +411,19 @@ export default class SampleView extends ContainerView {
      */
     async ensureViewAttributeAvailability(specifier, context = {}) {
         const view = this.#resolveViewForSpecifier(specifier);
+        const resolution = view.getScaleResolution("x");
+        if (!resolution) {
+            throw new Error(
+                `No x scale resolution found for view: ${view.name}`
+            );
+        }
 
         this.#ensureViewVisible(view);
-        const domain = this.#resolveViewAttributeDomain(specifier);
-        await this.#zoomToDomain(view, domain);
+        const scale = resolution.getScale();
+        if (isContinuous(scale.type) && !isDiscrete(scale.type)) {
+            const domain = this.#resolveViewAttributeDomain(specifier);
+            await this.#zoomToDomain(view, domain);
+        }
         // Assumes the main sample subtree shares the x-scale resolution; if
         // that changes, switch to per-view readiness requests.
         await this.#awaitSubtreeDataReady(

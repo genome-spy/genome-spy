@@ -66,7 +66,10 @@ function normalizeInterval(scaleResolution, specifier, root) {
  */
 export function createViewAttributeAccessor(view, specifier) {
     const xType = /** @type {any} */ (view.getEncoding()?.x)?.type;
-    if (!xType || !["quantitative", "index", "locus"].includes(xType)) {
+    if (
+        "aggregation" in specifier &&
+        (!xType || !["quantitative", "index", "locus"].includes(xType))
+    ) {
         throw new Error(
             "Interval aggregation requires an x encoding of type quantitative, index, or locus!"
         );

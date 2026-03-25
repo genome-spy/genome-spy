@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { isDiscrete } from "vega-scale";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { selectionContainsPoint } from "@genome-spy/core/selection/selection.js";
@@ -144,7 +145,16 @@ export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
     }
 
     if (!hasInterval) {
-        fieldInfos = fieldInfos.filter((info) => info.view.getEncoding()?.x2);
+        fieldInfos = fieldInfos.filter((info) => {
+            if (info.view.getEncoding()?.x2) {
+                return true;
+            }
+
+            const scaleType = info.view
+                .getScaleResolution("x")
+                ?.getScale()?.type;
+            return scaleType ? isDiscrete(scaleType) : false;
+        });
     }
 
     // The same field may be used on multiple channels.
