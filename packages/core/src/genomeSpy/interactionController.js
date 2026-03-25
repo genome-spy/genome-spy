@@ -40,12 +40,11 @@ export default class InteractionController {
     #mouseDownCoords;
     /** @type {Point | undefined} */
     #lastPointerPoint;
-    /** @type {boolean} */
-    #tooltipUpdateRequested;
-    /** @type {number} */
-    #hoverTrackingSuspensionCount;
-    /** @type {boolean} */
-    #postRenderHoverRefreshRequested;
+    #tooltipUpdateRequested = false;
+    #longPressPending = false;
+    #suppressTooltipUntilMouseMove = false;
+    #hoverTrackingSuspensionCount = 0;
+    #postRenderHoverRefreshRequested = false;
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -89,10 +88,6 @@ export default class InteractionController {
         /** @type {Point} */
         this.#mouseDownCoords = undefined;
         this.#lastPointerPoint = undefined;
-
-        this.#tooltipUpdateRequested = false;
-        this.#hoverTrackingSuspensionCount = 0;
-        this.#postRenderHoverRefreshRequested = false;
     }
 
     getCurrentHover() {
@@ -101,6 +96,10 @@ export default class InteractionController {
 
     suspendHoverTracking() {
         this.#hoverTrackingSuspensionCount++;
+        if (this.#longPressPending) {
+            return;
+        }
+
         this.#tooltip.clear();
         this.#tooltipUpdateRequested = false;
     }
@@ -173,7 +172,7 @@ export default class InteractionController {
                 uiEvent
             );
 
-            if (!this.#tooltipUpdateRequested) {
+            if (!this.#tooltipUpdateRequested && !this.#longPressPending) {
                 this.#tooltip.clear();
             }
 
@@ -208,6 +207,7 @@ export default class InteractionController {
                     !wheeling &&
                     this.#hoverTrackingSuspensionCount === 0
                 ) {
+                    this.#suppressTooltipUntilMouseMove = false;
                     this.#tooltip.handleMouseMove(event);
                     this.#tooltipUpdateRequested = false;
 
@@ -342,6 +342,82 @@ export default class InteractionController {
                 }
             }
         };
+
+        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
+            this.#mouseDownCoords = Point.fromMouseEvent(e);
+            this.#longPressPending = false;
+            const hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+
+            if (this.#tooltip.sticky) {
+                this.#tooltip.sticky = false;
+                this.#suppressTooltipUntilMouseMove = true;
+                this.#tooltip.clear();
+                // Dismiss the sticky tooltip before routing the press so the
+                // click only affects the tooltip state.
+                longPressTriggered = true;
+            } else {
+                longPressTriggered = false;
+            }
+
+            const disableTooltip = () => {
+                document.addEventListener(
+                    "mouseup",
+                    () => this.#tooltip.popEnabledState(),
+                    {
+                        once: true,
+                        capture: true,
+                    }
+                );
+                this.#tooltip.pushEnabledState(false);
+            };
+
+            // Right-click opens the context menu and disables tooltips.
+            // Left-button presses keep the current tooltip visible through the
+            // press; plain clicks may still promote it to sticky mode.
+            if (e.button == 2) {
+                disableTooltip();
+            } else if (e.button == 0 && this.#tooltip.visible) {
+                // Preserve the current tooltip through the press. Plain clicks
+                // may also escalate this state into a sticky tooltip.
+                this.#longPressPending = true;
+
+                /** @type {ReturnType<typeof setTimeout> | undefined} */
+                let timeout;
+                if (!hasModifier) {
+                    // Make tooltip sticky if the user long-presses
+                    timeout = setTimeout(() => {
+                        longPressTriggered = true;
+                        this.#longPressPending = false;
+                        this.#tooltip.sticky = true;
+                    }, 400);
+                }
+
+                /**
+                 * @param {boolean} clearTooltipOnMove
+                 */
+                const clear = (clearTooltipOnMove) => {
+                    clearTimeout(timeout);
+                    if (!this.#longPressPending) {
+                        return;
+                    }
+
+                    this.#longPressPending = false;
+                    if (
+                        clearTooltipOnMove &&
+                        this.#hoverTrackingSuspensionCount > 0
+                    ) {
+                        this.#tooltip.clear();
+                        this.#tooltipUpdateRequested = false;
+                    }
+                };
+                document.addEventListener("mouseup", () => clear(false), {
+                    once: true,
+                });
+                document.addEventListener("mousemove", () => clear(true), {
+                    once: true,
+                });
+            }
+        });
 
         [
             "mousedown",
@@ -509,46 +585,6 @@ export default class InteractionController {
         });
         canvas.addEventListener("touchcancel", handleTouchEndOrCancel, {
             passive: false,
-        });
-
-        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
-            this.#mouseDownCoords = Point.fromMouseEvent(e);
-            if (this.#tooltip.sticky) {
-                this.#tooltip.sticky = false;
-                this.#tooltip.clear();
-                // A hack to prevent selection if the tooltip is sticky.
-                // Let the tooltip be destickified first.
-                longPressTriggered = true;
-            } else {
-                longPressTriggered = false;
-            }
-
-            const disableTooltip = () => {
-                document.addEventListener(
-                    "mouseup",
-                    () => this.#tooltip.popEnabledState(),
-                    {
-                        once: true,
-                        capture: true,
-                    }
-                );
-                this.#tooltip.pushEnabledState(false);
-            };
-
-            // Opening context menu or using modifier keys disables the tooltip
-            if (e.button == 2 || e.shiftKey || e.ctrlKey || e.metaKey) {
-                disableTooltip();
-            } else if (this.#tooltip.visible) {
-                // Make tooltip sticky if the user long-presses
-                const timeout = setTimeout(() => {
-                    longPressTriggered = true;
-                    this.#tooltip.sticky = true;
-                }, 400);
-
-                const clear = () => clearTimeout(timeout);
-                document.addEventListener("mouseup", clear, { once: true });
-                document.addEventListener("mousemove", clear, { once: true });
-            }
         });
 
         // Prevent text selections etc while dragging
@@ -742,6 +778,10 @@ export default class InteractionController {
      * @template T
      */
     updateTooltip(datum, converter) {
+        if (this.#suppressTooltipUntilMouseMove) {
+            return;
+        }
+
         if (!this.#tooltipUpdateRequested || !datum) {
             this.#tooltip.updateWithDatum(datum, converter);
             this.#tooltipUpdateRequested = true;

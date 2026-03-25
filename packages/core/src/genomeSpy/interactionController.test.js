@@ -21,6 +21,8 @@ describe("InteractionController", () => {
     });
 
     afterEach(() => {
+        vi.useRealTimers();
+
         if (OriginalMouseEvent === undefined) {
             delete globalThis.MouseEvent;
         } else {
@@ -500,5 +502,388 @@ describe("InteractionController", () => {
             })
         );
         expect(canvas.style.cursor).toBe("grabbing");
+    });
+
+    it("does not clear a visible tooltip immediately when long press starts", () => {
+        vi.useFakeTimers();
+
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener: /** @returns {void} */ () => undefined,
+                removeEventListener: /** @returns {void} */ () => undefined,
+                body: {
+                    classList: {
+                        contains: /** @returns {boolean} */ () => false,
+                    },
+                },
+            })
+        );
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                                metaKey: false,
+                                shiftKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
+
+        class CanvasStub extends EventTarget {
+            constructor() {
+                super();
+                this.style = { cursor: "" };
+                this.clientLeft = 0;
+                this.clientTop = 0;
+                this.clientWidth = 100;
+                this.clientHeight = 100;
+            }
+
+            getBoundingClientRect() {
+                return {
+                    left: 0,
+                    top: 0,
+                };
+            }
+        }
+
+        const canvas = new CanvasStub();
+        const clear = vi.fn();
+
+        /** @type {InteractionController} */
+        let controller;
+
+        controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    if (event.type === "mousedown") {
+                        controller.suspendHoverTracking();
+                    }
+                },
+                visit: /** @returns {void} */ () => undefined,
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas,
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ ({
+                clear,
+                handleMouseMove: /** @returns {void} */ () => undefined,
+                pushEnabledState: /** @returns {void} */ () => undefined,
+                popEnabledState: /** @returns {void} */ () => undefined,
+                updateWithDatum: /** @returns {void} */ () => undefined,
+                visible: true,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        });
+
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+        );
+
+        expect(clear).not.toHaveBeenCalled();
+
+        vi.useRealTimers();
+    });
+
+    it("does not clear a visible tooltip immediately on shift-click", () => {
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener: /** @returns {void} */ () => undefined,
+                removeEventListener: /** @returns {void} */ () => undefined,
+                body: {
+                    classList: {
+                        contains: /** @returns {boolean} */ () => false,
+                    },
+                },
+            })
+        );
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                                metaKey: false,
+                                shiftKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
+
+        class CanvasStub extends EventTarget {
+            constructor() {
+                super();
+                this.style = { cursor: "" };
+                this.clientLeft = 0;
+                this.clientTop = 0;
+                this.clientWidth = 100;
+                this.clientHeight = 100;
+            }
+
+            getBoundingClientRect() {
+                return {
+                    left: 0,
+                    top: 0,
+                };
+            }
+        }
+
+        const canvas = new CanvasStub();
+        const clear = vi.fn();
+
+        /** @type {InteractionController} */
+        let controller;
+
+        controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    if (event.type === "mousedown") {
+                        controller.suspendHoverTracking();
+                    }
+                },
+                visit: /** @returns {void} */ () => undefined,
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas,
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ ({
+                clear,
+                handleMouseMove: /** @returns {void} */ () => undefined,
+                pushEnabledState: /** @returns {void} */ () => undefined,
+                popEnabledState: /** @returns {void} */ () => undefined,
+                updateWithDatum: /** @returns {void} */ () => undefined,
+                visible: true,
+                sticky: false,
+            }),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        });
+
+        controller.registerInteractionEvents();
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", {
+                clientX: 20,
+                clientY: 30,
+                shiftKey: true,
+            })
+        );
+
+        expect(clear).not.toHaveBeenCalled();
+    });
+
+    it("does not restore a dismissed sticky tooltip until mousemove", () => {
+        vi.spyOn(performance, "now")
+            .mockReturnValueOnce(0)
+            .mockReturnValue(1_000);
+
+        globalThis.document = /** @type {Document} */ (
+            /** @type {any} */ ({
+                addEventListener: /** @returns {void} */ () => undefined,
+                removeEventListener: /** @returns {void} */ () => undefined,
+                body: {
+                    classList: {
+                        contains: /** @returns {boolean} */ () => false,
+                    },
+                },
+            })
+        );
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (
+                class MouseEvent extends Event {
+                    constructor(
+                        /** @type {string} */ type,
+                        /** @type {Record<string, any>} */ init = {}
+                    ) {
+                        super(type);
+                        Object.assign(
+                            this,
+                            {
+                                button: 0,
+                                buttons: 0,
+                                clientX: 0,
+                                clientY: 0,
+                                ctrlKey: false,
+                                metaKey: false,
+                                shiftKey: false,
+                            },
+                            init
+                        );
+                    }
+                }
+            )
+        );
+
+        class CanvasStub extends EventTarget {
+            constructor() {
+                super();
+                this.style = { cursor: "" };
+                this.clientLeft = 0;
+                this.clientTop = 0;
+                this.clientWidth = 100;
+                this.clientHeight = 100;
+            }
+
+            getBoundingClientRect() {
+                return {
+                    left: 0,
+                    top: 0,
+                };
+            }
+        }
+
+        const canvas = new CanvasStub();
+        const updateWithDatum = vi.fn();
+
+        const mark = /** @type {{
+            isPickingParticipant: () => boolean,
+            properties: { tooltip: {} },
+            getCursorSpec: () => undefined,
+            getCursor: () => undefined,
+            watchCursor: () => void,
+        }} */ ({
+            isPickingParticipant: () => true,
+            properties: { tooltip: {} },
+            getCursorSpec: () => undefined,
+            getCursor: () => undefined,
+            watchCursor: () => undefined,
+        });
+
+        const pickerUnitView = Object.create(UnitView.prototype);
+        pickerUnitView.mark = mark;
+        pickerUnitView.facetCoords = new Map([
+            [
+                "facet",
+                /** @type {{ containsPoint: () => boolean }} */ ({
+                    containsPoint: () => true,
+                }),
+            ],
+        ]);
+        pickerUnitView.getCollector = () => ({
+            findDatumByUniqueId: (/** @type {number} */ uniqueId) =>
+                uniqueId === 1 ? { id: "datum-1" } : undefined,
+        });
+        pickerUnitView.getLayoutAncestors = () => [pickerUnitView];
+        pickerUnitView.getCursorSpec = /** @returns {undefined} */ () =>
+            undefined;
+
+        const targetView = /** @type {{
+            getLayoutAncestors: () => any[],
+            handleInteraction: () => void,
+            getCursorSpec: () => undefined,
+        }} */ ({
+            getLayoutAncestors: () => [targetView],
+            handleInteraction: () => undefined,
+            getCursorSpec: () => undefined,
+        });
+
+        const controller = new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction(
+                    /** @type {import("../utils/interaction.js").default} */ event
+                ) {
+                    event.target = /** @type {any} */ (targetView);
+                },
+                visit(/** @type {(view: UnitView) => any} */ visitor) {
+                    return visitor(pickerUnitView);
+                },
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas,
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ ({
+                clear: /** @returns {void} */ () => undefined,
+                handleMouseMove: /** @returns {void} */ () => undefined,
+                pushEnabledState: /** @returns {void} */ () => undefined,
+                popEnabledState: /** @returns {void} */ () => undefined,
+                updateWithDatum,
+                visible: true,
+                sticky: true,
+            }),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({
+                default: () => Promise.resolve("tooltip"),
+            }),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        });
+
+        controller.registerInteractionEvents();
+        readPickingPixel.mockImplementation(() => [1, 0, 0, 0]);
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousedown", { clientX: 20, clientY: 30 })
+        );
+
+        controller.suspendHoverTracking();
+        controller.resumeHoverTracking(
+            new MouseEvent("mouseup", { clientX: 20, clientY: 30 })
+        );
+
+        expect(updateWithDatum).not.toHaveBeenCalled();
+
+        canvas.dispatchEvent(
+            new MouseEvent("mousemove", { clientX: 20, clientY: 30 })
+        );
+
+        expect(updateWithDatum).toHaveBeenCalledTimes(1);
     });
 });
