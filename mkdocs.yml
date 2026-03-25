@@ -89,7 +89,10 @@ nav:
     - Working with Genomic Data:
           - "genomic-data/index.md"
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
-          - Examples: "genomic-data/examples.md"
+          - Examples:
+                - "genomic-data/examples/index.md"
+                - ASCAT Copy-Number Segmentation: "genomic-data/examples/ascat.md"
+                - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"

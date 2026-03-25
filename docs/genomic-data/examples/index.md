@@ -12,7 +12,7 @@ layout.
 
 This example shows a chromosome ideogram built from UCSC cytoband data. The
 rectangles encode the band intervals and staining categories, the labels use
-[ranged text](../grammar/mark/text.md#ranged-text) to squeeze band names into
+[ranged text](../../grammar/mark/text.md#ranged-text) to squeeze band names into
 the available space, and the dashed separators mark chromosome boundaries. The
 spec loads UCSC's gzipped cytoband file directly, and because the file has no
 header line, the TSV columns are declared explicitly.
@@ -31,8 +31,8 @@ EXAMPLE examples/docs/genomic-data/examples/cytobands.json height=60 spechidden
 
 This example shows a RefSeq gene annotation track for hg38. Transcript bodies
 and exons are packed into lanes to reduce overlap, and the gene symbols use
-[measureText](../grammar/transform/measure-text.md) and
-[filterScoredLabels](../grammar/transform/filter-scored-labels.md) to keep the
+[measureText](../../grammar/transform/measure-text.md) and
+[filterScoredLabels](../../grammar/transform/filter-scored-labels.md) to keep the
 most useful gene names visible as the view changes. The prioritized gene symbols
 act as landmarks for navigating the genome, and the small arrows visible at
 high zoom levels indicate transcript direction. It uses a custom tooltip
@@ -53,17 +53,27 @@ EXAMPLE examples/docs/genomic-data/examples/scored-refSeq-genes.json height=110 
     all exons, and the annotations were preprocessed with
     [compressGeneAnnotations.py](https://github.com/genome-spy/genome-spy/blob/master/utils/compressGeneAnnotations.py).
 
+### ASCAT Copy-Number Segmentation
+
+The [ASCAT Copy-Number Segmentation](ascat.md) page expands on a
+more complex GenomeSpy visualization built from ASCAT's simulated example
+data. It shows vertically concatenated views for allele-specific copy numbers,
+LogR, and B-allele frequency, and adds ideogram and RefSeq gene annotations.
+
+### ASCAT Algorithm in GenomeSpy
+
+The [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) page visualizes the
+core ASCAT fit. It starts from the segmented `logRMean` and `bafMean` values,
+estimates raw major/minor copy numbers from the current `rho` and `psi`
+values, rounds them to integers, and shows how the fit changes when you adjust
+the parameters.
+
 ## More examples
 
 For many more examples of visualizing genomic data, see
-[Lazy data sources](../grammar/data/lazy.md).
+[Lazy data sources](../../grammar/data/lazy.md).
 
 ## Observable notebooks
-
-The [ASCAT Copy-Number
-Segmentation](https://observablehq.com/@tuner/ascat-copy-number-segmentation?collection=@tuner/genomespy)
-notebook provides a comprehensive and fully documented example of using
-GenomeSpy with genomic data.
 
 The [Annotation
 Tracks](https://observablehq.com/@tuner/annotation-tracks?collection=@tuner/genomespy)

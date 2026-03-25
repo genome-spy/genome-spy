@@ -1,0 +1,230 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "ASCAT segmentation and copy number estimates",
+    "Loo P Van, Nordgard SH, Lingjærde OC, et al.",
+    "Allele-specific copy number analysis of tumors",
+    "Proc Natl Acad Sci. 2010;107(39):16910-16915. doi:10.1073/pnas.1009843107"
+  ],
+
+  "assembly": "hg18",
+
+  "data": {
+    "url": "https://data.genomespy.app/sample-data/ASCAT/segments_S96.tsv"
+  },
+
+  "resolve": { "axis": { "x": "shared" } },
+
+  "encoding": {
+    "x": {
+      "chrom": "chr",
+      "pos": "startpos",
+      "type": "locus",
+      "scale": { "type": "locus" }
+    },
+    "x2": {
+      "chrom": "chr",
+      "pos": "endpos",
+      "offset": 1
+    }
+  },
+
+  "vconcat": [
+    {
+      "name": "copyNumberTrack",
+
+      "title": {
+        "text": "Allele-specific copy numbers",
+        "style": "overlay"
+      },
+
+      "layer": [
+        {
+          "title": "nMinor",
+          "mark": {
+            "type": "rule",
+            "minLength": 2.0,
+            "yOffset": -3.0
+          },
+          "encoding": {
+            "y": {
+              "field": "nMinor",
+              "type": "quantitative",
+              "scale": {
+                "domain": [0, 6],
+                "padding": 0.04,
+                "clamp": true
+              },
+              "axis": {
+                "tickMinStep": 1.0
+              }
+            },
+            "size": { "value": 5 },
+            "color": { "value": "#88d27a" }
+          }
+        },
+        {
+          "title": "nMajor",
+          "mark": {
+            "type": "rule",
+            "minLength": 2.0,
+            "yOffset": 3.0
+          },
+          "encoding": {
+            "y": {
+              "field": "nMajor",
+              "type": "quantitative",
+              "scale": {
+                "domain": [0, 6]
+              }
+            },
+            "size": { "value": 5 },
+            "color": {
+              "field": "nMajor",
+              "type": "quantitative",
+              "scale": {
+                "domain": [0, 6, 16],
+                "range": ["#f06850", "#f06850", "#5F0F0F"]
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "logRTrack",
+
+      "layer": [
+        {
+          "data": {
+            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+          },
+
+          "title": "Single probe",
+
+          "mark": {
+            "type": "point",
+            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+          },
+
+          "encoding": {
+            "x": {
+              "chrom": "chr",
+              "pos": "pos",
+              "type": "locus"
+            },
+            "y": { "field": "logR", "type": "quantitative", "title": null },
+            "color": { "value": "#7090c0" },
+            "opacity": { "value": 0.25 },
+            "strokeWidth": { "value": 0 }
+          }
+        },
+        {
+          "title": "Mean LogR",
+          "mark": {
+            "type": "rule",
+            "minLength": 3.0
+          },
+          "encoding": {
+            "y": {
+              "field": "logRMean",
+              "type": "quantitative",
+              "title": "LogR"
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "bafTrack",
+
+      "layer": [
+        {
+          "data": {
+            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+          },
+
+          "transform": [{ "type": "filter", "expr": "datum.baf !== null" }],
+
+          "title": "Single probe",
+
+          "mark": {
+            "type": "point",
+            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+          },
+
+          "encoding": {
+            "x": {
+              "chrom": "chr",
+              "pos": "pos",
+              "type": "locus"
+            },
+            "y": { "field": "baf", "type": "quantitative", "title": null },
+            "color": { "value": "#7090c0" },
+            "opacity": { "value": 0.3 },
+            "strokeWidth": { "value": 0 }
+          }
+        },
+        {
+          "title": "Mean BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": 3.0
+          },
+          "encoding": {
+            "y": {
+              "field": "bafMean",
+              "type": "quantitative",
+              "scale": { "domain": [0, 1] },
+              "title": "B-allele frequency"
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        },
+        {
+          "title": "Mean BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": 3.0
+          },
+          "encoding": {
+            "y": {
+              "expr": "1 - datum.bafMean",
+              "type": "quantitative",
+              "title": null
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        }
+      ]
+    }
+  ],
+
+  "background": "#fafafa",
+
+  "config": {
+    "axisX": {
+      "grid": false,
+      "chromGrid": true,
+      "orient": "bottom"
+    },
+    "axisY": {
+      "grid": true,
+      "gridColor": "#f8f8f8"
+    },
+    "view": {
+      "fill": "white",
+      "stroke": "#c8c8c8",
+      "shadowBlur": 8,
+      "shadowColor": "black",
+      "shadowOpacity": 0.1
+    }
+  }
+}

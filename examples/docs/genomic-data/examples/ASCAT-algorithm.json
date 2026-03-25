@@ -1,0 +1,472 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "ASCAT algorithm in GenomeSpy",
+    "Loo P Van, Nordgard SH, Lingjærde OC, et al.",
+    "Allele-specific copy number analysis of tumors",
+    "Proc Natl Acad Sci. 2010;107(39):16910-16915. doi:10.1073/pnas.1009843107"
+  ],
+
+  "assembly": "hg18",
+
+  "data": {
+    "url": "https://data.genomespy.app/sample-data/ASCAT/segments_S96.tsv"
+  },
+
+  "params": [{ "name": "minLength", "value": 1 }],
+
+  "resolve": { "axis": { "x": "shared" } },
+
+  "encoding": {
+    "x": {
+      "chrom": "chr",
+      "pos": "startpos",
+      "type": "locus",
+      "scale": { "type": "locus" },
+      "axis": { "title": null }
+    },
+    "x2": {
+      "chrom": "chr",
+      "pos": "endpos",
+      "offset": 1
+    }
+  },
+
+  "vconcat": [
+    {
+      "params": [
+        {
+          "name": "rho",
+          "value": 0.56,
+          "bind": {
+            "input": "range",
+            "min": 0.01,
+            "max": 1.0,
+            "step": 0.01,
+            "description": "Aberrant cell fraction (Tumor purity)"
+          }
+        },
+        {
+          "name": "psi",
+          "value": 2.75,
+          "bind": {
+            "input": "range",
+            "min": 0.5,
+            "max": 7.0,
+            "step": 0.05,
+            "description": "Average ploidy"
+          }
+        }
+      ],
+
+      "transform": [
+        {
+          "type": "collect"
+        },
+        {
+          "type": "formula",
+          "expr": "(rho - 1 + pow(2, datum.logRMean) * (1 - datum.bafMean) * (2 * (1 - rho) + rho * psi)) / rho",
+          "as": "aRaw"
+        },
+        {
+          "type": "formula",
+          "expr": "(rho - 1 + pow(2, datum.logRMean) * datum.bafMean * (2 * (1 - rho) + rho * psi)) / rho",
+          "as": "bRaw"
+        },
+        {
+          "type": "formula",
+          "expr": "max(0, round(datum.aRaw))",
+          "as": "nMajor"
+        },
+        {
+          "type": "formula",
+          "expr": "max(0, round(datum.bRaw))",
+          "as": "nMinor"
+        },
+        {
+          "type": "formula",
+          "expr": "abs(datum.aRaw - datum.nMajor)",
+          "as": "aError"
+        },
+        {
+          "type": "formula",
+          "expr": "abs(datum.bRaw - datum.nMinor)",
+          "as": "bError"
+        },
+        {
+          "type": "formula",
+          "expr": "log((2 * (1 - rho) + rho * (datum.nMajor + datum.nMinor)) / (2 * (1 - rho) + rho * psi)) / LN2",
+          "as": "logRMean_ASCAT"
+        },
+        {
+          "type": "formula",
+          "expr": "(1 - rho + rho * datum.nMinor) / (2 - 2 * rho + rho * (datum.nMajor + datum.nMinor))",
+          "as": "bafMean_ASCAT"
+        },
+        {
+          "type": "identifier"
+        }
+      ],
+
+      "resolve": { "axis": { "x": "shared" } },
+
+      "vconcat": [
+        {
+          "name": "goodnessOfFit",
+
+          "title": {
+            "text": "Goodness of fit",
+            "orient": "none"
+          },
+
+          "height": 24,
+
+          "resolve": {
+            "scale": { "x": "excluded" },
+            "axis": { "x": "excluded" }
+          },
+
+          "transform": [
+            {
+              "type": "project",
+              "fields": ["startpos", "endpos", "aError", "bError"]
+            },
+            {
+              "type": "formula",
+              "expr": "datum.endpos - datum.startpos",
+              "as": "segmentLength"
+            },
+            {
+              "type": "formula",
+              "expr": "min(datum.aError * datum.aError, 0.25) * datum.segmentLength",
+              "as": "aErrorSquaredWeighted"
+            },
+            {
+              "type": "formula",
+              "expr": "min(datum.bError * datum.bError, 0.25) * datum.segmentLength",
+              "as": "bErrorSquaredWeighted"
+            },
+            {
+              "type": "aggregate",
+              "fields": [
+                "segmentLength",
+                "aErrorSquaredWeighted",
+                "bErrorSquaredWeighted"
+              ],
+              "ops": ["sum", "sum", "sum"],
+              "as": ["totalLength", "aSum", "bSum"]
+            },
+            {
+              "type": "formula",
+              "expr": "100 - (datum.aSum + datum.bSum) / (datum.totalLength * 0.5) * 100",
+              "as": "goodnessOfFit"
+            }
+          ],
+
+          "layer": [
+            {
+              "name": "bar",
+
+              "mark": {
+                "type": "rect",
+                "color": "#a0e7e5",
+                "tooltip": null
+              },
+
+              "encoding": {
+                "x": {
+                  "field": "goodnessOfFit",
+                  "type": "quantitative",
+                  "scale": {
+                    "domain": [0, 100],
+                    "clamp": true
+                  }
+                },
+
+                "x2": { "datum": 0 }
+              }
+            },
+            {
+              "name": "text",
+
+              "mark": {
+                "type": "text",
+                "size": 20,
+                "tooltip": null
+              },
+
+              "encoding": {
+                "x": { "value": 0.5 },
+                "x2": null,
+                "text": {
+                  "field": "goodnessOfFit",
+                  "format": ".2f"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "roundedAndDifference",
+          "title": {
+            "text": "Copy numbers rounded to integers + difference to raw values",
+            "style": "overlay"
+          },
+
+          "height": { "grow": 2 },
+
+          "layer": [
+            {
+              "title": "mismatchMinor",
+              "mark": {
+                "type": "rect",
+                "minWidth": { "expr": "minLength" },
+                "fillOpacity": 0.15,
+                "strokeOpacity": 1,
+                "strokeWidth": 1,
+                "fill": "gray",
+                "stroke": "#88d27a"
+              },
+              "encoding": {
+                "y": {
+                  "field": "bRaw",
+                  "type": "quantitative"
+                },
+                "y2": {
+                  "field": "nMinor"
+                },
+                "strokeOpacity": {
+                  "field": "bError",
+                  "type": "quantitative",
+                  "scale": {
+                    "type": "pow",
+                    "base": 2,
+                    "domain": [0, 0.5],
+                    "range": [0, 0.8]
+                  }
+                }
+              }
+            },
+            {
+              "name": "mismatchMajor",
+              "title": "mismatchMajor",
+              "mark": {
+                "type": "rect",
+                "minWidth": { "expr": "minLength" },
+                "fillOpacity": 0.15,
+                "strokeOpacity": 1,
+                "strokeWidth": 1,
+                "fill": "gray",
+                "stroke": "#f06850"
+              },
+              "encoding": {
+                "y": {
+                  "field": "aRaw",
+                  "type": "quantitative"
+                },
+                "y2": {
+                  "field": "nMajor"
+                },
+                "strokeOpacity": {
+                  "field": "aError",
+                  "type": "quantitative",
+                  "scale": {
+                    "type": "pow",
+                    "base": 2,
+                    "domain": [0, 0.5],
+                    "range": [0, 0.8]
+                  }
+                }
+              }
+            },
+            {
+              "title": "nMinor",
+              "mark": {
+                "type": "rule",
+                "minLength": { "expr": "minLength" },
+                "yOffset": -3.0
+              },
+              "encoding": {
+                "y": {
+                  "field": "nMinor",
+                  "type": "quantitative",
+                  "scale": {
+                    "domain": [0, 6],
+                    "padding": 0.04,
+                    "clamp": true
+                  },
+                  "axis": {
+                    "tickMinStep": 1.0
+                  }
+                },
+                "size": { "value": 5 },
+                "color": { "value": "#88d27a" }
+              }
+            },
+            {
+              "title": "nMajor",
+              "mark": {
+                "type": "rule",
+                "minLength": { "expr": "minLength" },
+                "yOffset": 3.0
+              },
+              "encoding": {
+                "y": {
+                  "field": "nMajor",
+                  "type": "quantitative",
+                  "scale": {
+                    "domain": [0, 6]
+                  }
+                },
+                "size": { "value": 5 },
+                "color": {
+                  "field": "nMajor",
+                  "type": "quantitative",
+                  "scale": {
+                    "domain": [0, 6, 16],
+                    "range": ["#f06850", "#f06850", "#5F0F0F"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "logRTrack",
+
+      "layer": [
+        {
+          "data": {
+            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+          },
+
+          "title": "Single probe",
+
+          "mark": {
+            "type": "point",
+            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+          },
+
+          "encoding": {
+            "x": {
+              "chrom": "chr",
+              "pos": "pos",
+              "type": "locus"
+            },
+            "y": { "field": "logR", "type": "quantitative", "title": null },
+            "color": { "value": "#7090c0" },
+            "opacity": { "value": 0.25 },
+            "strokeWidth": { "value": 0 }
+          }
+        },
+        {
+          "title": "Mean LogR",
+          "mark": {
+            "type": "rule",
+            "minLength": { "expr": "minLength" }
+          },
+          "encoding": {
+            "y": {
+              "field": "logRMean",
+              "type": "quantitative",
+              "title": "LogR"
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "bafTrack",
+
+      "layer": [
+        {
+          "data": {
+            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+          },
+
+          "transform": [{ "type": "filter", "expr": "datum.baf !== null" }],
+
+          "title": "Single probe",
+
+          "mark": {
+            "type": "point",
+            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+          },
+
+          "encoding": {
+            "x": {
+              "chrom": "chr",
+              "pos": "pos",
+              "type": "locus"
+            },
+            "y": { "field": "baf", "type": "quantitative", "title": null },
+            "color": { "value": "#7090c0" },
+            "opacity": { "value": 0.3 },
+            "strokeWidth": { "value": 0 }
+          }
+        },
+        {
+          "title": "Mean BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": { "expr": "minLength" }
+          },
+          "encoding": {
+            "y": {
+              "field": "bafMean",
+              "type": "quantitative",
+              "scale": { "domain": [0, 1] },
+              "title": "B-allele frequency"
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        },
+        {
+          "title": "Mean BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": 3.0
+          },
+          "encoding": {
+            "y": {
+              "expr": "1 - datum.bafMean",
+              "type": "quantitative",
+              "title": null
+            },
+            "size": { "value": 3 },
+            "color": { "value": "black" }
+          }
+        }
+      ]
+    }
+  ],
+
+  "background": "#fafafa",
+
+  "config": {
+    "axisX": {
+      "grid": false,
+      "chromGrid": true,
+      "orient": "bottom"
+    },
+    "axisY": {
+      "grid": true,
+      "gridColor": "#f8f8f8"
+    },
+    "view": {
+      "fill": "white",
+      "stroke": "#c8c8c8",
+      "shadowBlur": 8,
+      "shadowColor": "black",
+      "shadowOpacity": 0.1
+    }
+  }
+}
