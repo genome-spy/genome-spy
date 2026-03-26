@@ -52,6 +52,58 @@ describe("Scale resolution domain handling", () => {
         expect(r(d(view.children[1]))).toEqual([1, 5]);
     });
 
+    test("Configured domains can be defined by expressions and update reactively", async () => {
+        const view = await initView(
+            {
+                data: { values: [] },
+                params: [{ name: "upperBound", value: 2 }],
+                resolve: { scale: { default: "independent", y: "shared" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                scale: {
+                                    domain: {
+                                        expr: "[0, upperBound]",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                scale: {
+                                    domain: [4, 5],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        const firstChild = view.children[0];
+        const resolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(resolution.getDomain())).toEqual([0, 5]);
+
+        // Non-obvious: the child expression reads the root param through the
+        // shared view scope, so updating the root must refresh the shared scale.
+        view.paramRuntime.setValue("upperBound", 6);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(resolution.getDomain())).toEqual([0, 6]);
+        expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
+    });
+
     test("Scales are shared and extracted domains merged properly", async () => {
         const view = await initView(
             {

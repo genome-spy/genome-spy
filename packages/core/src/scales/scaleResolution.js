@@ -28,6 +28,7 @@ import {
     isPrimaryPositionalChannel,
     isSecondaryChannel,
 } from "../encoder/encoder.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
@@ -131,6 +132,9 @@ export default class ScaleResolution {
 
     #selectionReverseSyncSuppressionDepth = 0;
 
+    /** @type {(() => void)[]} */
+    #configuredDomainExprUnsubscribers = [];
+
     #ignoreSelectionInitial = false;
 
     /** @type {[number, number] | null | undefined} */
@@ -138,6 +142,8 @@ export default class ScaleResolution {
 
     /** @type {import("../view/view.js").default | undefined} */
     #hostView;
+
+    #resolvingScaleProps = 0;
 
     /**
      * @param {Channel} channel
@@ -501,6 +507,7 @@ export default class ScaleResolution {
         this.#invalidateOrderedMembers();
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
+        this.#refreshConfiguredDomainExprSubscriptions();
         return member;
     }
 
@@ -517,6 +524,7 @@ export default class ScaleResolution {
                 this.#invalidateOrderedMembers();
                 this.#invalidateConfiguredDomain();
                 this.#refreshSelectionDomainParamSubscriptions();
+                this.#refreshConfiguredDomainExprSubscriptions();
             }
             return removed && this.#members.size === 0;
         };
@@ -524,6 +532,7 @@ export default class ScaleResolution {
 
     dispose() {
         this.#clearSelectionDomainParamSubscriptions();
+        this.#clearConfiguredDomainExprSubscriptions();
         this.#listeners.domain.clear();
         this.#listeners.range.clear();
         this.#scaleManager.dispose();
@@ -535,6 +544,13 @@ export default class ScaleResolution {
         }
         this.#selectionDomainParamUnsubscribers = [];
         this.#lastLinkedSelectionInterval = undefined;
+    }
+
+    #clearConfiguredDomainExprSubscriptions() {
+        for (const unsubscribe of this.#configuredDomainExprUnsubscribers) {
+            unsubscribe();
+        }
+        this.#configuredDomainExprUnsubscribers = [];
     }
 
     #refreshSelectionDomainParamSubscriptions() {
@@ -566,6 +582,33 @@ export default class ScaleResolution {
                 this.reconfigureDomain();
             })
         );
+    }
+
+    #refreshConfiguredDomainExprSubscriptions() {
+        this.#clearConfiguredDomainExprSubscriptions();
+
+        if (this.#members.size === 0) {
+            return;
+        }
+
+        const listener = () => {
+            this.#invalidateConfiguredDomain();
+            this.reconfigureDomain();
+        };
+
+        for (const member of this.#members) {
+            if (!member.contributesToDomain) {
+                continue;
+            }
+            const domain = member.channelDef.scale?.domain;
+            if (!isExprRef(domain)) {
+                continue;
+            }
+
+            const expr = member.view.paramRuntime.createExpression(domain.expr);
+            const unsubscribe = expr.subscribe(listener);
+            this.#configuredDomainExprUnsubscribers.push(unsubscribe);
+        }
     }
 
     #hasRenderedMember() {
@@ -772,10 +815,18 @@ export default class ScaleResolution {
 
         const resolvedProps = { ...props };
 
-        const domain = this.#getConfiguredOrDefaultDomain(
-            extractDataDomain,
-            resolvedProps.type === LOCUS ? resolvedProps.assembly : undefined
-        );
+        this.#resolvingScaleProps += 1;
+        let domain;
+        try {
+            domain = this.#getConfiguredOrDefaultDomain(
+                extractDataDomain,
+                resolvedProps.type === LOCUS
+                    ? resolvedProps.assembly
+                    : undefined
+            );
+        } finally {
+            this.#resolvingScaleProps -= 1;
+        }
 
         if (isDiscrete(resolvedProps.type)) {
             const isExplicit = this.isDomainDefinedExplicitly();
@@ -1040,6 +1091,11 @@ export default class ScaleResolution {
      * @returns {ScaleWithProps}
      */
     getScale() {
+        if (this.#resolvingScaleProps > 0) {
+            throw new Error(
+                `Scale resolution for channel "${this.channel}" cannot read its own scale while its domain is being resolved.`
+            );
+        }
         return this.#scaleManager.scale ?? this.initializeScale();
     }
 
@@ -1060,6 +1116,11 @@ export default class ScaleResolution {
     }
 
     getDomain() {
+        if (this.#resolvingScaleProps > 0) {
+            throw new Error(
+                `Scale resolution for channel "${this.channel}" cannot read its own domain while its domain is being resolved.`
+            );
+        }
         return this.getScale().domain();
     }
 

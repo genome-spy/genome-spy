@@ -11,6 +11,7 @@ import {
     resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
@@ -33,6 +34,7 @@ import {
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
+ * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
@@ -380,6 +382,17 @@ function resolveConfiguredDomainMember(
                 domainDef,
                 fromComplexInterval,
                 includeSelectionInitial
+            ),
+        };
+    }
+
+    if (isExprRef(domainDef)) {
+        return {
+            kind: "literal",
+            domain: resolveConfiguredIntervalDomain(
+                member.channelDef.type,
+                member.view.paramRuntime.createExpression(domainDef.expr)(),
+                fromComplexInterval
             ),
         };
     }

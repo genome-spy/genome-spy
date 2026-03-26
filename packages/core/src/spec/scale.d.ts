@@ -68,7 +68,7 @@ export interface Scale {
      *
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
      */
-    domain?: ScalarDomain | ComplexDomain | SelectionDomainRef;
+    domain?: ScalarDomain | ComplexDomain | SelectionDomainRef | ExprRef;
 
     /**
      * Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.
