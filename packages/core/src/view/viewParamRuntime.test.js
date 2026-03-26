@@ -54,6 +54,26 @@ describe("Single-level ViewParamRuntime", () => {
         expect(expr()).toBe(43);
     });
 
+    test("Expressions have access to scale helpers", () => {
+        const resolution = createFakeScaleResolution();
+        const pm = new ViewParamRuntime(undefined, (channel) =>
+            channel == "x" ? resolution : undefined
+        );
+
+        const expr = pm.createExpression("domain('x')");
+        let calls = 0;
+
+        expr.subscribe(() => {
+            calls++;
+        });
+
+        expect(expr()).toEqual([0, 10]);
+
+        resolution.setDomain([2, 8]);
+        expect(expr()).toEqual([2, 8]);
+        expect(calls).toBe(1);
+    });
+
     test("Throws on an unknown parameter", () => {
         const pm = new ViewParamRuntime();
         expect(() => pm.createExpression("foo")).toThrow();
@@ -631,6 +651,54 @@ test("activateExprRefProps supports propagated batching and deduped keys", async
     expect(calls).toBe(1);
     expect(altered).toEqual(new Set(["a", "b"]));
 });
+
+/**
+ * @returns {any}
+ */
+function createFakeScaleResolution() {
+    let domain = [0, 10];
+    /** @type {Record<"domain" | "range", Set<() => void>>} */
+    const listeners = {
+        domain: new Set(),
+        range: new Set(),
+    };
+
+    const scale = Object.assign(
+        /** @param {number} value */
+        (value) => value * 2,
+        {
+            range: () => [0, 10],
+            invert: (/** @type {number} */ value) => value / 2,
+        }
+    );
+
+    return {
+        addEventListener(
+            /** @type {"domain" | "range"} */ type,
+            /** @type {() => void} */ listener
+        ) {
+            listeners[type].add(listener);
+        },
+        removeEventListener(
+            /** @type {"domain" | "range"} */ type,
+            /** @type {() => void} */ listener
+        ) {
+            listeners[type].delete(listener);
+        },
+        getDomain() {
+            return domain;
+        },
+        getScale() {
+            return scale;
+        },
+        setDomain(/** @type {number[]} */ nextDomain) {
+            domain = nextDomain;
+            for (const listener of listeners.domain) {
+                listener();
+            }
+        },
+    };
+}
 
 describe("hasPointSelections()", () => {
     test("false if there are no point selections", () => {

@@ -61,16 +61,22 @@ export default class ViewParamRuntime {
     /** @type {() => ViewParamRuntime} */
     #parentFinder;
 
+    /** @type {(channel: string) => import("../scales/scaleResolution.js").default | undefined} */
+    #scaleResolutionResolver;
+
     #disposed = false;
 
     /**
      * @param {() => ViewParamRuntime} [parentFinder]
-     *      An optional function that returns the parent runtime.
-     *      N.B. The function must always return the same runtime for the same parent,
-     *      i.e., the changing the structure of the hierarchy is NOT supported.
+     * @param {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [scaleResolutionResolver]
+     *      Optional resolver for scale channels in this runtime's view scope.
+     *      N.B. The function must always return the same resolution for the
+     *      same channel in the same view hierarchy.
      */
-    constructor(parentFinder) {
+    constructor(parentFinder, scaleResolutionResolver) {
         this.#parentFinder = parentFinder ?? (() => undefined);
+        this.#scaleResolutionResolver =
+            scaleResolutionResolver ?? (() => undefined);
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -149,7 +155,10 @@ export default class ViewParamRuntime {
             const ref = this.#runtime.registerDerived(
                 this.#scopeId,
                 name,
-                param.expr
+                param.expr,
+                {
+                    resolveScaleResolution: this.#scaleResolutionResolver,
+                }
             );
             this.#localRefs.set(name, ref);
             setter = () => {
@@ -352,7 +361,9 @@ export default class ViewParamRuntime {
      * @param {string} expr
      */
     createExpression(expr) {
-        return this.#runtime.createExpression(this.#scopeId, expr);
+        return this.#runtime.createExpression(this.#scopeId, expr, {
+            resolveScaleResolution: this.#scaleResolutionResolver,
+        });
     }
 
     /**

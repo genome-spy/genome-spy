@@ -13,14 +13,15 @@ import { compileExpression } from "./expressionCompiler.js";
  *
  * @param {string} expr
  * @param {(name: string) => import("./types.js").ParamRef<any> | undefined} resolve
+ * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
  * @returns {BoundExpression}
  */
-export function bindExpression(expr, resolve) {
+export function bindExpression(expr, resolve, options = {}) {
     const globalObject = {};
 
     /** @type {import("./types.js").ExprRefFunction} */
     const expression = /** @type {any} */ (
-        compileExpression(expr, globalObject)
+        compileExpression(expr, globalObject, options)
     );
 
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
@@ -57,6 +58,9 @@ export function bindExpression(expr, resolve) {
         for (const ref of refsForParams.values()) {
             disposers.push(ref.subscribe(listener));
         }
+        for (const ref of expression.scaleDependencies ?? []) {
+            disposers.push(ref.subscribe(listener));
+        }
 
         let active = true;
         const unsubscribe = () => {
@@ -86,10 +90,13 @@ export function bindExpression(expr, resolve) {
         "|" +
         Array.from(refsForParams.values())
             .map((ref) => ref.id)
+            .concat((expression.scaleDependencies ?? []).map((ref) => ref.id))
             .join(",");
 
     return {
         expression,
-        dependencies: Array.from(refsForParams.values()),
+        dependencies: Array.from(refsForParams.values()).concat(
+            expression.scaleDependencies ?? []
+        ),
     };
 }

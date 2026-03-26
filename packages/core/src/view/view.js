@@ -209,7 +209,8 @@ export default class View {
 
         /** @type {ViewParamRuntime} */
         this.paramRuntime = new ViewParamRuntime(
-            () => this.dataParent?.paramRuntime
+            () => this.dataParent?.paramRuntime,
+            (channel) => this.getScaleResolution(/** @type {any} */ (channel))
         );
 
         if (spec.params) {

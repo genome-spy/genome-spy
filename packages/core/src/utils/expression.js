@@ -105,36 +105,251 @@ const functionContext = {
 
 /**
  * @param {typeof codegenExpression} codegen
+ * @param {ScaleHelperCompileContext} context
  */
-function buildFunctions(codegen) {
-    const fn = functions(codegen);
+function buildFunctions(codegen, context) {
+    const fn = /** @type {any} */ (functions(codegen));
     for (const name in functionContext) {
         fn[name] = `this.${name}`;
     }
+
+    fn.scale = (
+        /** @type {any[]} */
+        args
+    ) => buildScaleHelperCall(codegen, context, "scale", args);
+    fn.invert = (
+        /** @type {any[]} */
+        args
+    ) => buildScaleHelperCall(codegen, context, "invert", args);
+    fn.domain = (
+        /** @type {any[]} */
+        args
+    ) => buildScaleHelperCall(codegen, context, "domain", args);
+    fn.range = (
+        /** @type {any[]} */
+        args
+    ) => buildScaleHelperCall(codegen, context, "range", args);
+
     return fn;
 }
-
-const cg = codegenExpression({
-    forbidden: [],
-    allowed: ["datum", "undefined"],
-    globalvar: "globalObject",
-    fieldvar: "datum",
-    functions: buildFunctions,
-});
 
 /**
  * @typedef { object } ExpressionProps
  * @prop { string[] } fields
  * @prop { string[] } globals
  * @prop { string } code
+ * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
+ * @typedef {object} ExpressionCompileContext
+ * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ *
+ * @typedef {ExpressionCompileContext & {
+ *   globalvar: string,
+ *   globalObject: Record<string, any>,
+ *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+ * }} ScaleHelperCompileContext
+ */
+
+/**
+ * @param {typeof codegenExpression} codegen
+ * @param {ScaleHelperCompileContext} context
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {any[]} args
+ * @returns {string}
+ */
+function buildScaleHelperCall(codegen, context, kind, args) {
+    if (args.length === 0) {
+        throw new Error(
+            `Scale helper "${kind}" requires a literal channel name.`
+        );
+    }
+
+    if ((kind === "scale" || kind === "invert") && args.length < 2) {
+        throw new Error(
+            `Scale helper "${kind}" requires a channel name and a value.`
+        );
+    }
+
+    const channel = getLiteralString(args[0]);
+    if (!channel) {
+        throw new Error(
+            `Scale helper "${kind}" requires a literal channel name.`
+        );
+    }
+
+    const resolution = context.resolveScaleResolution?.(channel);
+    if (!resolution) {
+        throw new Error(
+            `Unknown scale channel "${channel}" in expression helper "${kind}".`
+        );
+    }
+
+    const helper = context.getScaleHelper(kind, channel, resolution);
+    const remainingArgs = args
+        .slice(1)
+        .map((arg) => codegen(arg))
+        .join(",");
+    return `${context.globalvar}["${helper.codeName}"](${remainingArgs})`;
+}
+
+/**
+ * @param {any} node
+ * @returns {string | undefined}
+ */
+function getLiteralString(node) {
+    return node?.type === "Literal" && typeof node.value === "string"
+        ? node.value
+        : undefined;
+}
+
+/**
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @returns {(...args: any[]) => any}
+ */
+function createScaleHelperFunction(kind, resolution) {
+    if (kind === "domain") {
+        return () => resolution.getDomain();
+    }
+    if (kind === "range") {
+        return () => resolution.getScale().range();
+    }
+    if (kind === "scale") {
+        return (value) => resolution.getScale()(value);
+    }
+    if (kind === "invert") {
+        return (value) =>
+            /** @type {any} */ (resolution.getScale()).invert(value);
+    }
+    throw new Error("Unknown scale helper: " + kind);
+}
+
+/**
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {string} channel
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @param {string} codeName
+ * @returns {import("../paramRuntime/types.js").ParamRef<any> & { rank: number }}
+ */
+function createScaleDependency(kind, channel, resolution, codeName) {
+    /** @type {Set<() => void>} */
+    const listeners = new Set();
+
+    const notify = () => {
+        for (const listener of listeners) {
+            listener();
+        }
+    };
+
+    const attach = () => {
+        if (kind === "domain") {
+            resolution.addEventListener("domain", notify);
+        } else if (kind === "range") {
+            resolution.addEventListener("range", notify);
+        } else {
+            resolution.addEventListener("domain", notify);
+            resolution.addEventListener("range", notify);
+        }
+    };
+
+    const detach = () => {
+        if (kind === "domain") {
+            resolution.removeEventListener("domain", notify);
+        } else if (kind === "range") {
+            resolution.removeEventListener("range", notify);
+        } else {
+            resolution.removeEventListener("domain", notify);
+            resolution.removeEventListener("range", notify);
+        }
+    };
+
+    return {
+        id: `scale:${channel}:${codeName}`,
+        name: `scale(${channel})`,
+        kind: "derived",
+        rank: 0,
+        get() {
+            return resolution.getScale();
+        },
+        subscribe(listener) {
+            const wasEmpty = listeners.size === 0;
+            listeners.add(listener);
+            if (wasEmpty) {
+                attach();
+            }
+            return () => {
+                const removed = listeners.delete(listener);
+                if (removed && listeners.size === 0) {
+                    detach();
+                }
+            };
+        },
+    };
+}
+
+/**
  * @param {string} expr
+ * @param {Record<string, any>} globalObject
+ * @param {ExpressionCompileContext} context
+ *
  * @returns {ExpressionFunction}
  */
-export default function createFunction(expr, globalObject = {}) {
+export default function createFunction(expr, globalObject = {}, context = {}) {
     try {
+        /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
+        const scaleDependenciesByChannel = new Map();
+        /** @type {Map<string, { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }>} */
+        const helperEntries = new Map();
+        let nextScaleHelperId = 1;
+
+        /** @type {ExpressionCompileContext & {
+         *   globalvar: string,
+         *   globalObject: Record<string, any>,
+         *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+         * }} */
+        const helperContext = {
+            ...context,
+            globalvar: "globalObject",
+            globalObject,
+            getScaleHelper(kind, channel, resolution) {
+                const key = kind + ":" + channel;
+                const cached = helperEntries.get(key);
+                if (cached) {
+                    return cached;
+                }
+
+                let dependency = scaleDependenciesByChannel.get(channel);
+                if (!dependency) {
+                    dependency = createScaleDependency(
+                        kind,
+                        channel,
+                        resolution,
+                        "__scale_dependency_" + nextScaleHelperId++
+                    );
+                    scaleDependenciesByChannel.set(channel, dependency);
+                }
+
+                const codeName = "__scale_helper_" + nextScaleHelperId++;
+                const entry = { codeName, dependency };
+                helperEntries.set(key, entry);
+                globalObject[codeName] = createScaleHelperFunction(
+                    kind,
+                    resolution
+                );
+                return entry;
+            },
+        };
+
+        const cg = codegenExpression({
+            forbidden: [],
+            allowed: ["datum", "undefined"],
+            globalvar: "globalObject",
+            fieldvar: "datum",
+            functions: (visitor) => buildFunctions(visitor, helperContext),
+        });
+
         const parsed = parseExpression(expr);
         const generatedCode = cg(parsed);
 
@@ -157,6 +372,9 @@ export default function createFunction(expr, globalObject = {}) {
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
+        exprFunction.scaleDependencies = Array.from(
+            scaleDependenciesByChannel.values()
+        );
 
         return exprFunction;
     } catch (e) {
