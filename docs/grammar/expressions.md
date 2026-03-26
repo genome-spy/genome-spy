@@ -127,7 +127,8 @@ package.
 [`lastindexof`](https://vega.github.io/vega/docs/expressions/#lastindexof),
 [`reverse`](https://vega.github.io/vega/docs/expressions/#reverse),
 [`slice`](https://vega.github.io/vega/docs/expressions/#slice),
-[`sort`](https://vega.github.io/vega/docs/expressions/#sort)
+[`sort`](https://vega.github.io/vega/docs/expressions/#sort),
+[`span`](https://vega.github.io/vega/docs/expressions/#span)
 
 #### String Functions
 
@@ -198,3 +199,7 @@ Calculates a linear interpolation between 0 and 1 for a value _x_ within the ran
 <a name="smoothstep" href="#smoothstep">#</a>
 <b>smoothstep</b>(<i>edge0</i>, <i>edge1</i>, <i>x</i>)<br />
 Performs [smooth Hermite interpolation](https://en.wikipedia.org/wiki/Smoothstep) between 0 and 1 for values of _x_ that lie between _edge0_ and _edge1_. This function is particularly useful for scenarios requiring a threshold function with a smooth transition, offering a gradual rather than an abrupt change between states.
+
+<a name="center" href="#center">#</a>
+<b>center</b>(<i>array</i>)<br/>
+Returns the midpoint of an ordered extent, such as `[min, max]`. It uses the first and last elements and does not sort the array.

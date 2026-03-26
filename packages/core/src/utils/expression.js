@@ -8,6 +8,7 @@ import {
     isString,
     ascending,
     lerp,
+    span,
 } from "vega-util";
 import { format as d3format } from "d3-format";
 import smoothstep from "./smoothstep.js";
@@ -99,6 +100,17 @@ const functionContext = {
     },
     sort(/** @type {Array<any>} */ seq) {
         return array(seq).slice().sort(ascending);
+    },
+    /**
+     * Returns the midpoint of an ordered extent, such as [min, max].
+     * The helper uses the first and last elements and does not sort.
+     */
+    center(/** @type {Array<any>} */ seq) {
+        const values = array(seq);
+        return (values[0] + values[values.length - 1]) / 2;
+    },
+    span(/** @type {Array<any>} */ seq) {
+        return span(seq);
     },
     smoothstep,
 };

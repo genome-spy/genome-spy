@@ -13,6 +13,8 @@ describe("expression helpers", () => {
         expect(createFunction("reverse([1, 2, 3])")()).toEqual([3, 2, 1]);
         expect(createFunction("slice([1, 2, 3, 4], 1, 3)")()).toEqual([2, 3]);
         expect(createFunction("sort([3, 1, 2])")()).toEqual([1, 2, 3]);
+        expect(createFunction("center([2, 7])")()).toBe(4.5);
+        expect(createFunction("span([2, 7])")()).toBe(5);
     });
 
     test("matches Vega null and undefined handling for sequence helpers", () => {
