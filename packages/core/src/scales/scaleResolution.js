@@ -33,6 +33,7 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 import {
     findIntervalSelectionBindingOwners,
     normalizeIntervalForSelection,
@@ -99,6 +100,9 @@ export default class ScaleResolution {
 
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
+
+    /** @type {ScaleResolutionMember[] | undefined} */
+    #orderedMembers;
 
     /**
      * @type {Record<ScaleResolutionEventType, Set<ScaleResolutionListener>>}
@@ -484,6 +488,7 @@ export default class ScaleResolution {
         if (member.contributesToDomain) {
             this.#dataDomainMembers.add(member);
         }
+        this.#invalidateOrderedMembers();
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         return member;
@@ -499,6 +504,7 @@ export default class ScaleResolution {
             const removed = this.#members.delete(registeredMember);
             if (removed) {
                 this.#dataDomainMembers.delete(registeredMember);
+                this.#invalidateOrderedMembers();
                 this.#invalidateConfiguredDomain();
                 this.#refreshSelectionDomainParamSubscriptions();
             }
@@ -638,6 +644,7 @@ export default class ScaleResolution {
                 channel: this.channel,
                 dataType: this.type,
                 members: this.#members,
+                orderedMembers: this.#getOrderedMembers(),
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#firstMemberView.getConfigScopes(),
             });
@@ -648,6 +655,26 @@ export default class ScaleResolution {
 
     #invalidateMergedScaleProps() {
         invalidate(this, "mergedScaleProps");
+    }
+
+    #invalidateOrderedMembers() {
+        this.#orderedMembers = undefined;
+    }
+
+    /**
+     * Returns the participating members in a stable order.
+     *
+     * The membership set changes rarely, so cache the sorted order separately
+     * from merged scale props. That keeps parameter-driven domain updates from
+     * re-running the same path-based sort work.
+     *
+     * @returns {ScaleResolutionMember[]}
+     */
+    #getOrderedMembers() {
+        if (!this.#orderedMembers) {
+            this.#orderedMembers = orderResolutionMembers(this.#members);
+        }
+        return this.#orderedMembers;
     }
 
     #invalidateConfiguredDomain() {

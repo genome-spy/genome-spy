@@ -23,6 +23,7 @@ import { orderResolutionMembers } from "./resolutionMemberOrder.js";
  * @param {Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {Set<ScaleResolutionMember>} options.members
+ * @param {ScaleResolutionMember[]} [options.orderedMembers]
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
@@ -31,10 +32,13 @@ export function resolveScalePropsBase({
     channel,
     dataType,
     members,
+    orderedMembers,
     isExplicitDomain,
     configScopes,
 }) {
-    const markTypes = [...members]
+    const memberList = orderedMembers ?? orderResolutionMembers(members);
+
+    const markTypes = memberList
         .map((member) =>
             typeof member.view.getMarkType == "function"
                 ? member.view.getMarkType()
@@ -42,7 +46,7 @@ export function resolveScalePropsBase({
         )
         .filter((markType) => !!markType);
 
-    const propArray = orderResolutionMembers(members)
+    const propArray = memberList
         .map((member) => member.channelDef.scale)
         .filter((props) => props !== undefined);
 
