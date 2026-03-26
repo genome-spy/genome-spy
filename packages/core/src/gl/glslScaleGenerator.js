@@ -676,7 +676,9 @@ export function getAttributeAndArrayTypes(scale, channel) {
               : { attributeType: "float", arrayConstructor: Float32Array };
 
     return Object.assign(props, {
-        numComponents: +(props.attributeType.match(/^vec([234])$/)?.[1] ?? 1),
+        numComponents: +(
+            props.attributeType.match(/^(?:u)?vec([234])$/)?.[1] ?? 1
+        ),
         discrete,
         hp,
         largeHp,
@@ -701,9 +703,9 @@ export function isLargeGenome(domain) {
     return domain[1] > 2 ** 32;
 }
 
-const LOW_BITS = 12;
-const BS = 2 ** LOW_BITS;
-const BM = BS - 1;
+export const HIGH_PRECISION_SPLIT_BITS = 12;
+export const HIGH_PRECISION_SPLIT_BASE = 2 ** HIGH_PRECISION_SPLIT_BITS;
+export const HIGH_PRECISION_SPLIT_MASK = HIGH_PRECISION_SPLIT_BASE - 1;
 
 /**
  * @param {number} x Must be an integer
@@ -712,7 +714,7 @@ const BM = BS - 1;
 export function splitHighPrecision(x, arr = []) {
     // Using a bitmask is MUCH faster than using modulo (at least on Chrome 112)
     // https://www.wikiwand.com/en/Modulo#Performance_issues
-    const lo = x & BM;
+    const lo = x & HIGH_PRECISION_SPLIT_MASK;
     const hi = x - lo;
 
     arr[0] = hi;
@@ -726,8 +728,8 @@ export function splitHighPrecision(x, arr = []) {
  * @param {number[]} [arr]
  */
 export function splitLargeHighPrecision(x, arr = []) {
-    const lo = x % BS;
-    const hi = (x - lo) / BS;
+    const lo = x % HIGH_PRECISION_SPLIT_BASE;
+    const hi = (x - lo) / HIGH_PRECISION_SPLIT_BASE;
 
     arr[0] = hi;
     arr[1] = lo;
@@ -739,7 +741,7 @@ export function splitLargeHighPrecision(x, arr = []) {
  * @param {number} x
  */
 function exactSplitHighPrecision(x) {
-    const lo = x % BS;
+    const lo = x % HIGH_PRECISION_SPLIT_BASE;
     const hi = x - lo;
 
     return [hi, lo];

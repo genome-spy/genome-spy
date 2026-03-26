@@ -3,9 +3,9 @@ import { format } from "d3-format";
 import { isString } from "vega-util";
 import ArrayBuilder from "./arrayBuilder.js";
 import { SDF_PADDING } from "../fonts/bmFontMetrics.js";
-import { createBinningRangeIndexer } from "../utils/binnedIndex.js";
 import { getEncoderDataAccessor, isValueDef } from "../encoder/encoder.js";
 import {
+    HIGH_PRECISION_SPLIT_BASE,
     dedupeEncodingFields,
     getAttributeAndArrayTypes,
     makeAttributeName,
@@ -13,6 +13,7 @@ import {
 } from "./glslScaleGenerator.js";
 import { isContinuous } from "vega-scale";
 import createIndexer from "../utils/indexer.js";
+import { createVertexRangeIndexer } from "./vertexRangeIndex.js";
 
 /**
  * @typedef {object} RangeEntry Represents a location of a vertex subset
@@ -57,6 +58,8 @@ export class GeometryBuilder {
         this.allocatedVertices = numVertices;
 
         this.variableBuilder = new ArrayBuilder(numVertices);
+        /** @type {Partial<Record<import("../spec/channel.js").Channel, string>>} */
+        this.attributeNames = {};
 
         // Create converters and updaters for all variable channels.
         for (const [channel, ce] of Object.entries(this.variableEncoders)) {
@@ -71,9 +74,6 @@ export class GeometryBuilder {
             const sharedChannels = dedupedEncodingFields.find((channels) =>
                 channels.find((c) => c == channel)
             );
-            if (sharedChannels && channel != sharedChannels[0]) {
-                continue;
-            }
 
             const numberAccessor = accessor.asNumberAccessor();
             const scale = ce.scale;
@@ -116,6 +116,13 @@ export class GeometryBuilder {
                   : numberAccessor;
 
             const attributeName = makeAttributeName(sharedChannels ?? channel);
+            for (const sharedChannel of sharedChannels ?? [channel]) {
+                this.attributeNames[sharedChannel] = attributeName;
+            }
+
+            if (sharedChannels && channel != sharedChannels[0]) {
+                continue;
+            }
 
             this.variableBuilder.addConverter(attributeName, {
                 f,
@@ -123,6 +130,41 @@ export class GeometryBuilder {
                 arrayReference: largeHp ? largeHpArray : undefined,
                 targetArrayType: arrayConstructor,
             });
+        }
+
+        const xEncoder = this.variableEncoders.x;
+        const x2Encoder = this.variableEncoders.x2;
+        const xChannelDef =
+            /** @type {import("../spec/channel.js").Encoding["x"] | undefined} */ (
+                this.encoders.x?.channelDef
+            );
+        const xScale = xEncoder?.scale;
+        if (
+            xChannelDef?.buildIndex &&
+            xEncoder &&
+            xScale &&
+            isContinuous(xScale.type)
+        ) {
+            const xAttributeName = this.attributeNames.x;
+            if (!xAttributeName) {
+                throw new Error("Missing x attribute for x indexing.");
+            }
+
+            const x2AttributeName =
+                x2Encoder?.scale && isContinuous(x2Encoder.scale.type)
+                    ? (this.attributeNames.x2 ?? xAttributeName)
+                    : xAttributeName;
+
+            this.xIndexConfig = {
+                domain: /** @type {[number, number]} */ ([
+                    xScale.domain()[0],
+                    xScale.domain()[1],
+                ]),
+                xAttributeName,
+                x2AttributeName,
+            };
+        } else {
+            this.xIndexConfig = undefined;
         }
 
         this.lastOffset = 0;
@@ -144,7 +186,7 @@ export class GeometryBuilder {
             this.rangeMap.set(key, {
                 offset,
                 count: size,
-                xIndex: this.xIndexer?.getIndex(),
+                xIndex: this.createXIndex(offset, index),
             });
         }
         this.lastOffset = index;
@@ -164,100 +206,62 @@ export class GeometryBuilder {
      * @param {object[]} data
      */
     addBatch(key, data, lo = 0, hi = data.length) {
-        this.prepareXIndexer(data, lo, hi);
-
         for (let i = lo; i < hi; i++) {
             const d = data[i];
             this.variableBuilder.pushFromDatum(d);
-            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
     }
 
     /**
-     * @param {import("../data/flowNode.js").Data} data Domain, but specified using datums
-     * @param {number} [lo]
-     * @param {number} [hi]
+     * Builds the x-domain lookup for the current batch if x indexing is enabled.
+     *
+     * @param {number} startVertexIndex
+     * @param {number} endVertexIndex
+     * @returns {import("../utils/binnedIndex.js").Lookup | undefined}
      */
-    prepareXIndexer(data, lo = 0, hi = lo + data.length) {
-        const disable = () => {
-            /**
-             * @param {import("../data/flowNode.js").Datum} datum
-             */
-            this.addToXIndex = (datum) => {
-                // nop
-            };
-            this.xIndexer = undefined;
+    createXIndex(startVertexIndex, endVertexIndex) {
+        const config = this.xIndexConfig;
+        if (!config) {
+            return undefined;
+        }
+
+        /**
+         * @param {string} attributeName
+         */
+        const createReader = (attributeName) => {
+            const attribute = this.variableBuilder.arrays[attributeName];
+            const { data, numComponents } = attribute;
+
+            if (numComponents == 2) {
+                /** @type {(vertexIndex: number) => number} */
+                return (vertexIndex) => {
+                    const base = vertexIndex * numComponents;
+                    return (
+                        data[base] * HIGH_PRECISION_SPLIT_BASE + data[base + 1]
+                    );
+                };
+            }
+
+            /** @type {(vertexIndex: number) => number} */
+            return (vertexIndex) => data[vertexIndex * numComponents];
         };
 
-        const channelDef = this.encoders.x?.channelDef;
-        if (
-            !("buildIndex" in channelDef) ||
-            !channelDef.buildIndex ||
-            !data.length ||
-            hi - lo < 0
-        ) {
-            disable();
-            return;
-        }
+        const xReader = createReader(config.xAttributeName);
+        const x2Reader =
+            config.x2AttributeName == config.xAttributeName
+                ? xReader
+                : createReader(config.x2AttributeName);
 
-        /** @param {Encoder} encoder */
-        const getContinuousEncoder = (encoder) =>
-            encoder && isContinuous(encoder.scale?.type) && encoder;
-
-        const xe = getContinuousEncoder(this.variableEncoders.x);
-        const x2e = getContinuousEncoder(this.variableEncoders.x2);
-
-        // Only index variable data
-        if (xe && !xe.constant && (!x2e || !x2e.constant)) {
-            const xa = getEncoderDataAccessor(xe)?.asNumberAccessor();
-            const x2a = x2e
-                ? getEncoderDataAccessor(x2e)?.asNumberAccessor()
-                : xa;
-            if (!xa || !x2a) {
-                disable();
-                return;
-            }
-
-            /** @type {[number, number]} */
-            const dataDomain = [xa(data[lo]), x2a(data[hi - 1])];
-
-            // No indexer for point domains that have zero extent
-            if (dataDomain[1] > dataDomain[0]) {
-                this.xIndexer = createBinningRangeIndexer(
-                    50,
-                    dataDomain,
-                    xa,
-                    x2a
-                );
-
-                let lastVertexCount = this.variableBuilder.vertexCount;
-
-                /**
-                 * @param {any} datum
-                 */
-                this.addToXIndex = (datum) => {
-                    let currentVertexCount = this.variableBuilder.vertexCount;
-                    this.xIndexer(datum, lastVertexCount, currentVertexCount);
-                    lastVertexCount = currentVertexCount;
-                };
-            } else {
-                disable();
-            }
-        } else {
-            disable();
-        }
-    }
-
-    /**
-     * Add the datum to an index, which allows for efficient rendering of ranges
-     * on the x axis. Must be called after a datum has been pushed to the ArrayBuilder.
-     *
-     * @param {import("../data/flowNode.js").Datum} datum
-     */
-    addToXIndex(datum) {
-        //
+        return createVertexRangeIndexer(
+            50,
+            config.domain,
+            xReader,
+            x2Reader,
+            startVertexIndex,
+            endVertexIndex
+        );
     }
 
     toArrays() {
@@ -322,8 +326,6 @@ export class RectVertexBuilder extends GeometryBuilder {
             return;
         }
 
-        this.prepareXIndexer(data, lo, hi);
-
         for (let i = lo; i < hi; i++) {
             const d = data[i];
 
@@ -333,8 +335,6 @@ export class RectVertexBuilder extends GeometryBuilder {
             // Six vertices per rect. The vertex shader is using gl_VertexID to
             // determine the vertex position within the rect.
             this.pushAllSixTimes();
-
-            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
@@ -384,8 +384,6 @@ export class RuleVertexBuilder extends GeometryBuilder {
     addBatch(key, data, lo = 0, hi = data.length) {
         //const [lower, upper] = this.visibleRange; // TODO
 
-        this.prepareXIndexer(data, lo, hi);
-
         for (let i = lo; i < hi; i++) {
             const d = data[i];
 
@@ -410,7 +408,6 @@ export class RuleVertexBuilder extends GeometryBuilder {
 
             // Duplicate the last vertex to produce a degenerate triangle between the rules
             this.variableBuilder.pushAll();
-            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
@@ -433,6 +430,20 @@ export class PointVertexBuilder extends GeometryBuilder {
         });
         this.variableBuilder.configure();
     }
+
+    /**
+     *
+     * @param {any} key
+     * @param {object[]} data
+     */
+    addBatch(key, data, lo = 0, hi = data.length) {
+        for (let i = lo; i < hi; i++) {
+            const d = data[i];
+            this.variableBuilder.pushFromDatum(d);
+        }
+
+        this.registerBatch(key);
+    }
 }
 
 export class LinkVertexBuilder extends GeometryBuilder {
@@ -449,6 +460,20 @@ export class LinkVertexBuilder extends GeometryBuilder {
             numVertices: numItems,
         });
         this.variableBuilder.configure();
+    }
+
+    /**
+     *
+     * @param {any} key
+     * @param {object[]} data
+     */
+    addBatch(key, data, lo = 0, hi = data.length) {
+        for (let i = lo; i < hi; i++) {
+            const d = data[i];
+            this.variableBuilder.pushFromDatum(d);
+        }
+
+        this.registerBatch(key);
     }
 
     toArrays() {
@@ -553,8 +578,6 @@ export class TextVertexBuilder extends GeometryBuilder {
         const textureCoord = [0, 0];
         this.updateTextureCoord(textureCoord);
 
-        this.prepareXIndexer(data, lo, hi);
-
         for (let i = lo; i < hi; i++) {
             const d = data[i];
 
@@ -652,8 +675,6 @@ export class TextVertexBuilder extends GeometryBuilder {
 
                 x += advance;
             }
-
-            this.addToXIndex(d);
         }
 
         this.registerBatch(key);
