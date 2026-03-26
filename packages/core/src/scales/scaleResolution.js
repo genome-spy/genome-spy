@@ -145,6 +145,10 @@ export default class ScaleResolution {
 
     #resolvingScaleProps = 0;
 
+    #memberRegistrationBatchDepth = 0;
+
+    #membersDirty = false;
+
     /**
      * @param {Channel} channel
      * @param {import("../view/view.js").default} [hostView]
@@ -510,11 +514,53 @@ export default class ScaleResolution {
         if (member.contributesToDomain) {
             this.#dataDomainMembers.add(member);
         }
+        return member;
+    }
+
+    #syncMembers() {
+        this.#membersDirty = false;
         this.#invalidateOrderedMembers();
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
-        return member;
+    }
+
+    #markMembersDirty() {
+        if (this.#memberRegistrationBatchDepth > 0) {
+            this.#membersDirty = true;
+        } else {
+            this.#syncMembers();
+        }
+    }
+
+    /**
+     * Executes a group of member registrations without refreshing derived
+     * membership state until the callback completes.
+     *
+     * @template T
+     * @param {Iterable<ScaleResolution>} resolutions
+     * @param {() => T} callback
+     * @returns {T}
+     */
+    static registerInBatch(resolutions, callback) {
+        const batchedResolutions = Array.from(resolutions);
+        for (const resolution of batchedResolutions) {
+            resolution.#memberRegistrationBatchDepth++;
+        }
+
+        try {
+            return callback();
+        } finally {
+            for (const resolution of batchedResolutions) {
+                resolution.#memberRegistrationBatchDepth--;
+                if (
+                    resolution.#memberRegistrationBatchDepth === 0 &&
+                    resolution.#membersDirty
+                ) {
+                    resolution.#syncMembers();
+                }
+            }
+        }
     }
 
     /**
@@ -523,14 +569,12 @@ export default class ScaleResolution {
      */
     registerMember(member) {
         const registeredMember = this.#addMember(member);
+        this.#markMembersDirty();
         return () => {
             const removed = this.#members.delete(registeredMember);
             if (removed) {
                 this.#dataDomainMembers.delete(registeredMember);
-                this.#invalidateOrderedMembers();
-                this.#invalidateConfiguredDomain();
-                this.#refreshSelectionDomainParamSubscriptions();
-                this.#refreshConfiguredDomainExprSubscriptions();
+                this.#markMembersDirty();
             }
             return removed && this.#members.size === 0;
         };

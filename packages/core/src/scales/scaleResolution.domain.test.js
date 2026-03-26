@@ -104,6 +104,47 @@ describe("Scale resolution domain handling", () => {
         expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
     });
 
+    test("Scale expressions can reference sibling scale domains regardless of encoding order", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: -8, y: -2 },
+                        { x: 8, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: {
+                            domain: {
+                                expr: "domain('y')",
+                            },
+                        },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const yResolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(xResolution.getDomain())).toEqual(r(yResolution.getDomain()));
+
+        yResolution.getScale().domain([-4, 4]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(xResolution.getDomain())).toEqual([-4, 4]);
+    });
+
     test("Scale domain cycles fail fast", async () => {
         await expect(
             initView(
