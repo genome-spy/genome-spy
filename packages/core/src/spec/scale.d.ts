@@ -93,6 +93,18 @@ export interface Scale {
     reverse?: boolean;
 
     /**
+     * Controls whether domain updates are applied immediately or with a smooth
+     * transition.
+     *
+     * Set this to `false` to apply domain updates immediately. The default is
+     * `true`, except for domains defined by an `ExprRef`, which default to
+     * `false` unless overridden.
+     *
+     * __Default value:__ `true`, except `false` for ExprRef-driven domains.
+     */
+    domainTransition?: boolean | Record<string, unknown>;
+
+    /**
      * The range of the scale. One of:
      *
      * - A string indicating a [pre-defined named scale range](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `"symbol"`, or `"diverging"`).

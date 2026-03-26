@@ -131,6 +131,13 @@ export function resolveScalePropsBase({
         // TODO: Props should be set more intelligently
     }
 
+    if (props.domainTransition === undefined) {
+        const hasExprDrivenDomain = memberList.some((member) =>
+            isExprRef(member.channelDef.scale?.domain)
+        );
+        props.domainTransition = !hasExprDrivenDomain;
+    }
+
     if (
         Array.isArray(props.range) &&
         props.range.some(isExprRef) &&

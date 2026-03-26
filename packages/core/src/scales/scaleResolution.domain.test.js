@@ -104,6 +104,79 @@ describe("Scale resolution domain handling", () => {
         expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
     });
 
+    test("domainTransition defaults to true for ordinary domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ x: 0 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "x").getScale().props
+                .domainTransition
+        ).toBe(true);
+    });
+
+    test("domainTransition defaults to false for ExprRef-driven domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { expr: "[0, upperBound]" },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "y").getScale().props
+                .domainTransition
+        ).toBe(false);
+    });
+
+    test("domainTransition can be enabled explicitly for ExprRef-driven domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { expr: "[0, upperBound]" },
+                            domainTransition: true,
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "y").getScale().props
+                .domainTransition
+        ).toBe(true);
+    });
+
     test("Scale expressions can reference sibling scale domains regardless of encoding order", async () => {
         const view = await initView(
             {

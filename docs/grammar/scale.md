@@ -242,6 +242,13 @@ For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
 }
 ```
 
+### Domain transitions
+
+By default, domain updates are applied with a smooth transition when that is
+possible. Set `domainTransition` to `false` to apply the new domain
+immediately. ExprRef-driven domains default to `domainTransition: false`
+unless overridden.
+
 ## Named scales
 
 By giving the scale a name, it can be accessed through the

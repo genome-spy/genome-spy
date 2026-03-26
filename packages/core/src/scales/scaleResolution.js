@@ -1082,6 +1082,11 @@ export default class ScaleResolution {
             return;
         }
 
+        if (scale.props.domainTransition === false) {
+            this.#notifyListeners("domain");
+            return;
+        }
+
         const newDomain = scale.domain();
         const action = this.#interactionController.getDomainChangeAction(
             previousDomain,
