@@ -14,6 +14,12 @@ export default class FilterTransform extends Transform {
 
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this.predicate = undefined;
+
+        /** @type {boolean} */
+        this.constantExpression = false;
+
+        /** @type {boolean} */
+        this.constantPredicate = false;
     }
 
     initialize() {
@@ -37,12 +43,23 @@ export default class FilterTransform extends Transform {
 
         this.predicate = this.paramRuntime.watchExpression(
             expression,
-            () => this.repropagate(),
+            () => {
+                if (this.constantExpression) {
+                    this.constantPredicate = !!this.predicate(null);
+                }
+                this.repropagate();
+            },
             {
                 scopeOwned: false,
                 registerDisposer: (disposer) => this.registerDisposer(disposer),
             }
         );
+
+        // Datum-invariant predicates can be cached until a reactive input changes.
+        this.constantExpression = this.predicate.fields.length === 0;
+        if (this.constantExpression) {
+            this.constantPredicate = !!this.predicate(null);
+        }
     }
 
     /**
@@ -50,7 +67,11 @@ export default class FilterTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        if (this.predicate(datum)) {
+        if (
+            this.constantExpression
+                ? this.constantPredicate
+                : this.predicate(datum)
+        ) {
             this._propagate(datum);
         }
     }

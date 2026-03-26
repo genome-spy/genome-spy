@@ -4,10 +4,11 @@ import FlowNode from "./flowNode.js";
 
 /**
  *
+ * @param {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [scaleResolutionResolver]
  * @returns {import("./flowNode.js").ParamRuntimeProvider}
  */
-export function makeParamRuntimeProvider() {
-    const runtime = new ViewParamRuntime();
+export function makeParamRuntimeProvider(scaleResolutionResolver) {
+    const runtime = new ViewParamRuntime(undefined, scaleResolutionResolver);
     return {
         paramRuntime: runtime,
     };

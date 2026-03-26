@@ -20,17 +20,35 @@ export default class FormulaTransform extends Transform {
 
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
         this.fn = undefined;
+
+        /** @type {boolean} */
+        this.constantExpression = false;
+
+        /** @type {any} */
+        this.constantValue = undefined;
     }
 
     initialize() {
         this.fn = this.paramRuntime.watchExpression(
             this.params.expr,
-            () => this.repropagate(),
+            () => {
+                if (this.constantExpression) {
+                    this.constantValue = this.fn(null);
+                }
+                this.repropagate();
+            },
             {
                 scopeOwned: false,
                 registerDisposer: (disposer) => this.registerDisposer(disposer),
             }
         );
+
+        // Expressions without datum field dependencies can be reused across
+        // every row until one of their reactive inputs changes.
+        this.constantExpression = this.fn.fields.length === 0;
+        if (this.constantExpression) {
+            this.constantValue = this.fn(null);
+        }
     }
 
     /**
@@ -38,7 +56,9 @@ export default class FormulaTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        datum[this.as] = this.fn(datum);
+        datum[this.as] = this.constantExpression
+            ? this.constantValue
+            : this.fn(datum);
         this._propagate(datum);
     }
 }
