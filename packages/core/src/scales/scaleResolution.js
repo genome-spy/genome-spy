@@ -136,16 +136,22 @@ export default class ScaleResolution {
     /** @type {[number, number] | null | undefined} */
     #lastLinkedSelectionInterval = undefined;
 
+    /** @type {import("../view/view.js").default | undefined} */
+    #hostView;
+
     /**
      * @param {Channel} channel
+     * @param {import("../view/view.js").default} [hostView]
      */
-    constructor(channel) {
+    constructor(channel, hostView) {
         this.channel = channel;
         /** @type {import("../spec/channel.js").Type} Data type (quantitative, nominal, etc...) */
         this.type = null;
 
         /** @type {string} An optional unique identifier for the scale */
         this.name = undefined;
+
+        this.#hostView = hostView;
 
         this.#domainAggregator = new DomainPlanner({
             getActiveMembers: () => this.#getActiveMembers(),
@@ -158,7 +164,7 @@ export default class ScaleResolution {
         });
 
         this.#scaleManager = new ScaleInstanceManager({
-            getParamRuntime: () => this.#firstMemberView.paramRuntime,
+            getParamRuntime: () => this.#resolutionView.paramRuntime,
             onRangeChange: () => this.#notifyListeners("range"),
             onDomainChange: () => this.#notifyListeners("domain"),
             getGenomeStore: () => this.#viewContext.genomeStore,
@@ -186,6 +192,10 @@ export default class ScaleResolution {
         return first.view;
     }
 
+    get #resolutionView() {
+        return this.#hostView ?? this.#firstMemberView;
+    }
+
     /**
      * @param {Set<ScaleResolutionMember>} [members]
      */
@@ -210,7 +220,7 @@ export default class ScaleResolution {
     }
 
     get #viewContext() {
-        return this.#firstMemberView.context;
+        return this.#resolutionView.context;
     }
 
     get zoomExtent() {
@@ -645,7 +655,7 @@ export default class ScaleResolution {
                 dataType: this.type,
                 orderedMembers: this.#getOrderedMembers(),
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
-                configScopes: this.#firstMemberView.getConfigScopes(),
+                configScopes: this.#resolutionView.getConfigScopes(),
             });
             this.#validateLinkedSelectionConfiguration(props);
             return props;
@@ -1083,7 +1093,7 @@ export default class ScaleResolution {
             return;
         }
 
-        const root = this.#firstMemberView.getLayoutAncestors().at(-1);
+        const root = this.#resolutionView.getLayoutAncestors().at(-1);
         const persist = root
             ? findIntervalSelectionBindingOwners(
                   root,

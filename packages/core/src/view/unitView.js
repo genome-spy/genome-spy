@@ -404,7 +404,7 @@ export default class UnitView extends View {
                 });
             } else if (type == "scale" && isChannelWithScale(channel)) {
                 if (!view.resolutions[type][targetChannel]) {
-                    const resolution = new ScaleResolution(targetChannel);
+                    const resolution = new ScaleResolution(targetChannel, view);
                     view.resolutions[type][targetChannel] = resolution;
 
                     const updateRangeTexture = (
