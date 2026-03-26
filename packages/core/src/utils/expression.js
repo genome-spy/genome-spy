@@ -128,22 +128,17 @@ function buildFunctions(codegen, context) {
     // Replace the public helper names with custom codegen hooks so we can bind
     // a scale resolution once during compilation instead of looking it up for
     // every datum.
-    fn.scale = (
-        /** @type {any[]} */
-        args
-    ) => buildScaleHelperCall(codegen, context, "scale", args);
-    fn.invert = (
-        /** @type {any[]} */
-        args
-    ) => buildScaleHelperCall(codegen, context, "invert", args);
-    fn.domain = (
-        /** @type {any[]} */
-        args
-    ) => buildScaleHelperCall(codegen, context, "domain", args);
-    fn.range = (
-        /** @type {any[]} */
-        args
-    ) => buildScaleHelperCall(codegen, context, "range", args);
+    for (const kind of /** @type {const} */ ([
+        "scale",
+        "invert",
+        "domain",
+        "range",
+    ])) {
+        fn[kind] = (
+            /** @type {any[]} */
+            args
+        ) => buildScaleHelperCall(codegen, context, kind, args);
+    }
 
     return fn;
 }
