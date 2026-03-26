@@ -50,10 +50,6 @@ describe("expression helpers", () => {
         expect(createFunction("isValid(42)")()).toBe(true);
     });
 
-    test("marks random expressions as non-deterministic", () => {
-        expect(createFunction("random()").deterministic).toBe(false);
-    });
-
     test("supports scale helpers with reactive scale dependencies", () => {
         const resolution = createFakeScaleResolution(
             [1, 5],

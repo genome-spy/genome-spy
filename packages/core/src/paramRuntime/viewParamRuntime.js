@@ -68,7 +68,7 @@ export default class ViewParamRuntime {
 
     /**
      * @param {() => ViewParamRuntime} [parentFinder]
-     * @param {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [scaleResolutionResolver]
+     * @param {(channel: import("../spec/channel.js").ChannelWithScale) => import("../scales/scaleResolution.js").default | undefined} [scaleResolutionResolver]
      *      Optional resolver for scale channels in this runtime's view scope.
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.

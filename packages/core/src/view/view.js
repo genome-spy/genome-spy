@@ -210,7 +210,7 @@ export default class View {
         /** @type {ViewParamRuntime} */
         this.paramRuntime = new ViewParamRuntime(
             () => this.dataParent?.paramRuntime,
-            (channel) => this.getScaleResolution(/** @type {any} */ (channel))
+            (channel) => this.getScaleResolution(channel)
         );
 
         if (spec.params) {
