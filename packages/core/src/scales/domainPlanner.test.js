@@ -55,7 +55,7 @@ function createMember(accessors, collector, contributesToDomain = true) {
  */
 function createPlanner(members, type) {
     return new DomainPlanner({
-        getMembers: () => new Set(members),
+        getActiveMembers: () => new Set(members),
         getType: () => type,
         getLocusExtent: () => [0, 10],
         fromComplexInterval: (interval) => /** @type {number[]} */ (interval),
@@ -181,7 +181,7 @@ describe("DomainPlanner", () => {
     test("configured locus domains use complex conversion", () => {
         const fromComplexInterval = vi.fn(() => [10, 20]);
         const planner = new DomainPlanner({
-            getMembers: () =>
+            getActiveMembers: () =>
                 new Set(
                     /** @type {any} */ ([
                         {
@@ -213,7 +213,7 @@ describe("DomainPlanner", () => {
     test("configured locus domains are cached between calls", () => {
         const fromComplexInterval = vi.fn(() => [10, 20]);
         const planner = new DomainPlanner({
-            getMembers: () =>
+            getActiveMembers: () =>
                 new Set(
                     /** @type {any} */ ([
                         {
@@ -263,7 +263,7 @@ describe("DomainPlanner", () => {
         ]);
 
         const planner = new DomainPlanner({
-            getMembers: () => members,
+            getActiveMembers: () => members,
             getType: () => "locus",
             getLocusExtent: () => [0, 10],
             fromComplexInterval,

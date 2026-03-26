@@ -18,12 +18,44 @@ import {
     isChromosomalLocusInterval,
 } from "../genome/genome.js";
 
+/*
+ * Domain planning decides what domain a shared scale should use before the
+ * scale instance is configured.
+ *
+ * "Planning" means collecting the participating members, separating literal
+ * configured domains from selection-driven domains, validating that the shared
+ * scale is not asked to mix incompatible sources, and producing the final union
+ * that will be applied to the scale.
+ */
+
 /**
  * @typedef {import("../utils/domainArray.js").DomainArray} DomainArray
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ScalarDomain} ScalarDomain
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
+ * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
+ * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
+ * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
+ * @typedef {{
+ *   domains: DomainArray[],
+ *   selectionRef: SelectionDomainLinkInfo | undefined,
+ *   selectionRuntime: any,
+ *   selectionDescription: string | undefined,
+ *   hasLiteralDomain: boolean,
+ * }} ConfiguredDomainResolutionState
+ * @typedef {{
+ *   kind: "literal",
+ *   domain: DomainArray,
+ * } | {
+ *   kind: "selection",
+ *   domain: DomainArray | undefined,
+ *   description: string,
+ *   param: string,
+ *   encoding: "x" | "y",
+ *   hasInitial: boolean,
+ *   runtime: any,
+ * }} ConfiguredDomainMemberResolution
  * @typedef {{
  *   param: string,
  *   encoding: "x" | "y",
@@ -33,22 +65,22 @@ import {
  */
 
 export default class DomainPlanner {
-    /** @type {() => Set<ScaleResolutionMember>} */
-    #getMembers;
+    /** @type {ScaleMembersGetter} */
+    #getActiveMembers;
 
-    /** @type {() => Set<ScaleResolutionMember>} */
+    /** @type {ScaleMembersGetter} */
     #getAllMembers;
 
-    /** @type {() => Set<ScaleResolutionMember>} */
+    /** @type {ScaleMembersGetter} */
     #getDataMembers;
 
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
-    /** @type {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} */
+    /** @type {GetLocusExtent} */
     #getLocusExtent;
 
-    /** @type {(interval: ScalarDomain | ComplexDomain) => number[]} */
+    /** @type {FromComplexInterval} */
     #fromComplexInterval;
 
     /** @type {any[]} */
@@ -67,24 +99,24 @@ export default class DomainPlanner {
 
     /**
      * @param {object} options
-     * @param {() => Set<ScaleResolutionMember>} options.getMembers
-     * @param {() => Set<ScaleResolutionMember>} [options.getAllMembers]
-     * @param {() => Set<ScaleResolutionMember>} [options.getDataMembers]
+     * @param {ScaleMembersGetter} options.getActiveMembers Active shared-scale members used for configured domain planning.
+     * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
+     * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
      * @param {() => import("../spec/channel.js").Type} options.getType
-     * @param {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} options.getLocusExtent
-     * @param {(interval: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
+     * @param {GetLocusExtent} options.getLocusExtent
+     * @param {FromComplexInterval} options.fromComplexInterval
      */
     constructor({
-        getMembers,
+        getActiveMembers,
         getAllMembers,
         getDataMembers,
         getType,
         getLocusExtent,
         fromComplexInterval,
     }) {
-        this.#getMembers = getMembers;
-        this.#getAllMembers = getAllMembers ?? getMembers;
-        this.#getDataMembers = getDataMembers ?? getMembers;
+        this.#getActiveMembers = getActiveMembers;
+        this.#getAllMembers = getAllMembers ?? getActiveMembers;
+        this.#getDataMembers = getDataMembers ?? getActiveMembers;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -194,7 +226,7 @@ export default class DomainPlanner {
         }
 
         const configuredDomain = resolveConfiguredDomain(
-            this.#getMembers(),
+            this.#getActiveMembers(),
             this.#fromComplexInterval,
             includeSelectionInitial
         );
@@ -298,91 +330,142 @@ function resolveConfiguredDomain(
         .filter((member) => member.contributesToDomain)
         .filter((member) => member.channelDef.scale?.domain);
 
-    /** @type {DomainArray[]} */
-    const domains = [];
-
-    /** @type {any} */
-    let selectionRefRuntime = undefined;
-    /** @type {string | undefined} */
-    let selectionRefDescription = undefined;
-    /** @type {SelectionDomainLinkInfo | undefined} */
-    let selectionRef = undefined;
-    let hasLiteralDomain = false;
+    /** @type {ConfiguredDomainResolutionState} */
+    const state = {
+        domains: [],
+        selectionRef: undefined,
+        selectionRuntime: undefined,
+        selectionDescription: undefined,
+        hasLiteralDomain: false,
+    };
 
     for (const member of domainMembers) {
-        const domainDef = member.channelDef.scale.domain;
-        if (isSelectionDomainRef(domainDef)) {
-            if (hasLiteralDomain) {
-                throw new Error(
-                    "Cannot mix selection-driven and literal configured domains on a shared scale."
-                );
-            }
+        const resolved = resolveConfiguredDomainMember(
+            member,
+            fromComplexInterval,
+            includeSelectionInitial
+        );
 
-            const resolved = resolveSelectionDomain(
+        if (resolved.kind === "selection") {
+            mergeSelectionConfiguredDomain(state, resolved);
+            continue;
+        }
+
+        mergeLiteralConfiguredDomain(state, resolved);
+    }
+
+    return finishConfiguredDomainResolution(state);
+}
+
+/**
+ * @param {ScaleResolutionMember} member
+ * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
+ * @param {boolean} includeSelectionInitial
+ * @returns {ConfiguredDomainMemberResolution}
+ */
+function resolveConfiguredDomainMember(
+    member,
+    fromComplexInterval,
+    includeSelectionInitial
+) {
+    const domainDef = member.channelDef.scale.domain;
+    if (isSelectionDomainRef(domainDef)) {
+        return {
+            kind: "selection",
+            ...resolveSelectionDomain(
                 member,
                 domainDef,
                 fromComplexInterval,
                 includeSelectionInitial
-            );
-
-            if (
-                selectionRef &&
-                (selectionRef.runtime !== resolved.runtime ||
-                    selectionRef.param !== resolved.param ||
-                    selectionRef.encoding !== resolved.encoding)
-            ) {
-                throw new Error(
-                    "Conflicting selection domain references on a shared scale: " +
-                        selectionRefDescription +
-                        " vs " +
-                        resolved.description +
-                        "."
-                );
-            }
-
-            selectionRefRuntime = resolved.runtime;
-            selectionRefDescription = resolved.description;
-            selectionRef = {
-                param: resolved.param,
-                encoding: resolved.encoding,
-                hasInitial:
-                    (selectionRef?.hasInitial ?? false) || resolved.hasInitial,
-                runtime: resolved.runtime,
-            };
-
-            if (resolved.domain) {
-                domains.push(resolved.domain);
-            }
-            continue;
-        }
-
-        if (selectionRefRuntime) {
-            throw new Error(
-                "Cannot mix literal configured domains with selection-driven domains on a shared scale."
-            );
-        }
-
-        hasLiteralDomain = true;
-        domains.push(
-            resolveConfiguredIntervalDomain(
-                member.channelDef.type,
-                domainDef,
-                fromComplexInterval
-            )
-        );
-    }
-
-    if (domains.length > 0) {
-        return {
-            domain: domains.reduce((acc, curr) => acc.extendAll(curr)),
-            selectionRef,
+            ),
         };
     }
 
-    if (selectionRefRuntime) {
+    return {
+        kind: "literal",
+        domain: resolveConfiguredIntervalDomain(
+            member.channelDef.type,
+            domainDef,
+            fromComplexInterval
+        ),
+    };
+}
+
+/**
+ * @param {ConfiguredDomainResolutionState} state
+ * @param {Extract<ConfiguredDomainMemberResolution, { kind: "selection" }>} resolved
+ */
+function mergeSelectionConfiguredDomain(state, resolved) {
+    if (state.hasLiteralDomain) {
+        throw new Error(
+            "Cannot mix selection-driven and literal configured domains on a shared scale."
+        );
+    }
+
+    if (
+        state.selectionRef &&
+        (state.selectionRef.runtime !== resolved.runtime ||
+            state.selectionRef.param !== resolved.param ||
+            state.selectionRef.encoding !== resolved.encoding)
+    ) {
+        throw new Error(
+            "Conflicting selection domain references on a shared scale: " +
+                state.selectionDescription +
+                " vs " +
+                resolved.description +
+                "."
+        );
+    }
+
+    state.selectionRuntime = resolved.runtime;
+    state.selectionDescription = resolved.description;
+    state.selectionRef = {
+        param: resolved.param,
+        encoding: resolved.encoding,
+        hasInitial:
+            (state.selectionRef?.hasInitial ?? false) || resolved.hasInitial,
+        runtime: resolved.runtime,
+    };
+
+    if (resolved.domain) {
+        state.domains.push(resolved.domain);
+    }
+}
+
+/**
+ * @param {ConfiguredDomainResolutionState} state
+ * @param {Extract<ConfiguredDomainMemberResolution, { kind: "literal" }>} resolved
+ */
+function mergeLiteralConfiguredDomain(state, resolved) {
+    if (state.selectionRuntime) {
+        throw new Error(
+            "Cannot mix literal configured domains with selection-driven domains on a shared scale."
+        );
+    }
+
+    state.hasLiteralDomain = true;
+    state.domains.push(resolved.domain);
+}
+
+/**
+ * @param {ConfiguredDomainResolutionState} state
+ * @returns {{
+ *   domain: DomainArray | undefined,
+ *   selectionRef: SelectionDomainLinkInfo | undefined,
+ * }}
+ */
+function finishConfiguredDomainResolution(state) {
+    if (state.domains.length > 0) {
+        return {
+            domain: state.domains.reduce((acc, curr) => acc.extendAll(curr)),
+            selectionRef: state.selectionRef,
+        };
+    }
+
+    if (state.selectionRuntime) {
         // Selection refs are still the source of truth even when the
         // selection interval currently resolves to no domain.
-        return { domain: undefined, selectionRef };
+        return { domain: undefined, selectionRef: state.selectionRef };
     }
 
     return { domain: undefined, selectionRef: undefined };

@@ -148,7 +148,7 @@ export default class ScaleResolution {
         this.name = undefined;
 
         this.#domainAggregator = new DomainPlanner({
-            getMembers: () => this.#getActiveMembers(),
+            getActiveMembers: () => this.#getActiveMembers(),
             getAllMembers: () => this.#members,
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
