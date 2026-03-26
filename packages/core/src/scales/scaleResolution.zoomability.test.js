@@ -94,17 +94,24 @@ describe("scale resolution zoomability", () => {
         expect(orderSpy).toHaveBeenCalledTimes(1);
     });
 
-    test("binds range expressions through the host view param runtime", () => {
+    test("binds range expressions through the contributing member view", () => {
         const hostView = createHostView({ foo: 10 });
         const resolution = new ScaleResolution("shape", hostView);
+        const memberRuntime = new ViewParamRuntime(() => hostView.paramRuntime);
+        memberRuntime.registerParam({ name: "bar", value: 2 });
 
         resolution.registerMember(
             /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
                 channel: "shape",
                 view: /** @type {any} */ ({
+                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+                    getConfigScopes() {
+                        return [];
+                    },
                     getPathString: () => "root/a",
                     isConfiguredVisible: () => true,
                     isDataInitialized: () => true,
+                    paramRuntime: memberRuntime,
                 }),
                 channelDef: {
                     field: "value",
@@ -118,17 +125,22 @@ describe("scale resolution zoomability", () => {
             /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
                 channel: "shape",
                 view: /** @type {any} */ ({
+                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+                    getConfigScopes() {
+                        return [];
+                    },
                     getPathString: () => "root/b",
                     isConfiguredVisible: () => true,
                     isDataInitialized: () => true,
+                    paramRuntime: memberRuntime,
                 }),
                 channelDef: {
                     type: "nominal",
                     scale: {
                         domain: [0, 1],
                         range: [
-                            { expr: "'c' + foo" },
-                            { expr: "'c' + (foo + 1)" },
+                            { expr: "'c' + (foo + bar)" },
+                            { expr: "'c' + (foo + bar + 1)" },
                         ],
                     },
                 },
@@ -136,6 +148,6 @@ describe("scale resolution zoomability", () => {
             })
         );
 
-        expect(resolution.getScale().range()).toEqual(["c10", "c11"]);
+        expect(resolution.getScale().range()).toEqual(["c12", "c13"]);
     });
 });
