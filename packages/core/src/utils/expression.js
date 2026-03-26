@@ -213,20 +213,48 @@ function getLiteralString(node) {
  * @returns {(...args: any[]) => any}
  */
 function createScaleHelperFunction(kind, resolution) {
+    /** @type {(fn: () => any) => any} */
+    const run = (fn) => runWithActiveScaleResolution(resolution, kind, fn);
+
     if (kind === "domain") {
-        return () => resolution.getDomain();
+        return () => run(() => resolution.getDomain());
     }
     if (kind === "range") {
-        return () => resolution.getScale().range();
+        return () => run(() => resolution.getScale().range());
     }
     if (kind === "scale") {
-        return (value) => resolution.getScale()(value);
+        return (value) => run(() => resolution.getScale()(value));
     }
     if (kind === "invert") {
         return (value) =>
-            /** @type {any} */ (resolution.getScale()).invert(value);
+            run(() => /** @type {any} */ (resolution.getScale()).invert(value));
     }
     throw new Error("Unknown scale helper: " + kind);
+}
+
+/** @type {WeakSet<object>} */
+const activeScaleHelperResolutions = new WeakSet();
+
+/**
+ * @template T
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {() => T} fn
+ * @returns {T}
+ */
+function runWithActiveScaleResolution(resolution, kind, fn) {
+    if (activeScaleHelperResolutions.has(resolution)) {
+        throw new Error(
+            `Scale helper cycle detected while evaluating ${kind}("${resolution.channel}").`
+        );
+    }
+
+    activeScaleHelperResolutions.add(resolution);
+    try {
+        return fn();
+    } finally {
+        activeScaleHelperResolutions.delete(resolution);
+    }
 }
 
 /**

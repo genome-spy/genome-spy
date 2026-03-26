@@ -392,9 +392,15 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
-        return this.#domainAggregator.hasConfiguredDomain({
-            includeSelectionInitial: this.#shouldIncludeSelectionInitial(),
-        });
+        for (const member of this.#members) {
+            if (
+                member.contributesToDomain &&
+                member.channelDef.scale?.domain !== undefined
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

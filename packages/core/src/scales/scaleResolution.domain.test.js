@@ -104,6 +104,31 @@ describe("Scale resolution domain handling", () => {
         expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
     });
 
+    test("Scale domain cycles fail fast", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            scale: {
+                                domain: {
+                                    expr: "domain('x')",
+                                },
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            /Scale helper cycle detected while evaluating domain\("x"\)\./
+        );
+    });
+
     test("Scales are shared and extracted domains merged properly", async () => {
         const view = await initView(
             {
