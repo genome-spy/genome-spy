@@ -6,6 +6,7 @@ import Collector from "../data/collector.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import View from "../view/view.js";
 import * as resolutionMemberOrder from "./resolutionMemberOrder.js";
+import * as scalePropsResolver from "./scalePropsResolver.js";
 import ScaleResolution from "./scaleResolution.js";
 
 describe("Interactive updates keep scale-resolution work bounded", () => {
@@ -22,6 +23,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             resolutionMemberOrder,
             "orderResolutionMembers"
         );
+        const propsSpy = vi.spyOn(scalePropsResolver, "resolveScalePropsBase");
         const getDomainSpy = vi.spyOn(Collector.prototype, "getDomain");
 
         try {
@@ -29,10 +31,12 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
 
             expect(pathSpy).toHaveBeenCalled();
             expect(orderSpy).toHaveBeenCalled();
+            expect(propsSpy).toHaveBeenCalled();
             expect(getDomainSpy).toHaveBeenCalled();
         } finally {
             pathSpy.mockRestore();
             orderSpy.mockRestore();
+            propsSpy.mockRestore();
             getDomainSpy.mockRestore();
         }
     });
@@ -82,7 +86,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         }
     });
 
-    test("named dataset refresh recomputes data domains without re-running path sorting", async () => {
+    test("named dataset refresh recomputes data domains without re-resolving scale props", async () => {
         const spec = createTrimmedAscatSpec();
 
         const pathSpy = vi.spyOn(View.prototype, "getPathString");
@@ -90,6 +94,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             resolutionMemberOrder,
             "orderResolutionMembers"
         );
+        const propsSpy = vi.spyOn(scalePropsResolver, "resolveScalePropsBase");
         const getDomainSpy = vi.spyOn(Collector.prototype, "getDomain");
         const reconfigureSpy = vi.spyOn(
             ScaleResolution.prototype,
@@ -108,6 +113,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             // Ignore initialization. We want to observe the incremental refresh.
             pathSpy.mockClear();
             orderSpy.mockClear();
+            propsSpy.mockClear();
             getDomainSpy.mockClear();
             reconfigureSpy.mockClear();
 
@@ -116,10 +122,12 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             expect(reconfigureSpy).toHaveBeenCalled();
             expect(getDomainSpy).toHaveBeenCalled();
             expect(orderSpy).not.toHaveBeenCalled();
+            expect(propsSpy).not.toHaveBeenCalled();
             expect(pathSpy).not.toHaveBeenCalled();
         } finally {
             pathSpy.mockRestore();
             orderSpy.mockRestore();
+            propsSpy.mockRestore();
             getDomainSpy.mockRestore();
             reconfigureSpy.mockRestore();
         }

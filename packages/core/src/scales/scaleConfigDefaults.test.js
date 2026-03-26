@@ -24,7 +24,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "nominal",
-            members: new Set([createMember()]),
+            orderedMembers: [createMember()],
             isExplicitDomain: false,
             configScopes: [INTERNAL_DEFAULT_CONFIG],
         });
@@ -36,7 +36,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "nominal",
-            members: new Set([createMember()]),
+            orderedMembers: [createMember()],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -55,7 +55,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "shape",
             dataType: "nominal",
-            members: new Set([createMember()]),
+            orderedMembers: [createMember()],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -74,11 +74,11 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "nominal",
-            members: new Set([
+            orderedMembers: [
                 createMember("color", {
                     scheme: "viridis",
                 }),
-            ]),
+            ],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -97,7 +97,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "x",
             dataType: "index",
-            members: new Set([createMember()]),
+            orderedMembers: [createMember()],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -116,7 +116,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "opacity",
             dataType: "quantitative",
-            members: new Set([createMember()]),
+            orderedMembers: [createMember()],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -135,7 +135,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "y",
             dataType: "nominal",
-            members: new Set([createMember("y")]),
+            orderedMembers: [createMember("y")],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -154,11 +154,11 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "x",
             dataType: "quantitative",
-            members: new Set([
+            orderedMembers: [
                 createMember("x", {
                     range: [10, 20],
                 }),
-            ]),
+            ],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -177,7 +177,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
-            members: new Set([createMember("color", undefined, "rect")]),
+            orderedMembers: [createMember("color", undefined, "rect")],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -200,7 +200,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
-            members: new Set([createMember("color", undefined, "point")]),
+            orderedMembers: [createMember("color", undefined, "point")],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -223,7 +223,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
-            members: new Set([createMember("color", undefined, "rect")]),
+            orderedMembers: [createMember("color", undefined, "rect")],
             isExplicitDomain: false,
             configScopes: [
                 {
@@ -241,7 +241,7 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
-            members: new Set([
+            orderedMembers: [
                 createMember(
                     "color",
                     /** @type {import("../spec/scale.js").Scale} */ ({
@@ -249,7 +249,7 @@ describe("scale config defaults", () => {
                     }),
                     "rect"
                 ),
-            ]),
+            ],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -271,12 +271,12 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "color",
             dataType: "quantitative",
-            members: new Set([
+            orderedMembers: [
                 createMember("color", {
                     range: "heatmap",
                     scheme: "inferno",
                 }),
-            ]),
+            ],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -296,11 +296,11 @@ describe("scale config defaults", () => {
         const props = resolveScalePropsBase({
             channel: "shape",
             dataType: "nominal",
-            members: new Set([
+            orderedMembers: [
                 createMember("shape", {
                     range: "shape",
                 }),
-            ]),
+            ],
             isExplicitDomain: false,
             configScopes: [
                 INTERNAL_DEFAULT_CONFIG,
@@ -320,11 +320,11 @@ describe("scale config defaults", () => {
             resolveScalePropsBase({
                 channel: "color",
                 dataType: "quantitative",
-                members: new Set([
+                orderedMembers: [
                     createMember("color", {
                         range: "no-such-range",
                     }),
-                ]),
+                ],
                 isExplicitDomain: false,
                 configScopes: [INTERNAL_DEFAULT_CONFIG],
             })

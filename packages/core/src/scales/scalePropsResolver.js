@@ -10,7 +10,6 @@ import {
 } from "../config/scaleConfig.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
-import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 
 /**
  * @typedef {import("../spec/channel.js").Channel} Channel
@@ -22,8 +21,7 @@ import { orderResolutionMembers } from "./resolutionMemberOrder.js";
  * @param {object} options
  * @param {Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
- * @param {Set<ScaleResolutionMember>} options.members
- * @param {ScaleResolutionMember[]} [options.orderedMembers]
+ * @param {ScaleResolutionMember[]} options.orderedMembers
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
@@ -31,12 +29,11 @@ import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 export function resolveScalePropsBase({
     channel,
     dataType,
-    members,
     orderedMembers,
     isExplicitDomain,
     configScopes,
 }) {
-    const memberList = orderedMembers ?? orderResolutionMembers(members);
+    const memberList = orderedMembers;
 
     const markTypes = memberList
         .map((member) =>

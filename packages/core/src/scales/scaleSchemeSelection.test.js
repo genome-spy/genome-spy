@@ -9,14 +9,14 @@ function resolveColorScale(type) {
     return resolveScalePropsBase({
         channel: "color",
         dataType: type,
-        members: new Set([
+        orderedMembers: [
             /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
                 channel: "color",
                 view: /** @type {any} */ ({}),
                 channelDef: {},
                 contributesToDomain: true,
             }),
-        ]),
+        ],
         isExplicitDomain: false,
         configScopes: [
             INTERNAL_DEFAULT_CONFIG,

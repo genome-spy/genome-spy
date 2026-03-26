@@ -643,7 +643,6 @@ export default class ScaleResolution {
             const props = resolveScalePropsBase({
                 channel: this.channel,
                 dataType: this.type,
-                members: this.#members,
                 orderedMembers: this.#getOrderedMembers(),
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#firstMemberView.getConfigScopes(),
@@ -860,7 +859,6 @@ export default class ScaleResolution {
      */
     reconfigureDomain() {
         this.#withSelectionReverseSyncSuppressed(() => {
-            this.#invalidateMergedScaleProps();
             const state = this.#computeScaleState(true, true);
             if (!state) {
                 return;

@@ -111,7 +111,7 @@ describe("deterministic shared resolution merges", () => {
             resolveScalePropsBase({
                 channel: "color",
                 dataType: "nominal",
-                members: new Set(members),
+                orderedMembers: members,
                 isExplicitDomain: false,
                 configScopes: [INTERNAL_DEFAULT_CONFIG],
             });
