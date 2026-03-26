@@ -179,10 +179,13 @@ export default class DomainPlanner {
      * @returns {any[]}
      */
     getDefaultDomain(extractDataDomain = false, locusAssembly) {
+        const type = this.#getType();
         return resolveDefaultDomain(
-            this.#getType(),
+            type,
             this.#getLocusExtent,
-            extractDataDomain ? this.getDataDomain() : undefined,
+            extractDataDomain && type !== LOCUS
+                ? this.getDataDomain()
+                : undefined,
             locusAssembly
         );
     }

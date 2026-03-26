@@ -178,6 +178,16 @@ describe("DomainPlanner", () => {
         expect(planner.getConfiguredOrDefaultDomain()).toEqual([0, 10]);
     });
 
+    test("locus default domain does not extract data", () => {
+        const planner = createPlanner([], "locus");
+        const dataSpy = vi.spyOn(planner, "getDataDomain");
+
+        expect(planner.getDefaultDomain(true)).toEqual([0, 10]);
+        expect(dataSpy).not.toHaveBeenCalled();
+
+        dataSpy.mockRestore();
+    });
+
     test("configured locus domains use complex conversion", () => {
         const fromComplexInterval = vi.fn(() => [10, 20]);
         const planner = new DomainPlanner({
