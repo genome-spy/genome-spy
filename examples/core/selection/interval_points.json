@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "2D scatter plot with normally distributed random data and a 1:1 aspect-coupled x scale",
+  "description": "2D scatter plot with normally distributed random data",
 
   "params": [
     {
@@ -47,11 +47,7 @@
     "x": {
       "field": "x",
       "type": "quantitative",
-      "scale": {
-        "domain": {
-          "expr": "[center(domain('y')) - span(domain('y')) * width / height / 2, center(domain('y')) + span(domain('y')) * width / height / 2]"
-        }
-      }
+      "scale": { "zoom": true }
     },
     "y": {
       "field": "y",
