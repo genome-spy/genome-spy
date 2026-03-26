@@ -145,6 +145,67 @@ describe("Scale resolution domain handling", () => {
         expect(r(xResolution.getDomain())).toEqual([-4, 4]);
     });
 
+    test("zoomLevel is available while scale domains are compiled", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: {
+                                expr: "[10 / zoomLevel, 50]",
+                            },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(r(getRequiredScaleResolution(view, "y").getDomain())).toEqual([
+            10, 50,
+        ]);
+    });
+
+    test("zoomLevel reacts to scale zoom changes", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 1 },
+                        { x: 10, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "x");
+        const zoomLevel = view.paramRuntime.createExpression("zoomLevel");
+
+        expect(zoomLevel()).toBe(1);
+
+        resolution.getScale().domain([2, 6]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(zoomLevel()).toBeGreaterThan(1);
+    });
+
     test("Scale domain cycles fail fast", async () => {
         await expect(
             initView(

@@ -96,12 +96,12 @@ export default class UnitView extends View {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
-        this.resolve();
-
         this.#zoomLevelSetter = this.paramRuntime.allocateSetter(
             "zoomLevel",
             1.0
         );
+
+        this.resolve();
 
         for (const channel of /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
             "x",
