@@ -1176,6 +1176,8 @@ export default class ScaleResolution {
                 `Scale resolution for channel "${this.channel}" cannot read its own domain while its domain is being resolved.`
             );
         }
+        // The underlying scale getter returns a fresh array. Treat this as a
+        // read-only snapshot rather than a mutable backing store.
         return this.getScale().domain();
     }
 

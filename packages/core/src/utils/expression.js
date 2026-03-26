@@ -224,9 +224,14 @@ function createScaleHelperFunction(kind, resolution) {
     const run = (fn) => runWithActiveScaleResolution(resolution, kind, fn);
 
     if (kind === "domain") {
+        // `vega-scale` returns a fresh array here. That is fine for
+        // batch-invariant expressions, but callers should avoid using it in a
+        // per-datum hot path unless they really need the full extent array.
         return () => run(() => resolution.getDomain());
     }
     if (kind === "range") {
+        // Same allocation caveat as `domain()`: the underlying scale getter
+        // returns a copied array, so repeated per-row calls will allocate.
         return () => run(() => resolution.getScale().range());
     }
     if (kind === "scale") {
