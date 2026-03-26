@@ -132,21 +132,34 @@ const getResolutionMember = (view, type, channel, channelDef) => {
 
 /**
  * @param {import("./unitView.js").default} view
- * @returns {ResolutionMember[]}
+ * @param {(channel: import("../spec/channel.js").Channel, channelDef: unknown) => void} callback
  */
-const collectAxisResolutionMembers = (view) => {
-    /** @type {ResolutionMember[]} */
-    const axisMembers = [];
+const forEachEncodedChannel = (view, callback) => {
     for (const [channel, channelDef] of Object.entries(view.mark.encoding)) {
         if (!channelDef || Array.isArray(channelDef)) {
             continue;
         }
 
+        callback(
+            /** @type {import("../spec/channel.js").Channel} */ (channel),
+            channelDef
+        );
+    }
+};
+
+/**
+ * @param {import("./unitView.js").default} view
+ * @returns {ResolutionMember[]}
+ */
+const collectAxisResolutionMembers = (view) => {
+    /** @type {ResolutionMember[]} */
+    const axisMembers = [];
+    forEachEncodedChannel(view, (channel, channelDef) => {
         const member = getResolutionMember(view, "axis", channel, channelDef);
         if (member && isPositionalChannel(member.channel)) {
             axisMembers.push(member);
         }
-    }
+    });
 
     return axisMembers;
 };
@@ -159,14 +172,10 @@ const collectScaleResolutionMembers = (view) => {
     /** @type {ScaleResolutionMemberMap} */
     const scaleMembersByResolution = new Map();
 
-    for (const [channel, channelDef] of Object.entries(view.mark.encoding)) {
-        if (!channelDef || Array.isArray(channelDef)) {
-            continue;
-        }
-
+    forEachEncodedChannel(view, (channel, channelDef) => {
         const member = getResolutionMember(view, "scale", channel, channelDef);
         if (!member) {
-            continue;
+            return;
         }
 
         const resolution = ensureScaleResolution(
@@ -180,7 +189,7 @@ const collectScaleResolutionMembers = (view) => {
         } else {
             scaleMembersByResolution.set(resolution, [member]);
         }
-    }
+    });
 
     return scaleMembersByResolution;
 };
