@@ -113,6 +113,9 @@ function buildFunctions(codegen, context) {
         fn[name] = `this.${name}`;
     }
 
+    // Replace the public helper names with custom codegen hooks so we can bind
+    // a scale resolution once during compilation instead of looking it up for
+    // every datum.
     fn.scale = (
         /** @type {any[]} */
         args
@@ -266,6 +269,10 @@ function createScaleDependency(kind, channel, resolution, codeName) {
     };
 
     return {
+        // The dependency is a lightweight invalidation token. It does not need
+        // to expose a separate scale value; the bound helper closure already
+        // closes over the actual resolution. The ref exists so the expression
+        // graph can subscribe to scale changes like any other reactive input.
         id: `scale:${channel}:${codeName}`,
         name: `scale(${channel})`,
         kind: "derived",
@@ -298,22 +305,32 @@ function createScaleDependency(kind, channel, resolution, codeName) {
  */
 export default function createFunction(expr, globalObject = {}, context = {}) {
     try {
+        // Each scale helper call is rewritten once at compile time into a
+        // cached closure that targets a specific scale resolution.
         /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
         const scaleDependenciesByChannel = new Map();
+        // A helper may appear multiple times in one expression. Cache both the
+        // generated closure and the synthetic dependency ref so repeated calls
+        // share the same reactive identity.
         /** @type {Map<string, { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }>} */
         const helperEntries = new Map();
         let nextScaleHelperId = 1;
 
-        /** @type {ExpressionCompileContext & {
+        /**
+         * @type {ExpressionCompileContext & {
          *   globalvar: string,
          *   globalObject: Record<string, any>,
          *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
-         * }} */
+         * }}
+         */
         const helperContext = {
             ...context,
             globalvar: "globalObject",
             globalObject,
             getScaleHelper(kind, channel, resolution) {
+                // Helper instances are keyed by helper kind + channel so
+                // `domain("x")` and `scale("x", ...)` share the same
+                // resolution binding but keep separate generated closures.
                 const key = kind + ":" + channel;
                 const cached = helperEntries.get(key);
                 if (cached) {
@@ -334,6 +351,8 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                 const codeName = "__scale_helper_" + nextScaleHelperId++;
                 const entry = { codeName, dependency };
                 helperEntries.set(key, entry);
+                // Store the concrete helper implementation on the global object
+                // used by the generated expression function.
                 globalObject[codeName] = createScaleHelperFunction(
                     kind,
                     resolution
@@ -372,6 +391,9 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
+        // Reactive bookkeeping lives outside the generated expression body.
+        // The expression runtime subscribes to these refs and invalidates the
+        // compiled expression when the referenced scale changes.
         exprFunction.scaleDependencies = Array.from(
             scaleDependenciesByChannel.values()
         );
