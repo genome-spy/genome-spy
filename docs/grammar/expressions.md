@@ -151,6 +151,36 @@ package.
 [`regexp`](https://vega.github.io/vega/docs/expressions/#regexp),
 [`test`](https://vega.github.io/vega/docs/expressions/#test)
 
+### Scale Functions
+
+These helpers are analogous to Vega's scale helper functions, but GenomeSpy
+resolves scales by channel instead of by named scale.
+
+<a name="scale" href="#scale">#</a>
+<b>scale</b>(<i>channel</i>, <i>value</i>)<br/>
+Maps a value through the scale for the given channel, such as `"x"`, `"y"`,
+`"color"`, or `"size"`. The channel is resolved against the current view's
+scale resolution.
+
+<a name="invert" href="#invert">#</a>
+<b>invert</b>(<i>channel</i>, <i>range</i>)<br/>
+Maps a range value back through the scale for the given channel. The channel
+is resolved against the current view's scale resolution.
+
+<a name="domain" href="#domain">#</a>
+<b>domain</b>(<i>channel</i>)<br/>
+Returns the current domain of the scale for the given channel. The channel is
+resolved against the current view's scale resolution.
+
+<a name="range" href="#range">#</a>
+<b>range</b>(<i>channel</i>)<br/>
+Returns the current range of the scale for the given channel. The channel is
+resolved against the current view's scale resolution.
+
+These helpers are available in `formula` and `filter` transforms, in dynamic
+expression properties, and in scale `ExprRef` properties. They are reactive:
+when the referenced scale changes, dependent expressions update.
+
 ### Other functions
 
 <a name="mapHasKey" href="#mapHasKey">#</a>
