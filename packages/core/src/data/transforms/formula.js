@@ -45,7 +45,8 @@ export default class FormulaTransform extends Transform {
 
         // Expressions without datum field dependencies can be reused across
         // every row until one of their reactive inputs changes.
-        this.constantExpression = this.fn.fields.length === 0;
+        this.constantExpression =
+            this.fn.fields.length === 0 && this.fn.deterministic !== false;
         if (this.constantExpression) {
             this.constantValue = this.fn(null);
         }

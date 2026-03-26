@@ -142,6 +142,7 @@ function buildFunctions(codegen, context) {
  * @prop { string[] } globals
  * @prop { string } code
  * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
+ * @prop { boolean } [deterministic]
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
@@ -205,6 +206,44 @@ function getLiteralString(node) {
     return node?.type === "Literal" && typeof node.value === "string"
         ? node.value
         : undefined;
+}
+
+/**
+ * Expressions that call `random()` are not deterministic and must never be
+ * hoisted into a cached constant result.
+ *
+ * @param {any} node
+ * @returns {boolean}
+ */
+function expressionContainsRandom(node) {
+    if (node == null || typeof node != "object") {
+        return false;
+    }
+
+    if (Array.isArray(node)) {
+        for (const item of node) {
+            if (expressionContainsRandom(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (
+        node.type === "CallExpression" &&
+        node.callee?.type === "Identifier" &&
+        node.callee.name === "random"
+    ) {
+        return true;
+    }
+
+    for (const value of Object.values(node)) {
+        if (expressionContainsRandom(value)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -419,6 +458,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
+        exprFunction.deterministic = !expressionContainsRandom(parsed);
         // Reactive bookkeeping lives outside the generated expression body.
         // The expression runtime subscribes to these refs and invalidates the
         // compiled expression when the referenced scale changes.

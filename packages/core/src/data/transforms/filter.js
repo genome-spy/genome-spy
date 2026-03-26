@@ -56,7 +56,9 @@ export default class FilterTransform extends Transform {
         );
 
         // Datum-invariant predicates can be cached until a reactive input changes.
-        this.constantExpression = this.predicate.fields.length === 0;
+        this.constantExpression =
+            this.predicate.fields.length === 0 &&
+            this.predicate.deterministic !== false;
         if (this.constantExpression) {
             this.constantPredicate = !!this.predicate(null);
         }

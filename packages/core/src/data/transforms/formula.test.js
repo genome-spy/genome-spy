@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import Collector from "../collector.js";
 import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
 import FormulaTransform from "./formula.js";
@@ -61,6 +61,30 @@ test("FormulaTransform caches datum-invariant scale expressions", () => {
         { a: 2, b: 12 },
         { a: 3, b: 12 },
     ]);
+});
+
+test("FormulaTransform does not cache random expressions", () => {
+    const randomSpy = vi.spyOn(Math, "random");
+    randomSpy.mockImplementation(() => {
+        const value = [0.1, 0.9][randomSpy.mock.calls.length - 1];
+        return value ?? 0.5;
+    });
+
+    try {
+        const t = new FormulaTransform(
+            {
+                type: "formula",
+                expr: "random()",
+                as: "u",
+            },
+            makeParamRuntimeProvider()
+        );
+        t.initialize();
+
+        expect(processData(t, [{}, {}])).toEqual([{ u: 0.1 }, { u: 0.9 }]);
+    } finally {
+        randomSpy.mockRestore();
+    }
 });
 
 /**

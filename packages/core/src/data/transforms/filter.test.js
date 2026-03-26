@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import Collector from "../collector.js";
 import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
 import FilterTransform from "./filter.js";
@@ -49,6 +49,29 @@ test("FilterTransform caches datum-invariant scale expressions", () => {
     resolution.setDomain([0, 4]);
 
     expect([...sink.getData()]).toEqual([]);
+});
+
+test("FilterTransform does not cache random expressions", () => {
+    const randomSpy = vi.spyOn(Math, "random");
+    randomSpy.mockImplementation(() => {
+        const value = [0.2, 0.8][randomSpy.mock.calls.length - 1];
+        return value ?? 0.5;
+    });
+
+    try {
+        const t = new FilterTransform(
+            {
+                type: "filter",
+                expr: "random() > 0.5",
+            },
+            makeParamRuntimeProvider()
+        );
+        t.initialize();
+
+        expect(processData(t, [{}, {}])).toEqual([{}]);
+    } finally {
+        randomSpy.mockRestore();
+    }
 });
 
 /**
