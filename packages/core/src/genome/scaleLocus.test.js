@@ -86,4 +86,34 @@ describe("scaleLocus ticks", () => {
 
         expect(scale.tickFormat(7)(tick)).toContain("M");
     });
+
+    test("keeps exact locus ticks stable around five-base spans", () => {
+        const stable = createScale(2_000_000, [1_000_000.2, 1_000_005.2]);
+        const slightlyZoomed = createScale(
+            2_000_000,
+            [1_000_000.2, 1_000_005.21]
+        );
+        const furtherZoomed = createScale(
+            2_000_000,
+            [1_000_000.2, 1_000_006.1]
+        );
+
+        expect(slightlyZoomed.ticks(10)).toEqual(stable.ticks(10));
+        expect(furtherZoomed.ticks(10)).toEqual(stable.ticks(10));
+    });
+
+    test("keeps exact locus ticks stable around two-base spans", () => {
+        const stable = createScale(20_000_000, [16_814_352, 16_814_354]);
+        const slightlyZoomed = createScale(
+            20_000_000,
+            [16_814_352, 16_814_354.01]
+        );
+        const furtherZoomed = createScale(
+            20_000_000,
+            [16_814_352, 16_814_354.9]
+        );
+
+        expect(slightlyZoomed.ticks(10)).toEqual(stable.ticks(10));
+        expect(furtherZoomed.ticks(10)).toEqual(stable.ticks(10));
+    });
 });

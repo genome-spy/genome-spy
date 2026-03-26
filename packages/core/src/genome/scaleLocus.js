@@ -5,6 +5,7 @@ import scaleIndex from "./scaleIndex.js";
 import { isChromosomalLocus, isChromosomalLocusInterval } from "./genome.js";
 
 const EXACT_LOCUS_LABEL_STEP_THRESHOLD = 1e6;
+const EXACT_LOCUS_LABEL_THINNING_FACTOR = 0.65;
 
 export default function scaleLocus() {
     /** @type {import("./scaleLocus.js").ScaleLocus} */
@@ -39,13 +40,17 @@ export default function scaleLocus() {
 
         const requestedCount = Math.max(
             1,
-            Math.min(count ?? 10, Math.ceil(domainSpan))
+            Math.min(count ?? 10, Math.floor(domainSpan))
         );
 
         let step = tickStep(domain[0], domain[1], requestedCount);
 
         if (step < EXACT_LOCUS_LABEL_STEP_THRESHOLD) {
-            step = tickStep(domain[0], domain[1], requestedCount * 0.65);
+            step = tickStep(
+                domain[0],
+                domain[1],
+                requestedCount * EXACT_LOCUS_LABEL_THINNING_FACTOR
+            );
         }
 
         step = Math.max(1, step);
@@ -89,7 +94,7 @@ export default function scaleLocus() {
         const step = tickStep(
             domain[0],
             domain[1],
-            Math.max(1, Math.min(count ?? 10, Math.ceil(domainSpan)))
+            Math.max(1, Math.min(count ?? 10, Math.floor(domainSpan)))
         );
         // Use higher display precision for smaller spans
         // TODO: max absolute value should be taken into account too. 2.00M vs 200M
