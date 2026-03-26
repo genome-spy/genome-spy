@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import AxisResolution from "./axisResolution.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 
@@ -111,7 +112,10 @@ describe("deterministic shared resolution merges", () => {
             resolveScalePropsBase({
                 channel: "color",
                 dataType: "nominal",
-                orderedMembers: members,
+                // `resolveScalePropsBase()` now expects the caller to provide the
+                // canonical member order, which production gets from
+                // ScaleResolution before merging scale props.
+                orderedMembers: orderResolutionMembers(new Set(members)),
                 isExplicitDomain: false,
                 configScopes: [INTERNAL_DEFAULT_CONFIG],
             });
