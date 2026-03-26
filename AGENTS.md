@@ -24,10 +24,12 @@ aware interactions.
 - TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
 - When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
 - Keep docs focused on user-visible behavior and semantics; avoid implementation details unless they are necessary for correct usage
-- Prefer concise, direct wording in docs
+- Prefer concise, direct wording in docs and JSDoc in `.d.ts`.
 - Avoid vague or tentative phrasing unless it carries real meaning
 - Prefer plain statements about behavior over analogies or design commentary
+- User-facing docs should not include implementation details or internal design rationale unless they are necessary for correct usage
 - If a sentence does not help the reader use the feature, shorten it or remove it
+- Documention in `docs/` is user-facing and should be written with the same principles as JSDoc;
 - Docs macros:
   - `SCHEMA <TypeName>` embeds schema-derived property docs (for example, `SCHEMA ExprRef`)
   - `EXAMPLE examples/docs/...json` embeds a small self-contained docs spec from `examples/docs/`
@@ -63,6 +65,15 @@ aware interactions.
 - Run a focused Vitest suite: `npx vitest run packages/app/src/sampleView/sampleView.test.js`
 - TypeScript checks for workspaces (if present): `npm --workspaces run test:tsc --if-present`
 - Lint the workspace sources: `npm run lint`
+
+### Web App Debugging
+
+- Prefer Vitest and Playwright. However,
+- Use Chrome DevTools MCP (https://github.com/ChromeDevTools/chrome-devtools-mcp/) may also be available.
+- Open `http://127.0.0.1:8080/` using Chrome DevTools MCP.
+- If the dev server is not running, start it with `npm start` from the repo root.
+- The root page lists example and private specs; the first example is usually the quickest smoke test.
+- The dev routes live in the package `vite.config.js` files and share helper code from `devServerRoutes.mjs` at the repo root.
 
 ## Workflow expectations
 
@@ -123,7 +134,8 @@ aware interactions.
 - The repo follows Conventional Commits; prefix commit messages with the relevant type (e.g., `feat:`, `fix:`).
 - Use the monorepo package name as the scope (e.g., `core`, `app`) when the change touches a specific workspace.
 - An example message: `feat(app): cool new feature`.
-- When working in a feature branch, it's okay to use more casual commit messages; scope can be omitted.
+- When working in a feature branch (i.e., not master or main), it's okay to use more casual commit messages; scope can be omitted.
+- When in master or main, add (brief) details to commit message body.
 
 ## PR notes
 
