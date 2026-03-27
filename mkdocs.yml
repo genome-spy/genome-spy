@@ -93,6 +93,7 @@ nav:
                 - "genomic-data/examples/index.md"
                 - ASCAT Copy-Number Segmentation: "genomic-data/examples/ascat.md"
                 - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
+                - Sashimi plot from splice junctions: "genomic-data/examples/sashimi-plot.md"
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"

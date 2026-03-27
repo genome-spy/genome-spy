@@ -68,6 +68,13 @@ estimates raw major/minor copy numbers from the current `rho` and `psi`
 values, rounds them to integers, and shows how the fit changes when you adjust
 the parameters.
 
+### Sashimi plot from splice junctions
+
+The [Sashimi plot from splice junctions](sashimi-plot.md) page shows IGV's
+splice-junction demo data as a lazy BigWig coverage track plus dome-shaped
+splice arcs from a BED file. The slider filters the arcs by uniquely mapped
+read count, and the arc labels show the junction scores.
+
 ## More examples
 
 For many more examples of visualizing genomic data, see

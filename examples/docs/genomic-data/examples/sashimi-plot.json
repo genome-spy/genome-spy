@@ -1,0 +1,156 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Sashimi plot example using splice junction data from IGV.",
+    "Data source: https://igv.org/web/release/3.8.0/examples/spliceJunctions.html"
+  ],
+
+  "assembly": "hg38",
+
+  "params": [
+    {
+      "name": "minUniquelyMappedReads",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 200,
+        "step": 1,
+        "name": "Min uniquely mapped reads"
+      }
+    }
+  ],
+
+  "resolve": {
+    "scale": { "y": "independent" },
+    "axis": { "y": "independent" }
+  },
+
+  "layer": [
+    {
+      "name": "coverage",
+
+      "data": {
+        "lazy": {
+          "type": "bigwig",
+          "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/test/splice_junctions//splice_junction_track_test_cases_sampleA.chr15-92835700-93031800.bigWig",
+          "pixelsPerBin": 1
+        }
+      },
+
+      "transform": [{ "type": "filter", "expr": "datum.score > 0" }],
+
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "scale": {
+            "domain": [
+              { "chrom": "chr15", "pos": 92925000 },
+              { "chrom": "chr15", "pos": 92949000 }
+            ]
+          }
+        },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": {
+          "field": "score",
+          "type": "quantitative",
+          "scale": { "nice": true, "zero": false },
+          "title": "Coverage"
+        }
+      },
+
+      "mark": {
+        "type": "rect",
+        "color": "lightgray",
+        "minWidth": 0.5,
+        "minOpacity": 1,
+        "tooltip": null
+      }
+    },
+    {
+      "name": "splice-junctions",
+
+      "data": {
+        "url": "https://raw.githubusercontent.com/igvteam/igv-data/refs/heads/main/data/test/splice_junctions/splice_junction_track_test_cases_sampleA.chr15-92835700-93031800.SJ.out.bed",
+        "format": {
+          "type": "bed"
+        }
+      },
+
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.score >= minUniquelyMappedReads"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.chromEnd - datum.chromStart",
+          "as": "span"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.span + (datum.span % 10 - 5) / 10 * datum.span",
+          "as": "span"
+        }
+      ],
+
+      "layer": [
+        {
+          "name": "arcs",
+
+          "mark": {
+            "type": "link",
+            "linkShape": "dome"
+          },
+
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "chromEnd" },
+            "y": {
+              "field": "span",
+              "type": "quantitative",
+              "scale": {
+                "type": "sqrt",
+                "domain": {
+                  "expr": "[0, span(domain('x')) * height / width * 5]"
+                }
+              },
+              "axis": null
+            },
+            "size": {
+              "field": "score",
+              "type": "quantitative",
+              "scale": { "type": "sqrt", "range": [0.1, 2.0] }
+            }
+          }
+        },
+        {
+          "name": "labels",
+
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "(datum.chromEnd + datum.chromStart) / 2",
+              "as": "center"
+            }
+          ],
+
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "center", "type": "locus" },
+            "y": { "field": "span", "type": "quantitative" },
+            "text": { "field": "score", "type": "quantitative" }
+          },
+
+          "mark": {
+            "type": "text",
+            "dy": -8,
+            "tooltip": false
+          }
+        }
+      ]
+    }
+  ]
+}
