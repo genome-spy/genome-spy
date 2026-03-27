@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+
+### Bug Fixes
+
+* **core:** cache scale resolution ordering ([7282900](https://github.com/genome-spy/genome-spy/commit/72829006696aa3e7c9078fca2ce248aae10749ed)) by @tuner
+* **core:** keep tooltip stable through click press ([371e6e6](https://github.com/genome-spy/genome-spy/commit/371e6e604d0191f05710fd79fe0978b909994f5b)) by @tuner
+* **core:** reduce flowBuilder type complexity ([a7b99a5](https://github.com/genome-spy/genome-spy/commit/a7b99a59d1db1f6c7fd7b5d2ddde2edd43f0b009)) by @tuner
+* **core:** stabilize locus axis ticks ([06ab267](https://github.com/genome-spy/genome-spy/commit/06ab26748b69d760f2636e1159ebf380531cf4a0)) by @tuner
+* **core:** widen spec typings for shared examples ([b6a9f3f](https://github.com/genome-spy/genome-spy/commit/b6a9f3f3150ef8abedeed927c10e1f75bf1a5fa4)) by @tuner
+
+### Features
+
+* **core:** add channel-scoped scale expression helpers ([#367](https://github.com/genome-spy/genome-spy/issues/367)) ([c2d4a5d](https://github.com/genome-spy/genome-spy/commit/c2d4a5d2c42c4ba9a076c1ea9ccbd4c44220a283)) by @tuner
+* **core:** support explicit columns for headerless dsv ([503c68a](https://github.com/genome-spy/genome-spy/commit/503c68a2dcb4b1ffe86fdce7d16e1e23409370dd)) by @tuner
+
+### Performance Improvements
+
+* **core:** extract x-index post-pass ([b92a042](https://github.com/genome-spy/genome-spy/commit/b92a04232d286c6febcfc0bd6577cba563be3002)) by @tuner
+* **core:** skip locus data-domain extraction ([aa3d3f0](https://github.com/genome-spy/genome-spy/commit/aa3d3f00734fb933e9d3b393456a40266d1fd63a)) by @tuner
+
 # [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
 
 ### Bug Fixes

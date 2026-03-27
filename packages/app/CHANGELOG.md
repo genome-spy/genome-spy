@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
+
+### Bug Fixes
+
+* **app:** enable sample actions for data with categorical `x` scale ([#366](https://github.com/genome-spy/genome-spy/issues/366)) ([cef7054](https://github.com/genome-spy/genome-spy/commit/cef70542f510adb7844c96ecdf54127f8dfecf2e)) by @tuner
+* **app:** suppress metadata tooltip during drag ([12f21a5](https://github.com/genome-spy/genome-spy/commit/12f21a5390475be04d10c05f18c5bd1430bb95ab)) by @tuner
+
+### Features
+
+* **core:** support explicit columns for headerless dsv ([503c68a](https://github.com/genome-spy/genome-spy/commit/503c68a2dcb4b1ffe86fdce7d16e1e23409370dd)) by @tuner
+
 # [0.74.0](https://github.com/genome-spy/genome-spy/compare/v0.73.0...v0.74.0) (2026-03-24)
 
 ### Bug Fixes
