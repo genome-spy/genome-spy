@@ -8,6 +8,7 @@ import {
     isString,
     ascending,
     lerp,
+    span,
 } from "vega-util";
 import { format as d3format } from "d3-format";
 import smoothstep from "./smoothstep.js";
@@ -100,41 +101,314 @@ const functionContext = {
     sort(/** @type {Array<any>} */ seq) {
         return array(seq).slice().sort(ascending);
     },
+    /**
+     * Returns the midpoint of an ordered extent, such as [min, max].
+     * The helper uses the first and last elements and does not sort.
+     */
+    center(/** @type {Array<any>} */ seq) {
+        const values = array(seq);
+        return (values[0] + values[values.length - 1]) / 2;
+    },
+    span(/** @type {Array<any>} */ seq) {
+        return span(seq);
+    },
     smoothstep,
 };
 
 /**
  * @param {typeof codegenExpression} codegen
+ * @param {ScaleHelperCompileContext} context
  */
-function buildFunctions(codegen) {
-    const fn = functions(codegen);
+function buildFunctions(codegen, context) {
+    const fn = /** @type {any} */ (functions(codegen));
     for (const name in functionContext) {
         fn[name] = `this.${name}`;
     }
+
+    // Replace the public helper names with custom codegen hooks so we can bind
+    // a scale resolution once during compilation instead of looking it up for
+    // every datum.
+    for (const kind of /** @type {const} */ ([
+        "scale",
+        "invert",
+        "domain",
+        "range",
+    ])) {
+        fn[kind] = (
+            /** @type {any[]} */
+            args
+        ) => buildScaleHelperCall(codegen, context, kind, args);
+    }
+
     return fn;
 }
-
-const cg = codegenExpression({
-    forbidden: [],
-    allowed: ["datum", "undefined"],
-    globalvar: "globalObject",
-    fieldvar: "datum",
-    functions: buildFunctions,
-});
 
 /**
  * @typedef { object } ExpressionProps
  * @prop { string[] } fields
  * @prop { string[] } globals
  * @prop { string } code
+ * @prop { import("../paramRuntime/types.js").ParamRef<any>[] } [scaleDependencies]
  *
  * @typedef { ((datum?: import("../data/flowNode.js").Datum) => any) & ExpressionProps } ExpressionFunction
  *
+ * @typedef {object} ExpressionCompileContext
+ * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
+ *
+ * @typedef {ExpressionCompileContext & {
+ *   globalvar: string,
+ *   globalObject: Record<string, any>,
+ *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+ * }} ScaleHelperCompileContext
+ */
+
+/**
+ * @param {typeof codegenExpression} codegen
+ * @param {ScaleHelperCompileContext} context
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {any[]} args
+ * @returns {string}
+ */
+function buildScaleHelperCall(codegen, context, kind, args) {
+    if (args.length === 0) {
+        throw new Error(
+            `Scale helper "${kind}" requires a literal channel name.`
+        );
+    }
+
+    if ((kind === "scale" || kind === "invert") && args.length < 2) {
+        throw new Error(
+            `Scale helper "${kind}" requires a channel name and a value.`
+        );
+    }
+
+    const channel = getLiteralString(args[0]);
+    if (!channel) {
+        throw new Error(
+            `Scale helper "${kind}" requires a literal channel name.`
+        );
+    }
+
+    const resolution = context.resolveScaleResolution?.(channel);
+    if (!resolution) {
+        throw new Error(
+            `Unknown scale channel "${channel}" in expression helper "${kind}".`
+        );
+    }
+
+    const helper = context.getScaleHelper(kind, channel, resolution);
+    const remainingArgs = args
+        .slice(1)
+        .map((arg) => codegen(arg))
+        .join(",");
+    return `${context.globalvar}["${helper.codeName}"](${remainingArgs})`;
+}
+
+/**
+ * @param {any} node
+ * @returns {string | undefined}
+ */
+function getLiteralString(node) {
+    return node?.type === "Literal" && typeof node.value === "string"
+        ? node.value
+        : undefined;
+}
+
+/**
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @returns {(...args: any[]) => any}
+ */
+function createScaleHelperFunction(kind, resolution) {
+    /** @type {(fn: () => any) => any} */
+    const run = (fn) => runWithActiveScaleResolution(resolution, kind, fn);
+
+    if (kind === "domain") {
+        // `vega-scale` returns a fresh array here. That is fine for
+        // batch-invariant expressions, but callers should avoid using it in a
+        // per-datum hot path unless they really need the full extent array.
+        return () => run(() => resolution.getDomain());
+    }
+    if (kind === "range") {
+        // Same allocation caveat as `domain()`: the underlying scale getter
+        // returns a copied array, so repeated per-row calls will allocate.
+        return () => run(() => resolution.getScale().range());
+    }
+    if (kind === "scale") {
+        return (value) => run(() => resolution.getScale()(value));
+    }
+    if (kind === "invert") {
+        return (value) =>
+            run(() => /** @type {any} */ (resolution.getScale()).invert(value));
+    }
+    throw new Error("Unknown scale helper: " + kind);
+}
+
+/** @type {WeakSet<object>} */
+const activeScaleHelperResolutions = new WeakSet();
+
+/**
+ * @template T
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {() => T} fn
+ * @returns {T}
+ */
+function runWithActiveScaleResolution(resolution, kind, fn) {
+    if (activeScaleHelperResolutions.has(resolution)) {
+        throw new Error(
+            `Scale helper cycle detected while evaluating ${kind}("${resolution.channel}").`
+        );
+    }
+
+    activeScaleHelperResolutions.add(resolution);
+    try {
+        return fn();
+    } finally {
+        activeScaleHelperResolutions.delete(resolution);
+    }
+}
+
+/**
+ * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {string} channel
+ * @param {import("../scales/scaleResolution.js").default} resolution
+ * @param {string} codeName
+ * @returns {import("../paramRuntime/types.js").ParamRef<any> & { rank: number }}
+ */
+function createScaleDependency(kind, channel, resolution, codeName) {
+    /** @type {Set<() => void>} */
+    const listeners = new Set();
+
+    const notify = () => {
+        for (const listener of listeners) {
+            listener();
+        }
+    };
+
+    const attach = () => {
+        if (kind === "domain") {
+            resolution.addEventListener("domain", notify);
+        } else if (kind === "range") {
+            resolution.addEventListener("range", notify);
+        } else {
+            resolution.addEventListener("domain", notify);
+            resolution.addEventListener("range", notify);
+        }
+    };
+
+    const detach = () => {
+        if (kind === "domain") {
+            resolution.removeEventListener("domain", notify);
+        } else if (kind === "range") {
+            resolution.removeEventListener("range", notify);
+        } else {
+            resolution.removeEventListener("domain", notify);
+            resolution.removeEventListener("range", notify);
+        }
+    };
+
+    return {
+        // The dependency is a lightweight invalidation token. It does not need
+        // to expose a separate scale value; the bound helper closure already
+        // closes over the actual resolution. The ref exists so the expression
+        // graph can subscribe to scale changes like any other reactive input.
+        id: `scale:${channel}:${codeName}`,
+        name: `scale(${channel})`,
+        kind: "derived",
+        rank: 0,
+        get() {
+            return resolution.getScale();
+        },
+        subscribe(listener) {
+            const wasEmpty = listeners.size === 0;
+            listeners.add(listener);
+            if (wasEmpty) {
+                attach();
+            }
+            return () => {
+                const removed = listeners.delete(listener);
+                if (removed && listeners.size === 0) {
+                    detach();
+                }
+            };
+        },
+    };
+}
+
+/**
  * @param {string} expr
+ * @param {Record<string, any>} globalObject
+ * @param {ExpressionCompileContext} context
+ *
  * @returns {ExpressionFunction}
  */
-export default function createFunction(expr, globalObject = {}) {
+export default function createFunction(expr, globalObject = {}, context = {}) {
     try {
+        // Each scale helper call is rewritten once at compile time into a
+        // cached closure that targets a specific scale resolution.
+        /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
+        const scaleDependenciesByChannel = new Map();
+        // A helper may appear multiple times in one expression. Cache both the
+        // generated closure and the synthetic dependency ref so repeated calls
+        // share the same reactive identity.
+        /** @type {Map<string, { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }>} */
+        const helperEntries = new Map();
+        let nextScaleHelperId = 1;
+
+        /**
+         * @type {ExpressionCompileContext & {
+         *   globalvar: string,
+         *   globalObject: Record<string, any>,
+         *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+         * }}
+         */
+        const helperContext = {
+            ...context,
+            globalvar: "globalObject",
+            globalObject,
+            getScaleHelper(kind, channel, resolution) {
+                // Helper instances are keyed by helper kind + channel so
+                // `domain("x")` and `scale("x", ...)` share the same
+                // resolution binding but keep separate generated closures.
+                const key = kind + ":" + channel;
+                const cached = helperEntries.get(key);
+                if (cached) {
+                    return cached;
+                }
+
+                let dependency = scaleDependenciesByChannel.get(channel);
+                if (!dependency) {
+                    dependency = createScaleDependency(
+                        kind,
+                        channel,
+                        resolution,
+                        "__scale_dependency_" + nextScaleHelperId++
+                    );
+                    scaleDependenciesByChannel.set(channel, dependency);
+                }
+
+                const codeName = "__scale_helper_" + nextScaleHelperId++;
+                const entry = { codeName, dependency };
+                helperEntries.set(key, entry);
+                // Store the concrete helper implementation on the global object
+                // used by the generated expression function.
+                globalObject[codeName] = createScaleHelperFunction(
+                    kind,
+                    resolution
+                );
+                return entry;
+            },
+        };
+
+        const cg = codegenExpression({
+            forbidden: [],
+            allowed: ["datum", "undefined"],
+            globalvar: "globalObject",
+            fieldvar: "datum",
+            functions: (visitor) => buildFunctions(visitor, helperContext),
+        });
+
         const parsed = parseExpression(expr);
         const generatedCode = cg(parsed);
 
@@ -157,6 +431,12 @@ export default function createFunction(expr, globalObject = {}) {
         exprFunction.fields = generatedCode.fields;
         exprFunction.globals = generatedCode.globals;
         exprFunction.code = generatedCode.code;
+        // Reactive bookkeeping lives outside the generated expression body.
+        // The expression runtime subscribes to these refs and invalidates the
+        // compiled expression when the referenced scale changes.
+        exprFunction.scaleDependencies = Array.from(
+            scaleDependenciesByChannel.values()
+        );
 
         return exprFunction;
     } catch (e) {

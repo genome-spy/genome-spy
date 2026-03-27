@@ -122,6 +122,17 @@ function getNode(ref) {
 }
 
 /**
+ * @param {import("./types.js").ParamRef<any>} dep
+ * @returns {number}
+ */
+function getDependencyRank(dep) {
+    if (typeof (/** @type {any} */ (dep).rank) === "number") {
+        return /** @type {any} */ (dep).rank;
+    }
+    return getNode(dep).rank;
+}
+
+/**
  * @param {Set<() => void>} listeners
  */
 function notify(listeners) {
@@ -291,9 +302,8 @@ export default class GraphRuntime {
      * @returns {import("./types.js").ParamRef<T>}
      */
     computed(ownerId, name, deps, fn) {
-        const depNodes = deps.map(getNode);
-        const maxRank = depNodes.reduce(
-            (previous, node) => Math.max(previous, node.rank),
+        const maxRank = deps.reduce(
+            (previous, dep) => Math.max(previous, getDependencyRank(dep)),
             0
         );
 
@@ -359,9 +369,8 @@ export default class GraphRuntime {
      * @returns {() => void} explicit disposer for manual teardown
      */
     effect(ownerId, deps, fn) {
-        const depNodes = deps.map(getNode);
-        const maxRank = depNodes.reduce(
-            (previous, node) => Math.max(previous, node.rank),
+        const maxRank = deps.reduce(
+            (previous, dep) => Math.max(previous, getDependencyRank(dep)),
             0
         );
 

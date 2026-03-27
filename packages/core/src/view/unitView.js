@@ -4,20 +4,13 @@ import RuleMark from "../marks/rule.js";
 import LinkMark from "../marks/link.js";
 import TextMark from "../marks/text.js";
 
-import ScaleResolution from "../scales/scaleResolution.js";
 import {
     getEncoderAccessors,
     getEncoderDataAccessor,
-    isPositionalChannel,
-    isChannelDefWithScale,
-    primaryPositionalChannels,
     getPrimaryChannel,
-    isChannelWithScale,
-    isPrimaryPositionalChannel,
-    isValueDefWithCondition,
+    primaryPositionalChannels,
 } from "../encoder/encoder.js";
 import { isScaleAccessor } from "../encoder/accessor.js";
-import AxisResolution from "../scales/axisResolution.js";
 import View from "./view.js";
 import {
     asSelectionConfig,
@@ -31,6 +24,7 @@ import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
 import { createEventFilterFunction } from "../utils/expression.js";
 import { field } from "../utils/field.js";
 import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
+import { resolveViewResolutions } from "./resolutionPlanner.js";
 
 /**
  *
@@ -102,12 +96,12 @@ export default class UnitView extends View {
             throw new Error(`No such mark: ${this.getMarkType()}`);
         }
 
-        this.resolve();
-
         this.#zoomLevelSetter = this.paramRuntime.allocateSetter(
             "zoomLevel",
             1.0
         );
+
+        this.resolve();
 
         for (const channel of /** @type {import("../spec/channel.js").ChannelWithScale[]} */ ([
             "x",
@@ -310,148 +304,7 @@ export default class UnitView extends View {
             this.resolve("axis");
             return;
         }
-
-        // TODO: Complain about nonsensical configuration, e.g. shared parent has independent children.
-
-        const encoding = this.mark.encoding;
-
-        for (const [channel, channelDef] of Object.entries(encoding)) {
-            if (!channelDef) {
-                continue;
-            }
-
-            if (Array.isArray(channelDef)) {
-                continue;
-            }
-
-            /** @type {import("../spec/channel.js").ChannelDefWithScale} */
-            let channelDefWithScale;
-
-            if (isChannelDefWithScale(channelDef)) {
-                channelDefWithScale = channelDef;
-            } else {
-                if (isValueDefWithCondition(channelDef)) {
-                    const condition = channelDef.condition;
-                    if (
-                        !Array.isArray(condition) &&
-                        isChannelDefWithScale(condition)
-                    ) {
-                        // There's a single condition (maybe) with a scale
-                        channelDefWithScale = condition;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-            }
-
-            const targetChannel = getPrimaryChannel(
-                channelDefWithScale.resolutionChannel ?? channel
-            );
-
-            if (!isChannelWithScale(targetChannel)) {
-                continue;
-            }
-
-            if (type == "axis" && !isPositionalChannel(targetChannel)) {
-                continue;
-            }
-
-            let view = this;
-            while (
-                (view.getConfiguredOrDefaultResolution(targetChannel, type) ==
-                    "forced" ||
-                    (view.dataParent &&
-                        ["shared", "excluded", "forced"].includes(
-                            view.dataParent.getConfiguredOrDefaultResolution(
-                                targetChannel,
-                                type
-                            )
-                        ))) &&
-                view.getConfiguredOrDefaultResolution(targetChannel, type) !=
-                    "excluded"
-            ) {
-                // @ts-ignore
-                view = view.dataParent;
-            }
-
-            // Quite a bit of redundancy, but makes type checker happy.
-            if (
-                type == "axis" &&
-                isPositionalChannel(channel) &&
-                isPrimaryPositionalChannel(targetChannel)
-            ) {
-                if (!view.resolutions[type][targetChannel]) {
-                    view.resolutions[type][targetChannel] = new AxisResolution(
-                        targetChannel
-                    );
-                }
-                const resolution = view.resolutions[type][targetChannel];
-                const unregister = resolution.registerMember({
-                    view: this,
-                    channel,
-                    channelDef: channelDefWithScale,
-                });
-                this.registerDisposer(() => {
-                    // Unregister returns true when it removed the last member.
-                    if (
-                        unregister() &&
-                        view.resolutions[type][targetChannel] === resolution
-                    ) {
-                        delete view.resolutions[type][targetChannel];
-                    }
-                });
-            } else if (type == "scale" && isChannelWithScale(channel)) {
-                if (!view.resolutions[type][targetChannel]) {
-                    const resolution = new ScaleResolution(targetChannel);
-                    view.resolutions[type][targetChannel] = resolution;
-
-                    const updateRangeTexture = (
-                        /** @type {import("../types/scaleResolutionApi.js").ScaleResolutionEvent} */ event
-                    ) => {
-                        // Create if WebGLHelper is available, i.e., if not running in headless mode.
-                        // Domain changes can alter discrete texture sizes as well.
-                        this.context.glHelper?.createRangeTexture(
-                            event.scaleResolution,
-                            true
-                        );
-                    };
-                    resolution.addEventListener("range", updateRangeTexture);
-                    resolution.addEventListener("domain", updateRangeTexture);
-                    this.registerDisposer(() => {
-                        resolution.removeEventListener(
-                            "range",
-                            updateRangeTexture
-                        );
-                        resolution.removeEventListener(
-                            "domain",
-                            updateRangeTexture
-                        );
-                    });
-                }
-
-                const contributesToDomain = !this.isDomainInert();
-
-                const resolution = view.resolutions[type][targetChannel];
-                const unregister = resolution.registerMember({
-                    view: this,
-                    channel,
-                    channelDef: channelDefWithScale,
-                    contributesToDomain,
-                });
-                this.registerDisposer(() => {
-                    // Unregister returns true when it removed the last member.
-                    if (
-                        unregister() &&
-                        view.resolutions[type][targetChannel] === resolution
-                    ) {
-                        resolution.dispose();
-                        delete view.resolutions[type][targetChannel];
-                    }
-                });
-            }
-        }
+        resolveViewResolutions(this, type);
     }
 
     /**

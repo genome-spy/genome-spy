@@ -52,6 +52,258 @@ describe("Scale resolution domain handling", () => {
         expect(r(d(view.children[1]))).toEqual([1, 5]);
     });
 
+    test("Configured domains can be defined by expressions and update reactively", async () => {
+        const view = await initView(
+            {
+                data: { values: [] },
+                params: [{ name: "upperBound", value: 2 }],
+                resolve: { scale: { default: "independent", y: "shared" } },
+                layer: [
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                scale: {
+                                    domain: {
+                                        expr: "[0, upperBound]",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    {
+                        mark: "point",
+                        encoding: {
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                scale: {
+                                    domain: [4, 5],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        const firstChild = view.children[0];
+        const resolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(resolution.getDomain())).toEqual([0, 5]);
+
+        // Non-obvious: the child expression reads the root param through the
+        // shared view scope, so updating the root must refresh the shared scale.
+        view.paramRuntime.setValue("upperBound", 6);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(resolution.getDomain())).toEqual([0, 6]);
+        expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
+    });
+
+    test("domainTransition defaults to true for ordinary domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ x: 0 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "x").getScale().props
+                .domainTransition
+        ).toBe(true);
+    });
+
+    test("domainTransition defaults to false for ExprRef-driven domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { expr: "[0, upperBound]" },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "y").getScale().props
+                .domainTransition
+        ).toBe(false);
+    });
+
+    test("domainTransition can be enabled explicitly for ExprRef-driven domains", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: { expr: "[0, upperBound]" },
+                            domainTransition: true,
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(
+            getRequiredScaleResolution(view, "y").getScale().props
+                .domainTransition
+        ).toBe(true);
+    });
+
+    test("Scale expressions can reference sibling scale domains regardless of encoding order", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: -8, y: -2 },
+                        { x: 8, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: {
+                            domain: {
+                                expr: "domain('y')",
+                            },
+                        },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const xResolution = getRequiredScaleResolution(view, "x");
+        const yResolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(xResolution.getDomain())).toEqual(r(yResolution.getDomain()));
+
+        yResolution.getScale().domain([-4, 4]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(xResolution.getDomain())).toEqual([-4, 4]);
+    });
+
+    test("zoomLevel is available while scale domains are compiled", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: {
+                                expr: "[10 / zoomLevel, 50]",
+                            },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        expect(r(getRequiredScaleResolution(view, "y").getDomain())).toEqual([
+            10, 50,
+        ]);
+    });
+
+    test("zoomLevel reacts to scale zoom changes", async () => {
+        const view = await initView(
+            {
+                data: {
+                    values: [
+                        { x: 0, y: 1 },
+                        { x: 10, y: 2 },
+                    ],
+                },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "x");
+        const zoomLevel = view.paramRuntime.createExpression("zoomLevel");
+
+        expect(zoomLevel()).toBe(1);
+
+        resolution.getScale().domain([2, 6]);
+        await view.paramRuntime.whenPropagated();
+
+        expect(zoomLevel()).toBeGreaterThan(1);
+    });
+
+    test("Scale domain cycles fail fast", async () => {
+        await expect(
+            initView(
+                {
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "a",
+                            type: "quantitative",
+                            scale: {
+                                domain: {
+                                    expr: "domain('x')",
+                                },
+                            },
+                        },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            /Scale helper cycle detected while evaluating domain\("x"\)\./
+        );
+    });
+
     test("Scales are shared and extracted domains merged properly", async () => {
         const view = await initView(
             {

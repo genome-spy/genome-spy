@@ -1,17 +1,20 @@
 import { describe, expect, test, vi } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
+import ViewParamRuntime from "../paramRuntime/viewParamRuntime.js";
 import * as resolutionMemberOrder from "./resolutionMemberOrder.js";
 import ScaleResolution from "./scaleResolution.js";
 
 /**
  * @param {object} options
  * @param {string} options.path
+ * @param {import("../spec/channel.js").ChannelWithScale} [options.channel]
+ * @param {import("../spec/channel.js").Type} [options.type]
  * @param {boolean} [options.zoom]
  * @returns {import("./scaleResolution.js").ScaleResolutionMember}
  */
-function createMember({ path, zoom }) {
+function createMember({ path, channel = "x", type = "index", zoom }) {
     return /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
-        channel: "x",
+        channel,
         // Minimal fake view: `isZoomable()` only needs config scopes and a stable path.
         view: /** @type {any} */ ({
             getBaseUrl: () => "",
@@ -22,11 +25,39 @@ function createMember({ path, zoom }) {
         }),
         channelDef: {
             field: "value",
-            type: "index",
+            type,
             scale: zoom === undefined ? undefined : { zoom },
         },
         contributesToDomain: true,
     });
+}
+
+/**
+ * @param {object} options
+ * @param {number} options.foo
+ * @returns {import("../view/view.js").default}
+ */
+function createHostView({ foo }) {
+    const paramRuntime = new ViewParamRuntime();
+    paramRuntime.registerParam({ name: "foo", value: foo });
+
+    const hostView = /** @type {any} */ ({
+        context: {
+            animator: {},
+            genomeStore: undefined,
+        },
+        /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+        getConfigScopes() {
+            return [];
+        },
+        /** @returns {import("../view/view.js").default[]} */
+        getLayoutAncestors() {
+            return [hostView];
+        },
+        paramRuntime,
+    });
+
+    return hostView;
 }
 
 describe("scale resolution zoomability", () => {
@@ -61,5 +92,62 @@ describe("scale resolution zoomability", () => {
 
         expect(resolution.isZoomable()).toBe(true);
         expect(orderSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("binds range expressions through the contributing member view", () => {
+        const hostView = createHostView({ foo: 10 });
+        const resolution = new ScaleResolution("shape", hostView);
+        const memberRuntime = new ViewParamRuntime(() => hostView.paramRuntime);
+        memberRuntime.registerParam({ name: "bar", value: 2 });
+
+        resolution.registerMember(
+            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
+                channel: "shape",
+                view: /** @type {any} */ ({
+                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+                    getConfigScopes() {
+                        return [];
+                    },
+                    getPathString: () => "root/a",
+                    isConfiguredVisible: () => true,
+                    isDataInitialized: () => true,
+                    paramRuntime: memberRuntime,
+                }),
+                channelDef: {
+                    field: "value",
+                    type: "nominal",
+                    scale: {},
+                },
+                contributesToDomain: true,
+            })
+        );
+        resolution.registerMember(
+            /** @type {import("./scaleResolution.js").ScaleResolutionMember} */ ({
+                channel: "shape",
+                view: /** @type {any} */ ({
+                    /** @returns {import("../spec/config.js").GenomeSpyConfig[]} */
+                    getConfigScopes() {
+                        return [];
+                    },
+                    getPathString: () => "root/b",
+                    isConfiguredVisible: () => true,
+                    isDataInitialized: () => true,
+                    paramRuntime: memberRuntime,
+                }),
+                channelDef: {
+                    type: "nominal",
+                    scale: {
+                        domain: [0, 1],
+                        range: [
+                            { expr: "'c' + (foo + bar)" },
+                            { expr: "'c' + (foo + bar + 1)" },
+                        ],
+                    },
+                },
+                contributesToDomain: true,
+            })
+        );
+
+        expect(resolution.getScale().range()).toEqual(["c12", "c13"]);
     });
 });

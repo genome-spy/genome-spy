@@ -147,10 +147,12 @@ export default class ScaleInstanceManager {
         const {
             assembly: _assembly,
             domainIndexer: _domainIndexer,
+            __rangeExprScope: _rangeExprScope,
             ...rest
         } = propsAny;
         void _assembly;
         void _domainIndexer;
+        void _rangeExprScope;
         return rest;
     }
 
@@ -168,11 +170,14 @@ export default class ScaleInstanceManager {
         this.#rangeExprRefListeners.forEach((fn) => fn.invalidate());
         this.#rangeExprRefListeners.clear();
 
+        const rangeExprScope = /** @type {any} */ (props).__rangeExprScope;
+        const paramRuntime =
+            rangeExprScope?.paramRuntime ?? this.#getParamRuntime();
+
         const resolved = resolveRange({
             range: props.range,
             reverse: props.reverse,
-            createExpression: (expr) =>
-                this.#getParamRuntime().createExpression(expr),
+            createExpression: (expr) => paramRuntime.createExpression(expr),
             registerExpr: (fn) => this.#rangeExprRefListeners.add(fn),
         });
 

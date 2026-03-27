@@ -4,6 +4,7 @@
  *   id: string,
  *   name: string,
  *   kind: "base" | "derived" | "selection",
+ *   rank?: number,
  *   get: () => T,
  *   subscribe: (listener: () => void) => () => void
  * }} ParamRef

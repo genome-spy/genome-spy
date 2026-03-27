@@ -1,5 +1,6 @@
 import { isDiscrete } from "vega-scale";
 import { isColorChannel } from "../encoder/encoder.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import {
@@ -128,6 +129,27 @@ export function resolveScalePropsBase({
     if (props.range && props.scheme) {
         delete props.scheme;
         // TODO: Props should be set more intelligently
+    }
+
+    if (props.domainTransition === undefined) {
+        const hasExprDrivenDomain = memberList.some((member) =>
+            isExprRef(member.channelDef.scale?.domain)
+        );
+        props.domainTransition = !hasExprDrivenDomain;
+    }
+
+    if (
+        Array.isArray(props.range) &&
+        props.range.some(isExprRef) &&
+        memberList.length > 0
+    ) {
+        const rangeOwner = memberList.find(
+            (member) => member.channelDef.scale?.range !== undefined
+        )?.view;
+        if (rangeOwner) {
+            /** @type {any} */
+            (props).__rangeExprScope = rangeOwner;
+        }
     }
 
     // By default, index and locus scales are zoomable, others are not.

@@ -127,7 +127,8 @@ package.
 [`lastindexof`](https://vega.github.io/vega/docs/expressions/#lastindexof),
 [`reverse`](https://vega.github.io/vega/docs/expressions/#reverse),
 [`slice`](https://vega.github.io/vega/docs/expressions/#slice),
-[`sort`](https://vega.github.io/vega/docs/expressions/#sort)
+[`sort`](https://vega.github.io/vega/docs/expressions/#sort),
+[`span`](https://vega.github.io/vega/docs/expressions/#span)
 
 #### String Functions
 
@@ -151,6 +152,36 @@ package.
 [`regexp`](https://vega.github.io/vega/docs/expressions/#regexp),
 [`test`](https://vega.github.io/vega/docs/expressions/#test)
 
+### Scale Functions
+
+These helpers are analogous to Vega's scale helper functions, but GenomeSpy
+resolves scales by channel instead of by named scale.
+
+<a name="scale" href="#scale">#</a>
+<b>scale</b>(<i>channel</i>, <i>value</i>)<br/>
+Maps a value through the scale for the given channel, such as `"x"`, `"y"`,
+`"color"`, or `"size"`. The channel is resolved against the current view's
+scale resolution.
+
+<a name="invert" href="#invert">#</a>
+<b>invert</b>(<i>channel</i>, <i>range</i>)<br/>
+Maps a range value back through the scale for the given channel. The channel
+is resolved against the current view's scale resolution.
+
+<a name="domain" href="#domain">#</a>
+<b>domain</b>(<i>channel</i>)<br/>
+Returns the current domain of the scale for the given channel. The channel is
+resolved against the current view's scale resolution.
+
+<a name="range" href="#range">#</a>
+<b>range</b>(<i>channel</i>)<br/>
+Returns the current range of the scale for the given channel. The channel is
+resolved against the current view's scale resolution.
+
+These helpers are available in `formula` and `filter` transforms, in dynamic
+expression properties, and in scale `ExprRef` properties. They are reactive:
+when the referenced scale changes, dependent expressions update.
+
 ### Other functions
 
 <a name="mapHasKey" href="#mapHasKey">#</a>
@@ -168,3 +199,7 @@ Calculates a linear interpolation between 0 and 1 for a value _x_ within the ran
 <a name="smoothstep" href="#smoothstep">#</a>
 <b>smoothstep</b>(<i>edge0</i>, <i>edge1</i>, <i>x</i>)<br />
 Performs [smooth Hermite interpolation](https://en.wikipedia.org/wiki/Smoothstep) between 0 and 1 for values of _x_ that lie between _edge0_ and _edge1_. This function is particularly useful for scenarios requiring a threshold function with a smooth transition, offering a gradual rather than an abrupt change between states.
+
+<a name="center" href="#center">#</a>
+<b>center</b>(<i>array</i>)<br/>
+Returns the midpoint of an ordered extent, such as `[min, max]`. It uses the first and last elements and does not sort the array.

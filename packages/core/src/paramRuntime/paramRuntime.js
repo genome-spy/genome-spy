@@ -140,12 +140,14 @@ export default class ParamRuntime {
      * @param {ScopeId} scope
      * @param {string} name
      * @param {string} expr
+     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
      * @returns {import("./types.js").ParamRef<T>}
      */
-    registerDerived(scope, name, expr) {
+    registerDerived(scope, name, expr, options) {
         const { expression, dependencies } = bindExpression(
             expr,
-            (globalName) => this.resolve(scope, globalName)
+            (globalName) => this.resolve(scope, globalName),
+            options
         );
 
         const ownerId = this.#paramStore.getOwnerId(scope);
@@ -167,11 +169,14 @@ export default class ParamRuntime {
      *
      * @param {ScopeId} scope
      * @param {string} expr
+     * @param {{ resolveScaleResolution?: (channel: string) => import("../scales/scaleResolution.js").default | undefined }} [options]
      * @returns {import("./types.js").ExprRefFunction}
      */
-    createExpression(scope, expr) {
-        const { expression } = bindExpression(expr, (globalName) =>
-            this.resolve(scope, globalName)
+    createExpression(scope, expr, options) {
+        const { expression } = bindExpression(
+            expr,
+            (globalName) => this.resolve(scope, globalName),
+            options
         );
         return expression;
     }

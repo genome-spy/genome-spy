@@ -112,6 +112,7 @@ var SKIP = toSet([
     "domainMax",
     "domainRaw",
     "domainImplicit",
+    "domainTransition",
     "nice",
     "zero",
     "bins",
