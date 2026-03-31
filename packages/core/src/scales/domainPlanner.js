@@ -521,7 +521,7 @@ function resolveSelectionDomain(
         resolvedChannel
     );
     const hasInitial = domainRef.initial !== undefined;
-    const interval = binding.selection.intervals[resolvedChannel];
+    const interval = binding.selection?.intervals[resolvedChannel];
     const description = paramName + "." + resolvedChannel;
     if (!interval || interval.length !== 2) {
         const initialDomain = includeSelectionInitial

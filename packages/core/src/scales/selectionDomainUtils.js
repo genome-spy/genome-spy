@@ -40,6 +40,29 @@ export function requireIntervalSelection(selection, paramName) {
 }
 
 /**
+ * Returns an interval selection when the value exists and is of the correct
+ * type. Missing values are treated as empty so selection-linked domains can
+ * initialize before a pushed outer selection has been seeded.
+ *
+ * @param {any} selection
+ * @param {string} paramName
+ * @returns {import("../types/selectionTypes.js").IntervalSelection | undefined}
+ */
+export function getIntervalSelection(selection, paramName) {
+    if (!selection) {
+        return;
+    }
+
+    if (!isIntervalSelection(selection)) {
+        throw new Error(
+            `Selection domain parameter "${paramName}" must be an interval selection.`
+        );
+    }
+
+    return selection;
+}
+
+/**
  * Resolves the runtime-backed interval selection binding used by a linked
  * domain. Matching is based on the actual resolved runtime slot instead of
  * parameter name alone, so scoped params with the same name remain distinct.
@@ -52,7 +75,7 @@ export function resolveIntervalSelectionBinding(view, paramName, encoding) {
     const runtime = view.paramRuntime.findRuntimeForParam
         ? requireParamRuntime(view.paramRuntime, paramName)
         : view.paramRuntime;
-    const selection = requireIntervalSelection(
+    const selection = getIntervalSelection(
         runtime.getValue
             ? runtime.getValue(paramName)
             : view.paramRuntime.findValue(paramName),
@@ -71,7 +94,12 @@ export function resolveIntervalSelectionBinding(view, paramName, encoding) {
  * @param {string} paramName
  * @param {"x" | "y"} encoding
  */
-export function findIntervalSelectionBindingOwners(root, runtime, paramName, encoding) {
+export function findIntervalSelectionBindingOwners(
+    root,
+    runtime,
+    paramName,
+    encoding
+) {
     /** @type {{ view: import("../view/view.js").default, param: import("../spec/parameter.js").SelectionParameter }[]} */
     const owners = [];
 
@@ -124,7 +152,8 @@ export function hasIntervalSelectionBindingInScope(
 
             seen.add(candidateView);
 
-            const param = candidateView.paramRuntime?.paramConfigs?.get(paramName);
+            const param =
+                candidateView.paramRuntime?.paramConfigs?.get(paramName);
             if (!param || !isSelectionParameter(param)) {
                 continue;
             }

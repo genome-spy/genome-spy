@@ -37,8 +37,8 @@ import { resolveUrl } from "../utils/url.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 import {
     findIntervalSelectionBindingOwners,
+    getIntervalSelection,
     normalizeIntervalForSelection,
-    requireIntervalSelection,
 } from "./selectionDomainUtils.js";
 import { toExternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
 
@@ -324,10 +324,13 @@ export default class ScaleResolution {
             return;
         }
 
-        const selection = requireIntervalSelection(
+        const selection = getIntervalSelection(
             linkInfo.runtime.getValue(linkInfo.param),
             linkInfo.param
         );
+        if (!selection) {
+            return;
+        }
 
         const interval = this.#normalizeDomainIntervalForLinkedSelection(
             this.getScale().domain()
@@ -412,10 +415,13 @@ export default class ScaleResolution {
      * @returns {[number, number] | null}
      */
     #getCurrentLinkedSelectionInterval(linkInfo) {
-        const selection = requireIntervalSelection(
+        const selection = getIntervalSelection(
             linkInfo.runtime.getValue(linkInfo.param),
             linkInfo.param
         );
+        if (!selection) {
+            return null;
+        }
         const interval = selection.intervals[linkInfo.encoding];
         return interval && interval.length === 2
             ? /** @type {[number, number]} */ (interval)

@@ -210,6 +210,42 @@ describe("Scale resolution selection-linked domains", () => {
         expect(resolution.scale.domain()).toEqual([0, 10]);
     });
 
+    test("selection-linked domains tolerate a temporarily empty outer selection", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "brush", value: null }],
+                resolve: {
+                    scale: { x: "independent" },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [{ x: 0 }, { x: 5 }, { x: 10 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                scale: {
+                                    domain: { param: "brush", encoding: "x" },
+                                },
+                            },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        // Non-obvious: imported or slow-initializing siblings may not seed the
+        // pushed selection before the linked scale is first configured.
+        expect(
+            getRequiredScaleResolution(view.children[0], "x").scale.domain()
+        ).toEqual([0, 10]);
+    });
+
     test("selection-linked domains expose persistence metadata from sibling selections", async () => {
         const { resolution } = await createLinkedHarness({
             param: "brush",

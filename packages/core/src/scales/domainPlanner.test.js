@@ -346,6 +346,22 @@ describe("DomainPlanner", () => {
         expect(planner.hasSelectionConfiguredDomain()).toBe(true);
     });
 
+    test("selection-linked configured domain tolerates a temporarily missing selection", () => {
+        const planner = createPlanner(
+            [
+                createSelectionDomainMember({
+                    selectionValue: null,
+                    domain: { param: "brush" },
+                }),
+            ],
+            "quantitative"
+        );
+
+        expect(planner.getConfiguredDomain()).toBeUndefined();
+        expect(planner.getConfiguredOrDefaultDomain()).toEqual([]);
+        expect(planner.hasSelectionConfiguredDomain()).toBe(true);
+    });
+
     test("selection-linked configured domain uses initial when selection is empty", () => {
         /** @type {any} */
         const selection = {
