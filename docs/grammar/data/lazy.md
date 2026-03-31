@@ -126,6 +126,20 @@ EXAMPLE examples/docs/grammar/data/lazy/bigbed-ccre-track.json height=70 spechid
 The data source is based on [GMOD](http://gmod.org/)'s
 [bbi-js](https://github.com/GMOD/bbi-js) library.
 
+## Tabix TSV
+
+The `"tabix"` source enables the retrieval of tab-separated records stored in
+a bgzip-compressed, tabix-indexed file. It returns plain objects using the
+field names from `columns`, from a commented header line in the tabix file
+header, or from the first row of a plain TSV header. Field types are inferred
+automatically unless you provide `parse` (see [eager data sources](eager.md#tabular-formats)
+for the supported syntax). If the file uses bare chromosome names, set
+`addChrPrefix` to `true` to align them with GenomeSpy's UCSC-style genomes.
+
+### Parameters
+
+SCHEMA TabixTsvData
+
 ## VCF
 
 The tabix-based `"vcf"` source enables the retrieval of variant data stored in

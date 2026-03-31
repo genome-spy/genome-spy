@@ -1,3 +1,4 @@
+import { unzip } from "@gmod/bgzf-filehandle";
 import {
     activateExprRefProps,
     withoutExprRef,
@@ -143,6 +144,23 @@ export default class TabixSource extends SingleAxisWindowedSource {
      */
     async _handleHeader(header) {
         //
+    }
+
+    /**
+     * Read a prefix of the Tabix file and decode it as text.
+     *
+     * @returns {Promise<string>}
+     * @protected
+     */
+    async _readFilePrefix() {
+        const { maxBlockSize } = await this.#tbiIndex.getMetadata();
+        const tbiIndex = /** @type {any} */ (this.#tbiIndex);
+        const compressedPrefix = await tbiIndex.filehandle.read(
+            maxBlockSize,
+            0
+        );
+        const bytes = await unzip(compressedPrefix);
+        return new TextDecoder("utf-8").decode(bytes);
     }
 
     /**

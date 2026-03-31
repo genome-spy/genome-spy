@@ -250,6 +250,7 @@ export type LazyDataParams =
     | BigWigData
     | BigBedData
     | BamData
+    | TabixTsvData
     | Gff3Data
     | VcfData;
 
@@ -444,6 +445,27 @@ export interface TabixData extends DebouncedData {
      * __Default value:__ `30000000`
      */
     windowSize?: number;
+}
+
+export interface TabixTsvData extends TabixData {
+    type: "tabix";
+
+    /**
+     * Ordered list of field names for headerless tabix TSV input.
+     * If omitted, the source tries to read a commented header line from the
+     * tabix file header or the first row of a plain TSV header.
+     */
+    columns?: string[];
+
+    /**
+     * Optional type parsing for TSV fields. When omitted, field types are
+     * inferred automatically. Set to `null` to disable spec-based type
+     * inference and rely on data inference, or provide a field-to-type map to
+     * override selected columns.
+     *
+     * __Default value:__ `"auto"`
+     */
+    parse?: Parse | null;
 }
 
 export interface Gff3Data extends TabixData {
