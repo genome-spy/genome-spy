@@ -5,6 +5,7 @@ import Interaction from "@genome-spy/core/utils/interaction.js";
 import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
+import AxisView from "@genome-spy/core/view/axisView.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -544,5 +545,127 @@ describe("SampleView", () => {
         } finally {
             globalThis.MouseEvent = originalMouseEvent;
         }
+    });
+
+    test("main-pane axis wheel zoom matches content zoom", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                ],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        scale: { zoom: true },
+                    },
+                },
+            },
+        };
+
+        const axisHarness = await createSampleViewForTest({ spec });
+        const contentHarness = await createSampleViewForTest({ spec });
+
+        for (const { view } of [axisHarness, contentHarness]) {
+            view.getScaleResolution = () =>
+                /** @type {any} */ ({
+                    getDataDomain: () => ["A", "B"],
+                });
+            view.handleBroadcast({
+                type: "subtreeDataReady",
+                payload: { subtreeRoot: view },
+            });
+            const renderContext = new NoOpRenderingContext({ picking: false });
+            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+                firstFacet: true,
+            });
+        }
+
+        const axisView = axisHarness.view
+            .getDescendants()
+            .find(
+                (view) =>
+                    view instanceof AxisView &&
+                    (view.axisProps.orient === "top" ||
+                        view.axisProps.orient === "bottom")
+            );
+        if (!(axisView instanceof AxisView)) {
+            throw new Error("Expected sample-pane axis view!");
+        }
+
+        const contentAxisView = contentHarness.view
+            .getDescendants()
+            .find(
+                (view) =>
+                    view instanceof AxisView &&
+                    (view.axisProps.orient === "top" ||
+                        view.axisProps.orient === "bottom")
+            );
+        if (!(contentAxisView instanceof AxisView)) {
+            throw new Error("Expected content-harness axis view!");
+        }
+
+        const axisPoint = new Point(
+            axisView.coords.x + axisView.coords.width / 2,
+            axisView.coords.y + axisView.coords.height / 2
+        );
+        const contentPoint = new Point(
+            contentHarness.view.childCoords.x +
+                contentHarness.view.childCoords.width / 2,
+            contentHarness.view.childCoords.y +
+                contentHarness.view.childCoords.height / 2
+        );
+
+        const axisResolution = axisView.dataParent.getScaleResolution("x");
+        const contentResolution =
+            contentAxisView.dataParent.getScaleResolution("x");
+        if (!axisResolution || !contentResolution) {
+            throw new Error("Expected zoomable x resolutions!");
+        }
+
+        const axisZoomSpy = vi
+            .spyOn(axisResolution, "zoom")
+            .mockReturnValue(true);
+        const contentZoomSpy = vi
+            .spyOn(contentResolution, "zoom")
+            .mockReturnValue(true);
+
+        axisHarness.view.propagateInteraction(
+            new Interaction(
+                axisPoint,
+                /** @type {any} */ ({
+                    type: "wheel",
+                    deltaX: 0,
+                    deltaY: -120,
+                    deltaMode: 0,
+                    preventDefault: vi.fn(),
+                })
+            )
+        );
+
+        contentHarness.view.propagateInteraction(
+            new Interaction(
+                contentPoint,
+                /** @type {any} */ ({
+                    type: "wheel",
+                    deltaX: 0,
+                    deltaY: -120,
+                    deltaMode: 0,
+                    preventDefault: vi.fn(),
+                })
+            )
+        );
+
+        expect(axisZoomSpy).toHaveBeenCalledTimes(1);
+        expect(contentZoomSpy).toHaveBeenCalledTimes(1);
+        expect(axisZoomSpy.mock.calls[0]).toEqual(contentZoomSpy.mock.calls[0]);
     });
 });

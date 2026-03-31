@@ -1402,14 +1402,50 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * @returns {import("@genome-spy/core/view/layout/rectangle.js").default}
+     */
+    #getMainPaneZoomCoords() {
+        let minY = this.childCoords.y;
+        let maxY = this.childCoords.y2;
+
+        for (const axisView of Object.values(this.#gridChild.axes)) {
+            const axisCoords = axisView.coords;
+            if (!axisCoords) {
+                continue;
+            }
+
+            if (
+                axisView.axisProps.orient === "top" ||
+                axisView.axisProps.orient === "bottom"
+            ) {
+                minY = Math.min(minY, axisCoords.y);
+                maxY = Math.max(maxY, axisCoords.y2);
+            }
+        }
+
+        return this.childCoords.modify({
+            y: minY,
+            height: maxY - minY,
+        });
+    }
+
+    /**
      * @param {import("@genome-spy/core/utils/interaction.js").default} event
      */
     propagateInteraction(event) {
         propagateInteraction(this, event, () => {
+            const mainPaneZoomCoords = this.#getMainPaneZoomCoords();
+            const inMainPane = this.childCoords.containsPoint(
+                event.point.x,
+                event.point.y
+            );
+            const inMainPaneZoomSurface = mainPaneZoomCoords.containsPoint(
+                event.point.x,
+                event.point.y
+            );
+
             if (event.type === "wheelclaimprobe") {
-                if (
-                    this.childCoords.containsPoint(event.point.x, event.point.y)
-                ) {
+                if (inMainPaneZoomSurface) {
                     const resolution =
                         this.#gridChild.view.getScaleResolution("x");
                     if (resolution?.isZoomable()) {
@@ -1435,28 +1471,39 @@ export default class SampleView extends ContainerView {
                 }
             }
 
-            propagateInteractionSurface(
-                event,
-                () =>
-                    this.childCoords.containsPoint(
-                        event.point.x,
-                        event.point.y
-                    ),
-                () => this.#gridChild.view.propagateInteraction(event),
-                () =>
-                    interactionToZoom(
-                        event,
-                        this.childCoords,
-                        (zoomEvent) =>
-                            this.#handleZoom(
-                                this.childCoords,
-                                this.#gridChild.view,
-                                zoomEvent
-                            ),
-                        this.context.getCurrentHover(),
-                        this.context.animator
-                    )
-            );
+            if (inMainPane) {
+                propagateInteractionSurface(
+                    event,
+                    () => true,
+                    () => this.#gridChild.view.propagateInteraction(event),
+                    () =>
+                        interactionToZoom(
+                            event,
+                            mainPaneZoomCoords,
+                            (zoomEvent) =>
+                                this.#handleZoom(
+                                    mainPaneZoomCoords,
+                                    this.#gridChild.view,
+                                    zoomEvent
+                                ),
+                            this.context.getCurrentHover(),
+                            this.context.animator
+                        )
+                );
+            } else if (inMainPaneZoomSurface) {
+                interactionToZoom(
+                    event,
+                    mainPaneZoomCoords,
+                    (zoomEvent) =>
+                        this.#handleZoom(
+                            mainPaneZoomCoords,
+                            this.#gridChild.view,
+                            zoomEvent
+                        ),
+                    this.context.getCurrentHover(),
+                    this.context.animator
+                );
+            }
 
             if (event.stopped) {
                 return;
