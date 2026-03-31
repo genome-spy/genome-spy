@@ -107,8 +107,13 @@
           },
 
           "encoding": {
-            "x": { "chrom": "chrom", "pos": "chromStart", "type": "locus" },
-            "x2": { "chrom": "chrom", "pos": "chromEnd" },
+            "x": {
+              "chrom": "chrom",
+              "pos": "chromStart",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom", "pos": "chromEnd", "band": 0 },
             "y": {
               "field": "span",
               "type": "quantitative",
