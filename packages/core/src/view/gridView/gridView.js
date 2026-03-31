@@ -22,6 +22,7 @@ import GridChild from "./gridChild.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
+import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -995,12 +996,18 @@ export default class GridView extends ContainerView {
                 gridChild.coords.containsPoint(event.point.x, event.point.y)
             );
             const pointedView = pointedChild?.view;
+            const gapZoomTarget = !pointedChild
+                ? this.#getGapZoomTarget(event.point)
+                : undefined;
 
             if (event.type === "wheelclaimprobe") {
                 // Probe path: claim wheel ownership without executing regular wheel
                 // behavior. InteractionController uses this to decide whether native
                 // wheel should be preventDefault()'ed before inertia kicks in.
                 if (!pointedView) {
+                    if (gapZoomTarget) {
+                        event.claimWheel();
+                    }
                     return;
                 }
 
@@ -1038,6 +1045,9 @@ export default class GridView extends ContainerView {
             }
 
             if (!pointedView) {
+                if (gapZoomTarget) {
+                    this.#propagateGapZoomInteraction(event, gapZoomTarget);
+                }
                 return;
             }
 
@@ -1065,6 +1075,134 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * @param {import("../layout/point.js").default} point
+     * @returns {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> } | undefined}
+     */
+    #getGapZoomTarget(point) {
+        const channel = this.#getGapZoomChannel();
+        if (!channel) {
+            return;
+        }
+
+        const resolution = this.getScaleResolution(channel);
+        if (!resolution || !resolution.isZoomable()) {
+            return;
+        }
+
+        const coords = this.#getGapZoomCoords(channel);
+        if (!coords) {
+            return;
+        }
+
+        if (!coords.containsPoint(point.x, point.y)) {
+            return;
+        }
+
+        return {
+            coords,
+            zoomableResolutions: getZoomableResolutionSet(channel, resolution),
+        };
+    }
+
+    /**
+     * @returns {import("../../spec/channel.js").PrimaryPositionalChannel | undefined}
+     */
+    #getGapZoomChannel() {
+        if (isVConcatSpec(this.spec)) {
+            return "x";
+        } else if (isHConcatSpec(this.spec)) {
+            return "y";
+        }
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     * @returns {Rectangle | undefined}
+     */
+    #getGapZoomCoords(channel) {
+        const firstChild = this.#visibleChildren[0];
+        if (!firstChild) {
+            return;
+        }
+
+        const firstViewportCoords = firstChild.coords;
+        const firstExpandedCoords = firstChild.coords.expand(
+            firstChild.getOverhang()
+        );
+
+        let minX = firstViewportCoords.x;
+        let minY = firstExpandedCoords.y;
+        let maxX = firstViewportCoords.x2;
+        let maxY = firstExpandedCoords.y2;
+
+        for (const gridChild of this.#visibleChildren.slice(1)) {
+            const viewportCoords = gridChild.coords;
+            const expandedCoords = gridChild.coords.expand(
+                gridChild.getOverhang()
+            );
+
+            if (channel == "x") {
+                minX = Math.max(minX, viewportCoords.x);
+                maxX = Math.min(maxX, viewportCoords.x2);
+                minY = Math.min(minY, expandedCoords.y);
+                maxY = Math.max(maxY, expandedCoords.y2);
+            } else {
+                minX = Math.min(minX, expandedCoords.x);
+                maxX = Math.max(maxX, expandedCoords.x2);
+                minY = Math.max(minY, viewportCoords.y);
+                maxY = Math.min(maxY, viewportCoords.y2);
+            }
+        }
+
+        for (const axisView of Object.values(this.#sharedAxes)) {
+            const axisCoords = axisView.coords;
+            if (!axisCoords) {
+                continue;
+            }
+
+            const orient = axisView.axisProps.orient;
+            if (channel == "x" && (orient == "top" || orient == "bottom")) {
+                minY = Math.min(minY, axisCoords.y);
+                maxY = Math.max(maxY, axisCoords.y2);
+            } else if (
+                channel == "y" &&
+                (orient == "left" || orient == "right")
+            ) {
+                minX = Math.min(minX, axisCoords.x);
+                maxX = Math.max(maxX, axisCoords.x2);
+            }
+        }
+
+        if (minX >= maxX || minY >= maxY) {
+            return;
+        }
+
+        return Rectangle.create(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    /**
+     * @param {import("../../utils/interaction.js").default} event
+     * @param {{ coords: Rectangle, zoomableResolutions: ReturnType<typeof getZoomableResolutionSet> }} gapZoomTarget
+     */
+    #propagateGapZoomInteraction(event, gapZoomTarget) {
+        event.target = this;
+
+        interactionToZoom(
+            event,
+            gapZoomTarget.coords,
+            (zoomEvent) =>
+                zoomResolutions(
+                    gapZoomTarget.coords,
+                    zoomEvent,
+                    gapZoomTarget.zoomableResolutions,
+                    this.context.animator
+                ),
+            this.context.getCurrentHover(),
+            this.context.animator
+        );
+    }
+
+    /**
      *
      * @param {import("../layout/rectangle.js").default} coords Coordinates
      * @param {View} view
@@ -1072,43 +1210,12 @@ export default class GridView extends ContainerView {
      * @returns {boolean} `true` when there was at least one zoomable resolution
      */
     #handleZoom(coords, view, zoomEvent) {
-        let zoomable = false;
-        let changed = false;
-
-        const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
-        const tp = coords.normalizePoint(
-            zoomEvent.x + zoomEvent.xDelta,
-            zoomEvent.y + zoomEvent.yDelta
+        return zoomResolutions(
+            coords,
+            zoomEvent,
+            getZoomableResolutions(view),
+            this.context.animator
         );
-        const delta = {
-            x: tp.x - p.x,
-            y: tp.y - p.y,
-        };
-
-        for (const [channel, resolutionSet] of Object.entries(
-            getZoomableResolutions(view)
-        )) {
-            if (resolutionSet.size <= 0) {
-                continue;
-            }
-
-            zoomable = true;
-
-            for (const resolution of resolutionSet) {
-                const resolutionChanged = resolution.zoom(
-                    2 ** zoomEvent.zDelta,
-                    channel == "y" ? 1 - p[channel] : p[channel],
-                    channel == "x" ? delta.x : -delta.y
-                );
-                changed = resolutionChanged || changed;
-            }
-        }
-
-        if (changed) {
-            this.context.animator.requestRender();
-        }
-
-        return zoomable;
     }
 
     /**
@@ -1119,6 +1226,65 @@ export default class GridView extends ContainerView {
     getDefaultResolution(channel, resolutionType) {
         return "independent";
     }
+}
+
+/**
+ * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+ * @param {import("../../scales/scaleResolution.js").default} resolution
+ */
+function getZoomableResolutionSet(channel, resolution) {
+    const zoomableResolutions = {
+        x: new Set(),
+        y: new Set(),
+    };
+    zoomableResolutions[channel].add(resolution);
+    return zoomableResolutions;
+}
+
+/**
+ * @param {Rectangle} coords
+ * @param {import("../zoom.js").ZoomEvent} zoomEvent
+ * @param {ReturnType<typeof getZoomableResolutions>} zoomableResolutions
+ * @param {import("../../utils/animator.js").default} animator
+ */
+function zoomResolutions(coords, zoomEvent, zoomableResolutions, animator) {
+    let zoomable = false;
+    let changed = false;
+
+    const p = coords.normalizePoint(zoomEvent.x, zoomEvent.y);
+    const tp = coords.normalizePoint(
+        zoomEvent.x + zoomEvent.xDelta,
+        zoomEvent.y + zoomEvent.yDelta
+    );
+    const delta = {
+        x: tp.x - p.x,
+        y: tp.y - p.y,
+    };
+
+    for (const [channel, resolutionSet] of Object.entries(
+        zoomableResolutions
+    )) {
+        if (resolutionSet.size <= 0) {
+            continue;
+        }
+
+        zoomable = true;
+
+        for (const resolution of resolutionSet) {
+            const resolutionChanged = resolution.zoom(
+                2 ** zoomEvent.zDelta,
+                channel == "y" ? 1 - p[channel] : p[channel],
+                channel == "x" ? delta.x : -delta.y
+            );
+            changed = resolutionChanged || changed;
+        }
+    }
+
+    if (changed) {
+        animator.requestRender();
+    }
+
+    return zoomable;
 }
 
 /**

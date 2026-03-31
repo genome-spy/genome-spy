@@ -6,6 +6,7 @@ import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import UnitView from "../unitView.js";
+import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 
 // Minimal context for layout-driven render calls without WebGL.
@@ -704,29 +705,139 @@ describe("GridView decoration zindex", () => {
 });
 
 describe("GridView wheel zoom", () => {
+    /**
+     * @param {ConcatView} view
+     */
+    const renderForLayout = (/** @type {ConcatView} */ view) => {
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+    };
+
+    const makeGapZoomSpec = () =>
+        /** @type {import("../../spec/view.js").UnitSpec} */ ({
+            ...makeUnitSpec(),
+            data: {
+                values: [
+                    { x: 1, y: 2 },
+                    { x: 3, y: 5 },
+                ],
+            },
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: { zoom: true },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: { zoom: true },
+                },
+            },
+        });
+
+    /**
+     * @param {ConcatView} concatView
+     * @param {"vconcat" | "hconcat"} direction
+     */
+    const findSharedAxisPoint = (concatView, direction) => {
+        const sharedAxis = concatView
+            .getDescendants()
+            .find(
+                (view) =>
+                    view instanceof AxisView &&
+                    view.dataParent === concatView &&
+                    ((direction === "vconcat" &&
+                        (view.axisProps.orient === "top" ||
+                            view.axisProps.orient === "bottom")) ||
+                        (direction === "hconcat" &&
+                            (view.axisProps.orient === "left" ||
+                                view.axisProps.orient === "right")))
+            );
+
+        return sharedAxis instanceof AxisView
+            ? new Point(
+                  sharedAxis.coords.x + sharedAxis.coords.width / 2,
+                  sharedAxis.coords.y + sharedAxis.coords.height / 2
+              )
+            : undefined;
+    };
+
+    /**
+     * @param {"vconcat" | "hconcat"} direction
+     * @param {object} [extraSpec]
+     */
+    const createGapHarness = async (direction, extraSpec = {}) => {
+        const spec =
+            direction === "vconcat"
+                ? /** @type {import("../../spec/view.js").AnyConcatSpec} */ ({
+                      vconcat: [makeGapZoomSpec(), makeGapZoomSpec()],
+                      ...extraSpec,
+                  })
+                : /** @type {import("../../spec/view.js").AnyConcatSpec} */ ({
+                      hconcat: [makeGapZoomSpec(), makeGapZoomSpec()],
+                      ...extraSpec,
+                  });
+
+        const view = await createAndInitialize(spec, ConcatView);
+
+        const concatView = /** @type {ConcatView} */ (view);
+        renderForLayout(concatView);
+
+        const firstChild = /** @type {UnitView} */ (concatView.children[0]);
+        const secondChild = /** @type {UnitView} */ (concatView.children[1]);
+        const childPoint = new Point(
+            firstChild.coords.x + firstChild.coords.width / 2,
+            firstChild.coords.y + firstChild.coords.height / 2
+        );
+        const point =
+            direction === "vconcat"
+                ? new Point(
+                      firstChild.coords.x + firstChild.coords.width / 2,
+                      (firstChild.coords.y2 + secondChild.coords.y) / 2
+                  )
+                : new Point(
+                      (firstChild.coords.x2 + secondChild.coords.x) / 2,
+                      firstChild.coords.y + firstChild.coords.height / 2
+                  );
+
+        return {
+            concatView,
+            firstChild,
+            secondChild,
+            point,
+            childPoint,
+            axisPoint: findSharedAxisPoint(concatView, direction),
+        };
+    };
+
+    /**
+     * @param {ConcatView} concatView
+     * @param {Point} point
+     * @param {Partial<import("../../utils/interactionEvent.js").WheelLikeEvent>} [wheelInit]
+     */
+    const dispatchWheel = (concatView, point, wheelInit = {}) => {
+        const preventDefault = vi.fn();
+        concatView.propagateInteraction(
+            new Interaction(
+                point,
+                /** @type {any} */ ({
+                    type: "wheel",
+                    deltaX: 0,
+                    deltaY: -120,
+                    deltaMode: 0,
+                    preventDefault,
+                    ...wheelInit,
+                })
+            )
+        );
+        return preventDefault;
+    };
+
     test("applies zoom to both x and y resolutions", async () => {
-        const zoomableUnitSpec =
-            /** @type {import("../../spec/view.js").UnitSpec} */ ({
-                ...makeUnitSpec(),
-                data: {
-                    values: [
-                        { x: 1, y: 2 },
-                        { x: 3, y: 5 },
-                    ],
-                },
-                encoding: {
-                    x: {
-                        field: "x",
-                        type: "quantitative",
-                        scale: { zoom: true },
-                    },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        scale: { zoom: true },
-                    },
-                },
-            });
+        const zoomableUnitSpec = makeGapZoomSpec();
 
         const view = await createAndInitialize(
             {
@@ -739,10 +850,7 @@ describe("GridView wheel zoom", () => {
         view.context.getCurrentHover = () => undefined;
 
         // Non-obvious: run one layout/render pass so child coords exist for hit testing.
-        const context = new NoOpRenderingContext({ picking: false });
-        concatView.render(context, Rectangle.create(0, 0, 200, 200), {
-            firstFacet: true,
-        });
+        renderForLayout(concatView);
 
         const child = /** @type {UnitView} */ (concatView.children[0]);
         const childCoords = child.coords;
@@ -776,5 +884,260 @@ describe("GridView wheel zoom", () => {
 
         expect(xZoomSpy).toHaveBeenCalled();
         expect(yZoomSpy).toHaveBeenCalled();
+    });
+
+    test("vconcat gap wheel zoom uses the shared x resolution and matches child zoom", async () => {
+        const gapHarness = await createGapHarness("vconcat");
+        const childHarness = await createGapHarness("vconcat");
+
+        const gapResolution = gapHarness.concatView.getScaleResolution("x");
+        const childResolution = childHarness.concatView.getScaleResolution("x");
+        const gapYResolution = gapHarness.firstChild.getScaleResolution("y");
+        if (!gapResolution || !childResolution) {
+            throw new Error("Expected shared x resolutions!");
+        }
+        if (!gapYResolution) {
+            throw new Error("Expected child y resolution!");
+        }
+
+        const gapXZoomSpy = vi.spyOn(gapResolution, "zoom");
+        const gapYZoomSpy = vi.spyOn(gapYResolution, "zoom");
+        dispatchWheel(gapHarness.concatView, gapHarness.point);
+        dispatchWheel(childHarness.concatView, childHarness.childPoint);
+
+        expect(gapXZoomSpy).toHaveBeenCalled();
+        expect(gapYZoomSpy).not.toHaveBeenCalled();
+        expect(gapResolution.getDomain()).toEqual(childResolution.getDomain());
+    });
+
+    test("vconcat shared axis wheel zoom matches child wheel zoom on shared x", async () => {
+        const axisHarness = await createGapHarness("vconcat", {
+            resolve: {
+                axis: {
+                    x: "shared",
+                },
+            },
+        });
+        const childHarness = await createGapHarness("vconcat", {
+            resolve: {
+                axis: {
+                    x: "shared",
+                },
+            },
+        });
+
+        if (!axisHarness.axisPoint) {
+            throw new Error("Expected shared x axis!");
+        }
+
+        const axisResolution = axisHarness.concatView.getScaleResolution("x");
+        const childResolution = childHarness.concatView.getScaleResolution("x");
+        if (!axisResolution || !childResolution) {
+            throw new Error("Expected shared x resolutions!");
+        }
+
+        dispatchWheel(axisHarness.concatView, axisHarness.axisPoint);
+        dispatchWheel(childHarness.concatView, childHarness.childPoint);
+
+        expect(axisResolution.getDomain()).toEqual(childResolution.getDomain());
+    });
+
+    test("hconcat gap wheel zoom uses the shared y resolution and matches child zoom", async () => {
+        const gapHarness = await createGapHarness("hconcat");
+        const childHarness = await createGapHarness("hconcat");
+
+        const gapResolution = gapHarness.concatView.getScaleResolution("y");
+        const childResolution = childHarness.concatView.getScaleResolution("y");
+        const gapXResolution = gapHarness.firstChild.getScaleResolution("x");
+        if (!gapResolution || !childResolution) {
+            throw new Error("Expected shared y resolutions!");
+        }
+        if (!gapXResolution) {
+            throw new Error("Expected child x resolution!");
+        }
+
+        const gapYZoomSpy = vi.spyOn(gapResolution, "zoom");
+        const gapXZoomSpy = vi.spyOn(gapXResolution, "zoom");
+        dispatchWheel(gapHarness.concatView, gapHarness.point);
+        dispatchWheel(childHarness.concatView, childHarness.childPoint);
+
+        expect(gapYZoomSpy).toHaveBeenCalled();
+        expect(gapXZoomSpy).not.toHaveBeenCalled();
+        expect(gapResolution.getDomain()).toEqual(childResolution.getDomain());
+    });
+
+    test("vconcat gap wheelclaimprobe claims the shared x resolution", async () => {
+        const { concatView, point } = await createGapHarness("vconcat");
+
+        const interaction = new Interaction(
+            point,
+            /** @type {any} */ ({ type: "wheelclaimprobe" })
+        );
+
+        concatView.propagateInteraction(interaction);
+
+        expect(interaction.wheelClaimed).toBe(true);
+    });
+
+    test("vconcat side overhang does not trigger gap zoom", async () => {
+        const { concatView, firstChild, secondChild } =
+            await createGapHarness("vconcat");
+
+        Object.defineProperty(firstChild, "coords", {
+            value: firstChild.coords.modify({ x: 20, width: 80 }),
+        });
+        Object.defineProperty(secondChild, "coords", {
+            value: secondChild.coords.modify({ x: 40, width: 60 }),
+        });
+
+        const overhangPoint = new Point(
+            firstChild.coords.x + 5,
+            (firstChild.coords.y2 + secondChild.coords.y) / 2
+        );
+
+        const xResolution = concatView.getScaleResolution("x");
+        if (!xResolution) {
+            throw new Error("Expected shared x resolution!");
+        }
+
+        const xZoomSpy = vi.spyOn(xResolution, "zoom");
+        const preventDefault = dispatchWheel(concatView, overhangPoint);
+
+        expect(xZoomSpy).not.toHaveBeenCalled();
+        expect(preventDefault).not.toHaveBeenCalled();
+    });
+
+    test("vconcat gap drag pan uses the shared x resolution and matches child pan", async () => {
+        const originalDocument = globalThis.document;
+        const originalMouseEvent = globalThis.MouseEvent;
+
+        try {
+            /**
+             * @returns {Record<string, EventListener | undefined>}
+             */
+            const installDocumentStub = () => {
+                /** @type {Record<string, EventListener | undefined>} */
+                const listeners = {};
+                globalThis.document = /** @type {Document} */ (
+                    /** @type {any} */ ({
+                        addEventListener(
+                            /** @type {string} */ type,
+                            /** @type {EventListener} */ listener
+                        ) {
+                            listeners[type] = listener;
+                        },
+                        removeEventListener(
+                            /** @type {string} */ type,
+                            /** @type {EventListener} */ listener
+                        ) {
+                            if (listeners[type] === listener) {
+                                listeners[type] = undefined;
+                            }
+                        },
+                    })
+                );
+                return listeners;
+            };
+
+            class FakeMouseEvent extends Event {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
+                    super(type);
+                    Object.assign(this, init);
+                }
+            }
+
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+
+            const dispatchPan = (
+                /** @type {ConcatView} */ concatView,
+                /** @type {Point} */ startPoint,
+                /** @type {number} */ deltaX
+            ) => {
+                const listeners = installDocumentStub();
+                concatView.propagateInteraction(
+                    new Interaction(
+                        startPoint,
+                        /** @type {any} */ (
+                            new FakeMouseEvent("mousedown", {
+                                button: 0,
+                                clientX: startPoint.x,
+                                clientY: startPoint.y,
+                                preventDefault: /** @returns {void} */ () =>
+                                    undefined,
+                            })
+                        )
+                    )
+                );
+
+                listeners.mousemove?.(
+                    /** @type {MouseEvent} */ (
+                        /** @type {any} */ ({
+                            type: "mousemove",
+                            clientX: startPoint.x + deltaX,
+                            clientY: startPoint.y,
+                        })
+                    )
+                );
+            };
+
+            const gapHarness = await createGapHarness("vconcat");
+            const childHarness = await createGapHarness("vconcat");
+
+            const gapResolution = gapHarness.concatView.getScaleResolution("x");
+            const childResolution =
+                childHarness.concatView.getScaleResolution("x");
+            const gapYResolution =
+                gapHarness.firstChild.getScaleResolution("y");
+            if (!gapResolution || !childResolution) {
+                throw new Error("Expected shared x resolutions!");
+            }
+            if (!gapYResolution) {
+                throw new Error("Expected child y resolution!");
+            }
+
+            const gapXZoomSpy = vi.spyOn(gapResolution, "zoom");
+            const gapYZoomSpy = vi.spyOn(gapYResolution, "zoom");
+            dispatchPan(gapHarness.concatView, gapHarness.point, 15);
+            dispatchPan(childHarness.concatView, childHarness.childPoint, 15);
+
+            expect(gapXZoomSpy).toHaveBeenCalled();
+            expect(gapYZoomSpy).not.toHaveBeenCalled();
+            expect(gapResolution.getDomain()).toEqual(
+                childResolution.getDomain()
+            );
+        } finally {
+            globalThis.document = originalDocument;
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+
+    test("gap wheel does nothing when concat axis resolution is independent", async () => {
+        const { concatView, firstChild, secondChild, point } =
+            await createGapHarness("vconcat", {
+                resolve: {
+                    scale: {
+                        x: "independent",
+                    },
+                },
+            });
+
+        const firstChildXResolution = firstChild.getScaleResolution("x");
+        const secondChildXResolution = secondChild.getScaleResolution("x");
+        if (!firstChildXResolution || !secondChildXResolution) {
+            throw new Error("Expected independent child x resolutions!");
+        }
+
+        const firstXZoomSpy = vi.spyOn(firstChildXResolution, "zoom");
+        const secondXZoomSpy = vi.spyOn(secondChildXResolution, "zoom");
+        const preventDefault = dispatchWheel(concatView, point);
+
+        expect(firstXZoomSpy).not.toHaveBeenCalled();
+        expect(secondXZoomSpy).not.toHaveBeenCalled();
+        expect(preventDefault).not.toHaveBeenCalled();
     });
 });
