@@ -103,7 +103,8 @@
 
           "mark": {
             "type": "link",
-            "linkShape": "dome"
+            "linkShape": "dome",
+            "maxChordLength": 100000000
           },
 
           "encoding": {

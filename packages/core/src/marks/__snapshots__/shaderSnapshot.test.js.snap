@@ -1068,6 +1068,1096 @@ void main(void) {
 }
 `;
 
+exports[`generated shader snapshots > link mark control spec 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    uniform float uArcHeightFactor;
+
+    /** Make very small arcs visible */
+    uniform float uMinArcHeight;
+
+    /** The minimum stroke width in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    uniform int uShape;
+    uniform int uOrient;
+    uniform bool uClampApex;
+
+    // In pixels
+    uniform float uMaxChordLength;
+    // In pixels
+    uniform vec2 uArcFadingDistance;
+    uniform bool uNoFadingOnPointSelection;
+
+    uniform int uSegmentBreaks;
+
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+flat in vec4 vColor;
+flat in float vSize;
+in float vNormalLengthInPixels;
+flat in float vGamma;
+
+out lowp vec4 fragColor;
+
+void main(void) {
+    float dpr = uDevicePixelRatio;
+
+    float distance = abs(vNormalLengthInPixels);
+    float opacity = clamp(((vSize / 2.0 - distance) * dpr), 0.0, 1.0);
+
+    opacity = pow(opacity, vGamma);
+
+    fragColor = vColor * opacity;
+
+    if (uPickingEnabled) {
+        fragColor = vPickingColor;
+    }
+}
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    uniform float uArcHeightFactor;
+
+    /** Make very small arcs visible */
+    uniform float uMinArcHeight;
+
+    /** The minimum stroke width in pixels when rendering into the picking buffer */
+    uniform float uMinPickingSize;
+
+    uniform int uShape;
+    uniform int uOrient;
+    uniform bool uClampApex;
+
+    // In pixels
+    uniform float uMaxChordLength;
+    // In pixels
+    uniform vec2 uArcFadingDistance;
+    uniform bool uNoFadingOnPointSelection;
+
+    uniform int uSegmentBreaks;
+
+    mediump float uDomain_x[2];
+
+    mediump float uDomain_y[2];
+
+
+
+
+
+};
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp float attr_x;
+in highp float attr_y_y2;
+in highp float attr_x2;
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+float accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_y_0() {
+    return attr_y_y2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(0.0, 1.0);
+
+float scale_y(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+vec3 accessor_color_0() {
+    // Constant value
+    return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 getScaled_color() {
+return accessor_color_0();
+}
+
+#define color_DEFINED
+
+
+float accessor_opacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_opacity() {
+return accessor_opacity_0();
+}
+
+#define opacity_DEFINED
+
+
+float accessor_size_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_size() {
+return accessor_size_0();
+}
+
+#define size_DEFINED
+
+
+float accessor_x2_0() {
+    return attr_x2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x2
+
+
+float scale_x2(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x2() {
+return scale_x2(accessor_x2_0());
+}
+
+#define x2_DEFINED
+
+
+float accessor_y2_0() {
+    return attr_y_y2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y2
+
+
+float scale_y2(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_y);
+    return transformed;
+
+}
+
+float getScaled_y2() {
+return scale_y2(accessor_y2_0());
+}
+
+#define y2_DEFINED
+
+bool isPointSelected() {
+    return false;
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out vec4 vColor;
+
+/** Stroke width */
+flat out float vSize;
+
+/** The distance from the line center to the direction of normal in pixels */
+out float vNormalLengthInPixels;
+
+flat out float vGamma;
+
+const int SHAPE_ARC = 0;
+const int SHAPE_DOME = 1;
+const int SHAPE_DIAGONAL = 2;
+const int SHAPE_LINE = 3;
+const int ORIENT_VERTICAL = 0;
+const int ORIENT_HORIZONTAL = 1;
+
+float distanceFromLine(vec2 pointOnLine1, vec2 pointOnLine2, vec2 point) {
+    vec2 a = point - pointOnLine1;
+    vec2 b = pointOnLine2 - pointOnLine1;
+    vec2 proj = dot(a, b) / dot(b, b) * b;
+    return length(a - proj);
+}
+
+bool isInsideViewport(vec2 point, float marginFactor) {
+    vec2 margin = uViewportSize * vec2(marginFactor);
+    return point.x >= -margin.x
+        && point.x <= uViewportSize.x + margin.x
+        && point.y >= -margin.y
+        && point.y <= uViewportSize.y + margin.y;
+}
+
+float inverseSmoothstep(float t) {
+    t = clamp(t, 0.0, 1.0);
+    // The chord-axis coordinate of ARC/DOME follows the smoothstep curve.
+    return 0.5 - sin(asin(1.0 - 2.0 * t) / 3.0);
+}
+
+float remapVisibleChordParameter(
+    float stripT,
+    float chordStart,
+    float chordEnd,
+    float viewportLength
+) {
+    // Concentrate samples in the viewport-visible chord interval without dropping the rest.
+    float chordMin = min(chordStart, chordEnd);
+    float chordMax = max(chordStart, chordEnd);
+    float chordSpan = chordMax - chordMin;
+
+    if (chordSpan <= 0.0) {
+        return 0.0;
+    }
+
+    float visibleChordMin = max(chordMin, 0.0);
+    float visibleChordMax = min(chordMax, viewportLength);
+
+    if (visibleChordMax <= visibleChordMin) {
+        return stripT;
+    }
+
+    float visibleTMin = inverseSmoothstep((visibleChordMin - chordMin) / chordSpan);
+    float visibleTMax = inverseSmoothstep((visibleChordMax - chordMin) / chordSpan);
+    float visibleTSpan = visibleTMax - visibleTMin;
+    float offscreenTSpan = visibleTMin + (1.0 - visibleTMax);
+
+    if (offscreenTSpan <= 0.0) {
+        return stripT;
+    }
+
+    float visibleShare = clamp(0.75 + (1.0 - visibleTSpan) * 0.2, 0.75, 0.95);
+    float offscreenShare = 1.0 - visibleShare;
+    float leftShare = offscreenShare * visibleTMin / offscreenTSpan;
+    float rightShare = offscreenShare * (1.0 - visibleTMax) / offscreenTSpan;
+
+    if (stripT <= leftShare) {
+        return leftShare > 0.0 ? mix(0.0, visibleTMin, stripT / leftShare) : visibleTMin;
+    }
+
+    float visibleStart = leftShare;
+    float visibleEnd = visibleStart + visibleShare;
+
+    if (stripT <= visibleEnd) {
+        return visibleShare > 0.0
+            ? mix(visibleTMin, visibleTMax, (stripT - visibleStart) / visibleShare)
+            : visibleTMin;
+    }
+
+    return rightShare > 0.0
+        ? mix(visibleTMax, 1.0, (stripT - visibleEnd) / rightShare)
+        : visibleTMax;
+}
+
+void clampChordToViewport(inout vec2 p1, inout vec2 p4, inout float chordLength) {
+    if (chordLength > uMaxChordLength) {
+        vec2 chordVector = p4 - p1;
+        vec2 unitChordVector = normalize(chordVector);
+
+        if (isInsideViewport(p1, 2.0)) {
+            chordLength = uMaxChordLength;
+            p4 = p1 + unitChordVector * uMaxChordLength;
+        } else if (isInsideViewport(p4, 2.0)) {
+            chordLength = uMaxChordLength;
+            p1 = p4 - unitChordVector * uMaxChordLength;
+        }
+    }
+}
+
+void clampDomeApex(inout vec2 p1, inout vec2 p4, int orient) {
+    if (orient == ORIENT_VERTICAL) {
+        if (p4.x > 0.0) {
+            p1.x = max(p1.x, -p4.x);
+        }
+        if (p1.x < uViewportSize.x) {
+            p4.x = min(p4.x, 2.0 * uViewportSize.x - p1.x);
+        }
+    } else {
+        if (p4.y > 0.0) {
+            p1.y = max(p1.y, -p4.y);
+        }
+        if (p1.y < uViewportSize.y) {
+            p4.y = min(p4.y, 2.0 * uViewportSize.y - p1.y);
+        }
+    }
+}
+
+void main(void) {
+    float pixelSize = 1.0 / uDevicePixelRatio;
+    float opacity = getScaled_opacity() * uViewOpacity;
+
+    // The bezier's control points
+    vec2 p1, p2, p3, p4;
+
+    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y())) * uViewportSize;
+    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2())) * uViewportSize;
+
+    if (uShape <= SHAPE_DOME) {
+        if (uShape == SHAPE_DOME) {
+            vec2 height = vec2(0.0);
+            if (uOrient == ORIENT_VERTICAL) {
+                p1 = vec2(min(a.x, b.x), b.y);
+                p4 = vec2(max(a.x, b.x), b.y);
+                height = vec2(0.0, a.y - b.y);
+
+                float chordLength = length(p4 - p1);
+                clampChordToViewport(p1, p4, chordLength);
+                if (uClampApex) {
+                    clampDomeApex(p1, p4, ORIENT_VERTICAL);
+                }
+
+            } else {
+                p1 = vec2(b.x, min(a.y, b.y));
+                p4 = vec2(b.x, max(a.y, b.y));
+                height = vec2(a.x - b.x, 0.0);
+
+                float chordLength = length(p4 - p1);
+                clampChordToViewport(p1, p4, chordLength);
+                if (uClampApex) {
+                    clampDomeApex(p1, p4, ORIENT_HORIZONTAL);
+                }
+            }
+
+            vec2 controlOffset = height / 0.75;
+            p2 = p1 + controlOffset;
+            p3 = p4 + controlOffset;
+
+        } if (uShape == SHAPE_ARC) {
+            p1 = a;
+            p4 = b;
+
+            vec2 chordVector = p4 - p1;
+            vec2 unitChordVector = normalize(chordVector);
+            vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
+            float chordLength = length(chordVector);
+            clampChordToViewport(p1, p4, chordLength);
+
+            float height = max(
+                chordLength / 2.0 * uArcHeightFactor,
+                uMinArcHeight
+            );
+
+            // This is a bit poor approximation of a circular arc, but it's probably enough for most purposes.
+            // TODO: Consider a more sophisticated approach: https://stackoverflow.com/a/44829356/1547896
+            vec2 controlOffset = chordNormal * height / 0.75;
+            p2 = p1 + controlOffset;
+            p3 = p4 + controlOffset;
+        }
+
+    } else if (uShape == SHAPE_DIAGONAL) {
+        if (uOrient == ORIENT_VERTICAL) {
+            p1 = a;
+            p2 = vec2(a.x, (a.y + b.y) / 2.0);
+            p3 = vec2(b.x, (a.y + b.y) / 2.0);
+            p4 = b;
+        } else {
+            p1 = a;
+            p2 = vec2((a.x + b.x) / 2.0, a.y);
+            p3 = vec2((a.x + b.x) / 2.0, b.y);
+            p4 = b;
+        }
+    } else if (uShape == SHAPE_LINE) {
+        p1 = a;
+        p2 = (a + b) / 2.0;
+        p3 = p2;
+        p4 = b;
+    }
+
+    vec2 strip = vec2(
+        float(gl_VertexID / 2) / float(uSegmentBreaks),
+        float(gl_VertexID % 2) - 0.5
+    );
+
+    float t = strip.x;
+
+    if (uShape == SHAPE_DOME) {
+        if (uOrient == ORIENT_VERTICAL) {
+            t = remapVisibleChordParameter(strip.x, p1.x, p4.x, uViewportSize.x);
+        } else {
+            t = remapVisibleChordParameter(strip.x, p1.y, p4.y, uViewportSize.y);
+        }
+    } else if (uShape == SHAPE_ARC) {
+        if (a.y == b.y) {
+            t = remapVisibleChordParameter(strip.x, p1.x, p4.x, uViewportSize.x);
+        } else if (a.x == b.x) {
+            t = remapVisibleChordParameter(strip.x, p1.y, p4.y, uViewportSize.y);
+        }
+    }
+
+    vec2 p;
+    vec2 tangent;
+
+    // de Casteljau evaluation keeps the cubic stable for long chords.
+    vec2 q1 = mix(p1, p2, t);
+    vec2 q2 = mix(p2, p3, t);
+    vec2 q3 = mix(p3, p4, t);
+
+    vec2 r1 = mix(q1, q2, t);
+    vec2 r2 = mix(q2, q3, t);
+
+    p = mix(r1, r2, t);
+    tangent = 3.0 * (r2 - r1);
+
+    tangent = normalize(tangent);
+    vec2 normal = vec2(-tangent.y, tangent.x);
+
+    float size = getScaled_size();
+
+    // Avoid artifacts in very thin lines by clamping the size and adjusting opacity respectively
+    if (size < pixelSize) {
+        opacity *= size / pixelSize;
+        size = pixelSize;
+    }
+
+    // Handle minimum picking size or add an extra pixel to the stroke width to accommodate edge antialiasing
+    float paddedSize = uPickingEnabled
+        ? max(size, uMinPickingSize)
+        : size + pixelSize;
+
+    vNormalLengthInPixels = strip.y * paddedSize;
+    
+    if (uShape == SHAPE_ARC &&
+        uArcFadingDistance[0] > 0.0 &&
+        uArcFadingDistance[1] > 0.0 &&
+        (!uNoFadingOnPointSelection || !isPointSelected()))
+    {
+        float d = distanceFromLine(p1, p4, p);
+        float distanceOpacity = smoothstep(uArcFadingDistance[1], uArcFadingDistance[0], d);    
+
+        // Fade out
+        opacity *= distanceOpacity;
+
+        // Collapse fully transparent triangles to skip fragment processing 
+        if (distanceOpacity <= 0.0) {
+            vNormalLengthInPixels = 0.0;
+        }
+    }
+
+    // Extrude
+    p += normal * vNormalLengthInPixels;
+
+    gl_Position = pixelsToNdc(p);
+
+    vec3 color = getScaled_color();
+
+    vColor = vec4(color * opacity, opacity);
+
+    vGamma = getGammaForColor(color);
+
+    vSize = paddedSize;
+
+    setupPicking();
+}
+",
+}
+`;
+
 exports[`generated shader snapshots > penguins scatter plot example 1`] = `
 {
   "fragment": "precision highp float;

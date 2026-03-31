@@ -30,6 +30,103 @@ bool isInsideViewport(vec2 point, float marginFactor) {
         && point.y <= uViewportSize.y + margin.y;
 }
 
+float inverseSmoothstep(float t) {
+    t = clamp(t, 0.0, 1.0);
+    // The chord-axis coordinate of ARC/DOME follows the smoothstep curve.
+    return 0.5 - sin(asin(1.0 - 2.0 * t) / 3.0);
+}
+
+/**
+ * Remaps the parameter t to concentrate vertices to the part that is visible in the viewport.
+ * This keeps the tightly bent endpoints smooth even when zooming in very close.
+ */
+float remapVisibleChordParameter(
+    float stripT,
+    float chordStart,
+    float chordEnd,
+    float viewportLength
+) {
+    // Concentrate samples in the viewport-visible chord interval without dropping the rest.
+    float chordMin = min(chordStart, chordEnd);
+    float chordMax = max(chordStart, chordEnd);
+    float chordSpan = chordMax - chordMin;
+
+    if (chordSpan <= 0.0) {
+        return 0.0;
+    }
+
+    float visibleChordMin = max(chordMin, 0.0);
+    float visibleChordMax = min(chordMax, viewportLength);
+
+    if (visibleChordMax <= visibleChordMin) {
+        return stripT;
+    }
+
+    float visibleTMin = inverseSmoothstep((visibleChordMin - chordMin) / chordSpan);
+    float visibleTMax = inverseSmoothstep((visibleChordMax - chordMin) / chordSpan);
+    float visibleTSpan = visibleTMax - visibleTMin;
+    float offscreenTSpan = visibleTMin + (1.0 - visibleTMax);
+
+    if (offscreenTSpan <= 0.0) {
+        return stripT;
+    }
+
+    float visibleShare = clamp(0.75 + (1.0 - visibleTSpan) * 0.2, 0.75, 0.95);
+    float offscreenShare = 1.0 - visibleShare;
+    float leftShare = offscreenShare * visibleTMin / offscreenTSpan;
+    float rightShare = offscreenShare * (1.0 - visibleTMax) / offscreenTSpan;
+
+    if (stripT <= leftShare) {
+        return leftShare > 0.0 ? mix(0.0, visibleTMin, stripT / leftShare) : visibleTMin;
+    }
+
+    float visibleStart = leftShare;
+    float visibleEnd = visibleStart + visibleShare;
+
+    if (stripT <= visibleEnd) {
+        return visibleShare > 0.0
+            ? mix(visibleTMin, visibleTMax, (stripT - visibleStart) / visibleShare)
+            : visibleTMin;
+    }
+
+    return rightShare > 0.0
+        ? mix(visibleTMax, 1.0, (stripT - visibleEnd) / rightShare)
+        : visibleTMax;
+}
+
+void clampChordToViewport(inout vec2 p1, inout vec2 p4, inout float chordLength) {
+    if (chordLength > uMaxChordLength) {
+        vec2 chordVector = p4 - p1;
+        vec2 unitChordVector = normalize(chordVector);
+
+        if (isInsideViewport(p1, 2.0)) {
+            chordLength = uMaxChordLength;
+            p4 = p1 + unitChordVector * uMaxChordLength;
+        } else if (isInsideViewport(p4, 2.0)) {
+            chordLength = uMaxChordLength;
+            p1 = p4 - unitChordVector * uMaxChordLength;
+        }
+    }
+}
+
+void clampDomeApex(inout vec2 p1, inout vec2 p4, int orient) {
+    if (orient == ORIENT_VERTICAL) {
+        if (p4.x > 0.0) {
+            p1.x = max(p1.x, -p4.x);
+        }
+        if (p1.x < uViewportSize.x) {
+            p4.x = min(p4.x, 2.0 * uViewportSize.x - p1.x);
+        }
+    } else {
+        if (p4.y > 0.0) {
+            p1.y = max(p1.y, -p4.y);
+        }
+        if (p1.y < uViewportSize.y) {
+            p4.y = min(p4.y, 2.0 * uViewportSize.y - p1.y);
+        }
+    }
+}
+
 void main(void) {
     float pixelSize = 1.0 / uDevicePixelRatio;
     float opacity = getScaled_opacity() * uViewOpacity;
@@ -48,13 +145,10 @@ void main(void) {
                 p4 = vec2(max(a.x, b.x), b.y);
                 height = vec2(0.0, a.y - b.y);
 
+                float chordLength = length(p4 - p1);
+                clampChordToViewport(p1, p4, chordLength);
                 if (uClampApex) {
-                    if (p4.x > 0.0) {
-                        p1.x = max(p1.x, -p4.x);
-                    }
-                    if (p1.x < uViewportSize.x) {
-                        p4.x = min(p4.x, 2.0 * uViewportSize.x - p1.x);
-                    }
+                    clampDomeApex(p1, p4, ORIENT_VERTICAL);
                 }
 
             } else {
@@ -62,18 +156,14 @@ void main(void) {
                 p4 = vec2(b.x, max(a.y, b.y));
                 height = vec2(a.x - b.x, 0.0);
 
+                float chordLength = length(p4 - p1);
+                clampChordToViewport(p1, p4, chordLength);
                 if (uClampApex) {
-                    if (p4.y > 0.0) {
-                        p1.y = max(p1.y, -p4.y);
-                    }
-                    if (p1.y < uViewportSize.y) {
-                        p4.y = min(p4.y, 2.0 * uViewportSize.y - p1.y);
-                    }
+                    clampDomeApex(p1, p4, ORIENT_HORIZONTAL);
                 }
             }
 
             vec2 controlOffset = height / 0.75;
-
             p2 = p1 + controlOffset;
             p3 = p4 + controlOffset;
 
@@ -85,16 +175,7 @@ void main(void) {
             vec2 unitChordVector = normalize(chordVector);
             vec2 chordNormal = vec2(-unitChordVector.y, unitChordVector.x);
             float chordLength = length(chordVector);
-
-            if (chordLength > uMaxChordLength) {
-                if (isInsideViewport(p1, 2.0)) {
-                    chordLength = uMaxChordLength;
-                    p4 = p1 + unitChordVector * uMaxChordLength;
-                } else if (isInsideViewport(p4, 2.0)) {
-                    chordLength = uMaxChordLength;
-                    p1 = p4 - unitChordVector * uMaxChordLength;
-                }
-            }
+            clampChordToViewport(p1, p4, chordLength);
 
             float height = max(
                 chordLength / 2.0 * uArcHeightFactor,
@@ -104,7 +185,6 @@ void main(void) {
             // This is a bit poor approximation of a circular arc, but it's probably enough for most purposes.
             // TODO: Consider a more sophisticated approach: https://stackoverflow.com/a/44829356/1547896
             vec2 controlOffset = chordNormal * height / 0.75;
-
             p2 = p1 + controlOffset;
             p3 = p4 + controlOffset;
         }
@@ -133,26 +213,37 @@ void main(void) {
         float(gl_VertexID % 2) - 0.5
     );
 
-    // Make segments shorter near the endpoints to make the tightly bent attachment points smoother
-    float t = smoothstep(0.0, 1.0, strip.x);
+    float t = strip.x;
 
-    // https://stackoverflow.com/a/31317254/1547896
-    vec2 C1 = p4 - 3.0 * p3 + 3.0 * p2 - p1;
-    vec2 C2 = 3.0 * p3 - 6.0 * p2 + 3.0 * p1;
-    vec2 C3 = 3.0 * p2 - 3.0 * p1;
-    vec2 C4 = p1;
-
-    vec2 p;
-    // Skip computation at endpoints to maintain precision
-    if (t == 0.0) {
-        p = p1;
-    } else if (t == 1.0) {
-        p = p4;
-    } else {
-        p = C1*t*t*t + C2*t*t + C3*t + C4;
+    if (uShape == SHAPE_DOME) {
+        if (uOrient == ORIENT_VERTICAL) {
+            t = remapVisibleChordParameter(strip.x, p1.x, p4.x, uViewportSize.x);
+        } else {
+            t = remapVisibleChordParameter(strip.x, p1.y, p4.y, uViewportSize.y);
+        }
+    } else if (uShape == SHAPE_ARC) {
+        if (a.y == b.y) {
+            t = remapVisibleChordParameter(strip.x, p1.x, p4.x, uViewportSize.x);
+        } else if (a.x == b.x) {
+            t = remapVisibleChordParameter(strip.x, p1.y, p4.y, uViewportSize.y);
+        }
     }
 
-    vec2 tangent = normalize(3.0*C1*t*t + 2.0*C2*t + C3);
+    vec2 p;
+    vec2 tangent;
+
+    // de Casteljau evaluation keeps the cubic stable for long chords.
+    vec2 q1 = mix(p1, p2, t);
+    vec2 q2 = mix(p2, p3, t);
+    vec2 q3 = mix(p3, p4, t);
+
+    vec2 r1 = mix(q1, q2, t);
+    vec2 r2 = mix(q2, q3, t);
+
+    p = mix(r1, r2, t);
+    tangent = 3.0 * (r2 - r1);
+
+    tangent = normalize(tangent);
     vec2 normal = vec2(-tangent.y, tangent.x);
 
     float size = getScaled_size();

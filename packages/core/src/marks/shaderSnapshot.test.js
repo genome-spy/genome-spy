@@ -35,6 +35,7 @@ function loadSpec(relativePath) {
  *     getProgramInfoLog: () => string,
  *     getShaderParameter: () => boolean,
  *     getShaderInfoLog: () => string,
+ *     getExtension: (name: string) => object | null,
  *     getShaderSource: (shader: FakeShader) => string,
  *     deleteShader: () => void,
  *     deleteProgram: () => void,
@@ -63,6 +64,7 @@ function createFakeGlHelper() {
          *   getProgramInfoLog: () => string,
          *   getShaderParameter: () => boolean,
          *   getShaderInfoLog: () => string,
+         *   getExtension: (name: string) => object | null,
          *   getShaderSource: (shader: FakeShader) => string,
          *   deleteShader: () => void,
          *   deleteProgram: () => void,
@@ -88,6 +90,9 @@ function createFakeGlHelper() {
             },
             getShaderInfoLog() {
                 return "";
+            },
+            getExtension() {
+                return null;
             },
             /** @param {FakeShader} shader */
             getShaderSource(shader) {
@@ -200,6 +205,30 @@ describe("generated shader snapshots", () => {
                 "../../../../examples/docs/grammar/parameters/point-selection.json"
             )
         );
+
+        expect(sources).toMatchSnapshot();
+    });
+
+    test("link mark control spec", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [{ x: 2, x2: 8, y: 3 }],
+            },
+            resolve: {
+                scale: { x: "shared", y: "shared" },
+            },
+            mark: {
+                type: "link",
+                linkShape: "arc",
+                orient: "vertical",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                x2: { field: "x2" },
+                y: { field: "y", type: "quantitative" },
+                y2: { field: "y" },
+            },
+        });
 
         expect(sources).toMatchSnapshot();
     });
