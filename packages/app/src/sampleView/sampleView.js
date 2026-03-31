@@ -639,6 +639,30 @@ export default class SampleView extends ContainerView {
             this.metadataView,
         ]);
 
+        /** @type {import("@genome-spy/core/view/view.js").InteractionListener} */
+        const stopSidebarZoomInteraction = (event) => {
+            if (event.type === "mousedown" && event.mouseEvent.button !== 0) {
+                return;
+            }
+
+            event.stopPropagation();
+        };
+        this.#sidebarView.addInteractionListener(
+            "wheel",
+            stopSidebarZoomInteraction,
+            true
+        );
+        this.#sidebarView.addInteractionListener(
+            "mousedown",
+            stopSidebarZoomInteraction,
+            true
+        );
+        this.#sidebarView.addInteractionListener(
+            "touchgesture",
+            stopSidebarZoomInteraction,
+            true
+        );
+
         this.#gridChild.scrollbars.vertical = new Scrollbar(
             this.#gridChild,
             "vertical",

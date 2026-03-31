@@ -441,4 +441,108 @@ describe("SampleView", () => {
         );
         expect(gapY).toBeLessThan(second.location);
     });
+
+    test("sidebar wheel and drag do not start sample-pane zoom interactions", async () => {
+        const originalMouseEvent = globalThis.MouseEvent;
+
+        try {
+            class FakeMouseEvent extends Event {
+                constructor(
+                    /** @type {string} */ type,
+                    /** @type {Record<string, any>} */ init = {}
+                ) {
+                    super(type);
+                    Object.assign(this, init);
+                }
+            }
+
+            globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+                /** @type {any} */ (FakeMouseEvent)
+            );
+
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+            const spec = {
+                data: {
+                    values: [
+                        { sample: "A", x: 1 },
+                        { sample: "B", x: 2 },
+                    ],
+                },
+                samples: {},
+                spec: {
+                    height: 160,
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            scale: { zoom: true },
+                        },
+                    },
+                },
+            };
+
+            const { view, context } = await createSampleViewForTest({
+                spec,
+            });
+
+            view.getScaleResolution = () =>
+                /** @type {any} */ ({
+                    getDataDomain: () => ["A", "B"],
+                });
+            view.handleBroadcast({
+                type: "subtreeDataReady",
+                payload: { subtreeRoot: view },
+            });
+
+            const renderContext = new NoOpRenderingContext({ picking: false });
+            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+                firstFacet: true,
+            });
+
+            const point = new Point(
+                view.sidebarCoords.x + view.sidebarCoords.width / 2,
+                view.sidebarCoords.y + view.sidebarCoords.height / 2
+            );
+
+            const wheelPreventDefault = vi.fn();
+            const suspendHoverTracking = vi.spyOn(
+                context,
+                "suspendHoverTracking"
+            );
+
+            view.propagateInteraction(
+                new Interaction(
+                    point,
+                    /** @type {any} */ ({
+                        type: "wheel",
+                        deltaX: 0,
+                        deltaY: -120,
+                        deltaMode: 0,
+                        preventDefault: wheelPreventDefault,
+                    })
+                )
+            );
+
+            view.propagateInteraction(
+                new Interaction(
+                    point,
+                    /** @type {any} */ (
+                        new FakeMouseEvent("mousedown", {
+                            button: 0,
+                            clientX: point.x,
+                            clientY: point.y,
+                            preventDefault: vi.fn(),
+                        })
+                    )
+                )
+            );
+
+            expect(wheelPreventDefault).not.toHaveBeenCalled();
+            expect(suspendHoverTracking).not.toHaveBeenCalled();
+        } finally {
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
 });
