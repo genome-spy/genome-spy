@@ -1639,18 +1639,6 @@ return scale_y(accessor_y_0());
 #define y_DEFINED
 
 
-vec3 accessor_color_0() {
-    // Constant value
-    return vec3(0.0, 0.0, 0.0);
-}
-
-vec3 getScaled_color() {
-return accessor_color_0();
-}
-
-#define color_DEFINED
-
-
 float accessor_opacity_0() {
     // Constant value
     return float(1.0);
@@ -1901,6 +1889,10 @@ float inverseSmoothstep(float t) {
     return 0.5 - sin(asin(1.0 - 2.0 * t) / 3.0);
 }
 
+/**
+ * Remaps the parameter t to concentrate vertices to the part that is visible in the viewport.
+ * This keeps the tightly bent endpoints smooth even when zooming in very close.
+ */
 float remapVisibleChordParameter(
     float stripT,
     float chordStart,
