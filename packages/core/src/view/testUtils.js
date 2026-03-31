@@ -1,5 +1,5 @@
 /**
- * Utils for Jest tests
+ * Utils for tests
  * TODO: Find a better place and convention
  *
  * @typedef {import("../spec/root.js").RootSpec} RootSpec
@@ -13,7 +13,10 @@
  * }} BroadcastingViewContext
  */
 
-import { checkForDuplicateScaleNames } from "./viewUtils.js";
+import {
+    calculateCanvasSize,
+    checkForDuplicateScaleNames,
+} from "./viewUtils.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -21,6 +24,9 @@ import {
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import UnitView from "./unitView.js";
 import ContainerView from "./containerView.js";
+import View from "./view.js";
+import Rectangle from "./layout/rectangle.js";
+import DebugginViewRenderingContext from "./renderingContext/debuggingViewRenderingContext.js";
 import {
     createHeadlessEngine,
     createHeadlessViewContext,
@@ -116,6 +122,49 @@ export async function createAndInitialize(spec, viewClass) {
     const { dataSources } = initializeViewSubtree(view, view.context.dataFlow);
     await loadViewSubtreeData(view, dataSources);
     return view;
+}
+
+/**
+ * Renders a view hierarchy into a debugging layout tree that records the
+ * rendered view coordinates.
+ *
+ * @param {View} view
+ * @param {import("./layout/rectangle.js").default} [coords]
+ */
+export function renderToLayout(view, coords) {
+    const renderingContext = new DebugginViewRenderingContext({});
+
+    const canvasSize = calculateCanvasSize(view);
+    const rect =
+        coords ??
+        Rectangle.create(
+            0,
+            0,
+            canvasSize.width ?? 1500,
+            canvasSize.height ?? 1000
+        );
+
+    view.render(renderingContext, rect, {
+        firstFacet: true,
+    });
+
+    return renderingContext.getLayout();
+}
+
+/**
+ * Creates a wrapped view hierarchy and renders it into a debugging layout tree.
+ *
+ * @param {RootSpec} spec
+ * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
+ * @param {import("./layout/rectangle.js").default} [coords]
+ */
+export async function specToLayout(spec, viewFactoryOptions = {}, coords) {
+    const view = await create(/** @type {any} */ (spec), View, {
+        wrapRoot: true,
+        ...viewFactoryOptions,
+    });
+
+    return renderToLayout(view, coords);
 }
 
 export { createHeadlessEngine };

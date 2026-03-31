@@ -1,9 +1,5 @@
-import { create } from "./src/view/testUtils";
+import { specToLayout } from "./src/view/testUtils";
 import { describe, expect, test } from "vitest";
-
-import DebugginViewRenderingContext from "./src/view/renderingContext/debuggingViewRenderingContext";
-import Rectangle from "./src/view/layout/rectangle";
-import { calculateCanvasSize } from "./src/view/viewUtils";
 
 import specFirst from "../../examples/core/first.json";
 import specPoint2D from "../../examples/core/marks/point/point2d.json";
@@ -18,33 +14,6 @@ import specConfigImportedTrack from "../../examples/core/config/config-imported-
 import specConfigImportOverride from "../../examples/core/config/config-import-override.json";
 import specConfigScaleSchemesByType from "../../examples/core/config/config-scale-schemes-by-type.json";
 import specConfigThemeComparisonBars from "../../examples/core/config/config-theme-comparison-bars.json";
-import View from "./src/view/view";
-
-/**
- * @typedef {import("./src/spec/root").RootSpec} RootSpec
- */
-
-/**
- * @param {RootSpec} spec
- */
-async function specToLayout(spec) {
-    const view = await create(/** @type {ViewSpec} */ (spec), View, {
-        wrapRoot: true,
-    });
-    const renderingContext = new DebugginViewRenderingContext({});
-
-    const canvasSize = calculateCanvasSize(view);
-    const rect = Rectangle.create(
-        0,
-        0,
-        canvasSize.width ?? 1500,
-        canvasSize.height ?? 1000
-    );
-
-    view.render(renderingContext, rect);
-
-    return renderingContext.getLayout();
-}
 
 describe("Test layout process", () => {
     // TODO: Figure out how to construct this list automatically.
