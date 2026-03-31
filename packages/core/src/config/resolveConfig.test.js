@@ -42,6 +42,11 @@ describe("resolveConfig", () => {
     });
 
     test("additional built-in themes resolve", () => {
+        const genomespy = resolveThemeSelection("genomespy");
+        expect(genomespy.mark.color).toBe("#4c78a8");
+        expect(genomespy.rule.color).toBe("black");
+        expect(genomespy.text.color).toBe("black");
+
         const quartz = resolveThemeSelection("quartz");
         expect(quartz.mark.color).toBe("#ab5787");
         expect(quartz.axisY.domain).toBe(false);

@@ -59,7 +59,20 @@ const VEGALITE_THEME = {
  * @type {Record<import("../spec/config.js").BuiltInThemeName, import("../spec/config.js").GenomeSpyConfig & { background?: string}>}
  */
 const BUILT_IN_THEME_DEFINITIONS = {
-    genomespy: {},
+    genomespy: {
+        mark: {
+            color: "#4c78a8",
+        },
+        rule: {
+            color: "black",
+        },
+        text: {
+            color: "black",
+        },
+        link: {
+            color: "black",
+        },
+    },
     vegalite: VEGALITE_THEME,
     quartz: mergeConfigScopes([
         VEGALITE_THEME,

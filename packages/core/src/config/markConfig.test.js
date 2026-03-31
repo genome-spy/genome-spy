@@ -21,6 +21,53 @@ describe("markConfig", () => {
         expect(defaults.size).toBe(11);
     });
 
+    test("generic mark defaults do not override later mark-specific buckets", () => {
+        const defaults = getConfiguredMarkDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    mark: { color: "red" },
+                },
+                {
+                    text: { color: "black" },
+                },
+            ],
+            "text",
+            undefined
+        );
+
+        expect(defaults.color).toBe("black");
+    });
+
+    test("generic opacity applies unless a mark-specific bucket overrides it", () => {
+        const pointDefaults = getConfiguredMarkDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    mark: { opacity: 0.35 },
+                },
+            ],
+            "point",
+            undefined
+        );
+
+        expect(pointDefaults.opacity).toBe(0.35);
+
+        const textDefaults = getConfiguredMarkDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    mark: { opacity: 0.45 },
+                    text: { opacity: 0.8 },
+                },
+            ],
+            "text",
+            undefined
+        );
+
+        expect(textDefaults.opacity).toBe(0.8);
+    });
+
     test("closest scope wins for same bucket", () => {
         const defaults = getConfiguredMarkDefaults(
             [

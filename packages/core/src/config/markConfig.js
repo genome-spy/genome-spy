@@ -12,16 +12,24 @@ export function getConfiguredMarkDefaults(scopes, markType, style) {
     // part of style resolution, and explicit mark.style entries augment it.
     const styles = [markType, ...normalizeStyle(style)];
 
-    return mergeConfigScopes(
-        scopes.flatMap((scope) => [
-            /** @type {Record<string, any> | undefined} */ (scope.mark),
-            /** @type {Record<string, any> | undefined} */ (scope[markType]),
-            ...styles.map(
+    const genericBuckets = scopes.map(
+        (scope) => /** @type {Record<string, any> | undefined} */ (scope.mark)
+    );
+    const markTypeBuckets = scopes.map(
+        (scope) =>
+            /** @type {Record<string, any> | undefined} */ (scope[markType])
+    );
+
+    return mergeConfigScopes([
+        ...genericBuckets,
+        ...markTypeBuckets,
+        ...scopes.flatMap((scope) =>
+            styles.map(
                 (styleName) =>
                     /** @type {Record<string, any> | undefined} */ (
                         scope.style?.[styleName]
                     )
-            ),
-        ])
-    );
+            )
+        ),
+    ]);
 }
