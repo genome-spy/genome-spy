@@ -35,6 +35,7 @@
   "scripts": {
     "dev": "node dev-server.mjs",
     "generate:agent-catalog": "node scripts/generateAgentActionCatalog.mjs",
+    "check:agent-catalog": "node scripts/checkGeneratedAgentActionCatalog.mjs",
     "prebuild": "npm run generate:agent-catalog",
     "build": "rm -rf dist && mkdir -p dist && vite build && npm run build:schema",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.d.ts' --type AppRootSpec > dist/schema.json",
