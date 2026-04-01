@@ -43,10 +43,15 @@ export async function embed(el, spec, options = {}) {
                   import.meta.env.VITE_AGENT_BASE_URL
               ))
             : undefined;
-        const agentAdapterFactory =
+        const agentModules =
             agentEnabled && agentBaseUrl
-                ? (await import("./agent/agentAdapter.js")).createAgentAdapter
+                ? await Promise.all([
+                      import("./agent/agentAdapter.js"),
+                      import("./agent/toolbarMenu.js"),
+                  ])
                 : undefined;
+        const agentAdapterFactory = agentModules?.[0].createAgentAdapter;
+        const toolbarMenuItemsFactory = agentModules?.[1].getAgentMenuItems;
 
         specObject.baseUrl ??= "";
         specObject.width ??= "container";
@@ -59,7 +64,12 @@ export async function embed(el, spec, options = {}) {
             showLocalAgentButton:
                 agentEnabled &&
                 (options.showLocalAgentButton ?? Boolean(agentBaseUrl)),
-            agentAdapterFactory,
+            agentAdapterFactory: agentEnabled
+                ? (options.agentAdapterFactory ?? agentAdapterFactory)
+                : undefined,
+            toolbarMenuItemsFactory: agentEnabled
+                ? (options.toolbarMenuItemsFactory ?? toolbarMenuItemsFactory)
+                : undefined,
         };
 
         const app = new App(element, specObject, options);

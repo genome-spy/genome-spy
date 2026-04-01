@@ -9,9 +9,14 @@ const { createAgentAdapterMock } = vi.hoisted(() => ({
     })),
 }));
 
+const { getAgentMenuItemsMock } = vi.hoisted(() => ({
+    getAgentMenuItemsMock: vi.fn(() => []),
+}));
+
 const { AppMock } = vi.hoisted(() => ({
     AppMock: vi.fn(function App() {
         this.options = arguments[2];
+        this.toolbarMenuItems = this.options.toolbarMenuItemsFactory?.(this);
         this.agentAdapter = this.options.agentAdapterFactory?.(this);
         this.genomeSpy = {
             destroy: vi.fn(),
@@ -34,6 +39,10 @@ vi.mock("./app.js", () => ({
 
 vi.mock("./agent/agentAdapter.js", () => ({
     createAgentAdapter: createAgentAdapterMock,
+}));
+
+vi.mock("./agent/toolbarMenu.js", () => ({
+    getAgentMenuItems: getAgentMenuItemsMock,
 }));
 
 vi.mock("@genome-spy/core/index.js", () => ({
@@ -59,6 +68,7 @@ describe("embed", () => {
         const handle = await embed(element, {}, { agentBaseUrl: "http://x" });
 
         expect(createAgentAdapterMock).toHaveBeenCalledTimes(1);
+        expect(getAgentMenuItemsMock).toHaveBeenCalledTimes(1);
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(AppMock.mock.instances[0].options.agentBaseUrl).toBe("http://x");
         expect(AppMock.mock.instances[0].options.showLocalAgentButton).toBe(
@@ -77,6 +87,7 @@ describe("embed", () => {
         const handle = await embed(element, {}, { agentBaseUrl: "http://x" });
 
         expect(createAgentAdapterMock).not.toHaveBeenCalled();
+        expect(getAgentMenuItemsMock).not.toHaveBeenCalled();
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(AppMock.mock.instances[0].options.agentBaseUrl).toBeUndefined();
         expect(AppMock.mock.instances[0].options.showLocalAgentButton).toBe(

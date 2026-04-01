@@ -23,7 +23,6 @@ import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
-import { getAgentMenuItems } from "../../agent/toolbarMenu.js";
 
 export default class Toolbar extends LitElement {
     constructor() {
@@ -165,7 +164,7 @@ export default class Toolbar extends LitElement {
             });
         }
 
-        items.push(...getAgentMenuItems(this.app));
+        items.push(...(this.app.toolbarMenuItems ?? []));
 
         if (this.app.appContainer.requestFullscreen) {
             items.push({

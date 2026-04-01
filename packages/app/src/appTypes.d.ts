@@ -11,6 +11,9 @@ export type AppEmbedOptions =
         agentAdapterFactory?: (
             app: import("./app.js").default
         ) => import("./agent/types.js").AgentAdapter;
+        toolbarMenuItemsFactory?: (
+            app: import("./app.js").default
+        ) => import("./utils/ui/contextMenu.js").MenuItem[];
     };
 
 export type AppEmbedFunction = (
