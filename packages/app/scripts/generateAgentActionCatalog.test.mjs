@@ -13,7 +13,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
-    "generatedActionCatalog.js"
+    "generatedActionCatalog.json"
 );
 
 describe("generateAgentActionCatalog", () => {

@@ -12,7 +12,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
-    "generatedActionSummaries.js"
+    "generatedActionSummaries.json"
 );
 
 const actual = await readFile(outputPath, "utf8");

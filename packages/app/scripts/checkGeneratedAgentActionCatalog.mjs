@@ -12,7 +12,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
-    "generatedActionCatalog.js"
+    "generatedActionCatalog.json"
 );
 
 const actual = await readFile(outputPath, "utf8");

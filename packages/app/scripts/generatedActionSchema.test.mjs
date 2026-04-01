@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import generatedActionSchema from "../src/agent/generatedActionSchema.json" with {
     type: "json",
 };
-import { generatedActionCatalog } from "../src/agent/generatedActionCatalog.js";
+import generatedActionCatalog from "../src/agent/generatedActionCatalog.json" with {
+    type: "json",
+};
 
 describe("generatedActionSchema", () => {
     it("covers the current agent action set", () => {

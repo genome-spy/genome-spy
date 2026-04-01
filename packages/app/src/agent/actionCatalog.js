@@ -1,7 +1,7 @@
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { getActionInfo } from "../sampleView/state/actionInfo.js";
 import templateResultToString from "../utils/templateResultToString.js";
-import { generatedActionCatalog } from "./generatedActionCatalog.js";
+import generatedActionCatalog from "./generatedActionCatalog.json" with { type: "json" };
 
 /**
  * @param {import("../app.js").default} app

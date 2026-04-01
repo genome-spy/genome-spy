@@ -1,9 +1,14 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
-import { generatedActionSummaries } from "./generatedActionSummaries.js";
+import generatedActionSummariesJson from "./generatedActionSummaries.json" with { type: "json" };
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
+
+const generatedActionSummaries =
+    /** @type {import("./types.js").AgentActionSummary[]} */ (
+        generatedActionSummariesJson
+    );
 
 /**
  * @param {import("../app.js").default} app
