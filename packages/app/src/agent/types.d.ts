@@ -174,6 +174,11 @@ export interface AgentParamSummary {
  */
 export interface AgentProvenanceAction {
     /**
+     * Human-readable summary of the action.
+     */
+    summary: string;
+
+    /**
      * Redux action type.
      */
     type: string;
@@ -447,7 +452,7 @@ export interface AgentContext {
     /**
      * Bookmarkable provenance actions for the current analysis history.
      */
-    provenanceActions: AgentProvenanceAction[];
+    provenance: AgentProvenanceAction[];
 
     /**
      * Current bookmarkable params.

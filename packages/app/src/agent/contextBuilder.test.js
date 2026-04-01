@@ -71,9 +71,10 @@ function createAppStub() {
         param: "brush",
     });
 
-    const provenanceActions = [
+    const provenance = [
         {
             type: "paramProvenance/paramChange",
+            summary: "Brush brush (0-1) in Patient Cohort",
             payload: {
                 selector: { scope: [], param: "brush" },
                 value: { type: "interval", intervals: { x: [0, 1] } },
@@ -81,6 +82,7 @@ function createAppStub() {
         },
         {
             type: "sampleView/sortBy",
+            summary: "Sort by min(purity) in selection brush",
             payload: {
                 attribute: {
                     type: "VALUE_AT_LOCUS",
@@ -137,12 +139,9 @@ function createAppStub() {
                     },
                 },
             }),
-            getBookmarkableActionHistory: () => provenanceActions,
+            getBookmarkableActionHistory: () => provenance,
             getActionInfo: (action) => ({
-                provenanceTitle:
-                    action.type === "paramProvenance/paramChange"
-                        ? "Brush brush (0-1) in Patient Cohort"
-                        : "Sort by min(purity) in selection brush",
+                provenanceTitle: action.summary,
             }),
         },
     };
@@ -159,7 +158,6 @@ describe("getAgentContext", () => {
             "lifecycle",
             "params",
             "provenance",
-            "provenanceActions",
             "schemaVersion",
             "view",
             "viewWorkflows",
@@ -196,10 +194,15 @@ describe("getAgentContext", () => {
         );
         expect(context.viewWorkflows.selectionDeclarations).toHaveLength(1);
         expect(context.viewWorkflows.selections).toHaveLength(1);
-        expect(context.provenanceActions).toHaveLength(2);
         expect(context.provenance).toEqual([
-            "Brush brush (0-1) in Patient Cohort",
-            "Sort by min(purity) in selection brush",
+            expect.objectContaining({
+                summary: "Brush brush (0-1) in Patient Cohort",
+                type: "paramProvenance/paramChange",
+            }),
+            expect.objectContaining({
+                summary: "Sort by min(purity) in selection brush",
+                type: "sampleView/sortBy",
+            }),
         ]);
     });
 });

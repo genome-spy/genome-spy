@@ -15,8 +15,7 @@ export function getAgentContext(app) {
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const paramEntries =
         app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
-    const provenanceActions =
-        app.provenance.getBookmarkableActionHistory() ?? [];
+    const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
 
     return {
         schemaVersion: 1,
@@ -27,8 +26,7 @@ export function getAgentContext(app) {
         actionCatalog: listAgentActions(),
         actionSummaries: generatedActionSummaries,
         viewWorkflows: getViewWorkflowContext(app),
-        provenance: buildProvenanceSummary(app, provenanceActions),
-        provenanceActions,
+        provenance: buildProvenanceActions(app, provenance),
         params: Object.entries(paramEntries).map(([key, entry]) => ({
             key,
             selector: entry.selector,
@@ -98,14 +96,9 @@ function buildAttributeSummary(sampleView, sampleState) {
 /**
  * @param {import("../app.js").default} app
  * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
- * @returns {string[]}
+ * @returns {import("./types.js").AgentProvenanceAction[]}
  */
-function buildProvenanceSummary(app, provenanceActions) {
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
-        return [];
-    }
-
+function buildProvenanceActions(app, provenanceActions) {
     return provenanceActions.slice(-10).map((action) => {
         const info = app.provenance.getActionInfo(action);
         const title =
@@ -113,7 +106,13 @@ function buildProvenanceSummary(app, provenanceActions) {
             info?.title ??
             action.type.replace("sampleView/", "");
 
-        return templateResultToString(title);
+        return {
+            summary: templateResultToString(title),
+            type: action.type,
+            payload: /** @type {any} */ (action).payload,
+            meta: /** @type {any} */ (action).meta,
+            error: /** @type {any} */ (action).error,
+        };
     });
 }
 

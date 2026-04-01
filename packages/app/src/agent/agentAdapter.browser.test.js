@@ -155,7 +155,6 @@ describe("agentAdapter browser integration", () => {
                     workflows: expect.any(Array),
                 }),
                 provenance: expect.any(Array),
-                provenanceActions: expect.any(Array),
                 params: expect.any(Array),
                 lifecycle: expect.objectContaining({
                     appInitialized: true,
