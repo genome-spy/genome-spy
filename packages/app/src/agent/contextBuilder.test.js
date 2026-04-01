@@ -64,6 +64,27 @@ function createAppStub() {
 }
 
 describe("getAgentContext", () => {
+    it("keeps the planner context wire shape stable", () => {
+        const context = getAgentContext(createAppStub());
+
+        expect(Object.keys(context).sort()).toEqual([
+            "actionCatalog",
+            "actionSummaries",
+            "attributes",
+            "lifecycle",
+            "params",
+            "provenance",
+            "schemaVersion",
+            "view",
+            "viewWorkflows",
+        ]);
+
+        expect(() => JSON.stringify(context)).not.toThrow();
+        expect(
+            context.actionSummaries.map((entry) => entry.actionType)
+        ).toEqual(context.actionCatalog.map((entry) => entry.actionType));
+    });
+
     it("builds a compact agent context from app state", () => {
         const context = getAgentContext(createAppStub());
 

@@ -19,7 +19,7 @@ const outputPath = path.join(
 describe("generateAgentActionSummaries", () => {
     it("matches the committed generated action summaries", async () => {
         const generatedActionSummaries = await createGeneratedActionSummaries();
-        const expected = renderGeneratedActionSummaries(
+        const expected = await renderGeneratedActionSummaries(
             generatedActionSummaries
         );
         const actual = await readFile(outputPath, "utf8");

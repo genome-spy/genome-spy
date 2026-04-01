@@ -16,7 +16,7 @@ const outputPath = path.join(
 );
 
 const actual = await readFile(outputPath, "utf8");
-const expected = renderGeneratedActionSummaries(
+const expected = await renderGeneratedActionSummaries(
     await createGeneratedActionSummaries()
 );
 

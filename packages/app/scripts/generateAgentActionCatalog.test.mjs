@@ -19,7 +19,9 @@ const outputPath = path.join(
 describe("generateAgentActionCatalog", () => {
     it("matches the committed generated catalog", async () => {
         const generatedActionCatalog = await createGeneratedActionCatalog();
-        const expected = renderGeneratedActionCatalog(generatedActionCatalog);
+        const expected = await renderGeneratedActionCatalog(
+            generatedActionCatalog
+        );
         const actual = await readFile(outputPath, "utf8");
 
         expect(actual).toBe(expected);
