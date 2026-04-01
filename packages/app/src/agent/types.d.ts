@@ -231,6 +231,71 @@ export interface AgentSelectionSummary {
 }
 
 /**
+ * Static selection capability declared by the visualization spec.
+ */
+export interface AgentSelectionDeclaration {
+    /**
+     * Stable identifier derived from the parameter selector.
+     */
+    id: string;
+
+    /**
+     * Declared selection type.
+     */
+    selectionType: "point" | "interval";
+
+    /**
+     * Human-readable label for the parameter.
+     */
+    label: string;
+
+    /**
+     * Parameter name.
+     */
+    paramName: string;
+
+    /**
+     * Structured selector for the underlying parameter.
+     */
+    selector: ParamSelector;
+
+    /**
+     * Addressable view name.
+     */
+    view: string;
+
+    /**
+     * Human-readable view title.
+     */
+    viewTitle: string;
+
+    /**
+     * Whether the selection is persisted in bookmarks.
+     */
+    persist: boolean;
+
+    /**
+     * Whether the selection currently has an active value.
+     */
+    active: boolean;
+
+    /**
+     * Encodings that drive the selection, when explicitly declared.
+     */
+    encodings?: string[];
+
+    /**
+     * Whether point selection values toggle by default.
+     */
+    toggle?: boolean;
+
+    /**
+     * Whether the selection can be cleared.
+     */
+    clearable: boolean;
+}
+
+/**
  * Field inside a selected view that can be aggregated into a derived workflow.
  */
 export interface AgentViewFieldSummary {
@@ -274,6 +339,11 @@ export interface AgentViewFieldSummary {
  * View-workflow planning context derived from the current visualization.
  */
 export interface AgentViewWorkflowContext {
+    /**
+     * Static selection declarations from the visualization spec.
+     */
+    selectionDeclarations: AgentSelectionDeclaration[];
+
     /**
      * Active interval selections.
      */

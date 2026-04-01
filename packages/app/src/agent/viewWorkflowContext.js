@@ -1,5 +1,13 @@
-import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    asSelectionConfig,
+    isPointSelectionConfig,
+} from "@genome-spy/core/selection/selection.js";
+import {
+    getParamSelector,
+    resolveParamSelector,
+} from "@genome-spy/core/view/viewSelectors.js";
 import { getContextMenuFieldInfos } from "../sampleView/contextMenuBuilder.js";
+import { formatScopedParamName } from "../viewScopeUtils.js";
 import { listViewWorkflows } from "./viewWorkflowCatalog.js";
 
 const QUANTITATIVE_AGGREGATIONS = [
@@ -17,14 +25,79 @@ const DEFAULT_AGGREGATIONS = ["count"];
  * @returns {import("./types.js").AgentViewWorkflowContext}
  */
 export function getViewWorkflowContext(app) {
+    const selectionDeclarations = buildSelectionDeclarations(app);
     const selections = buildSelectionSummaries(app);
     const fields = buildFieldSummaries(app, selections);
 
     return {
+        selectionDeclarations,
         selections,
         fields,
         workflows: listViewWorkflows(),
     };
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @returns {import("./types.js").AgentSelectionDeclaration[]}
+ */
+function buildSelectionDeclarations(app) {
+    const sampleView = app.getSampleView();
+    if (!sampleView || typeof sampleView.visit !== "function") {
+        return [];
+    }
+
+    /** @type {import("./types.js").AgentSelectionDeclaration[]} */
+    const declarations = [];
+
+    sampleView.visit((view) => {
+        if (!view?.paramRuntime?.paramConfigs) {
+            return;
+        }
+
+        for (const [paramName, param] of view.paramRuntime.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            const viewName = getAddressableViewName(view);
+            if (!viewName) {
+                continue;
+            }
+
+            let selector;
+            try {
+                selector = getParamSelector(view, paramName);
+            } catch {
+                continue;
+            }
+
+            const currentValue = view.paramRuntime.getValue(paramName);
+
+            declarations.push({
+                id: createSelectionId(selector),
+                selectionType: select.type,
+                label: formatScopedParamName(sampleView, selector),
+                paramName,
+                selector,
+                view: viewName,
+                viewTitle: String(view.getTitleText?.() ?? view.name ?? "view"),
+                persist: param.persist !== false,
+                active: isActiveSelectionValue(select.type, currentValue),
+                encodings: Array.isArray(select.encodings)
+                    ? [...select.encodings]
+                    : undefined,
+                toggle:
+                    isPointSelectionConfig(select) && select.toggle
+                        ? true
+                        : undefined,
+                clearable: select.clear !== false,
+            });
+        }
+    });
+
+    return declarations.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
@@ -50,6 +123,23 @@ function buildSelectionSummaries(app) {
             active: true,
             nameSuffix: createSelectionNameSuffix(entry.value),
         }));
+}
+
+/**
+ * @param {"point" | "interval"} selectionType
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isActiveSelectionValue(selectionType, value) {
+    if (selectionType === "interval") {
+        return isActiveIntervalSelectionValue(value);
+    }
+
+    if (selectionType === "point") {
+        return isActivePointSelectionValue(value);
+    }
+
+    return false;
 }
 
 /**
@@ -267,19 +357,36 @@ function isActiveIntervalSelectionValue(value) {
         typeof value === "object" &&
         "intervals" in value &&
         value.intervals &&
-        typeof value.intervals === "object" &&
-        Array.isArray(value.intervals.x) &&
-        value.intervals.x.length === 2
+        typeof value.intervals === "object"
     ) {
-        return true;
+        const intervals = /** @type {any} */ (value.intervals);
+        if (Array.isArray(intervals.x) && intervals.x.length === 2) {
+            return true;
+        }
     }
 
     return (
         !!value &&
         typeof value === "object" &&
         "value" in value &&
-        Array.isArray(value.value) &&
-        value.value.length === 2
+        Array.isArray(/** @type {any} */ (value).value) &&
+        /** @type {any} */ (value).value.length === 2
+    );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isActivePointSelectionValue(value) {
+    return Boolean(
+        value &&
+        typeof value === "object" &&
+        "type" in value &&
+        value.type === "point" &&
+        "keys" in value &&
+        Array.isArray(/** @type {any} */ (value).keys) &&
+        /** @type {any} */ (value).keys.length > 0
     );
 }
 
@@ -293,19 +400,21 @@ function extractSelectionInterval(value) {
         typeof value === "object" &&
         "intervals" in value &&
         value.intervals &&
-        typeof value.intervals === "object" &&
-        Array.isArray(value.intervals.x)
+        typeof value.intervals === "object"
     ) {
-        return value.intervals.x;
+        const intervals = /** @type {any} */ (value.intervals);
+        if (Array.isArray(intervals.x)) {
+            return intervals.x;
+        }
     }
 
     if (
         value &&
         typeof value === "object" &&
         "value" in value &&
-        Array.isArray(value.value)
+        Array.isArray(/** @type {any} */ (value).value)
     ) {
-        return value.value;
+        return /** @type {any} */ (value).value;
     }
 
     return undefined;

@@ -1,5 +1,29 @@
 // @ts-check
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const { getParamSelectorMock } = vi.hoisted(() => ({
+    getParamSelectorMock: vi.fn(),
+}));
+const { asSelectionConfigMock } = vi.hoisted(() => ({
+    asSelectionConfigMock: vi.fn((config) => config),
+}));
+const { isPointSelectionConfigMock } = vi.hoisted(() => ({
+    isPointSelectionConfigMock: vi.fn(() => false),
+}));
+const { getBookmarkableParamsMock } = vi.hoisted(() => ({
+    getBookmarkableParamsMock: vi.fn(() => []),
+}));
+
+vi.mock("@genome-spy/core/selection/selection.js", () => ({
+    asSelectionConfig: asSelectionConfigMock,
+    isPointSelectionConfig: isPointSelectionConfigMock,
+}));
+
+vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
+    getBookmarkableParams: getBookmarkableParamsMock,
+    getParamSelector: getParamSelectorMock,
+}));
+
 import { getAgentContext } from "./contextBuilder.js";
 
 function createAppStub() {
@@ -15,11 +39,37 @@ function createAppStub() {
 
     const sampleView = {
         name: "samples",
+        explicitName: "samples",
         getTitleText: () => "Patient Cohort",
+        visit: (visitor) => visitor(sampleView),
+        paramRuntime: {
+            paramConfigs: new Map([
+                [
+                    "brush",
+                    {
+                        name: "brush",
+                        persist: true,
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                        },
+                    },
+                ],
+            ]),
+            getValue: (paramName) =>
+                paramName === "brush"
+                    ? { type: "interval", value: [0, 1] }
+                    : undefined,
+        },
         compositeAttributeInfoSource: {
             getAttributeInfo,
         },
     };
+
+    getParamSelectorMock.mockReturnValue({
+        scope: [],
+        param: "brush",
+    });
 
     return {
         getSampleView: () => sampleView,
@@ -108,6 +158,7 @@ describe("getAgentContext", () => {
                 }),
             ])
         );
+        expect(context.viewWorkflows.selectionDeclarations).toHaveLength(1);
         expect(context.viewWorkflows.selections).toHaveLength(1);
     });
 });
