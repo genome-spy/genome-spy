@@ -163,6 +163,7 @@ describe("getAgentContext", () => {
             "attributes",
             "lifecycle",
             "params",
+            "promptHints",
             "provenance",
             "schemaVersion",
             "view",
@@ -197,6 +198,11 @@ describe("getAgentContext", () => {
                     type: "interval",
                 }),
             }),
+        ]);
+        expect(context.promptHints).toEqual([
+            "Interval selections correspond to brushing or dragging a range.",
+            "Point selections correspond to clicking individual items.",
+            "Use brush language for interval selections and click language for point selections.",
         ]);
         expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.viewWorkflows.workflows).toEqual(

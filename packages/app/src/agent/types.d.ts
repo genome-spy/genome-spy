@@ -496,6 +496,11 @@ export interface AgentContext {
     params: AgentParamSummary[];
 
     /**
+     * Prompt hints intended for the system prompt or planner preamble.
+     */
+    promptHints: string[];
+
+    /**
      * Application lifecycle state.
      */
     lifecycle: {

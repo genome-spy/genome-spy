@@ -4,6 +4,11 @@ import generatedActionSummariesJson from "./generatedActionSummaries.json" with 
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
+const PROMPT_HINTS = [
+    "Interval selections correspond to brushing or dragging a range.",
+    "Point selections correspond to clicking individual items.",
+    "Use brush language for interval selections and click language for point selections.",
+];
 
 const generatedActionSummaries =
     /** @type {import("./types.js").AgentActionSummary[]} */ (
@@ -37,6 +42,7 @@ export function getAgentContext(app) {
             selector: entry.selector,
             value: entry.value,
         })),
+        promptHints: PROMPT_HINTS,
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,
         },

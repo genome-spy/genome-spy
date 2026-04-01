@@ -167,6 +167,10 @@ describe("agentAdapter browser integration", () => {
                         }),
                     }),
                 ]),
+                promptHints: expect.arrayContaining([
+                    "Interval selections correspond to brushing or dragging a range.",
+                    "Point selections correspond to clicking individual items.",
+                ]),
                 lifecycle: expect.objectContaining({
                     appInitialized: true,
                 }),
