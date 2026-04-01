@@ -1,5 +1,4 @@
-import "./axisTickSource.js";
-import "./axisGenomeSource.js";
+import "./registerCoreLazySources.js";
 import "./indexedFastaSource.js";
 import "./bigWigSource.js";
 import "./bigBedSource.js";
