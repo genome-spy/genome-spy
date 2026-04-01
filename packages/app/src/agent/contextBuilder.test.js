@@ -71,6 +71,36 @@ function createAppStub() {
         param: "brush",
     });
 
+    const provenanceActions = [
+        {
+            type: "paramProvenance/paramChange",
+            payload: {
+                selector: { scope: [], param: "brush" },
+                value: { type: "interval", intervals: { x: [0, 1] } },
+            },
+        },
+        {
+            type: "sampleView/sortBy",
+            payload: {
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: {
+                            scope: ["samples"],
+                            view: "track",
+                        },
+                        field: "purity",
+                        interval: {
+                            type: "selection",
+                            selector: { scope: [], param: "brush" },
+                        },
+                        aggregation: { op: "min" },
+                    },
+                },
+            },
+        },
+    ];
+
     return {
         getSampleView: () => sampleView,
         store: {
@@ -107,8 +137,13 @@ function createAppStub() {
                     },
                 },
             }),
-            getBookmarkableActionHistory: () => [],
-            getActionInfo: () => undefined,
+            getBookmarkableActionHistory: () => provenanceActions,
+            getActionInfo: (action) => ({
+                provenanceTitle:
+                    action.type === "paramProvenance/paramChange"
+                        ? "Brush brush (0-1) in Patient Cohort"
+                        : "Sort by min(purity) in selection brush",
+            }),
         },
     };
 }
@@ -124,6 +159,7 @@ describe("getAgentContext", () => {
             "lifecycle",
             "params",
             "provenance",
+            "provenanceActions",
             "schemaVersion",
             "view",
             "viewWorkflows",
@@ -160,5 +196,10 @@ describe("getAgentContext", () => {
         );
         expect(context.viewWorkflows.selectionDeclarations).toHaveLength(1);
         expect(context.viewWorkflows.selections).toHaveLength(1);
+        expect(context.provenanceActions).toHaveLength(2);
+        expect(context.provenance).toEqual([
+            "Brush brush (0-1) in Patient Cohort",
+            "Sort by min(purity) in selection brush",
+        ]);
     });
 });

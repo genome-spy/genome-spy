@@ -15,6 +15,8 @@ export function getAgentContext(app) {
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const paramEntries =
         app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
+    const provenanceActions =
+        app.provenance.getBookmarkableActionHistory() ?? [];
 
     return {
         schemaVersion: 1,
@@ -25,7 +27,8 @@ export function getAgentContext(app) {
         actionCatalog: listAgentActions(),
         actionSummaries: generatedActionSummaries,
         viewWorkflows: getViewWorkflowContext(app),
-        provenance: buildProvenanceSummary(app),
+        provenance: buildProvenanceSummary(app, provenanceActions),
+        provenanceActions,
         params: Object.entries(paramEntries).map(([key, entry]) => ({
             key,
             selector: entry.selector,
@@ -94,16 +97,16 @@ function buildAttributeSummary(sampleView, sampleState) {
 
 /**
  * @param {import("../app.js").default} app
+ * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
  * @returns {string[]}
  */
-function buildProvenanceSummary(app) {
-    const history = app.provenance.getBookmarkableActionHistory() ?? [];
+function buildProvenanceSummary(app, provenanceActions) {
     const sampleView = app.getSampleView();
     if (!sampleView) {
         return [];
     }
 
-    return history.slice(-10).map((action) => {
+    return provenanceActions.slice(-10).map((action) => {
         const info = app.provenance.getActionInfo(action);
         const title =
             info?.provenanceTitle ??

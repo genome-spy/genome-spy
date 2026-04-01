@@ -170,6 +170,31 @@ export interface AgentParamSummary {
 }
 
 /**
+ * Bookmarkable provenance action exposed to the agent.
+ */
+export interface AgentProvenanceAction {
+    /**
+     * Redux action type.
+     */
+    type: string;
+
+    /**
+     * Serialized action payload.
+     */
+    payload?: unknown;
+
+    /**
+     * Optional Redux metadata.
+     */
+    meta?: unknown;
+
+    /**
+     * Optional Redux error flag.
+     */
+    error?: boolean;
+}
+
+/**
  * Declarative description of a structured view workflow that the planner can
  * request.
  */
@@ -418,6 +443,11 @@ export interface AgentContext {
      * Provenance summaries for recent actions.
      */
     provenance: string[];
+
+    /**
+     * Bookmarkable provenance actions for the current analysis history.
+     */
+    provenanceActions: AgentProvenanceAction[];
 
     /**
      * Current bookmarkable params.
