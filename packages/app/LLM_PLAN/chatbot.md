@@ -10,6 +10,10 @@
 - Intent execution flows through `IntentExecutor` (augmentation) and `IntentPipeline` (async sequencing).
 - Provenance (undo/redo/history) records intent actions; augmented payloads are stripped.
 - Action descriptions come from `actionInfo` (sample actions) and `paramActionInfo` (param/selection actions).
+- Agent support is Vite-gated and loaded on demand:
+  - `VITE_AGENT_ENABLED=true` enables the feature at build time.
+  - `agentBaseUrl` is required at runtime.
+  - Agent modules are loaded with dynamic `import()` so they stay out of the generic app path.
 
 ## Composition Strategy
 - Treat multi-step requests as an "intent program": ordered actions + validation + execution.
@@ -20,6 +24,7 @@
 - Build a read-only LLM context snapshot (views, attributes, scales, actions, provenance).
 - Add intent program validation + execution helper.
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
+- Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
 
 ## Data + Visualization Context
 - See `packages/app/LLM_PLAN/data-schema.md` for the proposed LLM-facing context schema.

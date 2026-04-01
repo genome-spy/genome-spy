@@ -8,6 +8,8 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - Keep tools small and composable.
 - Expose stable identifiers (view ids, attribute identifiers) rather than labels.
 - Fail fast with clear errors when inputs are invalid.
+- Keep agent tooling behind the same Vite/runtime gate as the app bootstrap.
+- Load agent-only tooling lazily so the generic app path stays free of agent imports.
 
 ## Read-Only Tools
 These gather context without mutating state.

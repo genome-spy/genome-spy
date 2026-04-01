@@ -8,6 +8,26 @@ This document outlines a pragmatic deployment setup for an LLM-assisted GenomeSp
 
 Rationale: a thin gateway keeps client logic stable and enables swapping LLM backends.
 
+## Build-Time and Runtime Gating
+Agent support should stay opt-in and load only when explicitly configured.
+
+### Build-time gate
+- Use a Vite env flag such as `VITE_AGENT_ENABLED=true`.
+- Keep the default build path agent-free.
+- Store local overrides in `packages/app/.env.local`.
+
+### Runtime gate
+- Enable the agent only when an agent base URL is provided.
+- Accept the base URL from `embed(..., { agentBaseUrl })` or from `VITE_AGENT_BASE_URL`.
+- Keep the agent disabled when the flag is off, even if a base URL is present.
+
+### Dynamic imports
+- Load agent code on demand with `import()`.
+- Keep the generic app entrypoints free of static agent imports.
+- Split out agent-only UI helpers the same way, so production bundles do not pull them in unless the agent is enabled.
+
+This keeps the app mergeable before release while preserving a clean opt-in path for local development and later production activation.
+
 ## Responsibilities
 ### Client (GenomeSpy)
 - Build context snapshots (view hierarchy, attributes, scales, selections, provenance).
@@ -20,6 +40,9 @@ Rationale: a thin gateway keeps client logic stable and enables swapping LLM bac
 - Enforce auth, rate limits, and payload size limits.
 - Optionally log requests/responses for debugging.
 - Provide streaming to the client.
+
+Agent bootstrap should remain behind the runtime gate; the gateway should not
+be required unless the agent is actually enabled.
 
 Default posture: keep gateway thin; move logic server-side only when needed (e.g., privacy, heavy compute).
 
