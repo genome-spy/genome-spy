@@ -11,6 +11,8 @@
 - Provenance (undo/redo/history) records bookmarkable actions with inline human-readable summaries.
 - Action schema and compact summaries are generated from reducer JSDoc and payload typings and emitted as JSON artifacts.
 - `actionInfo` (sample actions) and `paramActionInfo` (param/selection actions) remain the runtime human-readable formatters used by the UI.
+- Selection declarations are part of the view spec and stay static; `paramProvenance`
+  carries the current runtime values for those declarations.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.

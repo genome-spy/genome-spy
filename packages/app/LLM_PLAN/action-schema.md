@@ -55,6 +55,10 @@ From `paramProvenance`:
 
 Rationale: necessary for commands like "filter to the current brush".
 
+The selector definitions themselves come from the visualization spec and are
+listed in the data context as static selection declarations. `paramProvenance`
+only carries the current runtime values for those declarations.
+
 ## Provenance Summary
 Use action info to provide:
 - Recent bookmarkable actions in structured form.

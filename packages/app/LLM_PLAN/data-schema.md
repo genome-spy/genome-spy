@@ -14,6 +14,10 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 - Metadata dictionary: attribute names, types, optional descriptions.
 - Scale summaries: scale type and data-domain (range only when meaningful, e.g., color schemes).
 
+Selection declarations are part of the visualization spec and stay fixed for
+the current visualization. The current values for those selections live in
+`paramProvenance`, which is the dynamic interaction state.
+
 ## Context Snapshot: High-Level Shape
 - View hierarchy summary
 - Data/metadata dictionary (attributes + types)
