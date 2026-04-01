@@ -26,3 +26,7 @@
 
 ## Action + State Context
 - See `packages/app/LLM_PLAN/action-schema.md` for the proposed action/provenance schema.
+
+## Annotation Style
+- See `packages/app/LLM_PLAN/annotation-style.md` for the JSDoc and extraction
+  conventions used to generate action docs and schemas from code.
