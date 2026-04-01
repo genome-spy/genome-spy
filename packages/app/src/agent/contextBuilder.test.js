@@ -74,6 +74,7 @@ describe("getAgentContext", () => {
             type: "SAMPLE_ATTRIBUTE",
             specifier: "diagnosis",
         });
+        expect(context.actionSummaries).toHaveLength(7);
         expect(context.params).toHaveLength(1);
         expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.viewWorkflows.workflows).toEqual(

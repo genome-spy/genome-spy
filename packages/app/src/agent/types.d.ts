@@ -291,6 +291,26 @@ export interface AgentViewWorkflowContext {
 }
 
 /**
+ * Compact presentation metadata for an action.
+ */
+export interface AgentActionSummary {
+    /**
+     * Action type.
+     */
+    actionType: AgentActionType;
+
+    /**
+     * Short title used in menus.
+     */
+    title: string;
+
+    /**
+     * Action description.
+     */
+    description: string;
+}
+
+/**
  * Top-level context snapshot sent to the planner.
  */
 export interface AgentContext {
@@ -313,6 +333,11 @@ export interface AgentContext {
      * Agent-facing action catalog.
      */
     actionCatalog: AgentActionCatalogEntry[];
+
+    /**
+     * Human-readable action summaries.
+     */
+    actionSummaries: AgentActionSummary[];
 
     /**
      * Structured workflows that the agent can resolve locally.

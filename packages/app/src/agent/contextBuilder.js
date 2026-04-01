@@ -1,5 +1,6 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
+import { generatedActionSummaries } from "./generatedActionSummaries.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -22,6 +23,7 @@ export function getAgentContext(app) {
             ? buildAttributeSummary(sampleView, sampleState)
             : [],
         actionCatalog: listAgentActions(),
+        actionSummaries: generatedActionSummaries,
         viewWorkflows: getViewWorkflowContext(app),
         provenance: buildProvenanceSummary(app),
         params: Object.entries(paramEntries).map(([key, entry]) => ({
