@@ -411,6 +411,46 @@ export interface AgentActionSummary {
 }
 
 /**
+ * Agent adapter API exposed to the UI and the embed entry point.
+ */
+export interface AgentAdapter {
+    /**
+     * Returns the current planner context snapshot.
+     */
+    getAgentContext(): AgentContext;
+
+    /**
+     * Validates a planner-authored intent program.
+     */
+    validateIntentProgram(program: unknown): IntentProgramValidationResult;
+
+    /**
+     * Submits a validated intent program for execution.
+     */
+    submitIntentProgram(
+        program: IntentProgram
+    ): Promise<IntentProgramExecutionResult>;
+
+    /**
+     * Summarizes an execution result for display.
+     */
+    summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+
+    /**
+     * Requests a plan from the configured planner service.
+     */
+    requestPlan(
+        message: string,
+        history?: string[]
+    ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
+
+    /**
+     * Starts the local prompt loop.
+     */
+    runLocalPrompt(): Promise<void>;
+}
+
+/**
  * Top-level context snapshot sent to the planner.
  */
 export interface AgentContext {
@@ -443,11 +483,6 @@ export interface AgentContext {
      * Structured workflows that the agent can resolve locally.
      */
     viewWorkflows: AgentViewWorkflowContext;
-
-    /**
-     * Provenance summaries for recent actions.
-     */
-    provenance: string[];
 
     /**
      * Bookmarkable provenance actions for the current analysis history.

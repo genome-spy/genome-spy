@@ -89,7 +89,7 @@ export default class AgentChoiceDialog extends BaseDialog {
 customElements.define("gs-agent-choice-dialog", AgentChoiceDialog);
 
 /**
- * @param {{ title: string, message: string, options: Array<{ value: string, label: string }>, value?: string }} options
+ * @param {{ title: string, message: string, choiceLabel?: string, options: Array<{ value: string, label: string }>, value?: string }} options
  * @returns {Promise<string | undefined>}
  */
 export function showAgentChoiceDialog(options) {

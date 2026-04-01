@@ -29,14 +29,18 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
         items.push({
             label: "Copy Agent Context",
             icon: faCopy,
-            callback: () => void copyAgentContext(app),
+            callback: /** @returns {void} */ () => {
+                void copyAgentContext(app);
+            },
         });
     }
 
     items.push({
         label: "Agent Trace",
         icon: faStopwatch,
-        callback: () => void showAgentTraceDialog(app),
+        callback: /** @returns {void} */ () => {
+            void showAgentTraceDialog(app);
+        },
     });
 
     return items;
@@ -44,6 +48,7 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
 
 /**
  * @param {import("../app.js").default} app
+ * @returns {Promise<void>}
  */
 async function showAgentTraceDialog(app) {
     await import("../components/dialogs/agentTraceDialog.js");
@@ -59,6 +64,7 @@ async function showAgentTraceDialog(app) {
 
 /**
  * @param {import("../app.js").default} app
+ * @returns {Promise<void>}
  */
 async function copyAgentContext(app) {
     const context = app.agentAdapter?.getAgentContext?.();

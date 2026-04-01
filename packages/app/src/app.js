@@ -58,7 +58,7 @@ export default class App {
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean, showLocalAgentButton: boolean, agentBaseUrl: string, agentAdapterFactory: (app: App) => import("./agent/types.js").AgentAdapter}>} options
+     * @param {import("./appTypes.js").AppEmbedOptions} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
