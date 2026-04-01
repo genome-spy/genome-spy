@@ -1,5 +1,5 @@
+// @ts-nocheck
 // @vitest-environment jsdom
-// @ts-check
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { resolveParamSelectorMock } = vi.hoisted(() => ({

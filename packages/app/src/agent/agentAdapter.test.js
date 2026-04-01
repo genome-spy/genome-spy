@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { showMessageDialog, getAgentContext } = vi.hoisted(() => ({

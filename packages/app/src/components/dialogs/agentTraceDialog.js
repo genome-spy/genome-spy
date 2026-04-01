@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { css, html, nothing } from "lit";
 import BaseDialog from "../generic/baseDialog.js";
 

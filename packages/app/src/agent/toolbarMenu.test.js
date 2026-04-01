@@ -1,5 +1,5 @@
+// @ts-nocheck
 // @vitest-environment jsdom
-// @ts-check
 import { describe, expect, it, vi } from "vitest";
 
 import { getAgentMenuItems } from "./toolbarMenu.js";

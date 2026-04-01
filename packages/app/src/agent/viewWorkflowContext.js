@@ -1,5 +1,6 @@
 import {
     asSelectionConfig,
+    isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
 import {
@@ -85,8 +86,8 @@ function buildSelectionDeclarations(app) {
                 viewTitle: String(view.getTitleText?.() ?? view.name ?? "view"),
                 persist: param.persist !== false,
                 active: isActiveSelectionValue(select.type, currentValue),
-                encodings: Array.isArray(select.encodings)
-                    ? [...select.encodings]
+                encodings: isIntervalSelectionConfig(select)
+                    ? [...(select.encodings ?? [])]
                     : undefined,
                 toggle:
                     isPointSelectionConfig(select) && select.toggle

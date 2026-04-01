@@ -62,6 +62,7 @@ export default class App {
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
+        /** @type {Record<string, any>[]} */
         this.agentTraces = [];
 
         this.options = {

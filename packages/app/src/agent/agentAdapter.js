@@ -299,6 +299,7 @@ async function runLocalPrompt(app) {
  */
 async function runAgentProgram(app, steps, trace, startedAt) {
     const previewStartedAt = now();
+    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram } | { type: "view_workflow", summary: string, workflow: import("./types.js").ResolvedViewWorkflow }>} */
     const preparedSteps = [];
     for (const step of steps) {
         preparedSteps.push(await prepareAgentProgramStep(app, step));
@@ -324,6 +325,7 @@ async function runAgentProgram(app, steps, trace, startedAt) {
 
     const executionStartedAt = now();
     let executedActions = 0;
+    /** @type {Array<{ executedActions: number, intentProgramResult?: import("./types.js").IntentProgramExecutionResult }>} */
     const executionResults = [];
     for (const step of preparedSteps) {
         const result = await executePreparedAgentProgramStep(app, step);
@@ -379,6 +381,18 @@ async function runAgentProgram(app, steps, trace, startedAt) {
 /**
  * @param {import("../app.js").default} app
  * @param {import("./types.js").AgentProgramStep} step
+ * @returns {Promise<
+ *   | {
+ *         type: "intent_program";
+ *         summary: string;
+ *         program: import("./types.js").IntentProgram;
+ *     }
+ *   | {
+ *         type: "view_workflow";
+ *         summary: string;
+ *         workflow: import("./types.js").ResolvedViewWorkflow;
+ *     }
+ * >}
  */
 async function prepareAgentProgramStep(app, step) {
     if (step.type === "intent_program") {
@@ -402,9 +416,9 @@ async function prepareAgentProgramStep(app, step) {
             summary: summarizeResolvedViewWorkflow(workflow),
             workflow,
         };
-    } else {
-        throw new Error("Unsupported agent program step: " + step.type);
     }
+
+    throw new Error("Unsupported agent program step.");
 }
 
 /**
@@ -420,28 +434,30 @@ async function resolveViewWorkflowWithClarifications(app, workflowRequest) {
         const resolution = resolveViewWorkflow(app, currentRequest);
         if (resolution.status === "error") {
             throw new Error(resolution.message);
-        }
-
-        if (resolution.status === "resolved") {
+        } else if (resolution.status === "resolved") {
             return resolution.value;
+        } else if (resolution.status === "needs_clarification") {
+            const request = resolution.request;
+            const followUp = await showAgentChoiceDialog({
+                title: "Agent Clarification",
+                message: request.message,
+                choiceLabel: formatClarificationSlot(request.slot),
+                options: request.options ?? [],
+                value: request.initialValue,
+            });
+            if (!followUp) {
+                throw new Error("View workflow clarification was cancelled.");
+            }
+
+            currentRequest = {
+                ...currentRequest,
+                ...request.state,
+                [request.slot]: followUp.trim(),
+            };
+            continue;
         }
 
-        const followUp = await showAgentChoiceDialog({
-            title: "Agent Clarification",
-            message: resolution.request.message,
-            choiceLabel: formatClarificationSlot(resolution.request.slot),
-            options: resolution.request.options ?? [],
-            value: resolution.request.initialValue,
-        });
-        if (!followUp) {
-            throw new Error("View workflow clarification was cancelled.");
-        }
-
-        currentRequest = {
-            ...currentRequest,
-            ...resolution.request.state,
-            [resolution.request.slot]: followUp.trim(),
-        };
+        throw new Error("Unsupported resolver status.");
     }
 }
 
@@ -691,10 +707,10 @@ function getGroundedPlannerClarification(app, message) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {string} message
+ * @param {import("./types.js").ViewWorkflowRequest} workflowRequest
  * @param {Record<string, any>} trace
  * @param {number} startedAt
- * @returns {Promise<boolean>}
+ * @returns {Promise<void>}
  */
 async function runViewWorkflow(app, workflowRequest, trace, startedAt) {
     await runAgentProgram(
@@ -760,6 +776,9 @@ function summarizeResolvedViewWorkflow(workflow) {
 
 /**
  * @param {import("./types.js").ResolvedViewWorkflow} workflow
+ * @returns {{
+ *   attribute: import("../sampleView/types.js").AttributeIdentifier
+ * }}
  */
 function createSelectionAttribute(workflow) {
     return {
@@ -773,7 +792,9 @@ function createSelectionAttribute(workflow) {
                     selector: workflow.selection.selector,
                 },
                 aggregation: {
-                    op: workflow.aggregation,
+                    op: /** @type {import("../sampleView/types.js").AggregationOp} */ (
+                        workflow.aggregation
+                    ),
                 },
             },
         },

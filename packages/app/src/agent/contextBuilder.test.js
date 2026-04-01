@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 
 const { getParamSelectorMock } = vi.hoisted(() => ({

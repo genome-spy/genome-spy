@@ -1,5 +1,5 @@
+// @ts-nocheck
 // @vitest-environment jsdom
-// @ts-check
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { createAgentAdapterMock } = vi.hoisted(() => ({

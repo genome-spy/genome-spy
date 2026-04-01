@@ -786,6 +786,14 @@ export type ResolverResult<T> =
     | { status: "error"; message: string };
 
 /**
+ * Resolver result used by view-workflow helpers.
+ */
+export type WorkflowResolverResult<T> =
+    | { status: "resolved"; value: T }
+    | { status: "needs_clarification"; request: ClarificationRequest }
+    | { status: "error"; message: string };
+
+/**
  * Top-level response returned by the planner endpoint.
  */
 export type PlanResponse =

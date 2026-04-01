@@ -4,7 +4,7 @@ import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 /**
  * @param {import("../app.js").default} app
  * @param {import("./types.js").ViewWorkflowRequest} workflowRequest
- * @returns {import("./types.js").ResolverResult<import("./types.js").ResolvedViewWorkflow>}
+ * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").ResolvedViewWorkflow>}
  */
 export function resolveViewWorkflow(app, workflowRequest) {
     const definition = getViewWorkflowDefinition(workflowRequest.workflowType);
@@ -21,16 +21,28 @@ export function resolveViewWorkflow(app, workflowRequest) {
     const context = getViewWorkflowContext(app);
 
     const selection = resolveSelection(context, workflowRequest.selectionId);
-    if ("status" in selection) {
+    if (
+        selection.status === "error" ||
+        selection.status === "needs_clarification"
+    ) {
         return selection;
     }
+    const resolvedSelection = selection.value;
 
-    const field = resolveField(context, selection.id, workflowRequest.fieldId);
-    if ("status" in field) {
+    const field = resolveField(
+        context,
+        resolvedSelection.id,
+        workflowRequest.fieldId
+    );
+    if (field.status === "error" || field.status === "needs_clarification") {
         return field;
     }
+    const resolvedField = field.value;
 
-    const aggregation = resolveAggregation(field, workflowRequest.aggregation);
+    const aggregation = resolveAggregation(
+        resolvedField,
+        workflowRequest.aggregation
+    );
     if (typeof aggregation !== "string") {
         return aggregation;
     }
@@ -39,8 +51,8 @@ export function resolveViewWorkflow(app, workflowRequest) {
         status: "resolved",
         value: {
             workflowType: workflowRequest.workflowType,
-            selection,
-            field,
+            selection: resolvedSelection,
+            field: resolvedField,
             aggregation,
             outputTarget:
                 workflowRequest.outputTarget ??
@@ -52,8 +64,8 @@ export function resolveViewWorkflow(app, workflowRequest) {
                     "deriveMetadataFromSelection" && !workflowRequest.name
                     ? createDerivedMetadataName({
                           aggregation,
-                          fieldId: field.id,
-                          selectionSuffix: selection.nameSuffix,
+                          fieldId: resolvedField.id,
+                          selectionSuffix: resolvedSelection.nameSuffix,
                       })
                     : workflowRequest.name,
             groupPath: workflowRequest.groupPath,
@@ -65,6 +77,7 @@ export function resolveViewWorkflow(app, workflowRequest) {
 /**
  * @param {import("./types.js").AgentViewWorkflowContext} context
  * @param {string | undefined} selectionId
+ * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").AgentSelectionSummary>}
  */
 function resolveSelection(context, selectionId) {
     if (context.selections.length === 0) {
@@ -80,12 +93,18 @@ function resolveSelection(context, selectionId) {
             (selection) => selection.id === selectionId
         );
         if (match) {
-            return match;
+            return {
+                status: "resolved",
+                value: match,
+            };
         }
     }
 
     if (context.selections.length === 1) {
-        return context.selections[0];
+        return {
+            status: "resolved",
+            value: context.selections[0],
+        };
     }
 
     return {
@@ -113,6 +132,7 @@ function resolveSelection(context, selectionId) {
  * @param {import("./types.js").AgentViewWorkflowContext} context
  * @param {string} selectionId
  * @param {string | undefined} fieldId
+ * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").AgentViewFieldSummary>}
  */
 function resolveField(context, selectionId, fieldId) {
     const fields = context.fields.filter((field) =>
@@ -129,12 +149,18 @@ function resolveField(context, selectionId, fieldId) {
     if (fieldId) {
         const match = fields.find((field) => field.id === fieldId);
         if (match) {
-            return match;
+            return {
+                status: "resolved",
+                value: match,
+            };
         }
     }
 
     if (fields.length === 1) {
-        return fields[0];
+        return {
+            status: "resolved",
+            value: fields[0],
+        };
     }
 
     return {
@@ -163,6 +189,7 @@ function resolveField(context, selectionId, fieldId) {
 /**
  * @param {import("./types.js").AgentViewFieldSummary} field
  * @param {string | undefined} aggregation
+ * @returns {string | import("./types.js").WorkflowResolverResult<import("./types.js").ResolvedViewWorkflow>}
  */
 function resolveAggregation(field, aggregation) {
     if (aggregation && field.supportedAggregations.includes(aggregation)) {
