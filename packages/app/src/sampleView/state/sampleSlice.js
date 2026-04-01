@@ -140,6 +140,15 @@ export const sampleSlice = createSlice({
     name: SAMPLE_SLICE_NAME,
     initialState: createInitialState(),
     reducers: {
+        /**
+         * Set the initial sample collection for this view.
+         *
+         * Use this when samples are first loaded or the entire collection is
+         * replaced.
+         *
+         * @agent.payloadType SetSamples
+         * @agent.category initialization
+         */
         setSamples: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
@@ -188,6 +197,15 @@ export const sampleSlice = createSlice({
             };
         },
 
+        /**
+         * Add imported sample metadata to the current collection.
+         *
+         * Use this for metadata uploads or source imports that provide
+         * columnar sample attributes.
+         *
+         * @agent.payloadType SetMetadata
+         * @agent.category metadata
+         */
         addMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
@@ -195,6 +213,16 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, action.payload);
         },
 
+        /**
+         * Add derived metadata computed from a view-backed attribute.
+         *
+         * Use this when the user wants to turn a selected field into a new
+         * sample metadata column.
+         *
+         * @agent.payloadType DeriveMetadata
+         * @agent.category metadata
+         * @agent.requiresAttribute true
+         */
         deriveMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} */ action
@@ -209,6 +237,15 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        /**
+         * Add metadata imported from an external source.
+         *
+         * The payload is resolved by the metadata source machinery before the
+         * reducer runs.
+         *
+         * @agent.payloadType AddMetadataFromSource
+         * @agent.category metadata
+         */
         addMetadataFromSource: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").AddMetadataFromSource>} */ action
@@ -223,6 +260,21 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        /**
+         * Sort samples in descending order by the chosen attribute.
+         *
+         * Use this when the user wants to rank samples by a single attribute.
+         * The attribute is typically quantitative or ordinal.
+         *
+         * @agent.payloadType SortBy
+         * @agent.category sorting
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "age" }
+         * }
+         */
         sortBy: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
@@ -232,6 +284,17 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain the first sample of each category in the current ordering.
+         *
+         * Use this when the current sort order already encodes the desired
+         * representative sample for each category.
+         *
+         * @agent.payloadType RetainFirstOfEach
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         */
         retainFirstOfEach: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
@@ -242,6 +305,17 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain samples from the first n categories in the current ordering.
+         *
+         * Use this when the user wants to keep only the leading categories
+         * according to a prior sort or ranking.
+         *
+         * @agent.payloadType RetainFirstNCategories
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         */
         retainFirstNCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
@@ -256,6 +330,22 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain or remove samples using a numeric comparison.
+         *
+         * Use this for threshold-based filtering on quantitative attributes.
+         *
+         * @agent.payloadType FilterByQuantitative
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
+         *   "operator": "gte",
+         *   "operand": 0.6
+         * }
+         */
         filterByQuantitative: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
@@ -271,6 +361,21 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain or remove samples by exact discrete values.
+         *
+         * Use this for categorical metadata and exact-match filtering.
+         *
+         * @agent.payloadType FilterByNominal
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" },
+         *   "values": ["AML"]
+         * }
+         */
         filterByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
@@ -286,6 +391,16 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Remove samples that are missing the chosen attribute.
+         *
+         * Use this to clean up incomplete metadata before applying further
+         * analysis steps.
+         *
+         * @agent.payloadType RemoveUndefined
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         */
         removeUndefined: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
@@ -296,6 +411,17 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Create custom sample groups from manually chosen categories.
+         *
+         * Use this when the user wants to merge specific categories into named
+         * groups.
+         *
+         * @agent.payloadType GroupCustom
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         */
         groupCustomCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
@@ -318,6 +444,17 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples by the distinct values of the chosen attribute.
+         *
+         * Use this to stratify the sample collection into one group per
+         * category.
+         *
+         * @agent.payloadType GroupByNominal
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         */
         groupByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
@@ -335,6 +472,16 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples into quartiles by the chosen quantitative attribute.
+         *
+         * Use this for a fast, coarse stratification into four groups.
+         *
+         * @agent.payloadType GroupToQuartiles
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         */
         groupToQuartiles: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
@@ -351,6 +498,25 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples by user-defined numeric thresholds.
+         *
+         * Use this when the desired stratification does not match quartiles or
+         * a pre-existing categorical split.
+         *
+         * @agent.payloadType GroupByThresholds
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
+         *   "thresholds": [
+         *     { "operator": "lte", "operand": 0.2 },
+         *     { "operator": "lt", "operand": 0.8 }
+         *   ]
+         * }
+         */
         groupByThresholds: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
@@ -368,6 +534,15 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Remove a nested sample group by path.
+         *
+         * Use this when the user wants to delete a previously created group
+         * from the hierarchy.
+         *
+         * @agent.payloadType RemoveGroup
+         * @agent.category grouping
+         */
         removeGroup: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
@@ -379,6 +554,16 @@ export const sampleSlice = createSlice({
             }
         },
 
+        /**
+         * Retain categories that are present in all current groups.
+         *
+         * Use this for intersection-style cohort refinement.
+         *
+         * @agent.payloadType RetainMatched
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         */
         retainMatched: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */

@@ -8,11 +8,17 @@ import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
 
 /**
- * Structured view address used by selectors (import scope + view name).
+ * Structured view address used by selectors.
+ *
+ * The selector identifies a view by its import scope and name, which makes it
+ * stable for provenance and replay.
  */
 export type ViewSelector =
     import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
 
+/**
+ * Structured parameter address used for bookmarkable selections and values.
+ */
 export type ParamSelector =
     import("@genome-spy/core/view/viewSelectors.js").ParamSelector;
 
@@ -65,13 +71,20 @@ export interface BaseSpecifier {
      */
     view: ViewRef;
 
-    /** Attribute, e.g., the name of the field where a value is stored */
+    /**
+     * Attribute or field name used by the specifier.
+     */
     field: string;
 
-    /** The x-scale domain that was visible when the action was triggered */
+    /**
+     * The x-scale domain that was visible when the action was triggered.
+     */
     domainAtActionTime?: NumericDomain | ComplexDomain;
 }
 
+/**
+ * Specifier that points to a single locus or scalar coordinate.
+ */
 export interface LocusSpecifier extends BaseSpecifier {
     /**
      * Coordinate on the `x` axis. May be a number of locus on a chromosome.
@@ -80,14 +93,27 @@ export interface LocusSpecifier extends BaseSpecifier {
     locus: Scalar | ChromosomalLocus;
 }
 
+/**
+ * Interval that will be resolved from a selection parameter.
+ */
 export interface SelectionIntervalSource {
     type: "selection";
     selector: ParamSelector;
 }
 
+/**
+ * Literal interval or selection-backed interval reference.
+ */
 export type IntervalReference = Interval | SelectionIntervalSource;
+
+/**
+ * Interval plus the container key used by some helper functions.
+ */
 export type IntervalCarrier = { interval: IntervalReference };
 
+/**
+ * Specifier that summarizes a field over an interval.
+ */
 export interface IntervalSpecifier extends BaseSpecifier {
     /** Literal interval or a selection source resolved at action execution time */
     interval: IntervalReference;
@@ -96,6 +122,10 @@ export interface IntervalSpecifier extends BaseSpecifier {
     aggregation: AggregationSpec;
 }
 
+/**
+ * Supported view-backed attribute specifiers used by the sample collection
+ * actions.
+ */
 export type ViewAttributeSpecifier = LocusSpecifier | IntervalSpecifier;
 
 /**

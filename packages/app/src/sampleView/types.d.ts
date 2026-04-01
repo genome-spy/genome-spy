@@ -3,17 +3,36 @@ import { SampleHierarchy } from "./state/sampleState.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 
 /**
- * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
+ * Stable identifier for an abstract attribute used by actions and agent
+ * context.
+ *
+ * `type` identifies the attribute source kind, and `specifier` contains the
+ * concrete lookup information for that source.
+ *
+ * Examples:
+ * - `{ type: "SAMPLE_ATTRIBUTE", specifier: "age" }`
+ * - `{ type: "VALUE_AT_LOCUS", specifier: { ... } }`
  */
+export type AttributeIdentifierType = "SAMPLE_ATTRIBUTE" | "VALUE_AT_LOCUS";
+
 export interface AttributeIdentifier {
-    type: string;
+    type: AttributeIdentifierType;
     specifier?: string | ViewAttributeSpecifier;
 }
 
+/**
+ * One endpoint of an interval.
+ */
 export type IntervalPoint = number | ChromosomalLocus;
 
+/**
+ * Interval expressed as two scalar or locus points.
+ */
 export type Interval = [IntervalPoint, IntervalPoint];
 
+/**
+ * Aggregation operators supported by interval-based attribute access.
+ */
 export type AggregationOp =
     | "min"
     | "max"
@@ -21,10 +40,17 @@ export type AggregationOp =
     | "variance"
     | "count";
 
+/**
+ * Aggregation configuration for interval-derived attribute access.
+ */
 export interface AggregationSpec {
     op: AggregationOp;
 }
 
+/**
+ * Arguments passed to attribute value providers, including the current
+ * selection of sample ids and optional interval/aggregation context.
+ */
 export interface AttributeValuesScope {
     sampleIds: string[];
     sampleHierarchy: SampleHierarchy;
@@ -32,6 +58,9 @@ export interface AttributeValuesScope {
     aggregation?: AggregationSpec;
 }
 
+/**
+ * Context passed to attribute availability hooks.
+ */
 export interface AttributeEnsureContext {
     signal?: AbortSignal;
 }

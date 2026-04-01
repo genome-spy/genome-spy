@@ -55,12 +55,23 @@ export interface ColumnarMetadata {
 }
 
 export interface SetSamples {
+    /**
+     * Samples to install as the current collection.
+     *
+     * Each sample must have a unique `id`.
+     */
     samples: Sample[];
 }
 
 export interface SetMetadata {
+    /**
+     * Metadata encoded in columnar form, aligned to the sample order.
+     */
     columnarMetadata: ColumnarMetadata;
 
+    /**
+     * Optional attribute definitions for the incoming metadata columns.
+     */
     attributeDefs?: Record<AttributeName, SampleAttributeDef>;
 
     /**
@@ -71,8 +82,21 @@ export interface SetMetadata {
 }
 
 export interface DeriveMetadata extends PayloadWithAttribute {
+    /**
+     * Name of the derived metadata column.
+     *
+     * The resulting metadata is written under this name.
+     */
     name: string;
+
+    /**
+     * Optional metadata group path for the derived column.
+     */
     groupPath?: string;
+
+    /**
+     * Optional scale definition for the derived metadata column.
+     */
     scale?: SampleAttributeDef["scale"];
 }
 
@@ -108,8 +132,18 @@ export interface AddMetadataFromSource {
 
 export type ThresholdOperator = "lt" | "lte";
 
+/**
+ * Numeric threshold used when partitioning or filtering quantitative values.
+ */
 export interface Threshold {
+    /**
+     * Threshold side to use when creating groups.
+     */
     operator: ThresholdOperator;
+
+    /**
+     * Numeric threshold value.
+     */
     operand: number;
 }
 
@@ -137,6 +171,9 @@ export interface AugmentedAttribute {
  * stored in `_augmented` here for later use.
  */
 export interface PayloadWithAttribute {
+    /**
+     * Attribute identifier used by the action.
+     */
     attribute: AttributeIdentifier;
 
     /**
@@ -145,22 +182,42 @@ export interface PayloadWithAttribute {
     _augmented?: AugmentedAttribute;
 }
 
+/**
+ * Payload for sorting samples by an attribute.
+ */
 export interface SortBy extends PayloadWithAttribute {}
 
+/**
+ * Payload for retaining the first sample of each category.
+ */
 export interface RetainFirstOfEach extends PayloadWithAttribute {}
 
 export interface RetainFirstNCategories extends PayloadWithAttribute {
-    /** Number of categories to retain */
+    /**
+     * Number of categories to retain.
+     */
     n: number;
 }
 
+/**
+ * Payload for removing samples missing an attribute value.
+ */
 export interface RemoveUndefined extends PayloadWithAttribute {}
 
+/**
+ * Payload for grouping by a categorical attribute.
+ */
 export interface GroupByNominal extends PayloadWithAttribute {}
 
+/**
+ * Payload for grouping by quartiles.
+ */
 export interface GroupToQuartiles extends PayloadWithAttribute {}
 
 export interface GroupByThresholds extends PayloadWithAttribute {
+    /**
+     * Thresholds used to stratify the samples.
+     */
     thresholds: Threshold[];
 }
 
@@ -172,24 +229,39 @@ export interface RemoveGroup {
 }
 
 export interface FilterByQuantitative extends PayloadWithAttribute {
-    /** The comparison operator */
+    /**
+     * Comparison operator used for thresholding.
+     */
     operator: ComparisonOperatorType;
 
+    /**
+     * Numeric threshold used in the comparison.
+     */
     operand: number;
 }
 
 export interface FilterByNominal extends PayloadWithAttribute {
+    /**
+     * Discrete values to match.
+     */
     values: any[];
 
-    /** Should the matching samples be removed instead of retained (default) */
+    /**
+     * If true, matching samples are removed instead of retained.
+     */
     remove?: boolean;
 }
 
 export interface RetainMatched extends PayloadWithAttribute {
+    /**
+     * Attribute whose categories must be present in all current groups.
+     */
     attribute: AttributeIdentifier;
 }
 
-/** Which categories belong to which group */
+/**
+ * Which categories belong to which group.
+ */
 export type CustomGroups = Record<string, Scalar[]>;
 
 export interface GroupCustom extends PayloadWithAttribute {
