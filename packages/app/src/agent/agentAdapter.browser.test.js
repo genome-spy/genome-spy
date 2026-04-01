@@ -111,6 +111,66 @@ describe("agentAdapter browser integration", () => {
         ]);
     });
 
+    it("posts a stable planner request body shape to /v1/plan", async () => {
+        const fixture = createVisualizationFixture();
+        const app = createAgentBrowserApp({ fixture });
+        resolveParamSelectorMock.mockImplementation((root) => ({
+            view: root.__resolvedParamView,
+        }));
+
+        const prompt = "Show the available actions.";
+        window.prompt.mockReturnValueOnce(prompt);
+        const planner = installPlannerMock([
+            {
+                type: "answer",
+                message: "OK",
+            },
+        ]);
+
+        const adapter = createAgentAdapter(app);
+        const runPromise = adapter.runLocalPrompt();
+
+        const responseDialog = await waitForDialog("gs-message-dialog");
+        await clickDialogButton(responseDialog, "Close");
+
+        await runPromise;
+
+        expect(planner.requests).toHaveLength(1);
+        expect(planner.requests[0].url).toBe("http://127.0.0.1:8000/v1/plan");
+        expect(planner.requests[0].body).toMatchObject({
+            message: prompt,
+            history: [],
+            context: expect.objectContaining({
+                schemaVersion: 1,
+                view: expect.objectContaining({
+                    type: "sampleView",
+                    name: "sampleView",
+                    title: "Capability Fixture",
+                }),
+                attributes: expect.any(Array),
+                actionCatalog: expect.any(Array),
+                actionSummaries: expect.any(Array),
+                viewWorkflows: expect.objectContaining({
+                    workflows: expect.any(Array),
+                }),
+                provenance: expect.any(Array),
+                params: expect.any(Array),
+                lifecycle: expect.objectContaining({
+                    appInitialized: true,
+                }),
+            }),
+        });
+        expect(
+            planner.requests[0].body.context.actionSummaries.map(
+                (entry) => entry.actionType
+            )
+        ).toEqual(
+            planner.requests[0].body.context.actionCatalog.map(
+                (entry) => entry.actionType
+            )
+        );
+    });
+
     it("runs a structured view workflow and clarifies the missing field using the real choice dialog", async () => {
         const fixture = createVisualizationFixture({
             intervalFields: [
