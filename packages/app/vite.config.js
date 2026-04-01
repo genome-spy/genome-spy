@@ -1,11 +1,14 @@
 import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 import replace from "@rollup/plugin-replace";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createAppDevServerPlugin } from "../../devServerRoutes.mjs";
 
 const process = globalThis.process;
 
 export default defineConfig({
+    envDir: dirname(fileURLToPath(import.meta.url)),
     root: "src",
     appType: "mpa",
     server: {

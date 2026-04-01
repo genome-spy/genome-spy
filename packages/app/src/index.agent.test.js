@@ -16,8 +16,8 @@ const { getAgentMenuItemsMock } = vi.hoisted(() => ({
 const { AppMock } = vi.hoisted(() => ({
     AppMock: vi.fn(function App() {
         this.options = arguments[2];
-        this.toolbarMenuItems = this.options.toolbarMenuItemsFactory?.(this);
         this.agentAdapter = this.options.agentAdapterFactory?.(this);
+        this.toolbarMenuItems = this.options.toolbarMenuItemsFactory?.(this);
         this.genomeSpy = {
             destroy: vi.fn(),
             addEventListener: vi.fn(),

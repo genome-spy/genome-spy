@@ -72,11 +72,11 @@ export default class App {
             inputBindingContainer: /** @type {"none"} */ ("none"),
         };
 
+        this.agentAdapter = this.options.agentAdapterFactory?.(this);
+
         /** @type {import("./utils/ui/contextMenu.js").MenuItem[]} */
         this.toolbarMenuItems =
             this.options.toolbarMenuItemsFactory?.(this) ?? [];
-
-        this.agentAdapter = this.options.agentAdapterFactory?.(this);
 
         this.#setupStoreAndProvenance();
 
