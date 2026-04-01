@@ -6,6 +6,8 @@ import {
     faExpandArrowsAlt,
     faBug,
     faFileImage,
+    faRobot,
+    faStopwatch,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
@@ -21,6 +23,7 @@ import { menuItemToTemplate } from "../../utils/ui/contextMenu.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
+import "../dialogs/agentTraceDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
@@ -159,6 +162,28 @@ export default class Toolbar extends LitElement {
                             highlightView:
                                 this.app.genomeSpy.viewRoot.context
                                     .highlightView,
+                        }
+                    ),
+            });
+        }
+
+        if (this.app.options.showLocalAgentButton && this.app.agentAdapter) {
+            items.push({
+                label: "Local Agent",
+                icon: faRobot,
+                callback: () => this.app.agentAdapter.runLocalPrompt(),
+            });
+
+            items.push({
+                label: "Agent Trace",
+                icon: faStopwatch,
+                callback: () =>
+                    showDialog(
+                        "gs-agent-trace-dialog",
+                        (
+                            /** @type {import("../dialogs/agentTraceDialog.js").default} */ dialog
+                        ) => {
+                            dialog.app = this.app;
                         }
                     ),
             });

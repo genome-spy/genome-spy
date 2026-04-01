@@ -48,6 +48,7 @@ import {
     createDefaultAppKeyboardShortcuts,
     setupAppKeyboardShortcuts,
 } from "./appKeyboardShortcuts.js";
+import { createAgentAdapter } from "./agent/agentAdapter.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -58,13 +59,16 @@ export default class App {
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean, showLocalAgentButton: boolean, agentBaseUrl: string}>} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
+        this.agentTraces = [];
 
         this.options = {
             showInspectorButton: true,
+            showLocalAgentButton: true,
+            agentBaseUrl: "http://127.0.0.1:8000",
             ...options,
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),
@@ -134,6 +138,35 @@ export default class App {
             )
         );
         this.#setupViewVisibilityHandling();
+        this.agentAdapter = createAgentAdapter(this);
+
+        if (typeof window !== "undefined") {
+            /** @type {any} */ (window).__genomeSpyApp = this;
+        }
+    }
+
+    /**
+     * @param {Record<string, any>} trace
+     */
+    recordAgentTrace(trace) {
+        this.agentTraces.unshift(trace);
+        this.agentTraces.length = Math.min(this.agentTraces.length, 20);
+
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(
+                new CustomEvent("genomespy-agent-trace", {
+                    detail: trace,
+                })
+            );
+        }
+    }
+
+    clearAgentTraces() {
+        this.agentTraces = [];
+    }
+
+    getAgentTraces() {
+        return this.agentTraces;
     }
 
     #setupStoreAndProvenance() {
