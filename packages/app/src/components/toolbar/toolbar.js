@@ -5,6 +5,7 @@ import {
     faQuestionCircle,
     faExpandArrowsAlt,
     faBug,
+    faCopy,
     faFileImage,
     faRobot,
     faStopwatch,
@@ -28,6 +29,9 @@ import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
 export default class Toolbar extends LitElement {
+    /** @type {boolean} */
+    #isDev = import.meta.env.DEV;
+
     constructor() {
         super();
 
@@ -174,6 +178,14 @@ export default class Toolbar extends LitElement {
                 callback: () => this.app.agentAdapter.runLocalPrompt(),
             });
 
+            if (this.#isDev) {
+                items.push({
+                    label: "Copy Agent Context",
+                    icon: faCopy,
+                    callback: () => void this.#copyAgentContext(),
+                });
+            }
+
             items.push({
                 label: "Agent Trace",
                 icon: faStopwatch,
@@ -218,6 +230,38 @@ export default class Toolbar extends LitElement {
 
     #showAboutDialog() {
         showDialog("gs-about-dialog");
+    }
+
+    async #copyAgentContext() {
+        const context = this.app.agentAdapter?.getAgentContext?.();
+        if (!context) {
+            await showMessageDialog("No agent context is available yet.", {
+                title: "Agent Context",
+                type: "info",
+            });
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(
+                JSON.stringify(context, null, 2)
+            );
+            await showMessageDialog(
+                "The current agent context was copied to the clipboard.",
+                {
+                    title: "Agent Context",
+                    type: "info",
+                }
+            );
+        } catch {
+            await showMessageDialog(
+                "The agent context could not be copied. Your browser may block clipboard access.",
+                {
+                    title: "Agent Context",
+                    type: "info",
+                }
+            );
+        }
     }
 
     render() {
