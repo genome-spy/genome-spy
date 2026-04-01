@@ -24,7 +24,6 @@ import { menuItemToTemplate } from "../../utils/ui/contextMenu.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
 import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
-import "../dialogs/agentTraceDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
 
@@ -189,15 +188,7 @@ export default class Toolbar extends LitElement {
             items.push({
                 label: "Agent Trace",
                 icon: faStopwatch,
-                callback: () =>
-                    showDialog(
-                        "gs-agent-trace-dialog",
-                        (
-                            /** @type {import("../dialogs/agentTraceDialog.js").default} */ dialog
-                        ) => {
-                            dialog.app = this.app;
-                        }
-                    ),
+                callback: () => void this.#showAgentTraceDialog(),
             });
         }
 
@@ -230,6 +221,18 @@ export default class Toolbar extends LitElement {
 
     #showAboutDialog() {
         showDialog("gs-about-dialog");
+    }
+
+    async #showAgentTraceDialog() {
+        await import("../dialogs/agentTraceDialog.js");
+        showDialog(
+            "gs-agent-trace-dialog",
+            (
+                /** @type {import("../dialogs/agentTraceDialog.js").default} */ dialog
+            ) => {
+                dialog.app = this.app;
+            }
+        );
     }
 
     async #copyAgentContext() {

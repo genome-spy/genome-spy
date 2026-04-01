@@ -48,7 +48,6 @@ import {
     createDefaultAppKeyboardShortcuts,
     setupAppKeyboardShortcuts,
 } from "./appKeyboardShortcuts.js";
-import { createAgentAdapter } from "./agent/agentAdapter.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -59,7 +58,7 @@ export default class App {
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean, showLocalAgentButton: boolean, agentBaseUrl: string}>} options
+     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean, showLocalAgentButton: boolean, agentBaseUrl: string, agentAdapterFactory: (app: App) => import("./agent/types.js").AgentAdapter}>} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
@@ -67,12 +66,13 @@ export default class App {
 
         this.options = {
             showInspectorButton: true,
-            showLocalAgentButton: true,
-            agentBaseUrl: "http://127.0.0.1:8000",
+            showLocalAgentButton: false,
             ...options,
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),
         };
+
+        this.agentAdapter = this.options.agentAdapterFactory?.(this);
 
         this.#setupStoreAndProvenance();
 
@@ -138,7 +138,6 @@ export default class App {
             )
         );
         this.#setupViewVisibilityHandling();
-        this.agentAdapter = createAgentAdapter(this);
 
         if (typeof window !== "undefined") {
             /** @type {any} */ (window).__genomeSpyApp = this;

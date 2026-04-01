@@ -13,6 +13,7 @@ tmp/
 node_modules/
 .venv/
 
+**/*.local
 **/static/private/
 **/private/
 **/static/examples/drafts/

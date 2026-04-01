@@ -36,6 +36,17 @@ export async function embed(el, spec, options = {}) {
 
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
+        const agentEnabled = import.meta.env.VITE_AGENT_ENABLED === "true";
+        const agentBaseUrl = agentEnabled
+            ? (options.agentBaseUrl ??
+              /** @type {string | undefined} */ (
+                  import.meta.env.VITE_AGENT_BASE_URL
+              ))
+            : undefined;
+        const agentAdapterFactory =
+            agentEnabled && agentBaseUrl
+                ? (await import("./agent/agentAdapter.js")).createAgentAdapter
+                : undefined;
 
         specObject.baseUrl ??= "";
         specObject.width ??= "container";
@@ -44,6 +55,11 @@ export async function embed(el, spec, options = {}) {
         options = {
             powerPreference: "high-performance",
             ...options,
+            agentBaseUrl,
+            showLocalAgentButton:
+                agentEnabled &&
+                (options.showLocalAgentButton ?? Boolean(agentBaseUrl)),
+            agentAdapterFactory,
         };
 
         const app = new App(element, specObject, options);
