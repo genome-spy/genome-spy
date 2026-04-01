@@ -140,7 +140,7 @@ export const generatedActionCatalog = [
             },
             {
                 name: "thresholds",
-                type: "Threshold[]",
+                type: "[Threshold, ...Threshold[]]",
                 description: "Thresholds used to stratify the samples.",
                 required: true,
             },

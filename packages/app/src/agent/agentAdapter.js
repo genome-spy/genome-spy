@@ -12,6 +12,8 @@ import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
+const SHOULD_LOG_AGENT_TRACE =
+    import.meta.env.DEV && import.meta.env.MODE !== "test";
 
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -38,11 +40,13 @@ function publishAgentTrace(trace) {
     const app = /** @type {any} */ (window).__genomeSpyApp;
     app?.recordAgentTrace?.(trace);
     /** @type {any} */ (window).__genomeSpyLastAgentTrace = trace;
-    console.groupCollapsed(
-        "[GenomeSpy Agent] " + trace.message + " (" + trace.totalMs + " ms)"
-    );
-    console.table(trace);
-    console.groupEnd();
+    if (SHOULD_LOG_AGENT_TRACE) {
+        console.groupCollapsed(
+            "[GenomeSpy Agent] " + trace.message + " (" + trace.totalMs + " ms)"
+        );
+        console.table(trace);
+        console.groupEnd();
+    }
 }
 
 /**
@@ -511,8 +515,14 @@ function shouldRetryAsViewWorkflow(app, program, errors) {
     );
     const hasQuantitativeFilterShapeError = errors.some(
         (error) =>
+            error.includes("payload.operator is required") ||
+            error.includes("payload.operand is required") ||
             error.includes("payload.operator must be one of") ||
-            error.includes("payload.operand must be a finite number")
+            error.includes("payload.operand must be of type number") ||
+            error.includes("payload.operand must be greater than or equal to")
+    );
+    const hasGenericPayloadShapeError = errors.some(
+        (error) => error.includes("$.steps[") && error.includes(".payload.")
     );
     const hasSampleAttributePayload = (program.steps ?? []).some(
         (step) => step?.payload?.attribute?.type === "SAMPLE_ATTRIBUTE"
@@ -526,6 +536,7 @@ function shouldRetryAsViewWorkflow(app, program, errors) {
     return (
         (hasUnknownSampleAttributeError && hasSampleAttributePayload) ||
         (hasQuantitativeFilterShapeError && hasSampleAttributePayload) ||
+        (hasGenericPayloadShapeError && hasSampleAttributePayload) ||
         hasSuspiciousTemplateLikeAttribute
     );
 }

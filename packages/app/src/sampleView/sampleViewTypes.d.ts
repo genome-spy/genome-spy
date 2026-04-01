@@ -13,14 +13,22 @@ import ViewContext from "@genome-spy/core/types/viewContext.js";
  * The selector identifies a view by its import scope and name, which makes it
  * stable for provenance and replay.
  */
-export type ViewSelector =
-    import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
+// Copied here instead of importing the core typedef so the agent schema
+// generator can read it without the import-type alias form.
+export interface ViewSelector {
+    scope: string[];
+    view: string;
+}
 
 /**
  * Structured parameter address used for bookmarkable selections and values.
  */
-export type ParamSelector =
-    import("@genome-spy/core/view/viewSelectors.js").ParamSelector;
+// Copied here instead of importing the core typedef so the agent schema
+// generator can read it without the import-type alias form.
+export interface ParamSelector {
+    scope: string[];
+    param: string;
+}
 
 /**
  * View reference used in SampleView actions. Legacy values may be a view name

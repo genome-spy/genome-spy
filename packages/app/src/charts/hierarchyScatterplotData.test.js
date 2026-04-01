@@ -49,7 +49,7 @@ function createSampleHierarchy() {
 describe("buildHierarchyScatterplotData", () => {
     it("builds rows for quantitative attributes and drops missing values", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const xAttributeInfo = {
+        const xAttributeInfo = /** @type {any} */ ({
             name: "a",
             title: "a",
             emphasizedName: "a",
@@ -61,8 +61,8 @@ describe("buildHierarchyScatterplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.a
             ),
             type: "quantitative",
-        };
-        const yAttributeInfo = {
+        });
+        const yAttributeInfo = /** @type {any} */ ({
             name: "b",
             title: "b",
             emphasizedName: "b",
@@ -74,7 +74,7 @@ describe("buildHierarchyScatterplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.b
             ),
             type: "quantitative",
-        };
+        });
 
         const { rows, groupDomain } = buildHierarchyScatterplotData(
             sampleHierarchy,
@@ -92,7 +92,7 @@ describe("buildHierarchyScatterplotData", () => {
 
     it("rejects non-quantitative attributes", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const xAttributeInfo = {
+        const xAttributeInfo = /** @type {any} */ ({
             name: "a",
             title: "a",
             emphasizedName: "a",
@@ -100,8 +100,8 @@ describe("buildHierarchyScatterplotData", () => {
             accessor: () => undefined,
             valuesProvider: () => [],
             type: "nominal",
-        };
-        const yAttributeInfo = {
+        });
+        const yAttributeInfo = /** @type {any} */ ({
             name: "b",
             title: "b",
             emphasizedName: "b",
@@ -109,7 +109,7 @@ describe("buildHierarchyScatterplotData", () => {
             accessor: () => undefined,
             valuesProvider: () => [],
             type: "quantitative",
-        };
+        });
 
         expect(() =>
             buildHierarchyScatterplotData(

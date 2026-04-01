@@ -1,4 +1,4 @@
-import { getActionCatalogEntry } from "./actionCatalog.js";
+import { validateIntentProgramShape } from "./actionShapeValidator.js";
 
 /**
  * @param {import("../app.js").default} app
@@ -17,12 +17,12 @@ export function validateIntentProgram(app, program) {
     }
 
     const candidate = /** @type {Record<string, any>} */ (program);
-    if (candidate.schemaVersion !== 1) {
-        errors.push("schemaVersion must be 1.");
-    }
-
-    if (!Array.isArray(candidate.steps) || candidate.steps.length === 0) {
-        errors.push("steps must be a non-empty array.");
+    const shapeValidation = validateIntentProgramShape(candidate);
+    if (!shapeValidation.ok) {
+        return {
+            ok: false,
+            errors: shapeValidation.errors,
+        };
     }
 
     const sampleView = app.getSampleView();
@@ -39,45 +39,12 @@ export function validateIntentProgram(app, program) {
     /** @type {import("./types.js").IntentProgramStep[]} */
     const normalizedSteps = [];
 
-    for (const [index, step] of (candidate.steps ?? []).entries()) {
-        if (!step || typeof step !== "object") {
-            errors.push("steps[" + index + "] must be an object.");
-            continue;
-        }
-
+    for (const [index, step] of candidate.steps.entries()) {
         const stepObject = /** @type {Record<string, any>} */ (step);
-        const actionType = stepObject.actionType;
-        if (typeof actionType !== "string") {
-            errors.push("steps[" + index + "].actionType must be a string.");
-            continue;
-        }
-
-        const entry = getActionCatalogEntry(
-            /** @type {import("./types.js").AgentActionType} */ (actionType)
+        const actionType = /** @type {import("./types.js").AgentActionType} */ (
+            stepObject.actionType
         );
-        if (!entry) {
-            errors.push(
-                "steps[" +
-                    index +
-                    "] uses unsupported actionType " +
-                    actionType +
-                    "."
-            );
-            continue;
-        }
-
-        const payload =
-            stepObject.payload && typeof stepObject.payload === "object"
-                ? stepObject.payload
-                : undefined;
-        if (!payload) {
-            errors.push("steps[" + index + "].payload must be an object.");
-            continue;
-        }
-
-        for (const error of entry.validatePayload(payload)) {
-            errors.push("steps[" + index + "]: " + error);
-        }
+        const payload = stepObject.payload;
 
         if ("attribute" in payload && getAttributeInfo) {
             try {
@@ -94,9 +61,7 @@ export function validateIntentProgram(app, program) {
         }
 
         normalizedSteps.push({
-            actionType: /** @type {import("./types.js").AgentActionType} */ (
-                actionType
-            ),
+            actionType,
             payload,
         });
     }

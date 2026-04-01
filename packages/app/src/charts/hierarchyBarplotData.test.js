@@ -38,7 +38,7 @@ function createSampleHierarchy() {
 describe("buildHierarchyBarplotData", () => {
     it("counts categories when ungrouped", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "status",
             title: "status",
             emphasizedName: "status",
@@ -50,7 +50,7 @@ describe("buildHierarchyBarplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.status
             ),
             type: "nominal",
-        };
+        });
 
         const { rows, categoryDomain, groupDomain, grouped } =
             buildHierarchyBarplotData(sampleHierarchy, attributeInfo);
@@ -83,7 +83,7 @@ describe("buildHierarchyBarplotData", () => {
             ],
         };
 
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "status",
             title: "status",
             emphasizedName: "status",
@@ -95,7 +95,7 @@ describe("buildHierarchyBarplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.status
             ),
             type: "nominal",
-        };
+        });
 
         const { rows, categoryDomain, groupDomain, grouped } =
             buildHierarchyBarplotData(sampleHierarchy, attributeInfo);

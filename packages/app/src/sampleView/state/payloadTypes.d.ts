@@ -6,7 +6,6 @@
  */
 
 import { Scalar } from "@genome-spy/core/spec/channel.js";
-import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";
 import { AggregationSpec, AttributeIdentifier, Interval } from "../types.js";
 import { SampleAttributeDef } from "@genome-spy/app/spec/sampleView.js";
@@ -132,6 +131,8 @@ export interface AddMetadataFromSource {
 
 export type ThresholdOperator = "lt" | "lte";
 
+export type ComparisonOperatorType = "lt" | "lte" | "eq" | "gte" | "gt";
+
 /**
  * Numeric threshold used when partitioning or filtering quantitative values.
  */
@@ -195,6 +196,8 @@ export interface RetainFirstOfEach extends PayloadWithAttribute {}
 export interface RetainFirstNCategories extends PayloadWithAttribute {
     /**
      * Number of categories to retain.
+     *
+     * @minimum 1
      */
     n: number;
 }
@@ -218,7 +221,7 @@ export interface GroupByThresholds extends PayloadWithAttribute {
     /**
      * Thresholds used to stratify the samples.
      */
-    thresholds: Threshold[];
+    thresholds: [Threshold, ...Threshold[]];
 }
 
 export interface RemoveGroup {

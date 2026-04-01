@@ -13,7 +13,11 @@ import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
  * - `{ type: "SAMPLE_ATTRIBUTE", specifier: "age" }`
  * - `{ type: "VALUE_AT_LOCUS", specifier: { ... } }`
  */
-export type AttributeIdentifierType = string;
+export type AttributeIdentifierType =
+    | "SAMPLE_ATTRIBUTE"
+    | "VALUE_AT_LOCUS"
+    | "SAMPLE_NAME"
+    | "VIEW_ATTRIBUTE";
 
 export interface AttributeIdentifier {
     type: AttributeIdentifierType;

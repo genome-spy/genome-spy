@@ -209,7 +209,7 @@ function isAddressableView(view, uniqueViewKeys) {
  * @param {import("./state/sampleState.js").Sample} params.sample
  * @param {import("./state/sampleState.js").SampleHierarchy} params.sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").default} params.attributeInfoSource
- * @param {string} params.attributeType
+ * @param {import("./types.js").AttributeIdentifierType} params.attributeType
  * @param {import("./sampleView.js").default} params.sampleView
  * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
  */
@@ -291,7 +291,7 @@ export function buildIntervalAggregationMenu({
  * @param {import("./state/sampleState.js").Sample} params.sample
  * @param {import("./state/sampleState.js").SampleHierarchy} params.sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").default} params.attributeInfoSource
- * @param {string} params.attributeType
+ * @param {import("./types.js").AttributeIdentifierType} params.attributeType
  * @param {import("./sampleView.js").default} params.sampleView
  * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
  */

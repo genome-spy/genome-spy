@@ -6,6 +6,7 @@ import { subscribeTo } from "../state/subscribeTo.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
 import coalesce from "@genome-spy/core/utils/coalesce.js";
 
+/** @type {import("./types.js").AttributeIdentifierType} */
 const SAMPLE_NAME = "SAMPLE_NAME";
 const INDEX_NUMBER_FIELD = "_indexNumber";
 const LABEL_WIDTH_FIELD = "_labelWidth";

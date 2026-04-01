@@ -109,7 +109,7 @@ describe("augmentAttributeAction", () => {
     it("adds derived metadata payload for deriveMetadata actions", () => {
         const sampleHierarchy = createSampleHierarchy();
 
-        const action = {
+        const action = /** @type {any} */ ({
             type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
             payload: {
                 attribute: { type: "VALUE_AT_LOCUS", specifier: "x" },
@@ -117,7 +117,7 @@ describe("augmentAttributeAction", () => {
                 groupPath: "group/sub",
                 scale: { scheme: "viridis" },
             },
-        };
+        });
 
         const augmented = augmentAttributeAction(
             action,

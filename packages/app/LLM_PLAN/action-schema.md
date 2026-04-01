@@ -13,6 +13,7 @@ Rationale: enables programmatic validation of LLM-proposed steps.
 
 Current implementation:
 - `generatedActionCatalog` is the machine-facing source for action payloads and examples.
+- `generatedActionSchema.json` is the generated shape-validation contract for planner-authored intent programs.
 - `generatedActionSummaries` is the compact presentation layer used in the agent context.
 - `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
 

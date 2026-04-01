@@ -13,12 +13,18 @@ const { asSelectionConfigMock } = vi.hoisted(() => ({
 const { isPointSelectionConfigMock } = vi.hoisted(() => ({
     isPointSelectionConfigMock: vi.fn(() => false),
 }));
+const { isIntervalSelectionConfigMock } = vi.hoisted(() => ({
+    isIntervalSelectionConfigMock: vi.fn(
+        (config) => config?.type === "interval"
+    ),
+}));
 const { getBookmarkableParamsMock } = vi.hoisted(() => ({
     getBookmarkableParamsMock: vi.fn(() => []),
 }));
 
 vi.mock("@genome-spy/core/selection/selection.js", () => ({
     asSelectionConfig: asSelectionConfigMock,
+    isIntervalSelectionConfig: isIntervalSelectionConfigMock,
     isPointSelectionConfig: isPointSelectionConfigMock,
 }));
 

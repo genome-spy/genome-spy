@@ -277,10 +277,17 @@ class GroupByThresholdsDialog extends BaseDialog {
     }
 
     #onGroup() {
+        if (!this.thresholds.length) {
+            throw new Error("At least one threshold is required.");
+        }
+
         this.sampleView.dispatchAttributeAction(
             this.sampleView.actions.groupByThresholds({
                 attribute: this.attributeInfo.attribute,
-                thresholds: this.thresholds,
+                thresholds:
+                    /** @type {[import("../state/payloadTypes.js").Threshold, ...import("../state/payloadTypes.js").Threshold[]]} */ (
+                        this.thresholds
+                    ),
             })
         );
         this.finish({ ok: true });

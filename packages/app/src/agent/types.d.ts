@@ -603,6 +603,22 @@ export interface IntentProgram {
 }
 
 /**
+ * Result of validating a planner-authored schema against the generated agent
+ * contract.
+ */
+export interface ShapeValidationResult {
+    /**
+     * Whether validation succeeded.
+     */
+    ok: boolean;
+
+    /**
+     * Validation errors when `ok` is false.
+     */
+    errors: string[];
+}
+
+/**
  * Result of validating an intent program against the current visualization.
  */
 export interface IntentProgramValidationResult {
