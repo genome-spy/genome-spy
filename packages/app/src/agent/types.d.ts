@@ -3,6 +3,7 @@ import {
     AttributeIdentifierType,
 } from "../sampleView/types.js";
 import { ParamSelector } from "../sampleView/sampleViewTypes.js";
+import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
 /**
  * Supported sample-action types that the agent is allowed to emit.
@@ -166,7 +167,7 @@ export interface AgentParamSummary {
     /**
      * Current value captured in provenance.
      */
-    value: unknown;
+    value: ParamValue;
 }
 
 /**

@@ -186,7 +186,18 @@ describe("getAgentContext", () => {
             specifier: "diagnosis",
         });
         expect(context.actionSummaries).toHaveLength(7);
-        expect(context.params).toHaveLength(1);
+        expect(context.params).toEqual([
+            expect.objectContaining({
+                key: expect.any(String),
+                selector: {
+                    scope: ["samples"],
+                    param: "brush",
+                },
+                value: expect.objectContaining({
+                    type: "interval",
+                }),
+            }),
+        ]);
         expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.viewWorkflows.workflows).toEqual(
             expect.arrayContaining([
@@ -198,7 +209,24 @@ describe("getAgentContext", () => {
                 }),
             ])
         );
-        expect(context.viewWorkflows.selectionDeclarations).toHaveLength(1);
+        expect(context.viewWorkflows.selectionDeclarations).toEqual([
+            expect.objectContaining({
+                id: expect.any(String),
+                selectionType: "interval",
+                label: "brush",
+                paramName: "brush",
+                selector: {
+                    scope: [],
+                    param: "brush",
+                },
+                view: "samples",
+                viewTitle: "Patient Cohort",
+                persist: true,
+                active: true,
+                encodings: ["x"],
+                clearable: true,
+            }),
+        ]);
         expect(context.viewWorkflows.selections).toHaveLength(1);
         expect(context.provenance).toEqual([
             expect.objectContaining({

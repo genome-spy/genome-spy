@@ -155,7 +155,18 @@ describe("agentAdapter browser integration", () => {
                     workflows: expect.any(Array),
                 }),
                 provenance: expect.any(Array),
-                params: expect.any(Array),
+                params: expect.arrayContaining([
+                    expect.objectContaining({
+                        key: expect.any(String),
+                        selector: expect.objectContaining({
+                            scope: expect.any(Array),
+                            param: expect.any(String),
+                        }),
+                        value: expect.objectContaining({
+                            type: expect.any(String),
+                        }),
+                    }),
+                ]),
                 lifecycle: expect.objectContaining({
                     appInitialized: true,
                 }),
