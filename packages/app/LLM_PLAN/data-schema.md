@@ -10,12 +10,14 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 
 ## Agent Context Needs (Data + Structure)
 - Visualization structure: view hierarchy, encodings, data sources.
+- Static selection declarations from the view spec: which selections exist, which views they belong to, and whether they are persistent or clearable.
 - Metadata dictionary: attribute names, types, optional descriptions.
 - Scale summaries: scale type and data-domain (range only when meaningful, e.g., color schemes).
 
 ## Context Snapshot: High-Level Shape
 - View hierarchy summary
 - Data/metadata dictionary (attributes + types)
+- Selection declarations from the spec
 - Scale summaries (type + data-domain)
 
 ## View Hierarchy Summary
@@ -24,6 +26,7 @@ For each view (or subtree root):
 - View type (unit/concat/layer/sampleView)
 - Encodings: channel, field, type, title, description (if present)
 - Data source id (if named)
+- Static selection declarations attached to the view (selector, param name, type, persistence, clearability)
 
 Rationale: disambiguates "where" an action should apply and helps resolve field names.
 

@@ -11,6 +11,11 @@ From intent actions and action info sources:
 
 Rationale: enables programmatic validation of LLM-proposed steps.
 
+Current implementation:
+- `generatedActionCatalog` is the machine-facing source for action payloads and examples.
+- `generatedActionSummaries` is the compact presentation layer used in the agent context.
+- `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
+
 ### Auto-Extraction Strategy
 You can auto-extract most of the catalog by combining:
 - Action type strings from slice action creators.
@@ -49,8 +54,9 @@ Rationale: necessary for commands like "filter to the current brush".
 
 ## Provenance Summary
 Use action info to provide:
-- Recent actions in natural language
-- Optional grouping into multi-step "programs"
+- Recent bookmarkable actions in structured form.
+- An inline human-readable `summary` for each action.
+- Optional grouping into multi-step "programs".
 
 Rationale: keeps the LLM aware of current state and avoids redundant steps.
 

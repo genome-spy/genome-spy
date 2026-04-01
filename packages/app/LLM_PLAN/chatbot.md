@@ -8,8 +8,9 @@
 ## Current Implementation (Relevant Pieces)
 - Intent actions are plain Redux actions (serializable), primarily in SampleView.
 - Intent execution flows through `IntentExecutor` (augmentation) and `IntentPipeline` (async sequencing).
-- Provenance (undo/redo/history) records intent actions; augmented payloads are stripped.
-- Action descriptions come from `actionInfo` (sample actions) and `paramActionInfo` (param/selection actions).
+- Provenance (undo/redo/history) records bookmarkable actions with inline human-readable summaries.
+- Action schema and compact summaries are generated from reducer JSDoc and payload typings.
+- `actionInfo` (sample actions) and `paramActionInfo` (param/selection actions) remain the runtime human-readable formatters used by the UI.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.
