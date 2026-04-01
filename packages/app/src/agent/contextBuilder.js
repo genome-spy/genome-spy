@@ -1,0 +1,136 @@
+import templateResultToString from "../utils/templateResultToString.js";
+import { listAgentActions } from "./actionCatalog.js";
+import { getViewWorkflowContext } from "./viewWorkflowContext.js";
+
+const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
+
+/**
+ * @param {import("../app.js").default} app
+ * @returns {import("./types.js").AgentContext}
+ */
+export function getAgentContext(app) {
+    const sampleView = app.getSampleView();
+    const state = app.store.getState();
+    const sampleState = app.provenance.getPresentState()?.sampleView;
+    const paramEntries =
+        app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
+
+    return {
+        schemaVersion: 1,
+        view: buildViewSummary(sampleView, sampleState),
+        attributes: sampleView
+            ? buildAttributeSummary(sampleView, sampleState)
+            : [],
+        actionCatalog: listAgentActions(),
+        viewWorkflows: getViewWorkflowContext(app),
+        provenance: buildProvenanceSummary(app),
+        params: Object.entries(paramEntries).map(([key, entry]) => ({
+            key,
+            selector: entry.selector,
+            value: entry.value,
+        })),
+        lifecycle: {
+            appInitialized: state.lifecycle.appInitialized,
+        },
+    };
+}
+
+/**
+ * @param {import("../sampleView/sampleView.js").default | undefined} sampleView
+ * @param {any} sampleState
+ * @returns {import("./types.js").AgentViewSummary}
+ */
+function buildViewSummary(sampleView, sampleState) {
+    const sampleCount = sampleState?.sampleData?.ids?.length ?? 0;
+    const attributeCount =
+        sampleState?.sampleMetadata?.attributeNames?.length ?? 0;
+    const groupCount = countGroups(sampleState?.rootGroup);
+
+    return {
+        type: sampleView ? "sampleView" : "unknown",
+        name: sampleView?.name ?? "unknown",
+        title: String(
+            sampleView?.getTitleText?.() ?? sampleView?.name ?? "Sample View"
+        ),
+        sampleCount,
+        attributeCount,
+        groupCount,
+    };
+}
+
+/**
+ * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {any} sampleState
+ * @returns {import("./types.js").AgentAttributeSummary[]}
+ */
+function buildAttributeSummary(sampleView, sampleState) {
+    const attributeNames = sampleState?.sampleMetadata?.attributeNames ?? [];
+    const attributeDefs = sampleState?.sampleMetadata?.attributeDefs ?? {};
+    const getAttributeInfo =
+        sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
+            sampleView.compositeAttributeInfoSource
+        );
+
+    return attributeNames.map((/** @type {string} */ name) => {
+        const identifier = {
+            type: SAMPLE_ATTRIBUTE,
+            specifier: name,
+        };
+        const info = getAttributeInfo(identifier);
+        const def = attributeDefs[name] ?? {};
+
+        return {
+            id: identifier,
+            name,
+            title: templateResultToString(info.title),
+            dataType: info.type,
+            source: SAMPLE_ATTRIBUTE,
+            visible: def.visible ?? true,
+        };
+    });
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @returns {string[]}
+ */
+function buildProvenanceSummary(app) {
+    const history = app.provenance.getBookmarkableActionHistory() ?? [];
+    const sampleView = app.getSampleView();
+    if (!sampleView) {
+        return [];
+    }
+
+    return history.slice(-10).map((action) => {
+        const info = app.provenance.getActionInfo(action);
+        const title =
+            info?.provenanceTitle ??
+            info?.title ??
+            action.type.replace("sampleView/", "");
+
+        return templateResultToString(title);
+    });
+}
+
+/**
+ * @param {any} group
+ * @returns {number}
+ */
+function countGroups(group) {
+    if (!group) {
+        return 0;
+    }
+
+    if (!("groups" in group) || !Array.isArray(group.groups)) {
+        return 1;
+    }
+
+    return (
+        1 +
+        group.groups.reduce(
+            (/** @type {number} */ acc, /** @type {any} */ child) =>
+                acc + countGroups(child),
+            0
+        )
+    );
+}
