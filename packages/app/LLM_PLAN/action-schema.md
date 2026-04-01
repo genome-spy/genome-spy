@@ -13,7 +13,8 @@ Rationale: enables programmatic validation of LLM-proposed steps.
 
 Current implementation:
 - `generatedActionCatalog` is the machine-facing source for action payloads and examples.
-- `generatedActionSchema.json` is the generated shape-validation contract for planner-authored intent programs.
+- `generatedActionSchema.json` is the generated JSON Schema contract for planner-authored intent programs and excludes internal-only `@hidden` payload fields.
+- Runtime shape validation uses Ajv against that generated schema.
 - `generatedActionSummaries` is the compact presentation layer used in the agent context.
 - `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
 
@@ -27,6 +28,7 @@ You can auto-extract most of the catalog by combining:
 What is still needed:
 - A small action catalog map that links **action type -> payload type name -> description**.
 - Optional usage examples (e.g., from JSDoc `@example` or catalog entries).
+- Internal-only payload fields should be marked `@hidden` so they stay out of the generated agent schema.
 
 ### Minimal Action Catalog Shape
 Store a single source of truth that connects action types to payload types and documentation.

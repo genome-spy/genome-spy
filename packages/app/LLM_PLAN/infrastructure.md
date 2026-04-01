@@ -31,7 +31,7 @@ This keeps the app mergeable before release while preserving a clean opt-in path
 ## Responsibilities
 ### Client (GenomeSpy)
 - Build context snapshots (view hierarchy, attributes, scales, selections, provenance).
-- Validate LLM outputs against action schemas.
+- Validate LLM outputs against the generated JSON Schema with Ajv.
 - Execute actions via `IntentPipeline`.
 - Provide user-visible confirmations and error messages.
 

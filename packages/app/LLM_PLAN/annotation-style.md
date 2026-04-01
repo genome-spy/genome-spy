@@ -54,6 +54,8 @@ Required structure:
 - Use `@example` for representative values.
 - Prefer standard type constraints where possible.
 - Avoid repeating action semantics here.
+- Use `@hidden` on internal-only properties that must not appear in the
+  generated agent schema.
 
 Example:
 
