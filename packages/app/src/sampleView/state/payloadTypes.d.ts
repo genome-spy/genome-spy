@@ -228,6 +228,10 @@ export interface RemoveGroup {
     path: string[];
 }
 
+/**
+ * Payload for filtering samples by comparing a quantitative attribute
+ * against a numeric operand.
+ */
 export interface FilterByQuantitative extends PayloadWithAttribute {
     /**
      * Comparison operator used for thresholding.
