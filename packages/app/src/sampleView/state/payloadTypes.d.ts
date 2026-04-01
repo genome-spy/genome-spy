@@ -122,7 +122,7 @@ export interface AddMetadataFromSource {
     replace?: boolean;
 
     /**
-     * @internal
+     * @hidden
      */
     _augmented?: {
         metadata: SetMetadata;
@@ -154,7 +154,7 @@ export interface IntervalAggregation {
 }
 
 /**
- * @internal
+ * @hidden
  */
 export interface AugmentedAttribute {
     /** Values accessed just prior to dispatching the action to reducers */
@@ -178,7 +178,7 @@ export interface PayloadWithAttribute {
     attribute: AttributeIdentifier;
 
     /**
-     * @internal
+     * @hidden
      */
     _augmented?: AugmentedAttribute;
 }

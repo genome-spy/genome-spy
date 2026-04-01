@@ -189,27 +189,6 @@
       "required": ["chrom"],
       "type": "object"
     },
-    "ColumnarMetadata": {
-      "additionalProperties": {
-        "description": "Attributes",
-        "items": {
-          "$ref": "#/definitions/Scalar"
-        },
-        "type": "array"
-      },
-      "description": "Columnar metadata representation Keys are attribute names, values are arrays of attribute values for each sample, in the same order as the samples array.\n\nColumnar format is more efficient for storage in bookmarked actions.",
-      "properties": {
-        "sample": {
-          "description": "Required sample identifier",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": ["sample"],
-      "type": "object"
-    },
     "ComparisonOperatorType": {
       "enum": ["lt", "lte", "eq", "gte", "gt"],
       "type": "string"
@@ -221,55 +200,9 @@
       },
       "type": "array"
     },
-    "Contig": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "size": {
-          "type": "number"
-        }
-      },
-      "required": ["name", "size"],
-      "type": "object"
-    },
-    "ExprRef": {
-      "additionalProperties": false,
-      "properties": {
-        "expr": {
-          "description": "The expression string.",
-          "type": "string"
-        }
-      },
-      "required": ["expr"],
-      "type": "object"
-    },
     "FilterByNominal": {
       "additionalProperties": false,
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -291,28 +224,6 @@
       "additionalProperties": false,
       "description": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -329,43 +240,10 @@
       "required": ["attribute", "operand", "operator"],
       "type": "object"
     },
-    "GenomeDefinition": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/UrlGenomeDefinition"
-        },
-        {
-          "$ref": "#/definitions/InlineGenomeDefinition"
-        }
-      ],
-      "description": "Genome definition for contexts where the name is provided externally (for example, as a key in root `genomes`) or not needed (for example, inline `scale.assembly`)."
-    },
     "GroupByNominal": {
       "additionalProperties": false,
       "description": "Payload for grouping by a categorical attribute.",
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -377,28 +255,6 @@
     "GroupByThresholds": {
       "additionalProperties": false,
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -419,28 +275,6 @@
       "additionalProperties": false,
       "description": "Payload for grouping by quartiles.",
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -448,23 +282,6 @@
       },
       "required": ["attribute"],
       "type": "object"
-    },
-    "InlineGenomeDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "contigs": {
-          "description": "An array of contigs/sequences in the genome assembly.",
-          "items": {
-            "$ref": "#/definitions/Contig"
-          },
-          "type": "array"
-        }
-      },
-      "required": ["contigs"],
-      "type": "object"
-    },
-    "InlineLocusAssembly": {
-      "$ref": "#/definitions/GenomeDefinition"
     },
     "Interval": {
       "description": "Interval expressed as two scalar or locus points.",
@@ -596,28 +413,6 @@
     "RetainFirstNCategories": {
       "additionalProperties": false,
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -631,366 +426,8 @@
       "required": ["attribute", "n"],
       "type": "object"
     },
-    "SampleAttributeDef": {
-      "additionalProperties": false,
-      "properties": {
-        "barScale": {
-          "$ref": "#/definitions/Scale",
-          "description": "An optional scale definition for mapping the attribute to the width of a metadata rectangle."
-        },
-        "scale": {
-          "$ref": "#/definitions/Scale",
-          "description": "Scale definition for the (default) color channel"
-        },
-        "title": {
-          "description": "The title of the attribute. Defaults to attribute name.",
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/SampleAttributeType",
-          "description": "The attribute type. One of `\"nominal\"`, `\"ordinal\"`, or `\"quantitative\"`."
-        },
-        "visible": {
-          "description": "Whether the attribute is visible by default.",
-          "type": "boolean"
-        },
-        "width": {
-          "description": "Width of the column in pixels.",
-          "type": "number"
-        }
-      },
-      "type": "object"
-    },
-    "SampleAttributeType": {
-      "enum": ["nominal", "ordinal", "quantitative"],
-      "type": "string"
-    },
     "Scalar": {
       "type": ["string", "number", "boolean"]
-    },
-    "ScalarDomain": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/NumericDomain"
-        },
-        {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        {
-          "items": {
-            "type": "boolean"
-          },
-          "type": "array"
-        }
-      ]
-    },
-    "Scale": {
-      "additionalProperties": false,
-      "properties": {
-        "align": {
-          "description": "The alignment of the steps within the scale range.\n\nThis value must lie in the range `[0,1]`. A value of `0.5` indicates that the steps should be centered within the range. A value of `0` or `1` may be used to shift the bands to one side, say to position them adjacent to an axis.\n\n__Default value:__ `0.5`",
-          "type": "number"
-        },
-        "assembly": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/InlineLocusAssembly"
-            }
-          ],
-          "description": "Genome assembly definition for locus scales.\n\nThis can be:\n\n- A string reference to a named assembly (built-in or root-configured).\n- An inline anonymous assembly that defines either `contigs` or `url`.\n\nIf undefined, the default genome from the genome store is used."
-        },
-        "base": {
-          "description": "The logarithm base of the `log` scale (default `10`).",
-          "type": "number"
-        },
-        "bins": {
-          "description": "An array of bin boundaries over the scale domain. If provided, axes and legends will use the bin boundaries to inform the choice of tick marks and text labels.",
-          "items": {
-            "type": "number"
-          },
-          "type": "array"
-        },
-        "clamp": {
-          "description": "If `true`, values that exceed the data domain are clamped to either the minimum or maximum range value\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/config.html#scale-config)'s `clamp` (`true` by default).",
-          "type": "boolean"
-        },
-        "constant": {
-          "description": "A constant determining the slope of the symlog function around zero. Only used for `symlog` scales.\n\n__Default value:__ `1`",
-          "type": "number"
-        },
-        "domain": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ScalarDomain"
-            },
-            {
-              "$ref": "#/definitions/ComplexDomain"
-            },
-            {
-              "$ref": "#/definitions/SelectionDomainRef"
-            },
-            {
-              "$ref": "#/definitions/ExprRef"
-            }
-          ],
-          "description": "Customized domain values.\n\nFor _quantitative_ fields, `domain` can take the form of a two-element array with minimum and maximum values.  [Piecewise scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise) can be created by providing a `domain` with more than two entries.\n\nFor _temporal_ fields, `domain` can be a two-element array minimum and maximum values, in the form of either timestamps or the [DateTime definition objects](https://vega.github.io/vega-lite/docs/types.html#datetime).\n\nFor _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values."
-        },
-        "domainMax": {
-          "description": "Sets the maximum value in the scale domain, overriding the `domain` property. This property is only intended for use with scales having continuous domains.",
-          "type": "number"
-        },
-        "domainMid": {
-          "description": "Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.",
-          "type": "number"
-        },
-        "domainMin": {
-          "description": "Sets the minimum value in the scale domain, overriding the domain property. This property is only intended for use with scales having continuous domains.",
-          "type": "number"
-        },
-        "domainTransition": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "additionalProperties": {},
-              "type": "object"
-            }
-          ],
-          "description": "Controls whether domain updates are applied immediately or with a smooth transition.\n\nSet this to `false` to apply domain updates immediately. The default is `true`, except for domains defined by an `ExprRef`, which default to `false` unless overridden.\n\n__Default value:__ `true`, except `false` for ExprRef-driven domains."
-        },
-        "exponent": {
-          "description": "The exponent of the `pow` scale.",
-          "type": "number"
-        },
-        "interpolate": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ScaleInterpolate"
-            },
-            {
-              "$ref": "#/definitions/ScaleInterpolateParams"
-            }
-          ],
-          "description": "The interpolation method for range values. By default, a general interpolator for numbers, dates, strings and colors (in HCL space) is used. For color ranges, this property allows interpolation in alternative color spaces. Legal values include `rgb`, `hsl`, `hsl-long`, `lab`, `hcl`, `hcl-long`, `cubehelix` and `cubehelix-long` ('-long' variants use longer paths in polar coordinate spaces). If object-valued, this property accepts an object with a string-valued _type_ property and an optional numeric _gamma_ property applicable to rgb and cubehelix interpolators. For more, see the [d3-interpolate documentation](https://github.com/d3/d3-interpolate).\n\n__Default value:__ `hcl`"
-        },
-        "name": {
-          "description": "The name of the scale. Names are optional but allow the scales to be referenced and found with the API.",
-          "type": "string"
-        },
-        "nice": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "number"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "interval": {
-                  "type": "string"
-                },
-                "step": {
-                  "type": "number"
-                }
-              },
-              "required": ["interval", "step"],
-              "type": "object"
-            }
-          ],
-          "description": "Extending the domain so that it starts and ends on nice round values. This method typically modifies the scale’s domain, and may only extend the bounds to the nearest round value. Nicing is useful if the domain is computed from data and may be irregular. For example, for a domain of _[0.201479…, 0.996679…]_, a nice domain might be _[0.2, 1.0]_.\n\nFor quantitative scales such as linear, `nice` can be either a boolean flag or a number. If `nice` is a number, it will represent a desired tick count. This allows greater control over the step size used to extend the bounds, guaranteeing that the returned ticks will exactly cover the domain.\n\n__Default value:__ `true` for unbinned _quantitative_ fields; `false` otherwise."
-        },
-        "numberingOffset": {
-          "description": "The numbering offset used when formatting tick labels on index and locus scales.\n\n__Default value:__ `0`",
-          "type": "number"
-        },
-        "padding": {
-          "description": "For _[continuous](https://vega.github.io/vega-lite/docs/scale.html#continuous)_ scales, expands the scale domain to accommodate the specified number of pixels on each of the scale range. The scale range must represent pixels for this parameter to function as intended. Padding adjustment is performed prior to all other adjustments, including the effects of the `zero`, `nice`, `domainMin`, and `domainMax` properties.\n\nFor _[band](https://vega.github.io/vega-lite/docs/scale.html#band)_ scales, shortcut for setting `paddingInner` and `paddingOuter` to the same value.\n\nFor _[point](https://vega.github.io/vega-lite/docs/scale.html#point)_ scales, alias for `paddingOuter`.\n\n__Default value:__ For _continuous_ scales, derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `continuousPadding`. For _band and point_ scales, see `paddingInner` and `paddingOuter`.  By default, Vega-Lite sets padding such that _width/height = number of unique values * step_.",
-          "minimum": 0,
-          "type": "number"
-        },
-        "paddingInner": {
-          "description": "The inner padding (spacing) within each band step of band scales, as a fraction of the step size. This value must lie in the range [0,1].\n\nFor point scale, this property is invalid as point scales do not have internal band widths (only step sizes between bands).\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingInner`.",
-          "maximum": 1,
-          "minimum": 0,
-          "type": "number"
-        },
-        "paddingOuter": {
-          "description": "The outer padding (spacing) at the ends of the range of band and point scales, as a fraction of the step size. This value must lie in the range [0,1].\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingOuter` for band scales and `pointPadding` for point scales. By default, Vega-Lite sets outer padding such that _width/height = number of unique values * step_.",
-          "maximum": 1,
-          "minimum": 0,
-          "type": "number"
-        },
-        "range": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "string"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/ExprRef"
-              },
-              "type": "array"
-            }
-          ],
-          "description": "The range of the scale. One of:\n\n- A string indicating a [pre-defined named scale range](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `\"symbol\"`, or `\"diverging\"`).\n\n- For [continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating  minimum and maximum values, or an array with more than two entries for specifying a [piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise).\n\n- For [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values.\n\n__Notes:__\n\n1) For color scales you can also specify a color [`scheme`](https://vega.github.io/vega-lite/docs/scale.html#scheme) instead of `range`.\n\n2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`)."
-        },
-        "reverse": {
-          "description": "If true, reverses the order of the scale range.\n\n__Default value:__ `false`.",
-          "type": "boolean"
-        },
-        "round": {
-          "description": "If `true`, rounds numeric output values to integers. This can be helpful for snapping to the pixel grid.\n\n__Default value:__ `false`.",
-          "type": "boolean"
-        },
-        "scheme": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/SchemeParams"
-            }
-          ],
-          "description": "A string indicating a color [scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme) name (e.g., `\"category10\"` or `\"blues\"`) or a [scheme parameter object](https://vega.github.io/vega-lite/docs/scale.html#scheme-params).\n\nDiscrete color schemes may be used with [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) or [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales. Continuous color schemes are intended for use with color scales.\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference."
-        },
-        "type": {
-          "$ref": "#/definitions/ScaleType",
-          "description": "The type of scale.  Vega-Lite supports the following categories of scale types:\n\n1) [**Continuous Scales**](https://vega.github.io/vega-lite/docs/scale.html#continuous) -- mapping continuous domains to continuous output ranges ([`\"linear\"`](https://vega.github.io/vega-lite/docs/scale.html#linear), [`\"pow\"`](https://vega.github.io/vega-lite/docs/scale.html#pow), [`\"sqrt\"`](https://vega.github.io/vega-lite/docs/scale.html#sqrt), [`\"symlog\"`](https://vega.github.io/vega-lite/docs/scale.html#symlog), [`\"log\"`](https://vega.github.io/vega-lite/docs/scale.html#log), [`\"time\"`](https://vega.github.io/vega-lite/docs/scale.html#time), [`\"utc\"`](https://vega.github.io/vega-lite/docs/scale.html#utc).\n\n2) [**Discrete Scales**](https://vega.github.io/vega-lite/docs/scale.html#discrete) -- mapping discrete domains to discrete ([`\"ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#ordinal)) or continuous ([`\"band\"`](https://vega.github.io/vega-lite/docs/scale.html#band) and [`\"point\"`](https://vega.github.io/vega-lite/docs/scale.html#point)) output ranges.\n\n3) [**Discretizing Scales**](https://vega.github.io/vega-lite/docs/scale.html#discretizing) -- mapping continuous domains to discrete output ranges [`\"bin-ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#bin-ordinal), [`\"quantile\"`](https://vega.github.io/vega-lite/docs/scale.html#quantile), [`\"quantize\"`](https://vega.github.io/vega-lite/docs/scale.html#quantize) and [`\"threshold\"`](https://vega.github.io/vega-lite/docs/scale.html#threshold).\n\n__Default value:__ please see the [scale type table](https://vega.github.io/vega-lite/docs/scale.html#type)."
-        },
-        "zero": {
-          "description": "If `true`, ensures that a zero baseline value is included in the scale domain.\n\n__Default value:__ `true` for x and y channels if the quantitative field is not binned and no custom `domain` is provided; `false` otherwise.\n\n__Note:__ Log, time, and utc scales do not support `zero`.",
-          "type": "boolean"
-        },
-        "zoom": {
-          "anyOf": [
-            {
-              "type": "boolean"
-            },
-            {
-              "$ref": "#/definitions/ZoomParams"
-            }
-          ],
-          "description": "If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively."
-        }
-      },
-      "type": "object"
-    },
-    "ScaleInterpolate": {
-      "enum": [
-        "rgb",
-        "lab",
-        "hcl",
-        "hsl",
-        "hsl-long",
-        "hcl-long",
-        "cubehelix",
-        "cubehelix-long"
-      ],
-      "type": "string"
-    },
-    "ScaleInterpolateParams": {
-      "additionalProperties": false,
-      "properties": {
-        "gamma": {
-          "type": "number"
-        },
-        "type": {
-          "enum": ["rgb", "cubehelix", "cubehelix-long"],
-          "type": "string"
-        }
-      },
-      "required": ["type"],
-      "type": "object"
-    },
-    "ScaleType": {
-      "enum": [
-        "null",
-        "linear",
-        "log",
-        "pow",
-        "sqrt",
-        "symlog",
-        "identity",
-        "sequential",
-        "quantize",
-        "threshold",
-        "ordinal",
-        "point",
-        "band",
-        "index",
-        "locus"
-      ],
-      "type": "string"
-    },
-    "SchemeParams": {
-      "additionalProperties": false,
-      "properties": {
-        "count": {
-          "description": "The number of colors to use in the scheme. This can be useful for scale types such as `\"quantize\"`, which use the length of the scale range to determine the number of discrete bins for the scale domain.",
-          "type": "number"
-        },
-        "extent": {
-          "description": "The extent of the color range to use. For example `[0.2, 1]` will rescale the color scheme such that color values in the range _[0, 0.2)_ are excluded from the scheme.",
-          "items": {
-            "type": "number"
-          },
-          "type": "array"
-        },
-        "name": {
-          "description": "A color scheme name for ordinal scales (e.g., `\"category10\"` or `\"blues\"`).\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.",
-          "type": "string"
-        }
-      },
-      "required": ["name"],
-      "type": "object"
-    },
-    "SelectionDomainRef": {
-      "additionalProperties": false,
-      "properties": {
-        "encoding": {
-          "description": "Selection interval channel to use.\n\nIf omitted, GenomeSpy infers the channel from the scale channel when possible (e.g., `x` -> `x`, `x2` -> `x`, `y` -> `y`, `y2` -> `y`).",
-          "enum": ["x", "y"],
-          "type": "string"
-        },
-        "initial": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ScalarDomain"
-            },
-            {
-              "$ref": "#/definitions/ComplexDomain"
-            }
-          ],
-          "description": "Initial configured domain for the linked scale when the linked interval selection is empty.\n\nOnly supported when the linked scale is zoomable.\n\nClearing the linked interval selection resets the domain to the normal default/data-derived domain instead of restoring `initial`."
-        },
-        "param": {
-          "description": "Name of an interval selection parameter that provides the domain.",
-          "type": "string"
-        }
-      },
-      "required": ["param"],
-      "type": "object"
     },
     "SelectionIntervalSource": {
       "additionalProperties": false,
@@ -1007,57 +444,10 @@
       "required": ["type", "selector"],
       "type": "object"
     },
-    "SetMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "attributeDefs": {
-          "additionalProperties": {
-            "$ref": "#/definitions/SampleAttributeDef"
-          },
-          "description": "Optional attribute definitions for the incoming metadata columns.",
-          "propertyNames": {
-            "description": "An identifier or name for a sample attribute.\n\nAs the identifiers may represent paths in a hierarchy, they are strings where path segments are separated by a forward slash ('/'). Separators in path segments are always escaped to avoid ambiguity."
-          },
-          "type": "object"
-        },
-        "columnarMetadata": {
-          "$ref": "#/definitions/ColumnarMetadata",
-          "description": "Metadata encoded in columnar form, aligned to the sample order."
-        },
-        "replace": {
-          "description": "If true, the provided metadata will replace existing metadata instead of being added to them.",
-          "type": "boolean"
-        }
-      },
-      "required": ["columnarMetadata"],
-      "type": "object"
-    },
     "SortBy": {
       "additionalProperties": false,
       "description": "Payload for sorting samples by an attribute.",
       "properties": {
-        "_augmented": {
-          "additionalProperties": false,
-          "properties": {
-            "domain": {
-              "description": "Domain of the accessed attribute, if needed",
-              "items": {
-                "$ref": "#/definitions/Scalar"
-              },
-              "type": "array"
-            },
-            "metadata": {
-              "$ref": "#/definitions/SetMetadata",
-              "description": "Derived metadata payload computed prior to dispatch"
-            },
-            "values": {
-              "description": "Values accessed just prior to dispatching the action to reducers",
-              "type": "object"
-            }
-          },
-          "required": ["values"],
-          "type": "object"
-        },
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute identifier used by the action."
@@ -1085,17 +475,6 @@
     "ThresholdOperator": {
       "enum": ["lt", "lte"],
       "type": "string"
-    },
-    "UrlGenomeDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "url": {
-          "description": "A URL to a `chrom.sizes` file, which is a tab-separated file with two columns: the sequence name and its size.\n\nYou may want to strip alternative loci, haplotypes, and other non-canonical contigs from the file.\n\nExample: `\"https://genomespy.app/data/genomes/hg19/chrom.sizes\"`",
-          "type": "string"
-        }
-      },
-      "required": ["url"],
-      "type": "object"
     },
     "ViewAttributeSpecifier": {
       "anyOf": [
@@ -1134,23 +513,6 @@
         }
       },
       "required": ["scope", "view"],
-      "type": "object"
-    },
-    "ZoomParams": {
-      "additionalProperties": false,
-      "properties": {
-        "extent": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ScalarDomain"
-            },
-            {
-              "$ref": "#/definitions/ComplexDomain"
-            }
-          ],
-          "description": "The boundaries that limit the zoom and pan interactions."
-        }
-      },
       "type": "object"
     }
   }
