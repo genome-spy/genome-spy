@@ -55,6 +55,12 @@ From `paramProvenance`:
 
 Rationale: necessary for commands like "filter to the current brush".
 
+User-language mapping:
+- interval selection = brushing / dragging a range
+- point selection = clicking / selecting individual items
+- clear selection = removing the brush or clicked items
+- point selection refinements = add / remove / toggle / replace
+
 The selector definitions themselves come from the visualization spec and are
 listed in the data context as static selection declarations. `paramProvenance`
 only carries the current runtime values for those declarations.

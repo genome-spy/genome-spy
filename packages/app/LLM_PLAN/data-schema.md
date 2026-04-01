@@ -18,6 +18,11 @@ Selection declarations are part of the visualization spec and stay fixed for
 the current visualization. The current values for those selections live in
 `paramProvenance`, which is the dynamic interaction state.
 
+User-language mapping for selection declarations:
+- interval selections correspond to brushing or dragging a range
+- point selections correspond to clicking individual items
+- clearable selections correspond to clearing the brush or click selection
+
 ## Context Snapshot: High-Level Shape
 - View hierarchy summary
 - Data/metadata dictionary (attributes + types)
