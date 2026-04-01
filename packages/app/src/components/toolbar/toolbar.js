@@ -5,10 +5,7 @@ import {
     faQuestionCircle,
     faExpandArrowsAlt,
     faBug,
-    faCopy,
     faFileImage,
-    faRobot,
-    faStopwatch,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
@@ -26,11 +23,9 @@ import { showDialog } from "../generic/baseDialog.js";
 import "../dialogs/aboutDialog.js";
 import "../dialogs/saveImageDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
+import { getAgentMenuItems } from "../../agent/toolbarMenu.js";
 
 export default class Toolbar extends LitElement {
-    /** @type {boolean} */
-    #isDev = import.meta.env.DEV;
-
     constructor() {
         super();
 
@@ -170,27 +165,7 @@ export default class Toolbar extends LitElement {
             });
         }
 
-        if (this.app.options.showLocalAgentButton && this.app.agentAdapter) {
-            items.push({
-                label: "Local Agent",
-                icon: faRobot,
-                callback: () => this.app.agentAdapter.runLocalPrompt(),
-            });
-
-            if (this.#isDev) {
-                items.push({
-                    label: "Copy Agent Context",
-                    icon: faCopy,
-                    callback: () => void this.#copyAgentContext(),
-                });
-            }
-
-            items.push({
-                label: "Agent Trace",
-                icon: faStopwatch,
-                callback: () => void this.#showAgentTraceDialog(),
-            });
-        }
+        items.push(...getAgentMenuItems(this.app));
 
         if (this.app.appContainer.requestFullscreen) {
             items.push({
@@ -221,50 +196,6 @@ export default class Toolbar extends LitElement {
 
     #showAboutDialog() {
         showDialog("gs-about-dialog");
-    }
-
-    async #showAgentTraceDialog() {
-        await import("../dialogs/agentTraceDialog.js");
-        showDialog(
-            "gs-agent-trace-dialog",
-            (
-                /** @type {import("../dialogs/agentTraceDialog.js").default} */ dialog
-            ) => {
-                dialog.app = this.app;
-            }
-        );
-    }
-
-    async #copyAgentContext() {
-        const context = this.app.agentAdapter?.getAgentContext?.();
-        if (!context) {
-            await showMessageDialog("No agent context is available yet.", {
-                title: "Agent Context",
-                type: "info",
-            });
-            return;
-        }
-
-        try {
-            await navigator.clipboard.writeText(
-                JSON.stringify(context, null, 2)
-            );
-            await showMessageDialog(
-                "The current agent context was copied to the clipboard.",
-                {
-                    title: "Agent Context",
-                    type: "info",
-                }
-            );
-        } catch {
-            await showMessageDialog(
-                "The agent context could not be copied. Your browser may block clipboard access.",
-                {
-                    title: "Agent Context",
-                    type: "info",
-                }
-            );
-        }
     }
 
     render() {
