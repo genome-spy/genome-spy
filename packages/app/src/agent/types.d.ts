@@ -219,14 +219,24 @@ export interface AgentViewDataSummary {
  */
 export interface AgentViewEncodingSummary {
     /**
-     * Encoding channel name.
+     * Source kind used by the encoding.
      */
-    channel: string;
+    sourceKind?: "field" | "expr" | "datum";
 
     /**
      * Field bound to the channel, if any.
      */
     field?: string;
+
+    /**
+     * Expression bound to the channel, if any.
+     */
+    expr?: string;
+
+    /**
+     * Datum bound to the channel, if any.
+     */
+    datum?: unknown;
 
     /**
      * Value type or data type carried by the channel.
@@ -243,6 +253,11 @@ export interface AgentViewEncodingSummary {
      */
     inherited: boolean;
 }
+
+/**
+ * Summary of a view node in the normalized agent-facing view tree.
+ */
+export type AgentViewEncodings = Record<string, AgentViewEncodingSummary>;
 
 /**
  * Summary of a view node in the normalized agent-facing view tree.
@@ -294,6 +309,17 @@ export interface AgentViewNode {
     visible: boolean;
 
     /**
+     * Whether the node is a compressed hidden branch rather than a fully
+     * expanded subtree.
+     */
+    collapsed?: boolean;
+
+    /**
+     * Number of immediate child views represented by a collapsed branch.
+     */
+    childCount?: number;
+
+    /**
      * Data source summary, if explicitly declared at this node.
      */
     data?: AgentViewDataSummary;
@@ -301,7 +327,7 @@ export interface AgentViewNode {
     /**
      * Effective encodings for the node.
      */
-    encodings: AgentViewEncodingSummary[];
+    encodings: AgentViewEncodings;
 
     /**
      * Selection declarations attached to the node.

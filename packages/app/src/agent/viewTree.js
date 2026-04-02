@@ -45,6 +45,11 @@ export function buildViewTree(app) {
         }
 
         const node = summarizeViewNode(sampleView, view);
+        if (!node.visible) {
+            node.collapsed = true;
+            node.childCount = getChildCount(view);
+            node.encodings = {};
+        }
         nodes.set(view, node);
 
         const parentNode = findParentNode(view, nodes);
@@ -52,6 +57,10 @@ export function buildViewTree(app) {
             parentNode.children.push(node);
         } else {
             rootNode = node;
+        }
+
+        if (node.collapsed) {
+            return VISIT_SKIP;
         }
     });
 
@@ -84,11 +93,19 @@ function pruneEmptyContainers(node) {
             return true;
         }
 
+        if (child.visible === false) {
+            return true;
+        }
+
+        if (child.collapsed) {
+            return true;
+        }
+
         if (child.selectionDeclarations.length > 0) {
             return true;
         }
 
-        if (child.encodings.length > 0) {
+        if (Object.keys(child.encodings).length > 0) {
             return true;
         }
 
@@ -161,7 +178,7 @@ function createUnknownRootNode() {
         title: "Unknown view",
         visible: true,
         encodings:
-            /** @type {import("./types.d.ts").AgentViewEncodingSummary[]} */ ([]),
+            /** @type {import("./types.d.ts").AgentViewEncodings} */ ({}),
         selectionDeclarations:
             /** @type {import("./types.d.ts").AgentSelectionDeclaration[]} */ ([]),
         children: /** @type {import("./types.d.ts").AgentViewNode[]} */ ([]),
@@ -183,15 +200,17 @@ function summarizeViewNode(root, view) {
             : (spec.encoding ?? {});
     const ownEncoding = spec.encoding ?? {};
     const isRoot = view === root;
+    const type = isRoot ? "sampleView" : getViewType(view);
+    const kind = isRoot ? "root" : getViewKind(view);
 
     /** @type {import("./types.d.ts").AgentViewNode} */
     const node = {
         id: getViewId(view),
         kind: /** @type {import("./types.d.ts").AgentViewNode["kind"]} */ (
-            isRoot ? "root" : getViewKind(view)
+            kind
         ),
         type: /** @type {import("./types.d.ts").AgentViewNode["type"]} */ (
-            isRoot ? "sampleView" : getViewType(view)
+            type
         ),
         name: getViewName(view),
         title: String(view.getTitleText?.() ?? getViewName(view)),
@@ -206,10 +225,11 @@ function summarizeViewNode(root, view) {
                   ? view.isVisibleInSpec()
                   : true,
         data: summarizeDataSpec(spec.data),
-        encodings:
-            /** @type {import("./types.d.ts").AgentViewEncodingSummary[]} */ (
-                summarizeEncodings(effectiveEncoding, ownEncoding)
-            ),
+        encodings: /** @type {import("./types.d.ts").AgentViewEncodings} */ (
+            type === "unit"
+                ? summarizeEncodings(effectiveEncoding, ownEncoding)
+                : {}
+        ),
         selectionDeclarations:
             /** @type {import("./types.d.ts").AgentSelectionDeclaration[]} */ (
                 summarizeSelectionDeclarations(root, view)
@@ -230,6 +250,14 @@ function getViewSelectorOrUndefined(view) {
     } catch {
         return undefined;
     }
+}
+
+/**
+ * @param {any} view
+ * @returns {number}
+ */
+function getChildCount(view) {
+    return Array.isArray(view?.children) ? view.children.length : 0;
 }
 
 /**
@@ -458,17 +486,22 @@ function getDataFormatKind(format) {
 /**
  * @param {any} effectiveEncoding
  * @param {any} ownEncoding
- * @returns {import("./types.d.ts").AgentViewEncodingSummary[]}
+ * @returns {import("./types.d.ts").AgentViewEncodings}
  */
 function summarizeEncodings(effectiveEncoding, ownEncoding) {
     if (!effectiveEncoding || typeof effectiveEncoding !== "object") {
-        return [];
+        return {};
     }
 
-    return Object.entries(effectiveEncoding)
-        .filter(([channel]) => !isInternalChannel(channel))
-        .map(([channel, def]) => summarizeEncoding(channel, def, ownEncoding))
-        .filter(Boolean);
+    return Object.fromEntries(
+        Object.entries(effectiveEncoding)
+            .filter(([channel]) => !isInternalChannel(channel))
+            .map(([channel, def]) => {
+                const summary = summarizeEncoding(channel, def, ownEncoding);
+                return summary ? [channel, summary] : undefined;
+            })
+            .filter(Boolean)
+    );
 }
 
 /**
@@ -478,21 +511,28 @@ function summarizeEncodings(effectiveEncoding, ownEncoding) {
  * @returns {import("./types.d.ts").AgentViewEncodingSummary | undefined}
  */
 function summarizeEncoding(channel, def, ownEncoding) {
-    if (!def || typeof def !== "object") {
-        return {
-            channel,
-            inherited: !Object.hasOwn(ownEncoding ?? {}, channel),
-        };
+    if (!isDataDrivenEncoding(def)) {
+        return undefined;
     }
 
     /** @type {import("./types.d.ts").AgentViewEncodingSummary} */
     const summary = {
-        channel,
         inherited: !Object.hasOwn(ownEncoding ?? {}, channel),
     };
 
     if ("field" in def && typeof def.field === "string") {
+        summary.sourceKind = "field";
         summary.field = def.field;
+    }
+
+    if ("expr" in def && typeof def.expr === "string") {
+        summary.sourceKind = "expr";
+        summary.expr = def.expr;
+    }
+
+    if ("datum" in def) {
+        summary.sourceKind = "datum";
+        summary.datum = def.datum;
     }
 
     if ("type" in def && typeof def.type === "string") {
@@ -508,6 +548,18 @@ function summarizeEncoding(channel, def, ownEncoding) {
     }
 
     return summary;
+}
+
+/**
+ * @param {any} def
+ * @returns {boolean}
+ */
+function isDataDrivenEncoding(def) {
+    return Boolean(
+        def &&
+        typeof def === "object" &&
+        ("field" in def || "expr" in def || "datum" in def)
+    );
 }
 
 /**

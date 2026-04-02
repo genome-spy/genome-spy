@@ -89,6 +89,24 @@ describe("buildViewTree", () => {
             },
         });
 
+        const hiddenBranch = createMockView({
+            name: "hidden-track",
+            title: "Hidden track",
+            visible: false,
+            spec: {
+                layer: [],
+            },
+            children: [
+                createMockView({
+                    name: "hidden-child",
+                    title: "Hidden child",
+                    spec: {
+                        mark: "rect",
+                    },
+                }),
+            ],
+        });
+
         const leaf = createMockView({
             name: "points",
             title: "Points",
@@ -166,7 +184,7 @@ describe("buildViewTree", () => {
                           }
                         : undefined,
             },
-            children: [emptyContainer, sidebar, layer],
+            children: [emptyContainer, sidebar, hiddenBranch, layer],
         });
 
         const tree = buildViewTree({
@@ -213,14 +231,32 @@ describe("buildViewTree", () => {
                 active: true,
             }),
         ]);
-        expect(tree.root.children).toHaveLength(1);
+        expect(tree.root.children).toHaveLength(2);
         expect(tree.root.children[0]).toEqual(
+            expect.objectContaining({
+                kind: "container",
+                type: "layer",
+                name: "hidden-track",
+                title: "Hidden track",
+                visible: false,
+                collapsed: true,
+                childCount: 1,
+                encodings: {},
+                selector: {
+                    scope: [],
+                    view: "hidden-track",
+                },
+            })
+        );
+        expect(tree.root.children[0].children).toHaveLength(0);
+        expect(tree.root.children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "layer",
                 name: "track",
                 title: "Track",
                 description: "Main track for the current cohort.",
+                encodings: {},
                 selector: {
                     scope: [],
                     view: "track",
@@ -231,28 +267,8 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(
-            tree.root.children[0].children.some(
-                (child) => child.name === "sample-labels"
-            )
-        ).toBe(false);
-        expect(
-            tree.root.children[0].children.some(
-                (child) =>
-                    child.title === "Anonymous annotation" &&
-                    child.selector === undefined
-            )
-        ).toBe(true);
-        expect(tree.root.children[0].encodings).toEqual([
-            expect.objectContaining({
-                channel: "x",
-                field: "position",
-                type: "locus",
-                inherited: false,
-            }),
-        ]);
-        expect(tree.root.children[0].children).toHaveLength(2);
-        expect(tree.root.children[0].children[0]).toEqual(
+        expect(tree.root.children[1].children).toHaveLength(2);
+        expect(tree.root.children[1].children[0]).toEqual(
             expect.objectContaining({
                 kind: "leaf",
                 type: "unit",
@@ -264,12 +280,26 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(tree.root.children[1].children[0].encodings).toEqual({
+            y: expect.objectContaining({
+                sourceKind: "field",
+                field: "value",
+                type: "quantitative",
+                inherited: false,
+            }),
+        });
         expect(
-            tree.root.children[0].children.some(
+            tree.root.children[1].children.some(
+                (child) => child.name === "sample-labels"
+            )
+        ).toBe(false);
+        expect(
+            tree.root.children[1].children.some(
                 (child) =>
                     child.title === "Anonymous annotation" &&
                     child.selector === undefined
             )
         ).toBe(true);
+        expect(tree.root.children[1].children[1].encodings).toEqual({});
     });
 });
