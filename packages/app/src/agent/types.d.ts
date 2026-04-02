@@ -167,11 +167,6 @@ export interface AgentRootConfigSummary {
     baseUrl?: string;
 
     /**
-     * Canvas background color.
-     */
-    background?: string;
-
-    /**
      * Named genomes available to the visualization.
      */
     genomes?: string[];
@@ -180,11 +175,6 @@ export interface AgentRootConfigSummary {
      * Named datasets available to the visualization.
      */
     datasets?: string[];
-
-    /**
-     * Selected built-in theme preset(s).
-     */
-    theme?: string | string[];
 }
 
 /**

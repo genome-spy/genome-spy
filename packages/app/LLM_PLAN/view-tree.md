@@ -13,7 +13,7 @@ propose new views.
 
 ## What the IR should resemble
 The IR should stay close to the spec model:
-- root config summary
+- structural root container
 - nested view tree
 - titles and descriptions
 - encodings
@@ -44,6 +44,23 @@ Transforms should be omitted from the default IR because they add noise.
 If the agent later needs to know where the data came from, the adapter can
 provide a detailed pipeline on demand.
 
+The root of the IR should be the top-level visualization container, not the
+SampleView subtree. That root node carries the top-level `description` from the
+spec automatically and can contain SampleView plus other top-level annotation
+views as children.
+
+`rootConfig` should stay minimal. Keep fields that matter for interpreting the
+visualization structure or data resolution:
+- `assembly`
+- `baseUrl`
+- `genomes`
+- `datasets`
+
+Omit presentation-only config such as:
+- `config`
+- `theme`
+- `background`
+
 ## Source Material
 The following files show the structures the adapter must understand:
 - `packages/core/src/spec/root.d.ts` — root-level spec and root config
@@ -55,13 +72,15 @@ The following files show the structures the adapter must understand:
 The adapter should build the IR from the existing runtime structures rather than
 inventing a new view model.
 
-For now, the traversal should follow the addressable view tree, because those
-are the views the agent can act on through selectors and provenance-bearing
-actions. That is the right default for actionability, but it may need to be
-relaxed later if the agent also needs to reason about non-addressable
-annotation-only branches.
+The traversal should start from the top-level visualization root so the agent
+sees SampleView and sibling annotation branches in the same tree. The adapter
+can still omit chrome and keep selector information only where it is stable and
+useful.
 
 ### Root assembly
+- `app.genomeSpy.viewRoot`
+  - the runtime root container for the visualization tree
+  - this is where SampleView and annotation branches hang from
 - `packages/app/src/agent/contextBuilder.js`
   - current top-level agent context assembly
   - likely place where `viewTree` is attached
@@ -92,36 +111,62 @@ The agent IR should be a normalized tree with explicit node summaries.
 ```json
 {
   "schemaVersion": 1,
+  "rootConfig": {
+    "assembly": "hg38",
+    "baseUrl": "private/fuse_encode_gs/"
+  },
   "root": {
-    "id": "root",
+    "id": "viewRoot",
     "kind": "root",
     "type": "root",
-    "title": "Samples",
+    "title": "Visualization root",
     "description": "High-level purpose of the visualization.",
-    "config": {
-      "assembly": "hg38",
-      "theme": "light"
-    },
     "children": [
       {
-        "id": "track-1",
-        "kind": "unit",
-        "type": "unit",
-        "title": "Copy-number variation",
-        "description": "Shows copy-number segments across the cohort.",
-        "data": { "source": "samples" },
-        "encodings": [
-          { "channel": "x", "field": "start", "type": "index" },
-          { "channel": "x2", "field": "end", "type": "index" },
-          { "channel": "fill", "field": "logR", "type": "quantitative" }
-        ],
-        "selections": [
+        "id": "viewRoot/samples",
+        "kind": "container",
+        "type": "sampleView",
+        "title": "Samples",
+        "description": "Shows sample-level metadata and track summaries.",
+        "selector": {
+          "scope": [],
+          "view": "samples"
+        },
+        "selectionDeclarations": [
           {
-            "param": "brush",
+            "selector": { "scope": [], "param": "brush" },
             "selectionType": "interval",
-            "interactionKind": "brush"
+            "label": "brush",
+            "persist": true,
+            "active": false,
+            "encodings": ["x"],
+            "clearable": true
           }
         ],
+        "children": [
+          {
+            "id": "viewRoot/samples/track-1",
+            "kind": "leaf",
+            "type": "unit",
+            "title": "Copy-number variation",
+            "description": "Shows copy-number segments across the cohort.",
+            "data": { "source": "samples" },
+            "encodings": {
+              "x": { "field": "start", "type": "index" },
+              "x2": { "field": "end", "type": "index" },
+              "fill": { "field": "logR", "type": "quantitative" }
+            },
+            "selectionDeclarations": [],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "viewRoot/annotations",
+        "kind": "container",
+        "type": "layer",
+        "title": "Annotation tracks",
+        "description": "Genome annotations that support the sample tracks.",
         "children": []
       }
     ]
@@ -142,9 +187,10 @@ The agent IR should be a normalized tree with explicit node summaries.
 - `type`
 - `title`
 - `description`
+- `selector`
 - `data`
 - `encodings`
-- `selections`
+- `selectionDeclarations`
 - `attributes`
 - `children`
 

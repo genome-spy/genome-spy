@@ -11,6 +11,7 @@ import { isMultiscaleSpec } from "@genome-spy/core/view/multiscale.js";
 import {
     isChromeView,
     getViewSelector,
+    visitNonChromeViews,
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
@@ -25,9 +26,12 @@ import { formatScopedParamName } from "../viewScopeUtils.js";
  */
 export function buildViewTree(app) {
     const sampleView = app.getSampleView();
-    const rootConfig = summarizeRootConfig(app?.genomeSpy?.spec);
+    const rootView = app?.genomeSpy?.viewRoot ?? sampleView;
+    const hasStructuralRoot = Boolean(app?.genomeSpy?.viewRoot);
+    const rootSpec = app?.genomeSpy?.spec;
+    const rootConfig = summarizeRootConfig(rootSpec);
 
-    if (!sampleView) {
+    if (!rootView) {
         return {
             rootConfig,
             root: createUnknownRootNode(),
@@ -39,12 +43,16 @@ export function buildViewTree(app) {
     /** @type {import("./types.d.ts").AgentViewNode | undefined} */
     let rootNode;
 
-    visitAddressableViews(sampleView, (view) => {
+    const visitViews = hasStructuralRoot
+        ? visitNonChromeViews
+        : visitAddressableViews;
+
+    visitViews(rootView, (view) => {
         if (isChromeView(view)) {
             return VISIT_SKIP;
         }
 
-        const node = summarizeViewNode(sampleView, view);
+        const node = summarizeViewNode(rootView, view, hasStructuralRoot);
         if (!node.visible) {
             node.collapsed = true;
             node.childCount = getChildCount(view);
@@ -65,7 +73,7 @@ export function buildViewTree(app) {
     });
 
     if (!rootNode) {
-        rootNode = summarizeViewNode(sampleView, sampleView);
+        rootNode = summarizeViewNode(rootView, rootView, hasStructuralRoot);
     }
 
     pruneEmptyContainers(rootNode);
@@ -145,10 +153,6 @@ function summarizeRootConfig(rootSpec) {
         summary.baseUrl = rootSpec.baseUrl;
     }
 
-    if (typeof rootSpec.background === "string") {
-        summary.background = rootSpec.background;
-    }
-
     if (rootSpec.genomes && typeof rootSpec.genomes === "object") {
         summary.genomes = /** @type {string[]} */ (
             Object.keys(/** @type {Record<string, any>} */ (rootSpec.genomes))
@@ -159,10 +163,6 @@ function summarizeRootConfig(rootSpec) {
         summary.datasets = /** @type {string[]} */ (
             Object.keys(/** @type {Record<string, any>} */ (rootSpec.datasets))
         );
-    }
-
-    if (rootSpec.theme) {
-        summary.theme = rootSpec.theme;
     }
 
     return Object.keys(summary).length > 0 ? summary : undefined;
@@ -190,9 +190,10 @@ function createUnknownRootNode() {
 /**
  * @param {any} root
  * @param {any} view
+ * @param {boolean} hasStructuralRoot
  * @returns {import("./types.d.ts").AgentViewNode}
  */
-function summarizeViewNode(root, view) {
+function summarizeViewNode(root, view, hasStructuralRoot) {
     const spec = view.spec ?? {};
     const effectiveEncoding =
         typeof view.getEncoding === "function"
@@ -200,7 +201,11 @@ function summarizeViewNode(root, view) {
             : (spec.encoding ?? {});
     const ownEncoding = spec.encoding ?? {};
     const isRoot = view === root;
-    const type = isRoot ? "sampleView" : getViewType(view);
+    const type = isRoot
+        ? hasStructuralRoot
+            ? "root"
+            : "sampleView"
+        : getViewType(view);
     const kind = isRoot ? "root" : getViewKind(view);
 
     /** @type {import("./types.d.ts").AgentViewNode} */
@@ -215,7 +220,10 @@ function summarizeViewNode(root, view) {
         name: getViewName(view),
         title: String(view.getTitleText?.() ?? getViewName(view)),
         description: normalizeDescription(spec.description),
-        selector: getViewSelectorOrUndefined(view),
+        selector:
+            isRoot && hasStructuralRoot
+                ? undefined
+                : getViewSelectorOrUndefined(view),
         markType: getMarkType(view),
         visible:
             typeof view.isVisible === "function"

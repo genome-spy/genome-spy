@@ -8,6 +8,7 @@ function createMockView(options) {
     const view = {
         explicitName: options.name,
         name: options.name,
+        constructor: { name: options.constructorName ?? "Object" },
         spec: options.spec ?? {},
         parent: options.parent ?? null,
         children: options.children ?? [],
@@ -62,7 +63,7 @@ function createMockView(options) {
 }
 
 describe("buildViewTree", () => {
-    it("builds a normalized hierarchy with local selection declarations", () => {
+    it("builds a normalized hierarchy rooted at the top-level spec", () => {
         const sidebar = createMockView({
             name: "sample-sidebar",
             title: "Sidebar",
@@ -152,10 +153,11 @@ describe("buildViewTree", () => {
             children: [leaf, anonymousLeaf],
         });
 
-        const root = createMockView({
+        const sampleView = createMockView({
             name: "samples",
             title: "Samples",
             description: "Top-level sample view.",
+            constructorName: "SampleView",
             spec: {
                 description: "Top-level sample view.",
                 data: { name: "samples" },
@@ -187,8 +189,18 @@ describe("buildViewTree", () => {
             children: [emptyContainer, sidebar, hiddenBranch, layer],
         });
 
+        const root = createMockView({
+            name: "viewRoot",
+            title: "Visualization root",
+            description: ["Top-level visualization.", "Includes samples."],
+            spec: {
+                description: ["Top-level visualization.", "Includes samples."],
+            },
+            children: [sampleView],
+        });
+
         const tree = buildViewTree({
-            getSampleView: () => root,
+            getSampleView: () => sampleView,
             genomeSpy: {
                 spec: {
                     genomes: {
@@ -197,17 +209,28 @@ describe("buildViewTree", () => {
                     assembly: "hg38",
                     background: "#fff",
                 },
+                viewRoot: root,
             },
         });
 
         expect(tree.rootConfig).toEqual({
             assembly: "hg38",
-            background: "#fff",
             genomes: ["hg38"],
         });
         expect(tree.root).toEqual(
             expect.objectContaining({
                 kind: "root",
+                type: "root",
+                name: "viewRoot",
+                title: "Visualization root",
+                description: "Top-level visualization.\nIncludes samples.",
+                selector: undefined,
+            })
+        );
+        expect(tree.root.children).toHaveLength(1);
+        expect(tree.root.children[0]).toEqual(
+            expect.objectContaining({
+                kind: "container",
                 type: "sampleView",
                 name: "samples",
                 title: "Samples",
@@ -222,7 +245,7 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.selectionDeclarations).toEqual([
+        expect(tree.root.children[0].selectionDeclarations).toEqual([
             expect.objectContaining({
                 selectionType: "interval",
                 label: "brush",
@@ -234,8 +257,8 @@ describe("buildViewTree", () => {
                 encodings: ["x"],
             }),
         ]);
-        expect(tree.root.children).toHaveLength(2);
-        expect(tree.root.children[0]).toEqual(
+        expect(tree.root.children[0].children).toHaveLength(2);
+        expect(tree.root.children[0].children[0]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "layer",
@@ -251,8 +274,8 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[0].children).toHaveLength(0);
-        expect(tree.root.children[1]).toEqual(
+        expect(tree.root.children[0].children[0].children).toHaveLength(0);
+        expect(tree.root.children[0].children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "layer",
@@ -270,8 +293,8 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[1].children).toHaveLength(2);
-        expect(tree.root.children[1].children[0]).toEqual(
+        expect(tree.root.children[0].children[1].children).toHaveLength(2);
+        expect(tree.root.children[0].children[1].children[0]).toEqual(
             expect.objectContaining({
                 kind: "leaf",
                 type: "unit",
@@ -283,42 +306,47 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[1].children[0].encodings).toEqual({
-            y: expect.objectContaining({
-                sourceKind: "field",
-                field: "value",
-                type: "quantitative",
-                inherited: false,
-            }),
-        });
+        expect(tree.root.children[0].children[1].children[0].encodings).toEqual(
+            {
+                y: expect.objectContaining({
+                    sourceKind: "field",
+                    field: "value",
+                    type: "quantitative",
+                    inherited: false,
+                }),
+            }
+        );
         expect(
-            tree.root.children[1].children.some(
+            tree.root.children[0].children[1].children.some(
                 (child) => child.name === "sample-labels"
             )
         ).toBe(false);
         expect(
-            tree.root.children[1].children.some(
+            tree.root.children[0].children[1].children.some(
                 (child) =>
                     child.title === "Anonymous annotation" &&
                     child.selector === undefined
             )
         ).toBe(true);
-        expect(tree.root.children[1].children[1].encodings).toEqual({});
+        expect(tree.root.children[0].children[1].children[1].encodings).toEqual(
+            {}
+        );
     });
 
     it("joins multi-line descriptions from the spec", () => {
         const root = createMockView({
-            name: "samples",
-            title: "Samples",
+            name: "viewRoot",
+            title: "Visualization root",
             spec: {
                 description: ["First line", "Second line"],
             },
         });
 
         const tree = buildViewTree({
-            getSampleView: () => root,
+            getSampleView: () => undefined,
             genomeSpy: {
                 spec: {},
+                viewRoot: root,
             },
         });
 
