@@ -40,6 +40,10 @@ The IR should carry `description` wherever the agent needs semantic intent:
 `title` should stay the short label, while `description` should explain what the
 object means or why it exists.
 
+Long citation blocks should not live in `description`. The spec should expose
+citations as structured metadata, and the adapter should surface them separately
+from the semantic description.
+
 Transforms should be omitted from the default IR because they add noise.
 If the agent later needs to know where the data came from, the adapter can
 provide a detailed pipeline on demand.

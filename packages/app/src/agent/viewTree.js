@@ -40,9 +40,11 @@ export function buildViewTree(app) {
     );
 
     if (!rootView) {
+        const root = createUnknownRootNode();
+        compactViewNode(root);
         return {
             rootConfig,
-            root: createUnknownRootNode(),
+            root,
         };
     }
 
@@ -85,6 +87,7 @@ export function buildViewTree(app) {
     }
 
     pruneEmptyContainers(rootNode);
+    compactViewNode(rootNode);
 
     return {
         rootConfig,
@@ -117,6 +120,10 @@ function shouldCollapseView(view, focusView, focusBranch) {
  * @param {import("./types.d.ts").AgentViewNode} node
  */
 function pruneEmptyContainers(node) {
+    if (!Array.isArray(node.children)) {
+        return;
+    }
+
     node.children = node.children.filter((child) => {
         pruneEmptyContainers(child);
 
@@ -158,6 +165,31 @@ function pruneEmptyContainers(node) {
 
         return false;
     });
+}
+
+/**
+ * Removes empty arrays from the tree in-place.
+ *
+ * @param {import("./types.d.ts").AgentViewNode} node
+ */
+function compactViewNode(node) {
+    if (Array.isArray(node.children)) {
+        for (const child of node.children) {
+            compactViewNode(child);
+        }
+
+        if (node.children.length === 0) {
+            delete node.children;
+        }
+    }
+
+    if (node.encodings && Object.keys(node.encodings).length === 0) {
+        delete node.encodings;
+    }
+
+    if (node.selectionDeclarations && node.selectionDeclarations.length === 0) {
+        delete node.selectionDeclarations;
+    }
 }
 
 /**

@@ -317,17 +317,17 @@ export interface AgentViewNode {
     /**
      * Effective encodings for the node.
      */
-    encodings: AgentViewEncodings;
+    encodings?: AgentViewEncodings;
 
     /**
      * Selection declarations attached to the node.
      */
-    selectionDeclarations: AgentSelectionDeclaration[];
+    selectionDeclarations?: AgentSelectionDeclaration[];
 
     /**
      * Child nodes in the view hierarchy.
      */
-    children: AgentViewNode[];
+    children?: AgentViewNode[];
 }
 
 /**

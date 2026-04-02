@@ -257,6 +257,8 @@ describe("buildViewTree", () => {
                 selector: undefined,
             })
         );
+        expect(tree.root).not.toHaveProperty("encodings");
+        expect(tree.root).not.toHaveProperty("selectionDeclarations");
         expect(tree.root.children).toHaveLength(2);
         expect(tree.root.children[0]).toEqual(
             expect.objectContaining({
@@ -266,14 +268,17 @@ describe("buildViewTree", () => {
                 title: "Chromosome Ideogram",
                 collapsed: true,
                 childCount: 1,
-                encodings: {},
                 selector: {
                     scope: [],
                     view: "ideogram-track",
                 },
             })
         );
-        expect(tree.root.children[0].children).toHaveLength(0);
+        expect(tree.root.children[0]).not.toHaveProperty("encodings");
+        expect(tree.root.children[0]).not.toHaveProperty(
+            "selectionDeclarations"
+        );
+        expect(tree.root.children[0]).not.toHaveProperty("children");
         expect(tree.root.children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
@@ -285,6 +290,10 @@ describe("buildViewTree", () => {
                     view: "data-tracks",
                 },
             })
+        );
+        expect(tree.root.children[1]).not.toHaveProperty("encodings");
+        expect(tree.root.children[1]).not.toHaveProperty(
+            "selectionDeclarations"
         );
         expect(tree.root.children[1].children).toHaveLength(2);
         expect(tree.root.children[1].children[0]).toEqual(
@@ -303,6 +312,9 @@ describe("buildViewTree", () => {
                     source: "samples",
                 },
             })
+        );
+        expect(tree.root.children[1].children[0]).not.toHaveProperty(
+            "encodings"
         );
         expect(tree.root.children[1].children[0].selectionDeclarations).toEqual(
             [
@@ -328,7 +340,6 @@ describe("buildViewTree", () => {
                 visible: false,
                 collapsed: true,
                 childCount: 1,
-                encodings: {},
                 selector: {
                     scope: [],
                     view: "hidden-track",
@@ -336,8 +347,14 @@ describe("buildViewTree", () => {
             })
         );
         expect(
-            tree.root.children[1].children[0].children[0].children
-        ).toHaveLength(0);
+            tree.root.children[1].children[0].children[0]
+        ).not.toHaveProperty("encodings");
+        expect(
+            tree.root.children[1].children[0].children[0]
+        ).not.toHaveProperty("selectionDeclarations");
+        expect(
+            tree.root.children[1].children[0].children[0]
+        ).not.toHaveProperty("children");
         expect(tree.root.children[1].children[0].children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
@@ -345,7 +362,6 @@ describe("buildViewTree", () => {
                 name: "track",
                 title: "Track",
                 description: "Main track for the current cohort.",
-                encodings: {},
                 selector: {
                     scope: [],
                     view: "track",
@@ -356,6 +372,9 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(
+            tree.root.children[1].children[0].children[1]
+        ).not.toHaveProperty("encodings");
         expect(
             tree.root.children[1].children[0].children[1].children
         ).toHaveLength(2);
@@ -384,6 +403,9 @@ describe("buildViewTree", () => {
             }),
         });
         expect(
+            tree.root.children[1].children[0].children[1].children[0]
+        ).not.toHaveProperty("children");
+        expect(
             tree.root.children[1].children[0].children[1].children.some(
                 (child) =>
                     child.title === "Anonymous annotation" &&
@@ -391,8 +413,11 @@ describe("buildViewTree", () => {
             )
         ).toBe(true);
         expect(
-            tree.root.children[1].children[0].children[1].children[1].encodings
-        ).toEqual({});
+            tree.root.children[1].children[0].children[1].children[1]
+        ).not.toHaveProperty("encodings");
+        expect(
+            tree.root.children[1].children[0].children[1].children[1]
+        ).not.toHaveProperty("children");
         expect(tree.root.children[1].children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
@@ -402,14 +427,21 @@ describe("buildViewTree", () => {
                 description: "Collapsed sibling of the focused sample view.",
                 collapsed: true,
                 childCount: 1,
-                encodings: {},
                 selector: {
                     scope: [],
                     view: "annotation-track",
                 },
             })
         );
-        expect(tree.root.children[1].children[1].children).toHaveLength(0);
+        expect(tree.root.children[1].children[1]).not.toHaveProperty(
+            "encodings"
+        );
+        expect(tree.root.children[1].children[1]).not.toHaveProperty(
+            "selectionDeclarations"
+        );
+        expect(tree.root.children[1].children[1]).not.toHaveProperty(
+            "children"
+        );
     });
 
     it("joins multi-line descriptions from the spec", () => {
