@@ -3,6 +3,7 @@ import {
     AttributeIdentifierType,
 } from "../sampleView/types.js";
 import { ParamSelector } from "../sampleView/sampleViewTypes.js";
+import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
 /**
@@ -276,6 +277,11 @@ export interface AgentViewNode {
      * Human-readable description of the node's semantic purpose.
      */
     description?: string;
+
+    /**
+     * Stable view selector used for provenance-safe addressing.
+     */
+    selector?: ViewSelector;
 
     /**
      * Mark type used by unit-like nodes.

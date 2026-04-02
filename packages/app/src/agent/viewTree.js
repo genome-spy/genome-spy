@@ -10,6 +10,7 @@ import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
 import { isMultiscaleSpec } from "@genome-spy/core/view/multiscale.js";
 import {
     isChromeView,
+    getViewSelector,
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
@@ -196,6 +197,7 @@ function summarizeViewNode(root, view) {
         title: String(view.getTitleText?.() ?? getViewName(view)),
         description:
             typeof spec.description === "string" ? spec.description : undefined,
+        selector: getViewSelectorOrUndefined(view),
         markType: getMarkType(view),
         visible:
             typeof view.isVisible === "function"
@@ -216,6 +218,18 @@ function summarizeViewNode(root, view) {
     };
 
     return node;
+}
+
+/**
+ * @param {any} view
+ * @returns {import("@genome-spy/core/view/viewSelectors.js").ViewSelector | undefined}
+ */
+function getViewSelectorOrUndefined(view) {
+    try {
+        return getViewSelector(view);
+    } catch {
+        return undefined;
+    }
 }
 
 /**

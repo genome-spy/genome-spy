@@ -28,6 +28,10 @@ vi.mock("@genome-spy/core/selection/selection.js", () => ({
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     getBookmarkableParams: getBookmarkableParamsMock,
     getParamSelector: getParamSelectorMock,
+    getViewSelector: (view) => ({
+        scope: [],
+        view: view.explicitName ?? view.name,
+    }),
     isChromeView: () => false,
     visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
@@ -189,6 +193,10 @@ describe("getAgentContext", () => {
                 kind: "root",
                 type: "sampleView",
                 title: "Patient Cohort",
+                selector: {
+                    scope: [],
+                    view: "samples",
+                },
             })
         );
         expect(context.attributes).toHaveLength(2);

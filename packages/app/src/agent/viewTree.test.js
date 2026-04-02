@@ -106,6 +106,13 @@ describe("buildViewTree", () => {
             },
         });
 
+        const anonymousLeaf = createMockView({
+            title: "Anonymous annotation",
+            spec: {
+                mark: "rule",
+            },
+        });
+
         const layer = createMockView({
             name: "track",
             title: "Track",
@@ -124,7 +131,7 @@ describe("buildViewTree", () => {
             encoding: {
                 x: { field: "position", type: "locus" },
             },
-            children: [leaf],
+            children: [leaf, anonymousLeaf],
         });
 
         const root = createMockView({
@@ -187,6 +194,10 @@ describe("buildViewTree", () => {
                 name: "samples",
                 title: "Samples",
                 description: "Top-level sample view.",
+                selector: {
+                    scope: [],
+                    view: "samples",
+                },
                 data: {
                     kind: "named",
                     source: "samples",
@@ -210,6 +221,10 @@ describe("buildViewTree", () => {
                 name: "track",
                 title: "Track",
                 description: "Main track for the current cohort.",
+                selector: {
+                    scope: [],
+                    view: "track",
+                },
                 data: {
                     kind: "named",
                     source: "track-data",
@@ -221,6 +236,13 @@ describe("buildViewTree", () => {
                 (child) => child.name === "sample-labels"
             )
         ).toBe(false);
+        expect(
+            tree.root.children[0].children.some(
+                (child) =>
+                    child.title === "Anonymous annotation" &&
+                    child.selector === undefined
+            )
+        ).toBe(true);
         expect(tree.root.children[0].encodings).toEqual([
             expect.objectContaining({
                 channel: "x",
@@ -229,14 +251,25 @@ describe("buildViewTree", () => {
                 inherited: false,
             }),
         ]);
-        expect(tree.root.children[0].children).toHaveLength(1);
+        expect(tree.root.children[0].children).toHaveLength(2);
         expect(tree.root.children[0].children[0]).toEqual(
             expect.objectContaining({
                 kind: "leaf",
                 type: "unit",
                 name: "points",
                 markType: "point",
+                selector: {
+                    scope: [],
+                    view: "points",
+                },
             })
         );
+        expect(
+            tree.root.children[0].children.some(
+                (child) =>
+                    child.title === "Anonymous annotation" &&
+                    child.selector === undefined
+            )
+        ).toBe(true);
     });
 });
