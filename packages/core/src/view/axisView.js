@@ -1,7 +1,7 @@
 import LayerView from "./layerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
-import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
@@ -135,6 +135,7 @@ export default class AxisView extends LayerView {
         );
 
         markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
     }
 
     async initializeChildren() {

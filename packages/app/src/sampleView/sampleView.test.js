@@ -6,6 +6,7 @@ import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
+import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -47,6 +48,38 @@ async function getSampleLabelWidth(spec, samples) {
 }
 
 describe("SampleView", () => {
+    test("marks sidebar and background helper views as chrome", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                view: {
+                    stroke: "red",
+                },
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        const names = getNonChromeViews(/** @type {any} */ (view)).map(
+            (v) => v.name
+        );
+
+        expect(names).not.toContain("sample-sidebar");
+        expect(
+            names.some((name) =>
+                name.startsWith("sample-group-background-stroke-")
+            )
+        ).toBe(false);
+    });
+
     test("loads sample metadata from metadataSources without warnings", async () => {
         const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 

@@ -3,13 +3,16 @@ import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import {
     getBookmarkableParams,
+    getNonChromeViews,
     getParamSelector,
     getViewScopeChain,
     makeParamSelectorKey,
+    markViewAsChrome,
     resolveParamSelector,
     resolveViewSelector,
     validateSelectorConstraints,
 } from "./viewSelectors.js";
+import { VISIT_SKIP, VISIT_STOP } from "./view.js";
 
 /**
  * @param {string} name
@@ -49,7 +52,68 @@ const makeUnitSpecWithParams = (name, params) => ({
     params,
 });
 
+/**
+ * @param {string} name
+ * @returns {any}
+ */
+function createVisitTree(name) {
+    const child = {
+        name: name + "-child",
+        children: /** @type {any[]} */ ([]),
+        visit: /** @param {(view: any) => any} visitor */ function (visitor) {
+            return visitor(this);
+        },
+    };
+
+    return {
+        name,
+        children: /** @type {any[]} */ ([child]),
+        visit: /** @param {(view: any) => any} visitor */ function (visitor) {
+            const result = visitor(this);
+            if (result === VISIT_STOP) {
+                return VISIT_STOP;
+            }
+
+            if (result !== VISIT_SKIP) {
+                for (const grandChild of this.children) {
+                    const childResult = grandChild.visit(visitor);
+                    if (childResult === VISIT_STOP) {
+                        return VISIT_STOP;
+                    }
+                }
+            }
+        },
+    };
+}
+
 describe("view selectors", () => {
+    test("markViewAsChrome hides a chrome subtree from non-chrome traversal", () => {
+        const root = createVisitTree("root");
+
+        markViewAsChrome(/** @type {any} */ (root), { skipSubtree: true });
+
+        expect(
+            getNonChromeViews(/** @type {any} */ (root)).map(
+                (view) => view.name
+            )
+        ).toEqual([]);
+    });
+
+    test("markViewAsChrome keeps sibling views visible", () => {
+        const root = createVisitTree("root");
+        const chromeChild = root.children[0];
+
+        markViewAsChrome(/** @type {any} */ (chromeChild), {
+            skipSubtree: true,
+        });
+
+        expect(
+            getNonChromeViews(/** @type {any} */ (root)).map(
+                (view) => view.name
+            )
+        ).toEqual(["root"]);
+    });
+
     test("resolveViewSelector separates named import scopes", async () => {
         const spec = {
             templates: {

@@ -16,7 +16,10 @@ import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import createTitle, { resolveTitleSpec } from "../title.js";
 import UnitView from "../unitView.js";
-import { markViewAsNonAddressable } from "../viewSelectors.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 import Scrollbar from "./scrollbar.js";
 import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
@@ -101,6 +104,7 @@ export default class GridChild {
                 markViewAsNonAddressable(this.background, {
                     skipSubtree: true,
                 });
+                markViewAsChrome(this.background, { skipSubtree: true });
             }
 
             const backgroundStrokeSpec = createBackgroundStroke(viewBackground);
@@ -116,6 +120,9 @@ export default class GridChild {
                     }
                 );
                 markViewAsNonAddressable(this.backgroundStroke, {
+                    skipSubtree: true,
+                });
+                markViewAsChrome(this.backgroundStroke, {
                     skipSubtree: true,
                 });
             }
@@ -139,6 +146,7 @@ export default class GridChild {
                 );
                 this.title = unitView;
                 markViewAsNonAddressable(this.title, { skipSubtree: true });
+                markViewAsChrome(this.title, { skipSubtree: true });
             }
         }
 

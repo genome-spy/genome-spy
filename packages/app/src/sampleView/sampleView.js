@@ -76,6 +76,7 @@ import { resolveIntervalReference } from "./intervalReferenceResolver.js";
 import {
     getParamSelector,
     resolveParamSelector,
+    markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import {
@@ -630,6 +631,7 @@ export default class SampleView extends ContainerView {
                 "sample-sidebar"
             )
         );
+        markViewAsChrome(this.#sidebarView, { skipSubtree: true });
 
         this.sampleGroupView = new SampleGroupView(this, this.#sidebarView);
         this.sampleLabelView = new SampleLabelView(this, this.#sidebarView);
@@ -1702,6 +1704,7 @@ class SampleGridChild extends GridChild {
                     blockEncodingInheritance: true,
                 }
             );
+            markViewAsChrome(this.groupBackground, { skipSubtree: true });
         }
 
         const backgroundStrokeSpec = createBackgroundStroke(viewBackgroundSpec);
@@ -1716,6 +1719,9 @@ class SampleGridChild extends GridChild {
                     blockEncodingInheritance: true,
                 }
             );
+            markViewAsChrome(this.groupBackgroundStroke, {
+                skipSubtree: true,
+            });
         }
 
         this.summaryViews = summaryViews;

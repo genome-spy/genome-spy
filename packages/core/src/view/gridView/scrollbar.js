@@ -2,7 +2,10 @@ import clamp from "../../utils/clamp.js";
 import { makeLerpSmoother } from "../../utils/animator.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
-import { markViewAsNonAddressable } from "../viewSelectors.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 
 /**
  * This class represents a scrollbar thumb that can be used within a grid view
@@ -78,6 +81,7 @@ export default class Scrollbar extends UnitView {
         );
 
         markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
 
         this.config = config;
         this.#scrollDirection = scrollDirection;

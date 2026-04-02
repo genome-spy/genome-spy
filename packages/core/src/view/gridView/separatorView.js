@@ -1,5 +1,8 @@
 import UnitView from "../unitView.js";
-import { markViewAsNonAddressable } from "../viewSelectors.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 
 /**
  * @typedef {"horizontal" | "vertical"} SeparatorDirection
@@ -221,6 +224,7 @@ export default class SeparatorView {
         );
 
         markViewAsNonAddressable(view, { skipSubtree: true });
+        markViewAsChrome(view, { skipSubtree: true });
 
         return view;
     }

@@ -19,7 +19,9 @@ import {
  * @typedef {{ message: string, scope: string[] }} SelectorValidationIssue
  * @typedef {{ name: string | null }} ImportScopeInfo
  * @typedef {"exclude" | "excludeSubtree"} AddressableOverride
+ * @typedef {"exclude" | "excludeSubtree"} ChromeOverride
  * @typedef {{ skipSubtree?: boolean }} AddressableOptions
+ * @typedef {{ skipSubtree?: boolean }} ChromeOptions
  * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter }} ResolvedParam
  */
 
@@ -30,6 +32,9 @@ const importScopes = new WeakMap();
 
 /** @type {WeakMap<import("./view.js").default, AddressableOverride>} */
 const addressableOverrides = new WeakMap();
+
+/** @type {WeakMap<import("./view.js").default, ChromeOverride>} */
+const chromeOverrides = new WeakMap();
 
 /**
  * Marks a view as the root of an import scope.
@@ -65,6 +70,28 @@ export function markViewAsNonAddressable(view, options = {}) {
     const skipSubtree = options.skipSubtree ?? false;
     const behavior = skipSubtree ? "excludeSubtree" : "exclude";
     addressableOverrides.set(view, behavior);
+}
+
+/**
+ * Marks a view as decorative chrome.
+ *
+ * @param {import("./view.js").default} view
+ * @param {ChromeOptions} [options]
+ */
+export function markViewAsChrome(view, options = {}) {
+    const skipSubtree = options.skipSubtree ?? false;
+    const behavior = skipSubtree ? "excludeSubtree" : "exclude";
+    chromeOverrides.set(view, behavior);
+}
+
+/**
+ * Returns whether a view has been marked as decorative chrome.
+ *
+ * @param {import("./view.js").default} view
+ * @returns {boolean}
+ */
+export function isChromeView(view) {
+    return chromeOverrides.has(view);
 }
 
 /**
@@ -152,6 +179,44 @@ export function getAddressableViews(root) {
     const views = [];
 
     visitAddressableViews(root, (view) => {
+        views.push(view);
+    });
+
+    return views;
+}
+
+/**
+ * Visits all non-chrome views in the hierarchy.
+ *
+ * @param {import("./view.js").default} root
+ * @param {import("./view.js").Visitor} visitor
+ */
+export function visitNonChromeViews(root, visitor) {
+    root.visit((view) => {
+        const behavior = chromeOverrides.get(view);
+        if (behavior === "excludeSubtree") {
+            return VISIT_SKIP;
+        }
+
+        if (behavior === "exclude") {
+            return;
+        }
+
+        return visitor(view);
+    });
+}
+
+/**
+ * Returns non-chrome views in the hierarchy.
+ *
+ * @param {import("./view.js").default} root
+ * @returns {import("./view.js").default[]}
+ */
+export function getNonChromeViews(root) {
+    /** @type {import("./view.js").default[]} */
+    const views = [];
+
+    visitNonChromeViews(root, (view) => {
         views.push(view);
     });
 
