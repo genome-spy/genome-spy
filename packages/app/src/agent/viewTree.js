@@ -603,13 +603,9 @@ function summarizeSelectionDeclarations(root, view) {
         }
 
         declarations.push({
-            id: JSON.stringify(selector),
             selectionType: select.type,
             label: formatScopedParamName(root, selector),
-            paramName,
             selector,
-            view: getViewName(view),
-            viewTitle: String(view.getTitleText?.() ?? view.name ?? "view"),
             persist: param.persist !== false,
             active: isActiveSelectionValue(
                 select.type,

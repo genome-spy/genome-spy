@@ -62,8 +62,7 @@ function buildSelectionDeclarations(app) {
             }
 
             const select = asSelectionConfig(param.select);
-            const viewName = getAddressableViewName(view);
-            if (!viewName) {
+            if (!getAddressableViewName(view)) {
                 continue;
             }
 
@@ -77,13 +76,9 @@ function buildSelectionDeclarations(app) {
             const currentValue = view.paramRuntime.getValue(paramName);
 
             declarations.push({
-                id: createSelectionId(selector),
                 selectionType: select.type,
                 label: formatScopedParamName(sampleView, selector),
-                paramName,
                 selector,
-                view: viewName,
-                viewTitle: String(view.getTitleText?.() ?? view.name ?? "view"),
                 persist: param.persist !== false,
                 active: isActiveSelectionValue(select.type, currentValue),
                 encodings: isIntervalSelectionConfig(select)

@@ -225,10 +225,13 @@ describe("buildViewTree", () => {
         expect(tree.root.selectionDeclarations).toEqual([
             expect.objectContaining({
                 selectionType: "interval",
-                paramName: "brush",
                 label: "brush",
-                encodings: ["x"],
                 active: true,
+                selector: {
+                    scope: [],
+                    param: "brush",
+                },
+                encodings: ["x"],
             }),
         ]);
         expect(tree.root.children).toHaveLength(2);

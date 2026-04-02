@@ -486,11 +486,6 @@ export interface AgentSelectionSummary {
  */
 export interface AgentSelectionDeclaration {
     /**
-     * Stable identifier derived from the parameter selector.
-     */
-    id: string;
-
-    /**
      * Declared selection type.
      */
     selectionType: "point" | "interval";
@@ -501,24 +496,9 @@ export interface AgentSelectionDeclaration {
     label: string;
 
     /**
-     * Parameter name.
-     */
-    paramName: string;
-
-    /**
      * Structured selector for the underlying parameter.
      */
     selector: ParamSelector;
-
-    /**
-     * Addressable view name.
-     */
-    view: string;
-
-    /**
-     * Human-readable view title.
-     */
-    viewTitle: string;
 
     /**
      * Whether the selection is persisted in bookmarks.

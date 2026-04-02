@@ -235,16 +235,12 @@ describe("getAgentContext", () => {
         );
         expect(context.viewWorkflows.selectionDeclarations).toEqual([
             expect.objectContaining({
-                id: expect.any(String),
                 selectionType: "interval",
                 label: "brush",
-                paramName: "brush",
                 selector: {
                     scope: [],
                     param: "brush",
                 },
-                view: "samples",
-                viewTitle: "Patient Cohort",
                 persist: true,
                 active: true,
                 encodings: ["x"],
