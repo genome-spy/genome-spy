@@ -15,6 +15,8 @@
   carries the current runtime values for those declarations.
 - Interval selections should be described to the model as brushing/dragging a
   range; point-selection refinements are out of MVP scope.
+- Semantic `description` fields should be carried through to views, encodings,
+  params, data sources, and other objects the agent needs to reason about.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.
@@ -33,6 +35,7 @@
 
 ## Data + Visualization Context
 - See `packages/app/LLM_PLAN/data-schema.md` for the proposed LLM-facing context schema.
+- See `packages/app/LLM_PLAN/view-tree.md` for the proposed normalized view-tree IR.
 
 ## Action + State Context
 - See `packages/app/LLM_PLAN/action-schema.md` for the proposed action/provenance schema.

@@ -87,6 +87,8 @@ Rationale: lets LLM answer domain questions without encoding domain logic into t
 ## Hierarchical Data Notes
 LLMs generally handle hierarchical JSON well as long as the tree is compact and consistent.
 
+For the normalized view-tree IR, see `packages/app/LLM_PLAN/view-tree.md`.
+
 Recommended structure:
 - Use stable keys like `id`, `type`, `encodings`, `children`.
 - Keep node payloads small (summary only).
