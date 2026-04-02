@@ -1,6 +1,6 @@
 import LayerView from "./layerView.js";
 import { orient2channel } from "./axisView.js";
-import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 /**
  * @typedef {import("../spec/channel.js").PrimaryPositionalChannel} PositionalChannel
@@ -39,6 +39,7 @@ export default class AxisGridView extends LayerView {
         this.axisProps = axisProps;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
     }
 
     getOrient() {

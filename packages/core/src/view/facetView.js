@@ -12,7 +12,7 @@ import coalesce from "../utils/coalesce.js";
 import { field as vegaField } from "vega-util";
 import DecoratorView from "./decoratorView.js";
 import Padding from "./layout/padding.js";
-import { markViewAsNonAddressable } from "./viewSelectors.js";
+import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const DEFAULT_SPACING = 20;
 
@@ -104,6 +104,7 @@ export default class FacetView extends ContainerView {
                     `facetLabel-${channel}`
                 );
                 markViewAsNonAddressable(labelView, { skipSubtree: true });
+                markViewAsChrome(labelView, { skipSubtree: true });
                 return [channel, labelView];
             })
         );

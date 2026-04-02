@@ -1,6 +1,9 @@
 import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import LayerView from "../layerView.js";
-import { markViewAsNonAddressable } from "../viewSelectors.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 
 export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
 
@@ -163,6 +166,7 @@ export default class SelectionRect extends LayerView {
         this._zindex = zindex;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
 
         const selectionListener = () => {
             const selection =
