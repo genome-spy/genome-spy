@@ -14,7 +14,7 @@
 - Selection declarations are part of the view spec and stay static; `paramProvenance`
   carries the current runtime values for those declarations.
 - Interval selections should be described to the model as brushing/dragging a
-  range; point selections should be described as clicking/selecting items.
+  range; point-selection refinements are out of MVP scope.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.

@@ -59,7 +59,11 @@ User-language mapping:
 - interval selection = brushing / dragging a range
 - point selection = clicking / selecting individual items
 - clear selection = removing the brush or clicked items
-- point selection refinements = add / remove / toggle / replace
+
+MVP scope:
+- interval selection is in scope.
+- point-selection refinement actions like add / remove / toggle / replace are
+  out of scope for now.
 
 The selector definitions themselves come from the visualization spec and are
 listed in the data context as static selection declarations. `paramProvenance`
