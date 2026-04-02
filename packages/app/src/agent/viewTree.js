@@ -8,7 +8,10 @@ import {
 } from "@genome-spy/core/view/viewSpecGuards.js";
 import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
 import { isMultiscaleSpec } from "@genome-spy/core/view/multiscale.js";
-import { visitAddressableViews } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    isChromeView,
+    visitAddressableViews,
+} from "@genome-spy/core/view/viewSelectors.js";
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
 import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { formatScopedParamName } from "../viewScopeUtils.js";
@@ -36,7 +39,7 @@ export function buildViewTree(app) {
     let rootNode;
 
     visitAddressableViews(sampleView, (view) => {
-        if (shouldOmitViewFromAgentTree(view)) {
+        if (isChromeView(view)) {
             return VISIT_SKIP;
         }
 
@@ -55,6 +58,8 @@ export function buildViewTree(app) {
         rootNode = summarizeViewNode(sampleView, sampleView);
     }
 
+    pruneEmptyContainers(rootNode);
+
     return {
         rootConfig,
         root: rootNode,
@@ -62,14 +67,44 @@ export function buildViewTree(app) {
 }
 
 /**
- * @param {any} view
- * @returns {boolean}
+ * Removes empty structural containers from the tree in-place.
+ *
+ * @param {import("./types.d.ts").AgentViewNode} node
  */
-function shouldOmitViewFromAgentTree(view) {
-    return (
-        view?.explicitName === "sample-sidebar" ||
-        view?.name === "sample-sidebar"
-    );
+function pruneEmptyContainers(node) {
+    node.children = node.children.filter((child) => {
+        pruneEmptyContainers(child);
+
+        if (child.kind !== "container") {
+            return true;
+        }
+
+        if (child.children.length > 0) {
+            return true;
+        }
+
+        if (child.selectionDeclarations.length > 0) {
+            return true;
+        }
+
+        if (child.encodings.length > 0) {
+            return true;
+        }
+
+        if (child.data) {
+            return true;
+        }
+
+        if (child.description) {
+            return true;
+        }
+
+        if (child.markType) {
+            return true;
+        }
+
+        return false;
+    });
 }
 
 /**

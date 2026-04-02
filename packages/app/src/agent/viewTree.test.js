@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
+import { markViewAsChrome } from "@genome-spy/core/view/viewSelectors.js";
 import { buildViewTree } from "./viewTree.js";
 
 function createMockView(options) {
@@ -78,6 +79,15 @@ describe("buildViewTree", () => {
                 }),
             ],
         });
+        markViewAsChrome(sidebar, { skipSubtree: true });
+
+        const emptyContainer = createMockView({
+            name: "sampleSummaries",
+            title: "sampleSummaries",
+            spec: {
+                vconcat: [],
+            },
+        });
 
         const leaf = createMockView({
             name: "points",
@@ -149,7 +159,7 @@ describe("buildViewTree", () => {
                           }
                         : undefined,
             },
-            children: [sidebar, layer],
+            children: [emptyContainer, sidebar, layer],
         });
 
         const tree = buildViewTree({

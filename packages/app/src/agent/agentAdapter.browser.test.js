@@ -13,6 +13,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     getParamSelector: (...args) => resolveParamSelectorMock(...args),
     resolveParamSelector: (root, selector) =>
         resolveParamSelectorMock(root, selector),
+    isChromeView: () => false,
     visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 

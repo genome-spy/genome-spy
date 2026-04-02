@@ -28,6 +28,7 @@ vi.mock("@genome-spy/core/selection/selection.js", () => ({
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     getBookmarkableParams: getBookmarkableParamsMock,
     getParamSelector: getParamSelectorMock,
+    isChromeView: () => false,
     visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 
