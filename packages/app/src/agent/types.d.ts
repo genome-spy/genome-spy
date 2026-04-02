@@ -151,6 +151,194 @@ export interface AgentViewSummary {
 }
 
 /**
+ * Summary of a root-level visualization config that helps the agent interpret
+ * the view hierarchy.
+ */
+export interface AgentRootConfigSummary {
+    /**
+     * Default assembly used for locus scales.
+     */
+    assembly?: string;
+
+    /**
+     * Base URL inherited by relative data sources.
+     */
+    baseUrl?: string;
+
+    /**
+     * Canvas background color.
+     */
+    background?: string;
+
+    /**
+     * Named genomes available to the visualization.
+     */
+    genomes?: string[];
+
+    /**
+     * Named datasets available to the visualization.
+     */
+    datasets?: string[];
+
+    /**
+     * Selected built-in theme preset(s).
+     */
+    theme?: string | string[];
+}
+
+/**
+ * Summary of a data source used by a view node.
+ */
+export interface AgentViewDataSummary {
+    /**
+     * Data source kind.
+     */
+    kind:
+        | "url"
+        | "inline"
+        | "named"
+        | "generator"
+        | "lazy"
+        | "callback"
+        | "other";
+
+    /**
+     * Compact source identifier or URL.
+     */
+    source: string;
+
+    /**
+     * Parsed data format, when relevant.
+     */
+    format?: string;
+}
+
+/**
+ * Summary of an effective encoding channel in the view hierarchy.
+ */
+export interface AgentViewEncodingSummary {
+    /**
+     * Encoding channel name.
+     */
+    channel: string;
+
+    /**
+     * Field bound to the channel, if any.
+     */
+    field?: string;
+
+    /**
+     * Value type or data type carried by the channel.
+     */
+    type?: string;
+
+    /**
+     * Channel title, if explicitly set.
+     */
+    title?: string;
+
+    /**
+     * Whether this encoding comes from an ancestor view.
+     */
+    inherited: boolean;
+}
+
+/**
+ * Summary of a view node in the normalized agent-facing view tree.
+ */
+export interface AgentViewNode {
+    /**
+     * Stable node identifier.
+     */
+    id: string;
+
+    /**
+     * Hierarchical role of the node.
+     */
+    kind: "root" | "container" | "leaf" | "other";
+
+    /**
+     * Normalized view type derived from the underlying spec.
+     */
+    type: string;
+
+    /**
+     * Stable view name, if available.
+     */
+    name: string;
+
+    /**
+     * Human-readable title.
+     */
+    title: string;
+
+    /**
+     * Human-readable description of the node's semantic purpose.
+     */
+    description?: string;
+
+    /**
+     * Mark type used by unit-like nodes.
+     */
+    markType?: string;
+
+    /**
+     * Whether the view is currently visible according to the app state.
+     */
+    visible: boolean;
+
+    /**
+     * Data source summary, if explicitly declared at this node.
+     */
+    data?: AgentViewDataSummary;
+
+    /**
+     * Effective encodings for the node.
+     */
+    encodings: AgentViewEncodingSummary[];
+
+    /**
+     * Selection declarations attached to the node.
+     */
+    selectionDeclarations: AgentSelectionDeclaration[];
+
+    /**
+     * Child nodes in the view hierarchy.
+     */
+    children: AgentViewNode[];
+}
+
+/**
+ * Summary of the visualization's root config.
+ */
+export interface AgentViewTreeRoot {
+    /**
+     * Root-level configuration summary.
+     */
+    rootConfig?: AgentRootConfigSummary;
+
+    /**
+     * Root node of the view hierarchy.
+     */
+    root: AgentViewNode;
+}
+
+/**
+ * Agent-facing view hierarchy snapshot.
+ */
+export interface AgentViewTree {
+    /**
+     * Schema version for the hierarchy snapshot.
+     */
+    schemaVersion: 1;
+
+    /**
+     * Root-level config summary plus normalized hierarchy.
+     */
+    viewTree: AgentViewTreeRoot;
+}
+
+/**
  * Current value of a bookmarkable parameter or selection.
  */
 export interface AgentParamSummary {
@@ -464,6 +652,11 @@ export interface AgentContext {
      * Visualization summary.
      */
     view: AgentViewSummary;
+
+    /**
+     * Normalized view hierarchy snapshot.
+     */
+    viewTree: AgentViewTreeRoot;
 
     /**
      * Available attributes in the current sample collection.

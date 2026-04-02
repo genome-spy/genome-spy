@@ -10,8 +10,10 @@ const { showHierarchyBoxplotDialog } = vi.hoisted(() => ({
 }));
 
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
+    getParamSelector: (...args) => resolveParamSelectorMock(...args),
     resolveParamSelector: (root, selector) =>
         resolveParamSelectorMock(root, selector),
+    visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 
 vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({
@@ -146,6 +148,9 @@ describe("agentAdapter browser integration", () => {
                     type: "sampleView",
                     name: "sampleView",
                     title: "Capability Fixture",
+                }),
+                viewTree: expect.objectContaining({
+                    root: expect.any(Object),
                 }),
                 attributes: expect.any(Array),
                 actionCatalog: expect.any(Array),

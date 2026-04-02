@@ -28,6 +28,7 @@ vi.mock("@genome-spy/core/selection/selection.js", () => ({
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     getBookmarkableParams: getBookmarkableParamsMock,
     getParamSelector: getParamSelectorMock,
+    visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 
 import { getAgentContext } from "./contextBuilder.js";
@@ -167,6 +168,7 @@ describe("getAgentContext", () => {
             "provenance",
             "schemaVersion",
             "view",
+            "viewTree",
             "viewWorkflows",
         ]);
 
@@ -181,6 +183,13 @@ describe("getAgentContext", () => {
 
         expect(context.schemaVersion).toBe(1);
         expect(context.view.sampleCount).toBe(2);
+        expect(context.viewTree.root).toEqual(
+            expect.objectContaining({
+                kind: "root",
+                type: "sampleView",
+                title: "Patient Cohort",
+            })
+        );
         expect(context.attributes).toHaveLength(2);
         expect(context.attributes[0].id).toEqual({
             type: "SAMPLE_ATTRIBUTE",

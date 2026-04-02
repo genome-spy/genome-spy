@@ -1,6 +1,7 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
 import generatedActionSummariesJson from "./generatedActionSummaries.json" with { type: "json" };
+import { buildViewTree } from "./viewTree.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -30,6 +31,7 @@ export function getAgentContext(app) {
     return {
         schemaVersion: 1,
         view: buildViewSummary(sampleView, sampleState),
+        viewTree: buildViewTree(app),
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleState)
             : [],

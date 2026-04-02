@@ -55,6 +55,12 @@ The following files show the structures the adapter must understand:
 The adapter should build the IR from the existing runtime structures rather than
 inventing a new view model.
 
+For now, the traversal should follow the addressable view tree, because those
+are the views the agent can act on through selectors and provenance-bearing
+actions. That is the right default for actionability, but it may need to be
+relaxed later if the agent also needs to reason about non-addressable
+annotation-only branches.
+
 ### Root assembly
 - `packages/app/src/agent/contextBuilder.js`
   - current top-level agent context assembly
