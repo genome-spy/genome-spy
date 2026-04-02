@@ -30,6 +30,14 @@ export function buildViewTree(app) {
     const hasStructuralRoot = Boolean(app?.genomeSpy?.viewRoot);
     const rootSpec = app?.genomeSpy?.spec;
     const rootConfig = summarizeRootConfig(rootSpec);
+    const focusView = sampleView ?? rootView;
+    const focusBranch = new Set(
+        typeof focusView?.getLayoutAncestors === "function"
+            ? focusView.getLayoutAncestors()
+            : focusView
+              ? [focusView]
+              : []
+    );
 
     if (!rootView) {
         return {
@@ -53,7 +61,7 @@ export function buildViewTree(app) {
         }
 
         const node = summarizeViewNode(rootView, view, hasStructuralRoot);
-        if (!node.visible) {
+        if (shouldCollapseView(view, focusView, focusBranch) || !node.visible) {
             node.collapsed = true;
             node.childCount = getChildCount(view);
             node.encodings = {};
@@ -82,6 +90,25 @@ export function buildViewTree(app) {
         rootConfig,
         root: rootNode,
     };
+}
+
+/**
+ * @param {any} view
+ * @param {any} focusView
+ * @param {Set<any>} focusBranch
+ * @returns {boolean}
+ */
+function shouldCollapseView(view, focusView, focusBranch) {
+    if (focusBranch.has(view)) {
+        return false;
+    }
+
+    const ancestors =
+        typeof view.getLayoutAncestors === "function"
+            ? view.getLayoutAncestors()
+            : [view];
+
+    return !ancestors.includes(focusView);
 }
 
 /**

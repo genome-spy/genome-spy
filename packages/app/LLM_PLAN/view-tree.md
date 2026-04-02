@@ -49,6 +49,11 @@ SampleView subtree. That root node carries the top-level `description` from the
 spec automatically and can contain SampleView plus other top-level annotation
 views as children.
 
+For the initial agent context, keep the SampleView branch expanded and collapse
+the sibling branches of SampleView and its ancestors into compact summaries.
+Preserve `visible`, `childCount`, `selector`, and any short description so the
+agent can discover those branches later without paying the full tree cost.
+
 `rootConfig` should stay minimal. Keep fields that matter for interpreting the
 visualization structure or data resolution:
 - `assembly`

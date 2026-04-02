@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
-import { markViewAsChrome } from "@genome-spy/core/view/viewSelectors.js";
 import { buildViewTree } from "./viewTree.js";
 
 function createMockView(options) {
@@ -64,30 +63,52 @@ function createMockView(options) {
 
 describe("buildViewTree", () => {
     it("builds a normalized hierarchy rooted at the top-level spec", () => {
-        const sidebar = createMockView({
-            name: "sample-sidebar",
-            title: "Sidebar",
+        const rootSibling = createMockView({
+            name: "ideogram-track",
+            title: "Chromosome Ideogram",
             spec: {
-                hconcat: [],
+                layer: [],
             },
             children: [
                 createMockView({
-                    name: "sample-labels",
-                    title: "Sample",
+                    name: "ideogram-band",
+                    title: "Cytoband",
                     spec: {
-                        mark: "text",
+                        mark: "rect",
+                        encoding: {
+                            x: {
+                                field: "start",
+                                type: "locus",
+                            },
+                        },
+                    },
+                    encoding: {
+                        x: {
+                            field: "start",
+                            type: "locus",
+                        },
                     },
                 }),
             ],
         });
-        markViewAsChrome(sidebar, { skipSubtree: true });
 
-        const emptyContainer = createMockView({
-            name: "sampleSummaries",
-            title: "sampleSummaries",
+        const sampleSibling = createMockView({
+            name: "annotation-track",
+            title: "Annotation track",
+            description: "Collapsed sibling of the focused sample view.",
             spec: {
-                vconcat: [],
+                layer: [],
+                description: "Collapsed sibling of the focused sample view.",
             },
+            children: [
+                createMockView({
+                    name: "annotation-leaf",
+                    title: "Annotation leaf",
+                    spec: {
+                        mark: "rule",
+                    },
+                }),
+            ],
         });
 
         const hiddenBranch = createMockView({
@@ -186,7 +207,16 @@ describe("buildViewTree", () => {
                           }
                         : undefined,
             },
-            children: [emptyContainer, sidebar, hiddenBranch, layer],
+            children: [hiddenBranch, layer],
+        });
+
+        const dataTracks = createMockView({
+            name: "data-tracks",
+            title: "Data Tracks",
+            spec: {
+                vconcat: [],
+            },
+            children: [sampleView, sampleSibling],
         });
 
         const root = createMockView({
@@ -196,7 +226,7 @@ describe("buildViewTree", () => {
             spec: {
                 description: ["Top-level visualization.", "Includes samples."],
             },
-            children: [sampleView],
+            children: [rootSibling, dataTracks],
         });
 
         const tree = buildViewTree({
@@ -227,8 +257,37 @@ describe("buildViewTree", () => {
                 selector: undefined,
             })
         );
-        expect(tree.root.children).toHaveLength(1);
+        expect(tree.root.children).toHaveLength(2);
         expect(tree.root.children[0]).toEqual(
+            expect.objectContaining({
+                kind: "container",
+                type: "layer",
+                name: "ideogram-track",
+                title: "Chromosome Ideogram",
+                collapsed: true,
+                childCount: 1,
+                encodings: {},
+                selector: {
+                    scope: [],
+                    view: "ideogram-track",
+                },
+            })
+        );
+        expect(tree.root.children[0].children).toHaveLength(0);
+        expect(tree.root.children[1]).toEqual(
+            expect.objectContaining({
+                kind: "container",
+                type: "vconcat",
+                name: "data-tracks",
+                title: "Data Tracks",
+                selector: {
+                    scope: [],
+                    view: "data-tracks",
+                },
+            })
+        );
+        expect(tree.root.children[1].children).toHaveLength(2);
+        expect(tree.root.children[1].children[0]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "sampleView",
@@ -245,20 +304,22 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[0].selectionDeclarations).toEqual([
-            expect.objectContaining({
-                selectionType: "interval",
-                label: "brush",
-                active: true,
-                selector: {
-                    scope: [],
-                    param: "brush",
-                },
-                encodings: ["x"],
-            }),
-        ]);
-        expect(tree.root.children[0].children).toHaveLength(2);
-        expect(tree.root.children[0].children[0]).toEqual(
+        expect(tree.root.children[1].children[0].selectionDeclarations).toEqual(
+            [
+                expect.objectContaining({
+                    selectionType: "interval",
+                    label: "brush",
+                    active: true,
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                    encodings: ["x"],
+                }),
+            ]
+        );
+        expect(tree.root.children[1].children[0].children).toHaveLength(2);
+        expect(tree.root.children[1].children[0].children[0]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "layer",
@@ -274,8 +335,10 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[0].children[0].children).toHaveLength(0);
-        expect(tree.root.children[0].children[1]).toEqual(
+        expect(
+            tree.root.children[1].children[0].children[0].children
+        ).toHaveLength(0);
+        expect(tree.root.children[1].children[0].children[1]).toEqual(
             expect.objectContaining({
                 kind: "container",
                 type: "layer",
@@ -293,8 +356,12 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[0].children[1].children).toHaveLength(2);
-        expect(tree.root.children[0].children[1].children[0]).toEqual(
+        expect(
+            tree.root.children[1].children[0].children[1].children
+        ).toHaveLength(2);
+        expect(
+            tree.root.children[1].children[0].children[1].children[0]
+        ).toEqual(
             expect.objectContaining({
                 kind: "leaf",
                 type: "unit",
@@ -306,31 +373,43 @@ describe("buildViewTree", () => {
                 },
             })
         );
-        expect(tree.root.children[0].children[1].children[0].encodings).toEqual(
-            {
-                y: expect.objectContaining({
-                    sourceKind: "field",
-                    field: "value",
-                    type: "quantitative",
-                    inherited: false,
-                }),
-            }
-        );
         expect(
-            tree.root.children[0].children[1].children.some(
-                (child) => child.name === "sample-labels"
-            )
-        ).toBe(false);
+            tree.root.children[1].children[0].children[1].children[0].encodings
+        ).toEqual({
+            y: expect.objectContaining({
+                sourceKind: "field",
+                field: "value",
+                type: "quantitative",
+                inherited: false,
+            }),
+        });
         expect(
-            tree.root.children[0].children[1].children.some(
+            tree.root.children[1].children[0].children[1].children.some(
                 (child) =>
                     child.title === "Anonymous annotation" &&
                     child.selector === undefined
             )
         ).toBe(true);
-        expect(tree.root.children[0].children[1].children[1].encodings).toEqual(
-            {}
+        expect(
+            tree.root.children[1].children[0].children[1].children[1].encodings
+        ).toEqual({});
+        expect(tree.root.children[1].children[1]).toEqual(
+            expect.objectContaining({
+                kind: "container",
+                type: "layer",
+                name: "annotation-track",
+                title: "Annotation track",
+                description: "Collapsed sibling of the focused sample view.",
+                collapsed: true,
+                childCount: 1,
+                encodings: {},
+                selector: {
+                    scope: [],
+                    view: "annotation-track",
+                },
+            })
         );
+        expect(tree.root.children[1].children[1].children).toHaveLength(0);
     });
 
     it("joins multi-line descriptions from the spec", () => {
