@@ -305,4 +305,23 @@ describe("buildViewTree", () => {
         ).toBe(true);
         expect(tree.root.children[1].children[1].encodings).toEqual({});
     });
+
+    it("joins multi-line descriptions from the spec", () => {
+        const root = createMockView({
+            name: "samples",
+            title: "Samples",
+            spec: {
+                description: ["First line", "Second line"],
+            },
+        });
+
+        const tree = buildViewTree({
+            getSampleView: () => root,
+            genomeSpy: {
+                spec: {},
+            },
+        });
+
+        expect(tree.root.description).toBe("First line\nSecond line");
+    });
 });

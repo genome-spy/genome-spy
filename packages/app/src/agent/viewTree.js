@@ -214,8 +214,7 @@ function summarizeViewNode(root, view) {
         ),
         name: getViewName(view),
         title: String(view.getTitleText?.() ?? getViewName(view)),
-        description:
-            typeof spec.description === "string" ? spec.description : undefined,
+        description: normalizeDescription(spec.description),
         selector: getViewSelectorOrUndefined(view),
         markType: getMarkType(view),
         visible:
@@ -461,6 +460,22 @@ function summarizeDataSpec(data) {
         source: "other",
         format: getDataFormatKind(data.format),
     };
+}
+
+/**
+ * @param {string | string[] | undefined} description
+ * @returns {string | undefined}
+ */
+function normalizeDescription(description) {
+    if (typeof description === "string") {
+        return description;
+    }
+
+    if (Array.isArray(description)) {
+        return description.join("\n");
+    }
+
+    return undefined;
 }
 
 /**
