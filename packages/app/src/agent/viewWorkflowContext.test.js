@@ -107,13 +107,6 @@ describe("getViewWorkflowContext", () => {
                 label: "brush",
             }),
         ]);
-        expect(context.selectionDeclarations).toEqual([
-            expect.objectContaining({
-                label: "brush",
-                selectionType: "interval",
-                active: true,
-            }),
-        ]);
         expect(context.fields).toEqual([
             expect.objectContaining({
                 field: "beta",

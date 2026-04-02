@@ -166,7 +166,7 @@ describe("agentAdapter browser integration", () => {
                 actionCatalog: expect.any(Array),
                 actionSummaries: expect.any(Array),
                 viewWorkflows: expect.objectContaining({
-                    selectionDeclarations: expect.any(Array),
+                    selections: expect.any(Array),
                     workflows: expect.any(Array),
                 }),
                 provenance: expect.any(Array),

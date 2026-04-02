@@ -233,20 +233,6 @@ describe("getAgentContext", () => {
                 }),
             ])
         );
-        expect(context.viewWorkflows.selectionDeclarations).toEqual([
-            expect.objectContaining({
-                selectionType: "interval",
-                label: "brush",
-                selector: {
-                    scope: [],
-                    param: "brush",
-                },
-                persist: true,
-                active: true,
-                encodings: ["x"],
-                clearable: true,
-            }),
-        ]);
         expect(context.viewWorkflows.selections).toHaveLength(1);
         expect(context.provenance).toEqual([
             expect.objectContaining({

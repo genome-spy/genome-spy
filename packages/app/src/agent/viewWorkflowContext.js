@@ -1,14 +1,5 @@
-import {
-    asSelectionConfig,
-    isIntervalSelectionConfig,
-    isPointSelectionConfig,
-} from "@genome-spy/core/selection/selection.js";
-import {
-    getParamSelector,
-    resolveParamSelector,
-} from "@genome-spy/core/view/viewSelectors.js";
+import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { getContextMenuFieldInfos } from "../sampleView/contextMenuBuilder.js";
-import { formatScopedParamName } from "../viewScopeUtils.js";
 import { listViewWorkflows } from "./viewWorkflowCatalog.js";
 
 const QUANTITATIVE_AGGREGATIONS = [
@@ -26,74 +17,14 @@ const DEFAULT_AGGREGATIONS = ["count"];
  * @returns {import("./types.js").AgentViewWorkflowContext}
  */
 export function getViewWorkflowContext(app) {
-    const selectionDeclarations = buildSelectionDeclarations(app);
     const selections = buildSelectionSummaries(app);
     const fields = buildFieldSummaries(app, selections);
 
     return {
-        selectionDeclarations,
         selections,
         fields,
         workflows: listViewWorkflows(),
     };
-}
-
-/**
- * @param {import("../app.js").default} app
- * @returns {import("./types.js").AgentSelectionDeclaration[]}
- */
-function buildSelectionDeclarations(app) {
-    const sampleView = app.getSampleView();
-    if (!sampleView || typeof sampleView.visit !== "function") {
-        return [];
-    }
-
-    /** @type {import("./types.js").AgentSelectionDeclaration[]} */
-    const declarations = [];
-
-    sampleView.visit((view) => {
-        if (!view?.paramRuntime?.paramConfigs) {
-            return;
-        }
-
-        for (const [paramName, param] of view.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
-                continue;
-            }
-
-            const select = asSelectionConfig(param.select);
-            if (!getAddressableViewName(view)) {
-                continue;
-            }
-
-            let selector;
-            try {
-                selector = getParamSelector(view, paramName);
-            } catch {
-                continue;
-            }
-
-            const currentValue = view.paramRuntime.getValue(paramName);
-
-            declarations.push({
-                selectionType: select.type,
-                label: formatScopedParamName(sampleView, selector),
-                selector,
-                persist: param.persist !== false,
-                active: isActiveSelectionValue(select.type, currentValue),
-                encodings: isIntervalSelectionConfig(select)
-                    ? [...(select.encodings ?? [])]
-                    : undefined,
-                toggle:
-                    isPointSelectionConfig(select) && select.toggle
-                        ? true
-                        : undefined,
-                clearable: select.clear !== false,
-            });
-        }
-    });
-
-    return declarations.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
@@ -119,23 +50,6 @@ function buildSelectionSummaries(app) {
             active: true,
             nameSuffix: createSelectionNameSuffix(entry.value),
         }));
-}
-
-/**
- * @param {"point" | "interval"} selectionType
- * @param {unknown} value
- * @returns {boolean}
- */
-function isActiveSelectionValue(selectionType, value) {
-    if (selectionType === "interval") {
-        return isActiveIntervalSelectionValue(value);
-    }
-
-    if (selectionType === "point") {
-        return isActivePointSelectionValue(value);
-    }
-
-    return false;
 }
 
 /**
@@ -284,6 +198,17 @@ function getEncodingFieldInfos(view) {
 }
 
 /**
+ * @param {any} view
+ * @returns {string | undefined}
+ */
+function getAddressableViewName(view) {
+    const candidate = view?.explicitName ?? view?.name;
+    return typeof candidate === "string" && candidate.length > 0
+        ? candidate
+        : undefined;
+}
+
+/**
  * @param {Array<{ view: string, viewTitle: string, field: string, dataType: string }>} fields
  */
 function deduplicateFieldInfos(fields) {
@@ -335,16 +260,6 @@ export function createFieldId(selectionId, view, field) {
 }
 
 /**
- * @param {any} view
- */
-function getAddressableViewName(view) {
-    const candidate = view?.explicitName ?? view?.name;
-    return typeof candidate === "string" && candidate.length > 0
-        ? candidate
-        : undefined;
-}
-
-/**
  * @param {unknown} value
  */
 function isActiveIntervalSelectionValue(value) {
@@ -367,22 +282,6 @@ function isActiveIntervalSelectionValue(value) {
         "value" in value &&
         Array.isArray(/** @type {any} */ (value).value) &&
         /** @type {any} */ (value).value.length === 2
-    );
-}
-
-/**
- * @param {unknown} value
- * @returns {boolean}
- */
-function isActivePointSelectionValue(value) {
-    return Boolean(
-        value &&
-        typeof value === "object" &&
-        "type" in value &&
-        value.type === "point" &&
-        "keys" in value &&
-        Array.isArray(/** @type {any} */ (value).keys) &&
-        /** @type {any} */ (value).keys.length > 0
     );
 }
 

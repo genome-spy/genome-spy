@@ -571,11 +571,6 @@ export interface AgentViewFieldSummary {
  */
 export interface AgentViewWorkflowContext {
     /**
-     * Static selection declarations from the visualization spec.
-     */
-    selectionDeclarations: AgentSelectionDeclaration[];
-
-    /**
      * Active interval selections.
      */
     selections: AgentSelectionSummary[];
