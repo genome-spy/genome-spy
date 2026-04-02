@@ -274,6 +274,7 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(tree.root.children[0]).not.toHaveProperty("data");
         expect(tree.root.children[0]).not.toHaveProperty("encodings");
         expect(tree.root.children[0]).not.toHaveProperty(
             "selectionDeclarations"
@@ -313,6 +314,7 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(tree.root.children[1].children[0]).toHaveProperty("data");
         expect(tree.root.children[1].children[0]).not.toHaveProperty(
             "encodings"
         );
@@ -346,6 +348,9 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(
+            tree.root.children[1].children[0].children[0]
+        ).not.toHaveProperty("data");
         expect(
             tree.root.children[1].children[0].children[0]
         ).not.toHaveProperty("encodings");
@@ -433,6 +438,7 @@ describe("buildViewTree", () => {
                 },
             })
         );
+        expect(tree.root.children[1].children[1]).not.toHaveProperty("data");
         expect(tree.root.children[1].children[1]).not.toHaveProperty(
             "encodings"
         );

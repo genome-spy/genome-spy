@@ -173,6 +173,10 @@ function pruneEmptyContainers(node) {
  * @param {import("./types.d.ts").AgentViewNode} node
  */
 function compactViewNode(node) {
+    if (node.collapsed) {
+        delete node.data;
+    }
+
     if (Array.isArray(node.children)) {
         for (const child of node.children) {
             compactViewNode(child);
