@@ -143,8 +143,8 @@ export default class AgentChatPanel extends LitElement {
             }
 
             .body {
-                display: grid;
-                grid-template-rows: auto 1fr auto;
+                display: flex;
+                flex-direction: column;
                 min-height: 0;
                 flex: 1 1 auto;
             }
@@ -179,6 +179,7 @@ export default class AgentChatPanel extends LitElement {
             .transcript {
                 display: flex;
                 flex-direction: column;
+                flex: 1 1 auto;
                 gap: 0.65rem;
                 min-height: 0;
                 overflow: auto;
@@ -321,7 +322,8 @@ export default class AgentChatPanel extends LitElement {
 
             .composer {
                 display: grid;
-                gap: 0.6rem;
+                flex: 0 0 auto;
+                gap: 0.35rem;
                 padding: var(--gs-basic-spacing, 10px);
                 border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
                 background: white;
@@ -384,10 +386,11 @@ export default class AgentChatPanel extends LitElement {
             .composer-footer {
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
+                justify-content: flex-start;
                 gap: 1rem;
                 color: #666;
                 font-size: 0.8rem;
+                flex-wrap: wrap;
             }
 
             .composer-hint {
@@ -983,3 +986,67 @@ export default class AgentChatPanel extends LitElement {
 }
 
 customElements.define("gs-agent-chat-panel", AgentChatPanel);
+
+/**
+ * Toggle the docked agent chat panel in the app shell.
+ *
+ * @param {import("../app.js").default} app
+ * @returns {Promise<void>}
+ */
+export async function toggleAgentChatPanel(app) {
+    if (!app.agentAdapter) {
+        return;
+    }
+
+    const appRoot = /** @type {HTMLElement | null} */ (
+        app.appContainer.querySelector(".genome-spy-app")
+    );
+    if (!appRoot) {
+        return;
+    }
+
+    let host = /** @type {HTMLElement | null} */ (
+        appRoot.querySelector("[data-agent-chat-panel-host]")
+    );
+
+    if (!host) {
+        host = document.createElement("div");
+        host.dataset.agentChatPanelHost = "true";
+        host.hidden = false;
+        host.style.position = "absolute";
+        host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
+        host.style.right = "var(--gs-basic-spacing, 10px)";
+        host.style.bottom = "var(--gs-basic-spacing, 10px)";
+        host.style.width = "min(42rem, 42vw)";
+        host.style.minWidth = "320px";
+        host.style.maxWidth = "100%";
+        host.style.zIndex = "40";
+        host.style.boxShadow = "-8px 0 24px rgba(0, 0, 0, 0.24)";
+        host.style.background = "white";
+        host.style.overflow = "hidden";
+
+        const panel = /** @type {AgentChatPanel} */ (
+            document.createElement("gs-agent-chat-panel")
+        );
+        panel.controller = app.agentAdapter;
+        host.append(panel);
+
+        appRoot.append(host);
+        await panel.updateComplete;
+        const textarea = panel.renderRoot.querySelector("textarea");
+        textarea?.focus();
+        return;
+    }
+
+    host.hidden = !host.hidden;
+    if (!host.hidden) {
+        const panel = /** @type {AgentChatPanel | null} */ (
+            host.querySelector("gs-agent-chat-panel")
+        );
+        if (panel) {
+            await panel.updateComplete;
+            const textarea = panel.renderRoot.querySelector("textarea");
+            textarea?.focus();
+        }
+    }
+}

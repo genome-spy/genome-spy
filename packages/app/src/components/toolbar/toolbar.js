@@ -6,6 +6,7 @@ import {
     faExpandArrowsAlt,
     faBug,
     faFileImage,
+    faRobot,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import { findGenomeScaleResolution } from "./searchField.js";
@@ -113,6 +114,22 @@ export default class Toolbar extends LitElement {
             <span class="version"
                 >${renderVersionLink(packageJson.version)}</span
             >
+
+            ${this.app.options.showLocalAgentButton && this.app.agentAdapter
+                ? html`
+                      <button
+                          class="tool-btn"
+                          title="Agent Chat"
+                          @click=${async () => {
+                              const { toggleAgentChatPanel } =
+                                  await import("../../agent/chatPanel.js");
+                              await toggleAgentChatPanel(this.app);
+                          }}
+                      >
+                          ${icon(faRobot).node[0]}
+                      </button>
+                  `
+                : nothing}
 
             <div class="dropdown bookmark-dropdown">
                 <button
