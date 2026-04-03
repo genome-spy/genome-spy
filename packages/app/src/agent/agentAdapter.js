@@ -61,6 +61,9 @@ export function createAgentAdapter(app) {
             /** @type {import("./types.js").IntentProgram} */ program
         ) => submitIntentProgram(app, program),
         summarizeExecutionResult,
+        summarizeIntentProgram: (
+            /** @type {import("./types.js").IntentProgram} */ program
+        ) => summarizeIntentProgram(app, program),
         requestPlan: (
             /** @type {string} */ message,
             /** @type {string[]} */ history = []
@@ -405,9 +408,10 @@ async function prepareAgentProgramStep(app, step) {
             throw new Error(validation.errors.join("\n"));
         }
 
+        const summaries = summarizeIntentProgram(app, validation.program);
         return {
             type: "intent_program",
-            summary: summarizeIntentProgram(app, validation.program).join("\n"),
+            summary: summaries.map((line) => "- " + line.text).join("\n"),
             program: validation.program,
         };
     } else if (step.type === "view_workflow") {

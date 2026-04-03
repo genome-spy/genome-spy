@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
+import templateResultToString from "../utils/templateResultToString.js";
 import {
     getActionCatalogEntry,
     listAgentActions,
@@ -94,6 +95,13 @@ describe("actionCatalog", () => {
             ],
         });
 
-        expect(summaries).toEqual(["Sort by age"]);
+        expect(summaries).toEqual([
+            expect.objectContaining({
+                text: "Sort by age",
+            }),
+        ]);
+        expect(templateResultToString(summaries[0].content)).toBe(
+            "Sort by age"
+        );
     });
 });

@@ -58,6 +58,14 @@ describe("submitIntentProgram", () => {
 
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
         expect(result.executedActions).toBe(2);
+        expect(result.summaries).toEqual([
+            expect.objectContaining({
+                text: "Sort by age",
+            }),
+            expect.objectContaining({
+                text: "Group by diagnosis",
+            }),
+        ]);
         expect(summarizeExecutionResult(result)).toContain(
             "Executed 2 actions."
         );

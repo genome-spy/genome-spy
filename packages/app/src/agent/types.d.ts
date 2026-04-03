@@ -597,6 +597,21 @@ export interface AgentActionSummary {
 }
 
 /**
+ * Renderable summary line for a planner-authored intent step.
+ */
+export interface IntentProgramSummaryLine {
+    /**
+     * Renderable content for chat or dialog UIs.
+     */
+    content: string | import("lit").TemplateResult;
+
+    /**
+     * Plain-text fallback for logs and exports.
+     */
+    text: string;
+}
+
+/**
  * Agent adapter API exposed to the UI and the embed entry point.
  */
 export interface AgentAdapter {
@@ -621,6 +636,11 @@ export interface AgentAdapter {
      * Summarizes an execution result for display.
      */
     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+
+    /**
+     * Summarizes a planner-authored intent program for preview.
+     */
+    summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
 
     /**
      * Requests a plan from the configured planner service.
@@ -851,7 +871,7 @@ export interface IntentProgramExecutionResult {
     /**
      * Human-readable summaries of the executed steps.
      */
-    summaries: string[];
+    summaries: IntentProgramSummaryLine[];
 
     /**
      * Executed program.

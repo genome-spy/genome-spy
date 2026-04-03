@@ -143,7 +143,7 @@ function createMockAgentController(scenario) {
                     response: {
                         type: "answer",
                         message:
-                            "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
+                            "This view summarizes the cohort. Try asking for a **sort** or **filter** to turn it into an action.",
                     },
                     trace: {
                         message,
@@ -195,8 +195,14 @@ function createMockAgentController(scenario) {
         summarizeExecutionResult: (/** @type {any} */ result) =>
             [
                 "Executed " + result.executedActions + " action(s).",
-                ...result.summaries,
+                ...result.summaries.map(
+                    (/** @type {any} */ summary) => summary.text
+                ),
             ].join("\n"),
+        summarizeIntentProgram: (/** @type {any} */ program) =>
+            program.steps.map((/** @type {any} */ step) =>
+                summarizeMockStep(step)
+            ),
     };
 }
 
@@ -261,27 +267,50 @@ function buildMockIntentProgram(normalizedMessage) {
 
 /**
  * @param {any} step
- * @returns {string}
+ * @returns {import("./types.d.ts").IntentProgramSummaryLine}
  */
 function summarizeMockStep(step) {
     if (step.actionType === "sortBy") {
-        return "Sort samples by " + step.payload.attribute.specifier + ".";
+        return {
+            content: html`
+                Sort samples by
+                <strong>${step.payload.attribute.specifier}</strong>.
+            `,
+            text: "Sort samples by " + step.payload.attribute.specifier + ".",
+        };
     } else if (step.actionType === "filterByNominal") {
-        return (
-            "Retain samples where " +
-            step.payload.attribute.specifier +
-            " is " +
-            step.payload.values.join(", ") +
-            "."
-        );
+        return {
+            content: html`
+                Retain samples where
+                <strong>${step.payload.attribute.specifier}</strong> is
+                ${step.payload.values.map(
+                    (/** @type {any} */ value, /** @type {number} */ index) =>
+                        html`${index > 0 ? ", " : ""}<strong>${value}</strong>`
+                )}.
+            `,
+            text:
+                "Retain samples where " +
+                step.payload.attribute.specifier +
+                " is " +
+                step.payload.values.join(", ") +
+                ".",
+        };
     } else if (step.actionType === "groupToQuartiles") {
-        return (
-            "Group samples into quartiles by " +
-            step.payload.attribute.specifier +
-            "."
-        );
+        return {
+            content: html`
+                Group samples into quartiles by
+                <strong>${step.payload.attribute.specifier}</strong>.
+            `,
+            text:
+                "Group samples into quartiles by " +
+                step.payload.attribute.specifier +
+                ".",
+        };
     } else {
-        return step.actionType;
+        return {
+            content: step.actionType,
+            text: step.actionType,
+        };
     }
 }
 

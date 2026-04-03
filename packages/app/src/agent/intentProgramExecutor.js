@@ -53,7 +53,7 @@ export function summarizeExecutionResult(result) {
     ];
 
     for (const summary of result.summaries) {
-        lines.push("- " + summary);
+        lines.push("- " + summary.text);
     }
 
     return lines.join("\n");

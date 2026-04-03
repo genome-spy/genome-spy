@@ -5,16 +5,20 @@ import {
     faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
+import { faStyles, formStyles } from "../components/generic/componentStyles.js";
+import safeMarkdown from "../utils/safeMarkdown.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 /**
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").IntentProgram} IntentProgram
  * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
  * @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult
+ * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
  * @typedef {import("./types.d.ts").PlanResponse} PlanResponse
  * @typedef {PlanResponse | {
  *     type: "clarify";
- *     message: string;
+ *     message: string | import("lit").TemplateResult;
  *     options?: ChatClarificationOption[];
  * }} ChatPlannerResponse
  *
@@ -28,19 +32,12 @@ import { css, html, LitElement, nothing } from "lit";
  *     id: number;
  *     kind: "user" | "assistant" | "clarification" | "plan" | "result" | "error";
  *     title?: string;
- *     text?: string;
- *     lines?: string[];
+ *     text?: string | import("lit").TemplateResult;
+ *     lines?: IntentProgramSummaryLine[];
  *     options?: ChatClarificationOption[];
  * }} ChatMessage
  *
  * @typedef {{
- *     viewTitle: string;
- *     viewType: string;
- *     sampleCount: number;
- *     attributeCount: number;
- *     actionCount: number;
- *     provenanceCount: number;
- *     paramCount: number;
  *     selectionSummaries: string[];
  * }} ChatContextSummary
  *
@@ -50,9 +47,9 @@ import { css, html, LitElement, nothing } from "lit";
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+ *     summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
  * }} AgentChatController
  */
-
 export default class AgentChatPanel extends LitElement {
     static properties = {
         controller: { attribute: false },
@@ -66,384 +63,356 @@ export default class AgentChatPanel extends LitElement {
         contextSummary: { state: true },
     };
 
-    static styles = css`
-        :host {
-            display: block;
-            box-sizing: border-box;
-            height: 100%;
-            min-height: 640px;
-            color: #102033;
-            font-family: var(
-                --gs-font-family,
-                Inter,
-                ui-sans-serif,
-                system-ui,
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif
-            );
-        }
+    static styles = [
+        formStyles,
+        faStyles,
+        css`
+            :host {
+                display: block;
+                box-sizing: border-box;
+                height: 100%;
+                min-height: 640px;
+                color: #222;
+                font-family: var(--gs-font-family, sans-serif);
+            }
 
-        .panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            min-height: 640px;
-            overflow: hidden;
-            border: 1px solid #d6dde8;
-            border-radius: 16px;
-            background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
-            box-shadow:
-                0 18px 48px rgba(15, 23, 42, 0.12),
-                0 2px 8px rgba(15, 23, 42, 0.05);
-        }
+            .panel {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                min-height: 640px;
+                overflow: hidden;
+                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                border-top: 3px solid var(--gs-theme-primary, #6c82ab);
+                border-radius: 4px;
+                background: white;
+                box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
+            }
 
-        header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 1rem 1rem 0.9rem;
-            color: #ffffff;
-            background: linear-gradient(135deg, #17243d 0%, #24436d 100%);
-        }
+            header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--gs-basic-spacing, 10px);
+                padding: var(--gs-basic-spacing, 10px);
+                border-bottom: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                background: white;
+            }
 
-        .header-main {
-            display: grid;
-            gap: 0.25rem;
-            min-width: 0;
-        }
+            .header-main {
+                display: grid;
+                gap: 2px;
+                min-width: 0;
+            }
 
-        .title-row {
-            display: flex;
-            align-items: center;
-            gap: 0.55rem;
-            min-width: 0;
-        }
+            .title-row {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                min-width: 0;
+                font-weight: bold;
+            }
 
-        .title-row svg {
-            width: 1em;
-            height: 1em;
-            flex: 0 0 auto;
-        }
+            .title-row svg {
+                width: 1em;
+                height: 1em;
+                flex: 0 0 auto;
+                color: var(--gs-theme-primary, #6c82ab);
+            }
 
-        .title {
-            font-size: 1rem;
-            font-weight: 700;
-            letter-spacing: 0.01em;
-        }
+            .title {
+                color: #222;
+                font-size: 1rem;
+                font-weight: 700;
+            }
 
-        .status {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.84);
-        }
+            .status {
+                color: #666;
+                font-size: 0.85rem;
+            }
 
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex: 0 0 auto;
-        }
+            .header-actions {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex: 0 0 auto;
+            }
 
-        .header-button,
-        .composer button,
-        .clarification-option {
-            border: 0;
-            border-radius: 999px;
-            font: inherit;
-            cursor: pointer;
-            transition:
-                transform 0.14s ease,
-                background-color 0.14s ease,
-                box-shadow 0.14s ease,
-                opacity 0.14s ease;
-        }
+            .header-actions .btn {
+                padding: 4px 12px;
+            }
 
-        .header-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.55rem 0.9rem;
-            color: #102033;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
-        }
+            .body {
+                display: grid;
+                grid-template-rows: auto 1fr auto;
+                min-height: 0;
+                flex: 1 1 auto;
+            }
 
-        .header-button:hover:not(:disabled),
-        .composer button:hover:not(:disabled),
-        .clarification-option:hover:not(:disabled) {
-            transform: translateY(-1px);
-        }
+            .selection-summary {
+                margin: var(--gs-basic-spacing, 10px);
+                margin-bottom: 0;
+            }
 
-        .header-button:disabled,
-        .composer button:disabled,
-        .clarification-option:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
+            .selection-summary-title {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                font-weight: 700;
+                margin-bottom: 0.4rem;
+            }
 
-        .body {
-            display: grid;
-            grid-template-rows: auto auto 1fr auto;
-            min-height: 0;
-            flex: 1 1 auto;
-        }
+            .selection-summary-title svg {
+                width: 0.95em;
+                height: 0.95em;
+            }
 
-        .context {
-            display: grid;
-            gap: 0.75rem;
-            padding: 0.95rem 1rem;
-            background: #f5f8fc;
-            border-bottom: 1px solid #e0e7f0;
-        }
+            .selection-summary-list {
+                margin: 0;
+                padding-left: 1.2rem;
+            }
 
-        .context-header {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #31445f;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
+            .selection-summary-list li + li {
+                margin-top: 0.25rem;
+            }
 
-        .context-header svg {
-            width: 0.95em;
-            height: 0.95em;
-        }
+            .transcript {
+                display: flex;
+                flex-direction: column;
+                gap: 0.65rem;
+                min-height: 0;
+                overflow: auto;
+                padding: var(--gs-basic-spacing, 10px);
+                background: #fafafa;
+            }
 
-        .context-grid {
-            display: grid;
-            gap: 0.75rem;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+            .empty-state {
+                display: grid;
+                gap: 0.7rem;
+                padding: var(--gs-basic-spacing, 10px);
+                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                border-radius: 4px;
+                border-left-width: 4px;
+                border-left-color: var(--gs-theme-primary, #6c82ab);
+                background: white;
+                color: #444;
+            }
 
-        .context-card {
-            display: grid;
-            gap: 0.35rem;
-            min-width: 0;
-        }
+            .empty-state strong {
+                color: #222;
+            }
 
-        .context-label {
-            font-size: 0.74rem;
-            font-weight: 700;
-            color: #6a7685;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
+            .empty-examples {
+                display: grid;
+                gap: 0.35rem;
+                margin: 0;
+                padding-left: 1.1rem;
+            }
 
-        .context-value {
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: #18263d;
-            word-break: break-word;
-        }
+            .message {
+                display: grid;
+                gap: 0.35rem;
+                width: 100%;
+                box-sizing: border-box;
+                padding: 0.75rem 0.85rem;
+                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                border-radius: 4px;
+                background: white;
+                border-left-width: 4px;
+            }
 
-        .context-note {
-            font-size: 0.82rem;
-            color: #516074;
-            line-height: 1.4;
-        }
+            .message.user {
+                align-self: flex-end;
+                max-width: min(78%, 40rem);
+                border-left-color: var(--gs-theme-primary, #6c82ab);
+                border-color: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 30%,
+                    #d0d0d0
+                );
+                background: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 8%,
+                    white
+                );
+                border-radius: 14px 14px 4px 14px;
+            }
 
-        .transcript {
-            display: flex;
-            flex-direction: column;
-            gap: 0.9rem;
-            min-height: 0;
-            overflow: auto;
-            padding: 1rem;
-        }
+            .message.assistant {
+                align-self: flex-start;
+                max-width: min(84%, 44rem);
+                padding: 0.25rem 0.15rem;
+                border: none;
+                background: transparent;
+                border-left-width: 0;
+            }
 
-        .empty-state {
-            display: grid;
-            gap: 0.7rem;
-            padding: 1rem;
-            border: 1px dashed #c7d3e3;
-            border-radius: 14px;
-            background: #fbfdff;
-            color: #47576b;
-        }
+            .assistant-body {
+                display: grid;
+                gap: 0.6rem;
+            }
 
-        .empty-state strong {
-            color: #18263d;
-        }
+            .assistant-body .markdown > :first-child {
+                margin-top: 0;
+            }
 
-        .empty-examples {
-            display: grid;
-            gap: 0.35rem;
-            margin: 0;
-            padding-left: 1.1rem;
-        }
+            .assistant-body .markdown > :last-child {
+                margin-bottom: 0;
+            }
 
-        .message {
-            display: grid;
-            gap: 0.45rem;
-            max-width: min(88%, 40rem);
-            padding: 0.9rem 1rem;
-            border-radius: 18px;
-            box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
-        }
+            .message.plan {
+                border-left-color: #b98f2d;
+            }
 
-        .message.user {
-            align-self: flex-end;
-            border-bottom-right-radius: 6px;
-            color: #fff;
-            background: linear-gradient(135deg, #1b2b49 0%, #23406b 100%);
-        }
+            .message.result {
+                border-left-color: #4d8c52;
+            }
 
-        .message.assistant {
-            align-self: flex-start;
-            border: 1px solid #d9e2ee;
-            border-bottom-left-radius: 6px;
-            background: #eef4fb;
-        }
+            .message.clarification {
+                border-left-color: #5f84b8;
+            }
 
-        .message.plan {
-            align-self: flex-start;
-            border: 1px solid #f1d9a7;
-            border-bottom-left-radius: 6px;
-            background: #fff8eb;
-        }
+            .message.error {
+                border-left-color: #b55454;
+            }
 
-        .message.result {
-            align-self: flex-start;
-            border: 1px solid #cbe5d0;
-            border-bottom-left-radius: 6px;
-            background: #f1fbf4;
-        }
+            .message-title {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                font-size: 0.86rem;
+                font-weight: 700;
+                color: #444;
+            }
 
-        .message.clarification {
-            align-self: flex-start;
-            border: 1px solid #d9e2ee;
-            border-bottom-left-radius: 6px;
-            background: #f8fbfe;
-        }
+            .message-title svg {
+                width: 0.95em;
+                height: 0.95em;
+                flex: 0 0 auto;
+                color: var(--gs-theme-primary, #6c82ab);
+            }
 
-        .message.error {
-            align-self: flex-start;
-            border: 1px solid #f1c1c1;
-            border-bottom-left-radius: 6px;
-            background: #fff4f4;
-        }
+            .message-text {
+                line-height: 1.45;
+                color: #222;
+            }
 
-        .message-title {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            font-size: 0.78rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
+            .message-lines {
+                display: grid;
+                gap: 0.4rem;
+                margin: 0;
+                padding-left: 1.15rem;
+            }
 
-        .message-title svg {
-            width: 0.95em;
-            height: 0.95em;
-            flex: 0 0 auto;
-        }
+            .message-lines li {
+                line-height: 1.45;
+            }
 
-        .message-text {
-            line-height: 1.45;
-            white-space: pre-wrap;
-        }
+            .clarification-options {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                padding-top: 0.15rem;
+            }
 
-        .message-lines {
-            display: grid;
-            gap: 0.4rem;
-            margin: 0;
-            padding-left: 1.15rem;
-        }
+            .clarification-options .btn {
+                padding: 0.35rem 0.75rem;
+            }
 
-        .message-lines li {
-            line-height: 1.45;
-        }
+            .composer {
+                display: grid;
+                gap: 0.6rem;
+                padding: var(--gs-basic-spacing, 10px);
+                border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                background: white;
+            }
 
-        .clarification-options {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
+            .composer-row {
+                display: flex;
+                align-items: flex-end;
+                gap: 0.65rem;
+            }
 
-        .clarification-option {
-            padding: 0.55rem 0.85rem;
-            background: #18263d;
-            color: #fff;
-        }
+            .composer textarea {
+                flex: 1 1 auto;
+                min-height: 4.75rem;
+                resize: vertical;
+                padding: 0.375em 0.75em;
+                border: var(--form-control-border);
+                border-radius: var(--form-control-border-radius);
+                font: inherit;
+                color: var(--form-control-color);
+                background: #fff;
+                box-sizing: border-box;
+            }
 
-        .composer {
-            display: grid;
-            gap: 0.6rem;
-            padding: 1rem;
-            border-top: 1px solid #e0e7f0;
-            background: rgba(255, 255, 255, 0.96);
-        }
+            .composer textarea:focus {
+                border-color: var(--gs-theme-primary, #6c82ab);
+                box-shadow: 0 0 0 0.2rem rgb(108 130 171 / 25%);
+            }
 
-        .composer-row {
-            display: flex;
-            align-items: flex-end;
-            gap: 0.65rem;
-        }
+            .composer .btn.btn-primary {
+                background-color: var(--gs-theme-primary, #6c82ab);
+                background-image: linear-gradient(
+                    to bottom,
+                    oklch(
+                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.07) c h
+                    ),
+                    oklch(
+                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.07) c h
+                    )
+                );
+                border-color: oklch(
+                    from var(--gs-theme-primary, #6c82ab) calc(l - 0.08) c h
+                );
+                color: var(--gs-theme-on-primary, #ffffff);
+                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+            }
 
-        .composer textarea {
-            flex: 1 1 auto;
-            min-height: 4.75rem;
-            resize: vertical;
-            padding: 0.8rem 0.95rem;
-            border: 1px solid #cfd9e7;
-            border-radius: 14px;
-            font: inherit;
-            color: #102033;
-            background: #fff;
-            outline: none;
-            box-sizing: border-box;
-        }
+            .composer .btn.btn-primary:hover:not(:disabled) {
+                background-image: linear-gradient(
+                    to bottom,
+                    oklch(
+                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.1) c h
+                    ),
+                    oklch(
+                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.04) c h
+                    )
+                );
+            }
 
-        .composer textarea:focus {
-            border-color: #7b98c2;
-            box-shadow: 0 0 0 3px rgba(123, 152, 194, 0.18);
-        }
+            .composer-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                color: #666;
+                font-size: 0.8rem;
+            }
 
-        .composer button {
-            padding: 0.7rem 1rem;
-            background: #1b2b49;
-            color: #fff;
-            box-shadow: 0 10px 24px rgba(27, 43, 73, 0.18);
-        }
+            .composer-hint {
+                min-width: 0;
+            }
 
-        .composer-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            color: #607086;
-            font-size: 0.8rem;
-        }
+            .composer-status {
+                flex: 0 0 auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                font-weight: 600;
+                color: #444;
+            }
 
-        .composer-hint {
-            min-width: 0;
-        }
+            .composer-status svg {
+                width: 0.95em;
+                height: 0.95em;
+            }
 
-        .composer-status {
-            flex: 0 0 auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-weight: 600;
-            color: #31445f;
-        }
-
-        .composer-status svg {
-            width: 0.95em;
-            height: 0.95em;
-        }
-
-        .muted {
-            color: #66778c;
-        }
-    `;
+            .muted {
+                color: #666;
+            }
+        `,
+    ];
 
     constructor() {
         super();
@@ -457,7 +426,7 @@ export default class AgentChatPanel extends LitElement {
         this.messages = [];
         /** @type {{ message: string } | null} */
         this.pendingRequest = null;
-        /** @type {{ title: string, lines: string[] } | null} */
+        /** @type {{ title: string, lines: IntentProgramSummaryLine[] } | null} */
         this.lastPlan = null;
         /** @type {string} */
         this.lastError = "";
@@ -502,7 +471,7 @@ export default class AgentChatPanel extends LitElement {
 
                     <div class="header-actions">
                         <button
-                            class="header-button"
+                            class="btn"
                             type="button"
                             title="Refresh context"
                             ?disabled=${!this.controller}
@@ -516,7 +485,7 @@ export default class AgentChatPanel extends LitElement {
                 </header>
 
                 <div class="body">
-                    ${this.#renderContext()}
+                    ${this.#renderSelectionSummary()}
                     <section class="transcript">
                         ${this.messages.length === 0
                             ? this.#renderEmptyState()
@@ -540,6 +509,7 @@ export default class AgentChatPanel extends LitElement {
                                 ?disabled=${!this.controller ||
                                 this.pendingRequest !== null ||
                                 this.draft.trim().length === 0}
+                                class="btn btn-primary"
                             >
                                 Send
                             </button>
@@ -568,52 +538,26 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @returns {import("lit").TemplateResult}
+     * @returns {import("lit").TemplateResult | typeof nothing}
      */
-    #renderContext() {
-        if (!this.contextSummary) {
-            return html`
-                <section class="context">
-                    <div class="context-header">
-                        ${icon(faInfoCircle).node[0]} Context
-                    </div>
-                    <div class="context-note">
-                        Connect a controller to show the current view, selection
-                        state, and provenance summary here.
-                    </div>
-                </section>
-            `;
+    #renderSelectionSummary() {
+        if (
+            !this.contextSummary ||
+            this.contextSummary.selectionSummaries.length === 0
+        ) {
+            return nothing;
         }
 
-        const summary = this.contextSummary;
         return html`
-            <section class="context">
-                <div class="context-header">
-                    ${icon(faInfoCircle).node[0]} Context
+            <section class="selection-summary gs-alert info">
+                <div class="selection-summary-title">
+                    ${icon(faInfoCircle).node[0]} Active selections
                 </div>
-                <div class="context-grid">
-                    <div class="context-card">
-                        <div class="context-label">View</div>
-                        <div class="context-value">${summary.viewTitle}</div>
-                        <div class="context-note">
-                            ${summary.viewType} · ${summary.sampleCount} samples
-                            · ${summary.attributeCount} attributes
-                        </div>
-                    </div>
-                    <div class="context-card">
-                        <div class="context-label">Selection</div>
-                        <div class="context-value">
-                            ${summary.selectionSummaries.length > 0
-                                ? summary.selectionSummaries[0]
-                                : "No active selection"}
-                        </div>
-                        <div class="context-note">
-                            ${summary.paramCount} bookmarkable params ·
-                            ${summary.actionCount} available actions ·
-                            ${summary.provenanceCount} provenance actions
-                        </div>
-                    </div>
-                </div>
+                <ul class="selection-summary-list">
+                    ${this.contextSummary.selectionSummaries.map(
+                        (summary) => html`<li>${summary}</li>`
+                    )}
+                </ul>
             </section>
         `;
     }
@@ -654,10 +598,10 @@ export default class AgentChatPanel extends LitElement {
                         ${message.options?.map(
                             (option) => html`
                                 <button
-                                    class="clarification-option"
+                                    class="btn"
                                     type="button"
                                     @click=${() =>
-                                        this.#submitMessage(option.label)}
+                                        this.#submitMessage(option.value)}
                                 >
                                     ${option.label}
                                 </button>
@@ -673,13 +617,15 @@ export default class AgentChatPanel extends LitElement {
                         ${icon(faInfoCircle).node[0]} Plan preview
                     </div>
                     ${message.text
-                        ? html`<div class="message-text">${message.text}</div>`
+                        ? html`<div class="message-text">
+                              ${this.#renderMarkdown(message.text)}
+                          </div>`
                         : nothing}
                     ${message.lines?.length
                         ? html`
                               <ul class="message-lines">
                                   ${message.lines.map(
-                                      (line) => html`<li>${line}</li>`
+                                      (line) => html`<li>${line.content}</li>`
                                   )}
                               </ul>
                           `
@@ -699,7 +645,7 @@ export default class AgentChatPanel extends LitElement {
                         ? html`
                               <ol class="message-lines">
                                   ${message.lines.map(
-                                      (line) => html`<li>${line}</li>`
+                                      (line) => html`<li>${line.content}</li>`
                                   )}
                               </ol>
                           `
@@ -718,19 +664,29 @@ export default class AgentChatPanel extends LitElement {
         } else if (message.kind === "assistant") {
             return html`
                 <article class="message assistant">
-                    <div class="message-title">
-                        ${icon(faRobot).node[0]} Assistant
+                    <div class="assistant-body">
+                        ${this.#renderMarkdown(message.text ?? "")}
                     </div>
-                    <div class="message-text">${message.text ?? ""}</div>
                 </article>
             `;
         } else {
             return html`
                 <article class="message user">
-                    <div class="message-title">You</div>
                     <div class="message-text">${message.text ?? ""}</div>
                 </article>
             `;
+        }
+    }
+
+    /**
+     * @param {string | import("lit").TemplateResult} content
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderMarkdown(content) {
+        if (typeof content === "string") {
+            return html`${safeMarkdown(content)}`;
+        } else {
+            return html`${content}`;
         }
     }
 
@@ -818,7 +774,13 @@ export default class AgentChatPanel extends LitElement {
                 (message) =>
                     message.kind === "user" || message.kind === "assistant"
             )
-            .map((message) => message.text ?? "")
+            .map((message) =>
+                typeof message.text === "string"
+                    ? message.text
+                    : message.text
+                      ? templateResultToString(message.text)
+                      : ""
+            )
             .filter(Boolean)
             .slice(-8);
     }
@@ -848,11 +810,12 @@ export default class AgentChatPanel extends LitElement {
             });
             this.status = "clarification";
         } else if (response.type === "intent_program") {
+            const planLines = this.controller.summarizeIntentProgram(
+                response.program
+            );
             this.lastPlan = {
                 title: "Proposed actions",
-                lines: response.program.steps.map(
-                    (step) => step.actionType + this.#formatPlanPayload(step)
-                ),
+                lines: planLines,
             };
 
             this.#appendMessage({
@@ -881,11 +844,15 @@ export default class AgentChatPanel extends LitElement {
             const result = await this.controller.submitIntentProgram(
                 validation.program
             );
-            const summary = this.controller.summarizeExecutionResult(result);
             this.#appendMessage({
                 kind: "result",
-                text: summary.split("\n")[0] ?? "Executed actions.",
-                lines: summary.split("\n").slice(1),
+                text:
+                    "Executed " +
+                    result.executedActions +
+                    " action" +
+                    (result.executedActions === 1 ? "" : "s") +
+                    ".",
+                lines: result.summaries,
             });
             this.status = "idle";
         } else if (response.type === "view_workflow") {
@@ -912,46 +879,6 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @param {{ actionType: string, payload: Record<string, any> }} step
-     * @returns {string}
-     */
-    #formatPlanPayload(step) {
-        if (step.actionType === "sortBy" && step.payload.attribute) {
-            return " on " + this.#formatAttribute(step.payload.attribute);
-        } else if (
-            step.actionType === "filterByNominal" &&
-            step.payload.attribute
-        ) {
-            return " on " + this.#formatAttribute(step.payload.attribute);
-        } else if (
-            step.actionType === "filterByQuantitative" &&
-            step.payload.attribute
-        ) {
-            return " on " + this.#formatAttribute(step.payload.attribute);
-        } else {
-            return "";
-        }
-    }
-
-    /**
-     * @param {unknown} attribute
-     * @returns {string}
-     */
-    #formatAttribute(attribute) {
-        if (
-            attribute &&
-            typeof attribute === "object" &&
-            "specifier" in attribute
-        ) {
-            return String(
-                /** @type {{ specifier: unknown }} */ (attribute).specifier
-            );
-        } else {
-            return "attribute";
-        }
-    }
-
-    /**
      * @param {Omit<ChatMessage, "id">} message
      */
     #appendMessage(message) {
@@ -970,26 +897,31 @@ export default class AgentChatPanel extends LitElement {
      */
     #summarizeContext(context) {
         return {
-            viewTitle: context.view.title,
-            viewType: context.view.type,
-            sampleCount: context.view.sampleCount,
-            attributeCount: context.attributes.length,
-            actionCount: context.actionSummaries.length,
-            provenanceCount: context.provenance.length,
-            paramCount: context.params.length,
-            selectionSummaries: context.params.map((param) => {
-                const selector = param.selector;
-                const selectorText =
-                    selector &&
-                    typeof selector === "object" &&
-                    "scope" in selector
-                        ? selector.scope.join("/") || "root"
-                        : "root";
-                return (
-                    selectorText + ": " + this.#formatContextValue(param.value)
-                );
-            }),
+            selectionSummaries: context.params
+                .map((param) => this.#formatSelectionSummary(param))
+                .filter(Boolean),
         };
+    }
+
+    /**
+     * @param {import("./types.d.ts").AgentParamSummary} param
+     * @returns {string}
+     */
+    #formatSelectionSummary(param) {
+        if (param.value === null || param.value === undefined) {
+            return "";
+        }
+
+        const selector = param.selector;
+        const selectorLabel =
+            selector &&
+            typeof selector === "object" &&
+            "param" in selector &&
+            selector.param
+                ? String(selector.param)
+                : param.key;
+
+        return selectorLabel + ": " + this.#formatContextValue(param.value);
     }
 
     /**

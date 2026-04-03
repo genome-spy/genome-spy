@@ -74,7 +74,7 @@ export function getActionCatalogEntry(actionType) {
 /**
  * @param {import("../app.js").default} app
  * @param {import("./types.js").IntentProgram} program
- * @returns {string[]}
+ * @returns {import("./types.js").IntentProgramSummaryLine[]}
  */
 export function summarizeIntentProgram(app, program) {
     const getAttributeInfo = getAttributeInfoSource(app);
@@ -84,7 +84,10 @@ export function summarizeIntentProgram(app, program) {
             step.payload
         );
         const info = getActionInfo(action, getAttributeInfo);
-        const title = info?.provenanceTitle ?? info?.title ?? step.actionType;
-        return templateResultToString(title);
+        const content = info?.provenanceTitle ?? info?.title ?? step.actionType;
+        return {
+            content,
+            text: templateResultToString(content),
+        };
     });
 }
