@@ -36,6 +36,7 @@
 ## Data + Visualization Context
 - See `packages/app/LLM_PLAN/data-schema.md` for the proposed LLM-facing context schema.
 - See `packages/app/LLM_PLAN/view-tree.md` for the proposed normalized view-tree IR.
+- See `packages/app/LLM_PLAN/chat-ui.md` for the proposed chat surface and component shape.
 
 ## Action + State Context
 - See `packages/app/LLM_PLAN/action-schema.md` for the proposed action/provenance schema.
