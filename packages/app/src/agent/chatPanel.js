@@ -12,6 +12,11 @@ import { css, html, LitElement, nothing } from "lit";
  * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
  * @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult
  * @typedef {import("./types.d.ts").PlanResponse} PlanResponse
+ * @typedef {PlanResponse | {
+ *     type: "clarify";
+ *     message: string;
+ *     options?: ChatClarificationOption[];
+ * }} ChatPlannerResponse
  *
  * @typedef {{
  *     value: string;
@@ -41,20 +46,12 @@ import { css, html, LitElement, nothing } from "lit";
  *
  * @typedef {{
  *     getAgentContext(): AgentContext;
- *     requestPlan(message: string, history?: string[]): Promise<{ response: PlanResponse, trace: Record<string, any> }>;
+ *     requestPlan(message: string, history?: string[]): Promise<{ response: ChatPlannerResponse, trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
  * }} AgentChatController
  */
-
-const STATUS_LABELS = {
-    idle: "Ready",
-    thinking: "Thinking",
-    executing: "Executing",
-    clarification: "Need clarification",
-    error: "Error",
-};
 
 export default class AgentChatPanel extends LitElement {
     static properties = {
@@ -466,15 +463,19 @@ export default class AgentChatPanel extends LitElement {
         this.lastError = "";
         /** @type {ChatContextSummary | null} */
         this.contextSummary = null;
-
-        this.#nextMessageId = 1;
     }
+
+    /** @type {number} */
+    #nextMessageId = 1;
 
     connectedCallback() {
         super.connectedCallback();
         void this.#refreshContext();
     }
 
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     */
     updated(changedProperties) {
         if (changedProperties.has("controller")) {
             void this.#refreshContext();
@@ -491,7 +492,7 @@ export default class AgentChatPanel extends LitElement {
                             <div class="title">${this.panelTitle}</div>
                         </div>
                         <div class="status">
-                            ${STATUS_LABELS[this.status] ?? this.status}
+                            ${this.#getStatusLabel()}
                             ${this.pendingRequest
                                 ? html`&nbsp;·&nbsp;${this.pendingRequest
                                       .message}`
@@ -734,7 +735,7 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @param {InputEvent} event
+     * @param {Event} event
      */
     #handleDraftInput = (event) => {
         this.draft = /** @type {HTMLTextAreaElement} */ (event.target).value;
@@ -751,7 +752,7 @@ export default class AgentChatPanel extends LitElement {
     };
 
     /**
-     * @param {SubmitEvent} event
+     * @param {Event} event
      */
     #handleSubmit = (event) => {
         event.preventDefault();
@@ -823,7 +824,7 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @param {PlanResponse} response
+     * @param {ChatPlannerResponse} response
      * @returns {Promise<void>}
      */
     async #handleResponse(response) {
@@ -834,10 +835,12 @@ export default class AgentChatPanel extends LitElement {
             });
             this.status = "idle";
         } else if (response.type === "clarify") {
+            const options =
+                "options" in response ? (response.options ?? []) : [];
             this.#appendMessage({
                 kind: "clarification",
                 text: response.message,
-                options: response.options?.map((option) => ({
+                options: options.map((option) => ({
                     value: option.value,
                     label: option.label,
                     description: option.description,
@@ -949,7 +952,7 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @param {ChatMessage} message
+     * @param {Omit<ChatMessage, "id">} message
      */
     #appendMessage(message) {
         this.messages = [
@@ -1023,6 +1026,26 @@ export default class AgentChatPanel extends LitElement {
             this.contextSummary = this.#summarizeContext(context);
         } catch {
             this.contextSummary = null;
+        }
+    }
+
+    /**
+     * @returns {string}
+     */
+    #getStatusLabel() {
+        switch (this.status) {
+            case "idle":
+                return "Ready";
+            case "thinking":
+                return "Thinking";
+            case "executing":
+                return "Executing";
+            case "clarification":
+                return "Need clarification";
+            case "error":
+                return "Error";
+            default:
+                return this.status;
         }
     }
 }

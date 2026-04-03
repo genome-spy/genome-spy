@@ -26,7 +26,7 @@ export default {
  * @returns {any}
  */
 function createMockAgentController(scenario) {
-    const baseContext = {
+    const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
         view: {
             type: "sampleView",
@@ -95,11 +95,11 @@ function createMockAgentController(scenario) {
         lifecycle: {
             appInitialized: true,
         },
-    };
+    });
 
     return {
         getAgentContext: () => baseContext,
-        requestPlan: async (message) => {
+        requestPlan: async (/** @type {string} */ message) => {
             const normalized = message.toLowerCase();
 
             if (scenario === "error" || normalized.includes("error")) {
@@ -161,27 +161,27 @@ function createMockAgentController(scenario) {
                 },
             };
         },
-        validateIntentProgram: (program) => {
+        validateIntentProgram: (/** @type {any} */ program) => {
             if (
                 !program ||
                 typeof program !== "object" ||
                 !Array.isArray(program.steps) ||
                 program.steps.length === 0
             ) {
-                return {
+                return /** @type {any} */ ({
                     ok: false,
                     errors: ["The mock planner did not return any steps."],
-                };
+                });
             }
 
-            return {
+            return /** @type {any} */ ({
                 ok: true,
                 errors: [],
                 program,
-            };
+            });
         },
-        submitIntentProgram: async (program) => {
-            const summaries = program.steps.map((step) =>
+        submitIntentProgram: async (/** @type {any} */ program) => {
+            const summaries = program.steps.map((/** @type {any} */ step) =>
                 summarizeMockStep(step)
             );
 
@@ -192,7 +192,7 @@ function createMockAgentController(scenario) {
                 program,
             };
         },
-        summarizeExecutionResult: (result) =>
+        summarizeExecutionResult: (/** @type {any} */ result) =>
             [
                 "Executed " + result.executedActions + " action(s).",
                 ...result.summaries,
@@ -202,7 +202,7 @@ function createMockAgentController(scenario) {
 
 /**
  * @param {string} normalizedMessage
- * @returns {import("./types.d.ts").IntentProgram}
+ * @returns {any}
  */
 function buildMockIntentProgram(normalizedMessage) {
     if (normalizedMessage.includes("filter")) {
@@ -260,7 +260,7 @@ function buildMockIntentProgram(normalizedMessage) {
 }
 
 /**
- * @param {import("./types.d.ts").IntentProgramStep} step
+ * @param {any} step
  * @returns {string}
  */
 function summarizeMockStep(step) {
