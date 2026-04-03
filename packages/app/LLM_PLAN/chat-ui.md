@@ -12,6 +12,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 ## Recommended Component Shape
 - Start with one shadow-DOM web component.
 - Use a single top-level docked component such as `gs-agent-chat-panel`.
+- Keep the implementation under `packages/app/src/agent` so the chat UI stays close to the rest of the agent code.
 - Keep transcript rendering, composer handling, clarification UI, and plan preview inside the same component.
 - Split into multiple web components only if a subpart becomes reusable or materially harder to maintain.
 
@@ -62,7 +63,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 
 ## Storybook
 - Add a dedicated Storybook story for the chat panel.
-- Keep the story in the same component folder as the implementation, following the existing `*.stories.js` pattern.
+- Keep the story in the same agent folder as the implementation, following the existing `*.stories.js` pattern.
 - Provide a realistic mock agent in Storybook so the component can be exercised without the real planner service.
 - The mock should simulate:
   - plain answers
