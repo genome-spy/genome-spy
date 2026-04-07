@@ -216,6 +216,23 @@ describe("buildViewTree", () => {
                             },
                         },
                     ],
+                    [
+                        "threshold",
+                        {
+                            name: "threshold",
+                            description: "Threshold for the range control.",
+                            persist: true,
+                            value: 0.6,
+                            bind: {
+                                input: "range",
+                                name: "Threshold",
+                                description: "Adjust the cutoff.",
+                                min: 0,
+                                max: 1,
+                                step: 0.1,
+                            },
+                        },
+                    ],
                 ]),
                 getValue: (paramName) =>
                     paramName === "brush"
@@ -225,7 +242,9 @@ describe("buildViewTree", () => {
                                   x: [0, 1],
                               },
                           }
-                        : undefined,
+                        : paramName === "threshold"
+                          ? 0.6
+                          : undefined,
             },
             getScaleResolution: (channel) =>
                 channel === "x"
@@ -287,7 +306,7 @@ describe("buildViewTree", () => {
             })
         );
         expect(tree.root).not.toHaveProperty("encodings");
-        expect(tree.root).not.toHaveProperty("selectionDeclarations");
+        expect(tree.root).not.toHaveProperty("parameterDeclarations");
         expect(tree.root.children).toHaveLength(2);
         expect(tree.root.children[0]).toEqual(
             expect.objectContaining({
@@ -305,7 +324,7 @@ describe("buildViewTree", () => {
         expect(tree.root.children[0]).not.toHaveProperty("data");
         expect(tree.root.children[0]).not.toHaveProperty("encodings");
         expect(tree.root.children[0]).not.toHaveProperty(
-            "selectionDeclarations"
+            "parameterDeclarations"
         );
         expect(tree.root.children[0]).not.toHaveProperty("children");
         expect(tree.root.children[1]).toEqual(
@@ -321,7 +340,7 @@ describe("buildViewTree", () => {
         );
         expect(tree.root.children[1]).not.toHaveProperty("encodings");
         expect(tree.root.children[1]).not.toHaveProperty(
-            "selectionDeclarations"
+            "parameterDeclarations"
         );
         expect(tree.root.children[1].children).toHaveLength(2);
         expect(tree.root.children[1].children[0]).toEqual(
@@ -345,9 +364,10 @@ describe("buildViewTree", () => {
         expect(tree.root.children[1].children[0]).not.toHaveProperty(
             "encodings"
         );
-        expect(tree.root.children[1].children[0].selectionDeclarations).toEqual(
-            [
+        expect(tree.root.children[1].children[0].parameterDeclarations).toEqual(
+            expect.arrayContaining([
                 expect.objectContaining({
+                    parameterType: "selection",
                     selectionType: "interval",
                     label: "brush",
                     selector: {
@@ -366,7 +386,24 @@ describe("buildViewTree", () => {
                         },
                     },
                 }),
-            ]
+                expect.objectContaining({
+                    parameterType: "variable",
+                    label: "Threshold",
+                    selector: {
+                        scope: [],
+                        param: "threshold",
+                    },
+                    description: "Threshold for the range control.",
+                    value: 0.6,
+                    bind: expect.objectContaining({
+                        input: "range",
+                        label: "Threshold",
+                        min: 0,
+                        max: 1,
+                        step: 0.1,
+                    }),
+                }),
+            ])
         );
         expect(tree.root.children[1].children[0].children).toHaveLength(2);
         expect(tree.root.children[1].children[0].children[0]).toEqual(
@@ -391,7 +428,7 @@ describe("buildViewTree", () => {
         ).not.toHaveProperty("encodings");
         expect(
             tree.root.children[1].children[0].children[0]
-        ).not.toHaveProperty("selectionDeclarations");
+        ).not.toHaveProperty("parameterDeclarations");
         expect(
             tree.root.children[1].children[0].children[0]
         ).not.toHaveProperty("children");
@@ -477,7 +514,7 @@ describe("buildViewTree", () => {
             "encodings"
         );
         expect(tree.root.children[1].children[1]).not.toHaveProperty(
-            "selectionDeclarations"
+            "parameterDeclarations"
         );
         expect(tree.root.children[1].children[1]).not.toHaveProperty(
             "children"

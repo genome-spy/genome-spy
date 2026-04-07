@@ -150,13 +150,13 @@ The agent IR should be a normalized tree with explicit node summaries.
           "scope": [],
           "view": "samples"
         },
-        "selectionDeclarations": [
+        "parameterDeclarations": [
           {
             "selector": { "scope": [], "param": "brush" },
+            "parameterType": "selection",
             "selectionType": "interval",
             "label": "brush",
             "persist": true,
-            "active": false,
             "encodings": ["x"],
             "clearable": true
           }
@@ -174,7 +174,7 @@ The agent IR should be a normalized tree with explicit node summaries.
               "x2": { "field": "end", "type": "index" },
               "fill": { "field": "logR", "type": "quantitative" }
             },
-            "selectionDeclarations": [],
+            "parameterDeclarations": [],
             "children": []
           }
         ]
@@ -195,7 +195,7 @@ The agent IR should be a normalized tree with explicit node summaries.
 ## Normalization Rules
 - Resolve inherited encodings onto the node that effectively uses them.
 - Keep container nodes structural.
-- Keep selection declarations attached to the node that declares them.
+- Keep parameter declarations attached to the node that declares them.
 - Carry author `description` through unchanged.
 - Summarize root config only when it matters for understanding the visualization.
 
@@ -208,7 +208,7 @@ The agent IR should be a normalized tree with explicit node summaries.
 - `selector`
 - `data`
 - `encodings`
-- `selectionDeclarations`
+- `parameterDeclarations`
 - `attributes`
 - `children`
 

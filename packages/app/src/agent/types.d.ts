@@ -330,9 +330,9 @@ export interface AgentViewNode {
     encodings?: AgentViewEncodings;
 
     /**
-     * Selection declarations attached to the node.
+     * Adjustable parameter declarations attached to the node.
      */
-    selectionDeclarations?: AgentSelectionDeclaration[];
+    parameterDeclarations?: AgentParameterDeclaration[];
 
     /**
      * Child nodes in the view hierarchy.
@@ -452,26 +452,88 @@ export interface AgentSelectionSummary {
 }
 
 /**
- * Static selection capability declared by the visualization spec.
+ * Summary of a bind used by an adjustable variable parameter.
  */
-export interface AgentSelectionDeclaration {
+export interface AgentParameterBindSummary {
     /**
-     * Declared selection type.
+     * Input type used by the bind.
      */
-    selectionType: "point" | "interval";
+    input:
+        | "checkbox"
+        | "radio"
+        | "range"
+        | "select"
+        | "text"
+        | "number"
+        | "color";
 
+    /**
+     * Optional label override shown in the UI.
+     */
+    label: string;
+
+    /**
+     * Optional description or help text.
+     */
+    description?: string;
+
+    /**
+     * Optional debounce delay in milliseconds.
+     */
+    debounce?: number;
+
+    /**
+     * Minimum value for range inputs.
+     */
+    min?: number;
+
+    /**
+     * Maximum value for range inputs.
+     */
+    max?: number;
+
+    /**
+     * Step size for range inputs.
+     */
+    step?: number;
+
+    /**
+     * Available options for radio and select inputs.
+     */
+    options?: unknown[];
+
+    /**
+     * Labels for radio and select options.
+     */
+    labels?: string[];
+
+    /**
+     * Placeholder text for text and number inputs.
+     */
+    placeholder?: string;
+
+    /**
+     * Autocomplete hint for text inputs.
+     */
+    autocomplete?: string;
+}
+
+/**
+ * Shared metadata for an adjustable parameter.
+ */
+export interface AgentParameterDeclarationBase {
     /**
      * Human-readable label for the parameter.
      */
     label: string;
 
     /**
-     * Human-readable description of the selection, if available.
+     * Human-readable description of the parameter, if available.
      */
     description?: string;
 
     /**
-     * Current runtime value, if the selection is active.
+     * Current runtime value, if available.
      */
     value?: ParamValue;
 
@@ -481,9 +543,24 @@ export interface AgentSelectionDeclaration {
     selector: ParamSelector;
 
     /**
-     * Whether the selection is persisted in bookmarks.
+     * Whether the parameter is persisted in bookmarks.
      */
     persist: boolean;
+}
+
+/**
+ * Static selection capability declared by the visualization spec.
+ */
+export interface AgentSelectionParameterDeclaration extends AgentParameterDeclarationBase {
+    /**
+     * Parameter kind.
+     */
+    parameterType: "selection";
+
+    /**
+     * Declared selection type.
+     */
+    selectionType: "point" | "interval";
 
     /**
      * Encodings that drive the selection, when explicitly declared.
@@ -495,6 +572,28 @@ export interface AgentSelectionDeclaration {
      */
     clearable: boolean;
 }
+
+/**
+ * Adjustable variable parameter bound to an input control.
+ */
+export interface AgentVariableParameterDeclaration extends AgentParameterDeclarationBase {
+    /**
+     * Parameter kind.
+     */
+    parameterType: "variable";
+
+    /**
+     * Summarized input binding.
+     */
+    bind: AgentParameterBindSummary;
+}
+
+/**
+ * Adjustable parameter declared by the visualization spec.
+ */
+export type AgentParameterDeclaration =
+    | AgentSelectionParameterDeclaration
+    | AgentVariableParameterDeclaration;
 
 /**
  * Field inside a selected view that can be aggregated into a derived workflow.

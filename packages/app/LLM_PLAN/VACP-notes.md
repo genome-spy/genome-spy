@@ -43,8 +43,8 @@ The current agent IR already has the right base shape, but the paper and the
 logs suggest a few stronger semantic layers:
 
 - `viewTree` should describe what each branch means, not only how it is nested.
-- `selectionDeclarations` should surface the interaction affordances described
-  in the paper.
+- `parameterDeclarations` should surface the adjustable interaction
+  affordances described in the paper.
 - `actionCatalog` should expose stable identifiers, parameter schemas, and
   optional targets clearly.
 - `DataHandle`-style nodes should be the default way to query data on demand
@@ -52,8 +52,8 @@ logs suggest a few stronger semantic layers:
 - state should distinguish current values from lightweight summaries.
 - collapsed branches should remain discoverable, but compact.
 - action execution should fail loudly when the selector or selection is stale.
-- selection metadata should expose parameter types, valid ranges, and other
-  constraints clearly.
+- parameter metadata should expose selection types, input bindings, valid
+  ranges, and other constraints clearly.
 - state and capabilities should be separate reads, with capability discovery
   optionally scoped to the relevant subtree or node kinds.
 

@@ -15,6 +15,7 @@ import {
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
+import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { formatScopedParamName } from "../viewScopeUtils.js";
 import { serializeBookmarkableParamValue } from "../state/paramValueSerialization.js";
@@ -150,7 +151,7 @@ function pruneEmptyContainers(node) {
             return true;
         }
 
-        if (child.selectionDeclarations.length > 0) {
+        if (child.parameterDeclarations.length > 0) {
             return true;
         }
 
@@ -198,8 +199,8 @@ function compactViewNode(node) {
         delete node.encodings;
     }
 
-    if (node.selectionDeclarations && node.selectionDeclarations.length === 0) {
-        delete node.selectionDeclarations;
+    if (node.parameterDeclarations && node.parameterDeclarations.length === 0) {
+        delete node.parameterDeclarations;
     }
 }
 
@@ -247,8 +248,8 @@ function createUnknownRootNode() {
         description: "",
         encodings:
             /** @type {import("./types.d.ts").AgentViewEncodings} */ ({}),
-        selectionDeclarations:
-            /** @type {import("./types.d.ts").AgentSelectionDeclaration[]} */ ([]),
+        parameterDeclarations:
+            /** @type {import("./types.d.ts").AgentParameterDeclaration[]} */ ([]),
         children: /** @type {import("./types.d.ts").AgentViewNode[]} */ ([]),
     };
 
@@ -300,9 +301,9 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
                 ? summarizeEncodings(effectiveEncoding, ownEncoding)
                 : {}
         ),
-        selectionDeclarations:
-            /** @type {import("./types.d.ts").AgentSelectionDeclaration[]} */ (
-                summarizeSelectionDeclarations(root, view)
+        parameterDeclarations:
+            /** @type {import("./types.d.ts").AgentParameterDeclaration[]} */ (
+                summarizeParameterDeclarations(root, view)
             ),
         children: /** @type {import("./types.d.ts").AgentViewNode[]} */ ([]),
     };
@@ -638,22 +639,17 @@ function isInternalChannel(channel) {
 /**
  * @param {any} root
  * @param {any} view
- * @returns {import("./types.d.ts").AgentSelectionDeclaration[]}
+ * @returns {import("./types.d.ts").AgentParameterDeclaration[]}
  */
-function summarizeSelectionDeclarations(root, view) {
+function summarizeParameterDeclarations(root, view) {
     if (!view?.paramRuntime?.paramConfigs) {
         return [];
     }
 
-    /** @type {import("./types.d.ts").AgentSelectionDeclaration[]} */
+    /** @type {import("./types.d.ts").AgentParameterDeclaration[]} */
     const declarations = [];
 
     for (const [paramName, param] of view.paramRuntime.paramConfigs) {
-        if (!("select" in param)) {
-            continue;
-        }
-
-        const select = asSelectionConfig(param.select);
         let selector;
         try {
             selector = getParamSelector(view, paramName);
@@ -661,23 +657,113 @@ function summarizeSelectionDeclarations(root, view) {
             continue;
         }
 
+        if ("select" in param) {
+            const select = asSelectionConfig(param.select);
+            declarations.push({
+                parameterType: "selection",
+                selectionType: select.type,
+                label: formatScopedParamName(root, selector),
+                description: normalizeDescription(param.description) ?? "",
+                selector,
+                persist: param.persist !== false,
+                encodings:
+                    select.type === "interval"
+                        ? [...(select.encodings ?? [])]
+                        : undefined,
+                clearable: select.clear !== false,
+                value: serializeBookmarkableParamValue(
+                    view,
+                    view.paramRuntime.getValue(paramName)
+                ),
+            });
+            continue;
+        }
+
+        if (!isVariableParameter(param) || !param.bind) {
+            continue;
+        }
+
+        const bind = param.bind;
+        if (!("input" in bind)) {
+            continue;
+        }
+
         declarations.push({
-            selectionType: select.type,
-            label: formatScopedParamName(root, selector),
-            description: normalizeDescription(param.description) ?? "",
+            parameterType: "variable",
+            label: bind.name ?? formatScopedParamName(root, selector),
+            description:
+                normalizeDescription(param.description) ??
+                normalizeDescription(bind.description) ??
+                "",
             selector,
             persist: param.persist !== false,
-            encodings:
-                select.type === "interval"
-                    ? [...(select.encodings ?? [])]
-                    : undefined,
-            clearable: select.clear !== false,
-            value: serializeBookmarkableParamValue(
-                view,
-                view.paramRuntime.getValue(paramName)
-            ),
+            value: view.paramRuntime.getValue(paramName),
+            bind: summarizeInputBinding(bind),
         });
     }
 
     return declarations.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * @param {any} bind
+ * @returns {import("./types.d.ts").AgentParameterBindSummary}
+ */
+function summarizeInputBinding(bind) {
+    /** @type {import("./types.d.ts").AgentParameterBindSummary} */
+    const summary = {
+        input: bind.input,
+        label: typeof bind.name === "string" ? bind.name : "",
+    };
+
+    if (typeof bind.description === "string") {
+        summary.description = bind.description;
+    }
+
+    if (typeof bind.debounce === "number") {
+        summary.debounce = bind.debounce;
+    }
+
+    if (bind.input === "range") {
+        if (typeof bind.min === "number") {
+            summary.min = bind.min;
+        }
+
+        if (typeof bind.max === "number") {
+            summary.max = bind.max;
+        }
+
+        if (typeof bind.step === "number") {
+            summary.step = bind.step;
+        }
+    } else if (bind.input === "radio" || bind.input === "select") {
+        if (!Array.isArray(bind.options)) {
+            throw new Error(
+                "Input bind " + bind.input + " must declare options."
+            );
+        }
+
+        summary.options = [...bind.options];
+        if (Array.isArray(bind.labels)) {
+            summary.labels = [...bind.labels];
+        }
+    } else if (
+        bind.input === "text" ||
+        bind.input === "number" ||
+        bind.input === "color"
+    ) {
+        if (typeof bind.placeholder === "string") {
+            summary.placeholder = bind.placeholder;
+        }
+
+        if (typeof bind.autocomplete === "string") {
+            summary.autocomplete = bind.autocomplete;
+        }
+    } else if (bind.input === "checkbox") {
+        // No additional metadata.
+    } else {
+        throw new Error("Unsupported input bind type: " + bind.input);
+    }
+
+    return summary;
 }

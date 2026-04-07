@@ -38,8 +38,9 @@ function createMockAgentController(scenario) {
             title: "Visualization root",
             description: "",
             visible: true,
-            selectionDeclarations: [
+            parameterDeclarations: [
                 {
+                    parameterType: "selection",
                     selectionType: "interval",
                     label: "brush",
                     selector: {
@@ -57,6 +58,24 @@ function createMockAgentController(scenario) {
                                 { chrom: "chr1", pos: 34 },
                             ],
                         },
+                    },
+                },
+                {
+                    parameterType: "variable",
+                    label: "Threshold",
+                    selector: {
+                        scope: [],
+                        param: "threshold",
+                    },
+                    persist: true,
+                    value: 0.6,
+                    bind: {
+                        input: "range",
+                        label: "Threshold",
+                        description: "Adjust the cutoff.",
+                        min: 0,
+                        max: 1,
+                        step: 0.1,
                     },
                 },
             ],

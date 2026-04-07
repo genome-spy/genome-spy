@@ -39,7 +39,7 @@ import templateResultToString from "../utils/templateResultToString.js";
  * }} ChatMessage
  *
  * @typedef {{
- *     selectionSummaries: string[];
+ *     parameterSummaries: string[];
  * }} ChatContextSummary
  *
  * @typedef {{
@@ -489,7 +489,7 @@ export default class AgentChatPanel extends LitElement {
                 </header>
 
                 <div class="body">
-                    ${this.#renderSelectionSummary()}
+                    ${this.#renderParameterSummary()}
                     <section class="transcript">
                         ${this.messages.length === 0
                             ? this.#renderEmptyState()
@@ -544,10 +544,10 @@ export default class AgentChatPanel extends LitElement {
     /**
      * @returns {import("lit").TemplateResult | typeof nothing}
      */
-    #renderSelectionSummary() {
+    #renderParameterSummary() {
         if (
             !this.contextSummary ||
-            this.contextSummary.selectionSummaries.length === 0
+            this.contextSummary.parameterSummaries.length === 0
         ) {
             return nothing;
         }
@@ -555,10 +555,10 @@ export default class AgentChatPanel extends LitElement {
         return html`
             <section class="selection-summary gs-alert info">
                 <div class="selection-summary-title">
-                    ${icon(faInfoCircle).node[0]} Active selections
+                    ${icon(faInfoCircle).node[0]} Adjustable parameters
                 </div>
                 <ul class="selection-summary-list">
-                    ${this.contextSummary.selectionSummaries.map(
+                    ${this.contextSummary.parameterSummaries.map(
                         (summary) => html`<li>${summary}</li>`
                     )}
                 </ul>
@@ -901,56 +901,64 @@ export default class AgentChatPanel extends LitElement {
      */
     #summarizeContext(context) {
         /** @type {string[]} */
-        const selectionSummaries = [];
-        this.#collectSelectionSummaries(context.viewRoot, selectionSummaries);
+        const parameterSummaries = [];
+        this.#collectParameterSummaries(context.viewRoot, parameterSummaries);
 
         return {
-            selectionSummaries,
+            parameterSummaries,
         };
     }
 
     /**
      * @param {import("./types.d.ts").AgentViewNode} node
-     * @param {string[]} selectionSummaries
+     * @param {string[]} parameterSummaries
      */
-    #collectSelectionSummaries(node, selectionSummaries) {
-        if (node.selectionDeclarations) {
-            for (const selection of node.selectionDeclarations) {
-                const summary = this.#formatSelectionSummary(selection);
+    #collectParameterSummaries(node, parameterSummaries) {
+        if (node.parameterDeclarations) {
+            for (const parameter of node.parameterDeclarations) {
+                const summary = this.#formatParameterSummary(parameter);
                 if (summary) {
-                    selectionSummaries.push(summary);
+                    parameterSummaries.push(summary);
                 }
             }
         }
 
         if (node.children) {
             for (const child of node.children) {
-                this.#collectSelectionSummaries(child, selectionSummaries);
+                this.#collectParameterSummaries(child, parameterSummaries);
             }
         }
     }
 
     /**
-     * @param {import("./types.d.ts").AgentSelectionDeclaration} selection
+     * @param {import("./types.d.ts").AgentParameterDeclaration} parameter
      * @returns {string}
      */
-    #formatSelectionSummary(selection) {
-        if (selection.value === null || selection.value === undefined) {
+    #formatParameterSummary(parameter) {
+        if (parameter.value === null || parameter.value === undefined) {
             return "";
         }
 
-        const selector = selection.selector;
+        const selector = parameter.selector;
         const selectorLabel =
-            selection.label ||
+            parameter.label ||
             (selector &&
             typeof selector === "object" &&
             "param" in selector &&
             selector.param
                 ? String(selector.param)
-                : "selection");
+                : "parameter");
+
+        const kindLabel =
+            parameter.parameterType === "variable" && parameter.bind
+                ? " (" + parameter.bind.input + ")"
+                : "";
 
         return (
-            selectorLabel + ": " + this.#formatSelectionValue(selection.value)
+            selectorLabel +
+            kindLabel +
+            ": " +
+            this.#formatParameterValue(parameter.value)
         );
     }
 
@@ -958,7 +966,7 @@ export default class AgentChatPanel extends LitElement {
      * @param {unknown} value
      * @returns {string}
      */
-    #formatSelectionValue(value) {
+    #formatParameterValue(value) {
         if (
             value &&
             typeof value === "object" &&

@@ -79,21 +79,40 @@ function createAppStub() {
                         },
                     },
                 ],
+                [
+                    "threshold",
+                    {
+                        name: "threshold",
+                        description: "Threshold for the range control.",
+                        persist: true,
+                        value: 0.6,
+                        bind: {
+                            input: "range",
+                            name: "Threshold",
+                            description: "Adjust the cutoff.",
+                            min: 0,
+                            max: 1,
+                            step: 0.1,
+                        },
+                    },
+                ],
             ]),
             getValue: (paramName) =>
                 paramName === "brush"
                     ? { type: "interval", value: [0, 1] }
-                    : undefined,
+                    : paramName === "threshold"
+                      ? 0.6
+                      : undefined,
         },
         compositeAttributeInfoSource: {
             getAttributeInfo,
         },
     };
 
-    getParamSelectorMock.mockReturnValue({
+    getParamSelectorMock.mockImplementation((view, paramName) => ({
         scope: [],
-        param: "brush",
-    });
+        param: paramName,
+    }));
 
     const provenance = [
         {
@@ -216,15 +235,34 @@ describe("getAgentContext", () => {
                 },
             })
         );
-        expect(context.viewRoot.selectionDeclarations[0].value).toEqual({
-            type: "interval",
-            intervals: {
-                x: [
-                    { chrom: "chr1", pos: 0 },
-                    { chrom: "chr1", pos: 1 },
-                ],
-            },
-        });
+        expect(context.viewRoot.parameterDeclarations).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    parameterType: "selection",
+                    label: "brush",
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [
+                                { chrom: "chr1", pos: 0 },
+                                { chrom: "chr1", pos: 1 },
+                            ],
+                        },
+                    },
+                }),
+                expect.objectContaining({
+                    parameterType: "variable",
+                    label: "Threshold",
+                    bind: expect.objectContaining({
+                        input: "range",
+                        label: "Threshold",
+                        min: 0,
+                        max: 1,
+                        step: 0.1,
+                    }),
+                }),
+            ])
+        );
         expect(context.attributes).toHaveLength(2);
         expect(context.attributes[0].id).toEqual({
             type: "SAMPLE_ATTRIBUTE",
