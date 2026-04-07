@@ -49,7 +49,9 @@
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "diagnosis"
       },
-      "values": ["AML"]
+      "values": [
+        "AML"
+      ]
     }
   },
   {
