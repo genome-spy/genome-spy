@@ -149,17 +149,14 @@ describe("agentAdapter browser integration", () => {
             history: [],
             context: expect.objectContaining({
                 schemaVersion: 1,
-                view: expect.objectContaining({
-                    type: "sampleView",
-                    name: "sampleView",
-                    title: "Capability Fixture",
+                sampleSummary: expect.objectContaining({
+                    sampleCount: expect.any(Number),
+                    groupCount: expect.any(Number),
                 }),
-                viewTree: expect.objectContaining({
-                    root: expect.objectContaining({
-                        selector: expect.objectContaining({
-                            scope: expect.any(Array),
-                            view: expect.any(String),
-                        }),
+                viewRoot: expect.objectContaining({
+                    selector: expect.objectContaining({
+                        scope: expect.any(Array),
+                        view: expect.any(String),
                     }),
                 }),
                 attributes: expect.any(Array),
@@ -174,6 +171,8 @@ describe("agentAdapter browser integration", () => {
                 }),
             }),
         });
+        expect(planner.requests[0].body.context).not.toHaveProperty("view");
+        expect(planner.requests[0].body.context).not.toHaveProperty("viewTree");
         expect(planner.requests[0].body.context).not.toHaveProperty("params");
         expect(
             planner.requests[0].body.context.viewWorkflows

@@ -28,42 +28,36 @@ export default {
 function createMockAgentController(scenario) {
     const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
-        view: {
-            type: "sampleView",
-            name: "sampleView",
-            title: "Cohort overview",
+        sampleSummary: {
             sampleCount: 124,
-            attributeCount: 7,
             groupCount: 3,
         },
-        viewTree: {
-            root: {
-                type: "root",
-                name: "root",
-                title: "Visualization root",
-                description: "",
-                visible: true,
-                selectionDeclarations: [
-                    {
-                        selectionType: "interval",
-                        label: "brush",
-                        selector: {
-                            scope: [],
-                            param: "brush",
-                        },
-                        persist: true,
-                        clearable: true,
-                        encodings: ["x"],
-                        value: {
-                            type: "interval",
-                            intervals: {
-                                x: [12, 34],
-                            },
+        viewRoot: {
+            type: "other",
+            name: "root",
+            title: "Visualization root",
+            description: "",
+            visible: true,
+            selectionDeclarations: [
+                {
+                    selectionType: "interval",
+                    label: "brush",
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                    persist: true,
+                    clearable: true,
+                    encodings: ["x"],
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [12, 34],
                         },
                     },
-                ],
-                children: [],
-            },
+                },
+            ],
+            children: [],
         },
         attributes: [
             {

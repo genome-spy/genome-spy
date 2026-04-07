@@ -170,9 +170,9 @@ describe("getAgentContext", () => {
             "attributes",
             "lifecycle",
             "provenance",
+            "sampleSummary",
             "schemaVersion",
-            "view",
-            "viewTree",
+            "viewRoot",
             "viewWorkflows",
         ]);
 
@@ -192,10 +192,13 @@ describe("getAgentContext", () => {
         const context = getAgentContext(createAppStub());
 
         expect(context.schemaVersion).toBe(1);
-        expect(context.view.sampleCount).toBe(2);
-        expect(context.viewTree.root).toEqual(
+        expect(context.sampleSummary).toEqual({
+            sampleCount: 2,
+            groupCount: 2,
+        });
+        expect(context.viewRoot).toEqual(
             expect.objectContaining({
-                type: "sampleView",
+                type: "other",
                 title: "Patient Cohort",
                 selector: {
                     scope: [],

@@ -147,33 +147,13 @@ export interface AgentAttributeSummary {
 }
 
 /**
- * Compact summary of the currently loaded visualization.
+ * Compact summary of the loaded sample collection.
  */
-export interface AgentViewSummary {
-    /**
-     * High-level view type, e.g. sampleView.
-     */
-    type: string;
-
-    /**
-     * Internal view name.
-     */
-    name: string;
-
-    /**
-     * Human-readable title.
-     */
-    title: string;
-
+export interface AgentSampleSummary {
     /**
      * Number of samples currently available.
      */
     sampleCount: number;
-
-    /**
-     * Number of metadata attributes currently available.
-     */
-    attributeCount: number;
 
     /**
      * Number of sample groups in the current hierarchy.
@@ -373,21 +353,6 @@ export interface AgentViewTreeRoot {
      * Root node of the view hierarchy.
      */
     root: AgentViewNode;
-}
-
-/**
- * Agent-facing view hierarchy snapshot.
- */
-export interface AgentViewTree {
-    /**
-     * Schema version for the hierarchy snapshot.
-     */
-    schemaVersion: 1;
-
-    /**
-     * Root-level config summary plus normalized hierarchy.
-     */
-    viewTree: AgentViewTreeRoot;
 }
 
 /**
@@ -702,14 +667,14 @@ export interface AgentContext {
     schemaVersion: 1;
 
     /**
-     * Visualization summary.
+     * Sample-collection summary.
      */
-    view: AgentViewSummary;
+    sampleSummary: AgentSampleSummary;
 
     /**
-     * Normalized view hierarchy snapshot.
+     * Root node of the normalized view hierarchy snapshot.
      */
-    viewTree: AgentViewTreeRoot;
+    viewRoot: AgentViewNode;
 
     /**
      * Available attributes in the current sample collection.

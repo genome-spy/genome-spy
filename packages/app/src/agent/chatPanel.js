@@ -901,10 +901,7 @@ export default class AgentChatPanel extends LitElement {
     #summarizeContext(context) {
         /** @type {string[]} */
         const selectionSummaries = [];
-        this.#collectSelectionSummaries(
-            context.viewTree.root,
-            selectionSummaries
-        );
+        this.#collectSelectionSummaries(context.viewRoot, selectionSummaries);
 
         return {
             selectionSummaries,

@@ -267,12 +267,8 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
             ? view.getEncoding()
             : (spec.encoding ?? {});
     const ownEncoding = spec.encoding ?? {};
+    const type = getViewType(view);
     const isRoot = view === root;
-    const type = isRoot
-        ? hasStructuralRoot
-            ? "root"
-            : "sampleView"
-        : getViewType(view);
     const rawTitle = view.getTitleText?.();
     const title = String(rawTitle ?? getViewName(view));
     const name = getViewName(view);
@@ -286,7 +282,7 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
     /** @type {import("./types.d.ts").AgentViewNode} */
     const node = {
         type: /** @type {import("./types.d.ts").AgentViewNode["type"]} */ (
-            type
+            getViewType(view)
         ),
         title,
         name: rawTitle === undefined ? name : name !== title ? name : undefined,

@@ -15,6 +15,7 @@ export function getAgentContext(app) {
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
     const viewWorkflows = getViewWorkflowContext(app);
+    const { root: viewRoot } = buildViewTree(app);
     const compactWorkflows =
         viewWorkflows.fields.length > 0
             ? {
@@ -27,8 +28,8 @@ export function getAgentContext(app) {
 
     return {
         schemaVersion: 1,
-        view: buildViewSummary(sampleView, sampleState),
-        viewTree: buildViewTree(app),
+        sampleSummary: buildSampleSummary(sampleState),
+        viewRoot,
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleState)
             : [],
@@ -47,24 +48,15 @@ export function getAgentContext(app) {
 }
 
 /**
- * @param {import("../sampleView/sampleView.js").default | undefined} sampleView
  * @param {any} sampleState
- * @returns {import("./types.js").AgentViewSummary}
+ * @returns {import("./types.js").AgentSampleSummary}
  */
-function buildViewSummary(sampleView, sampleState) {
+function buildSampleSummary(sampleState) {
     const sampleCount = sampleState?.sampleData?.ids?.length ?? 0;
-    const attributeCount =
-        sampleState?.sampleMetadata?.attributeNames?.length ?? 0;
     const groupCount = countGroups(sampleState?.rootGroup);
 
     return {
-        type: sampleView ? "sampleView" : "unknown",
-        name: sampleView?.name ?? "unknown",
-        title: String(
-            sampleView?.getTitleText?.() ?? sampleView?.name ?? "Sample View"
-        ),
         sampleCount,
-        attributeCount,
         groupCount,
     };
 }

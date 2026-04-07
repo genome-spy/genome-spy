@@ -268,7 +268,7 @@ describe("buildViewTree", () => {
         });
         expect(tree.root).toEqual(
             expect.objectContaining({
-                type: "root",
+                type: "other",
                 name: "viewRoot",
                 title: "Visualization root",
                 description: "Top-level visualization.\nIncludes samples.",
