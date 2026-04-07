@@ -63,7 +63,10 @@ export function buildViewTree(app) {
         }
 
         const node = summarizeViewNode(rootView, view, hasStructuralRoot);
-        if (shouldCollapseView(view, focusView, focusBranch) || !node.visible) {
+        if (
+            shouldCollapseView(view, focusView, focusBranch) ||
+            node.visible === false
+        ) {
             node.collapsed = true;
             node.childCount = getChildCount(view);
             node.encodings = {};
@@ -127,7 +130,7 @@ function pruneEmptyContainers(node) {
     node.children = node.children.filter((child) => {
         pruneEmptyContainers(child);
 
-        if (child.kind !== "container") {
+        if (child.type === "unit") {
             return true;
         }
 
@@ -234,12 +237,10 @@ function summarizeRootConfig(rootSpec) {
 function createUnknownRootNode() {
     /** @type {import("./types.d.ts").AgentViewNode} */
     const node = {
-        id: "unknown",
-        kind: "root",
         type: "unknown",
         name: "unknown",
         title: "Unknown view",
-        visible: true,
+        description: "",
         encodings:
             /** @type {import("./types.d.ts").AgentViewEncodings} */ ({}),
         selectionDeclarations:
@@ -269,31 +270,30 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
             ? "root"
             : "sampleView"
         : getViewType(view);
-    const kind = isRoot ? "root" : getViewKind(view);
+    const rawTitle = view.getTitleText?.();
+    const title = String(rawTitle ?? getViewName(view));
+    const name = getViewName(view);
+    const visible =
+        typeof view.isVisible === "function"
+            ? view.isVisible()
+            : typeof view.isVisibleInSpec === "function"
+              ? view.isVisibleInSpec()
+              : true;
 
     /** @type {import("./types.d.ts").AgentViewNode} */
     const node = {
-        id: getViewId(view),
-        kind: /** @type {import("./types.d.ts").AgentViewNode["kind"]} */ (
-            kind
-        ),
         type: /** @type {import("./types.d.ts").AgentViewNode["type"]} */ (
             type
         ),
-        name: getViewName(view),
-        title: String(view.getTitleText?.() ?? getViewName(view)),
-        description: normalizeDescription(spec.description),
+        title,
+        name: rawTitle === undefined ? name : name !== title ? name : undefined,
+        description: normalizeDescription(spec.description) ?? "",
         selector:
             isRoot && hasStructuralRoot
                 ? undefined
                 : getViewSelectorOrUndefined(view),
         markType: getMarkType(view),
-        visible:
-            typeof view.isVisible === "function"
-                ? view.isVisible()
-                : typeof view.isVisibleInSpec === "function"
-                  ? view.isVisibleInSpec()
-                  : true,
+        visible: visible === false ? false : undefined,
         data: summarizeDataSpec(spec.data),
         encodings: /** @type {import("./types.d.ts").AgentViewEncodings} */ (
             type === "unit"
@@ -354,18 +354,6 @@ function findParentNode(view, nodes) {
  * @param {any} view
  * @returns {string}
  */
-function getViewId(view) {
-    if (typeof view.getPathString === "function") {
-        return view.getPathString();
-    }
-
-    return getViewName(view);
-}
-
-/**
- * @param {any} view
- * @returns {string}
- */
 function getViewName(view) {
     const candidate = view?.explicitName ?? view?.name;
     return typeof candidate === "string" && candidate.length > 0
@@ -414,32 +402,6 @@ function getViewType(view) {
 
     if (view?.constructor?.name === "SampleView") {
         return "sampleView";
-    }
-
-    return "other";
-}
-
-/**
- * @param {any} view
- * @returns {import("./types.d.ts").AgentViewNode["kind"]}
- */
-function getViewKind(view) {
-    const type = getViewType(view);
-
-    if (type === "unit") {
-        return "leaf";
-    }
-
-    if (
-        type === "layer" ||
-        type === "concat" ||
-        type === "vconcat" ||
-        type === "hconcat" ||
-        type === "facet" ||
-        type === "multiscale" ||
-        type === "sampleView"
-    ) {
-        return "container";
     }
 
     return "other";
@@ -702,81 +664,17 @@ function summarizeSelectionDeclarations(root, view) {
         declarations.push({
             selectionType: select.type,
             label: formatScopedParamName(root, selector),
-            description: normalizeDescription(param.description),
+            description: normalizeDescription(param.description) ?? "",
             selector,
             persist: param.persist !== false,
-            active: isActiveSelectionValue(
-                select.type,
-                view.paramRuntime.getValue(paramName)
-            ),
             encodings:
                 select.type === "interval"
                     ? [...(select.encodings ?? [])]
                     : undefined,
-            toggle: select.type === "point" && select.toggle ? true : undefined,
             clearable: select.clear !== false,
+            value: view.paramRuntime.getValue(paramName),
         });
     }
 
     return declarations.sort((a, b) => a.label.localeCompare(b.label));
-}
-
-/**
- * @param {"point" | "interval"} selectionType
- * @param {unknown} value
- * @returns {boolean}
- */
-function isActiveSelectionValue(selectionType, value) {
-    if (selectionType === "interval") {
-        return isActiveIntervalSelectionValue(value);
-    }
-
-    if (selectionType === "point") {
-        return isActivePointSelectionValue(value);
-    }
-
-    return false;
-}
-
-/**
- * @param {unknown} value
- * @returns {boolean}
- */
-function isActiveIntervalSelectionValue(value) {
-    if (
-        value &&
-        typeof value === "object" &&
-        "intervals" in value &&
-        value.intervals &&
-        typeof value.intervals === "object"
-    ) {
-        const intervals = /** @type {any} */ (value.intervals);
-        if (Array.isArray(intervals.x) && intervals.x.length === 2) {
-            return true;
-        }
-    }
-
-    return (
-        !!value &&
-        typeof value === "object" &&
-        "value" in value &&
-        Array.isArray(/** @type {any} */ (value).value) &&
-        /** @type {any} */ (value).value.length === 2
-    );
-}
-
-/**
- * @param {unknown} value
- * @returns {boolean}
- */
-function isActivePointSelectionValue(value) {
-    return Boolean(
-        value &&
-        typeof value === "object" &&
-        "type" in value &&
-        value.type === "point" &&
-        "keys" in value &&
-        Array.isArray(/** @type {any} */ (value).keys) &&
-        /** @type {any} */ (value).keys.length > 0
-    );
 }

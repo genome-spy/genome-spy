@@ -922,7 +922,7 @@ export default class AgentChatPanel extends LitElement {
             "param" in selector &&
             selector.param
                 ? String(selector.param)
-                : param.key;
+                : "selection";
 
         return selectorLabel + ": " + this.#formatContextValue(param.value);
     }

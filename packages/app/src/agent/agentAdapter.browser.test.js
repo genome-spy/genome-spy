@@ -164,7 +164,6 @@ describe("agentAdapter browser integration", () => {
                 }),
                 attributes: expect.any(Array),
                 actionCatalog: expect.any(Array),
-                actionSummaries: expect.any(Array),
                 viewWorkflows: expect.objectContaining({
                     selections: expect.any(Array),
                     workflows: expect.any(Array),
@@ -172,7 +171,6 @@ describe("agentAdapter browser integration", () => {
                 provenance: expect.any(Array),
                 params: expect.arrayContaining([
                     expect.objectContaining({
-                        key: expect.any(String),
                         selector: expect.objectContaining({
                             scope: expect.any(Array),
                             param: expect.any(String),
@@ -182,24 +180,11 @@ describe("agentAdapter browser integration", () => {
                         }),
                     }),
                 ]),
-                promptHints: expect.arrayContaining([
-                    "Interval selections correspond to brushing or dragging a range.",
-                    "Point selections correspond to clicking individual items.",
-                ]),
                 lifecycle: expect.objectContaining({
                     appInitialized: true,
                 }),
             }),
         });
-        expect(
-            planner.requests[0].body.context.actionSummaries.map(
-                (entry) => entry.actionType
-            )
-        ).toEqual(
-            planner.requests[0].body.context.actionCatalog.map(
-                (entry) => entry.actionType
-            )
-        );
     });
 
     it("runs a structured view workflow and clarifies the missing field using the real choice dialog", async () => {

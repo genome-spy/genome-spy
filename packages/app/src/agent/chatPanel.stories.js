@@ -38,11 +38,10 @@ function createMockAgentController(scenario) {
         },
         viewTree: {
             root: {
-                id: "view-root",
-                kind: "root",
                 type: "root",
                 name: "root",
                 title: "Visualization root",
+                description: "",
                 visible: true,
                 children: [],
             },
@@ -66,17 +65,8 @@ function createMockAgentController(scenario) {
             },
         ],
         actionCatalog: [],
-        actionSummaries: [
-            {
-                actionType: "sortBy",
-                title: "Sort samples",
-                description:
-                    "Sort samples in descending order by an attribute.",
-            },
-        ],
         viewWorkflows: {
             workflows: [],
-            selections: [],
         },
         provenance: [
             {
@@ -86,12 +76,10 @@ function createMockAgentController(scenario) {
         ],
         params: [
             {
-                key: "brush",
                 selector: { scope: [], param: "brush" },
                 value: [12, 34],
             },
         ],
-        promptHints: [],
         lifecycle: {
             appInitialized: true,
         },

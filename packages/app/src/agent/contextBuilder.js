@@ -1,20 +1,9 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
-import generatedActionSummariesJson from "./generatedActionSummaries.json" with { type: "json" };
 import { buildViewTree } from "./viewTree.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
-const PROMPT_HINTS = [
-    "Interval selections correspond to brushing or dragging a range.",
-    "Point selections correspond to clicking individual items.",
-    "Use brush language for interval selections and click language for point selections.",
-];
-
-const generatedActionSummaries =
-    /** @type {import("./types.js").AgentActionSummary[]} */ (
-        generatedActionSummariesJson
-    );
 
 /**
  * @param {import("../app.js").default} app
@@ -26,8 +15,18 @@ export function getAgentContext(app) {
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const paramEntries =
         app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
-    const paramConfigs = sampleView?.paramRuntime?.paramConfigs;
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
+    const viewWorkflows = getViewWorkflowContext(app);
+    const compactWorkflows =
+        viewWorkflows.selections.length > 0
+            ? {
+                  selections: viewWorkflows.selections,
+                  fields: viewWorkflows.fields,
+                  workflows: viewWorkflows.workflows,
+              }
+            : {
+                  workflows: viewWorkflows.workflows,
+              };
 
     return {
         schemaVersion: 1,
@@ -36,19 +35,18 @@ export function getAgentContext(app) {
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleState)
             : [],
-        actionCatalog: listAgentActions(),
-        actionSummaries: generatedActionSummaries,
-        viewWorkflows: getViewWorkflowContext(app),
+        actionCatalog: listAgentActions().map((entry) => ({
+            actionType: entry.actionType,
+            description: entry.description,
+            payloadFields: entry.payloadFields,
+            examplePayload: entry.examplePayload,
+        })),
+        viewWorkflows: compactWorkflows,
         provenance: buildProvenanceActions(app, provenance),
-        params: Object.entries(paramEntries).map(([key, entry]) => ({
-            key,
+        params: Object.values(paramEntries).map((entry) => ({
             selector: entry.selector,
             value: entry.value,
-            description: /** @type {string | undefined} */ (
-                paramConfigs?.get(key)?.description
-            ),
         })),
-        promptHints: PROMPT_HINTS,
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,
         },
@@ -106,7 +104,7 @@ function buildAttributeSummary(sampleView, sampleState) {
             description: info.description,
             dataType: info.type,
             source: SAMPLE_ATTRIBUTE,
-            visible: def.visible ?? true,
+            visible: def.visible === false ? false : undefined,
         };
     });
 }

@@ -268,7 +268,6 @@ describe("buildViewTree", () => {
         });
         expect(tree.root).toEqual(
             expect.objectContaining({
-                kind: "root",
                 type: "root",
                 name: "viewRoot",
                 title: "Visualization root",
@@ -281,7 +280,6 @@ describe("buildViewTree", () => {
         expect(tree.root.children).toHaveLength(2);
         expect(tree.root.children[0]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "layer",
                 name: "ideogram-track",
                 title: "Chromosome Ideogram",
@@ -301,7 +299,6 @@ describe("buildViewTree", () => {
         expect(tree.root.children[0]).not.toHaveProperty("children");
         expect(tree.root.children[1]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "vconcat",
                 name: "data-tracks",
                 title: "Data Tracks",
@@ -318,7 +315,6 @@ describe("buildViewTree", () => {
         expect(tree.root.children[1].children).toHaveLength(2);
         expect(tree.root.children[1].children[0]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "sampleView",
                 name: "samples",
                 title: "Samples",
@@ -343,20 +339,24 @@ describe("buildViewTree", () => {
                 expect.objectContaining({
                     selectionType: "interval",
                     label: "brush",
-                    active: true,
                     selector: {
                         scope: [],
                         param: "brush",
                     },
                     description: "Brush the x-axis interval.",
                     encodings: ["x"],
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [0, 1],
+                        },
+                    },
                 }),
             ]
         );
         expect(tree.root.children[1].children[0].children).toHaveLength(2);
         expect(tree.root.children[1].children[0].children[0]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "layer",
                 name: "hidden-track",
                 title: "Hidden track",
@@ -383,7 +383,6 @@ describe("buildViewTree", () => {
         ).not.toHaveProperty("children");
         expect(tree.root.children[1].children[0].children[1]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "layer",
                 name: "track",
                 title: "Track",
@@ -409,7 +408,6 @@ describe("buildViewTree", () => {
             tree.root.children[1].children[0].children[1].children[0]
         ).toEqual(
             expect.objectContaining({
-                kind: "leaf",
                 type: "unit",
                 name: "points",
                 markType: "point",
@@ -448,7 +446,6 @@ describe("buildViewTree", () => {
         ).not.toHaveProperty("children");
         expect(tree.root.children[1].children[1]).toEqual(
             expect.objectContaining({
-                kind: "container",
                 type: "layer",
                 name: "annotation-track",
                 title: "Annotation track",

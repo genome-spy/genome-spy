@@ -167,11 +167,9 @@ describe("getAgentContext", () => {
 
         expect(Object.keys(context).sort()).toEqual([
             "actionCatalog",
-            "actionSummaries",
             "attributes",
             "lifecycle",
             "params",
-            "promptHints",
             "provenance",
             "schemaVersion",
             "view",
@@ -180,9 +178,15 @@ describe("getAgentContext", () => {
         ]);
 
         expect(() => JSON.stringify(context)).not.toThrow();
-        expect(
-            context.actionSummaries.map((entry) => entry.actionType)
-        ).toEqual(context.actionCatalog.map((entry) => entry.actionType));
+        expect(context.actionCatalog.map((entry) => entry.actionType)).toEqual([
+            "sortBy",
+            "filterByNominal",
+            "filterByQuantitative",
+            "groupByNominal",
+            "groupToQuartiles",
+            "groupByThresholds",
+            "retainFirstNCategories",
+        ]);
     });
 
     it("builds a compact agent context from app state", () => {
@@ -192,7 +196,6 @@ describe("getAgentContext", () => {
         expect(context.view.sampleCount).toBe(2);
         expect(context.viewTree.root).toEqual(
             expect.objectContaining({
-                kind: "root",
                 type: "sampleView",
                 title: "Patient Cohort",
                 selector: {
@@ -207,10 +210,8 @@ describe("getAgentContext", () => {
             specifier: "diagnosis",
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
-        expect(context.actionSummaries).toHaveLength(7);
         expect(context.params).toEqual([
             expect.objectContaining({
-                key: expect.any(String),
                 selector: {
                     scope: ["samples"],
                     param: "brush",
@@ -218,13 +219,7 @@ describe("getAgentContext", () => {
                 value: expect.objectContaining({
                     type: "interval",
                 }),
-                description: "Brush the current x interval.",
             }),
-        ]);
-        expect(context.promptHints).toEqual([
-            "Interval selections correspond to brushing or dragging a range.",
-            "Point selections correspond to clicking individual items.",
-            "Use brush language for interval selections and click language for point selections.",
         ]);
         expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.viewWorkflows.workflows).toEqual(
@@ -238,6 +233,7 @@ describe("getAgentContext", () => {
             ])
         );
         expect(context.viewWorkflows.selections).toHaveLength(1);
+        expect(context.viewWorkflows.fields).toEqual(expect.any(Array));
         expect(context.provenance).toEqual([
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",

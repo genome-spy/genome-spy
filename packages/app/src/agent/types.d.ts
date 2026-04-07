@@ -81,6 +81,31 @@ export interface AgentActionCatalogEntry {
 }
 
 /**
+ * Compact action catalog entry sent in the planner context.
+ */
+export interface AgentActionCatalogContextEntry {
+    /**
+     * Reducer/action name.
+     */
+    actionType: AgentActionType;
+
+    /**
+     * Short action summary.
+     */
+    description: string;
+
+    /**
+     * Field-level payload metadata.
+     */
+    payloadFields: AgentPayloadField[];
+
+    /**
+     * Minimal example payload.
+     */
+    examplePayload: Record<string, any>;
+}
+
+/**
  * High-level summary of a sample attribute that the agent can use to decide
  * how to filter, sort, or group.
  */
@@ -118,7 +143,7 @@ export interface AgentAttributeSummary {
     /**
      * Whether the attribute is visible in the current UI.
      */
-    visible: boolean;
+    visible?: boolean;
 }
 
 /**
@@ -269,16 +294,6 @@ export type AgentViewEncodings = Record<string, AgentViewEncodingSummary>;
  */
 export interface AgentViewNode {
     /**
-     * Stable node identifier.
-     */
-    id: string;
-
-    /**
-     * Hierarchical role of the node.
-     */
-    kind: "root" | "container" | "leaf" | "other";
-
-    /**
      * Normalized view type derived from the underlying spec.
      */
     type: string;
@@ -286,7 +301,7 @@ export interface AgentViewNode {
     /**
      * Stable view name, if available.
      */
-    name: string;
+    name?: string;
 
     /**
      * Human-readable title.
@@ -296,7 +311,7 @@ export interface AgentViewNode {
     /**
      * Human-readable description of the node's semantic purpose.
      */
-    description?: string;
+    description: string;
 
     /**
      * Stable view selector used for provenance-safe addressing.
@@ -311,7 +326,7 @@ export interface AgentViewNode {
     /**
      * Whether the view is currently visible according to the app state.
      */
-    visible: boolean;
+    visible?: boolean;
 
     /**
      * Whether the node is a compressed hidden branch rather than a fully
@@ -380,11 +395,6 @@ export interface AgentViewTree {
  */
 export interface AgentParamSummary {
     /**
-     * Stable key used to identify the parameter entry.
-     */
-    key: string;
-
-    /**
      * Structured selector that identifies the parameter.
      */
     selector: ParamSelector;
@@ -393,11 +403,6 @@ export interface AgentParamSummary {
      * Current value captured in provenance.
      */
     value: ParamValue;
-
-    /**
-     * Human-readable description of the parameter, if available.
-     */
-    description?: string;
 }
 
 /**
@@ -516,6 +521,11 @@ export interface AgentSelectionDeclaration {
     description?: string;
 
     /**
+     * Current runtime value, if the selection is active.
+     */
+    value?: ParamValue;
+
+    /**
      * Structured selector for the underlying parameter.
      */
     selector: ParamSelector;
@@ -526,19 +536,9 @@ export interface AgentSelectionDeclaration {
     persist: boolean;
 
     /**
-     * Whether the selection currently has an active value.
-     */
-    active: boolean;
-
-    /**
      * Encodings that drive the selection, when explicitly declared.
      */
     encodings?: string[];
-
-    /**
-     * Whether point selection values toggle by default.
-     */
-    toggle?: boolean;
 
     /**
      * Whether the selection can be cleared.
@@ -609,6 +609,27 @@ export interface AgentViewWorkflowContext {
      * Supported structured workflows.
      */
     workflows: AgentViewWorkflowDefinition[];
+}
+
+/**
+ * Planner-facing workflow context. Selection and field lists are omitted when
+ * there is no active selection.
+ */
+export interface AgentPlannerViewWorkflowContext {
+    /**
+     * Supported structured workflows.
+     */
+    workflows: AgentViewWorkflowDefinition[];
+
+    /**
+     * Active interval selections, if any.
+     */
+    selections?: AgentSelectionSummary[];
+
+    /**
+     * Aggregatable fields for the active selections, if any.
+     */
+    fields?: AgentViewFieldSummary[];
 }
 
 /**
@@ -718,17 +739,12 @@ export interface AgentContext {
     /**
      * Agent-facing action catalog.
      */
-    actionCatalog: AgentActionCatalogEntry[];
-
-    /**
-     * Human-readable action summaries.
-     */
-    actionSummaries: AgentActionSummary[];
+    actionCatalog: AgentActionCatalogContextEntry[];
 
     /**
      * Structured workflows that the agent can resolve locally.
      */
-    viewWorkflows: AgentViewWorkflowContext;
+    viewWorkflows: AgentPlannerViewWorkflowContext;
 
     /**
      * Bookmarkable provenance actions for the current analysis history.
@@ -739,11 +755,6 @@ export interface AgentContext {
      * Current bookmarkable params.
      */
     params: AgentParamSummary[];
-
-    /**
-     * Prompt hints intended for the system prompt or planner preamble.
-     */
-    promptHints: string[];
 
     /**
      * Application lifecycle state.
