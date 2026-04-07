@@ -1,33 +1,19 @@
 /* global console */
-import { execFile } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { readFile } from "node:fs/promises";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { generateSchemaText } from "./generateAgentActionSchema.mjs";
 
 const schemaPath = new URL(
     "../src/agent/generatedActionSchema.json",
     import.meta.url
 );
-const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 
 /**
- * @returns {Promise<string>}
+ * @param {string} text
+ * @returns {string}
  */
-async function generateSchemaText() {
-    const { stdout } = await execFileAsync("ts-json-schema-generator", [
-        "--path",
-        "src/agent/schemaContract.ts",
-        "--type",
-        "AgentIntentProgram",
-        "--no-type-check",
-    ], {
-        cwd: packageRoot,
-        maxBuffer: 10 * 1024 * 1024,
-    });
-
-    return stdout.endsWith("\n") ? stdout : stdout + "\n";
+function normalizeSchemaText(text) {
+    return text.replace(/\n+$/, "\n");
 }
 
 /**
@@ -39,7 +25,7 @@ async function main() {
         readFile(schemaPath, "utf8"),
     ]);
 
-    if (generated !== current) {
+    if (generated !== normalizeSchemaText(current)) {
         throw new Error(
             "Generated action schema is out of date. Run `npm run generate:agent-schema`."
         );

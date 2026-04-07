@@ -1005,7 +1005,11 @@ export default class AgentChatPanel extends LitElement {
      * @returns {string}
      */
     #formatIntervalEndpoint(value) {
-        return locusOrNumberToString(value);
+        return locusOrNumberToString(
+            /** @type {number | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} */ (
+                value
+            )
+        );
     }
 
     /**

@@ -3,26 +3,14 @@ import {
     AttributeIdentifierType,
 } from "../sampleView/types.js";
 import { ParamSelector } from "../sampleView/sampleViewTypes.js";
+import type {
+    AgentActionType as GeneratedAgentActionType,
+    AgentIntentProgramStep as GeneratedAgentIntentProgramStep,
+} from "./generatedActionTypes.js";
 import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
-/**
- * Supported Redux action types that the agent is allowed to emit.
- *
- * This is the planner-facing subset of the sample collection, param provenance,
- * and view-settings reducer surfaces.
- */
-export type AgentActionType =
-    | "sampleView/sortBy"
-    | "sampleView/filterByNominal"
-    | "sampleView/filterByQuantitative"
-    | "sampleView/groupByNominal"
-    | "sampleView/groupToQuartiles"
-    | "sampleView/groupByThresholds"
-    | "sampleView/retainFirstNCategories"
-    | "paramProvenance/paramChange"
-    | "viewSettings/setVisibility"
-    | "viewSettings/restoreDefaultVisibility";
+export type AgentActionType = GeneratedAgentActionType;
 
 /**
  * Metadata for a single field in the generated agent action catalog.
@@ -81,7 +69,7 @@ export interface AgentActionCatalogEntry {
     /**
      * Minimal example payload.
      */
-    examplePayload: Record<string, any>;
+    examplePayload: unknown;
 }
 
 /**
@@ -106,7 +94,7 @@ export interface AgentActionCatalogContextEntry {
     /**
      * Minimal example payload.
      */
-    examplePayload: Record<string, any>;
+    examplePayload: unknown;
 }
 
 /**
@@ -867,20 +855,12 @@ export interface ClarificationRequest {
     state: Record<string, any>;
 }
 
-/**
- * One step in a planner-authored intent program.
- */
-export interface IntentProgramStep {
-    /**
-     * Action type to dispatch.
-     */
-    actionType: AgentActionType;
+export type AgentIntentProgramStep = GeneratedAgentIntentProgramStep;
 
-    /**
-     * Payload for the action.
-     */
-    payload: Record<string, any>;
-}
+/**
+ * Backward-compatible alias for intent program steps.
+ */
+export type IntentProgramStep = AgentIntentProgramStep;
 
 /**
  * Ordered list of actions proposed by the planner.
@@ -894,7 +874,7 @@ export interface IntentProgram {
     /**
      * Ordered action steps.
      */
-    steps: IntentProgramStep[];
+    steps: AgentIntentProgramStep[];
 
     /**
      * Optional planner rationale.

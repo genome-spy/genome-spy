@@ -27,7 +27,7 @@ function getAttributeInfoSource(app) {
  * @property {string} payloadType
  * @property {string} payloadDescription
  * @property {import("./types.js").AgentPayloadField[]} payloadFields
- * @property {Record<string, any>} examplePayload
+ * @property {unknown} examplePayload
  */
 
 /**
@@ -36,17 +36,19 @@ function getAttributeInfoSource(app) {
  */
 function getActionCreator(actionType) {
     if (actionType.startsWith("sampleView/")) {
-        return sampleSlice.actions[actionType.slice("sampleView/".length)];
-    }
-
-    if (actionType.startsWith("paramProvenance/")) {
-        return paramProvenanceSlice.actions[
-            actionType.slice("paramProvenance/".length)
+        return /** @type {Record<string, any>} */ (sampleSlice.actions)[
+            actionType.slice("sampleView/".length)
         ];
     }
 
+    if (actionType.startsWith("paramProvenance/")) {
+        return /** @type {Record<string, any>} */ (
+            paramProvenanceSlice.actions
+        )[actionType.slice("paramProvenance/".length)];
+    }
+
     if (actionType.startsWith("viewSettings/")) {
-        return viewSettingsSlice.actions[
+        return /** @type {Record<string, any>} */ (viewSettingsSlice.actions)[
             actionType.slice("viewSettings/".length)
         ];
     }

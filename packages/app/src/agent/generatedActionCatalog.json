@@ -1,5 +1,98 @@
 [
   {
+    "actionType": "sampleView/addMetadata",
+    "description": "Add imported sample metadata to the current collection.",
+    "payloadType": "SetMetadata",
+    "payloadDescription": "Add imported sample metadata to the current collection.",
+    "payloadFields": [
+      {
+        "name": "columnarMetadata",
+        "type": "ColumnarMetadata",
+        "description": "Metadata encoded in columnar form, aligned to the sample order.",
+        "required": true
+      },
+      {
+        "name": "attributeDefs",
+        "type": "Record<AttributeName, SampleAttributeDef>",
+        "description": "Optional attribute definitions for the incoming metadata columns.",
+        "required": false
+      },
+      {
+        "name": "replace",
+        "type": "boolean",
+        "description": "If true, the provided metadata will replace existing metadata instead of being added to them.",
+        "required": false
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/deriveMetadata",
+    "description": "Add derived metadata computed from a view-backed attribute.",
+    "payloadType": "DeriveMetadata",
+    "payloadDescription": "Add derived metadata computed from a view-backed attribute.",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute identifier used by the action.",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Name of the derived metadata column. The resulting metadata is written under this name.",
+        "required": true
+      },
+      {
+        "name": "groupPath",
+        "type": "string",
+        "description": "Optional metadata group path for the derived column.",
+        "required": false
+      },
+      {
+        "name": "scale",
+        "type": "SampleAttributeDef[\"scale\"]",
+        "description": "Optional scale definition for the derived metadata column.",
+        "required": false
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/addMetadataFromSource",
+    "description": "Add metadata imported from an external source.",
+    "payloadType": "AddMetadataFromSource",
+    "payloadDescription": "Add metadata imported from an external source.",
+    "payloadFields": [
+      {
+        "name": "sourceId",
+        "type": "string",
+        "description": "Optional source identifier. If omitted, source resolution is allowed only when exactly one source exists.",
+        "required": false
+      },
+      {
+        "name": "columnIds",
+        "type": "string[]",
+        "description": "Columns requested from the source.",
+        "required": true
+      },
+      {
+        "name": "groupPath",
+        "type": "string",
+        "description": "Optional metadata group path override.",
+        "required": false
+      },
+      {
+        "name": "replace",
+        "type": "boolean",
+        "description": "If true, replace existing metadata instead of merging.",
+        "required": false
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
     "actionType": "sampleView/sortBy",
     "description": "Sort samples in descending order by the chosen attribute.",
     "payloadType": "SortBy",
@@ -17,6 +110,76 @@
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "age"
       }
+    }
+  },
+  {
+    "actionType": "sampleView/retainFirstOfEach",
+    "description": "Retain the first sample of each category in the current ordering.",
+    "payloadType": "RetainFirstOfEach",
+    "payloadDescription": "Payload for retaining the first sample of each category.",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute identifier used by the action.",
+        "required": true
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/retainFirstNCategories",
+    "description": "Retain samples from the first n categories in the current ordering.",
+    "payloadType": "RetainFirstNCategories",
+    "payloadDescription": "Retain samples from the first n categories in the current ordering.",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute identifier used by the action.",
+        "required": true
+      },
+      {
+        "name": "n",
+        "type": "number",
+        "description": "Number of categories to retain.",
+        "required": true
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/filterByQuantitative",
+    "description": "Retain or remove samples using a numeric comparison.",
+    "payloadType": "FilterByQuantitative",
+    "payloadDescription": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute identifier used by the action.",
+        "required": true
+      },
+      {
+        "name": "operator",
+        "type": "ComparisonOperatorType",
+        "description": "Comparison operator used for thresholding.",
+        "required": true
+      },
+      {
+        "name": "operand",
+        "type": "number",
+        "description": "Numeric threshold used in the comparison.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      },
+      "operator": "gte",
+      "operand": 0.6
     }
   },
   {
@@ -53,10 +216,25 @@
     }
   },
   {
-    "actionType": "sampleView/filterByQuantitative",
-    "description": "Retain or remove samples using a numeric comparison.",
-    "payloadType": "FilterByQuantitative",
-    "payloadDescription": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
+    "actionType": "sampleView/removeUndefined",
+    "description": "Remove samples that are missing the chosen attribute.",
+    "payloadType": "RemoveUndefined",
+    "payloadDescription": "Payload for removing samples missing an attribute value.",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute identifier used by the action.",
+        "required": true
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/groupCustomCategories",
+    "description": "Create custom sample groups from manually chosen categories.",
+    "payloadType": "GroupCustom",
+    "payloadDescription": "Create custom sample groups from manually chosen categories.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -65,26 +243,13 @@
         "required": true
       },
       {
-        "name": "operator",
-        "type": "ComparisonOperatorType",
-        "description": "Comparison operator used for thresholding.",
-        "required": true
-      },
-      {
-        "name": "operand",
-        "type": "number",
-        "description": "Numeric threshold used in the comparison.",
+        "name": "groups",
+        "type": "CustomGroups",
+        "description": "A record where the keys are group names and the values are arrays of categories or sample ids.",
         "required": true
       }
     ],
-    "examplePayload": {
-      "attribute": {
-        "type": "SAMPLE_ATTRIBUTE",
-        "specifier": "purity"
-      },
-      "operator": "gte",
-      "operand": 0.6
-    }
+    "examplePayload": {}
   },
   {
     "actionType": "sampleView/groupByNominal",
@@ -153,21 +318,30 @@
     }
   },
   {
-    "actionType": "sampleView/retainFirstNCategories",
-    "description": "Retain samples from the first n categories in the current ordering.",
-    "payloadType": "RetainFirstNCategories",
-    "payloadDescription": "Retain samples from the first n categories in the current ordering.",
+    "actionType": "sampleView/removeGroup",
+    "description": "Remove a nested sample group by path.",
+    "payloadType": "RemoveGroup",
+    "payloadDescription": "Remove a nested sample group by path.",
+    "payloadFields": [
+      {
+        "name": "path",
+        "type": "string[]",
+        "description": "An array of group names that represent the path to the group. The implicit ROOT group is excluded.",
+        "required": true
+      }
+    ],
+    "examplePayload": {}
+  },
+  {
+    "actionType": "sampleView/retainMatched",
+    "description": "Retain categories that are present in all current groups.",
+    "payloadType": "RetainMatched",
+    "payloadDescription": "Retain categories that are present in all current groups.",
     "payloadFields": [
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
-        "description": "Attribute identifier used by the action.",
-        "required": true
-      },
-      {
-        "name": "n",
-        "type": "number",
-        "description": "Number of categories to retain.",
+        "description": "Attribute whose categories must be present in all current groups.",
         "required": true
       }
     ],

@@ -528,13 +528,18 @@ function shouldRetryAsViewWorkflow(app, program, errors) {
     const hasGenericPayloadShapeError = errors.some(
         (error) => error.includes("$.steps[") && error.includes(".payload.")
     );
-    const hasSampleAttributePayload = (program.steps ?? []).some(
-        (step) => step?.payload?.attribute?.type === "SAMPLE_ATTRIBUTE"
-    );
+    const hasSampleAttributePayload = (program.steps ?? []).some((step) => {
+        const payload = /** @type {any} */ (step?.payload);
+        return payload?.attribute?.type === "SAMPLE_ATTRIBUTE";
+    });
     const hasSuspiciousTemplateLikeAttribute = (program.steps ?? []).some(
-        (step) =>
-            typeof step?.payload?.attribute?.specifier === "string" &&
-            step.payload.attribute.specifier.includes("{{")
+        (step) => {
+            const payload = /** @type {any} */ (step?.payload);
+            return (
+                typeof payload?.attribute?.specifier === "string" &&
+                payload.attribute.specifier.includes("{{")
+            );
+        }
     );
 
     return (

@@ -1,8 +1,38 @@
 [
   {
+    "actionType": "sampleView/addMetadata",
+    "title": "Add metadata",
+    "description": "Add imported sample metadata to the current collection."
+  },
+  {
+    "actionType": "sampleView/deriveMetadata",
+    "title": "Add derived metadata",
+    "description": "Add derived metadata computed from a view-backed attribute."
+  },
+  {
+    "actionType": "sampleView/addMetadataFromSource",
+    "title": "Import metadata from source",
+    "description": "Add metadata imported from an external source."
+  },
+  {
     "actionType": "sampleView/sortBy",
     "title": "Sort by",
     "description": "Sort samples in descending order by the chosen attribute."
+  },
+  {
+    "actionType": "sampleView/retainFirstOfEach",
+    "title": "Retain the first sample of each",
+    "description": "Retain the first sample of each category in the current ordering."
+  },
+  {
+    "actionType": "sampleView/retainFirstNCategories",
+    "title": "Retain first n categories of ...",
+    "description": "Retain samples from the first n categories in the current ordering."
+  },
+  {
+    "actionType": "sampleView/filterByQuantitative",
+    "title": "Retain samples having purity ≥ 0.6",
+    "description": "Retain or remove samples using a numeric comparison."
   },
   {
     "actionType": "sampleView/filterByNominal",
@@ -10,9 +40,14 @@
     "description": "Retain or remove samples by exact discrete values."
   },
   {
-    "actionType": "sampleView/filterByQuantitative",
-    "title": "Retain samples having purity ≥ 0.6",
-    "description": "Retain or remove samples using a numeric comparison."
+    "actionType": "sampleView/removeUndefined",
+    "title": "Remove samples having missing attribute",
+    "description": "Remove samples that are missing the chosen attribute."
+  },
+  {
+    "actionType": "sampleView/groupCustomCategories",
+    "title": "Create custom sample groups from manually chosen categories.",
+    "description": "Create custom sample groups from manually chosen categories."
   },
   {
     "actionType": "sampleView/groupByNominal",
@@ -30,9 +65,14 @@
     "description": "Group samples by user-defined numeric thresholds."
   },
   {
-    "actionType": "sampleView/retainFirstNCategories",
-    "title": "Retain first n categories of ...",
-    "description": "Retain samples from the first n categories in the current ordering."
+    "actionType": "sampleView/removeGroup",
+    "title": "Remove a nested sample group by path.",
+    "description": "Remove a nested sample group by path."
+  },
+  {
+    "actionType": "sampleView/retainMatched",
+    "title": "Retain group-wise matched samples using",
+    "description": "Retain categories that are present in all current groups."
   },
   {
     "actionType": "paramProvenance/paramChange",

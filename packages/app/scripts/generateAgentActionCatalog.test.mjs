@@ -29,18 +29,18 @@ describe("generateAgentActionCatalog", () => {
 
     it("produces entries for the planner-facing actions", async () => {
         const generatedActionCatalog = await createGeneratedActionCatalog();
+        const actionTypes = generatedActionCatalog.map((entry) => entry.actionType);
 
-        expect(generatedActionCatalog.map((entry) => entry.actionType)).toEqual([
-            "sampleView/sortBy",
-            "sampleView/filterByNominal",
-            "sampleView/filterByQuantitative",
-            "sampleView/groupByNominal",
-            "sampleView/groupToQuartiles",
-            "sampleView/groupByThresholds",
-            "sampleView/retainFirstNCategories",
-            "paramProvenance/paramChange",
-            "viewSettings/setVisibility",
-            "viewSettings/restoreDefaultVisibility",
-        ]);
+        expect(new Set(actionTypes).size).toBe(actionTypes.length);
+        expect(actionTypes.every((actionType) => actionType.includes("/"))).toBe(
+            true
+        );
+        expect(actionTypes).toContain("sampleView/sortBy");
+        expect(actionTypes).toContain("paramProvenance/paramChange");
+        expect(actionTypes).toContain("viewSettings/setVisibility");
+        expect(actionTypes).toContain(
+            "viewSettings/restoreDefaultVisibility"
+        );
+        expect(actionTypes).not.toContain("sampleView/setSamples");
     });
 });

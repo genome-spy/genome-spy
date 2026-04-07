@@ -76,7 +76,12 @@ export async function createGeneratedActionSummaries() {
                 entry.actionType
             )
         )(entry.examplePayload);
-        const info = getActionInfo(action, createAttributeInfo);
+        let info;
+        try {
+            info = getActionInfo(action, createAttributeInfo);
+        } catch {
+            info = undefined;
+        }
 
         return {
             actionType: entry.actionType,

@@ -32,11 +32,174 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
+              "const": "sampleView/addMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attributeDefs": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "scale": {}
+                    },
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                "columnarMetadata": {
+                  "additionalProperties": {
+                    "type": "array"
+                  },
+                  "properties": {
+                    "sample": {
+                      "items": {
+                        "description": "This file is generated. Do not edit.",
+                        "type": ["string", "number", "boolean", "null"]
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["sample"],
+                  "type": "object"
+                },
+                "replace": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["columnarMetadata"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/deriveMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "groupPath": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scale": {}
+              },
+              "required": ["attribute", "name"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/addMetadataFromSource",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "columnIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "groupPath": {
+                  "type": "string"
+                },
+                "replace": {
+                  "type": "boolean"
+                },
+                "sourceId": {
+                  "type": "string"
+                }
+              },
+              "required": ["columnIds"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
               "const": "sampleView/sortBy",
               "type": "string"
             },
             "payload": {
-              "$ref": "#/definitions/SortBy"
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
             }
           },
           "required": ["actionType", "payload"],
@@ -46,67 +209,42 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "sampleView/filterByNominal",
+              "const": "sampleView/retainFirstOfEach",
               "type": "string"
             },
             "payload": {
-              "$ref": "#/definitions/FilterByNominal"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "sampleView/filterByQuantitative",
-              "type": "string"
-            },
-            "payload": {
-              "$ref": "#/definitions/FilterByQuantitative"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "sampleView/groupByNominal",
-              "type": "string"
-            },
-            "payload": {
-              "$ref": "#/definitions/GroupByNominal"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "sampleView/groupToQuartiles",
-              "type": "string"
-            },
-            "payload": {
-              "$ref": "#/definitions/GroupToQuartiles"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "sampleView/groupByThresholds",
-              "type": "string"
-            },
-            "payload": {
-              "$ref": "#/definitions/GroupByThresholds"
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
             }
           },
           "required": ["actionType", "payload"],
@@ -120,7 +258,468 @@
               "type": "string"
             },
             "payload": {
-              "$ref": "#/definitions/RetainFirstNCategories"
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "n": {
+                  "minimum": 1,
+                  "type": "number"
+                }
+              },
+              "required": ["attribute", "n"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByQuantitative",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "operand": {
+                  "type": "number"
+                },
+                "operator": {
+                  "enum": ["lt", "lte", "eq", "gte", "gt"],
+                  "type": "string"
+                }
+              },
+              "required": ["attribute", "operand", "operator"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "remove": {
+                  "type": "boolean"
+                },
+                "values": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "required": ["attribute", "values"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeUndefined",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupCustomCategories",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "groups": {
+                  "additionalProperties": {
+                    "items": {
+                      "description": "This file is generated. Do not edit.",
+                      "type": ["string", "number", "boolean", "null"]
+                    },
+                    "type": "array"
+                  },
+                  "type": "object"
+                }
+              },
+              "required": ["attribute", "groups"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupToQuartiles",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByThresholds",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "thresholds": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "operand": {
+                        "type": "number"
+                      },
+                      "operator": {
+                        "enum": ["lt", "lte"],
+                        "type": "string"
+                      }
+                    },
+                    "required": ["operator", "operand"],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": ["attribute", "thresholds"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeGroup",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": ["path"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainMatched",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
             }
           },
           "required": ["actionType", "payload"],
@@ -154,7 +753,10 @@
                       },
                       "type": "object"
                     },
-                    "key": {},
+                    "key": {
+                      "description": "This file is generated. Do not edit.",
+                      "type": ["string", "number", "boolean", "null"]
+                    },
                     "keyField": {
                       "type": "string"
                     },
@@ -183,7 +785,20 @@
                   "type": "object"
                 },
                 "selector": {
-                  "$ref": "#/definitions/ParamSelector"
+                  "additionalProperties": false,
+                  "properties": {
+                    "param": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["scope", "param"],
+                  "type": "object"
                 },
                 "value": {
                   "anyOf": [
@@ -216,34 +831,19 @@
                                   "type": "array"
                                 },
                                 {
-                                  "items": [
-                                    {
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "chrom": {
-                                          "type": "string"
-                                        },
-                                        "pos": {
-                                          "type": "number"
-                                        }
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "chrom": {
+                                        "type": "string"
                                       },
-                                      "required": ["chrom", "pos"],
-                                      "type": "object"
+                                      "pos": {
+                                        "type": "number"
+                                      }
                                     },
-                                    {
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "chrom": {
-                                          "type": "string"
-                                        },
-                                        "pos": {
-                                          "type": "number"
-                                        }
-                                      },
-                                      "required": ["chrom", "pos"],
-                                      "type": "object"
-                                    }
-                                  ],
+                                    "required": ["chrom", "pos"],
+                                    "type": "object"
+                                  },
                                   "maxItems": 2,
                                   "minItems": 2,
                                   "type": "array"
@@ -264,34 +864,19 @@
                                   "type": "array"
                                 },
                                 {
-                                  "items": [
-                                    {
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "chrom": {
-                                          "type": "string"
-                                        },
-                                        "pos": {
-                                          "type": "number"
-                                        }
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "chrom": {
+                                        "type": "string"
                                       },
-                                      "required": ["chrom", "pos"],
-                                      "type": "object"
+                                      "pos": {
+                                        "type": "number"
+                                      }
                                     },
-                                    {
-                                      "additionalProperties": false,
-                                      "properties": {
-                                        "chrom": {
-                                          "type": "string"
-                                        },
-                                        "pos": {
-                                          "type": "number"
-                                        }
-                                      },
-                                      "required": ["chrom", "pos"],
-                                      "type": "object"
-                                    }
-                                  ],
+                                    "required": ["chrom", "pos"],
+                                    "type": "object"
+                                  },
                                   "maxItems": 2,
                                   "minItems": 2,
                                   "type": "array"
@@ -323,7 +908,10 @@
                         },
                         "keys": {
                           "items": {
-                            "items": {},
+                            "items": {
+                              "description": "This file is generated. Do not edit.",
+                              "type": ["string", "number", "boolean", "null"]
+                            },
                             "type": "array"
                           },
                           "type": "array"
@@ -334,6 +922,130 @@
                         }
                       },
                       "required": ["type", "keyFields", "keys"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "operation": {
+                          "enum": ["replace", "add", "remove", "toggle"],
+                          "type": "string"
+                        },
+                        "origin": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "keyFields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "keyTuple": {
+                              "items": {
+                                "description": "This file is generated. Do not edit.",
+                                "type": ["string", "number", "boolean", "null"]
+                              },
+                              "type": "array"
+                            },
+                            "type": {
+                              "const": "datum",
+                              "type": "string"
+                            },
+                            "view": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "scope": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "view": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["scope", "view"],
+                              "type": "object"
+                            }
+                          },
+                          "required": ["view", "keyTuple"],
+                          "type": "object"
+                        },
+                        "partitionBy": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "rule": {},
+                        "type": {
+                          "const": "pointExpand",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["operation", "origin", "rule", "type"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "operation": {
+                          "enum": ["replace", "add", "remove", "toggle"],
+                          "type": "string"
+                        },
+                        "origin": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "keyFields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "keyTuple": {
+                              "items": {
+                                "description": "This file is generated. Do not edit.",
+                                "type": ["string", "number", "boolean", "null"]
+                              },
+                              "type": "array"
+                            },
+                            "type": {
+                              "const": "datum",
+                              "type": "string"
+                            },
+                            "view": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "scope": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "view": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["scope", "view"],
+                              "type": "object"
+                            }
+                          },
+                          "required": ["view", "keyTuple"],
+                          "type": "object"
+                        },
+                        "partitionBy": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "predicate": {},
+                        "type": {
+                          "const": "pointExpand",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["operation", "origin", "predicate", "type"],
                       "type": "object"
                     }
                   ]
@@ -385,393 +1097,6 @@
           "type": "object"
         }
       ]
-    },
-    "AggregationOp": {
-      "description": "Aggregation operators supported by interval-based attribute access.",
-      "enum": ["min", "max", "weightedMean", "variance", "count"],
-      "type": "string"
-    },
-    "AggregationSpec": {
-      "additionalProperties": false,
-      "description": "Aggregation configuration for interval-derived attribute access.",
-      "properties": {
-        "op": {
-          "$ref": "#/definitions/AggregationOp"
-        }
-      },
-      "required": ["op"],
-      "type": "object"
-    },
-    "AttributeIdentifier": {
-      "additionalProperties": false,
-      "properties": {
-        "specifier": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/ViewAttributeSpecifier"
-            }
-          ]
-        },
-        "type": {
-          "$ref": "#/definitions/AttributeIdentifierType"
-        }
-      },
-      "required": ["type"],
-      "type": "object"
-    },
-    "AttributeIdentifierType": {
-      "description": "Stable identifier for an abstract attribute used by actions and agent context.\n\n`type` identifies the attribute source kind, and `specifier` contains the concrete lookup information for that source.\n\nExamples:\n- `{ type: \"SAMPLE_ATTRIBUTE\", specifier: \"age\" }`\n- `{ type: \"VALUE_AT_LOCUS\", specifier: { ... } }`",
-      "enum": [
-        "SAMPLE_ATTRIBUTE",
-        "VALUE_AT_LOCUS",
-        "SAMPLE_NAME",
-        "VIEW_ATTRIBUTE"
-      ],
-      "type": "string"
-    },
-    "ChromosomalLocus": {
-      "additionalProperties": false,
-      "properties": {
-        "chrom": {
-          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
-          "type": "string"
-        },
-        "pos": {
-          "description": "The zero-based position inside the chromosome or contig.",
-          "type": "number"
-        }
-      },
-      "required": ["chrom"],
-      "type": "object"
-    },
-    "ComparisonOperatorType": {
-      "enum": ["lt", "lte", "eq", "gte", "gt"],
-      "type": "string"
-    },
-    "ComplexDomain": {
-      "description": "A complex domain that needs to be converted into a scalar domain before it is assigned to a scale.",
-      "items": {
-        "$ref": "#/definitions/ChromosomalLocus"
-      },
-      "type": "array"
-    },
-    "FilterByNominal": {
-      "additionalProperties": false,
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        },
-        "remove": {
-          "description": "If true, matching samples are removed instead of retained.",
-          "type": "boolean"
-        },
-        "values": {
-          "description": "Discrete values to match.",
-          "items": {},
-          "type": "array"
-        }
-      },
-      "required": ["attribute", "values"],
-      "type": "object"
-    },
-    "FilterByQuantitative": {
-      "additionalProperties": false,
-      "description": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        },
-        "operand": {
-          "description": "Numeric threshold used in the comparison.",
-          "type": "number"
-        },
-        "operator": {
-          "$ref": "#/definitions/ComparisonOperatorType",
-          "description": "Comparison operator used for thresholding."
-        }
-      },
-      "required": ["attribute", "operand", "operator"],
-      "type": "object"
-    },
-    "GroupByNominal": {
-      "additionalProperties": false,
-      "description": "Payload for grouping by a categorical attribute.",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        }
-      },
-      "required": ["attribute"],
-      "type": "object"
-    },
-    "GroupByThresholds": {
-      "additionalProperties": false,
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        },
-        "thresholds": {
-          "description": "Thresholds used to stratify the samples.",
-          "items": {
-            "$ref": "#/definitions/Threshold"
-          },
-          "minItems": 1,
-          "type": "array"
-        }
-      },
-      "required": ["attribute", "thresholds"],
-      "type": "object"
-    },
-    "GroupToQuartiles": {
-      "additionalProperties": false,
-      "description": "Payload for grouping by quartiles.",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        }
-      },
-      "required": ["attribute"],
-      "type": "object"
-    },
-    "Interval": {
-      "description": "Interval expressed as two scalar or locus points.",
-      "items": {
-        "$ref": "#/definitions/IntervalPoint"
-      },
-      "maxItems": 2,
-      "minItems": 2,
-      "type": "array"
-    },
-    "IntervalPoint": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "$ref": "#/definitions/ChromosomalLocus"
-        }
-      ],
-      "description": "One endpoint of an interval."
-    },
-    "IntervalReference": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Interval"
-        },
-        {
-          "$ref": "#/definitions/SelectionIntervalSource"
-        }
-      ],
-      "description": "Literal interval or selection-backed interval reference."
-    },
-    "IntervalSpecifier": {
-      "additionalProperties": false,
-      "description": "Specifier that summarizes a field over an interval.",
-      "properties": {
-        "aggregation": {
-          "$ref": "#/definitions/AggregationSpec",
-          "description": "Aggregation operation to apply over the interval"
-        },
-        "domainAtActionTime": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/NumericDomain"
-            },
-            {
-              "$ref": "#/definitions/ComplexDomain"
-            }
-          ],
-          "description": "The x-scale domain that was visible when the action was triggered."
-        },
-        "field": {
-          "description": "Attribute or field name used by the specifier.",
-          "type": "string"
-        },
-        "interval": {
-          "$ref": "#/definitions/IntervalReference",
-          "description": "Literal interval or a selection source resolved at action execution time"
-        },
-        "view": {
-          "$ref": "#/definitions/ViewRef",
-          "description": "A unique view reference. Legacy values may be a view name string."
-        }
-      },
-      "required": ["aggregation", "field", "interval", "view"],
-      "type": "object"
-    },
-    "LocusSpecifier": {
-      "additionalProperties": false,
-      "description": "Specifier that points to a single locus or scalar coordinate.",
-      "properties": {
-        "domainAtActionTime": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/NumericDomain"
-            },
-            {
-              "$ref": "#/definitions/ComplexDomain"
-            }
-          ],
-          "description": "The x-scale domain that was visible when the action was triggered."
-        },
-        "field": {
-          "description": "Attribute or field name used by the specifier.",
-          "type": "string"
-        },
-        "locus": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Scalar"
-            },
-            {
-              "$ref": "#/definitions/ChromosomalLocus"
-            }
-          ],
-          "description": "Coordinate on the `x` axis. May be a number of locus on a chromosome. Alternatively, a scalar if a categorical scale is used."
-        },
-        "view": {
-          "$ref": "#/definitions/ViewRef",
-          "description": "A unique view reference. Legacy values may be a view name string."
-        }
-      },
-      "required": ["field", "locus", "view"],
-      "type": "object"
-    },
-    "NumericDomain": {
-      "items": {
-        "type": "number"
-      },
-      "type": "array"
-    },
-    "ParamSelector": {
-      "additionalProperties": false,
-      "description": "Structured parameter address used for bookmarkable selections and values.",
-      "properties": {
-        "param": {
-          "type": "string"
-        },
-        "scope": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": ["scope", "param"],
-      "type": "object"
-    },
-    "RetainFirstNCategories": {
-      "additionalProperties": false,
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        },
-        "n": {
-          "description": "Number of categories to retain.",
-          "minimum": 1,
-          "type": "number"
-        }
-      },
-      "required": ["attribute", "n"],
-      "type": "object"
-    },
-    "Scalar": {
-      "type": ["string", "number", "boolean"]
-    },
-    "SelectionIntervalSource": {
-      "additionalProperties": false,
-      "description": "Interval that will be resolved from a selection parameter.",
-      "properties": {
-        "selector": {
-          "$ref": "#/definitions/ParamSelector"
-        },
-        "type": {
-          "const": "selection",
-          "type": "string"
-        }
-      },
-      "required": ["type", "selector"],
-      "type": "object"
-    },
-    "SortBy": {
-      "additionalProperties": false,
-      "description": "Payload for sorting samples by an attribute.",
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
-        }
-      },
-      "required": ["attribute"],
-      "type": "object"
-    },
-    "Threshold": {
-      "additionalProperties": false,
-      "description": "Numeric threshold used when partitioning or filtering quantitative values.",
-      "properties": {
-        "operand": {
-          "description": "Numeric threshold value.",
-          "type": "number"
-        },
-        "operator": {
-          "$ref": "#/definitions/ThresholdOperator",
-          "description": "Threshold side to use when creating groups."
-        }
-      },
-      "required": ["operator", "operand"],
-      "type": "object"
-    },
-    "ThresholdOperator": {
-      "enum": ["lt", "lte"],
-      "type": "string"
-    },
-    "ViewAttributeSpecifier": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/LocusSpecifier"
-        },
-        {
-          "$ref": "#/definitions/IntervalSpecifier"
-        }
-      ],
-      "description": "Supported view-backed attribute specifiers used by the sample collection actions."
-    },
-    "ViewRef": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "$ref": "#/definitions/ViewSelector"
-        }
-      ],
-      "description": "View reference used in SampleView actions. Legacy values may be a view name string, but selectors are the unambiguous, bookmark-friendly form."
-    },
-    "ViewSelector": {
-      "additionalProperties": false,
-      "description": "Structured view address used by selectors.\n\nThe selector identifies a view by its import scope and name, which makes it stable for provenance and replay.",
-      "properties": {
-        "scope": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "view": {
-          "type": "string"
-        }
-      },
-      "required": ["scope", "view"],
-      "type": "object"
     }
   }
 }

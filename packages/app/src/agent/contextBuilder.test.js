@@ -207,13 +207,21 @@ describe("getAgentContext", () => {
 
         expect(() => JSON.stringify(context)).not.toThrow();
         expect(context.actionCatalog.map((entry) => entry.actionType)).toEqual([
+            "sampleView/addMetadata",
+            "sampleView/deriveMetadata",
+            "sampleView/addMetadataFromSource",
             "sampleView/sortBy",
-            "sampleView/filterByNominal",
+            "sampleView/retainFirstOfEach",
+            "sampleView/retainFirstNCategories",
             "sampleView/filterByQuantitative",
+            "sampleView/filterByNominal",
+            "sampleView/removeUndefined",
+            "sampleView/groupCustomCategories",
             "sampleView/groupByNominal",
             "sampleView/groupToQuartiles",
             "sampleView/groupByThresholds",
-            "sampleView/retainFirstNCategories",
+            "sampleView/removeGroup",
+            "sampleView/retainMatched",
             "paramProvenance/paramChange",
             "viewSettings/setVisibility",
             "viewSettings/restoreDefaultVisibility",

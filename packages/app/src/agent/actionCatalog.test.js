@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
 import templateResultToString from "../utils/templateResultToString.js";
+import generatedActionCatalog from "./generatedActionCatalog.json" with { type: "json" };
 import {
     getActionCatalogEntry,
     listAgentActions,
@@ -28,21 +29,12 @@ function createAppStub() {
 }
 
 describe("actionCatalog", () => {
-    it("lists the supported agent actions", () => {
+    it("lists the generated agent actions", () => {
         const entries = listAgentActions();
 
-        expect(entries.map((entry) => entry.actionType)).toEqual([
-            "sampleView/sortBy",
-            "sampleView/filterByNominal",
-            "sampleView/filterByQuantitative",
-            "sampleView/groupByNominal",
-            "sampleView/groupToQuartiles",
-            "sampleView/groupByThresholds",
-            "sampleView/retainFirstNCategories",
-            "paramProvenance/paramChange",
-            "viewSettings/setVisibility",
-            "viewSettings/restoreDefaultVisibility",
-        ]);
+        expect(entries.map((entry) => entry.actionType)).toEqual(
+            generatedActionCatalog.map((entry) => entry.actionType)
+        );
 
         expect(entries[0]).toEqual(
             expect.objectContaining({
