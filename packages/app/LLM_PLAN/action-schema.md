@@ -24,6 +24,13 @@ Current implementation:
 - Runtime shape validation uses Ajv against that generated schema.
 - `generatedActionSummaries.json` is the compact presentation layer used in the agent context.
 - `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
+- The always-on catalog should stay compact; use a detail lookup such as
+  `getActionSchema(actionType)` when the model needs exact field constraints or
+  literal values.
+- The OpenAI-facing tool surface can stay coarse-grained. For this app, the
+  nested intent-program contract is the machine-readable description of the
+  Redux sub-actions, so the model does not need one OpenAI tool per Redux
+  action.
 
 ### Auto-Extraction Strategy
 You can auto-extract most of the catalog by combining:
