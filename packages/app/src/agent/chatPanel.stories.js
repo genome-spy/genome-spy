@@ -43,6 +43,25 @@ function createMockAgentController(scenario) {
                 title: "Visualization root",
                 description: "",
                 visible: true,
+                selectionDeclarations: [
+                    {
+                        selectionType: "interval",
+                        label: "brush",
+                        selector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        persist: true,
+                        clearable: true,
+                        encodings: ["x"],
+                        value: {
+                            type: "interval",
+                            intervals: {
+                                x: [12, 34],
+                            },
+                        },
+                    },
+                ],
                 children: [],
             },
         },
@@ -72,12 +91,6 @@ function createMockAgentController(scenario) {
             {
                 summary: "Set samples",
                 type: "sampleView/setSamples",
-            },
-        ],
-        params: [
-            {
-                selector: { scope: [], param: "brush" },
-                value: [12, 34],
             },
         ],
         lifecycle: {

@@ -165,26 +165,19 @@ describe("agentAdapter browser integration", () => {
                 attributes: expect.any(Array),
                 actionCatalog: expect.any(Array),
                 viewWorkflows: expect.objectContaining({
-                    selections: expect.any(Array),
+                    fields: expect.any(Array),
                     workflows: expect.any(Array),
                 }),
                 provenance: expect.any(Array),
-                params: expect.arrayContaining([
-                    expect.objectContaining({
-                        selector: expect.objectContaining({
-                            scope: expect.any(Array),
-                            param: expect.any(String),
-                        }),
-                        value: expect.objectContaining({
-                            type: expect.any(String),
-                        }),
-                    }),
-                ]),
                 lifecycle: expect.objectContaining({
                     appInitialized: true,
                 }),
             }),
         });
+        expect(planner.requests[0].body.context).not.toHaveProperty("params");
+        expect(
+            planner.requests[0].body.context.viewWorkflows
+        ).not.toHaveProperty("selections");
     });
 
     it("runs a structured view workflow and clarifies the missing field using the real choice dialog", async () => {

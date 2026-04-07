@@ -391,21 +391,6 @@ export interface AgentViewTree {
 }
 
 /**
- * Current value of a bookmarkable parameter or selection.
- */
-export interface AgentParamSummary {
-    /**
-     * Structured selector that identifies the parameter.
-     */
-    selector: ParamSelector;
-
-    /**
-     * Current value captured in provenance.
-     */
-    value: ParamValue;
-}
-
-/**
  * Bookmarkable provenance action exposed to the agent.
  */
 export interface AgentProvenanceAction {
@@ -612,19 +597,14 @@ export interface AgentViewWorkflowContext {
 }
 
 /**
- * Planner-facing workflow context. Selection and field lists are omitted when
- * there is no active selection.
+ * Planner-facing workflow context. Field lists are omitted when there are no
+ * active selection-driven fields.
  */
 export interface AgentPlannerViewWorkflowContext {
     /**
      * Supported structured workflows.
      */
     workflows: AgentViewWorkflowDefinition[];
-
-    /**
-     * Active interval selections, if any.
-     */
-    selections?: AgentSelectionSummary[];
 
     /**
      * Aggregatable fields for the active selections, if any.
@@ -750,11 +730,6 @@ export interface AgentContext {
      * Bookmarkable provenance actions for the current analysis history.
      */
     provenance: AgentProvenanceAction[];
-
-    /**
-     * Current bookmarkable params.
-     */
-    params: AgentParamSummary[];
 
     /**
      * Application lifecycle state.

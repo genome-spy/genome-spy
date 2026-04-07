@@ -13,14 +13,11 @@ export function getAgentContext(app) {
     const sampleView = app.getSampleView();
     const state = app.store.getState();
     const sampleState = app.provenance.getPresentState()?.sampleView;
-    const paramEntries =
-        app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
     const viewWorkflows = getViewWorkflowContext(app);
     const compactWorkflows =
-        viewWorkflows.selections.length > 0
+        viewWorkflows.fields.length > 0
             ? {
-                  selections: viewWorkflows.selections,
                   fields: viewWorkflows.fields,
                   workflows: viewWorkflows.workflows,
               }
@@ -43,10 +40,6 @@ export function getAgentContext(app) {
         })),
         viewWorkflows: compactWorkflows,
         provenance: buildProvenanceActions(app, provenance),
-        params: Object.values(paramEntries).map((entry) => ({
-            selector: entry.selector,
-            value: entry.value,
-        })),
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,
         },

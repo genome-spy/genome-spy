@@ -169,7 +169,6 @@ describe("getAgentContext", () => {
             "actionCatalog",
             "attributes",
             "lifecycle",
-            "params",
             "provenance",
             "schemaVersion",
             "view",
@@ -210,17 +209,6 @@ describe("getAgentContext", () => {
             specifier: "diagnosis",
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
-        expect(context.params).toEqual([
-            expect.objectContaining({
-                selector: {
-                    scope: ["samples"],
-                    param: "brush",
-                },
-                value: expect.objectContaining({
-                    type: "interval",
-                }),
-            }),
-        ]);
         expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.viewWorkflows.workflows).toEqual(
             expect.arrayContaining([
@@ -232,8 +220,7 @@ describe("getAgentContext", () => {
                 }),
             ])
         );
-        expect(context.viewWorkflows.selections).toHaveLength(1);
-        expect(context.viewWorkflows.fields).toEqual(expect.any(Array));
+        expect(context.viewWorkflows).not.toHaveProperty("selections");
         expect(context.provenance).toEqual([
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",

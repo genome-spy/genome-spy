@@ -899,32 +899,59 @@ export default class AgentChatPanel extends LitElement {
      * @returns {ChatContextSummary}
      */
     #summarizeContext(context) {
+        /** @type {string[]} */
+        const selectionSummaries = [];
+        this.#collectSelectionSummaries(
+            context.viewTree.root,
+            selectionSummaries
+        );
+
         return {
-            selectionSummaries: context.params
-                .map((param) => this.#formatSelectionSummary(param))
-                .filter(Boolean),
+            selectionSummaries,
         };
     }
 
     /**
-     * @param {import("./types.d.ts").AgentParamSummary} param
+     * @param {import("./types.d.ts").AgentViewNode} node
+     * @param {string[]} selectionSummaries
+     */
+    #collectSelectionSummaries(node, selectionSummaries) {
+        if (node.selectionDeclarations) {
+            for (const selection of node.selectionDeclarations) {
+                const summary = this.#formatSelectionSummary(selection);
+                if (summary) {
+                    selectionSummaries.push(summary);
+                }
+            }
+        }
+
+        if (node.children) {
+            for (const child of node.children) {
+                this.#collectSelectionSummaries(child, selectionSummaries);
+            }
+        }
+    }
+
+    /**
+     * @param {import("./types.d.ts").AgentSelectionDeclaration} selection
      * @returns {string}
      */
-    #formatSelectionSummary(param) {
-        if (param.value === null || param.value === undefined) {
+    #formatSelectionSummary(selection) {
+        if (selection.value === null || selection.value === undefined) {
             return "";
         }
 
-        const selector = param.selector;
+        const selector = selection.selector;
         const selectorLabel =
-            selector &&
+            selection.label ||
+            (selector &&
             typeof selector === "object" &&
             "param" in selector &&
             selector.param
                 ? String(selector.param)
-                : "selection";
+                : "selection");
 
-        return selectorLabel + ": " + this.#formatContextValue(param.value);
+        return selectorLabel + ": " + this.#formatContextValue(selection.value);
     }
 
     /**
