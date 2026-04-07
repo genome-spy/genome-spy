@@ -2,6 +2,13 @@
 
 This document defines the LLM-facing structure for actions, interaction state, and provenance. It complements `data-schema.md`, which focuses on view hierarchy and data encodings.
 
+## Code References
+- Catalog generation: [`actionCatalog.js`](../src/agent/actionCatalog.js)
+- Schema validation: [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js)
+- Program validation: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js)
+- Program execution: [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
+- Coverage tests: [`actionCatalog.test.js`](../src/agent/actionCatalog.test.js), [`intentProgramValidator.test.js`](../src/agent/intentProgramValidator.test.js), [`intentProgramExecutor.test.js`](../src/agent/intentProgramExecutor.test.js)
+
 ## Action Catalog
 From intent actions and action info sources:
 - Action type

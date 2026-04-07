@@ -2,6 +2,12 @@
 
 This document outlines a pragmatic deployment setup for an LLM-assisted GenomeSpy app, including system prompting, data transport, and open questions.
 
+## Code References
+- Runtime adapter and `/v1/plan` request flow: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Context snapshot assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Local entry points and debug UI: [`toolbarMenu.js`](../src/agent/toolbarMenu.js), [`chatPanel.js`](../src/agent/chatPanel.js)
+- Planner integration tests: [`agentAdapter.browser.test.js`](../src/agent/agentAdapter.browser.test.js)
+
 ## Deployment Topology
 - **Local dev:** GenomeSpy (browser) -> Vite dev server gateway -> Ollama (local model).
 - **Production:** GenomeSpy (browser) -> Node.js gateway (separate service) -> Ollama or cloud LLM.

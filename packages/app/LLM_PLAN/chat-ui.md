@@ -3,6 +3,12 @@
 This document describes the user-facing chat interface for the GenomeSpy agent.
 It focuses on component shape, interaction flow, and implementation constraints.
 
+## Code References
+- Chat panel component: [`chatPanel.js`](../src/agent/chatPanel.js)
+- Agent runtime adapter: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Toolbar entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
+- Browser integration tests: [`agentAdapter.browser.test.js`](../src/agent/agentAdapter.browser.test.js)
+
 ## Goal
 - Provide a compact chat surface for asking questions, issuing commands, and reviewing assistant output.
 - Keep the component self-contained so it does not depend on global stylesheet changes.

@@ -4,6 +4,12 @@ This guide defines how to annotate reducers, payload types, and related docs so
 the agent catalog and JSON Schema can be generated from code instead of a
 hand-written mirror.
 
+## Code References
+- Action catalog source: [`actionCatalog.js`](../src/agent/actionCatalog.js)
+- Schema generation and runtime validation: [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js)
+- Program-level validation: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js)
+- Execution summaries: [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
+
 ## Source Split
 - Reducer JSDoc in slice files: action meaning, usage, examples.
 - Payload JSDoc in typed payload definitions: field semantics, constraints, examples.

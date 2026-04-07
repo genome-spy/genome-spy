@@ -2,6 +2,14 @@
 
 This document outlines what tools should be exposed to an LLM agent, with emphasis on safe composition, validation, and minimal state mutation.
 
+## Code References
+- Context/tool assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Selection and field discovery: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
+- Workflow resolution: [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js)
+- Action validation and execution: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
+- Action summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
+- Agent entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
+
 ## Principles
 - Prefer read-only tools for context gathering.
 - Validate intents before execution.

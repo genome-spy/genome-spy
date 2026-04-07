@@ -5,6 +5,15 @@ keep the GenomeSpy core/app model unchanged while exposing a simplified,
 spec-like tree that the agent can read, reason about, and eventually use to
 propose new views.
 
+## Code References
+- Tree builder: [`viewTree.js`](../src/agent/viewTree.js)
+- Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Runtime selection summaries: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
+- Workflow resolution: [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js)
+- Local agent entry point: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Workflow catalog: [`viewWorkflowCatalog.js`](../src/agent/viewWorkflowCatalog.js)
+- Coverage tests: [`viewTree.test.js`](../src/agent/viewTree.test.js)
+
 ## Why this exists
 - The core view hierarchy is richer than the agent needs.
 - The agent should see effective structure, not raw inheritance noise.

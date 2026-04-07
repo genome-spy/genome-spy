@@ -1,5 +1,12 @@
 # LLM Project Summary (Draft)
 
+## Code Anchors
+- Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- View normalization: [`viewTree.js`](../src/agent/viewTree.js)
+- Workflow context and resolution: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js), [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js), [`viewWorkflowCatalog.js`](../src/agent/viewWorkflowCatalog.js)
+- Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
+- Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
+
 ## Goals
 - Help users learn what actions are available and how to compose them.
 - Enable natural-language commands (e.g., "Show me all patients with CCNE1 amplification").

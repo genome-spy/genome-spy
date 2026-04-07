@@ -8,6 +8,14 @@ chatbot. The underlying model should preserve the causal chain behind each
 state change so follow-up questions and branching actions stay grounded in the
 current app state.
 
+## Code References
+
+- Conversation and planner orchestration: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Planner context snapshot: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Execution and provenance summaries: [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
+- Action catalog summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
+- Agent UI trace entry points: [`toolbarMenu.js`](../src/agent/toolbarMenu.js), [`chatPanel.js`](../src/agent/chatPanel.js)
+
 ## Core Synthesis
 
 The user should experience a conversation over the current visualization. The
@@ -44,6 +52,7 @@ conversation messages led to which mutations.
 ## Recommended Model
 
 ### Conversation log
+
 Tracks:
 
 - user messages
@@ -52,6 +61,7 @@ Tracks:
 - user replies to clarifications
 
 ### Provenance tree
+
 Tracks:
 
 - dispatched actions
@@ -62,6 +72,7 @@ Tracks:
 - stable ids that let the add-on correlate chat messages with provenance entries
 
 ### Visualization state
+
 Tracks:
 
 - the current collapsed view tree
@@ -69,6 +80,7 @@ Tracks:
 - the current data/state summaries
 
 ### Derived planner context
+
 Build the agent prompt from:
 
 - the current collapsed visualization state

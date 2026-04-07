@@ -2,6 +2,13 @@
 
 This document outlines what the LLM needs to understand a GenomeSpy visualization and the data behind it. The goal is to provide enough structured context for intent planning and validation, without hard-coding domain semantics into the engine. For actions and provenance, see `packages/app/LLM_PLAN/action-schema.md`.
 
+## Code References
+- Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- View hierarchy normalization: [`viewTree.js`](../src/agent/viewTree.js)
+- Selection and field summaries: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
+- Workflow clarification and field resolution: [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js)
+- App transport boundary: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+
 ## Principles
 - Keep the system data-agnostic; capture semantics in metadata.
 - Prefer stable identifiers (view names, attribute identifiers) over labels.
