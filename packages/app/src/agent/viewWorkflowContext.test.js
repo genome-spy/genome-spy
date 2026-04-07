@@ -47,6 +47,7 @@ describe("getViewWorkflowContext", () => {
                         "brush",
                         {
                             name: "brush",
+                            description: "Brush the beta interval.",
                             persist: true,
                             select: {
                                 type: "interval",
@@ -62,7 +63,11 @@ describe("getViewWorkflowContext", () => {
             },
             getEncoding: () => ({
                 x: { field: "pos", type: "locus" },
-                y: { field: "beta", type: "quantitative" },
+                y: {
+                    field: "beta",
+                    type: "quantitative",
+                    description: "Beta-value track",
+                },
             }),
         };
 
@@ -72,10 +77,13 @@ describe("getViewWorkflowContext", () => {
             param: "brush",
         });
 
+        const sampleView = {
+            paramRuntime: betaView.paramRuntime,
+            visit: (visitor) => visitor(betaView),
+        };
+
         const app = {
-            getSampleView: () => ({
-                visit: (visitor) => visitor(betaView),
-            }),
+            getSampleView: () => sampleView,
             provenance: {
                 getPresentState: () => ({
                     paramProvenance: {
@@ -105,11 +113,13 @@ describe("getViewWorkflowContext", () => {
         expect(context.selections).toEqual([
             expect.objectContaining({
                 label: "brush",
+                description: "Brush the beta interval.",
             }),
         ]);
         expect(context.fields).toEqual([
             expect.objectContaining({
                 field: "beta",
+                description: "Beta-value track",
                 supportedAggregations: expect.arrayContaining([
                     "weightedMean",
                     "variance",

@@ -101,6 +101,11 @@ export interface AgentAttributeSummary {
     title: string;
 
     /**
+     * Human-readable description of the attribute, if available.
+     */
+    description?: string;
+
+    /**
      * Attribute data type.
      */
     dataType: string;
@@ -202,6 +207,11 @@ export interface AgentViewDataSummary {
      * Parsed data format, when relevant.
      */
     format?: string;
+
+    /**
+     * Human-readable description of the data source, if available.
+     */
+    description?: string;
 }
 
 /**
@@ -237,6 +247,11 @@ export interface AgentViewEncodingSummary {
      * Channel title, if explicitly set.
      */
     title?: string;
+
+    /**
+     * Human-readable description of the channel mapping, if available.
+     */
+    description?: string;
 
     /**
      * Whether this encoding comes from an ancestor view.
@@ -378,6 +393,11 @@ export interface AgentParamSummary {
      * Current value captured in provenance.
      */
     value: ParamValue;
+
+    /**
+     * Human-readable description of the parameter, if available.
+     */
+    description?: string;
 }
 
 /**
@@ -456,6 +476,11 @@ export interface AgentSelectionSummary {
     label: string;
 
     /**
+     * Human-readable description of the active selection, if available.
+     */
+    description?: string;
+
+    /**
      * Structured selector for the underlying parameter.
      */
     selector: ParamSelector;
@@ -484,6 +509,11 @@ export interface AgentSelectionDeclaration {
      * Human-readable label for the parameter.
      */
     label: string;
+
+    /**
+     * Human-readable description of the selection, if available.
+     */
+    description?: string;
 
     /**
      * Structured selector for the underlying parameter.
@@ -544,6 +574,11 @@ export interface AgentViewFieldSummary {
      * Field data type.
      */
     dataType: string;
+
+    /**
+     * Human-readable description of the field, if available.
+     */
+    description?: string;
 
     /**
      * Active selections for which this field is relevant.

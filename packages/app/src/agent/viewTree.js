@@ -481,6 +481,7 @@ function summarizeDataSpec(data) {
             kind: "url",
             source,
             format: getDataFormatKind(data.format),
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -489,6 +490,7 @@ function summarizeDataSpec(data) {
             kind: "inline",
             source: "inline",
             format: getDataFormatKind(data.format),
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -497,6 +499,7 @@ function summarizeDataSpec(data) {
             kind: "named",
             source: data.name,
             format: getDataFormatKind(data.format),
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -504,6 +507,7 @@ function summarizeDataSpec(data) {
         return {
             kind: "generator",
             source: "sequence",
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -516,6 +520,7 @@ function summarizeDataSpec(data) {
         return {
             kind: "lazy",
             source: lazyKind,
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -523,6 +528,7 @@ function summarizeDataSpec(data) {
         return {
             kind: "callback",
             source: "dynamicCallback",
+            description: normalizeDescription(data.description),
         };
     }
 
@@ -530,6 +536,7 @@ function summarizeDataSpec(data) {
         kind: "other",
         source: "other",
         format: getDataFormatKind(data.format),
+        description: normalizeDescription(data.description),
     };
 }
 
@@ -629,6 +636,10 @@ function summarizeEncoding(channel, def, ownEncoding) {
         summary.title = def.title;
     }
 
+    if ("description" in def) {
+        summary.description = normalizeDescription(def.description);
+    }
+
     if ("aggregate" in def && typeof def.aggregate === "string") {
         summary.type ??= def.aggregate;
     }
@@ -691,6 +702,7 @@ function summarizeSelectionDeclarations(root, view) {
         declarations.push({
             selectionType: select.type,
             label: formatScopedParamName(root, selector),
+            description: normalizeDescription(param.description),
             selector,
             persist: param.persist !== false,
             active: isActiveSelectionValue(

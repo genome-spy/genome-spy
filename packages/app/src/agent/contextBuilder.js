@@ -26,6 +26,7 @@ export function getAgentContext(app) {
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const paramEntries =
         app.provenance.getPresentState()?.paramProvenance?.entries ?? {};
+    const paramConfigs = sampleView?.paramRuntime?.paramConfigs;
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
 
     return {
@@ -43,6 +44,9 @@ export function getAgentContext(app) {
             key,
             selector: entry.selector,
             value: entry.value,
+            description: /** @type {string | undefined} */ (
+                paramConfigs?.get(key)?.description
+            ),
         })),
         promptHints: PROMPT_HINTS,
         lifecycle: {
@@ -99,6 +103,7 @@ function buildAttributeSummary(sampleView, sampleState) {
             id: identifier,
             name,
             title: templateResultToString(info.title),
+            description: info.description,
             dataType: info.type,
             source: SAMPLE_ATTRIBUTE,
             visible: def.visible ?? true,

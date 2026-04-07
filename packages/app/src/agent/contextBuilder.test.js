@@ -43,6 +43,7 @@ function createAppStub() {
         name: String(attribute.specifier),
         attribute,
         title: "Title " + String(attribute.specifier),
+        description: "Description " + String(attribute.specifier),
         emphasizedName: String(attribute.specifier),
         accessor: () => undefined,
         valuesProvider: () => [],
@@ -60,6 +61,7 @@ function createAppStub() {
                     "brush",
                     {
                         name: "brush",
+                        description: "Brush the current x interval.",
                         persist: true,
                         select: {
                             type: "interval",
@@ -204,6 +206,7 @@ describe("getAgentContext", () => {
             type: "SAMPLE_ATTRIBUTE",
             specifier: "diagnosis",
         });
+        expect(context.attributes[0].description).toBe("Description diagnosis");
         expect(context.actionSummaries).toHaveLength(7);
         expect(context.params).toEqual([
             expect.objectContaining({
@@ -215,6 +218,7 @@ describe("getAgentContext", () => {
                 value: expect.objectContaining({
                     type: "interval",
                 }),
+                description: "Brush the current x interval.",
             }),
         ]);
         expect(context.promptHints).toEqual([

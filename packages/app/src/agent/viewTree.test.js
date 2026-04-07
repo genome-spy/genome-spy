@@ -79,6 +79,7 @@ describe("buildViewTree", () => {
                             x: {
                                 field: "start",
                                 type: "locus",
+                                description: "Band start position",
                             },
                         },
                     },
@@ -86,6 +87,7 @@ describe("buildViewTree", () => {
                         x: {
                             field: "start",
                             type: "locus",
+                            description: "Band start position",
                         },
                     },
                 }),
@@ -138,11 +140,16 @@ describe("buildViewTree", () => {
                     y: {
                         field: "value",
                         type: "quantitative",
+                        description: "Value per point",
                     },
                 },
             },
             encoding: {
-                y: { field: "value", type: "quantitative" },
+                y: {
+                    field: "value",
+                    type: "quantitative",
+                    description: "Value per point",
+                },
             },
         });
 
@@ -160,16 +167,24 @@ describe("buildViewTree", () => {
             spec: {
                 layer: [],
                 description: "Main track for the current cohort.",
-                data: { name: "track-data" },
+                data: {
+                    name: "track-data",
+                    description: "Track data source",
+                },
                 encoding: {
                     x: {
                         field: "position",
                         type: "locus",
+                        description: "Genomic position",
                     },
                 },
             },
             encoding: {
-                x: { field: "position", type: "locus" },
+                x: {
+                    field: "position",
+                    type: "locus",
+                    description: "Genomic position",
+                },
             },
             children: [leaf, anonymousLeaf],
         });
@@ -181,7 +196,10 @@ describe("buildViewTree", () => {
             constructorName: "SampleView",
             spec: {
                 description: "Top-level sample view.",
-                data: { name: "samples" },
+                data: {
+                    name: "samples",
+                    description: "Sample collection source",
+                },
             },
             paramRuntime: {
                 paramConfigs: new Map([
@@ -189,6 +207,7 @@ describe("buildViewTree", () => {
                         "brush",
                         {
                             name: "brush",
+                            description: "Brush the x-axis interval.",
                             persist: true,
                             select: {
                                 type: "interval",
@@ -308,10 +327,11 @@ describe("buildViewTree", () => {
                     scope: [],
                     view: "samples",
                 },
-                data: {
+                data: expect.objectContaining({
                     kind: "named",
                     source: "samples",
-                },
+                    description: "Sample collection source",
+                }),
             })
         );
         expect(tree.root.children[1].children[0]).toHaveProperty("data");
@@ -328,6 +348,7 @@ describe("buildViewTree", () => {
                         scope: [],
                         param: "brush",
                     },
+                    description: "Brush the x-axis interval.",
                     encodings: ["x"],
                 }),
             ]
@@ -371,10 +392,11 @@ describe("buildViewTree", () => {
                     scope: [],
                     view: "track",
                 },
-                data: {
+                data: expect.objectContaining({
                     kind: "named",
                     source: "track-data",
-                },
+                    description: "Track data source",
+                }),
             })
         );
         expect(
@@ -404,6 +426,7 @@ describe("buildViewTree", () => {
                 sourceKind: "field",
                 field: "value",
                 type: "quantitative",
+                description: "Value per point",
                 inherited: false,
             }),
         });

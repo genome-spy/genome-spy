@@ -17,8 +17,9 @@ const DEFAULT_AGGREGATIONS = ["count"];
  * @returns {import("./types.js").AgentViewWorkflowContext}
  */
 export function getViewWorkflowContext(app) {
+    const sampleView = app.getSampleView();
     const selections = buildSelectionSummaries(app);
-    const fields = buildFieldSummaries(app, selections);
+    const fields = buildFieldSummaries(sampleView, selections);
 
     return {
         selections,
@@ -32,6 +33,8 @@ export function getViewWorkflowContext(app) {
  * @returns {import("./types.js").AgentSelectionSummary[]}
  */
 function buildSelectionSummaries(app) {
+    const sampleView = app.getSampleView();
+    const paramConfigs = sampleView?.paramRuntime?.paramConfigs;
     const entries =
         app.provenance.getPresentState?.()?.paramProvenance?.entries ?? {};
 
@@ -46,6 +49,9 @@ function buildSelectionSummaries(app) {
             id: createSelectionId(entry.selector),
             type: "interval",
             label: entry.selector.param,
+            description: /** @type {string | undefined} */ (
+                paramConfigs?.get(entry.selector.param)?.description
+            ),
             selector: entry.selector,
             active: true,
             nameSuffix: createSelectionNameSuffix(entry.value),
@@ -53,12 +59,11 @@ function buildSelectionSummaries(app) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../sampleView/sampleView.js").default | undefined} sampleView
  * @param {import("./types.js").AgentSelectionSummary[]} selections
  * @returns {import("./types.js").AgentViewFieldSummary[]}
  */
-function buildFieldSummaries(app, selections) {
-    const sampleView = app.getSampleView();
+function buildFieldSummaries(sampleView, selections) {
     if (!sampleView) {
         return [];
     }
@@ -98,6 +103,7 @@ function buildFieldSummaries(app, selections) {
                 viewTitle: fieldInfo.viewTitle,
                 field: fieldInfo.field,
                 dataType: fieldInfo.dataType,
+                description: fieldInfo.description,
                 selectionIds: [selection.id],
                 supportedAggregations: getSupportedAggregations(
                     fieldInfo.dataType
@@ -145,6 +151,11 @@ function getSelectionFieldInfos(sampleView, ownerView) {
                             ),
                             field: info.field,
                             dataType: info.type,
+                            description: getChannelDescription(
+                                info.view,
+                                info.channel,
+                                info.field
+                            ),
                         };
                     })
                     .filter(Boolean)
@@ -170,7 +181,7 @@ function getEncodingFieldInfos(view) {
         return [];
     }
 
-    /** @type {Array<{ view: string, viewTitle: string, field: string, dataType: string }>} */
+    /** @type {Array<{ view: string, viewTitle: string, field: string, dataType: string, description?: string }>} */
     const fields = [];
     for (const [channel, def] of Object.entries(encoding)) {
         if (
@@ -191,6 +202,7 @@ function getEncodingFieldInfos(view) {
                 "type" in def && typeof def.type === "string"
                     ? def.type
                     : "nominal",
+            description: getChannelDescription(view, channel, def.field),
         });
     }
 
@@ -209,7 +221,49 @@ function getAddressableViewName(view) {
 }
 
 /**
- * @param {Array<{ view: string, viewTitle: string, field: string, dataType: string }>} fields
+ * @param {any} view
+ * @param {string | undefined} channel
+ * @param {string} field
+ * @returns {string | undefined}
+ */
+function getChannelDescription(view, channel, field) {
+    const encoding =
+        typeof view?.getEncoding === "function"
+            ? view.getEncoding()
+            : undefined;
+    if (!encoding || typeof encoding !== "object") {
+        return undefined;
+    }
+
+    if (
+        channel &&
+        channel in encoding &&
+        encoding[channel] &&
+        typeof encoding[channel] === "object" &&
+        "description" in encoding[channel]
+    ) {
+        return /** @type {{ description?: string }} */ (encoding[channel])
+            .description;
+    }
+
+    for (const def of Object.values(encoding)) {
+        if (
+            !def ||
+            typeof def !== "object" ||
+            !("field" in def) ||
+            def.field !== field
+        ) {
+            continue;
+        }
+
+        return /** @type {{ description?: string }} */ (def).description;
+    }
+
+    return undefined;
+}
+
+/**
+ * @param {Array<{ view: string, viewTitle: string, field: string, dataType: string, description?: string }>} fields
  */
 function deduplicateFieldInfos(fields) {
     return Array.from(
