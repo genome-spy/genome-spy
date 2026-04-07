@@ -4,6 +4,7 @@ import {
     faInfoCircle,
     faRobot,
 } from "@fortawesome/free-solid-svg-icons";
+import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import safeMarkdown from "../utils/safeMarkdown.js";
@@ -948,7 +949,55 @@ export default class AgentChatPanel extends LitElement {
                 ? String(selector.param)
                 : "selection");
 
-        return selectorLabel + ": " + this.#formatContextValue(selection.value);
+        return (
+            selectorLabel + ": " + this.#formatSelectionValue(selection.value)
+        );
+    }
+
+    /**
+     * @param {unknown} value
+     * @returns {string}
+     */
+    #formatSelectionValue(value) {
+        if (
+            value &&
+            typeof value === "object" &&
+            "type" in value &&
+            value.type === "interval"
+        ) {
+            const intervals =
+                /** @type {{ intervals?: Record<string, any[]> }} */ (value)
+                    .intervals;
+            const x = intervals?.x;
+            if (Array.isArray(x) && x.length === 2) {
+                const xLabel =
+                    this.#formatIntervalEndpoint(x[0]) +
+                    " – " +
+                    this.#formatIntervalEndpoint(x[1]);
+                const y = intervals?.y;
+                if (Array.isArray(y) && y.length === 2) {
+                    return (
+                        xLabel +
+                        " / " +
+                        this.#formatIntervalEndpoint(y[0]) +
+                        " – " +
+                        this.#formatIntervalEndpoint(y[1])
+                    );
+                }
+
+                return xLabel;
+            }
+        }
+
+        return this.#formatContextValue(value);
+    }
+
+    /**
+     * @param {unknown} value
+     * @returns {string}
+     */
+    #formatIntervalEndpoint(value) {
+        return locusOrNumberToString(value);
     }
 
     /**

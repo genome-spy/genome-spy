@@ -55,6 +55,16 @@ function createAppStub() {
         explicitName: "samples",
         getTitleText: () => "Patient Cohort",
         visit: (visitor) => visitor(sampleView),
+        getScaleResolution: (channel) =>
+            channel === "x"
+                ? {
+                      type: "locus",
+                      toComplex: (value) => ({
+                          chrom: "chr1",
+                          pos: value,
+                      }),
+                  }
+                : undefined,
         paramRuntime: {
             paramConfigs: new Map([
                 [
@@ -206,6 +216,15 @@ describe("getAgentContext", () => {
                 },
             })
         );
+        expect(context.viewRoot.selectionDeclarations[0].value).toEqual({
+            type: "interval",
+            intervals: {
+                x: [
+                    { chrom: "chr1", pos: 0 },
+                    { chrom: "chr1", pos: 1 },
+                ],
+            },
+        });
         expect(context.attributes).toHaveLength(2);
         expect(context.attributes[0].id).toEqual({
             type: "SAMPLE_ATTRIBUTE",

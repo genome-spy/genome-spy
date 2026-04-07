@@ -52,7 +52,10 @@ function createMockAgentController(scenario) {
                     value: {
                         type: "interval",
                         intervals: {
-                            x: [12, 34],
+                            x: [
+                                { chrom: "chr1", pos: 12 },
+                                { chrom: "chr1", pos: 34 },
+                            ],
                         },
                     },
                 },

@@ -62,6 +62,16 @@ export function createAgentBrowserApp(options = {}) {
     const views = groupedFields.map(([, fieldInfos]) => ({
         explicitName: fieldInfos[0].view,
         getTitleText: () => fieldInfos[0].title,
+        getScaleResolution: (channel) =>
+            channel === "x"
+                ? {
+                      type: "locus",
+                      toComplex: (value) => ({
+                          chrom: "chr1",
+                          pos: value,
+                      }),
+                  }
+                : undefined,
         getEncoding: () => {
             /** @type {Record<string, { field: string, type: string }>} */
             const encoding = {

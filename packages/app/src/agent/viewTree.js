@@ -17,6 +17,7 @@ import {
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
 import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { formatScopedParamName } from "../viewScopeUtils.js";
+import { serializeBookmarkableParamValue } from "../state/paramValueSerialization.js";
 
 /**
  * Builds a normalized, spec-like view tree for the agent.
@@ -671,7 +672,10 @@ function summarizeSelectionDeclarations(root, view) {
                     ? [...(select.encodings ?? [])]
                     : undefined,
             clearable: select.clear !== false,
-            value: view.paramRuntime.getValue(paramName),
+            value: serializeBookmarkableParamValue(
+                view,
+                view.paramRuntime.getValue(paramName)
+            ),
         });
     }
 

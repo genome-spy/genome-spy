@@ -15,6 +15,7 @@ function createMockView(options) {
             paramConfigs: new Map(),
             getValue: () => undefined,
         },
+        getScaleResolution: options.getScaleResolution ?? (() => undefined),
         getTitleText: () => options.title,
         getEncoding: () => options.encoding ?? {},
         getLayoutAncestors() {
@@ -226,6 +227,16 @@ describe("buildViewTree", () => {
                           }
                         : undefined,
             },
+            getScaleResolution: (channel) =>
+                channel === "x"
+                    ? {
+                          type: "locus",
+                          toComplex: (value) => ({
+                              chrom: "chr1",
+                              pos: value,
+                          }),
+                      }
+                    : undefined,
             children: [hiddenBranch, layer],
         });
 
@@ -348,7 +359,10 @@ describe("buildViewTree", () => {
                     value: {
                         type: "interval",
                         intervals: {
-                            x: [0, 1],
+                            x: [
+                                { chrom: "chr1", pos: 0 },
+                                { chrom: "chr1", pos: 1 },
+                            ],
                         },
                     },
                 }),
