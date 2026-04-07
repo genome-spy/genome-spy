@@ -68,7 +68,10 @@ export function buildViewTree(app) {
             node.visible === false
         ) {
             node.collapsed = true;
-            node.childCount = getChildCount(view);
+            const childCount = getChildCount(view);
+            if (childCount > 0) {
+                node.childCount = childCount;
+            }
             node.encodings = {};
         }
         nodes.set(view, node);
