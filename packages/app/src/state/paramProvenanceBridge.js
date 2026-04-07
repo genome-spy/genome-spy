@@ -35,6 +35,7 @@ import {
     withPartitionBy,
 } from "./selectionExpansion.js";
 import { tryResolvePointExpandOriginDatum } from "./selectionExpansionOrigin.js";
+import { serializeBookmarkableParamValue } from "./paramValueSerialization.js";
 
 const THROTTLE_INTERVAL_MS = 150;
 
@@ -560,14 +561,10 @@ export default class ParamProvenanceBridge {
                     return;
                 }
 
-                /** @type {ParamValue} */
-                return {
-                    type: "interval",
-                    intervals: this.#serializeIntervals(
-                        entry,
-                        /** @type {any} */ (value.intervals)
-                    ),
-                };
+                return serializeBookmarkableParamValue(
+                    entry.view,
+                    /** @type {ParamValue} */ (value)
+                );
             }
 
             throw new Error(
@@ -1183,37 +1180,6 @@ export default class ParamProvenanceBridge {
         }
 
         return false;
-    }
-
-    /**
-     * Copies intervals to ensure we do not leak internal references.
-     *
-     * @param {BookmarkableParamEntry} entry
-     * @param {Partial<Record<string, any[] | null>>} intervals
-     * @returns {Partial<Record<string, [any, any]>>}
-     */
-    #serializeIntervals(entry, intervals) {
-        /** @type {Partial<Record<string, [any, any]>>} */
-        const copy = {};
-        for (const [channel, interval] of Object.entries(intervals)) {
-            if (interval) {
-                const channelWithScale =
-                    /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
-                        channel
-                    );
-                const resolution =
-                    entry.view.getScaleResolution(channelWithScale);
-                copy[channel] = [
-                    resolution && resolution.type === "locus"
-                        ? resolution.toComplex(interval[0])
-                        : interval[0],
-                    resolution && resolution.type === "locus"
-                        ? resolution.toComplex(interval[1])
-                        : interval[1],
-                ];
-            }
-        }
-        return copy;
     }
 
     /**
