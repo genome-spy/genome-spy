@@ -632,6 +632,9 @@ export class MetadataView extends ConcatView {
             scale: resolution.getScale(),
             title: html`<em class="attribute">${attributeName}</em>`,
             emphasizedName: attributeName,
+            description: /** @type {string | undefined} */ (
+                view.spec.description
+            ),
         };
     }
 
@@ -809,6 +812,7 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
             fontStyle: sampleDef.attributeLabelFontStyle,
             fontWeight: sampleDef.attributeLabelFontWeight,
         },
+        description: attributeDef.description,
         visible: attributeDef.visible ?? true,
         width: attributeDef.width ?? sampleDef.attributeSize ?? 10,
         transform: [{ type: "filter", expr: `${escapedField} != null` }],

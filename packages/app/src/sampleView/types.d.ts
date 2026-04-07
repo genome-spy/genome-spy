@@ -84,6 +84,12 @@ export interface AttributeInfo {
     /** Formatted attribute name for context menus (e.g., with selective emphasis). */
     emphasizedName: string | import("lit").TemplateResult;
 
+    /**
+     * Optional description of the attribute. Can be used in UI and agent
+     * context to explain the meaning of the attribute.
+     */
+    description?: string;
+
     /** Function that maps a sampleId to an attribute value */
     accessor: (sampleId: string, sampleHierarchy: SampleHierarchy) => any;
 

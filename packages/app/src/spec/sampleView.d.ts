@@ -48,6 +48,12 @@ export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";
 
 export interface SampleAttributeDef {
     /**
+     * A description of the metadata attribute. Can be used for documentation
+     * and to explain the meaning of the column.
+     */
+    description?: string;
+
+    /**
      * The attribute type. One of `"nominal"`, `"ordinal"`, or `"quantitative"`.
      */
     type?: SampleAttributeType;
