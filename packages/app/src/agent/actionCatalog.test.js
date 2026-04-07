@@ -32,13 +32,16 @@ describe("actionCatalog", () => {
         const entries = listAgentActions();
 
         expect(entries.map((entry) => entry.actionType)).toEqual([
-            "sortBy",
-            "filterByNominal",
-            "filterByQuantitative",
-            "groupByNominal",
-            "groupToQuartiles",
-            "groupByThresholds",
-            "retainFirstNCategories",
+            "sampleView/sortBy",
+            "sampleView/filterByNominal",
+            "sampleView/filterByQuantitative",
+            "sampleView/groupByNominal",
+            "sampleView/groupToQuartiles",
+            "sampleView/groupByThresholds",
+            "sampleView/retainFirstNCategories",
+            "paramProvenance/paramChange",
+            "viewSettings/setVisibility",
+            "viewSettings/restoreDefaultVisibility",
         ]);
 
         expect(entries[0]).toEqual(
@@ -50,7 +53,7 @@ describe("actionCatalog", () => {
     });
 
     it("provides action creators for supported actions", () => {
-        const entry = getActionCatalogEntry("sortBy");
+        const entry = getActionCatalogEntry("sampleView/sortBy");
         const action = entry.actionCreator({
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "age" },
         });
@@ -58,8 +61,33 @@ describe("actionCatalog", () => {
         expect(action.type).toBe("sampleView/sortBy");
     });
 
+    it("provides action creators for supplemental actions", () => {
+        expect(
+            getActionCatalogEntry("paramProvenance/paramChange").actionCreator({
+                selector: { scope: [], param: "brush" },
+                value: {
+                    type: "value",
+                    value: 0.6,
+                },
+            }).type
+        ).toBe("paramProvenance/paramChange");
+
+        expect(
+            getActionCatalogEntry("viewSettings/setVisibility").actionCreator({
+                key: "cCREs",
+                visibility: false,
+            }).type
+        ).toBe("viewSettings/setVisibility");
+
+        expect(
+            getActionCatalogEntry(
+                "viewSettings/restoreDefaultVisibility"
+            ).actionCreator("cCREs").type
+        ).toBe("viewSettings/restoreDefaultVisibility");
+    });
+
     it("exposes payload field metadata for quantitative filters", () => {
-        const entry = getActionCatalogEntry("filterByQuantitative");
+        const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 
         expect(entry.payloadDescription).toContain("quantitative attribute");
         expect(entry.payloadFields).toEqual([
@@ -84,7 +112,7 @@ describe("actionCatalog", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",

@@ -7,18 +7,22 @@ import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
 /**
- * Supported sample-action types that the agent is allowed to emit.
+ * Supported Redux action types that the agent is allowed to emit.
  *
- * This is the planner-facing subset of the sample collection reducer surface.
+ * This is the planner-facing subset of the sample collection, param provenance,
+ * and view-settings reducer surfaces.
  */
 export type AgentActionType =
-    | "sortBy"
-    | "filterByNominal"
-    | "filterByQuantitative"
-    | "groupByNominal"
-    | "groupToQuartiles"
-    | "groupByThresholds"
-    | "retainFirstNCategories";
+    | "sampleView/sortBy"
+    | "sampleView/filterByNominal"
+    | "sampleView/filterByQuantitative"
+    | "sampleView/groupByNominal"
+    | "sampleView/groupToQuartiles"
+    | "sampleView/groupByThresholds"
+    | "sampleView/retainFirstNCategories"
+    | "paramProvenance/paramChange"
+    | "viewSettings/setVisibility"
+    | "viewSettings/restoreDefaultVisibility";
 
 /**
  * Metadata for a single field in the generated agent action catalog.

@@ -33,13 +33,16 @@ describe("generateAgentActionSummaries", () => {
         expect(
             generatedActionSummaries.map((entry) => entry.actionType)
         ).toEqual([
-            "sortBy",
-            "filterByNominal",
-            "filterByQuantitative",
-            "groupByNominal",
-            "groupToQuartiles",
-            "groupByThresholds",
-            "retainFirstNCategories",
+            "sampleView/sortBy",
+            "sampleView/filterByNominal",
+            "sampleView/filterByQuantitative",
+            "sampleView/groupByNominal",
+            "sampleView/groupToQuartiles",
+            "sampleView/groupByThresholds",
+            "sampleView/retainFirstNCategories",
+            "paramProvenance/paramChange",
+            "viewSettings/setVisibility",
+            "viewSettings/restoreDefaultVisibility",
         ]);
     });
 });

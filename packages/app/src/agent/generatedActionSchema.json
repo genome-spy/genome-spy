@@ -32,7 +32,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "sortBy",
+              "const": "sampleView/sortBy",
               "type": "string"
             },
             "payload": {
@@ -46,7 +46,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "filterByNominal",
+              "const": "sampleView/filterByNominal",
               "type": "string"
             },
             "payload": {
@@ -60,7 +60,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "filterByQuantitative",
+              "const": "sampleView/filterByQuantitative",
               "type": "string"
             },
             "payload": {
@@ -74,7 +74,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "groupByNominal",
+              "const": "sampleView/groupByNominal",
               "type": "string"
             },
             "payload": {
@@ -88,7 +88,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "groupToQuartiles",
+              "const": "sampleView/groupToQuartiles",
               "type": "string"
             },
             "payload": {
@@ -102,7 +102,7 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "groupByThresholds",
+              "const": "sampleView/groupByThresholds",
               "type": "string"
             },
             "payload": {
@@ -116,11 +116,269 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "retainFirstNCategories",
+              "const": "sampleView/retainFirstNCategories",
               "type": "string"
             },
             "payload": {
               "$ref": "#/definitions/RetainFirstNCategories"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "paramProvenance/paramChange",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "origin": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "intervalSources": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end": {
+                            "type": "string"
+                          },
+                          "start": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "object"
+                    },
+                    "key": {},
+                    "keyField": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "datum",
+                      "type": "string"
+                    },
+                    "view": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "scope": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "view": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["scope", "view"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["type", "view", "keyField", "key"],
+                  "type": "object"
+                },
+                "selector": {
+                  "$ref": "#/definitions/ParamSelector"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "type": {
+                          "const": "value",
+                          "type": "string"
+                        },
+                        "value": {}
+                      },
+                      "required": ["type", "value"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "intervals": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "x": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "items": [
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "chrom": {
+                                          "type": "string"
+                                        },
+                                        "pos": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["chrom", "pos"],
+                                      "type": "object"
+                                    },
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "chrom": {
+                                          "type": "string"
+                                        },
+                                        "pos": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["chrom", "pos"],
+                                      "type": "object"
+                                    }
+                                  ],
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "y": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "items": [
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "chrom": {
+                                          "type": "string"
+                                        },
+                                        "pos": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["chrom", "pos"],
+                                      "type": "object"
+                                    },
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "chrom": {
+                                          "type": "string"
+                                        },
+                                        "pos": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": ["chrom", "pos"],
+                                      "type": "object"
+                                    }
+                                  ],
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": {
+                          "const": "interval",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "intervals"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "keyFields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "keys": {
+                          "items": {
+                            "items": {},
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "const": "point",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "keyFields", "keys"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "required": ["selector", "value"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "viewSettings/setVisibility",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "visibility": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["key", "visibility"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "viewSettings/restoreDefaultVisibility",
+              "type": "string"
+            },
+            "payload": {
+              "type": "string"
             }
           },
           "required": ["actionType", "payload"],

@@ -1,37 +1,52 @@
 [
   {
-    "actionType": "sortBy",
+    "actionType": "sampleView/sortBy",
     "title": "Sort by",
     "description": "Sort samples in descending order by the chosen attribute."
   },
   {
-    "actionType": "filterByNominal",
+    "actionType": "sampleView/filterByNominal",
     "title": "Retain samples having diagnosis = AML",
     "description": "Retain or remove samples by exact discrete values."
   },
   {
-    "actionType": "filterByQuantitative",
+    "actionType": "sampleView/filterByQuantitative",
     "title": "Retain samples having purity ≥ 0.6",
     "description": "Retain or remove samples using a numeric comparison."
   },
   {
-    "actionType": "groupByNominal",
+    "actionType": "sampleView/groupByNominal",
     "title": "Group by",
     "description": "Group samples by the distinct values of the chosen attribute."
   },
   {
-    "actionType": "groupToQuartiles",
+    "actionType": "sampleView/groupToQuartiles",
     "title": "Group by quartiles",
     "description": "Group samples into quartiles by the chosen quantitative attribute."
   },
   {
-    "actionType": "groupByThresholds",
+    "actionType": "sampleView/groupByThresholds",
     "title": "Group by thresholds",
     "description": "Group samples by user-defined numeric thresholds."
   },
   {
-    "actionType": "retainFirstNCategories",
+    "actionType": "sampleView/retainFirstNCategories",
     "title": "Retain first n categories of ...",
     "description": "Retain samples from the first n categories in the current ordering."
+  },
+  {
+    "actionType": "paramProvenance/paramChange",
+    "title": "Update a bookmarkable parameter.",
+    "description": "Update a bookmarkable parameter."
+  },
+  {
+    "actionType": "viewSettings/setVisibility",
+    "title": "Set the configured visibility of a view.",
+    "description": "Set the configured visibility of a view."
+  },
+  {
+    "actionType": "viewSettings/restoreDefaultVisibility",
+    "title": "Clear the visibility override for a view.",
+    "description": "Clear the visibility override for a view."
   }
 ]

@@ -32,7 +32,7 @@ describe("validateIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -51,7 +51,7 @@ describe("validateIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "groupToQuartiles",
+                    actionType: "sampleView/groupToQuartiles",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -80,7 +80,7 @@ describe("validateIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -100,7 +100,7 @@ describe("validateIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "filterByQuantitative",
+                    actionType: "sampleView/filterByQuantitative",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -123,7 +123,7 @@ describe("validateIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "groupByThresholds",
+                    actionType: "sampleView/groupByThresholds",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",

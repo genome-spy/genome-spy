@@ -1,6 +1,6 @@
 [
   {
-    "actionType": "sortBy",
+    "actionType": "sampleView/sortBy",
     "description": "Sort samples in descending order by the chosen attribute.",
     "payloadType": "SortBy",
     "payloadDescription": "Payload for sorting samples by an attribute.",
@@ -20,7 +20,7 @@
     }
   },
   {
-    "actionType": "filterByNominal",
+    "actionType": "sampleView/filterByNominal",
     "description": "Retain or remove samples by exact discrete values.",
     "payloadType": "FilterByNominal",
     "payloadDescription": "Retain or remove samples by exact discrete values.",
@@ -49,13 +49,11 @@
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "diagnosis"
       },
-      "values": [
-        "AML"
-      ]
+      "values": ["AML"]
     }
   },
   {
-    "actionType": "filterByQuantitative",
+    "actionType": "sampleView/filterByQuantitative",
     "description": "Retain or remove samples using a numeric comparison.",
     "payloadType": "FilterByQuantitative",
     "payloadDescription": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
@@ -89,7 +87,7 @@
     }
   },
   {
-    "actionType": "groupByNominal",
+    "actionType": "sampleView/groupByNominal",
     "description": "Group samples by the distinct values of the chosen attribute.",
     "payloadType": "GroupByNominal",
     "payloadDescription": "Payload for grouping by a categorical attribute.",
@@ -104,7 +102,7 @@
     "examplePayload": {}
   },
   {
-    "actionType": "groupToQuartiles",
+    "actionType": "sampleView/groupToQuartiles",
     "description": "Group samples into quartiles by the chosen quantitative attribute.",
     "payloadType": "GroupToQuartiles",
     "payloadDescription": "Payload for grouping by quartiles.",
@@ -119,7 +117,7 @@
     "examplePayload": {}
   },
   {
-    "actionType": "groupByThresholds",
+    "actionType": "sampleView/groupByThresholds",
     "description": "Group samples by user-defined numeric thresholds.",
     "payloadType": "GroupByThresholds",
     "payloadDescription": "Group samples by user-defined numeric thresholds.",
@@ -155,7 +153,7 @@
     }
   },
   {
-    "actionType": "retainFirstNCategories",
+    "actionType": "sampleView/retainFirstNCategories",
     "description": "Retain samples from the first n categories in the current ordering.",
     "payloadType": "RetainFirstNCategories",
     "payloadDescription": "Retain samples from the first n categories in the current ordering.",
@@ -174,5 +172,84 @@
       }
     ],
     "examplePayload": {}
+  },
+  {
+    "actionType": "paramProvenance/paramChange",
+    "description": "Update a bookmarkable parameter.",
+    "payloadType": "ParamProvenanceEntry",
+    "payloadDescription": "Payload for updating a bookmarkable parameter entry in provenance.",
+    "payloadFields": [
+      {
+        "name": "selector",
+        "type": "ParamSelector",
+        "description": "Structured selector for the parameter.",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "ParamValue",
+        "description": "Serialized parameter value.",
+        "required": true
+      },
+      {
+        "name": "origin",
+        "type": "ParamOrigin",
+        "description": "Optional datum origin for replayable values.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "selector": {
+        "scope": [],
+        "param": "brush"
+      },
+      "value": {
+        "type": "interval",
+        "intervals": {
+          "x": [
+            {
+              "chrom": "chr17",
+              "pos": 7685012
+            },
+            {
+              "chrom": "chr17",
+              "pos": 7690727
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "actionType": "viewSettings/setVisibility",
+    "description": "Set the configured visibility of a view.",
+    "payloadType": "SetVisibility",
+    "payloadDescription": "Payload for setting a view visibility override.",
+    "payloadFields": [
+      {
+        "name": "key",
+        "type": "string",
+        "description": "Visibility key for the view.",
+        "required": true
+      },
+      {
+        "name": "visibility",
+        "type": "boolean",
+        "description": "Whether the view should be visible.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "key": "cCREs",
+      "visibility": false
+    }
+  },
+  {
+    "actionType": "viewSettings/restoreDefaultVisibility",
+    "description": "Clear the visibility override for a view.",
+    "payloadType": "RestoreDefaultVisibility",
+    "payloadDescription": "Payload for clearing a single visibility override.",
+    "payloadFields": [],
+    "examplePayload": "cCREs"
   }
 ]

@@ -358,7 +358,7 @@ describe("agentAdapter", () => {
                         schemaVersion: 1,
                         steps: [
                             {
-                                actionType: "filterByQuantitative",
+                                actionType: "sampleView/filterByQuantitative",
                                 payload: {
                                     attribute: {
                                         type: "SAMPLE_ATTRIBUTE",
@@ -415,7 +415,7 @@ describe("agentAdapter", () => {
                         schemaVersion: 1,
                         steps: [
                             {
-                                actionType: "filterByQuantitative",
+                                actionType: "sampleView/filterByQuantitative",
                                 payload: {
                                     attribute: {
                                         type: "SAMPLE_ATTRIBUTE",
@@ -473,7 +473,7 @@ describe("agentAdapter", () => {
                                 schemaVersion: 1,
                                 steps: [
                                     {
-                                        actionType: "sortBy",
+                                        actionType: "sampleView/sortBy",
                                         payload: {
                                             attribute: {
                                                 type: "SAMPLE_ATTRIBUTE",
@@ -482,7 +482,7 @@ describe("agentAdapter", () => {
                                         },
                                     },
                                     {
-                                        actionType: "groupByNominal",
+                                        actionType: "sampleView/groupByNominal",
                                         payload: {
                                             attribute: {
                                                 type: "SAMPLE_ATTRIBUTE",

@@ -36,7 +36,7 @@ describe("submitIntentProgram", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -45,7 +45,7 @@ describe("submitIntentProgram", () => {
                     },
                 },
                 {
-                    actionType: "groupByNominal",
+                    actionType: "sampleView/groupByNominal",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",

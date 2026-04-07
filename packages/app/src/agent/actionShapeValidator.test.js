@@ -13,7 +13,7 @@ describe("actionShapeValidator", () => {
             needsConfirmation: false,
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -22,7 +22,27 @@ describe("actionShapeValidator", () => {
                     },
                 },
                 {
-                    actionType: "groupByThresholds",
+                    actionType: "paramProvenance/paramChange",
+                    payload: {
+                        selector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        value: {
+                            type: "value",
+                            value: 0.6,
+                        },
+                    },
+                },
+                {
+                    actionType: "viewSettings/setVisibility",
+                    payload: {
+                        key: "cCREs",
+                        visibility: false,
+                    },
+                },
+                {
+                    actionType: "sampleView/groupByThresholds",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -42,10 +62,13 @@ describe("actionShapeValidator", () => {
     });
 
     it("rejects malformed payload shapes", () => {
-        const result = validateActionPayloadShape("retainFirstNCategories", {
-            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "diagnosis" },
-            n: 0,
-        });
+        const result = validateActionPayloadShape(
+            "sampleView/retainFirstNCategories",
+            {
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "diagnosis" },
+                n: 0,
+            }
+        );
 
         expect(result.ok).toBe(false);
         expect(result.errors.join("\n")).toContain(
@@ -58,7 +81,7 @@ describe("actionShapeValidator", () => {
             schemaVersion: 1,
             steps: [
                 {
-                    actionType: "groupByThresholds",
+                    actionType: "sampleView/groupByThresholds",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",

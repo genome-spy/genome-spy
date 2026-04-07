@@ -1,4 +1,6 @@
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
+import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { getActionInfo } from "../sampleView/state/actionInfo.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import generatedActionCatalog from "./generatedActionCatalog.json" with { type: "json" };
@@ -29,6 +31,30 @@ function getAttributeInfoSource(app) {
  */
 
 /**
+ * @param {import("./types.js").AgentActionType} actionType
+ * @returns {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>}
+ */
+function getActionCreator(actionType) {
+    if (actionType.startsWith("sampleView/")) {
+        return sampleSlice.actions[actionType.slice("sampleView/".length)];
+    }
+
+    if (actionType.startsWith("paramProvenance/")) {
+        return paramProvenanceSlice.actions[
+            actionType.slice("paramProvenance/".length)
+        ];
+    }
+
+    if (actionType.startsWith("viewSettings/")) {
+        return viewSettingsSlice.actions[
+            actionType.slice("viewSettings/".length)
+        ];
+    }
+
+    throw new Error("Unsupported agent actionType " + actionType + ".");
+}
+
+/**
  * @type {Record<import("./types.js").AgentActionType, ActionCatalogEntry>}
  */
 export const actionCatalog =
@@ -44,7 +70,7 @@ export const actionCatalog =
                         actionType,
                         {
                             ...entry,
-                            actionCreator: sampleSlice.actions[actionType],
+                            actionCreator: getActionCreator(actionType),
                         },
                     ];
                 })

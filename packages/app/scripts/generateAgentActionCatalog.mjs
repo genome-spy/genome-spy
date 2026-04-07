@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { supplementalActionCatalogEntries } from "../src/agent/actionCatalogDefinitions.js";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(scriptDir, "..");
@@ -28,6 +29,8 @@ const outputPath = path.join(
     "agent",
     "generatedActionCatalog.json"
 );
+
+const SAMPLE_SLICE_PREFIX = "sampleView/";
 
 /**
  * @param {string} filePath
@@ -352,6 +355,18 @@ function inferPayloadType(actionType) {
 }
 
 /**
+ * @param {string} actionType
+ * @returns {string}
+ */
+function getSampleActionName(actionType) {
+    if (!actionType.startsWith(SAMPLE_SLICE_PREFIX)) {
+        throw new Error("Not a sample action type: " + actionType);
+    }
+
+    return actionType.slice(SAMPLE_SLICE_PREFIX.length);
+}
+
+/**
  * @param {string} text
  * @returns {string}
  */
@@ -369,7 +384,9 @@ function buildEntry(actionType, node, payloadTypeDocs) {
     const { summary, tags } = readJsDoc(node);
     const agentTags = parseAgentTags(tags);
     const examplePayload = parseExamples(tags)[0] ?? {};
-    const payloadType = agentTags.payloadType || inferPayloadType(actionType);
+    const localActionName = getSampleActionName(actionType);
+    const payloadType =
+        agentTags.payloadType || inferPayloadType(localActionName);
     const payloadTypeDoc = payloadTypeDocs.get(payloadType);
 
     if (!payloadTypeDoc) {
@@ -403,20 +420,42 @@ export async function createGeneratedActionCatalog() {
     const actionTypes = getAgentActionTypes(agentTypesSource);
     const reducerNodes = getReducerNodes(sampleSliceSource);
     const payloadTypeDocs = getPayloadTypeDocs(payloadTypesSource);
+    const supplementalEntriesByActionType = new Map(
+        supplementalActionCatalogEntries.map((entry) => [entry.actionType, entry])
+    );
 
     /** @type {import("./types.js").AgentActionCatalogEntry[]} */
     const generatedActionCatalog = [];
     for (const actionType of actionTypes) {
-        const reducerNode = reducerNodes.get(actionType);
-        if (!reducerNode) {
-            throw new Error("Cannot find reducer for action " + actionType);
-        }
+        if (actionType.startsWith(SAMPLE_SLICE_PREFIX)) {
+            const reducerNode = reducerNodes.get(
+                getSampleActionName(actionType)
+            );
+            if (!reducerNode) {
+                throw new Error("Cannot find reducer for action " + actionType);
+            }
 
-        generatedActionCatalog.push(
-            /** @type {import("./types.js").AgentActionCatalogEntry} */ (
-                buildEntry(actionType, reducerNode, payloadTypeDocs)
-            )
-        );
+            generatedActionCatalog.push(
+                /** @type {import("./types.js").AgentActionCatalogEntry} */ (
+                    buildEntry(actionType, reducerNode, payloadTypeDocs)
+                )
+            );
+        } else {
+            const supplementalEntry =
+                supplementalEntriesByActionType.get(actionType);
+            if (!supplementalEntry) {
+                throw new Error(
+                    "Cannot find supplemental action catalog entry for " +
+                        actionType
+                );
+            }
+
+            generatedActionCatalog.push(
+                /** @type {import("./types.js").AgentActionCatalogEntry} */ ({
+                    ...supplementalEntry,
+                })
+            );
+        }
     }
 
     return generatedActionCatalog;

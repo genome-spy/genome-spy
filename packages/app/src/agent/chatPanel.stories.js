@@ -234,7 +234,7 @@ function buildMockIntentProgram(normalizedMessage) {
             rationale: "Filter the cohort by a discrete attribute.",
             steps: [
                 {
-                    actionType: "filterByNominal",
+                    actionType: "sampleView/filterByNominal",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -253,7 +253,7 @@ function buildMockIntentProgram(normalizedMessage) {
             rationale: "Sort the cohort by a quantitative attribute.",
             steps: [
                 {
-                    actionType: "sortBy",
+                    actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -270,7 +270,7 @@ function buildMockIntentProgram(normalizedMessage) {
         rationale: "Group the cohort by quartiles.",
         steps: [
             {
-                actionType: "groupToQuartiles",
+                actionType: "sampleView/groupToQuartiles",
                 payload: {
                     attribute: {
                         type: "SAMPLE_ATTRIBUTE",
@@ -287,7 +287,7 @@ function buildMockIntentProgram(normalizedMessage) {
  * @returns {import("./types.d.ts").IntentProgramSummaryLine}
  */
 function summarizeMockStep(step) {
-    if (step.actionType === "sortBy") {
+    if (step.actionType === "sampleView/sortBy") {
         return {
             content: html`
                 Sort samples by
@@ -295,7 +295,7 @@ function summarizeMockStep(step) {
             `,
             text: "Sort samples by " + step.payload.attribute.specifier + ".",
         };
-    } else if (step.actionType === "filterByNominal") {
+    } else if (step.actionType === "sampleView/filterByNominal") {
         return {
             content: html`
                 Retain samples where
@@ -312,7 +312,7 @@ function summarizeMockStep(step) {
                 step.payload.values.join(", ") +
                 ".",
         };
-    } else if (step.actionType === "groupToQuartiles") {
+    } else if (step.actionType === "sampleView/groupToQuartiles") {
         return {
             content: html`
                 Group samples into quartiles by
