@@ -139,6 +139,12 @@ export type InlineDataset =
 
 export interface DataBase {
     /**
+     * A description of the data source. Can be used for documentation and to
+     * explain the role of the data in the visualization.
+     */
+    description?: string;
+
+    /**
      * An object that specifies the format for parsing the data.
      */
     format?: DataFormat;
@@ -203,6 +209,12 @@ export type Generator = SequenceGenerator;
 
 export interface GeneratorBase {
     /**
+     * A description of the data source. Can be used for documentation and to
+     * explain the role of the generated data in the visualization.
+     */
+    description?: string;
+
+    /**
      * Provide a placeholder name and bind data at runtime.
      */
     name?: string;
@@ -240,6 +252,12 @@ export interface SequenceParams {
 }
 
 export interface LazyData {
+    /**
+     * A description of the data source. Can be used for documentation and to
+     * explain the role of the lazy data in the visualization.
+     */
+    description?: string;
+
     lazy: LazyDataParams;
 }
 

@@ -18,6 +18,12 @@ export interface ParameterBase {
      */
     name: string;
 
+    /**
+     * A description of the parameter. Can be used for documentation and to
+     * explain the meaning of the control or selection.
+     */
+    description?: string;
+
     push?: "outer";
 }
 
