@@ -100,6 +100,12 @@ export interface TypeMixins<T extends Type> {
 
 export interface FieldDefBase {
     /**
+     * A description of the encoded field. Can be used for documentation and
+     * to explain the meaning of the channel mapping.
+     */
+    description?: string;
+
+    /**
      * __Required.__ A string defining the name of the field from which to pull a data value
      * or an object defining iterated values from the [`repeat`](https://vega.github.io/vega-lite/docs/repeat.html) operator.
      *
@@ -169,12 +175,24 @@ export interface ValueDefBase<V extends Value = Scalar> {
      * A constant value in visual domain (e.g., `"red"` / `"#0099ff"`, values between `0` to `1` for opacity).
      */
     value: V | ExprRef;
+
+    /**
+     * A description of the encoded value. Can be used for documentation and
+     * to explain the meaning of the channel mapping.
+     */
+    description?: string;
 }
 
 export type ValueDef<V extends Value = Scalar> = ValueDefBase<V> & TitleMixins;
 
 export interface DatumDef<V extends Scalar | ExprRef = Scalar | ExprRef>
     extends Partial<TypeMixins<Type>>, BandMixins, ScaleMixins, TitleMixins {
+    /**
+     * A description of the encoded datum. Can be used for documentation and
+     * to explain the meaning of the channel mapping.
+     */
+    description?: string;
+
     /**
      * A constant value in data domain.
      */
@@ -183,6 +201,12 @@ export interface DatumDef<V extends Scalar | ExprRef = Scalar | ExprRef>
 
 export interface ExprDef
     extends Partial<TypeMixins<Type>>, BandMixins, TitleMixins {
+    /**
+     * A description of the encoded expression. Can be used for documentation
+     * and to explain the meaning of the channel mapping.
+     */
+    description?: string;
+
     /**
      *  An expression. Properties of the data can be accessed through the `datum` object.
      */
