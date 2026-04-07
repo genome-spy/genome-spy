@@ -357,6 +357,12 @@ export type PositionFieldDefBase = ScaleFieldDef<Type>;
 
 export interface ChromPosDefBase extends BandMixins {
     /**
+     * A description of the encoded position. Can be used for documentation and
+     * to explain the meaning of the channel mapping.
+     */
+    description?: string;
+
+    /**
      * The field having the chromosome or contig.
      */
     chrom: FieldName;

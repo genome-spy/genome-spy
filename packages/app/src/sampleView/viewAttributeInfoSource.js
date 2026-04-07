@@ -179,6 +179,9 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         awaitProcessed,
         scale,
         emphasizedName,
+        description: /** @type {{ description?: string } | undefined} */ (
+            channelDef
+        )?.description,
     };
 
     return attributeInfo;
