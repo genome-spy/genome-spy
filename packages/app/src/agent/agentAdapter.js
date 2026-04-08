@@ -14,6 +14,8 @@ import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT_TRACE =
     import.meta.env.DEV && import.meta.env.MODE !== "test";
+const SHOULD_LOG_AGENT_IO =
+    import.meta.env.DEV && import.meta.env.MODE !== "test";
 
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -77,6 +79,18 @@ function publishAgentTrace(trace) {
 }
 
 /**
+ * @param {string} phase
+ * @param {Record<string, any>} payload
+ */
+function logAgentTransport(phase, payload) {
+    if (!SHOULD_LOG_AGENT_IO) {
+        return;
+    }
+
+    console.log("[GenomeSpy Agent] " + phase, payload);
+}
+
+/**
  * @param {import("../app.js").default} app
  */
 export function createAgentAdapter(app) {
@@ -111,6 +125,16 @@ async function requestPlan(app, options) {
     const context = getAgentContext(app);
     const contextBuildMs = elapsedMilliseconds(contextStartedAt);
     const history = normalizeConversationHistory(options.history ?? []);
+    const requestPayload = {
+        message: options.message,
+        history,
+        context,
+    };
+
+    logAgentTransport("request", {
+        baseUrl,
+        payload: requestPayload,
+    });
 
     if (baseUrl === "mock") {
         if (!import.meta.env.DEV) {
@@ -125,6 +149,10 @@ async function requestPlan(app, options) {
             message: options.message,
             history,
             context,
+        });
+        logAgentTransport("response", {
+            baseUrl,
+            payload: requestResult.response,
         });
 
         return {
@@ -147,11 +175,7 @@ async function requestPlan(app, options) {
         headers: {
             "content-type": "application/json",
         },
-        body: JSON.stringify({
-            message: options.message,
-            history,
-            context,
-        }),
+        body: JSON.stringify(requestPayload),
     });
     const requestMs = elapsedMilliseconds(requestStartedAt);
 
@@ -164,6 +188,10 @@ async function requestPlan(app, options) {
     const parseStartedAt = now();
     const parsedResponse = await response.json();
     const responseParseMs = elapsedMilliseconds(parseStartedAt);
+    logAgentTransport("response", {
+        baseUrl,
+        payload: parsedResponse,
+    });
 
     return {
         response: parsedResponse,
