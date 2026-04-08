@@ -12,6 +12,7 @@ from .config import Settings
 from .models import ProviderRequest, ProviderResponse
 from .prompt_builder import (
     build_chat_completions_messages,
+    build_prompt_ir,
     build_responses_input,
 )
 
@@ -34,10 +35,11 @@ class OpenAIResponsesProvider(BaseProvider):
         self._settings = settings
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
+        prompt = build_prompt_ir(request)
         payload = {
             "model": self._settings.model,
-            "instructions": request.system_prompt,
-            "input": build_responses_input(request),
+            "instructions": prompt.instructions,
+            "input": build_responses_input(prompt),
             "format": {
                 "type": "json_schema",
                 "name": "genomespy_plan_response",
@@ -111,9 +113,10 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         self._settings = settings
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
+        prompt = build_prompt_ir(request)
         payload = {
             "model": self._settings.model,
-            "messages": build_chat_completions_messages(request),
+            "messages": build_chat_completions_messages(prompt),
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {

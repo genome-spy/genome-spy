@@ -1,6 +1,7 @@
 from app.models import HistoryMessage, ProviderRequest
 from app.prompt_builder import (
     build_chat_completions_messages,
+    build_prompt_ir,
     build_responses_input,
 )
 
@@ -16,7 +17,8 @@ def test_build_responses_input_uses_poc_order() -> None:
         message="Follow-up question",
     )
 
-    messages = build_responses_input(request)
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
 
     assert messages[0]["role"] == "developer"
     assert messages[0]["content"][0]["type"] == "input_text"
@@ -47,7 +49,8 @@ def test_build_chat_completions_messages_uses_poc_order() -> None:
         message="Follow-up question",
     )
 
-    messages = build_chat_completions_messages(request)
+    prompt = build_prompt_ir(request)
+    messages = build_chat_completions_messages(prompt)
 
     assert messages[0] == {"role": "system", "content": "system prompt"}
     assert messages[1]["role"] == "system"
@@ -55,3 +58,18 @@ def test_build_chat_completions_messages_uses_poc_order() -> None:
     assert messages[2] == {"role": "user", "content": "First question"}
     assert messages[3] == {"role": "assistant", "content": "First answer"}
     assert messages[4] == {"role": "user", "content": "Follow-up question"}
+
+
+def test_build_prompt_ir_separates_instructions_and_context() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1, "viewRoot": {"title": "Example"}},
+        history=[],
+        message="Follow-up question",
+    )
+
+    prompt = build_prompt_ir(request)
+
+    assert prompt.instructions == "system prompt"
+    assert prompt.context["schemaVersion"] == 1
+    assert prompt.context_text.startswith("Current GenomeSpy context snapshot:\n")
