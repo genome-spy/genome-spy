@@ -25,6 +25,7 @@ target-version = "py311"
 select = ["E", "F", "I", "B"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.mypy]

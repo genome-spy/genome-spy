@@ -62,4 +62,4 @@ def test_plan_endpoint_reports_provider_failure(monkeypatch) -> None:
     )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Provider request failed."}
+    assert response.json() == {"detail": "Provider request failed: boom"}
