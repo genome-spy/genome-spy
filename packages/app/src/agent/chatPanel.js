@@ -4,14 +4,12 @@ import {
     faInfoCircle,
     faRobot,
 } from "@fortawesome/free-solid-svg-icons";
-import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import safeMarkdown from "../utils/safeMarkdown.js";
 import templateResultToString from "../utils/templateResultToString.js";
 
 /**
- * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").IntentProgram} IntentProgram
  * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
  * @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult
@@ -40,11 +38,6 @@ import templateResultToString from "../utils/templateResultToString.js";
  * }} ChatMessage
  *
  * @typedef {{
- *     parameterSummaries: string[];
- * }} ChatContextSummary
- *
- * @typedef {{
- *     getAgentContext(): AgentContext;
  *     requestPlan(message: string, history?: AgentConversationMessage[]): Promise<{ response: ChatPlannerResponse, trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
@@ -60,9 +53,8 @@ export default class AgentChatPanel extends LitElement {
         draft: { state: true },
         messages: { state: true },
         pendingRequest: { state: true },
-        lastPlan: { state: true },
+        pendingResponsePlaceholder: { state: true },
         lastError: { state: true },
-        contextSummary: { state: true },
     };
 
     static styles = [
@@ -151,33 +143,6 @@ export default class AgentChatPanel extends LitElement {
                 flex: 1 1 auto;
             }
 
-            .selection-summary {
-                margin: var(--gs-basic-spacing, 10px);
-                margin-bottom: 0;
-            }
-
-            .selection-summary-title {
-                display: flex;
-                align-items: center;
-                gap: 0.45rem;
-                font-weight: 700;
-                margin-bottom: 0.4rem;
-            }
-
-            .selection-summary-title svg {
-                width: 0.95em;
-                height: 0.95em;
-            }
-
-            .selection-summary-list {
-                margin: 0;
-                padding-left: 1.2rem;
-            }
-
-            .selection-summary-list li + li {
-                margin-top: 0.25rem;
-            }
-
             .transcript {
                 display: flex;
                 flex-direction: column;
@@ -187,6 +152,32 @@ export default class AgentChatPanel extends LitElement {
                 overflow: auto;
                 padding: var(--gs-basic-spacing, 10px);
                 background: #fafafa;
+            }
+
+            .transcript-placeholder {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                padding: 0.25rem 0.15rem;
+                color: #8a8f98;
+                font-style: italic;
+                font-size: 0.95em;
+            }
+
+            .transcript-placeholder .spinner {
+                width: 0.8em;
+                height: 0.8em;
+                border-radius: 50%;
+                border: 2px solid rgb(138 143 152 / 35%);
+                border-top-color: rgb(138 143 152 / 90%);
+                animation: chat-panel-spin 0.8s linear infinite;
+                flex: 0 0 auto;
+            }
+
+            @keyframes chat-panel-spin {
+                to {
+                    transform: rotate(360deg);
+                }
             }
 
             .empty-state {
@@ -398,24 +389,6 @@ export default class AgentChatPanel extends LitElement {
             .composer-hint {
                 min-width: 0;
             }
-
-            .composer-status {
-                flex: 0 0 auto;
-                display: inline-flex;
-                align-items: center;
-                gap: 0.4rem;
-                font-weight: 600;
-                color: #444;
-            }
-
-            .composer-status svg {
-                width: 0.95em;
-                height: 0.95em;
-            }
-
-            .muted {
-                color: #666;
-            }
         `,
     ];
 
@@ -431,28 +404,24 @@ export default class AgentChatPanel extends LitElement {
         this.messages = [];
         /** @type {{ message: string } | null} */
         this.pendingRequest = null;
-        /** @type {{ title: string, lines: IntentProgramSummaryLine[] } | null} */
-        this.lastPlan = null;
+        /** @type {string} */
+        this.pendingResponsePlaceholder = "";
         /** @type {string} */
         this.lastError = "";
-        /** @type {ChatContextSummary | null} */
-        this.contextSummary = null;
     }
 
     /** @type {number} */
     #nextMessageId = 1;
 
-    connectedCallback() {
-        super.connectedCallback();
-        void this.#refreshContext();
-    }
-
     /**
      * @param {Map<string, unknown>} changedProperties
      */
     updated(changedProperties) {
-        if (changedProperties.has("controller")) {
-            void this.#refreshContext();
+        if (
+            changedProperties.has("messages") ||
+            changedProperties.has("pendingResponsePlaceholder")
+        ) {
+            void this.#scrollTranscriptToEnd();
         }
     }
 
@@ -474,29 +443,24 @@ export default class AgentChatPanel extends LitElement {
                         </div>
                     </div>
 
-                    <div class="header-actions">
-                        <button
-                            class="btn"
-                            type="button"
-                            title="Refresh context"
-                            ?disabled=${!this.controller}
-                            @click=${() => {
-                                void this.#refreshContext();
-                            }}
-                        >
-                            ${icon(faInfoCircle).node[0]} Context
-                        </button>
-                    </div>
+                    <div class="header-actions"></div>
                 </header>
 
                 <div class="body">
-                    ${this.#renderParameterSummary()}
                     <section class="transcript">
                         ${this.messages.length === 0
                             ? this.#renderEmptyState()
                             : this.messages.map((message) =>
                                   this.#renderMessage(message)
                               )}
+                        ${this.pendingResponsePlaceholder
+                            ? html`<div class="transcript-placeholder">
+                                  <span class="spinner"></span>
+                                  <span
+                                      >${this.pendingResponsePlaceholder}</span
+                                  >
+                              </div>`
+                            : nothing}
                     </section>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
@@ -524,45 +488,14 @@ export default class AgentChatPanel extends LitElement {
                             <div class="composer-hint">
                                 Shift+Enter inserts a new line.
                                 ${this.lastError
-                                    ? html`<span class="muted">
+                                    ? html`<span>
                                           Last error: ${this.lastError}</span
                                       >`
                                     : nothing}
                             </div>
-                            <div class="composer-status">
-                                ${this.status === "thinking" ||
-                                this.status === "executing"
-                                    ? html`${icon(faRobot).node[0]} Working`
-                                    : html`${icon(faInfoCircle).node[0]} Idle`}
-                            </div>
                         </div>
                     </form>
                 </div>
-            </section>
-        `;
-    }
-
-    /**
-     * @returns {import("lit").TemplateResult | typeof nothing}
-     */
-    #renderParameterSummary() {
-        if (
-            !this.contextSummary ||
-            this.contextSummary.parameterSummaries.length === 0
-        ) {
-            return nothing;
-        }
-
-        return html`
-            <section class="selection-summary gs-alert info">
-                <div class="selection-summary-title">
-                    ${icon(faInfoCircle).node[0]} Adjustable parameters
-                </div>
-                <ul class="selection-summary-list">
-                    ${this.contextSummary.parameterSummaries.map(
-                        (summary) => html`<li>${summary}</li>`
-                    )}
-                </ul>
             </section>
         `;
     }
@@ -731,6 +664,7 @@ export default class AgentChatPanel extends LitElement {
         }
 
         if (!this.controller) {
+            this.pendingResponsePlaceholder = "";
             this.#appendMessage({
                 kind: "error",
                 text: "No agent controller is connected.",
@@ -747,6 +681,7 @@ export default class AgentChatPanel extends LitElement {
 
         this.draft = "";
         this.pendingRequest = { message: trimmed };
+        this.pendingResponsePlaceholder = "Working...";
         this.status = "thinking";
         this.lastError = "";
 
@@ -759,6 +694,7 @@ export default class AgentChatPanel extends LitElement {
             await this.#handleResponse(response);
         } catch (error) {
             const message = String(error);
+            this.pendingResponsePlaceholder = "";
             this.#appendMessage({
                 kind: "error",
                 text: message,
@@ -814,6 +750,7 @@ export default class AgentChatPanel extends LitElement {
      * @returns {Promise<void>}
      */
     async #handleResponse(response) {
+        this.pendingResponsePlaceholder = "";
         if (response.type === "answer") {
             this.#appendMessage({
                 kind: "assistant",
@@ -837,17 +774,13 @@ export default class AgentChatPanel extends LitElement {
             const planLines = this.controller.summarizeIntentProgram(
                 response.program
             );
-            this.lastPlan = {
-                title: "Proposed actions",
-                lines: planLines,
-            };
 
             this.#appendMessage({
                 kind: "plan",
                 text:
                     response.program.rationale ??
                     "The agent proposed an action plan.",
-                lines: this.lastPlan.lines,
+                lines: planLines,
             });
 
             this.status = "executing";
@@ -916,156 +849,16 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @param {AgentContext} context
-     * @returns {ChatContextSummary}
+     * Scroll the transcript to the newest content.
      */
-    #summarizeContext(context) {
-        /** @type {string[]} */
-        const parameterSummaries = [];
-        this.#collectParameterSummaries(context.viewRoot, parameterSummaries);
-
-        return {
-            parameterSummaries,
-        };
-    }
-
-    /**
-     * @param {import("./types.d.ts").AgentViewNode} node
-     * @param {string[]} parameterSummaries
-     */
-    #collectParameterSummaries(node, parameterSummaries) {
-        if (node.parameterDeclarations) {
-            for (const parameter of node.parameterDeclarations) {
-                const summary = this.#formatParameterSummary(parameter);
-                if (summary) {
-                    parameterSummaries.push(summary);
-                }
-            }
-        }
-
-        if (node.children) {
-            for (const child of node.children) {
-                this.#collectParameterSummaries(child, parameterSummaries);
-            }
-        }
-    }
-
-    /**
-     * @param {import("./types.d.ts").AgentParameterDeclaration} parameter
-     * @returns {string}
-     */
-    #formatParameterSummary(parameter) {
-        if (parameter.value === null || parameter.value === undefined) {
-            return "";
-        }
-
-        const selector = parameter.selector;
-        const selectorLabel =
-            parameter.label ||
-            (selector &&
-            typeof selector === "object" &&
-            "param" in selector &&
-            selector.param
-                ? String(selector.param)
-                : "parameter");
-
-        const kindLabel =
-            parameter.parameterType === "variable" && parameter.bind
-                ? " (" + parameter.bind.input + ")"
-                : "";
-
-        return (
-            selectorLabel +
-            kindLabel +
-            ": " +
-            this.#formatParameterValue(parameter.value)
-        );
-    }
-
-    /**
-     * @param {unknown} value
-     * @returns {string}
-     */
-    #formatParameterValue(value) {
-        if (
-            value &&
-            typeof value === "object" &&
-            "type" in value &&
-            value.type === "interval"
-        ) {
-            const intervals =
-                /** @type {{ intervals?: Record<string, any[]> }} */ (value)
-                    .intervals;
-            const x = intervals?.x;
-            if (Array.isArray(x) && x.length === 2) {
-                const xLabel =
-                    this.#formatIntervalEndpoint(x[0]) +
-                    " – " +
-                    this.#formatIntervalEndpoint(x[1]);
-                const y = intervals?.y;
-                if (Array.isArray(y) && y.length === 2) {
-                    return (
-                        xLabel +
-                        " / " +
-                        this.#formatIntervalEndpoint(y[0]) +
-                        " – " +
-                        this.#formatIntervalEndpoint(y[1])
-                    );
-                }
-
-                return xLabel;
-            }
-        }
-
-        return this.#formatContextValue(value);
-    }
-
-    /**
-     * @param {unknown} value
-     * @returns {string}
-     */
-    #formatIntervalEndpoint(value) {
-        return locusOrNumberToString(
-            /** @type {number | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} */ (
-                value
-            )
-        );
-    }
-
-    /**
-     * @param {unknown} value
-     * @returns {string}
-     */
-    #formatContextValue(value) {
-        if (typeof value === "string") {
-            return value;
-        } else if (
-            value === null ||
-            value === undefined ||
-            typeof value === "number" ||
-            typeof value === "boolean"
-        ) {
-            return String(value);
-        } else {
-            try {
-                return JSON.stringify(value);
-            } catch {
-                return String(value);
-            }
-        }
-    }
-
-    async #refreshContext() {
-        if (!this.controller) {
-            this.contextSummary = null;
-            return;
-        }
-
-        try {
-            const context = this.controller.getAgentContext();
-            this.contextSummary = this.#summarizeContext(context);
-        } catch {
-            this.contextSummary = null;
+    async #scrollTranscriptToEnd() {
+        await this.updateComplete;
+        const transcript = this.renderRoot.querySelector(".transcript");
+        if (transcript) {
+            transcript.scrollTo({
+                top: transcript.scrollHeight,
+                behavior: "smooth",
+            });
         }
     }
 
