@@ -6,8 +6,8 @@ agent.
 
 ## Goal
 
-Design a minimal Python LLM server integration for GenomeSpy, with the initial
-implementation living under `utils/` in this repository.
+Design a minimal Python LLM server integration for GenomeSpy. In `v0.0.1`, the
+Python side should just relay requests from GenomeSpy App to an LLM provider.
 
 The Python side should stay intentionally thin in `v0.0.1`:
 
@@ -15,11 +15,10 @@ The Python side should stay intentionally thin in `v0.0.1`:
 - GenomeSpy owns visualization semantics.
 - GenomeSpy owns action and intent validation.
 - GenomeSpy owns agent tool definitions that are related to GenomeSpy actions.
-- The Python side accepts already validated payloads and forwards them to a
-  selected LLM provider.
+- The Python side forwards requests to a selected LLM provider.
 
-The long-term direction is to support a more autonomous AI researcher, but the
-first version should focus on a clean boundary and minimal duplication.
+Validation, contract checks, and richer orchestration can come later in
+`v0.0.2`.
 
 We also want to compare different inference providers behind the same server
 framework, including:

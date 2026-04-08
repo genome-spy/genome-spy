@@ -6,6 +6,7 @@
 - Workflow context and resolution: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js), [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js), [`viewWorkflowCatalog.js`](../src/agent/viewWorkflowCatalog.js)
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
+- Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
 
 ## Goals
 - Enable conversations with the agent over the current visualization.
@@ -56,6 +57,7 @@
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
+- Keep the GenomeSpy agent adapter and the Python relay server aligned when the request/response contract changes.
 
 ## Data + Visualization Context
 - See [`data-schema.md`](./data-schema.md) for the proposed LLM-facing context schema.
