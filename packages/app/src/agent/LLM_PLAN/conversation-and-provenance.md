@@ -174,6 +174,20 @@ this model, the architecture should be revised as follows:
 This revision keeps the agent add-on self-contained while allowing the planner
 to reason about which conversation messages led to which state mutations.
 
+## Conversation Object
+
+Keep the conversation transcript as a separate object alongside
+`AgentContext`, not as a property inside the visualization snapshot.
+
+Rationale:
+
+- `AgentContext` should stay focused on the current visualization state.
+- The transcript changes on every turn, while the visualization snapshot should
+  remain compact and stable.
+- Keeping them separate makes it easier to cache, reuse, and version the
+  visualization context independently of the chat history.
+- The POC can still send both pieces together in one request body.
+
 ## Draft Message History Shape
 
 Draft idea:

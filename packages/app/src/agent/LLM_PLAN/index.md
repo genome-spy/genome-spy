@@ -7,6 +7,7 @@
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
+- Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
 ## Goals
 - Enable conversations with the agent over the current visualization.
