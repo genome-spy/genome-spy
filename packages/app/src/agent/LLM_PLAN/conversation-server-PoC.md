@@ -41,6 +41,24 @@ The first version is intentionally simple:
 - request truncation or summarization
 - retry logic beyond simple failure reporting
 
+## Implemented So Far
+
+The app-side pieces below are already in place:
+
+- `chatPanel.js` keeps the full transcript in memory for the session.
+- `chatPanel.js` builds `history` as structured message objects instead of plain
+  strings.
+- `agentAdapter.js` sends `message`, `history`, and `context` to the planner
+  backend.
+- `agentAdapter.js` supports the dev-only mock backend path when
+  `VITE_AGENT_BASE_URL=mock`.
+- `mockPlanner.js` returns deterministic read-only answers and clarifications
+  without network access.
+- `agentAdapter.js` logs the outgoing request payload and incoming response in
+  dev mode.
+- `chat-ui.md` describes the controller API using the structured transcript
+  shape.
+
 ## App ↔ Server Contract
 
 The app and Python server communicate through one relay endpoint:
@@ -234,6 +252,30 @@ support the mock backend switch:
 - if the value is `mock`, use the dev-only mock server path instead of `fetch`
 - otherwise, continue to call the real `/v1/plan` endpoint
 - keep the mock implementation out of production bundles
+
+## Debugging Pointers
+
+Use these files and functions when checking what the app sends to the Python
+server:
+
+- [`packages/app/src/agent/chatPanel.js`](../chatPanel.js)
+  - `#submitMessage()` prepares the chat request.
+  - `#buildHistory()` creates the transcript payload sent to the controller.
+- [`packages/app/src/agent/agentAdapter.js`](../agentAdapter.js)
+  - `requestPlan()` is the transport boundary for the real server and the mock.
+  - `logAgentTransport()` logs the request and response in dev mode.
+  - `publishAgentTrace()` publishes timing and high-level execution metadata.
+- [`packages/app/src/agent/mockPlanner.js`](../mockPlanner.js)
+  - `requestMockPlan()` is the dev-only no-network stand-in for the Python
+    server.
+- [`packages/app/src/app.js`](../../app.js)
+  - `recordAgentTrace()` stores trace entries and emits the
+    `genomespy-agent-trace` event.
+- [`packages/app/src/components/dialogs/agentTraceDialog.js`](../../components/dialogs/agentTraceDialog.js)
+  - the Agent Trace dialog shows the recorded trace entries.
+
+In dev mode, the app also prints the request and response payloads to the
+browser console from `agentAdapter.js`.
 
 ## Implementation Plan
 
