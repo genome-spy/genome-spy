@@ -2,15 +2,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from importlib import resources
 from typing import Literal, cast
-
-DEFAULT_SYSTEM_PROMPT = (
-    "You are an AI assistant in GenomeSpy, a visual analytics app for genomic "
-    "data. Answer only from the provided context and conversation. If the user "
-    "question is ambiguous, respond with a clarification question. Return JSON "
-    'with keys "type" and "message", where "type" is either "answer" or '
-    '"clarify".'
-)
 
 
 @dataclass(frozen=True)
@@ -21,6 +14,12 @@ class Settings:
     timeout_seconds: float
     system_prompt: str
     api_style: Literal["responses", "chat_completions"]
+
+
+def load_default_system_prompt() -> str:
+    return resources.files(__package__).joinpath(
+        "prompts/genomespy_system_prompt.md"
+    ).read_text(encoding="utf-8").strip()
 
 
 def load_settings() -> Settings:
@@ -40,7 +39,7 @@ def load_settings() -> Settings:
             os.environ.get("GENOMESPY_AGENT_TIMEOUT_SECONDS", "180")
         ),
         system_prompt=os.environ.get(
-            "GENOMESPY_AGENT_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT
+            "GENOMESPY_AGENT_SYSTEM_PROMPT", load_default_system_prompt()
         ),
         api_style=cast(Literal["responses", "chat_completions"], api_style),
     )

@@ -190,9 +190,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
 def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
     output_text = payload.get("output_text")
     if isinstance(output_text, str):
-        return _parse_provider_response_payload(
-            _ensure_object_payload(_load_json_content(output_text))
-        )
+        return _parse_provider_response_text(output_text)
 
     try:
         output = payload["output"]
@@ -203,9 +201,7 @@ def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
         raise ProviderError("Provider response output must be a list.")
 
     text = _extract_output_text(output)
-    return _parse_provider_response_payload(
-        _ensure_object_payload(_load_json_content(text))
-    )
+    return _parse_provider_response_text(text)
 
 
 def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderResponse:
@@ -227,7 +223,7 @@ def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderRespons
     elif isinstance(content, list):
         parsed = _parse_message_parts(content)
     elif isinstance(content, str):
-        parsed = _load_json_content(content)
+        return _parse_provider_response_text(content)
     else:
         raise ProviderError(
             "Provider response content must be a string, list, or JSON object."
@@ -246,6 +242,18 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
         type=response.type,
         message=_normalize_provider_text(response.message),
     )
+
+
+def _parse_provider_response_text(text: str) -> ProviderResponse:
+    try:
+        return _parse_provider_response_payload(
+            _ensure_object_payload(_load_json_content(text))
+        )
+    except ProviderError:
+        # Some local OpenAI-compatible models ignore structured-output hints.
+        # Treat plain prose as a usable read-only answer instead of failing
+        # the entire chat turn.
+        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
 
 
 def _ensure_object_payload(payload: Any) -> dict[str, Any]:

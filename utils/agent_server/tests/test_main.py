@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.config import load_default_system_prompt
 from app.main import app
 from app.models import ProviderResponse
 
@@ -63,3 +64,10 @@ def test_plan_endpoint_reports_provider_failure(monkeypatch) -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Provider request failed: boom"}
+
+
+def test_default_system_prompt_is_markdown_text() -> None:
+    prompt = load_default_system_prompt()
+
+    assert "genomespy_plan_response" in prompt
+    assert "message" in prompt

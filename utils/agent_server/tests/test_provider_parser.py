@@ -1,8 +1,5 @@
-import pytest
-
 from app.models import ProviderResponse
 from app.providers import (
-    ProviderError,
     _parse_chat_completions_response,
     _parse_responses_response,
 )
@@ -34,7 +31,7 @@ def test_parse_responses_response_returns_normalized_shape() -> None:
     )
 
 
-def test_parse_responses_response_rejects_invalid_json() -> None:
+def test_parse_responses_response_falls_back_to_raw_text() -> None:
     payload = {
         "output": [
             {
@@ -50,8 +47,9 @@ def test_parse_responses_response_rejects_invalid_json() -> None:
         ]
     }
 
-    with pytest.raises(ProviderError, match="valid JSON"):
-        _parse_responses_response(payload)
+    response = _parse_responses_response(payload)
+
+    assert response == ProviderResponse(type="answer", message="not json")
 
 
 def test_parse_responses_response_accepts_json_code_fence() -> None:
@@ -141,4 +139,26 @@ def test_parse_chat_completions_response_normalizes_escaped_line_breaks() -> Non
     assert response == ProviderResponse(
         type="answer",
         message="Line 1\n- item 1\n- item 2",
+    )
+
+
+def test_parse_chat_completions_response_falls_back_to_raw_text() -> None:
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": (
+                        "The beta values are shown as rectangles with a y-axis "
+                        "from 0 to 100%."
+                    )
+                }
+            }
+        ]
+    }
+
+    response = _parse_chat_completions_response(payload)
+
+    assert response == ProviderResponse(
+        type="answer",
+        message="The beta values are shown as rectangles with a y-axis from 0 to 100%.",
     )
