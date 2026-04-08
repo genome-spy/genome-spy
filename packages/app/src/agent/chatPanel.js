@@ -6,22 +6,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "../components/generic/componentStyles.js";
+import { createAgentSessionController } from "./agentSessionController.js";
 import safeMarkdown from "../utils/safeMarkdown.js";
-import templateResultToString from "../utils/templateResultToString.js";
 
 /**
- * @typedef {import("./types.d.ts").IntentProgram} IntentProgram
- * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
- * @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult
  * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
- * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
- * @typedef {import("./types.d.ts").PlanResponse} PlanResponse
- * @typedef {PlanResponse | {
- *     type: "clarify";
- *     message: string | import("lit").TemplateResult;
- *     options?: ChatClarificationOption[];
- * }} ChatPlannerResponse
- *
  * @typedef {{
  *     value: string;
  *     label: string;
@@ -31,30 +20,58 @@ import templateResultToString from "../utils/templateResultToString.js";
  * @typedef {{
  *     id: number;
  *     kind: "user" | "assistant" | "clarification" | "plan" | "result" | "error";
- *     title?: string;
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentProgramSummaryLine[];
  *     options?: ChatClarificationOption[];
+ *     durationMs?: number | null;
  * }} ChatMessage
  *
  * @typedef {{
- *     requestPlan(message: string, history?: AgentConversationMessage[]): Promise<{ response: ChatPlannerResponse, trace: Record<string, any> }>;
- *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
- *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
- *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
- *     summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
+ *     status:
+ *         | "ready"
+ *         | "preflighting"
+ *         | "thinking"
+ *         | "clarification"
+ *         | "executing"
+ *         | "unavailable"
+ *         | "error";
+ *     preflightState: "idle" | "running" | "ready" | "failed";
+ *     messages: ChatMessage[];
+ *     pendingRequest: { message: string } | null;
+ *     pendingResponsePlaceholder: string;
+ *     queuedMessageCount: number;
+ *     lastError: string;
+ *     lastResponseDurationMs: number | null;
+ * }} ChatSessionSnapshot
+ *
+ * @typedef {{
+ *     getSnapshot(): ChatSessionSnapshot;
+ *     subscribe(listener: (snapshot: ChatSessionSnapshot) => void): () => void;
+ *     open(): Promise<void>;
+ *     close(): void;
+ *     sendMessage(message: string): Promise<void>;
+ *     queueMessage(message: string): Promise<void>;
+ *     refreshPreflight(): Promise<void>;
  * }} AgentChatController
  */
+/** @type {ChatSessionSnapshot} */
+const EMPTY_SNAPSHOT = {
+    status: "ready",
+    preflightState: "idle",
+    messages: [],
+    pendingRequest: null,
+    pendingResponsePlaceholder: "",
+    queuedMessageCount: 0,
+    lastError: "",
+    lastResponseDurationMs: null,
+};
+
 export default class AgentChatPanel extends LitElement {
     static properties = {
         controller: { attribute: false },
         panelTitle: { type: String },
-        status: { state: true },
+        snapshot: { state: true },
         draft: { state: true },
-        messages: { state: true },
-        pendingRequest: { state: true },
-        pendingResponsePlaceholder: { state: true },
-        lastError: { state: true },
     };
 
     static styles = [
@@ -291,6 +308,12 @@ export default class AgentChatPanel extends LitElement {
                 color: #222;
             }
 
+            .message-dev-note {
+                margin-top: 0.2rem;
+                color: #777;
+                font-size: 0.78rem;
+            }
+
             .message-lines {
                 display: grid;
                 gap: 0.4rem;
@@ -398,34 +421,45 @@ export default class AgentChatPanel extends LitElement {
         /** @type {AgentChatController | undefined} */
         this.controller = undefined;
         this.panelTitle = "Agent Chat";
-        this.status = "idle";
         this.draft = "";
-        /** @type {ChatMessage[]} */
-        this.messages = [];
-        /** @type {{ message: string } | null} */
-        this.pendingRequest = null;
-        /** @type {string} */
-        this.pendingResponsePlaceholder = "";
-        /** @type {string} */
-        this.lastError = "";
+        /** @type {ChatSessionSnapshot} */
+        this.snapshot = EMPTY_SNAPSHOT;
     }
 
-    /** @type {number} */
-    #nextMessageId = 1;
+    /** @type {(() => void) | null} */
+    #unsubscribeController = null;
+
+    /** @type {AgentChatController | undefined} */
+    #boundController = undefined;
+
+    connectedCallback() {
+        super.connectedCallback();
+        this.#syncController();
+    }
+
+    disconnectedCallback() {
+        this.#unsubscribeController?.();
+        this.#unsubscribeController = null;
+        this.#boundController?.close();
+        this.#boundController = undefined;
+        super.disconnectedCallback();
+    }
 
     /**
      * @param {Map<string, unknown>} changedProperties
      */
     updated(changedProperties) {
-        if (
-            changedProperties.has("messages") ||
-            changedProperties.has("pendingResponsePlaceholder")
-        ) {
+        if (changedProperties.has("controller")) {
+            this.#syncController();
+        }
+
+        if (changedProperties.has("snapshot")) {
             void this.#scrollTranscriptToEnd();
         }
     }
 
     render() {
+        const snapshot = this.snapshot ?? EMPTY_SNAPSHOT;
         return html`
             <section class="panel">
                 <header>
@@ -435,10 +469,14 @@ export default class AgentChatPanel extends LitElement {
                             <div class="title">${this.panelTitle}</div>
                         </div>
                         <div class="status">
-                            ${this.#getStatusLabel()}
-                            ${this.pendingRequest
-                                ? html`&nbsp;·&nbsp;${this.pendingRequest
+                            ${this.#getStatusLabel(snapshot.status)}
+                            ${snapshot.pendingRequest
+                                ? html`&nbsp;·&nbsp;${snapshot.pendingRequest
                                       .message}`
+                                : nothing}
+                            ${snapshot.queuedMessageCount > 0
+                                ? html`&nbsp;·&nbsp;${snapshot.queuedMessageCount}
+                                  queued`
                                 : nothing}
                         </div>
                     </div>
@@ -448,16 +486,16 @@ export default class AgentChatPanel extends LitElement {
 
                 <div class="body">
                     <section class="transcript">
-                        ${this.messages.length === 0
+                        ${snapshot.messages.length === 0
                             ? this.#renderEmptyState()
-                            : this.messages.map((message) =>
+                            : snapshot.messages.map((message) =>
                                   this.#renderMessage(message)
                               )}
-                        ${this.pendingResponsePlaceholder
+                        ${snapshot.pendingResponsePlaceholder
                             ? html`<div class="transcript-placeholder">
                                   <span class="spinner"></span>
                                   <span
-                                      >${this.pendingResponsePlaceholder}</span
+                                      >${snapshot.pendingResponsePlaceholder}</span
                                   >
                               </div>`
                             : nothing}
@@ -468,15 +506,13 @@ export default class AgentChatPanel extends LitElement {
                             <textarea
                                 .value=${this.draft}
                                 placeholder="Ask the agent about the current visualization or request an action."
-                                ?disabled=${!this.controller ||
-                                this.status === "executing"}
+                                ?disabled=${!this.controller}
                                 @input=${this.#handleDraftInput}
                                 @keydown=${this.#handleComposerKeyDown}
                             ></textarea>
                             <button
                                 type="submit"
                                 ?disabled=${!this.controller ||
-                                this.pendingRequest !== null ||
                                 this.draft.trim().length === 0}
                                 class="btn btn-primary"
                             >
@@ -487,9 +523,10 @@ export default class AgentChatPanel extends LitElement {
                         <div class="composer-footer">
                             <div class="composer-hint">
                                 Shift+Enter inserts a new line.
-                                ${this.lastError
+                                ${snapshot.lastError
                                     ? html`<span>
-                                          Last error: ${this.lastError}</span
+                                          Last error:
+                                          ${snapshot.lastError}</span
                                       >`
                                     : nothing}
                             </div>
@@ -531,7 +568,9 @@ export default class AgentChatPanel extends LitElement {
                     <div class="message-title">
                         ${icon(faInfoCircle).node[0]} Clarification
                     </div>
-                    <div class="message-text">${message.text ?? ""}</div>
+                    <div class="message-text">
+                        ${this.#renderMarkdown(message.text ?? "")}
+                    </div>
                     <div class="clarification-options">
                         ${message.options?.map(
                             (option) => html`
@@ -546,6 +585,7 @@ export default class AgentChatPanel extends LitElement {
                             `
                         )}
                     </div>
+                    ${this.#renderTimingNote(message.durationMs)}
                 </article>
             `;
         } else if (message.kind === "plan") {
@@ -568,6 +608,7 @@ export default class AgentChatPanel extends LitElement {
                               </ul>
                           `
                         : nothing}
+                    ${this.#renderTimingNote(message.durationMs)}
                 </article>
             `;
         } else if (message.kind === "result") {
@@ -577,7 +618,9 @@ export default class AgentChatPanel extends LitElement {
                         ${icon(faInfoCircle).node[0]} Execution result
                     </div>
                     ${message.text
-                        ? html`<div class="message-text">${message.text}</div>`
+                        ? html`<div class="message-text">
+                              ${this.#renderMarkdown(message.text)}
+                          </div>`
                         : nothing}
                     ${message.lines?.length
                         ? html`
@@ -588,6 +631,7 @@ export default class AgentChatPanel extends LitElement {
                               </ol>
                           `
                         : nothing}
+                    ${this.#renderTimingNote(message.durationMs)}
                 </article>
             `;
         } else if (message.kind === "error") {
@@ -605,6 +649,7 @@ export default class AgentChatPanel extends LitElement {
                     <div class="assistant-body">
                         ${this.#renderMarkdown(message.text ?? "")}
                     </div>
+                    ${this.#renderTimingNote(message.durationMs)}
                 </article>
             `;
         } else {
@@ -659,193 +704,16 @@ export default class AgentChatPanel extends LitElement {
      */
     async #submitMessage(text) {
         const trimmed = text.trim();
-        if (!trimmed || this.pendingRequest) {
+        if (!trimmed) {
             return;
         }
 
         if (!this.controller) {
-            this.pendingResponsePlaceholder = "";
-            this.#appendMessage({
-                kind: "error",
-                text: "No agent controller is connected.",
-            });
-            this.lastError = "No agent controller is connected.";
-            this.status = "error";
             return;
         }
 
-        this.#appendMessage({
-            kind: "user",
-            text: trimmed,
-        });
-
         this.draft = "";
-        this.pendingRequest = { message: trimmed };
-        this.pendingResponsePlaceholder = "Working...";
-        this.status = "thinking";
-        this.lastError = "";
-
-        try {
-            const history = this.#buildHistory();
-            const { response } = await this.controller.requestPlan(
-                trimmed,
-                history
-            );
-            await this.#handleResponse(response);
-        } catch (error) {
-            const message = String(error);
-            this.pendingResponsePlaceholder = "";
-            this.#appendMessage({
-                kind: "error",
-                text: message,
-            });
-            this.lastError = message;
-            this.status = "error";
-        } finally {
-            this.pendingRequest = null;
-        }
-    }
-
-    /**
-     * @returns {AgentConversationMessage[]}
-     */
-    #buildHistory() {
-        return this.messages
-            .slice(0, -1)
-            .filter(
-                (message) =>
-                    message.kind === "user" ||
-                    message.kind === "assistant" ||
-                    message.kind === "clarification"
-            )
-            .map((message) => {
-                const transcriptMessage =
-                    /** @type {AgentConversationMessage} */ ({
-                        id: String(message.id),
-                        role: /** @type {"user" | "assistant"} */ (
-                            message.kind === "user" ? "user" : "assistant"
-                        ),
-                        text:
-                            typeof message.text === "string"
-                                ? message.text
-                                : message.text
-                                  ? templateResultToString(message.text)
-                                  : "",
-                    });
-
-                if (message.kind === "clarification") {
-                    return /** @type {AgentConversationMessage} */ ({
-                        ...transcriptMessage,
-                        kind: "clarification",
-                    });
-                }
-
-                return transcriptMessage;
-            })
-            .filter((message) => message.text.length > 0);
-    }
-
-    /**
-     * @param {ChatPlannerResponse} response
-     * @returns {Promise<void>}
-     */
-    async #handleResponse(response) {
-        this.pendingResponsePlaceholder = "";
-        if (response.type === "answer") {
-            this.#appendMessage({
-                kind: "assistant",
-                text: response.message,
-            });
-            this.status = "idle";
-        } else if (response.type === "clarify") {
-            const options =
-                "options" in response ? (response.options ?? []) : [];
-            this.#appendMessage({
-                kind: "clarification",
-                text: response.message,
-                options: options.map((option) => ({
-                    value: option.value,
-                    label: option.label,
-                    description: option.description,
-                })),
-            });
-            this.status = "clarification";
-        } else if (response.type === "intent_program") {
-            const planLines = this.controller.summarizeIntentProgram(
-                response.program
-            );
-
-            this.#appendMessage({
-                kind: "plan",
-                text:
-                    response.program.rationale ??
-                    "The agent proposed an action plan.",
-                lines: planLines,
-            });
-
-            this.status = "executing";
-            const validation = this.controller.validateIntentProgram(
-                response.program
-            );
-            if (!validation.ok || !validation.program) {
-                const validationMessage = validation.errors.join("\n");
-                this.#appendMessage({
-                    kind: "error",
-                    text: validationMessage,
-                });
-                this.lastError = validationMessage;
-                this.status = "error";
-                return;
-            }
-
-            const result = await this.controller.submitIntentProgram(
-                validation.program
-            );
-            this.#appendMessage({
-                kind: "result",
-                text:
-                    "Executed " +
-                    result.executedActions +
-                    " action" +
-                    (result.executedActions === 1 ? "" : "s") +
-                    ".",
-                lines: result.summaries,
-            });
-            this.status = "idle";
-        } else if (response.type === "view_workflow") {
-            this.#appendMessage({
-                kind: "assistant",
-                text: "The planner returned a structured view workflow. That path is not wired into the chat panel draft yet.",
-            });
-            this.status = "idle";
-        } else if (response.type === "agent_program") {
-            this.#appendMessage({
-                kind: "assistant",
-                text: "The planner returned an agent program. That path is not wired into the chat panel draft yet.",
-            });
-            this.status = "idle";
-        } else {
-            const exhaustiveCheck = /** @type {never} */ (response);
-            this.#appendMessage({
-                kind: "error",
-                text:
-                    "Unsupported planner response: " + String(exhaustiveCheck),
-            });
-            this.status = "error";
-        }
-    }
-
-    /**
-     * @param {Omit<ChatMessage, "id">} message
-     */
-    #appendMessage(message) {
-        this.messages = [
-            ...this.messages,
-            {
-                id: this.#nextMessageId++,
-                ...message,
-            },
-        ];
+        void this.controller.sendMessage(trimmed);
     }
 
     /**
@@ -863,23 +731,71 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
+     * @param {ChatSessionSnapshot["status"]} status
      * @returns {string}
      */
-    #getStatusLabel() {
-        switch (this.status) {
-            case "idle":
+    #getStatusLabel(status) {
+        switch (status) {
+            case "ready":
                 return "Ready";
+            case "preflighting":
+                return "Checking availability";
             case "thinking":
                 return "Thinking";
             case "executing":
                 return "Executing";
             case "clarification":
                 return "Need clarification";
+            case "unavailable":
+                return "Agent unavailable";
             case "error":
                 return "Error";
             default:
-                return this.status;
+                return status;
         }
+    }
+
+    /**
+     * @param {number | null | undefined} durationMs
+     * @returns {import("lit").TemplateResult | typeof nothing}
+     */
+    #renderTimingNote(durationMs) {
+        if (
+            !import.meta.env.DEV ||
+            durationMs === null ||
+            durationMs === undefined
+        ) {
+            return nothing;
+        }
+
+        const seconds = (durationMs / 1000).toFixed(2);
+        return html`<div class="message-dev-note">
+            Generated in ${seconds}s.
+        </div>`;
+    }
+
+    /**
+     * Keep the panel in sync with the controller snapshot.
+     */
+    #syncController() {
+        if (this.#boundController === this.controller) {
+            return;
+        }
+
+        this.#unsubscribeController?.();
+        this.#unsubscribeController = null;
+        this.#boundController = this.controller;
+
+        if (!this.controller) {
+            this.snapshot = EMPTY_SNAPSHOT;
+            return;
+        }
+
+        this.snapshot = this.controller.getSnapshot();
+        this.#unsubscribeController = this.controller.subscribe((snapshot) => {
+            this.snapshot = snapshot;
+        });
+        void this.controller.open();
     }
 }
 
@@ -926,7 +842,10 @@ export async function toggleAgentChatPanel(app) {
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
         );
-        panel.controller = app.agentAdapter;
+        app.agentSessionController ??= createAgentSessionController(
+            app.agentAdapter
+        );
+        panel.controller = app.agentSessionController;
         host.append(panel);
 
         appRoot.append(host);

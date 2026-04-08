@@ -74,6 +74,8 @@ export default class App {
         };
 
         this.agentAdapter = this.options.agentAdapterFactory?.(this);
+        /** @type {import("./agent/agentSessionController.js").AgentSessionController | undefined} */
+        this.agentSessionController = undefined;
 
         /** @type {import("./utils/ui/contextMenu.js").MenuItem[]} */
         this.toolbarMenuItems =

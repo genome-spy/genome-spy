@@ -1,9 +1,15 @@
 import { html } from "lit";
+import { createAgentSessionController } from "./agentSessionController.js";
 import "./chatPanel.js";
 
 /**
  * @typedef {"answer" | "clarify" | "intent_program" | "error"} MockScenario
  */
+
+const PREFLIGHT_MESSAGE = "__genomespy_preflight__";
+
+/** @type {Map<string, ReturnType<typeof createAgentSessionController>>} */
+const controllerCache = new Map();
 
 export default {
     title: "Agent/ChatPanel",
@@ -18,14 +24,26 @@ export default {
                 options: ["answer", "clarify", "intent_program", "error"],
             },
         },
+        preflightDelayMs: {
+            control: {
+                type: "number",
+                min: 0,
+                step: 100,
+            },
+        },
+        preflightFails: {
+            control: "boolean",
+        },
     },
 };
 
 /**
  * @param {MockScenario} scenario
- * @returns {any}
+ * @param {{ preflightDelayMs?: number; preflightFails?: boolean }} [options]
+ * @returns {ReturnType<typeof createAgentSessionController>}
  */
-function createMockAgentController(scenario) {
+function createMockAgentController(scenario, options = {}) {
+    const { preflightDelayMs = 0, preflightFails = false } = options;
     const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
         sampleSummary: {
@@ -114,9 +132,32 @@ function createMockAgentController(scenario) {
         },
     });
 
-    return {
+    const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
         requestPlan: async (/** @type {string} */ message) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                if (preflightDelayMs > 0) {
+                    await delay(preflightDelayMs);
+                }
+
+                if (preflightFails) {
+                    throw new Error(
+                        "Mock planner is unavailable during preflight."
+                    );
+                }
+
+                return {
+                    response: {
+                        type: "answer",
+                        message: "Preflight check completed.",
+                    },
+                    trace: {
+                        message,
+                        totalMs: preflightDelayMs || 10,
+                    },
+                };
+            }
+
             const normalized = message.toLowerCase();
 
             if (scenario === "error" || normalized.includes("error")) {
@@ -147,6 +188,7 @@ function createMockAgentController(scenario) {
                     },
                     trace: {
                         message,
+                        totalMs: 12,
                     },
                 };
             }
@@ -164,6 +206,7 @@ function createMockAgentController(scenario) {
                     },
                     trace: {
                         message,
+                        totalMs: 12,
                     },
                 };
             }
@@ -175,6 +218,7 @@ function createMockAgentController(scenario) {
                 },
                 trace: {
                     message,
+                    totalMs: 18,
                 },
             };
         },
@@ -220,7 +264,19 @@ function createMockAgentController(scenario) {
             program.steps.map((/** @type {any} */ step) =>
                 summarizeMockStep(step)
             ),
-    };
+    });
+
+    return createAgentSessionController(runtime);
+}
+
+/**
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+function delay(ms) {
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
 }
 
 /**
@@ -332,14 +388,32 @@ function summarizeMockStep(step) {
 }
 
 /**
- * @param {{ scenario: MockScenario }} args
+ * @param {{
+ *     scenario: MockScenario;
+ *     preflightDelayMs?: number;
+ *     preflightFails?: boolean;
+ * }} args
  * @returns {import("lit").TemplateResult}
  */
 function renderChatPanel(args) {
+    const key = JSON.stringify({
+        scenario: args.scenario,
+        preflightDelayMs: args.preflightDelayMs ?? 0,
+        preflightFails: args.preflightFails ?? false,
+    });
+    let controller = controllerCache.get(key);
+    if (!controller) {
+        controller = createMockAgentController(args.scenario, {
+            preflightDelayMs: args.preflightDelayMs,
+            preflightFails: args.preflightFails,
+        });
+        controllerCache.set(key, controller);
+    }
+
     return html`
         <div style="width: min(100%, 520px); height: 760px;">
             <gs-agent-chat-panel
-                .controller=${createMockAgentController(args.scenario)}
+                .controller=${controller}
             ></gs-agent-chat-panel>
         </div>
     `;
@@ -373,6 +447,22 @@ export const IntentProgram = {
 export const ErrorState = {
     args: {
         scenario: "error",
+    },
+    render: renderChatPanel,
+};
+
+export const PreflightPending = {
+    args: {
+        scenario: "intent_program",
+        preflightDelayMs: 1600,
+    },
+    render: renderChatPanel,
+};
+
+export const Unavailable = {
+    args: {
+        scenario: "answer",
+        preflightFails: true,
     },
     render: renderChatPanel,
 };

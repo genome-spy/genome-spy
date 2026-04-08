@@ -6,7 +6,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 ## Code References
 
 - Chat panel component: [`chatPanel.js`](../src/agent/chatPanel.js)
-- Agent session controller: [`session-controller.md`](./session-controller.md)
+- Agent session controller: controller-owned snapshot and message history
 - Agent runtime adapter: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 - Toolbar entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Browser integration tests: [`agentAdapter.browser.test.js`](../src/agent/agentAdapter.browser.test.js)
@@ -138,9 +138,9 @@ Recommended message kinds:
 The component should expose a small, stable API:
 
 - a controller prop for agent communication
-- a read-only session snapshot or equivalent reactive property
-- methods for opening/closing the panel, if needed
-- optional event hooks for execution completion and errors
+- a read-only `snapshot` property derived from the controller
+- local methods for internal panel behavior such as focus and scroll handling
+- optional event hooks for execution completion and errors if the app shell needs them
 
 ## Communication Boundary
 
@@ -150,14 +150,18 @@ The component should expose a small, stable API:
   - the real app agent adapter at runtime
   - a mock controller in Storybook
 - The controller can expose:
-  - a snapshot getter or reactive state access
+  - `getSnapshot()`
+  - `subscribe(listener)`
+  - `open()`
+  - `close()`
   - `sendMessage(message)`
   - `queueMessage(message)`
-  - `acknowledgePreflight()`
-  - `requestSnapshotRefresh()`
+  - `refreshPreflight()`
 - Keep planner request/validation/execution logic out of the UI component itself.
 - Let the UI focus on rendering messages, collecting input, and showing outcomes.
 - The controller should own the history used for follow-up planner calls and should hand the panel a render-ready snapshot.
+- The panel should treat `snapshot` as the render input and update it through controller subscription, not by querying the app state directly.
+- The controller also owns preflight, queueing, and DEV timing diagnostics.
 
 Suggested shape:
 
@@ -165,7 +169,11 @@ Suggested shape:
 /**
  * @typedef {object} AgentChatController
  * @property {() => any} getSnapshot
+ * @property {(listener: (snapshot: any) => void) => () => void} subscribe
+ * @property {() => Promise<void>} open
+ * @property {() => void} close
  * @property {(message: string) => Promise<void>} sendMessage
+ * @property {(message: string) => Promise<void>} queueMessage
  * @property {() => Promise<void>} refreshPreflight
  */
 ```
@@ -173,6 +181,7 @@ Suggested shape:
 - The panel submits a message intent and receives a controller-updated snapshot.
 - The panel renders the snapshot and reacts to controller state transitions.
 - The panel should not know whether the controller is backed by a live server or a mock.
+- The panel should keep only ephemeral local UI state such as draft text and scroll position.
 
 ## Execution Summary
 

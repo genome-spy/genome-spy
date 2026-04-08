@@ -6,7 +6,7 @@
 - Workflow context and resolution: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js), [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js), [`viewWorkflowCatalog.js`](../src/agent/viewWorkflowCatalog.js)
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
-- Session controller and transcript state: [`session-controller.md`](./session-controller.md)
+- Session controller: owns transcript state, preflight, queueing, and the panel snapshot
 - Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
@@ -56,8 +56,8 @@
 ## Next Implementation Candidates
 - Build a read-only LLM context snapshot (views, attributes, scales, actions, provenance).
 - Add intent program validation + execution helper.
-- Introduce an agent session controller that owns transcript history and
-  preflight / turn state.
+- Introduce an agent session controller that owns transcript history,
+  preflight / turn state, and the read-only snapshot used by the panel.
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
