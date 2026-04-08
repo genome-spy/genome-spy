@@ -1,4 +1,5 @@
 import templateResultToString from "../utils/templateResultToString.js";
+import { parseClarificationMessage } from "./clarificationMessage.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
@@ -440,15 +441,21 @@ export class AgentSessionController {
         }
 
         if (response.type === "clarify") {
+            const parsedClarification = parseClarificationMessage(
+                response.message
+            );
             const options =
-                "options" in response
+                "options" in response && response.options?.length > 0
                     ? /** @type {ChatClarificationOption[]} */ (
-                          response.options ?? []
+                          response.options
                       )
-                    : [];
+                    : parsedClarification.options;
             this.#appendMessage({
                 kind: "clarification",
-                text: response.message,
+                text:
+                    options.length > 0
+                        ? parsedClarification.text
+                        : response.message,
                 options: options.map((option) => ({
                     value: option.value,
                     label: option.label,

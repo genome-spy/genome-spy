@@ -8,8 +8,10 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
+import { parseClarificationMessage } from "./clarificationMessage.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT_TRACE =
@@ -243,14 +245,40 @@ async function runLocalPrompt(app) {
                     response.message
                 );
                 if (!groundedClarification) {
-                    trace.responseType = response.type;
-                    trace.totalMs = elapsedMilliseconds(startedAt);
-                    publishAgentTrace(trace);
-                    await showMessageDialog(response.message, {
+                    const parsedClarification = parseClarificationMessage(
+                        response.message
+                    );
+                    if (parsedClarification.options.length === 0) {
+                        trace.responseType = response.type;
+                        trace.totalMs = elapsedMilliseconds(startedAt);
+                        publishAgentTrace(trace);
+                        await showMessageDialog(response.message, {
+                            title: "Agent Clarification",
+                            type: "info",
+                        });
+                        return;
+                    }
+
+                    const followUpValue = await showAgentChoiceDialog({
                         title: "Agent Clarification",
-                        type: "info",
+                        message:
+                            typeof parsedClarification.text === "string"
+                                ? parsedClarification.text
+                                : templateResultToString(
+                                      parsedClarification.text
+                                  ),
+                        choiceLabel: "Clarification",
+                        options: parsedClarification.options,
+                        value: parsedClarification.options[0].value,
                     });
-                    return;
+                    if (!followUpValue) {
+                        throw new Error("Agent clarification was cancelled.");
+                    }
+
+                    history.push(message, response.message);
+                    message = followUpValue.trim();
+                    clarificationRounds += 1;
+                    continue;
                 }
 
                 if (clarificationRounds >= 3) {

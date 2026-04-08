@@ -174,17 +174,8 @@ function createMockAgentController(scenario, options = {}) {
                 return {
                     response: {
                         type: "clarify",
-                        message: "Which attribute should I use?",
-                        options: [
-                            {
-                                value: "age",
-                                label: "Age",
-                            },
-                            {
-                                value: "diagnosis",
-                                label: "Diagnosis",
-                            },
-                        ],
+                        message:
+                            "Which attribute should I use?\n\n1. Age\n2. Diagnosis",
                     },
                     trace: {
                         message,

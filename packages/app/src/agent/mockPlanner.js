@@ -21,7 +21,7 @@ export async function requestMockPlan(request) {
             response: {
                 type: "clarify",
                 message:
-                    "Which part should I focus on: the visualization structure, the encodings, or the available attributes?",
+                    "Which part should I focus on?\n\n1. Visualization structure\n2. Encodings\n3. Available attributes",
             },
         };
     }

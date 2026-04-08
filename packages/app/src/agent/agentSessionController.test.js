@@ -27,6 +27,62 @@ beforeEach(() => {
 });
 
 describe("createAgentSessionController", () => {
+    it("parses numbered clarification choices from the planner response", async () => {
+        const runtime = createRuntimeMock();
+        runtime.requestPlan.mockImplementation((message) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "Preflight OK",
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "clarify",
+                    message:
+                        "Which part should I focus on?\n\n1. Visualization structure\n2. Encodings\n3. Available attributes",
+                },
+                trace: {
+                    totalMs: 14,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("What should I look at?");
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.status).toBe("clarification");
+        expect(snapshot.messages).toHaveLength(2);
+        expect(snapshot.messages[1]).toMatchObject({
+            kind: "clarification",
+            text: "Which part should I focus on?",
+            options: [
+                {
+                    value: "Visualization structure",
+                    label: "Visualization structure",
+                },
+                {
+                    value: "Encodings",
+                    label: "Encodings",
+                },
+                {
+                    value: "Available attributes",
+                    label: "Available attributes",
+                },
+            ],
+        });
+    });
+
     it("queues input during preflight and drains it after preflight succeeds", async () => {
         /** @type {(value: any) => void} */
         let resolvePreflight;

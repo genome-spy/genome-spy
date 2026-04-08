@@ -571,20 +571,22 @@ export default class AgentChatPanel extends LitElement {
                     <div class="message-text">
                         ${this.#renderMarkdown(message.text ?? "")}
                     </div>
-                    <div class="clarification-options">
-                        ${message.options?.map(
-                            (option) => html`
-                                <button
-                                    class="btn"
-                                    type="button"
-                                    @click=${() =>
-                                        this.#submitMessage(option.value)}
-                                >
-                                    ${option.label}
-                                </button>
-                            `
-                        )}
-                    </div>
+                    ${message.options?.length
+                        ? html`<div class="clarification-options">
+                              ${message.options.map(
+                                  (option) => html`
+                                      <button
+                                          class="btn"
+                                          type="button"
+                                          @click=${() =>
+                                              this.#submitMessage(option.value)}
+                                      >
+                                          ${option.label}
+                                      </button>
+                                  `
+                              )}
+                          </div>`
+                        : nothing}
                     ${this.#renderTimingNote(message.durationMs)}
                 </article>
             `;
