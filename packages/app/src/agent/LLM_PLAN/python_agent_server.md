@@ -134,6 +134,27 @@ Suggested temporary layout:
 The contract artifacts can either be copied into `utils/agent_server/contracts/`
 as part of a build step or read from a dedicated generated output folder.
 
+## Python Implementation Specs
+
+The Python implementation should use current Astral tooling conventions and be
+structured as a `uv` project first, not as a generic `pip` project.
+
+Preferred tooling:
+
+- `uv` for environment management, dependency management, and lockfile
+  management
+- `ruff` for linting and formatting
+- `pytest` for tests
+- `mypy` for static type checking
+
+Tooling notes:
+
+- Keep `ruff` current and aligned with Astral conventions.
+- Treat lockfiles as `uv`-managed artifacts.
+- If lockfiles drift, regenerate them with `uv lock`.
+- Keep the Python repo self-contained so it can later move out of `utils/`
+  without changing the project layout much.
+
 ## Coding Agent Prompt
 
 ```text
@@ -230,6 +251,10 @@ Constraints:
   architecture.
 - The provider layer should be generic enough to support Ollama, vLLM, LM
   Studio, OpenAI, and Claude without changing the GenomeSpy-side contract.
+- The Python implementation should use `uv`, `ruff`, `pytest`, and `mypy` as
+  the default quality/tooling stack.
+- This should be a `uv` project first, and lockfiles should be regenerated with
+  `uv lock` when they drift.
 
 Please produce:
 - A recommended approach for defining GenomeSpy-side agent tools via JSDoc +
@@ -242,6 +267,8 @@ Please produce:
   backends
 - A versioning strategy
 - A minimal Python consumption strategy
+- A recommended Python project/tooling layout using `uv`, `ruff`, `pytest`,
+  and `mypy`
 - Key anti-patterns to avoid
 ```
 
