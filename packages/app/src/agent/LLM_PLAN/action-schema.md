@@ -37,7 +37,7 @@ You can auto-extract most of the catalog by combining:
 - Action type strings from slice action creators.
 - Payload shapes from `payloadTypes.d.ts` (or a `.ts` wrapper) via JSON Schema generation.
 - Human-readable titles from `actionInfo` / `paramActionInfo`.
-- JSDoc conventions from `packages/app/LLM_PLAN/annotation-style.md`.
+- JSDoc conventions from [`annotation-style.md`](./annotation-style.md).
 
 What is still needed:
 - A small action catalog map that links **action type -> payload type name -> description**.
@@ -80,7 +80,7 @@ MVP scope:
   out of scope for now.
 
 The selector definitions themselves come from the visualization spec and are
-listed in the data context as static selection declarations. `paramProvenance`
+listed in the data context as static parameter declarations. `paramProvenance`
 only carries the current runtime values for those declarations.
 
 ## Provenance Summary

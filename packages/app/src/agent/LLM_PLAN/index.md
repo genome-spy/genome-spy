@@ -22,9 +22,8 @@
 
 ### Later
 - Direct agent access to the data.
-- Public vs controlled-access data modes.
+- Public and controlled-access data modes; see [`infrastructure.md`](./infrastructure.md) for the policy details.
 - Local and cloud LLM support for public data.
-- Strict privacy-preserving handling for controlled-access data.
 - Summarized data as an optional optimization even for public data.
 
 ## Current Implementation (Relevant Pieces)
@@ -33,7 +32,7 @@
 - Provenance (undo/redo/history) records bookmarkable actions with inline human-readable summaries.
 - Action schema and compact summaries are generated from reducer JSDoc and payload typings and emitted as JSON artifacts.
 - `actionInfo` (sample actions) and `paramActionInfo` (param/selection actions) remain the runtime human-readable formatters used by the UI.
-- Selection declarations are part of the view spec and stay static; `paramProvenance`
+- Parameter declarations are part of the view spec and stay static; `paramProvenance`
   carries the current runtime values for those declarations.
 - Interval selections should be described to the model as brushing/dragging a
   range; point-selection refinements are out of MVP scope.
@@ -59,16 +58,16 @@
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
 
 ## Data + Visualization Context
-- See `packages/app/LLM_PLAN/data-schema.md` for the proposed LLM-facing context schema.
-- See `packages/app/LLM_PLAN/view-tree.md` for the proposed normalized view-tree IR.
-- See `packages/app/LLM_PLAN/chat-ui.md` for the proposed chat surface and component shape.
+- See [`data-schema.md`](./data-schema.md) for the proposed LLM-facing context schema.
+- See [`view-tree.md`](./view-tree.md) for the proposed normalized view-tree IR.
+- See [`chat-ui.md`](./chat-ui.md) for the proposed chat surface and component shape.
 
 ## Action + State Context
-- See `packages/app/LLM_PLAN/action-schema.md` for the proposed action/provenance schema.
+- See [`action-schema.md`](./action-schema.md) for the proposed action/provenance schema.
 
 ## Data Access Policy
-- See `packages/app/LLM_PLAN/infrastructure.md` for the public-data vs controlled-access policy and the LLM transport safeguards.
+- See [`infrastructure.md`](./infrastructure.md) for the public-data vs controlled-access policy and the LLM transport safeguards.
 
 ## Annotation Style
-- See `packages/app/LLM_PLAN/annotation-style.md` for the JSDoc and extraction
+- See [`annotation-style.md`](./annotation-style.md) for the JSDoc and extraction
   conventions used to generate action docs and schemas from code.

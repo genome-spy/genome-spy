@@ -1,6 +1,6 @@
 # LLM Data + Visualization Context (Draft)
 
-This document outlines what the LLM needs to understand a GenomeSpy visualization and the data behind it. The goal is to provide enough structured context for intent planning and validation, without hard-coding domain semantics into the engine. For actions and provenance, see `packages/app/LLM_PLAN/action-schema.md`.
+This document outlines what the LLM needs to understand a GenomeSpy visualization and the data behind it. The goal is to provide enough structured context for intent planning and validation, without hard-coding domain semantics into the engine. For actions and provenance, see [`action-schema.md`](./action-schema.md).
 
 ## Code References
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
@@ -16,24 +16,20 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 - Make everything optional and discoverable; fall back to clarification when missing.
 - Keep collapsed branches compact in the always-on context; expand them on
   demand through retrieval tools instead of inlining every hidden detail.
-- MVP focus: explain the visualization and its parameters well enough for the
-  user to understand it and for the agent to make informed state-changing
-  decisions.
-- Later focus: add data access with explicit public and controlled-access modes.
-  Public data may use richer summaries or raw values when allowed; controlled
-  data must use sanitized summaries and guardrails.
+- The product phases and data-access policy are summarized in
+  [`index.md`](./index.md) and [`infrastructure.md`](./infrastructure.md).
 
 ## Agent Context Needs (Data + Structure)
 - Visualization structure: view hierarchy, encodings, data sources.
-- Static selection declarations from the view spec: which selections exist, which views they belong to, and whether they are persistent or clearable.
+- Static parameter declarations from the view spec: which selections or bound variables exist, which views they belong to, and whether they are persistent or clearable.
 - Metadata dictionary: attribute names, types, optional descriptions.
 - Scale summaries: scale type and data-domain (range only when meaningful, e.g., color schemes).
 
-Selection declarations are part of the visualization spec and stay fixed for
-the current visualization. The current values for those selections live in
+Parameter declarations are part of the visualization spec and stay fixed for
+the current visualization. The current values for adjustable parameters live in
 `paramProvenance`, which is the dynamic interaction state.
 
-User-language mapping for selection declarations:
+User-language mapping for parameter declarations:
 - interval selections correspond to brushing or dragging a range
 - point selections correspond to clicking individual items
 - clearable selections correspond to clearing the brush or click selection
@@ -41,16 +37,16 @@ User-language mapping for selection declarations:
 ## Context Snapshot: High-Level Shape
 - View hierarchy summary
 - Data/metadata dictionary (attributes + types)
-- Selection declarations from the spec
+- Parameter declarations from the spec
 - Scale summaries (type + data-domain)
 
 ## View Hierarchy Summary
 For each view (or subtree root):
-- `id` / `name` / `title`
+- `type` / `name` / `title`
 - View type (unit/concat/layer/sampleView)
 - Encodings: channel, field, type, title, description (if present)
-- Data source id (if named)
-- Static selection declarations attached to the view (selector, param name, type, persistence, clearability)
+- Data source id or selector (if named)
+- Static parameter declarations attached to the view (selector, param name, type, persistence, clearability)
 
 Rationale: disambiguates "where" an action should apply and helps resolve field names.
 
@@ -93,10 +89,7 @@ Rationale: lets LLM answer domain questions without encoding domain logic into t
 - Proposed addition: `description` on field definitions and sample attributes to describe meaning/thresholds.
 - Optional markdown documentation per subtree could provide deeper domain context.
   - Prefer markdown with optional structured front-matter to extract definitions.
-- For public data, summarized data can still be useful even when raw values are
-  available.
-- For controlled-access data, never send raw rows to a cloud LLM; use only
-  approved summaries and aggregates.
+- Public vs controlled-access handling lives in [`infrastructure.md`](./infrastructure.md).
 
 ## Potential Schema Extensions
 - `FieldDefBase.description?: string` in core spec (encodings).
@@ -106,27 +99,29 @@ Rationale: lets LLM answer domain questions without encoding domain logic into t
 ## Hierarchical Data Notes
 LLMs generally handle hierarchical JSON well as long as the tree is compact and consistent.
 
-For the normalized view-tree IR, see `packages/app/LLM_PLAN/view-tree.md`.
+For the normalized view-tree IR, see [`view-tree.md`](./view-tree.md).
 
 Recommended structure:
-- Use stable keys like `id`, `type`, `encodings`, `children`.
+- Use stable keys like `type`, `name`, `selector`, `parameterDeclarations`, `encodings`, `children`.
 - Keep node payloads small (summary only).
 - Avoid deep trees and large arrays in-line; provide details via separate lookups when needed.
 
 Example (summary view tree):
 ```json
 {
-  "id": "root",
-  "type": "concat",
+  "type": "vconcat",
+  "title": "viewRoot",
   "children": [
     {
-      "id": "sample-view",
       "type": "sampleView",
-      "encodings": [],
+      "name": "samples",
+      "selector": { "scope": [], "view": "samples" },
+      "parameterDeclarations": [],
       "children": [
         {
-          "id": "cnv-track",
           "type": "unit",
+          "name": "cnv-track",
+          "selector": { "scope": [], "view": "cnv-track" },
           "encodings": [
             { "channel": "x", "field": "position", "type": "locus" },
             { "channel": "y", "field": "log2_copy_ratio", "type": "quantitative" }
