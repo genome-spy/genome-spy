@@ -4,18 +4,21 @@ This document describes the user-facing chat interface for the GenomeSpy agent.
 It focuses on component shape, interaction flow, and implementation constraints.
 
 ## Code References
+
 - Chat panel component: [`chatPanel.js`](../src/agent/chatPanel.js)
 - Agent runtime adapter: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 - Toolbar entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Browser integration tests: [`agentAdapter.browser.test.js`](../src/agent/agentAdapter.browser.test.js)
 
 ## Goal
+
 - Provide a compact chat surface for asking questions, issuing commands, and reviewing assistant output.
 - Keep the component self-contained so it does not depend on global stylesheet changes.
 - Fit the existing GenomeSpy agent flow: context snapshot, plan, validation, execution, provenance.
 - Make the component available in Storybook for development, documentation, and testing.
 
 ## Recommended Component Shape
+
 - Start with one shadow-DOM web component.
 - Use a single top-level docked component such as `gs-agent-chat-panel`.
 - Keep the implementation under `packages/app/src/agent` so the chat UI stays close to the rest of the agent code.
@@ -23,6 +26,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Split into multiple web components only if a subpart becomes reusable or materially harder to maintain.
 
 ## Interaction Model
+
 - User submits a message.
 - The agent responds with one of:
   - `answer`
@@ -38,6 +42,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Treat token streaming as a later enhancement, not an MVP requirement.
 
 ## Suggested UI Sections
+
 - Header
   - Agent title
   - Current status
@@ -61,6 +66,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
   - Undo/provenance affordance
 
 ## Styling and Encapsulation
+
 - Use LitElement with shadow DOM.
 - Put all component CSS in `static styles`.
 - Reuse the existing component style conventions from `packages/app/src/components/generic` and `packages/app/src/components/dialogs`.
@@ -68,6 +74,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Use local buttons, cards, and spacing tokens inside the component instead of relying on page-level CSS.
 
 ## Storybook
+
 - Add a dedicated Storybook story for the chat panel.
 - Keep the story in the same agent folder as the implementation, following the existing `*.stories.js` pattern.
 - Provide a realistic mock agent in Storybook so the component can be exercised without the real planner service.
@@ -81,7 +88,9 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Keep the mock isolated to Storybook and test utilities.
 
 ## State Model
+
 Keep the component state small and explicit:
+
 - `messages`
 - `status`
 - `draft`
@@ -91,6 +100,7 @@ Keep the component state small and explicit:
 - `contextSummary`
 
 Recommended message kinds:
+
 - `user`
 - `assistant`
 - `status`
@@ -99,6 +109,7 @@ Recommended message kinds:
 - `result`
 
 ## Confirmation Policy
+
 - Do not block every intent with a confirmation dialog.
 - Ask for clarification only when the request is ambiguous or missing required context.
 - Allow direct execution for valid, undoable, non-destructive intents.
@@ -106,13 +117,16 @@ Recommended message kinds:
 - Show undo and provenance after execution.
 
 ## Public API
+
 The component should expose a small, stable API:
+
 - a controller or adapter prop for agent communication
 - current context or context summary
 - methods for opening/closing the panel, if needed
 - optional event hooks for execution completion and errors
 
 ## Communication Boundary
+
 - Do not have the chat component import deep modules from `packages/app/src/agent`.
 - Treat the agent layer as an adapter boundary.
 - The panel should talk to one small controller object that is implemented by:
@@ -145,6 +159,7 @@ Suggested shape:
 - The panel should not know whether the controller is backed by a live server or a mock.
 
 ## Execution Summary
+
 - Show the actions dispatched by the current agent turn inline in the chat panel.
 - Render those actions with the same human-readable functions used by the provenance UI.
 - Keep earlier actions out of the chat transcript summary; they remain available in the provenance menu.
@@ -152,5 +167,6 @@ Suggested shape:
 - If execution fails, show the error and keep the dispatched action preview visible.
 
 ## Open Questions
+
 - How much of the context summary should be visible inline in the panel?
 - Should the mock agent live only in Storybook stories, or also in shared test utilities?

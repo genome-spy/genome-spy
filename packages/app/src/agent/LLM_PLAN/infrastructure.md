@@ -66,15 +66,6 @@ Notes:
 - HTTP streaming is usually sufficient for chat UI + token streaming.
 - Add WebSockets only for advanced progress or tool-execution telemetry.
 
-## Cloud Aggregate Policy
-Local models can receive richer summaries. For cloud LLMs, prefer conservative,
-privacy-preserving aggregate sharing:
-- Aggregate-only by default; never send raw rows.
-- Enforce minimum cohort sizes (k-anonymity) before emitting counts or stats.
-- Prefer bins/quantiles over exact values.
-- Compute aggregates client-side or in the gateway, not in the LLM service.
-- Require user confirmation for broad-scope summaries.
-
 ## Message Flow (High-Level)
 1. User message + context snapshot -> gateway.
 2. Gateway forwards to LLM with system prompt + tools.
@@ -85,7 +76,7 @@ privacy-preserving aggregate sharing:
 ## Security + Safety
 - Cap request sizes (context snapshots can grow quickly).
 - Rate-limit per user/session.
-- Redact sensitive fields in snapshots if needed.
+- Redact sensitive fields in snapshots when the selected data mode requires it.
 - Require confirmation for large-scope actions.
 
 ## Open Questions
@@ -106,19 +97,27 @@ if you provide explicit context and constraints:
 Practical fallback: keep local models for planning and routing, and optionally
 route domain-heavy or stats-heavy requests to a larger model.
 
-## Secure Cloud Reasoning (Longer-Term Project)
-If deeper reasoning is routed to a strong cloud LLM, enforce a strict separation
-between data handling and reasoning by sending only sanitized bundles.
+## Cloud Data Policy
+Use one policy block for both local and cloud LLMs so the data rules stay
+visible in one place.
 
-Proposed safeguards:
-- Only send metadata and pre-approved aggregates (no raw rows).
-- Enforce minimum cohort sizes (k-anonymity) before emitting stats.
+### Public data
+- Local and cloud LLMs may be used.
+- Raw data may be used when the request and product policy allow it.
+- Summarized data is still preferred when it improves reasoning quality.
+
+### Controlled-access data
+- Cloud LLMs must never receive raw rows.
+- Use only metadata and pre-approved aggregates.
+- Enforce minimum cohort sizes (k-anonymity) before emitting counts or stats.
+- Prefer bins/quantiles over exact values.
 - Remove identifiers and high-cardinality categorical fields.
-- Quantize numeric values (bins/quantiles) to avoid exact leakage.
-- Validate outbound payloads against a strict schema (whitelist fields only).
-- Log outbound payloads for auditability.
+- Quantize numeric values to avoid exact leakage.
+- Require user confirmation for broad-scope summaries.
 
-Implementation notes:
+### Implementation notes
 - Compute aggregates locally or in the gateway, never in the cloud LLM.
-- Add a deterministic validator that rejects unsafe bundles.
-- Maintain a test suite to prove that sensitive fields cannot pass.
+- Validate outbound payloads against a strict schema.
+- Reject unsafe bundles deterministically.
+- Log outbound payloads for auditability.
+- Maintain tests that prove sensitive fields cannot pass.

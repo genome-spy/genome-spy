@@ -8,9 +8,24 @@
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 
 ## Goals
-- Help users learn what actions are available and how to compose them.
-- Enable natural-language commands (e.g., "Show me all patients with CCNE1 amplification").
-- Support multi-step analysis requests (e.g., "boxplot + significance"), with plotting now and statistical testing later.
+- Enable conversations with the agent over the current visualization.
+- Help users understand the visualization itself: semantics, available attributes, encodings, scales, and related metadata.
+- Dispatch intent actions that change the visualization state: sample collection manipulation, view visibility, selections, parameter updates, and metadata derivation from aggregated selection regions.
+- Run efficiently with a local LLM.
+
+## Product Phases
+### MVP
+- Conversation over the current visualization.
+- Questions about the visualization's structure and semantics.
+- Intent programs that manipulate visualization state.
+- Local-LLM-friendly prompts, tools, and context snapshots.
+
+### Later
+- Direct agent access to the data.
+- Public vs controlled-access data modes.
+- Local and cloud LLM support for public data.
+- Strict privacy-preserving handling for controlled-access data.
+- Summarized data as an optional optimization even for public data.
 
 ## Current Implementation (Relevant Pieces)
 - Intent actions are plain Redux actions (serializable), primarily in SampleView.
@@ -24,6 +39,8 @@
   range; point-selection refinements are out of MVP scope.
 - Semantic `description` fields should be carried through to views, encodings,
   params, data sources, and other objects the agent needs to reason about.
+- For the MVP, the agent should answer visualization questions and dispatch
+  intent programs; direct data access comes later.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.
@@ -39,6 +56,7 @@
 - Add intent program validation + execution helper.
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
+- Add a later-phase data access layer with explicit public vs controlled-access policies.
 
 ## Data + Visualization Context
 - See `packages/app/LLM_PLAN/data-schema.md` for the proposed LLM-facing context schema.
@@ -47,6 +65,9 @@
 
 ## Action + State Context
 - See `packages/app/LLM_PLAN/action-schema.md` for the proposed action/provenance schema.
+
+## Data Access Policy
+- See `packages/app/LLM_PLAN/infrastructure.md` for the public-data vs controlled-access policy and the LLM transport safeguards.
 
 ## Annotation Style
 - See `packages/app/LLM_PLAN/annotation-style.md` for the JSDoc and extraction

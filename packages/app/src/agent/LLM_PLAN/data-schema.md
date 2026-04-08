@@ -16,6 +16,12 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 - Make everything optional and discoverable; fall back to clarification when missing.
 - Keep collapsed branches compact in the always-on context; expand them on
   demand through retrieval tools instead of inlining every hidden detail.
+- MVP focus: explain the visualization and its parameters well enough for the
+  user to understand it and for the agent to make informed state-changing
+  decisions.
+- Later focus: add data access with explicit public and controlled-access modes.
+  Public data may use richer summaries or raw values when allowed; controlled
+  data must use sanitized summaries and guardrails.
 
 ## Agent Context Needs (Data + Structure)
 - Visualization structure: view hierarchy, encodings, data sources.
@@ -87,6 +93,10 @@ Rationale: lets LLM answer domain questions without encoding domain logic into t
 - Proposed addition: `description` on field definitions and sample attributes to describe meaning/thresholds.
 - Optional markdown documentation per subtree could provide deeper domain context.
   - Prefer markdown with optional structured front-matter to extract definitions.
+- For public data, summarized data can still be useful even when raw values are
+  available.
+- For controlled-access data, never send raw rows to a cloud LLM; use only
+  approved summaries and aggregates.
 
 ## Potential Schema Extensions
 - `FieldDefBase.description?: string` in core spec (encodings).

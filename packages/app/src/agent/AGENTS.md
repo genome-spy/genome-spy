@@ -5,7 +5,7 @@ current visualization state and propose actions. The project is still in early s
 
 ## General guidelines
 
-- The plan docs live in `./LLM_PLAN/`. The documentation should also reflect the current state of implementation and be updated as features are added or changed.
+- The plan docs live in `./LLM_PLAN/`. The documentation should describe the current or intended design, not removed fields or obsolete shapes. When a discarded approach matters, capture the broad rationale briefly instead of documenting the old field names in detail.
 - There is absolutely no need to maintain any backwards compatibility for the agent API or context shape at this point. We can iterate rapidly and refactor as needed.
 - A separate server application, which communicates with the LLM, is implemented in Python and doesn't live in this monorepo.
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.
@@ -22,3 +22,4 @@ current visualization state and propose actions. The project is still in early s
 
 - The agent loop, tool definitions, etc., should follow the best practices and and established patterns from the LLM agent design community.
 - Ideally, the agent could be run on a small local LLM without any custom fine-tuning, so the tools and context should be designed with that in mind.
+- If a design choice was discarded, document the reason at a high level when it helps explain the current approach. Do not turn the plan docs into a changelog of removed fields or prior IR shapes.
