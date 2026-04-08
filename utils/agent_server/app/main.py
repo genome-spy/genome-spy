@@ -8,7 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import Settings, load_settings
 from .models import PlanRequest, PlanResponse, ProviderRequest
-from .providers import BaseProvider, OpenAICompatibleProvider, ProviderError
+from .providers import (
+    BaseProvider,
+    OpenAIChatCompletionsProvider,
+    OpenAIResponsesProvider,
+    ProviderError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +37,10 @@ def get_settings() -> Settings:
 
 @lru_cache
 def get_provider() -> BaseProvider:
-    return OpenAICompatibleProvider(get_settings())
+    settings = get_settings()
+    if settings.api_style == "chat_completions":
+        return OpenAIChatCompletionsProvider(settings)
+    return OpenAIResponsesProvider(settings)
 
 
 @app.get("/health")

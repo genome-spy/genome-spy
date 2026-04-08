@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import Literal, cast
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are an AI assistant in GenomeSpy, a visual analytics app for genomic "
@@ -19,9 +20,16 @@ class Settings:
     api_key: str
     timeout_seconds: float
     system_prompt: str
+    api_style: Literal["responses", "chat_completions"]
 
 
 def load_settings() -> Settings:
+    api_style = os.environ.get("GENOMESPY_AGENT_API_STYLE", "responses")
+    if api_style not in {"responses", "chat_completions"}:
+        raise ValueError(
+            "GENOMESPY_AGENT_API_STYLE must be one of: responses, chat_completions"
+        )
+
     return Settings(
         model=os.environ["GENOMESPY_AGENT_MODEL"],
         base_url=os.environ.get(
@@ -34,4 +42,5 @@ def load_settings() -> Settings:
         system_prompt=os.environ.get(
             "GENOMESPY_AGENT_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT
         ),
+        api_style=cast(Literal["responses", "chat_completions"], api_style),
     )

@@ -33,7 +33,8 @@ The service does not:
 
 ## Configuration
 
-The server currently uses one OpenAI-compatible chat-completions adapter.
+The server prefers one OpenAI-compatible Responses adapter.
+An OpenAI-compatible chat-completions adapter remains available as a fallback.
 
 Required environment variables:
 
@@ -45,31 +46,40 @@ Optional environment variables:
   - default: `http://127.0.0.1:11434/v1`
 - `GENOMESPY_AGENT_API_KEY`
   - default: `ollama`
+- `GENOMESPY_AGENT_API_STYLE`
+  - default: `responses`
+  - set to `chat_completions` to use the fallback adapter
 - `GENOMESPY_AGENT_TIMEOUT_SECONDS`
   - default: `180`
 - `GENOMESPY_AGENT_SYSTEM_PROMPT`
   - overrides the built-in GenomeSpy system prompt
 
 The default base URL targets a local OpenAI-compatible endpoint. This works for
-providers such as LM Studio or vLLM when configured with a compatible API.
+providers such as LM Studio or Ollama when configured with a compatible API.
 
 ## Ollama warm-up
 
-When the relay talks to a local Ollama model, the first request can take much
-longer than later ones because the model may need to load into memory. The
-relay therefore defaults to a `180` second timeout.
+When the relay talks to a local model, the first request can take much longer
+than later ones because the model may need to load into memory. The relay
+therefore defaults to a `180` second timeout.
 
 If the first request still times out, try warming the model with a direct
 request first:
 
 ```bash
-curl http://127.0.0.1:11434/v1/chat/completions \
+curl http://127.0.0.1:11434/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ollama" \
   -d '{
     "model": "gemma4:e4b",
-    "messages": [
-      { "role": "user", "content": "Say hello in one sentence." }
+    "instructions": "You are a helpful assistant.",
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          { "type": "input_text", "text": "Say hello in one sentence." }
+        ]
+      }
     ]
   }'
 ```
@@ -155,8 +165,8 @@ The chat panel request should travel from GenomeSpy to the Python relay as a
 http://127.0.0.1:8000/v1/plan
 ```
 
-The Python relay then forwards the assembled prompt to Ollama and returns a
-normalized `answer` or `clarify` response back to the chat panel.
+The Python relay then forwards the assembled prompt to the configured provider
+and returns a normalized `answer` or `clarify` response back to the chat panel.
 
 If everything is wired correctly, you should see:
 

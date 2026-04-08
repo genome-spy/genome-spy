@@ -32,6 +32,10 @@ framework, including:
 The first PoC may start with one local provider, but the overall structure
 should remain provider-agnostic.
 
+For the first implementation, the preferred OpenAI-style transport is the
+Responses API. Chat Completions can remain a fallback adapter, but it should
+not be the default path.
+
 ## Architectural Direction
 
 - Keep the AI/server code separate from the main app architecture, even if the
@@ -154,6 +158,13 @@ Tooling notes:
 - If lockfiles drift, regenerate them with `uv lock`.
 - Keep the Python repo self-contained so it can later move out of `utils/`
   without changing the project layout much.
+
+Preferred provider adapter shape:
+
+- Responses API first
+- Chat Completions as an explicit fallback adapter only
+- Shared GenomeSpy contract inputs: `message`, `history`, `context`
+- Shared output shape: `answer` or `clarify`
 
 ## Coding Agent Prompt
 

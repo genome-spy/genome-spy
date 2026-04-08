@@ -1,67 +1,85 @@
 import pytest
 
 from app.models import ProviderResponse
-from app.providers import ProviderError, _parse_provider_response
+from app.providers import (
+    ProviderError,
+    _parse_chat_completions_response,
+    _parse_responses_response,
+)
 
 
-def test_parse_provider_response_returns_normalized_shape() -> None:
+def test_parse_responses_response_returns_normalized_shape() -> None:
     payload = {
-        "choices": [
+        "output": [
             {
-                "message": {
-                    "content": (
-                        '{"type":"answer","message":"This view shows methylation."}'
-                    )
-                }
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": (
+                            '{"type":"answer","message":"This view shows '
+                            'methylation."}'
+                        ),
+                    }
+                ],
             }
         ]
     }
 
-    response = _parse_provider_response(payload)
+    response = _parse_responses_response(payload)
 
     assert response == ProviderResponse(
         type="answer", message="This view shows methylation."
     )
 
 
-def test_parse_provider_response_rejects_invalid_json() -> None:
+def test_parse_responses_response_rejects_invalid_json() -> None:
     payload = {
-        "choices": [
+        "output": [
             {
-                "message": {
-                    "content": "not json"
-                }
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": "not json",
+                    }
+                ],
             }
         ]
     }
 
     with pytest.raises(ProviderError, match="valid JSON"):
-        _parse_provider_response(payload)
+        _parse_responses_response(payload)
 
 
-def test_parse_provider_response_accepts_json_code_fence() -> None:
+def test_parse_responses_response_accepts_json_code_fence() -> None:
     payload = {
-        "choices": [
+        "output": [
             {
-                "message": {
-                    "content": (
-                        "```json\n"
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": "```json\n"
                         '{"type":"clarify","message":"Which track do you mean?"}'
-                        "\n```"
-                    )
-                }
+                        "\n```",
+                    }
+                ],
             }
         ]
     }
 
-    response = _parse_provider_response(payload)
+    response = _parse_responses_response(payload)
 
     assert response == ProviderResponse(
         type="clarify", message="Which track do you mean?"
     )
 
 
-def test_parse_provider_response_prefers_parsed_payload() -> None:
+def test_parse_chat_completions_response_prefers_parsed_payload() -> None:
     payload = {
         "choices": [
             {
@@ -76,14 +94,15 @@ def test_parse_provider_response_prefers_parsed_payload() -> None:
         ]
     }
 
-    response = _parse_provider_response(payload)
+    response = _parse_chat_completions_response(payload)
 
     assert response == ProviderResponse(
         type="answer", message="This view shows methylation."
     )
 
 
-def test_parse_provider_response_uses_reasoning_content_when_content_is_empty() -> None:
+def test_parse_chat_completions_response_uses_reasoning_content_when_content_is_empty(
+) -> None:
     payload = {
         "choices": [
             {
@@ -97,14 +116,14 @@ def test_parse_provider_response_uses_reasoning_content_when_content_is_empty() 
         ]
     }
 
-    response = _parse_provider_response(payload)
+    response = _parse_chat_completions_response(payload)
 
     assert response == ProviderResponse(
         type="answer", message="This is the answer."
     )
 
 
-def test_parse_provider_response_normalizes_escaped_line_breaks() -> None:
+def test_parse_chat_completions_response_normalizes_escaped_line_breaks() -> None:
     payload = {
         "choices": [
             {
@@ -117,7 +136,7 @@ def test_parse_provider_response_normalizes_escaped_line_breaks() -> None:
         ]
     }
 
-    response = _parse_provider_response(payload)
+    response = _parse_chat_completions_response(payload)
 
     assert response == ProviderResponse(
         type="answer",
