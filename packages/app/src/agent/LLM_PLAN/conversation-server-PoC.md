@@ -144,6 +144,31 @@ the POC.
 
 If the server returns an error, the app should show the error and stop.
 
+## Mock Server
+
+Before the Python server is available, the POC should support a dev-only mock
+server path.
+
+### Environment Switch
+
+- `VITE_AGENT_BASE_URL` controls the agent backend selection.
+- When `VITE_AGENT_BASE_URL=mock`, the app should use the mock server instead of
+  making a network request.
+- The mock server should only be available in dev mode.
+- The mock server must not be bundled into production.
+
+### POC Behavior
+
+The mock server should imitate the real server in a small, deterministic way:
+
+- accept the same `message`, `history`, and `context` payload shape
+- return the same response envelope shape as the real server
+- support read-only answers and clarifications
+- avoid network requests entirely
+
+The mock is only a temporary POC tool. It exists so the chat UI can be wired
+end-to-end before the Python server is implemented.
+
 ## Context Content
 
 The `context` should already contain the semantic material the LLM needs to
@@ -202,6 +227,14 @@ The controller-facing `requestPlan()` call can still hide the transport details,
 but the chat panel itself should preserve the full transcript and hand it to
 the controller as the request history for the POC.
 
+The controller implementation in `agentAdapter.js` should also be updated to
+support the mock backend switch:
+
+- read `VITE_AGENT_BASE_URL`
+- if the value is `mock`, use the dev-only mock server path instead of `fetch`
+- otherwise, continue to call the real `/v1/plan` endpoint
+- keep the mock implementation out of production bundles
+
 ## Implementation Plan
 
 1. Update the chat UI transcript model.
@@ -212,16 +245,20 @@ the controller as the request history for the POC.
    - Keep `POST /v1/plan`.
    - Send `message`, full `history`, and current `context`.
    - Do not include provenance cross-links yet.
-3. Implement the Python relay server.
+3. Add the dev-only mock server path.
+   - Branch on `VITE_AGENT_BASE_URL=mock`.
+   - Keep the mock out of production bundles.
+   - Return deterministic read-only responses without network access.
+4. Implement the Python relay server.
    - Read the request body as-is.
    - Prepend the fixed GenomeSpy system prompt internally.
    - Forward the assembled prompt to the chosen LLM provider.
    - Return only `answer` or `clarify` for the POC.
-4. Keep the chat UI read-only for the POC.
+5. Keep the chat UI read-only for the POC.
    - Render assistant answers inline.
    - Render clarification questions inline.
    - Show errors and stop when the server fails.
-5. Verify the first user stories.
+6. Verify the first user stories.
    - "What is in this visualization?"
    - "How are methylation levels encoded?"
    - follow-up questions that depend on the previous turns
