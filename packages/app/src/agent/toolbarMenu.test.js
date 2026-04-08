@@ -28,7 +28,7 @@ describe("getAgentMenuItems", () => {
 
         expect(items.map((item) => item.label)).toEqual([
             "Local Agent",
-            "Copy Agent Context",
+            "Show Agent Context",
             "Agent Trace",
         ]);
     });

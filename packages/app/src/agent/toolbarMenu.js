@@ -1,10 +1,5 @@
-import {
-    faCopy,
-    faRobot,
-    faStopwatch,
-} from "@fortawesome/free-solid-svg-icons";
+import { faEye, faRobot, faStopwatch } from "@fortawesome/free-solid-svg-icons";
 import { showDialog } from "../components/generic/baseDialog.js";
-import { showMessageDialog } from "../components/generic/messageDialog.js";
 
 /**
  * @param {import("../app.js").default} app
@@ -27,10 +22,10 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
 
     if (isDev) {
         items.push({
-            label: "Copy Agent Context",
-            icon: faCopy,
+            label: "Show Agent Context",
+            icon: faEye,
             callback: /** @returns {void} */ () => {
-                void copyAgentContext(app);
+                void showAgentContextDialog(app);
             },
         });
     }
@@ -66,32 +61,8 @@ async function showAgentTraceDialog(app) {
  * @param {import("../app.js").default} app
  * @returns {Promise<void>}
  */
-async function copyAgentContext(app) {
-    const context = app.agentAdapter?.getAgentContext?.();
-    if (!context) {
-        await showMessageDialog("No agent context is available yet.", {
-            title: "Agent Context",
-            type: "info",
-        });
-        return;
-    }
-
-    try {
-        await navigator.clipboard.writeText(JSON.stringify(context, null, 2));
-        await showMessageDialog(
-            "The current agent context was copied to the clipboard.",
-            {
-                title: "Agent Context",
-                type: "info",
-            }
-        );
-    } catch {
-        await showMessageDialog(
-            "The agent context could not be copied. Your browser may block clipboard access.",
-            {
-                title: "Agent Context",
-                type: "info",
-            }
-        );
-    }
+async function showAgentContextDialog(app) {
+    const { showAgentContextDialog: openAgentContextDialog } =
+        await import("../components/dialogs/agentContextDialog.js");
+    await openAgentContextDialog(app);
 }
