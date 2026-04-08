@@ -739,7 +739,7 @@ export interface AgentAdapter {
      */
     requestPlan(
         message: string,
-        history?: string[]
+        history?: AgentConversationMessage[]
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
 
     /**
@@ -853,6 +853,31 @@ export interface ClarificationRequest {
      * State to preserve across clarification rounds.
      */
     state: Record<string, any>;
+}
+
+/**
+ * Conversation turn sent to the planner service.
+ */
+export interface AgentConversationMessage {
+    /**
+     * Stable message identifier.
+     */
+    id: string;
+
+    /**
+     * Transcript role.
+     */
+    role: "user" | "assistant";
+
+    /**
+     * Message text content.
+     */
+    text: string;
+
+    /**
+     * Optional kind for non-standard assistant turns.
+     */
+    kind?: "clarification";
 }
 
 export type AgentIntentProgramStep = GeneratedAgentIntentProgramStep;

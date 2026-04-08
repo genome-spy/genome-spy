@@ -28,6 +28,33 @@ function elapsedMilliseconds(startedAt) {
 }
 
 /**
+ * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
+ */
+
+/**
+ * @param {Array<string | AgentConversationMessage>} history
+ * @returns {AgentConversationMessage[]}
+ */
+function normalizeConversationHistory(history) {
+    return history.map((entry, index) => {
+        if (typeof entry === "string") {
+            return {
+                id: "history-" + (index + 1),
+                role: index % 2 === 0 ? "user" : "assistant",
+                text: entry,
+            };
+        }
+
+        return {
+            id: String(entry.id),
+            role: entry.role,
+            text: entry.text,
+            ...(entry.kind ? { kind: entry.kind } : {}),
+        };
+    });
+}
+
+/**
  * @param {Record<string, any>} trace
  */
 function publishAgentTrace(trace) {
@@ -66,7 +93,7 @@ export function createAgentAdapter(app) {
         ) => summarizeIntentProgram(app, program),
         requestPlan: (
             /** @type {string} */ message,
-            /** @type {string[]} */ history = []
+            /** @type {Array<string | AgentConversationMessage>} */ history = []
         ) => requestPlan(app, { message, history }),
         runLocalPrompt: () => runLocalPrompt(app),
     };
@@ -74,7 +101,7 @@ export function createAgentAdapter(app) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {{ message: string, history?: string[] }} options
+ * @param {{ message: string, history?: Array<string | AgentConversationMessage> }} options
  * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
  */
 async function requestPlan(app, options) {
@@ -83,6 +110,36 @@ async function requestPlan(app, options) {
     const contextStartedAt = now();
     const context = getAgentContext(app);
     const contextBuildMs = elapsedMilliseconds(contextStartedAt);
+    const history = normalizeConversationHistory(options.history ?? []);
+
+    if (baseUrl === "mock") {
+        if (!import.meta.env.DEV) {
+            throw new Error(
+                "Mock agent backend is available only in dev mode."
+            );
+        }
+
+        const mockStartedAt = now();
+        const { requestMockPlan } = await import("./mockPlanner.js");
+        const requestResult = await requestMockPlan({
+            message: options.message,
+            history,
+            context,
+        });
+
+        return {
+            response: requestResult.response,
+            trace: {
+                message: options.message,
+                contextBuildMs,
+                requestMs: elapsedMilliseconds(mockStartedAt),
+                responseParseMs: 0,
+                serverTiming: "mock",
+                agentServerTotalMs: "mock",
+                totalMs: elapsedMilliseconds(startedAt),
+            },
+        };
+    }
 
     const requestStartedAt = now();
     const response = await fetch(baseUrl + "/v1/plan", {
@@ -92,7 +149,7 @@ async function requestPlan(app, options) {
         },
         body: JSON.stringify({
             message: options.message,
-            history: options.history ?? [],
+            history,
             context,
         }),
     });

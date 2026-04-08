@@ -147,7 +147,7 @@ Suggested shape:
 /**
  * @typedef {object} AgentChatController
  * @property {() => import("../agent/types.d.ts").AgentContext} getAgentContext
- * @property {(message: string, history?: string[]) => Promise<{ response: any, trace: any }>} requestPlan
+ * @property {(message: string, history?: import("../agent/types.d.ts").AgentConversationMessage[]) => Promise<{ response: any, trace: any }>} requestPlan
  * @property {(program: unknown) => { ok: boolean, program?: any, errors?: string[] }} validateIntentProgram
  * @property {(program: any) => Promise<any>} submitIntentProgram
  * @property {(result: any) => string} summarizeExecutionResult

@@ -126,6 +126,47 @@ function createAppStub(encoding = undefined) {
     };
 }
 
+/**
+ * @returns {Record<string, any>}
+ */
+function createMockPlannerContext() {
+    return {
+        schemaVersion: 1,
+        sampleSummary: {
+            sampleCount: 61,
+            groupCount: 1,
+        },
+        viewRoot: {
+            type: "vconcat",
+            title: "viewRoot",
+            description: "Functional Segmentation (FUSE) of ENCODE WGBS data",
+            children: [
+                {
+                    type: "layer",
+                    title: "Data Tracks",
+                    children: [],
+                },
+            ],
+        },
+        attributes: [
+            {
+                title: "Age",
+            },
+            {
+                title: "Diagnosis",
+            },
+        ],
+        actionCatalog: [],
+        viewWorkflows: {
+            workflows: [],
+        },
+        provenance: [],
+        lifecycle: {
+            appInitialized: true,
+        },
+    };
+}
+
 describe("agentAdapter", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -174,6 +215,71 @@ describe("agentAdapter", () => {
                 }),
             }),
         ]);
+    });
+
+    it("posts structured conversation history to the planner endpoint", async () => {
+        const app = createAppStub();
+        const adapter = createAgentAdapter(app);
+        globalThis.fetch.mockResolvedValueOnce(
+            createResponse({
+                type: "answer",
+                message: "OK",
+            })
+        );
+
+        const history = [
+            {
+                id: "msg_001",
+                role: "user",
+                text: "What is in this visualization?",
+            },
+            {
+                id: "msg_002",
+                role: "assistant",
+                text: "It is a cohort view.",
+            },
+            {
+                id: "msg_003",
+                role: "assistant",
+                text: "Do you want the structure or the encodings?",
+                kind: "clarification",
+            },
+        ];
+
+        await adapter.requestPlan(
+            "How are methylation levels encoded?",
+            history
+        );
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(globalThis.fetch.mock.calls[0][1].body).toContain(
+            '"message":"How are methylation levels encoded?"'
+        );
+        expect(globalThis.fetch.mock.calls[0][1].body).toContain(
+            '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view."},{"id":"msg_003","role":"assistant","text":"Do you want the structure or the encodings?","kind":"clarification"}]'
+        );
+    });
+
+    it("uses the dev-only mock planner when the base URL is mock", async () => {
+        const app = createAppStub();
+        app.options.agentBaseUrl = "mock";
+        getAgentContext.mockReturnValue(createMockPlannerContext());
+        const adapter = createAgentAdapter(app);
+
+        const result = await adapter.requestPlan(
+            "What is in this visualization?",
+            []
+        );
+
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(result.response).toEqual(
+            expect.objectContaining({
+                type: "answer",
+            })
+        );
+        expect(result.response.message).toContain(
+            "Functional Segmentation (FUSE) of ENCODE WGBS data"
+        );
     });
 
     it("asks for a grounded field when the workflow leaves the field unspecified", async () => {

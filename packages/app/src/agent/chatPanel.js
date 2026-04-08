@@ -16,6 +16,7 @@ import templateResultToString from "../utils/templateResultToString.js";
  * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
  * @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult
  * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
+ * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
  * @typedef {import("./types.d.ts").PlanResponse} PlanResponse
  * @typedef {PlanResponse | {
  *     type: "clarify";
@@ -44,7 +45,7 @@ import templateResultToString from "../utils/templateResultToString.js";
  *
  * @typedef {{
  *     getAgentContext(): AgentContext;
- *     requestPlan(message: string, history?: string[]): Promise<{ response: ChatPlannerResponse, trace: Record<string, any> }>;
+ *     requestPlan(message: string, history?: AgentConversationMessage[]): Promise<{ response: ChatPlannerResponse, trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -770,23 +771,42 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
-     * @returns {string[]}
+     * @returns {AgentConversationMessage[]}
      */
     #buildHistory() {
         return this.messages
+            .slice(0, -1)
             .filter(
                 (message) =>
-                    message.kind === "user" || message.kind === "assistant"
+                    message.kind === "user" ||
+                    message.kind === "assistant" ||
+                    message.kind === "clarification"
             )
-            .map((message) =>
-                typeof message.text === "string"
-                    ? message.text
-                    : message.text
-                      ? templateResultToString(message.text)
-                      : ""
-            )
-            .filter(Boolean)
-            .slice(-8);
+            .map((message) => {
+                const transcriptMessage =
+                    /** @type {AgentConversationMessage} */ ({
+                        id: String(message.id),
+                        role: /** @type {"user" | "assistant"} */ (
+                            message.kind === "user" ? "user" : "assistant"
+                        ),
+                        text:
+                            typeof message.text === "string"
+                                ? message.text
+                                : message.text
+                                  ? templateResultToString(message.text)
+                                  : "",
+                    });
+
+                if (message.kind === "clarification") {
+                    return /** @type {AgentConversationMessage} */ ({
+                        ...transcriptMessage,
+                        kind: "clarification",
+                    });
+                }
+
+                return transcriptMessage;
+            })
+            .filter((message) => message.text.length > 0);
     }
 
     /**
