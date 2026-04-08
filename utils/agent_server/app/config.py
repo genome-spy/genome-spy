@@ -20,7 +20,6 @@ class Settings:
     api_key: str
     timeout_seconds: float
     system_prompt: str
-    debug: bool
 
 
 def load_settings() -> Settings:
@@ -36,6 +35,4 @@ def load_settings() -> Settings:
         system_prompt=os.environ.get(
             "GENOMESPY_AGENT_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT
         ),
-        debug=os.environ.get("GENOMESPY_AGENT_DEBUG", "").lower()
-        in ("1", "true", "yes", "on"),
     )

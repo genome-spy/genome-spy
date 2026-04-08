@@ -56,18 +56,6 @@ class OpenAICompatibleProvider(BaseProvider):
             "content-type": "application/json",
         }
 
-        if self._settings.debug:
-            logger.warning(
-                "Sending provider request: model=%s base_url=%s history_length=%s "
-                "context_keys=%s message_count=%s first_messages=%r",
-                self._settings.model,
-                self._settings.base_url,
-                len(request.history),
-                sorted(request.context.keys()),
-                len(payload["messages"]),
-                payload["messages"][:3],
-            )
-
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
         ) as client:
@@ -78,7 +66,6 @@ class OpenAICompatibleProvider(BaseProvider):
                     headers=headers,
                 )
             except httpx.ReadTimeout as exc:
-                logger.exception("Provider HTTP request timed out.")
                 raise ProviderError(
                     "Provider request timed out after "
                     + str(self._settings.timeout_seconds)
@@ -86,7 +73,6 @@ class OpenAICompatibleProvider(BaseProvider):
                     + "their first request."
                 ) from exc
             except Exception as exc:
-                logger.exception("Provider HTTP request raised an exception.")
                 raise ProviderError(
                     "Provider HTTP request failed: " + repr(exc)
                 ) from exc
@@ -105,17 +91,9 @@ class OpenAICompatibleProvider(BaseProvider):
                 + (body_preview or "no response body")
             )
 
-        if self._settings.debug:
-            logger.warning(
-                "Received provider response: status_code=%s body=%r",
-                response.status_code,
-                response.text[:2000],
-            )
-
         try:
             response_json = response.json()
         except Exception as exc:
-            logger.exception("Provider returned a non-JSON response body.")
             raise ProviderError(
                 "Provider response was not valid JSON: " + response.text[:500]
             ) from exc

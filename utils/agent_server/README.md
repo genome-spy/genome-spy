@@ -49,8 +49,6 @@ Optional environment variables:
   - default: `180`
 - `GENOMESPY_AGENT_SYSTEM_PROMPT`
   - overrides the built-in GenomeSpy system prompt
-- `GENOMESPY_AGENT_DEBUG`
-  - set to `true` for verbose request and provider logs
 
 The default base URL targets a local OpenAI-compatible endpoint. This works for
 providers such as LM Studio or vLLM when configured with a compatible API.
@@ -133,7 +131,6 @@ From the repo root:
 export GENOMESPY_AGENT_MODEL=gemma4:e4b
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:11434/v1
 export GENOMESPY_AGENT_API_KEY=ollama
-export GENOMESPY_AGENT_DEBUG=true
 
 uv run --project utils/agent_server uvicorn app.main:app --reload --app-dir utils/agent_server
 ```
