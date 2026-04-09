@@ -48,7 +48,7 @@ export interface CollapseViewNodeToolInput {
  * {
  *   "selector": {
  *     "scope": [],
- *     "view": "track"
+ *     "view": "reference-sequence"
  *   },
  *   "visibility": false
  * }

@@ -30,7 +30,17 @@ describe("toolCatalog", () => {
                 strict: true,
             })
         );
-        expect(toolDefinitions[0].parameters.definitions).toBeDefined();
+        expect(JSON.stringify(toolDefinitions)).not.toContain(
+            "AgentIntentProgramStep"
+        );
+        expect(toolDefinitions[2]).toEqual(
+            expect.objectContaining({
+                name: "setViewVisibility",
+                description: "Set the configured visibility of a view.",
+            })
+        );
+        expect(toolDefinitions[2].parameters.type).toBe("object");
+        expect(toolDefinitions[4].parameters.type).toBe("object");
     });
 
     it("validates tool arguments against the generated schema", () => {

@@ -39,7 +39,7 @@ export function buildResponsesToolDefinitions() {
     return generatedToolCatalog.map((entry) => ({
         type: "function",
         name: entry.toolName,
-        description: entry.description,
+        description: formatToolDescription(entry),
         parameters: getToolParameters(entry.inputType),
         strict: true,
     }));
@@ -125,10 +125,15 @@ function getToolParameters(inputType) {
         );
     }
 
-    return {
-        ...schema,
-        definitions: generatedToolSchema.definitions,
-    };
+    return projectToolSchema(schema, schemaDefinitions);
+}
+
+/**
+ * @param {import("./types.d.ts").AgentToolCatalogEntry} entry
+ * @returns {string}
+ */
+function formatToolDescription(entry) {
+    return entry.description;
 }
 
 /**
@@ -161,6 +166,136 @@ function getToolArgumentsValidator(toolName) {
     const validator = ajv.compile(getSchemaWrapper(schema));
     validatorsByToolName.set(toolName, validator);
     return validator;
+}
+
+/**
+ * @param {Record<string, any>} schema
+ * @param {Record<string, any>} definitions
+ * @param {Set<string>} [excludedDefinitionNames]
+ * @param {Set<string>} [visited]
+ * @returns {Record<string, any>}
+ */
+function projectToolSchema(
+    schema,
+    definitions,
+    excludedDefinitionNames = new Set(["AgentIntentProgramStep"]),
+    visited = new Set()
+) {
+    if (schema === null || typeof schema !== "object") {
+        return schema;
+    }
+
+    if (Array.isArray(schema)) {
+        return schema.map((item) =>
+            projectToolSchema(
+                item,
+                definitions,
+                excludedDefinitionNames,
+                visited
+            )
+        );
+    }
+
+    const ref = /** @type {{ $ref?: unknown }} */ (schema).$ref;
+    if (typeof ref === "string") {
+        const refName = ref.replace("#/definitions/", "");
+        if (excludedDefinitionNames.has(refName) || visited.has(refName)) {
+            return { type: "object" };
+        }
+
+        const refSchema = definitions[refName];
+        if (!refSchema) {
+            return { type: "object" };
+        }
+
+        visited.add(refName);
+        const projected = projectToolSchema(
+            refSchema,
+            definitions,
+            excludedDefinitionNames,
+            visited
+        );
+        visited.delete(refName);
+        return projected;
+    }
+
+    /** @type {Record<string, any>} */
+    const projected = {};
+    for (const [key, value] of Object.entries(schema)) {
+        if (key === "definitions" || key === "$schema") {
+            continue;
+        }
+
+        if (
+            key === "properties" &&
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+        ) {
+            projected.properties = Object.fromEntries(
+                Object.entries(value).map(([propertyName, propertySchema]) => [
+                    propertyName,
+                    projectToolSchema(
+                        propertySchema,
+                        definitions,
+                        excludedDefinitionNames,
+                        visited
+                    ),
+                ])
+            );
+            continue;
+        }
+
+        if (
+            key === "items" ||
+            key === "not" ||
+            key === "if" ||
+            key === "then" ||
+            key === "else"
+        ) {
+            projected[key] = projectToolSchema(
+                value,
+                definitions,
+                excludedDefinitionNames,
+                visited
+            );
+            continue;
+        }
+
+        if (
+            (key === "anyOf" || key === "allOf" || key === "oneOf") &&
+            Array.isArray(value)
+        ) {
+            projected[key] = value.map((item) =>
+                projectToolSchema(
+                    item,
+                    definitions,
+                    excludedDefinitionNames,
+                    visited
+                )
+            );
+            continue;
+        }
+
+        if (
+            key === "additionalProperties" &&
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+        ) {
+            projected[key] = projectToolSchema(
+                value,
+                definitions,
+                excludedDefinitionNames,
+                visited
+            );
+            continue;
+        }
+
+        projected[key] = value;
+    }
+
+    return projected;
 }
 
 /**

@@ -67,14 +67,90 @@ def build_responses_tool_definitions() -> list[dict[str, Any]]:
                 "type": "function",
                 "name": tool_name,
                 "description": description,
-                "parameters": {
-                    "$schema": schema.get("$schema"),
-                    "$ref": "#/definitions/" + input_type,
-                    "definitions": definitions,
-                },
+                "parameters": _project_schema(
+                    definitions[input_type], definitions
+                ),
                 "strict": True,
             }
         )
 
     return tool_definitions
 
+
+def _project_schema(
+    schema: Any,
+    definitions: dict[str, Any],
+    excluded_definition_names: set[str] | None = None,
+    visited: set[str] | None = None,
+) -> Any:
+    if excluded_definition_names is None:
+        excluded_definition_names = {"AgentIntentProgramStep"}
+
+    if visited is None:
+        visited = set()
+
+    if schema is None or not isinstance(schema, (dict, list)):
+        return schema
+
+    if isinstance(schema, list):
+        return [
+            _project_schema(item, definitions, excluded_definition_names, visited)
+            for item in schema
+        ]
+
+    ref = schema.get("$ref")
+    if isinstance(ref, str):
+        ref_name = ref.replace("#/definitions/", "")
+        if ref_name in excluded_definition_names or ref_name in visited:
+            return {"type": "object"}
+
+        ref_schema = definitions.get(ref_name)
+        if not isinstance(ref_schema, dict):
+            return {"type": "object"}
+
+        visited.add(ref_name)
+        projected = _project_schema(
+            ref_schema, definitions, excluded_definition_names, visited
+        )
+        visited.remove(ref_name)
+        return projected
+
+    projected: dict[str, Any] = {}
+    for key, value in schema.items():
+        if key in {"definitions", "$schema"}:
+            continue
+
+        if key == "properties" and isinstance(value, dict):
+            projected[key] = {
+                property_name: _project_schema(
+                    property_schema,
+                    definitions,
+                    excluded_definition_names,
+                    visited,
+                )
+                for property_name, property_schema in value.items()
+            }
+            continue
+
+        if key in {"items", "not", "if", "then", "else"}:
+            projected[key] = _project_schema(
+                value, definitions, excluded_definition_names, visited
+            )
+            continue
+
+        if key in {"anyOf", "allOf", "oneOf"} and isinstance(value, list):
+            projected[key] = [
+                _project_schema(item, definitions, excluded_definition_names, visited)
+                for item in value
+            ]
+            continue
+
+        if key == "additionalProperties" and isinstance(value, dict):
+            projected[key] = _project_schema(
+                value, definitions, excluded_definition_names, visited
+            )
+            continue
+
+        projected[key] = value
+
+    return projected

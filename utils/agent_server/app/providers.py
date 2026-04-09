@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 import httpx
@@ -15,10 +18,15 @@ from .prompt_builder import (
     build_prompt_ir,
     build_responses_input,
 )
-from .tool_catalog import build_responses_tool_definitions
-
 logger = logging.getLogger(__name__)
 MAX_LOGGED_PROVIDER_CONTENT = 4000
+ENABLE_RESPONSES_TOOLS = True
+PREFLIGHT_LOG_PATH = Path(
+    os.environ.get(
+        "GENOMESPY_AGENT_PREFLIGHT_LOG_PATH",
+        "/tmp/genomespy-agent-preflight.log",
+    )
+)
 
 
 class ProviderError(RuntimeError):
@@ -43,13 +51,16 @@ class OpenAIResponsesProvider(BaseProvider):
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
         prompt = build_prompt_ir(request)
+        tools = _build_responses_tools()
         payload = {
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
-            "tools": build_responses_tool_definitions(),
-            "tool_choice": "auto",
         }
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+        _log_model_request(prompt.instructions, prompt.context_text, tools)
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
             "content-type": "application/json",
@@ -117,14 +128,17 @@ class OpenAIResponsesProvider(BaseProvider):
         self, request: ProviderRequest
     ) -> AsyncIterator[ProviderStreamEvent]:
         prompt = build_prompt_ir(request)
+        tools = _build_responses_tools()
         payload = {
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
-            "tools": build_responses_tool_definitions(),
-            "tool_choice": "auto",
             "stream": True,
         }
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+        _log_model_request(prompt.instructions, prompt.context_text, tools)
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
             "content-type": "application/json",
@@ -264,6 +278,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             "model": self._settings.model,
             "messages": build_chat_completions_messages(prompt),
         }
+        _log_model_request(prompt.instructions, prompt.context_text, [])
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
             "content-type": "application/json",
@@ -355,6 +370,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             },
             "stream": True,
         }
+        _log_model_request(prompt.instructions, prompt.context_text, [])
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
             "content-type": "application/json",
@@ -462,6 +478,40 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                 raise ProviderError(
                     "Provider HTTP request failed: " + repr(exc)
                 ) from exc
+
+
+def _build_responses_tools() -> list[dict[str, Any]]:
+    if not ENABLE_RESPONSES_TOOLS:
+        return []
+
+    from .tool_catalog import build_responses_tool_definitions
+
+    return build_responses_tool_definitions()
+
+
+def _log_model_request(
+    instructions: str, context_text: str, tools: list[dict[str, Any]]
+) -> None:
+    dump = (
+        "\n=== GenomeSpy agent preflight ===\n"
+        + "Timestamp: "
+        + datetime.now(timezone.utc).isoformat()
+        + "\n"
+        + "Instructions:\n"
+        + instructions
+        + "\n\nContext:\n"
+        + context_text
+        + "\n\nTools:\n"
+        + json.dumps(tools, ensure_ascii=False, indent=2)
+        + "\n=== End preflight ===\n"
+    )
+    _append_preflight_log(dump)
+
+
+def _append_preflight_log(text: str) -> None:
+    PREFLIGHT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with PREFLIGHT_LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(text)
 
 
 async def _iter_sse_events(
