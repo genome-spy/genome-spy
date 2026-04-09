@@ -104,3 +104,6 @@ explaining the reason for the tool call. Do not repeat the arguments in the
 message. The user is not interested in "tool calls" but what the tool call
 achieves, so phrase the message in terms of the insight you hope to gain from
 the tool call.
+
+If the tool call is rejected, do not repeat the same tool call again. Instead,
+think what went wrong.

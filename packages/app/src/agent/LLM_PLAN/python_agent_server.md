@@ -62,6 +62,8 @@ That means:
 - documentation and examples come from JSDoc
 - generated artifacts are exported for Python consumption
 - Python should not manually recreate tool schemas
+- Tool-call validation and rejection policy stays on the GenomeSpy side; see
+  [`validation.md`](./validation.md).
 
 This follows the same principle already used for action schemas and generated
 agent artifacts in `packages/app/src/agent`.

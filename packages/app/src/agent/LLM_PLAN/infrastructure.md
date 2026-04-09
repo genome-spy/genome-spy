@@ -40,6 +40,7 @@ This keeps the app mergeable before release while preserving a clean opt-in path
 - Validate LLM outputs against the generated JSON Schema with Ajv.
 - Execute actions via `IntentPipeline`.
 - Provide user-visible confirmations and error messages.
+- See [`validation.md`](./validation.md) for the tool-call rejection and retry policy.
 
 ### Gateway (Vite/Node)
 - Route requests to LLM backends (Ollama or cloud).

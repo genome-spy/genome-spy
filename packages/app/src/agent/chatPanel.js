@@ -68,6 +68,12 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  * }} AgentActiveTurnSnapshot
  *
  * @typedef {{
+ *     toolCallId: string;
+ *     text: string | null;
+ *     rejected: boolean;
+ * }} ToolExecutionResult
+ *
+ * @typedef {{
  *     getSnapshot(): ChatSessionSnapshot;
  *     subscribe(listener: (snapshot: ChatSessionSnapshot) => void): () => void;
  *     subscribeToActiveTurn?(
@@ -80,7 +86,9 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *     refreshPreflight(): Promise<void>;
  *     expandViewNode?(selector: any): void;
  *     collapseViewNode?(selector: any): void;
- *     executeToolCalls?(toolCalls: AgentToolCall[]): Promise<void>;
+ *     executeToolCalls?(
+ *         toolCalls: AgentToolCall[]
+ *     ): Promise<ToolExecutionResult[]>;
  * }} AgentChatController
  */
 /** @type {ChatSessionSnapshot} */

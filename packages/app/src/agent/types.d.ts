@@ -775,6 +775,13 @@ export interface AgentAdapter {
     ): Promise<IntentProgramExecutionResult>;
 
     /**
+     * Resolves a view selector against the current real view hierarchy.
+     */
+    resolveViewSelector(
+        selector: ViewSelector
+    ): import("@genome-spy/core/view/view.js").default | undefined;
+
+    /**
      * Changes the configured visibility of a view.
      */
     setViewVisibility(selector: ViewSelector, visibility: boolean): void;

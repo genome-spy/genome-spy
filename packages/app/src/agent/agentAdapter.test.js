@@ -41,6 +41,7 @@ vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({
 }));
 
 import { createAgentAdapter } from "./agentAdapter.js";
+import { createAgentSessionController } from "./agentSessionController.js";
 import { createFieldId } from "./viewWorkflowContext.js";
 
 function createResponse(body) {
@@ -161,6 +162,22 @@ function createAppStub(encoding = undefined) {
                 },
             }),
         },
+    };
+}
+
+/**
+ * @returns {Record<string, any>}
+ */
+function createControllerRuntimeMock() {
+    return {
+        requestPlan: vi.fn(),
+        validateIntentProgram: vi.fn(),
+        submitIntentProgram: vi.fn(),
+        resolveViewSelector: vi.fn(() => ({})),
+        setViewVisibility: vi.fn(),
+        clearViewVisibility: vi.fn(),
+        summarizeExecutionResult: vi.fn(),
+        summarizeIntentProgram: vi.fn(),
     };
 }
 
@@ -461,6 +478,69 @@ describe("agentAdapter", () => {
             })
         );
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries once after a rejected tool call and then surfaces the error", async () => {
+        const app = createAppStub();
+        app.agentSessionController = createAgentSessionController(
+            createControllerRuntimeMock()
+        );
+        globalThis.window.prompt.mockReturnValueOnce(
+            "I cannot see the reference sequence in the visualization."
+        );
+        globalThis.fetch
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-1",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true",
+                            },
+                        },
+                    ],
+                })
+            )
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-2",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true",
+                            },
+                        },
+                    ],
+                })
+            );
+        showMessageDialog.mockResolvedValue(true);
+
+        const adapter = createAgentAdapter(app);
+        await adapter.runLocalPrompt();
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(globalThis.fetch.mock.calls[1][1].body).toContain(
+            "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call: $.selector must be of type object."
+        );
+        expect(showMessageDialog).toHaveBeenCalledWith(
+            expect.stringContaining(
+                "Error: Agent repeated a rejected tool call after validation failure."
+            ),
+            expect.objectContaining({
+                title: "Local Agent Error",
+                type: "error",
+            })
+        );
     });
 
     it("falls back to the planner for ordinary requests", async () => {

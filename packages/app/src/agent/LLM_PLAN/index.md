@@ -9,6 +9,7 @@
 - Session controller: owns transcript state, preflight, queueing, and the panel snapshot
 - Streaming plan: [`streaming.md`](./streaming.md)
 - Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
+- Tool-call validation and rejection plan: [`validation.md`](./validation.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
 ## Goals

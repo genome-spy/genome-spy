@@ -9,6 +9,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - Action validation and execution: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Action summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
 - Agent entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
+- Tool validation and rejection flow: [`validation.md`](./validation.md)
 
 ## Status
 
@@ -134,6 +135,7 @@ Build the tool surface in small generated steps:
    - Validate the generated schemas.
    - Verify tool registration and dispatch.
    - Cover expand/collapse and visibility behavior separately.
+   - See [`validation.md`](./validation.md) for the retry/rejection rollout.
 
 ## Progressive Disclosure
 Use compact summaries by default, then fetch detail only when the model needs

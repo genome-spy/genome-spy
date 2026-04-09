@@ -8,6 +8,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     requestPlan: ReturnType<typeof vi.fn>;
  *     validateIntentProgram: ReturnType<typeof vi.fn>;
  *     submitIntentProgram: ReturnType<typeof vi.fn>;
+ *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
  *     summarizeIntentProgram: ReturnType<typeof vi.fn>;
  * }}
@@ -17,6 +18,7 @@ function createRuntimeMock() {
         requestPlan: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
+        resolveViewSelector: vi.fn(() => ({})),
         setViewVisibility: vi.fn(),
         clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
@@ -188,6 +190,7 @@ describe("createAgentSessionController", () => {
             },
             {
                 role: "assistant",
+                kind: "tool_call",
                 text: "I should open the collapsed track.",
                 toolCalls: [
                     {
@@ -198,6 +201,7 @@ describe("createAgentSessionController", () => {
             },
             {
                 role: "tool",
+                kind: "tool_result",
                 text: "Expanded the requested view branch.",
                 toolCallId: "call-1",
             },
@@ -425,5 +429,101 @@ describe("createAgentSessionController", () => {
         );
         expect(snapshot.queuedMessageCount).toBe(1);
         expect(runtime.requestPlan).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects malformed visibility tool arguments before execution", async () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        await controller.executeToolCalls([
+            {
+                callId: "call-visibility",
+                name: "setViewVisibility",
+                arguments: {
+                    selector: '{"scope":[],"view":"reference-sequence"}',
+                    visibility: "True",
+                },
+            },
+        ]);
+
+        expect(runtime.setViewVisibility).not.toHaveBeenCalled();
+        expect(controller.getSnapshot().messages).toContainEqual(
+            expect.objectContaining({
+                kind: "tool_result",
+                toolCallId: "call-visibility",
+                text: expect.stringContaining(
+                    "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call:"
+                ),
+            })
+        );
+    });
+
+    it("retries once after a rejected tool call and then fails on repetition", async () => {
+        const runtime = createRuntimeMock();
+        let plannerCallCount = 0;
+        runtime.requestPlan.mockImplementation((message) => {
+            plannerCallCount += 1;
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: `call-${plannerCallCount}`,
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true",
+                            },
+                        },
+                    ],
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage(
+            "I cannot see the reference sequence in the visualization."
+        );
+
+        const snapshot = controller.getSnapshot();
+        expect(runtime.requestPlan).toHaveBeenCalledTimes(3);
+        expect(snapshot.status).toBe("error");
+        expect(snapshot.lastError).toBe(
+            "The planner repeated a rejected tool call after validation failure."
+        );
+        expect(snapshot.messages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_result",
+                    text: expect.stringContaining(
+                        "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call:"
+                    ),
+                }),
+                expect.objectContaining({
+                    kind: "error",
+                    text: "The planner repeated a rejected tool call after validation failure.",
+                }),
+            ])
+        );
     });
 });

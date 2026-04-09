@@ -1,5 +1,6 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import { validateToolArgumentsShape } from "./toolCatalog.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
@@ -43,6 +44,12 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  * }} ChatClarificationOption
  *
  * @typedef {{
+ *     toolCallId: string;
+ *     text: string | null;
+ *     rejected: boolean;
+ * }} ToolExecutionResult
+ *
+ * @typedef {{
  *     id: number;
  *     kind:
  *         | "user"
@@ -84,6 +91,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -92,6 +100,9 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
+const MAX_REJECTED_TOOL_CALL_RETRIES = 1;
+const TOOL_CALL_REJECTION_PREAMBLE =
+    "Tool call was incorrect and rejected. Correct it before trying again. ";
 
 /**
  * @returns {number}
@@ -359,21 +370,30 @@ export class AgentSessionController {
      * Executes tool calls requested by the planner.
      *
      * @param {AgentToolCall[]} toolCalls
-     * @returns {Promise<void>}
+     * @returns {Promise<ToolExecutionResult[]>}
      */
     async executeToolCalls(toolCalls) {
+        /** @type {ToolExecutionResult[]} */
+        const results = [];
         for (const toolCall of toolCalls) {
             const result = await this.#executeToolCall(toolCall);
-            if (result) {
+            results.push({
+                toolCallId: toolCall.callId,
+                text: result.text,
+                rejected: result.rejected,
+            });
+            if (result.text) {
                 this.#appendMessage({
                     kind: "tool_result",
-                    text: result,
+                    text: result.text,
                     toolCallId: toolCall.callId,
                     durationMs: null,
                 });
                 this.#notify();
             }
         }
+
+        return results;
     }
 
     /**
@@ -497,6 +517,7 @@ export class AgentSessionController {
         const startedAt = now();
 
         try {
+            let rejectedToolCallRounds = 0;
             let response;
             while (true) {
                 const history = this.#buildHistory();
@@ -536,9 +557,29 @@ export class AgentSessionController {
 
                 this.#state.status = "executing";
                 this.#notify();
-                await this.executeToolCalls(response.toolCalls);
+                const executionResults = await this.executeToolCalls(
+                    response.toolCalls
+                );
                 if (this.#state.lastError) {
                     return;
+                }
+                if (executionResults.some((result) => result.rejected)) {
+                    rejectedToolCallRounds += 1;
+                    if (
+                        rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
+                    ) {
+                        const errorMessage =
+                            "The planner repeated a rejected tool call after validation failure.";
+                        this.#markActiveTurnError(turnId);
+                        this.#appendMessage({
+                            kind: "error",
+                            text: errorMessage,
+                        });
+                        this.#state.status = "error";
+                        this.#state.lastError = errorMessage;
+                        this.#notify();
+                        return;
+                    }
                 }
                 this.#resetActiveTurnDraft(turnId);
                 this.#state.status = "thinking";
@@ -630,6 +671,7 @@ export class AgentSessionController {
                         id: String(message.id),
                         role: "assistant",
                         text,
+                        kind: "tool_call",
                         toolCalls: message.toolCalls ?? [],
                     });
                 }
@@ -639,6 +681,7 @@ export class AgentSessionController {
                         id: String(message.id),
                         role: "tool",
                         text,
+                        kind: "tool_result",
                         toolCallId: message.toolCallId,
                         content: message.content,
                     });
@@ -815,41 +858,109 @@ export class AgentSessionController {
      * Executes one planner tool call.
      *
      * @param {AgentToolCall} toolCall
-     * @returns {Promise<string | null>}
+     * @returns {Promise<ToolExecutionResult>}
      */
     async #executeToolCall(toolCall) {
-        const argumentsObject = this.#parseToolArguments(toolCall.arguments);
+        let argumentsObject;
+        try {
+            argumentsObject = this.#parseToolArguments(toolCall.arguments);
+        } catch {
+            return {
+                toolCallId: toolCall.callId,
+                text:
+                    TOOL_CALL_REJECTION_PREAMBLE +
+                    "Rejected tool call: tool arguments must be valid JSON.",
+                rejected: true,
+            };
+        }
+        const validation = validateToolArgumentsShape(
+            toolCall.name,
+            argumentsObject
+        );
 
-        if (toolCall.name === "expandViewNode") {
-            this.expandViewNode(argumentsObject.selector);
-            return "Expanded the requested view branch.";
+        if (!validation.ok) {
+            return {
+                toolCallId: toolCall.callId,
+                text:
+                    TOOL_CALL_REJECTION_PREAMBLE +
+                    "Rejected tool call: " +
+                    validation.errors.join(" "),
+                rejected: true,
+            };
         }
 
-        if (toolCall.name === "collapseViewNode") {
-            this.collapseViewNode(argumentsObject.selector);
-            return "Collapsed the requested view branch.";
-        }
-
-        if (toolCall.name === "setViewVisibility") {
-            this.#runtime.setViewVisibility(
-                argumentsObject.selector,
-                argumentsObject.visibility
+        if (
+            toolCall.name === "expandViewNode" ||
+            toolCall.name === "collapseViewNode" ||
+            toolCall.name === "setViewVisibility" ||
+            toolCall.name === "clearViewVisibility"
+        ) {
+            const selector = this.#runtime.resolveViewSelector(
+                argumentsObject.selector
             );
-            return "Updated the requested view visibility.";
-        }
+            if (!selector) {
+                return {
+                    toolCallId: toolCall.callId,
+                    text:
+                        TOOL_CALL_REJECTION_PREAMBLE +
+                        "Rejected tool call: selector did not resolve in the current view hierarchy.",
+                    rejected: true,
+                };
+            }
 
-        if (toolCall.name === "clearViewVisibility") {
+            if (toolCall.name === "expandViewNode") {
+                this.expandViewNode(argumentsObject.selector);
+                return {
+                    toolCallId: toolCall.callId,
+                    text: "Expanded the requested view branch.",
+                    rejected: false,
+                };
+            }
+
+            if (toolCall.name === "collapseViewNode") {
+                this.collapseViewNode(argumentsObject.selector);
+                return {
+                    toolCallId: toolCall.callId,
+                    text: "Collapsed the requested view branch.",
+                    rejected: false,
+                };
+            }
+
+            if (toolCall.name === "setViewVisibility") {
+                this.#runtime.setViewVisibility(
+                    argumentsObject.selector,
+                    argumentsObject.visibility
+                );
+                return {
+                    toolCallId: toolCall.callId,
+                    text: "Updated the requested view visibility.",
+                    rejected: false,
+                };
+            }
+
             this.#runtime.clearViewVisibility(argumentsObject.selector);
-            return "Cleared the requested view visibility override.";
+            return {
+                toolCallId: toolCall.callId,
+                text: "Cleared the requested view visibility override.",
+                rejected: false,
+            };
         }
 
         if (toolCall.name === "submitIntentProgram") {
             await this.#executeIntentProgram(argumentsObject.program, null);
             if (this.#state.lastError) {
-                return null;
+                return {
+                    toolCallId: toolCall.callId,
+                    text: null,
+                    rejected: false,
+                };
             }
 
-            return "Executed the proposed intent program.";
+            return {
+                toolCallId: toolCall.callId,
+                text: "Executed the proposed intent program.",
+                rejected: false,
+            };
         }
 
         throw new Error("Unsupported planner tool: " + toolCall.name);

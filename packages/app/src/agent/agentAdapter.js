@@ -49,34 +49,6 @@ function looksLikeStructuredToolMessage(text) {
 }
 
 /**
- * @param {AgentToolCall} toolCall
- * @returns {string}
- */
-function summarizeToolExecution(toolCall) {
-    if (toolCall.name === "expandViewNode") {
-        return "Expanded the requested view branch.";
-    }
-
-    if (toolCall.name === "collapseViewNode") {
-        return "Collapsed the requested view branch.";
-    }
-
-    if (toolCall.name === "setViewVisibility") {
-        return "Updated the requested view visibility.";
-    }
-
-    if (toolCall.name === "clearViewVisibility") {
-        return "Cleared the requested view visibility override.";
-    }
-
-    if (toolCall.name === "submitIntentProgram") {
-        return "Executed the proposed intent program.";
-    }
-
-    return "Executed " + toolCall.name + ".";
-}
-
-/**
  * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
  * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
@@ -153,6 +125,16 @@ export function createAgentAdapter(app) {
         submitIntentProgram: (
             /** @type {import("./types.js").IntentProgram} */ program
         ) => submitIntentProgram(app, program),
+        resolveViewSelector: (
+            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
+        ) => {
+            const viewRoot = app.genomeSpy?.viewRoot;
+            if (!viewRoot) {
+                return undefined;
+            }
+
+            return resolveViewSelector(viewRoot, selector);
+        },
         setViewVisibility: (
             /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector,
             /** @type {boolean} */ visibility
@@ -527,6 +509,7 @@ async function runLocalPrompt(app) {
     let message = initialMessage;
     let clarificationRounds = 0;
     let toolRounds = 0;
+    let rejectedToolCallRounds = 0;
     let repairedInvalidIntentProgram = false;
 
     try {
@@ -685,18 +668,41 @@ async function runLocalPrompt(app) {
                     );
                 }
 
-                await controller.executeToolCalls(response.toolCalls);
-                if (controller.getSnapshot().status === "error") {
-                    return;
-                }
+                const executionResults = await controller.executeToolCalls(
+                    response.toolCalls
+                );
                 for (const toolCall of response.toolCalls) {
+                    const executionResult = executionResults.find(
+                        (result) => result.toolCallId === toolCall.callId
+                    );
+                    if (!executionResult || !executionResult.text) {
+                        continue;
+                    }
+
                     history.push({
                         id: `tool-result-${toolRounds}-${toolCall.callId}`,
                         role: "tool",
-                        text: summarizeToolExecution(toolCall),
+                        text: executionResult.text,
                         toolCallId: toolCall.callId,
                         kind: "tool_result",
                     });
+                }
+
+                const controllerSnapshot = controller.getSnapshot();
+                if (controllerSnapshot.status === "error") {
+                    throw new Error(
+                        controllerSnapshot.lastError ||
+                            "Agent tool call failed."
+                    );
+                }
+
+                if (executionResults.some((result) => result.rejected)) {
+                    rejectedToolCallRounds += 1;
+                    if (rejectedToolCallRounds > 1) {
+                        throw new Error(
+                            "Agent repeated a rejected tool call after validation failure."
+                        );
+                    }
                 }
                 continue;
             }

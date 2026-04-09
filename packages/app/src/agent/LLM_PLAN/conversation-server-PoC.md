@@ -40,6 +40,7 @@ The first version is intentionally simple:
 - hierarchical provenance
 - request truncation or summarization
 - retry logic beyond simple failure reporting
+- tool-call validation/rejection policy; see [`validation.md`](./validation.md)
 
 ## Implemented So Far
 
