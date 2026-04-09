@@ -18,9 +18,7 @@ export function getAgentContext(app, options = {}) {
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
     const viewWorkflows = getViewWorkflowContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
-    const actionCatalog = listAgentActions().filter(
-        (entry) => !entry.actionType.startsWith("viewSettings/")
-    );
+    const actionCatalog = listAgentActions();
     const compactWorkflows =
         viewWorkflows.fields.length > 0
             ? {

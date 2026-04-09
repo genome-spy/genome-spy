@@ -139,7 +139,7 @@ For the read-only POC, the server should return one of:
 
 - `type: "answer"` with a natural-language `message`
 - `type: "clarify"` with a short clarification `message`
-- `type: "tool_call"` when the browser should execute a local exploration or visibility tool before the next turn
+- `type: "tool_call"` when the browser should execute a local exploration tool before the next turn
 
 The browser handles `tool_call` turns locally and then re-asks the planner with
 the updated context. Intent programs and provenance-changing actions remain on

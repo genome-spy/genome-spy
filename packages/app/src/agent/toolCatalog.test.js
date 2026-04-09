@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     buildResponsesToolDefinitions,
+    formatToolCallRejection,
     listAgentTools,
     validateToolArgumentsShape,
 } from "./toolCatalog.js";
@@ -43,5 +44,21 @@ describe("toolCatalog", () => {
             "$.selector must be of type object.",
             "$.visibility must be of type boolean.",
         ]);
+    });
+
+    it("formats a tool rejection with an example payload", () => {
+        const message = formatToolCallRejection("setViewVisibility", [
+            "$.selector must be of type object.",
+            "$.visibility must be of type boolean.",
+        ]);
+
+        expect(message).toContain(
+            "Tool call was incorrect and rejected. Correct it before trying again."
+        );
+        expect(message).toContain(
+            "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
+        );
+        expect(message).toContain('"visibility": false');
+        expect(message).toContain("Validation errors:");
     });
 });

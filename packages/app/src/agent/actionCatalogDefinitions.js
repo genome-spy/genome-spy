@@ -54,37 +54,4 @@ export const supplementalActionCatalogEntries = [
             },
         },
     },
-    {
-        actionType: "viewSettings/setVisibility",
-        description: "Set the configured visibility of a view.",
-        payloadType: "SetVisibility",
-        payloadDescription: "Payload for setting a view visibility override.",
-        payloadFields: [
-            {
-                name: "key",
-                type: "string",
-                description: "Visibility key for the view.",
-                required: true,
-            },
-            {
-                name: "visibility",
-                type: "boolean",
-                description: "Whether the view should be visible.",
-                required: true,
-            },
-        ],
-        examplePayload: {
-            key: "cCREs",
-            visibility: false,
-        },
-    },
-    {
-        actionType: "viewSettings/restoreDefaultVisibility",
-        description: "Clear the visibility override for a view.",
-        payloadType: "RestoreDefaultVisibility",
-        payloadDescription:
-            "Payload for clearing a single visibility override.",
-        payloadFields: [],
-        examplePayload: "cCREs",
-    },
 ];

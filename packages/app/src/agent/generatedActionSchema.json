@@ -1057,44 +1057,6 @@
           },
           "required": ["actionType", "payload"],
           "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "viewSettings/setVisibility",
-              "type": "string"
-            },
-            "payload": {
-              "additionalProperties": false,
-              "properties": {
-                "key": {
-                  "type": "string"
-                },
-                "visibility": {
-                  "type": "boolean"
-                }
-              },
-              "required": ["key", "visibility"],
-              "type": "object"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "viewSettings/restoreDefaultVisibility",
-              "type": "string"
-            },
-            "payload": {
-              "type": "string"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
         }
       ]
     }

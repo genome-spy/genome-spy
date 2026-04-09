@@ -1,6 +1,9 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
-import { validateToolArgumentsShape } from "./toolCatalog.js";
+import {
+    formatToolCallRejection,
+    validateToolArgumentsShape,
+} from "./toolCatalog.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
@@ -101,8 +104,6 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 const MAX_REJECTED_TOOL_CALL_RETRIES = 1;
-const TOOL_CALL_REJECTION_PREAMBLE =
-    "Tool call was incorrect and rejected. Correct it before trying again. ";
 
 /**
  * @returns {number}
@@ -867,9 +868,9 @@ export class AgentSessionController {
         } catch {
             return {
                 toolCallId: toolCall.callId,
-                text:
-                    TOOL_CALL_REJECTION_PREAMBLE +
-                    "Rejected tool call: tool arguments must be valid JSON.",
+                text: formatToolCallRejection(toolCall.name, [
+                    "Tool arguments must be valid JSON.",
+                ]),
                 rejected: true,
             };
         }
@@ -881,10 +882,7 @@ export class AgentSessionController {
         if (!validation.ok) {
             return {
                 toolCallId: toolCall.callId,
-                text:
-                    TOOL_CALL_REJECTION_PREAMBLE +
-                    "Rejected tool call: " +
-                    validation.errors.join(" "),
+                text: formatToolCallRejection(toolCall.name, validation.errors),
                 rejected: true,
             };
         }
@@ -901,9 +899,9 @@ export class AgentSessionController {
             if (!selector) {
                 return {
                     toolCallId: toolCall.callId,
-                    text:
-                        TOOL_CALL_REJECTION_PREAMBLE +
-                        "Rejected tool call: selector did not resolve in the current view hierarchy.",
+                    text: formatToolCallRejection(toolCall.name, [
+                        "Selector did not resolve in the current view hierarchy.",
+                    ]),
                     rejected: true,
                 };
             }

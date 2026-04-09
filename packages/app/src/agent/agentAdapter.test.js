@@ -529,9 +529,14 @@ describe("agentAdapter", () => {
         await adapter.runLocalPrompt();
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(globalThis.fetch.mock.calls[1][1].body).toContain(
-            "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call: $.selector must be of type object."
+        const retryRequest = JSON.parse(globalThis.fetch.mock.calls[1][1].body);
+        expect(retryRequest.history[1].text).toContain(
+            "Tool call was incorrect and rejected. Correct it before trying again."
         );
+        expect(retryRequest.history[1].text).toContain(
+            "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
+        );
+        expect(retryRequest.history[1].text).toContain('"visibility": false');
         expect(showMessageDialog).toHaveBeenCalledWith(
             expect.stringContaining(
                 "Error: Agent repeated a rejected tool call after validation failure."

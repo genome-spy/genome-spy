@@ -447,15 +447,20 @@ describe("createAgentSessionController", () => {
         ]);
 
         expect(runtime.setViewVisibility).not.toHaveBeenCalled();
-        expect(controller.getSnapshot().messages).toContainEqual(
-            expect.objectContaining({
-                kind: "tool_result",
-                toolCallId: "call-visibility",
-                text: expect.stringContaining(
-                    "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call:"
-                ),
-            })
+        const rejectionMessage = controller
+            .getSnapshot()
+            .messages.find(
+                (message) =>
+                    message.kind === "tool_result" &&
+                    message.toolCallId === "call-visibility"
+            );
+        expect(rejectionMessage?.text).toContain(
+            "Tool call was incorrect and rejected. Correct it before trying again."
         );
+        expect(rejectionMessage?.text).toContain(
+            "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
+        );
+        expect(rejectionMessage?.text).toContain("Validation errors:");
     });
 
     it("retries once after a rejected tool call and then fails on repetition", async () => {
@@ -516,7 +521,7 @@ describe("createAgentSessionController", () => {
                 expect.objectContaining({
                     kind: "tool_result",
                     text: expect.stringContaining(
-                        "Tool call was incorrect and rejected. Correct it before trying again. Rejected tool call:"
+                        "Tool call was incorrect and rejected. Correct it before trying again."
                     ),
                 }),
                 expect.objectContaining({
@@ -524,6 +529,18 @@ describe("createAgentSessionController", () => {
                     text: "The planner repeated a rejected tool call after validation failure.",
                 }),
             ])
+        );
+
+        const toolResultMessage = snapshot.messages.find(
+            (message) =>
+                message.kind === "tool_result" &&
+                message.text &&
+                String(message.text).includes(
+                    "Tool call was incorrect and rejected."
+                )
+        );
+        expect(toolResultMessage?.text).toContain(
+            "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
         );
     });
 });

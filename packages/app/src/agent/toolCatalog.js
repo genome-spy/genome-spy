@@ -46,6 +46,44 @@ export function buildResponsesToolDefinitions() {
 }
 
 /**
+ * Formats a tool-call rejection message using the generated tool catalog.
+ *
+ * @param {string} toolName
+ * @param {string[]} errors
+ * @returns {string}
+ */
+export function formatToolCallRejection(toolName, errors) {
+    const tool = generatedToolCatalog.find(
+        (entry) => entry.toolName === toolName
+    );
+
+    const validationText =
+        errors.length > 0
+            ? "Validation errors:\n- " + errors.join("\n- ")
+            : "Validation failed.";
+
+    if (!tool) {
+        return (
+            "Tool call was incorrect and rejected. Correct it before trying again. " +
+            validationText
+        );
+    }
+
+    const expectedFields = tool.inputFields
+        .map((field) => `${field.name} (${field.type})`)
+        .join(", ");
+    const exampleInput = JSON.stringify(tool.exampleInput, null, 2);
+
+    return [
+        "Tool call was incorrect and rejected. Correct it before trying again.",
+        `${tool.toolName} expects ${expectedFields}.`,
+        "Example input:",
+        exampleInput,
+        validationText,
+    ].join("\n");
+}
+
+/**
  * @param {string} toolName
  * @param {unknown} toolArguments
  * @returns {import("./types.d.ts").ShapeValidationResult}

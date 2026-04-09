@@ -63,19 +63,6 @@ describe("actionCatalog", () => {
                 },
             }).type
         ).toBe("paramProvenance/paramChange");
-
-        expect(
-            getActionCatalogEntry("viewSettings/setVisibility").actionCreator({
-                key: "cCREs",
-                visibility: false,
-            }).type
-        ).toBe("viewSettings/setVisibility");
-
-        expect(
-            getActionCatalogEntry(
-                "viewSettings/restoreDefaultVisibility"
-            ).actionCreator("cCREs").type
-        ).toBe("viewSettings/restoreDefaultVisibility");
     });
 
     it("exposes payload field metadata for quantitative filters", () => {

@@ -35,13 +35,6 @@ describe("actionShapeValidator", () => {
                     },
                 },
                 {
-                    actionType: "viewSettings/setVisibility",
-                    payload: {
-                        key: "cCREs",
-                        visibility: false,
-                    },
-                },
-                {
                     actionType: "sampleView/groupByThresholds",
                     payload: {
                         attribute: {

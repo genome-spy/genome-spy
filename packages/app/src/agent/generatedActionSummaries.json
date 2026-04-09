@@ -78,15 +78,5 @@
     "actionType": "paramProvenance/paramChange",
     "title": "Update a bookmarkable parameter.",
     "description": "Update a bookmarkable parameter."
-  },
-  {
-    "actionType": "viewSettings/setVisibility",
-    "title": "Set the configured visibility of a view.",
-    "description": "Set the configured visibility of a view."
-  },
-  {
-    "actionType": "viewSettings/restoreDefaultVisibility",
-    "title": "Clear the visibility override for a view.",
-    "description": "Clear the visibility override for a view."
   }
 ]

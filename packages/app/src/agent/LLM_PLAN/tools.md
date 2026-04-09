@@ -40,9 +40,9 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
     provenance.
 
 - `setViewVisibility(selector, visibility)` / `clearViewVisibility(selector)`
-  - Implemented through the agent adapter and the app `viewSettings` slice.
-  - Changes the configured view visibility directly instead of routing through
-    provenance.
+  - Implemented through the agent adapter and the app's visibility state.
+  - Tool-level visibility control, separate from the agent action catalog and
+    provenance-backed intent programs.
 
 ### Partially Implemented
 - `getViewHierarchySummary()`
@@ -121,20 +121,20 @@ Build the tool surface in small generated steps:
      locally after applying the tool result, depending on the transport layer.
    - Keep `submitIntentProgram` only for provenance-backed mutations.
 
-5. Add visibility tools as separate direct state changes.
-   - Use them for app visibility, not intent provenance.
+5. Add app-state tools as separate direct state changes.
+   - Use them for app state, not intent provenance.
    - Do not route them through `submitIntentProgram`.
    - Keep them explicit so the model does not conflate them with view exploration.
 
 6. Update the system prompt and planner instructions.
    - Tell the model when to use exploration tools.
-   - Tell the model when to use visibility tools.
+   - Tell the model when to use app-state tools.
    - Clarify that only provenance-changing actions belong in intent programs.
 
 7. Add tests for the generated catalog and tool handling.
    - Validate the generated schemas.
    - Verify tool registration and dispatch.
-   - Cover expand/collapse and visibility behavior separately.
+   - Cover expand/collapse and app-state tool behavior separately.
    - See [`validation.md`](./validation.md) for the retry/rejection rollout.
 
 ## Progressive Disclosure

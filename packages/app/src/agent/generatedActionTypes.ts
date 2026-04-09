@@ -169,13 +169,6 @@ type ParamProvenanceEntry = {
     origin?: ParamOrigin;
 };
 
-type ViewSettingsSetVisibility = {
-    key: string;
-    visibility: boolean;
-};
-
-type ViewSettingsRestoreDefaultVisibility = string;
-
 export type AgentActionType =
     | "sampleView/addMetadata"
     | "sampleView/deriveMetadata"
@@ -192,9 +185,7 @@ export type AgentActionType =
     | "sampleView/groupByThresholds"
     | "sampleView/removeGroup"
     | "sampleView/retainMatched"
-    | "paramProvenance/paramChange"
-    | "viewSettings/setVisibility"
-    | "viewSettings/restoreDefaultVisibility";
+    | "paramProvenance/paramChange";
 
 export type AgentIntentProgramStep =
     | {
@@ -260,12 +251,4 @@ export type AgentIntentProgramStep =
     | {
           actionType: "paramProvenance/paramChange";
           payload: ParamProvenanceEntry;
-      }
-    | {
-          actionType: "viewSettings/setVisibility";
-          payload: ViewSettingsSetVisibility;
-      }
-    | {
-          actionType: "viewSettings/restoreDefaultVisibility";
-          payload: ViewSettingsRestoreDefaultVisibility;
       };

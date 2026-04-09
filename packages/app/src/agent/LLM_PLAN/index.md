@@ -15,7 +15,7 @@
 ## Goals
 - Enable conversations with the agent over the current visualization.
 - Help users understand the visualization itself: semantics, available attributes, encodings, scales, and related metadata.
-- Dispatch intent actions that change the visualization state: sample collection manipulation, view visibility, selections, parameter updates, and metadata derivation from aggregated selection regions.
+- Dispatch intent actions that change the visualization state: sample collection manipulation, selections, parameter updates, and metadata derivation from aggregated selection regions. Use separate tools for view visibility.
 - Run efficiently with a local LLM.
 
 ## Product Phases
