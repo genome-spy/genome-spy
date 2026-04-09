@@ -224,8 +224,6 @@ describe("getAgentContext", () => {
             "sampleView/removeGroup",
             "sampleView/retainMatched",
             "paramProvenance/paramChange",
-            "viewSettings/setVisibility",
-            "viewSettings/restoreDefaultVisibility",
         ]);
     });
 

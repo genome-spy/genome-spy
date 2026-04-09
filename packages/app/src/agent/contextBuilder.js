@@ -18,6 +18,9 @@ export function getAgentContext(app, options = {}) {
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
     const viewWorkflows = getViewWorkflowContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
+    const actionCatalog = listAgentActions().filter(
+        (entry) => !entry.actionType.startsWith("viewSettings/")
+    );
     const compactWorkflows =
         viewWorkflows.fields.length > 0
             ? {
@@ -31,7 +34,7 @@ export function getAgentContext(app, options = {}) {
     return {
         schemaVersion: 1,
         sampleSummary: buildSampleSummary(sampleState),
-        actionCatalog: listAgentActions().map((entry) => ({
+        actionCatalog: actionCatalog.map((entry) => ({
             actionType: entry.actionType,
             description: entry.description,
             payloadFields: entry.payloadFields,

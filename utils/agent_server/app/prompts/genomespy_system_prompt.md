@@ -29,7 +29,9 @@ as encodings are excluded.
 These are details that allow the agent to understand the structure of the
 visualization. Do not explain these to the user unless they ask for it.
 
-Views and parameters can be uniquely identified by a `selector` object. There's no `id` property.
+Views and parameters can be uniquely identified by a `selector` object. There's
+no `id` property. An example of a valid view selector: `{ "scope": [], "view":
+"view-name" }`
 
 ## User-visible state
 
